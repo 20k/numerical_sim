@@ -104,8 +104,10 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
     float lie_cYij[9] = {0};
     float lie_cAij[9] = {0};
 
+    float Yij[6] = {v.cY0, v.cY1, v.cY2, v.cY3, v.cY4, v.cY5};
     float Aij[6] = {v.cA0, v.cA1, v.cA2, v.cA3, v.cA4, v.cA5};
 
+    float dkYij[6 * 3] = {0};
     float dkAij[6 * 3] = {0};
 
     dkAij[0 * 3 + 0] = DIFFXI(cA, 0);
@@ -128,6 +130,27 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
     dkAij[2 * 3 + 3] = DIFFZI(cA, 3);
     dkAij[2 * 3 + 4] = DIFFZI(cA, 4);
     dkAij[2 * 3 + 5] = DIFFZI(cA, 5);
+
+    dkYij[0 * 3 + 0] = DIFFXI(cY, 0);
+    dkYij[0 * 3 + 1] = DIFFXI(cY, 1);
+    dkYij[0 * 3 + 2] = DIFFXI(cY, 2);
+    dkYij[0 * 3 + 3] = DIFFXI(cY, 3);
+    dkYij[0 * 3 + 4] = DIFFXI(cY, 4);
+    dkYij[0 * 3 + 5] = DIFFXI(cY, 5);
+
+    dkYij[1 * 3 + 0] = DIFFYI(cY, 0);
+    dkYij[1 * 3 + 1] = DIFFYI(cY, 1);
+    dkYij[1 * 3 + 2] = DIFFYI(cY, 2);
+    dkYij[1 * 3 + 3] = DIFFYI(cY, 3);
+    dkYij[1 * 3 + 4] = DIFFYI(cY, 4);
+    dkYij[1 * 3 + 5] = DIFFYI(cY, 5);
+
+    dkYij[2 * 3 + 0] = DIFFZI(cY, 0);
+    dkYij[2 * 3 + 1] = DIFFZI(cY, 1);
+    dkYij[2 * 3 + 2] = DIFFZI(cY, 2);
+    dkYij[2 * 3 + 3] = DIFFZI(cY, 3);
+    dkYij[2 * 3 + 4] = DIFFZI(cY, 4);
+    dkYij[2 * 3 + 5] = DIFFZI(cY, 5);
 
     #pragma unroll
     for(int i=0; i < 3; i++)
@@ -154,6 +177,34 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
             }
 
             lie_cAij[i * 3 + j] = sum;
+        }
+    }
+
+    #pragma unroll
+    for(int i=0; i < 3; i++)
+    {
+        #pragma unroll
+        for(int j=0; j < 3; j++)
+        {
+            float sum = 0;
+
+            #pragma unroll
+            for(int k=0; k < 3; k++)
+            {
+                int symmetric_index1 = index_table[i][j];
+
+                float v1 = gB[k] * dkYij[k * 3 + symmetric_index1];
+
+                float v2 = Yij[index_table[i][k]] * DERIV_IDX(dB_full, j, k);
+
+                float v3 = Yij[index_table[k][j]] * DERIV_IDX(dB_full, i, k);
+
+                float v4 = -(2.f/3.f) * Yij[index_table[i][j]] * DERIV_IDX(dB_full, k, k);
+
+                sum += v1 + v2 + v3 + v4;
+            }
+
+            lie_cYij[i * 3 + j] = sum;
         }
     }
 }
