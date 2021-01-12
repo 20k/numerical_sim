@@ -32,6 +32,11 @@ struct bssnok_data
 
     cl_float K;
     cl_float X;
+
+    cl_float gA;
+    cl_float gB0;
+    cl_float gB1;
+    cl_float gB2;
 };
 
 bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
@@ -50,11 +55,11 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
     }
 
     ///I could fix this by improving the dual library to allow for algebraic substitution
-    value initial_conformal_factor = 1;
+    value BL_conformal = 1;
 
     float r = (pos - centre).length() * scale;
 
-    value vr("r");
+    //value vr("r");
 
     std::vector<float> black_hole_r{0};
     std::vector<float> black_hole_m{1};
@@ -65,7 +70,7 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
         float Mi = black_hole_m[i];
         float ri = black_hole_r[i];
 
-        initial_conformal_factor = initial_conformal_factor + Mi / (2 * fabs(r - ri));
+        BL_conformal = BL_conformal + Mi / (2 * fabs(r - ri));
     }
 
     tensor<value, 3, 3> yij;
@@ -74,7 +79,7 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
     {
         for(int j=0; j < 3; j++)
         {
-            yij.idx(i, j) = pow(initial_conformal_factor, 4) * kronecker.idx(i, j);
+            yij.idx(i, j) = pow(BL_conformal, 4) * kronecker.idx(i, j);
         }
     }
 
@@ -94,19 +99,16 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
         }
     }
 
-    ///uuuuh ???
-    std::array<std::string, 4> variables{"t", "x", "y", "z"};
-
     ///determinant of cyij is 1
     ///
     {
         value cY = cyij.det();
-        float real_value = cY.substitute("r", r).get_constant();
+        float real_value = cY.get_constant();
 
         std::cout << "REAL " << real_value << std::endl;
     }
 
-    float real_conformal = conformal_factor.substitute("r", r).get_constant();
+    float real_conformal = conformal_factor..get_constant();
 
     ///so, via 3.47, Kij = Aij + (1/3) Yij K
     ///via 3.55, Kij = 0 for the initial conditions
@@ -187,7 +189,36 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
     ///Which means K = 0
     ///which means that Aij.. is 0?
 
-    return bssnok_data();
+    bssnok_data ret;
+
+    ret.cA0 = cAij.idx(0, 0);
+    ret.cA1 = cAij.idx(0, 1);
+    ret.cA2 = cAij.idx(0, 2);
+    ret.cA3 = cAij.idx(1, 1);
+    ret.cA4 = cAij.idx(1, 2);
+    ret.cA5 = cAij.idx(2, 2);
+
+    ret.cY0 = cyij.idx(0, 0);
+    ret.cY1 = cyij.idx(0, 1);
+    ret.cY2 = cyij.idx(0, 2);
+    ret.cY3 = cyij.idx(1, 1);
+    ret.cY4 = cyij.idx(1, 2);
+    ret.cY5 = cyij.idx(2, 2);
+
+    ret.cGi0 = cGi[0];
+    ret.cGi1 = cGi[1];
+    ret.cGi2 = cGi[2];
+
+    ret.K = 0;
+    ret.X = X;
+
+    ///https://arxiv.org/pdf/1404.6523.pdf section A, initial data
+    ret.gA = 1/BL_conformal;
+    ret.gB0 = 1/BL_conformal;
+    ret.gB1 = 1/BL_conformal;
+    ret.gB2 = 1/BL_conformal;
+
+    return ret;
 }
 
 int main()
