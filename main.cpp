@@ -244,6 +244,57 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
     return ret;
 }
 
+///todo: I know for a fact that clang is too silly to optimise out the memory lookups
+value hacky_differentiate(value in, int idx)
+{
+    assert(in.is_value());
+
+    assert(in.value_payload.value().starts_with("v."));
+
+    std::string nstr = in.value_payload.value();
+
+    nstr.erase(nstr.begin());
+    nstr.erase(nstr.begin());
+
+    value ret;
+
+    if(idx == 0)
+        ret.make_value("DIFFX(" + nstr + ")");
+    if(idx == 1)
+        ret.make_value("DIFFY(" + nstr + ")");
+    if(idx == 2)
+        ret.make_value("DIFFZ(" + nstr + ")");
+
+    return ret;
+}
+
+template<typename T, int N>
+inline
+tensor<T, N, N> gpu_lie_derivative_weight(const tensor<T, N>& B, const tensor<T, N, N>& mT)
+{
+    tensor<T, N, N> lie;
+
+    for(int i=0; i < N; i++)
+    {
+        for(int j=0; j < N; j++)
+        {
+            T sum = 0;
+
+            for(int k=0; k < N; k++)
+            {
+                sum = sum + B.idx(k) * hacky_differentiate(mT.idx(i, j), k);
+                sum = sum + mT.idx(i, k) * hacky_differentiate(B.idx(k), j);
+                sum = sum + mT.idx(k, j) * hacky_differentiate(B.idx(k), i);
+                sum = sum - (2.f/3.f) * mT.idx(i, j) * hacky_differentiate(B.idx(k), k);
+            }
+
+            lie.idx(i, j) = sum;
+        }
+    }
+
+    return lie;
+}
+
 inline
 std::vector<std::pair<std::string, std::string>>
 build_eqs()
@@ -279,6 +330,18 @@ build_eqs()
 
     value K;
     K.make_value("v.K");
+
+    tensor<value, 3, 3> lie_Yij = gpu_lie_derivative_weight(gB, cY);
+
+    tensor<value, 3, 3> dtYij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            dtYij.idx(i, j) = -2 * gA + lie_Yij.idx(i, j);
+        }
+    }
 }
 
 int main()
