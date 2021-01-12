@@ -342,6 +342,13 @@ build_eqs()
             dtYij.idx(i, j) = -2 * gA + lie_Yij.idx(i, j);
         }
     }
+
+    value dtX = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        dtX = dtX + (2.f/3.f) * X * (gA * K - hacky_differentiate(gB.idx(i), i)) + gB.idx(i) * hacky_differentiate(X, i);
+    }
 }
 
 int main()
