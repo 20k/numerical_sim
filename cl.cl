@@ -38,6 +38,10 @@ float finite_difference(float upper, float lower, float scale)
 #define IDX(i, j, k) ((k) * dim.x * dim.y + (j) * dim.x + (i))
 
 #define DIFFX(var) finite_difference(in[IDX(x+1, y, z)].var, in[IDX(x-1, y, z)].var, scale)
+#define DIFFY(var) finite_difference(in[IDX(x, y+1, z)].var, in[IDX(x, y-1, z)].var, scale)
+#define DIFFZ(var) finite_difference(in[IDX(x, y, z+1)].var, in[IDX(x, y, z-1)].var, scale)
+
+#define DIFFV(v) {DIFFX(v), DIFFY(v), DIFFZ(v)}
 
 __kernel
 void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, float scale, int4 dim)
@@ -52,8 +56,8 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
     if(x == 0 || x == dim.x-1 || y == 0 || y == dim.y - 1 || z == 0 || z == dim.z - 1)
         return;
 
-    float3 dB = {0,0,0};
-    float dA = 0;
+    float3 dtB = {0,0,0};
+    float dtA = 0;
 
     struct bssnok_data v = in[IDX(x, y, z)];
 
@@ -61,11 +65,14 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
         ///https://arxiv.org/pdf/1404.6523.pdf (4)
         float N = 1.375;
 
-        dB.x = (3.f/4.f) * v.cGi0 - N * v.gB0;
-        dB.y = (3.f/4.f) * v.cGi1 - N * v.gB1;
-        dB.z = (3.f/4.f) * v.cGi2 - N * v.gB2;
+        dtB.x = (3.f/4.f) * v.cGi0 - N * v.gB0;
+        dtB.y = (3.f/4.f) * v.cGi1 - N * v.gB1;
+        dtB.z = (3.f/4.f) * v.cGi2 - N * v.gB2;
 
-        float dAx = DIFFX(gA);
+        float3 dA = DIFFV(gA);
+
+                     ///b^i di a
+        dtA = (dB.x * dA.x + dB.y * dA.y + dB.z * dA.z) - 2 * v.gA * v.K;
 
         //float dAx = finite_difference(in[IDX(i-1, ])
     }
