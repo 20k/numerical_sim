@@ -55,9 +55,12 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
     }
 
     ///I could fix this by improving the dual library to allow for algebraic substitution
-    value BL_conformal = 1;
+    float BL_conformal = 1;
 
     float r = (pos - centre).length() * scale;
+
+    if(r < 0.01)
+        r = 0.01;
 
     //value vr("r");
 
@@ -73,7 +76,7 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
         BL_conformal = BL_conformal + Mi / (2 * fabs(r - ri));
     }
 
-    tensor<value, 3, 3> yij;
+    tensor<float, 3, 3> yij;
 
     for(int i=0; i < 3; i++)
     {
@@ -84,12 +87,12 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
     }
 
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
-    value Y = yij.det();
+    float Y = yij.det();
 
     ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses pre 3.65
-    value conformal_factor = (1/12.f) * log(Y);
+    float conformal_factor = (1/12.f) * log(Y);
 
-    tensor<value, 3, 3> cyij;
+    tensor<float, 3, 3> cyij;
 
     for(int i=0; i < 3; i++)
     {
@@ -102,13 +105,14 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
     ///determinant of cyij is 1
     ///
     {
-        value cY = cyij.det();
-        float real_value = cY.get_constant();
+        float cY = cyij.det();
+        //float real_value = cY.get_constant();
+        float real_value = cY;
 
-        std::cout << "REAL " << real_value << std::endl;
+        //std::cout << "REAL " << real_value << std::endl;
     }
 
-    float real_conformal = conformal_factor..get_constant();
+    float real_conformal = conformal_factor;
 
     ///so, via 3.47, Kij = Aij + (1/3) Yij K
     ///via 3.55, Kij = 0 for the initial conditions
@@ -131,7 +135,7 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
     std::string v2 = "y";
     std::string v3 = "z";
 
-    tensor<value, 3, 3, 3> christoff = christoffel_symbols_2(cyij, vec<3, std::string>{v1, v2, v3});
+    /*tensor<value, 3, 3, 3> christoff = christoffel_symbols_2(cyij, vec<3, std::string>{v1, v2, v3});
 
     ///3.59 says the christoffel symbols are 0 in cartesian
     {
@@ -147,9 +151,22 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
                 }
             }
         }
+    }*/
+
+    tensor<float, 3, 3, 3> christoff;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                christoff.idx(i, j, k) = 0;
+            }
+        }
     }
 
-    tensor<value, 3, 3> inverse_cYij = cyij.invert();
+    tensor<float, 3, 3> inverse_cYij = cyij.invert();
     vec3f cGi = {0,0,0};
 
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf (21)
@@ -163,7 +180,7 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
         {
             for(int k=0; k < 3; k++)
             {
-                sum += inverse_cYij.idx(j, k).get_constant() * christoff.idx(i, j, k).get_constant();
+                sum += inverse_cYij.idx(j, k) * christoff.idx(i, j, k);
             }
         }
 
@@ -172,6 +189,12 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
 
     for(int i=0; i < 3; i++)
     {
+        if(cGi[i] != 0)
+        {
+            std::cout << cGi[i] << std::endl;
+            std::cout << "y " << Y << std::endl;
+        }
+
         assert(cGi[i] == 0);
     }
 
@@ -255,6 +278,34 @@ int main()
     std::array<cl::gl_rendertexture, 2> rtex{clctx.ctx, clctx.ctx};
     rtex[0].create_from_texture(tex[0].handle);
     rtex[1].create_from_texture(tex[1].handle);
+
+    std::array<cl::buffer, 2> bssnok_datas{clctx.ctx, clctx.ctx};
+
+    vec3i size = {100, 100, 100};
+
+    bssnok_datas[0].alloc(size.x() * size.y() * size.z() * sizeof(bssnok_data));
+    bssnok_datas[1].alloc(size.x() * size.y() * size.z() * sizeof(bssnok_data));
+
+    float c_at_max = 10;
+    std::vector<bssnok_data> cpu_data;
+
+    for(int z=0; z < size.z(); z++)
+    {
+        for(int y=0; y < size.y(); y++)
+        {
+            for(int x=0; x < size.x(); x++)
+            {
+                vec3f pos = {x, y, z};
+                vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
+
+                float scale = c_at_max / size.largest_elem();
+
+                cpu_data.push_back(get_conditions(pos, centre, scale));
+            }
+        }
+    }
+
+    bssnok_datas[0].write(clctx.cqueue, cpu_data);
 
     int which_buffer = 0;
 
