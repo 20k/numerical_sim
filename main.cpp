@@ -7,6 +7,7 @@
 #include <CL/cl_ext.h>
 #include <geodesic/dual.hpp>
 #include <geodesic/dual_value.hpp>
+#include <geodesic/numerical.hpp>
 
 ///all conformal variables are explicitly labelled
 struct bssnok_data
@@ -93,16 +94,70 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
         }
     }
 
-    ///determinant of cyij is 1?
+    ///uuuuh ???
+    std::array<std::string, 4> variables{"t", "x", "y", "z"};
+
+    ///determinant of cyij is 1
     ///
+    {
+        value cY = cyij.det();
+        float real_value = cY.substitute("r", r).get_constant();
 
-    value cY = cyij.det();
+        std::cout << "REAL " << real_value << std::endl;
+    }
 
-    std::cout << "CY " << type_to_string(cY.substitute("r", r)) << std::endl;
+    float real_conformal = conformal_factor.substitute("r", r).get_constant();
 
-    float real_value = cY.substitute("r", r).get_constant();
+    ///so, via 3.47, Kij = Aij + (1/3) Yij K
+    ///via 3.55, Kij = 0 for the initial conditions
+    ///therefore Aij = 0
+    ///cAij = exp(-4 phi) Aij
+    ///therefore cAij = 0?
+    tensor<float, 3, 3> cAij;
 
-    std::cout << "REAL " << real_value << std::endl;
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            cAij.idx(i, j) = 0;
+        }
+    }
+
+    float X = exp(-4 * real_conformal);
+
+    ///3.59 says the christoffel symbols are 0 in cartesian
+    {
+        std::string v1 = "x";
+        std::string v2 = "y";
+        std::string v3 = "z";
+
+        tensor<value, 3, 3, 3> christoff = christoffel_symbols_2(cyij, vec<3, std::string>{v1, v2, v3});
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                for(int k=0; k < 3; k++)
+                {
+                    std::cout << "CIJK " << type_to_string(christoff.idx(i, j, k)) << std::endl;
+                }
+            }
+        }
+    }
+
+    /*auto iv_cYij = cyij.invert();
+
+    tensor<float, 4> cGi;
+
+    for(int i=0; i < 4; i++)
+    {
+        cGi = iv_cYij.differentiate()
+    }*/
+
+    ///Kij = Aij + (1/3) yij K, where K is trace
+    ///in the initial data, Kij = 0
+    ///Which means K = 0
+    ///which means that Aij.. is 0?
 
     return bssnok_data();
 }
