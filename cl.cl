@@ -75,6 +75,7 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
 
     ///gauge B
     float gB[3] = {v.gB0, v.gB1, v.gB2};
+    float dX[3] = DIFFV(X);
 
     ///https://arxiv.org/pdf/1404.6523.pdf (4)
     {
@@ -206,5 +207,24 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
 
             lie_cYij[i * 3 + j] = sum;
         }
+    }
+
+    float dtYij[9] = {0};
+
+    #pragma unroll
+    for(int i=0; i < 3; i++)
+    {
+        #pragma unroll
+        for(int j=0; j < 3; j++)
+        {
+            dtYij[i * 3 + j] = 2 * v.gA + lie_cYij[i * 3 + j];
+        }
+    }
+
+    float dtX = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        dtX += (2.f/3.f) * v.X * (v.gA * v.K - DERIV_IDX(dB_full, i, i)) + gB[i] * dX[i];
     }
 }
