@@ -81,13 +81,13 @@
 			<Add option="-lbacktrace" />
 			<Add option="-lopencl" />
 		</Linker>
+		<Unit filename="cl.cl" />
 		<Unit filename="deps/imgui/examples/imgui_impl_glfw.cpp" />
 		<Unit filename="deps/imgui/examples/imgui_impl_opengl3.cpp" />
 		<Unit filename="deps/imgui/imgui.cpp" />
 		<Unit filename="deps/imgui/imgui_draw.cpp" />
 		<Unit filename="deps/imgui/imgui_widgets.cpp" />
 		<Unit filename="deps/imgui/misc/freetype/imgui_freetype.cpp" />
-		<Unit filename="deps/toolkit/JGameToolkit.cbp" />
 		<Unit filename="deps/toolkit/base_serialisables.cpp" />
 		<Unit filename="deps/toolkit/base_serialisables.hpp" />
 		<Unit filename="deps/toolkit/clipboard.cpp" />
@@ -97,7 +97,6 @@
 		<Unit filename="deps/toolkit/config.hpp" />
 		<Unit filename="deps/toolkit/fs_helpers.cpp" />
 		<Unit filename="deps/toolkit/fs_helpers.hpp" />
-		<Unit filename="deps/toolkit/kernels.cl" />
 		<Unit filename="deps/toolkit/opencl.cpp" />
 		<Unit filename="deps/toolkit/opencl.hpp" />
 		<Unit filename="deps/toolkit/render_window.cpp" />
