@@ -65,7 +65,7 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
         float Mi = black_hole_m[i];
         float ri = black_hole_r[i];
 
-        initial_conformal_factor = initial_conformal_factor + Mi / (2 * fabs(vr - ri));
+        initial_conformal_factor = initial_conformal_factor + Mi / (2 * fabs(r - ri));
     }
 
     tensor<value, 3, 3> yij;
@@ -125,24 +125,52 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
 
     float X = exp(-4 * real_conformal);
 
+    std::string v1 = "x";
+    std::string v2 = "y";
+    std::string v3 = "z";
+
+    tensor<value, 3, 3, 3> christoff = christoffel_symbols_2(cyij, vec<3, std::string>{v1, v2, v3});
+
     ///3.59 says the christoffel symbols are 0 in cartesian
     {
-        std::string v1 = "x";
-        std::string v2 = "y";
-        std::string v3 = "z";
-
-        tensor<value, 3, 3, 3> christoff = christoffel_symbols_2(cyij, vec<3, std::string>{v1, v2, v3});
-
         for(int i=0; i < 3; i++)
         {
             for(int j=0; j < 3; j++)
             {
                 for(int k=0; k < 3; k++)
                 {
-                    std::cout << "CIJK " << type_to_string(christoff.idx(i, j, k)) << std::endl;
+                    assert(christoff.idx(i, j, k).get_constant() == 0);
+
+                    //std::cout << "CIJK " << type_to_string(christoff.idx(i, j, k)) << std::endl;
                 }
             }
         }
+    }
+
+    tensor<value, 3, 3> inverse_cYij = cyij.invert();
+    vec3f cGi = {0,0,0};
+
+    ///https://arxiv.org/pdf/gr-qc/9810065.pdf (21)
+    ///aka cy^jk cGijk
+
+    for(int i=0; i < 3; i++)
+    {
+        float sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                sum += inverse_cYij.idx(j, k).get_constant() * christoff.idx(i, j, k).get_constant();
+            }
+        }
+
+        cGi[i] = sum;
+    }
+
+    for(int i=0; i < 3; i++)
+    {
+        assert(cGi[i] == 0);
     }
 
     /*auto iv_cYij = cyij.invert();
