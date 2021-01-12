@@ -7,3 +7,6 @@
 [submodule "deps/toolkit"]
 	path = deps/toolkit
 	url = https://github.com/20k/JGameToolkit
+[submodule "deps/geodesic"]
+	path = deps/geodesic
+	url = https://github.com/20k/geodesic_raytracing
