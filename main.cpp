@@ -244,6 +244,43 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
     return ret;
 }
 
+inline
+std::vector<std::pair<std::string, std::string>>
+build_eqs()
+{
+    tensor<value, 3, 3> cY;
+
+    cY.idx(0, 0).make_value("v.cY0"); cY.idx(0, 1).make_value("v.cY1"); cY.idx(0, 2).make_value("v.cY2");
+    cY.idx(1, 0).make_value("v.cY1"); cY.idx(1, 1).make_value("v.cY3"); cY.idx(1, 2).make_value("v.cY4");
+    cY.idx(2, 0).make_value("v.cY2"); cY.idx(2, 1).make_value("v.cY4"); cY.idx(2, 2).make_value("v.cY5");
+
+    tensor<value, 3, 3> cA;
+
+    cA.idx(0, 0).make_value("v.cA0"); cA.idx(0, 1).make_value("v.cA1"); cA.idx(0, 2).make_value("v.cA2");
+    cA.idx(1, 0).make_value("v.cA1"); cA.idx(1, 1).make_value("v.cA3"); cA.idx(1, 2).make_value("v.cA4");
+    cA.idx(2, 0).make_value("v.cA2"); cA.idx(2, 1).make_value("v.cA4"); cA.idx(2, 2).make_value("v.cA5");
+
+    ///the christoffel symbol
+    tensor<value, 3> cGi;
+    cGi.idx(0).make_value("v.cGi0");
+    cGi.idx(1).make_value("v.cGi1");
+    cGi.idx(2).make_value("v.cGi2");
+
+    value gA;
+    gA.make_value("v.gA");
+
+    tensor<value, 3> gB;
+    gB.idx(0).make_value("v.gB0");
+    gB.idx(1).make_value("v.gB1");
+    gB.idx(2).make_value("v.gB2");
+
+    value X;
+    X.make_value("v.X");
+
+    value K;
+    K.make_value("v.K");
+}
+
 int main()
 {
     int width = 1422;
