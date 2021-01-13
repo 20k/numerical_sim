@@ -356,6 +356,7 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
     {
         printf("DtY %f\n", dtcYij0);
         printf("Aij0 %f\n", v.cA0);
+        printf("X %f\n", v.X);
     }
 
     /*float Rjk[9];

@@ -449,10 +449,15 @@ get_initial_conditions_eqs(vec3f centre, float scale)
         }
     }
 
-    value gA = 1/BL_conformal;
+    /*value gA = 1/BL_conformal;
     value gB0 = 1/BL_conformal;
     value gB1 = 1/BL_conformal;
-    value gB2 = 1/BL_conformal;
+    value gB2 = 1/BL_conformal;*/
+
+    value gA = 1/(BL_conformal * BL_conformal);
+    value gB0 = 0;
+    value gB1 = 0;
+    value gB2 = 0;
 
     /*value gA = 1;
     value gB0 = 0;
@@ -1133,7 +1138,7 @@ build_eqs()
                 s2 = s2 + (1.f/3.f) * icY.idx(i, j) * hacky_differentiate(digB.idx(k, k), j);
             }
 
-            value s3 = gB.idx(j) * hacky_differentiate(cGi.idx(j), j);
+            value s3 = gB.idx(j) * hacky_differentiate(cGi.idx(i), j);
 
             value s4 = -cGi.idx(j) * hacky_differentiate(gB.idx(i), j);
 
