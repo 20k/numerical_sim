@@ -1256,7 +1256,7 @@ int main()
 
     bssnok_datas[0].write(clctx.cqueue, cpu_data);*/
 
-    /*bssnok_data test_init = get_conditions({50, 50, 50}, centre, scale);
+    bssnok_data test_init = get_conditions({50, 50, 50}, centre, scale);
 
     std::cout << "TEST0 " << test_init.cY0 << std::endl;
     std::cout << "TEST1 " << test_init.cY1 << std::endl;
@@ -1264,7 +1264,9 @@ int main()
     std::cout << "TEST3 " << test_init.cY3 << std::endl;
     std::cout << "TEST4 " << test_init.cY4 << std::endl;
     std::cout << "TEST5 " << test_init.cY5 << std::endl;
-    std::cout << "TESTb0 " << test_init.gB0 << std::endl;*/
+    std::cout << "TESTb0 " << test_init.gB0 << std::endl;
+    std::cout << "TESTX " << test_init.X << std::endl;
+    std::cout << "TESTgA " << test_init.gA << std::endl;
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
