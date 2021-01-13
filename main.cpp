@@ -254,23 +254,45 @@ value hacky_differentiate(value in, int idx)
 {
     assert(in.is_value());
 
-    assert(in.value_payload.value().starts_with("v."));
+    if(in.value_payload.value().starts_with("v."))
+    {
+        std::string nstr = in.value_payload.value();
 
-    std::string nstr = in.value_payload.value();
+        nstr.erase(nstr.begin());
+        nstr.erase(nstr.begin());
 
-    nstr.erase(nstr.begin());
-    nstr.erase(nstr.begin());
+        value ret;
 
-    value ret;
+        if(idx == 0)
+            ret.make_value("DIFFX(" + nstr + ")");
+        if(idx == 1)
+            ret.make_value("DIFFY(" + nstr + ")");
+        if(idx == 2)
+            ret.make_value("DIFFZ(" + nstr + ")");
 
-    if(idx == 0)
-        ret.make_value("DIFFX(" + nstr + ")");
-    if(idx == 1)
-        ret.make_value("DIFFY(" + nstr + ")");
-    if(idx == 2)
-        ret.make_value("DIFFZ(" + nstr + ")");
+        return ret;
+    }
+    else if(in.value_payload.value().starts_with("ik."))
+    {
+        std::string nstr = in.value_payload.value();
 
-    return ret;
+        nstr.erase(nstr.begin());
+        nstr.erase(nstr.begin());
+        nstr.erase(nstr.begin());
+
+        value ret;
+
+        if(idx == 0)
+            ret.make_value("INTERMEDIATE_DIFFX(" + nstr + ")");
+        if(idx == 1)
+            ret.make_value("INTERMEDIATE_DIFFX(" + nstr + ")");
+        if(idx == 2)
+            ret.make_value("INTERMEDIATE_DIFFX(" + nstr + ")");
+
+        return ret;
+    }
+
+    assert(false);
 }
 
 template<typename T, int N>
@@ -486,6 +508,10 @@ build_eqs()
             Rij.idx(j, k) = sum;
         }
     }
+
+    //tensor<value, 3, 3> dtcAij;
+
+
 }
 
 int main()
