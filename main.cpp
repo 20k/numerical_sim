@@ -612,9 +612,17 @@ build_eqs()
 
     value dtX = 0;
 
-    for(int i=0; i < 3; i++)
     {
-        dtX = dtX + (2.f/3.f) * X * (gA * K - hacky_differentiate(gB.idx(i), i)) + gB.idx(i) * hacky_differentiate(X, i);
+        value s1 = 0;
+        value s2 = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            s1 = s1 + hacky_differentiate(gB.idx(i), i);
+            s2 = s2 + gB.idx(i) * hacky_differentiate(X, i);
+        }
+
+        dtX = (2.f/3.f) * X * (gA * K - s1) + s2;
     }
 
     tensor<value, 3, 3> Rij;
