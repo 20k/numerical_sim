@@ -279,7 +279,8 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
     my_out->digB[1 * 3 + 2] = DIFFY(gB2);
     my_out->digB[2 * 3 + 2] = DIFFZ(gB2);
 
-    my_out->phi = 0.25f * log(1.f/v.X);
+    //my_out->phi = 0.25f * log(1.f/v.X);
+    my_out->phi = -0.25f * log(v.X);
 
     my_out->Yij[0] = v.cY0 / v.X;
     my_out->Yij[1] = v.cY1 / v.X;
