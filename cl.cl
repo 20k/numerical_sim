@@ -106,6 +106,19 @@ float finite_difference(float upper, float lower, float scale)
 #define DIFFYI(v, i) DIFFY(v##i)
 #define DIFFZI(v, i) DIFFZ(v##i)
 
+__kernel
+void calculate_initial_conditions(__global struct bssnok_data* in, float scale, int4 dim)
+{
+    int x = get_global_id(0);
+    int y = get_global_id(1);
+    int z = get_global_id(2);
+
+    if(x >= dim.x || y >= dim.y || z >= dim.z)
+        return;
+
+
+}
+
 ///https://en.wikipedia.org/wiki/Ricci_curvature#Definition_via_local_coordinates_on_a_smooth_manifold
 __kernel
 void calculate_intermediate_data(__global struct bssnok_data* in, float scale, int4 dim, __global struct intermediate_bssnok_data* out)

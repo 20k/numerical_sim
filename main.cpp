@@ -48,6 +48,7 @@ struct intermediate_bssnok_data
     cl_float Yij[6];
 };
 
+#if 0
 bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
 {
     tensor<float, 3, 3> kronecker;
@@ -111,11 +112,6 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
         return interpolating_polynomial(r_scaled);
     };
 
-    /*for(float r = 0; r < 10; r+= 0.01)
-    {
-        printf("R %f %f\n", r, f_r(r));
-    }*/
-
     ///todo: Stuff
     ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 5.17
     tensor<float, 3, 3> yij;
@@ -169,6 +165,10 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
     ///therefore Aij = 0
     ///cAij = exp(-4 phi) Aij
     ///therefore cAij = 0?
+
+    ///no, none of this is right, they're talking about two separate variables
+    ///once we spatially vary the conformal factor, the metric is no longer globally flat, so there are
+    ///christoffal symbols
     tensor<float, 3, 3> cAij;
 
     for(int i=0; i < 3; i++)
@@ -279,6 +279,153 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
     ret.gB2 = 1/BL_conformal;
 
     return ret;
+}
+#endif // 0
+
+template<typename T, int N>
+inline
+tensor<T, N, N> gpu_lie_derivative_weight_arbitrary(const tensor<T, N>& B, const tensor<T, N, N>& mT, float weight)
+{
+    tensor<T, N, N> lie;
+
+    for(int i=0; i < N; i++)
+    {
+        for(int j=0; j < N; j++)
+        {
+            T sum = 0;
+
+            for(int k=0; k < N; k++)
+            {
+                sum = sum + B.idx(k) * hacky_differentiate(mT.idx(i, j), k);
+                sum = sum + mT.idx(i, k) * hacky_differentiate(B.idx(k), j);
+                sum = sum + mT.idx(k, j) * hacky_differentiate(B.idx(k), i);
+                sum = sum + weight * mT.idx(i, j) * hacky_differentiate(B.idx(k), k);
+            }
+
+            lie.idx(i, j) = sum;
+        }
+    }
+
+    return lie;
+}
+
+
+inline
+std::vector<std::pair<std::string, std::string>>
+get_initial_conditions_eqs(vec3f centre, float scale)
+{
+    vec<3, value> pos;
+
+    pos[0].make_value("x");
+    pos[1].make_value("y");
+    pos[2].make_value("z");
+
+    tensor<value, 3, 3> kronecker;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            if(i == j)
+                kronecker.idx(i, j) = 1;
+            else
+                kronecker.idx(i, j) = 0;
+        }
+    }
+
+    auto interpolating_polynomial = [](value x)
+    {
+        ///https://www.wolframalpha.com/input/?i=InterpolatingPolynomial%5B%7B%7B%7B0%7D%2C+0%2C+0%2C+0%7D%2C+%7B%7B1%7D%2C+1%2C+0%2C+0%7D%7D%2C+%7Bx%7D%5D
+        ///(1 + (-3 + 6 (-1 + x)) (-1 + x)) x^3
+
+        return (1 + (-3 + 6 * (-1 + x)) * (-1 + x)) * x * x * x;
+    };
+
+    value BL_conformal = 1;
+
+    vec<3, value> vcentre = {centre.x(), centre.y(), centre.z()};
+
+    value r = (pos - vcentre).length() * scale;
+
+    r = max(r, 0.01f);
+
+    std::vector<float> black_hole_r{0};
+    std::vector<float> black_hole_m{1};
+
+    ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
+    ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is
+    for(int i=0; i < (int)black_hole_r.size(); i++)
+    {
+        float Mi = black_hole_m[i];
+        float ri = black_hole_r[i];
+
+        BL_conformal = BL_conformal + Mi / (2 * fabs(r - ri));
+    }
+
+    auto f_r = [&](value r)
+    {
+        value r_max = 0.8;
+        value r_min = 0.2;
+
+        r = max(min(r, r_max), r_min);
+
+        value scaled = (r - r_min) / (r_max - r_min);
+
+        return interpolating_polynomial(scaled);
+    };
+
+    ///ok so: I'm pretty sure this is correct
+    tensor<value, 3, 3> yij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            yij.idx(i, j) = pow(BL_conformal, 4) * kronecker.idx(i, j);
+
+            if(i == j)
+            {
+                yij.idx(i, j) = f_r(r) * yij.idx(i, j) + (1 - f_r(r)) * 99999;
+            }
+            else
+            {
+                yij.idx(i, j) = f_r(r) * yij.idx(i, j);
+            }
+        }
+    }
+
+    ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
+    value Y = yij.det();
+
+    ///phi
+    value conformal_factor = (1/12.f) * log(Y);
+
+    tensor<value, 3, 3> cyij;
+
+    ///checked, cyij is correct
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            cyij.idx(i, j) = exp(-4 * conformal_factor) * yij.idx(i, j);
+        }
+    }
+
+    value gA = 1/BL_conformal;
+    value gB0 = 1/BL_conformal;
+    value gB1 = 1/BL_conformal;
+    value gB2 = 1/BL_conformal;
+
+    tensor<value, 3> norm;
+    norm.idx(0) = -gB0 / gA;
+    norm.idx(1) = -gB1 / gA;
+    norm.idx(2) = -gB2 / gA;
+
+    //tensor<value, 3, 3> = gpu_lie_
+
+    value X = exp(-4 * conformal_factor);
+
+    return {};
 }
 
 ///todo: I know for a fact that clang is too silly to optimise out the memory lookups
@@ -946,7 +1093,21 @@ int main()
 
     std::vector<std::pair<std::string, std::string>> equations = build_eqs();
 
+    vec3i size = {250, 250, 250};
+    float c_at_max = 8;
+    float scale = c_at_max / size.largest_elem();
+    vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
+
+    std::vector<std::pair<std::string, std::string>> equations2 = get_initial_conditions_eqs(centre, scale);
+
     for(auto& i : equations)
+    {
+        std::string str = "-D" + i.first + "=" + i.second + " ";
+
+        argument_string += str;
+    }
+
+    for(auto& i : equations2)
     {
         std::string str = "-D" + i.first + "=" + i.second + " ";
 
@@ -976,17 +1137,13 @@ int main()
     std::array<cl::buffer, 2> bssnok_datas{clctx.ctx, clctx.ctx};
     int which_data = 0;
 
-    vec3i size = {250, 250, 250};
-
     bssnok_datas[0].alloc(size.x() * size.y() * size.z() * sizeof(bssnok_data));
     bssnok_datas[1].alloc(size.x() * size.y() * size.z() * sizeof(bssnok_data));
 
     cl::buffer intermediate(clctx.ctx);
     intermediate.alloc(size.x() * size.y() * size.z() * sizeof(intermediate_bssnok_data));
 
-    float c_at_max = 8;
-    float scale = c_at_max / size.largest_elem();
-    std::vector<bssnok_data> cpu_data;
+    /*std::vector<bssnok_data> cpu_data;
 
     for(int z=0; z < size.z(); z++)
     {
@@ -995,7 +1152,7 @@ int main()
             for(int x=0; x < size.x(); x++)
             {
                 vec3f pos = {x, y, z};
-                vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
+
 
 
                 cpu_data.push_back(get_conditions(pos, centre, scale));
@@ -1003,7 +1160,7 @@ int main()
         }
     }
 
-    bssnok_datas[0].write(clctx.cqueue, cpu_data);
+    bssnok_datas[0].write(clctx.cqueue, cpu_data);*/
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
