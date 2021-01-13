@@ -90,6 +90,10 @@ float finite_difference(float upper, float lower, float scale)
 #define DIFFY(var) finite_difference(in[IDX(x, y+1, z)].var, in[IDX(x, y-1, z)].var, scale)
 #define DIFFZ(var) finite_difference(in[IDX(x, y, z+1)].var, in[IDX(x, y, z-1)].var, scale)
 
+#define INTERMEDIATE_DIFFX(var) finite_difference(temp_in[IDX(x+1, y, z)].var, temp_in[IDX(x-1, y, z)].var, scale)
+#define INTERMEDIATE_DIFFY(var) finite_difference(temp_in[IDX(x, y+1, z)].var, temp_in[IDX(x, y-1, z)].var, scale)
+#define INTERMEDIATE_DIFFZ(var) finite_difference(temp_in[IDX(x, y, z+1)].var, temp_in[IDX(x, y, z-1)].var, scale)
+
 #define DIFFV(v) {DIFFX(v), DIFFY(v), DIFFZ(v)}
 
 #define DERIV_IDX(derivative_matrix, coordinate_idx, vector_idx) derivative_matrix[(coordinate_idx) * 3 + (vector_idx)]
@@ -183,6 +187,7 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
 
     struct intermediate_bssnok_data* my_out = &out[IDX(x, y, z)];
 
+    #pragma unroll
     for(int k=0; k < 3; k++)
     {
         my_out->christoffel[k * 3 + 0] = christoff_big[k * 3 * 3 + 0 * 3 + 0];
@@ -207,6 +212,49 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
     if(x == 0 || x == dim.x-1 || y == 0 || y == dim.y - 1 || z == 0 || z == dim.z - 1)
         return;
 
+    struct bssnok_data v = in[IDX(x, y, z)];
+    struct intermediate_bssnok_data ik = temp_in[IDX(x, y, z)];
+
+    int index_table[3][3] = {{0, 1, 2},
+                             {1, 3, 4},
+                             {2, 4, 5}};
+
+    ///conformal christoffel derivatives
+    float dcGi[3 * 3 * 6];
+
+    for(int i=0; i < 3 * 6; i++)
+    {
+        dcGi[0 * 3 * 6 + i] = INTERMEDIATE_DIFFX(christoffel[i]);
+        dcGi[1 * 3 * 6 + i] = INTERMEDIATE_DIFFY(christoffel[i]);
+        dcGi[2 * 3 * 6 + i] = INTERMEDIATE_DIFFZ(christoffel[i]);
+    }
+
+    /*float Rjk[9];
+
+    for(int j=0; j < 3; j++)
+    {
+        for(int k=0; k < 3; k++)
+        {
+            float sum = 0;
+
+            for(int i=0; i < 3; i++)
+            {
+                for(int p=0; p < 3; p++)
+                {
+                    int symmetric_index1 = index_table[j][k];
+                    int symmetric_index2 = index_table[i][k];
+                    int symmetric_index3 = index_table[i][p]; ///freely
+                    int symmetric_index4 = index_table[j][k];
+                    int symmetric_index5 = index_table[j][p];
+                    int symmetric_index6 = index_table[i][k];
+
+                    sum += dcGi[i * 3 * 6 + ]
+                }
+            }
+        }
+    }*/
+
+    #if 0
     float3 dtB = {0,0,0};
     float dtA = 0;
 
@@ -216,7 +264,6 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
         DIFFZ(gB0), DIFFZ(gB1), DIFFZ(gB2),
     };
 
-    struct bssnok_data v = in[IDX(x, y, z)];
 
     ///gauge B
     float gB[3] = {v.gB0, v.gB1, v.gB2};
@@ -372,4 +419,5 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
     {
         dtX += (2.f/3.f) * v.X * (v.gA * v.K - DERIV_IDX(dB_full, i, i)) + gB[i] * dX[i];
     }
+    #endif // 0
 }

@@ -401,6 +401,33 @@ build_eqs()
     value K;
     K.make_value("v.K");
 
+    tensor<value, 3, 3, 3, 3> dcGi;
+
+    int index_table[3][3] = {{0, 1, 2},
+                             {1, 3, 4},
+                             {2, 4, 5}};
+
+    ///coordinate derivative direction
+    for(int i=0; i < 3; i++)
+    {
+        ///upper index
+        for(int j=0; j < 3; j++)
+        {
+            ///two symmetric lower indices
+            for(int k=0; k < 3; k++)
+            {
+                for(int l=0; l < 3; l++)
+                {
+                    int symmetric_index = index_table[k][l];
+
+                    std::string name = "dcGi[" + std::to_string(i) + "*3*6+" + std::to_string(j) + "*6+" + std::to_string(symmetric_index) + "]";
+
+                    dcGi.idx(i, j, k, l).make_value(name);
+                }
+            }
+        }
+    }
+
     tensor<value, 3, 3> lie_Yij = gpu_lie_derivative_weight(gB, cY);
 
     tensor<value, 3, 3> dtYij;
