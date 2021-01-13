@@ -816,6 +816,41 @@ build_eqs()
 
         dtcGi.idx(i) = sum;
     }
+
+    std::vector<std::pair<std::string, std::string>> equations;
+
+    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
+
+    for(int i=0; i < 6; i++)
+    {
+        std::string name = "dtcYij" + std::to_string(i);
+
+        vec2i idx = linear_indices[i];
+
+        equations.push_back({name, type_to_string(dtcYij.idx(idx.x(), idx.y()))});
+    }
+
+    equations.push_back({"dtX", type_to_string(dtX)});
+
+    for(int i=0; i < 6; i++)
+    {
+        std::string name = "dtcAij" + std::to_string(i);
+
+        vec2i idx = linear_indices[i];
+
+        equations.push_back({name, type_to_string(dtcAij.idx(idx.x(), idx.y()))});
+    }
+
+    equations.push_back({"dtK", type_to_string(dtK)});
+
+    for(int i=0; i < 3; i++)
+    {
+        std::string name = "dtcGi" + std::to_string(i);
+
+        equations.push_back({name, type_to_string(dtcGi.idx(i))});
+    }
+
+    return equations;
 }
 
 int main()
