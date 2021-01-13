@@ -824,6 +824,22 @@ build_eqs()
         dtcGi.idx(i) = sum;
     }
 
+    value dtgA = -2 * gA * K;
+
+    for(int i=0; i < 3; i++)
+    {
+        dtgA = dtgA + gB.idx(i) * hacky_differentiate(gA, i);
+    }
+
+    tensor<value, 3> dtgB;
+
+    for(int i=0; i < 3; i++)
+    {
+        float N = 1.375;
+
+        dtgB.idx(i) = (3.f/4.f) * cGi.idx(i) - N * gB.idx(i);
+    }
+
     std::vector<std::pair<std::string, std::string>> equations;
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
@@ -855,6 +871,15 @@ build_eqs()
         std::string name = "dtcGi" + std::to_string(i);
 
         equations.push_back({name, type_to_string(dtcGi.idx(i))});
+    }
+
+    equations.push_back({"dtgA", type_to_string(dtgA)});
+
+    for(int i=0; i < 3; i++)
+    {
+        std::string name = "dtgB" + std::to_string(i);
+
+        equations.push_back({name, type_to_string(dtgB.idx(i))});
     }
 
     return equations;

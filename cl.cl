@@ -229,7 +229,7 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
 }
 
 __kernel
-void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in)
+void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, float timestep)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
@@ -258,6 +258,34 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
         dcGijk[1 * 3 * 6 + i] = INTERMEDIATE_DIFFY(christoffel[i]);
         dcGijk[2 * 3 * 6 + i] = INTERMEDIATE_DIFFZ(christoffel[i]);
     }
+
+    struct bssnok_data* my_out = &out[IDX(x, y, z)];
+
+    my_out->cY0 = v.cY0 + dtcYij0 * timestep;
+    my_out->cY1 = v.cY1 + dtcYij1 * timestep;
+    my_out->cY2 = v.cY2 + dtcYij2 * timestep;
+    my_out->cY3 = v.cY3 + dtcYij3 * timestep;
+    my_out->cY4 = v.cY4 + dtcYij4 * timestep;
+    my_out->cY5 = v.cY5 + dtcYij5 * timestep;
+
+    my_out->cA0 = v.cA0 + dtcAij0 * timestep;
+    my_out->cA1 = v.cA1 + dtcAij1 * timestep;
+    my_out->cA2 = v.cA2 + dtcAij2 * timestep;
+    my_out->cA3 = v.cA3 + dtcAij3 * timestep;
+    my_out->cA4 = v.cA4 + dtcAij4 * timestep;
+    my_out->cA5 = v.cA5 + dtcAij5 * timestep;
+
+    my_out->cGi0 = v.cGi0 + dtcGi0 * timestep;
+    my_out->cGi1 = v.cGi0 + dtcGi1 * timestep;
+    my_out->cGi2 = v.cGi2 + dtcGi2 * timestep;
+
+    my_out->K = v.K + dtK * timestep;
+    my_out->X = v.X + dtX * timestep;
+
+    my_out->gA = v.gA + dtgA * timestep;
+    my_out->gB0 = v.gB0 + dtgB0 * timestep;
+    my_out->gB1 = v.gB1 + dtgB1 * timestep;
+    my_out->gB2 = v.gB2 + dtgB2 * timestep;
 
     /*float Rjk[9];
 
