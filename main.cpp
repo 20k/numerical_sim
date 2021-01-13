@@ -282,9 +282,9 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
 }
 #endif // 0
 
-template<typename T, int N>
+template<typename T, typename U, int N, size_t M>
 inline
-tensor<T, N, N> gpu_lie_derivative_weight_arbitrary(const tensor<T, N>& B, const tensor<T, N, N>& mT, float weight, const std::array<U, N>& variables)
+tensor<T, N, N> gpu_lie_derivative_weight_arbitrary(const tensor<T, N>& B, const tensor<T, N, N>& mT, float weight, const std::array<U, M>& variables)
 {
     tensor<T, N, N> lie;
 
@@ -457,6 +457,44 @@ get_initial_conditions_eqs(vec3f centre, float scale)
     }
 
     value K = gpu_trace(Kij, yij);
+
+    tensor<value, 3, 3> Aij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            Aij.idx(i, j) = Kij.idx(i, j) - (1.f/3.f) * yij.idx(i, j) * K;
+        }
+    }
+
+    tensor<value, 3, 3> cAij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            cAij.idx(i, j) = exp(-4 * conformal_factor) * Aij.idx(i, j);
+        }
+    }
+
+    ///https://arxiv.org/pdf/gr-qc/9810065.pdf (21)
+
+    tensor<value, 3, 3> inverse_yij = yij.invert();
+
+    tensor<value, 3> cGi;
+
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            sum = sum + inverse_yij.idx(i, j).differentiate(variables[j]);
+        }
+
+        cGi.idx(i) = -sum;
+    }
 
     value X = exp(-4 * conformal_factor);
 
