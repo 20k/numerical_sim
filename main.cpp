@@ -586,9 +586,9 @@ value hacky_differentiate(value in, int idx)
         if(idx == 0)
             ret.make_value("INTERMEDIATE_DIFFX(" + nstr + ")");
         if(idx == 1)
-            ret.make_value("INTERMEDIATE_DIFFX(" + nstr + ")");
+            ret.make_value("INTERMEDIATE_DIFFY(" + nstr + ")");
         if(idx == 2)
-            ret.make_value("INTERMEDIATE_DIFFX(" + nstr + ")");
+            ret.make_value("INTERMEDIATE_DIFFZ(" + nstr + ")");
 
         return ret;
     }
