@@ -833,11 +833,22 @@ build_eqs()
 
     tensor<value, 3> dtgB;
 
+    ///https://arxiv.org/pdf/1404.6523.pdf (4)
     for(int i=0; i < 3; i++)
     {
         float N = 1.375;
 
         dtgB.idx(i) = (3.f/4.f) * cGi.idx(i) - N * gB.idx(i);
+    }
+
+    value scalar_curvature = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            scalar_curvature = scalar_curvature + iYij.idx(i, j) * Rij.idx(i, j);
+        }
     }
 
     std::vector<std::pair<std::string, std::string>> equations;
@@ -882,6 +893,8 @@ build_eqs()
         equations.push_back({name, type_to_string(dtgB.idx(i))});
     }
 
+    equations.push_back({"scalar_curvature", type_to_string(scalar_curvature)});
+
     return equations;
 }
 
@@ -918,6 +931,8 @@ int main()
     cl::program prog(clctx.ctx, "cl.cl");
     prog.build(clctx.ctx, argument_string);
 
+    clctx.ctx.register_program(prog);
+
     texture_settings tsett;
     tsett.width = width;
     tsett.height = height;
@@ -942,7 +957,8 @@ int main()
     cl::buffer intermediate(clctx.ctx);
     intermediate.alloc(size.x() * size.y() * size.z() * sizeof(intermediate_bssnok_data));
 
-    float c_at_max = 10;
+    float c_at_max = 5;
+    float scale = c_at_max / size.largest_elem();
     std::vector<bssnok_data> cpu_data;
 
     for(int z=0; z < size.z(); z++)
@@ -954,7 +970,6 @@ int main()
                 vec3f pos = {x, y, z};
                 vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
-                float scale = c_at_max / size.largest_elem();
 
                 cpu_data.push_back(get_conditions(pos, centre, scale));
             }
@@ -991,6 +1006,51 @@ int main()
         glFinish();
 
         rtex[which_buffer].acquire(clctx.cqueue);
+
+        bool step = false;
+
+            ImGui::Begin("Test Window", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+
+            if(ImGui::Button("Step"))
+                step = true;
+
+            ImGui::End();
+
+        vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
+
+        cl::args render;
+        render.push_back(bssnok_datas[which_data]);
+        render.push_back(scale);
+        render.push_back(clsize);
+        render.push_back(intermediate);
+        render.push_back(rtex[which_buffer]);
+
+        clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
+
+        if(step)
+        {
+            cl::args fl;
+            fl.push_back(bssnok_datas[which_data]);
+            fl.push_back(scale);
+            fl.push_back(clsize);
+            fl.push_back(intermediate);
+
+            clctx.cqueue.exec("calculate_intermediate_data", fl, {size.x(), size.y(), size.z()}, {8, 8, 1});
+
+            float timestep = 0.01;
+
+            cl::args a1;
+            a1.push_back(bssnok_datas[which_data]);
+            a1.push_back(bssnok_datas[(which_data + 1) % 2]);
+            a1.push_back(scale);
+            a1.push_back(clsize);
+            a1.push_back(intermediate);
+            a1.push_back(timestep);
+
+            clctx.cqueue.exec("evolve", a1, {size.x(), size.y(), size.z()}, {8, 8, 1});
+
+            which_data = (which_data + 1) % 2;
+        }
 
         clctx.cqueue.flush();
 

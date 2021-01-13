@@ -479,3 +479,48 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
     }
     #endif // 0
 }
+
+__kernel
+void render(__global struct bssnok_data* in, float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, __write_only image2d_t screen)
+{
+    int x = get_global_id(0);
+    int y = get_global_id(1);
+
+    if(x >= dim.x || y >= dim.y)
+        return;
+
+    if(x == 0 || x == dim.x-1 || y == 0 || y == dim.y - 1)
+        return;
+
+
+    int index_table[3][3] = {{0, 1, 2},
+                             {1, 3, 4},
+                             {2, 4, 5}};
+
+    float max_scalar = 0;
+
+    for(int z = 1; z < dim.z-1; z++)
+    {
+        ///conformal christoffel derivatives
+        float dcGijk[3 * 3 * 6];
+
+        #pragma unroll
+        for(int i=0; i < 3 * 6; i++)
+        {
+            dcGijk[0 * 3 * 6 + i] = INTERMEDIATE_DIFFX(christoffel[i]);
+            dcGijk[1 * 3 * 6 + i] = INTERMEDIATE_DIFFY(christoffel[i]);
+            dcGijk[2 * 3 * 6 + i] = INTERMEDIATE_DIFFZ(christoffel[i]);
+        }
+
+        struct bssnok_data v = in[IDX(x, y, z)];
+        struct intermediate_bssnok_data ik = temp_in[IDX(x, y, z)];
+
+        float curvature = scalar_curvature;
+
+        float ascalar = fabs(curvature);
+
+        max_scalar = max(ascalar, max_scalar);
+    }
+
+    write_imagef(screen, (int2){x, y}, (float4){max_scalar, max_scalar, max_scalar, 1});
+}
