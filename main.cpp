@@ -454,6 +454,11 @@ get_initial_conditions_eqs(vec3f centre, float scale)
     value gB1 = 1/BL_conformal;
     value gB2 = 1/BL_conformal;
 
+    /*value gA = 1;
+    value gB0 = 0;
+    value gB1 = 0;
+    value gB2 = 0;*/
+
     tensor<value, 3> norm;
     norm.idx(0) = -gB0 / gA;
     norm.idx(1) = -gB1 / gA;
@@ -800,6 +805,34 @@ tensor<T, N, N, N> gpu_christoffel_symbols_2(const tensor<T, N, N>& metric)
     return christoff;
 }
 
+template<typename T, int N>
+inline
+tensor<T, N, N> raise_both(const tensor<T, N, N>& mT, const tensor<T, N, N>& metric)
+{
+    tensor<T, N, N> inverse = metric.invert();
+
+    tensor<T, N, N> ret;
+
+    for(int a=0; a < N; a++)
+    {
+        for(int b=0; b < N; b++)
+        {
+            T sum = 0;
+
+            for(int g = 0; g < N; g++)
+            {
+                for(int d = 0; d < N; d++)
+                {
+                    sum = sum + inverse.idx(a, g) * inverse.idx(b, d) * mT.idx(g, d);
+                }
+            }
+
+            ret.idx(a, b) = sum;
+        }
+    }
+
+    return ret;
+}
 
 inline
 std::vector<std::pair<std::string, std::string>>
@@ -1036,7 +1069,9 @@ build_eqs()
         }
     }
 
-    tensor<value, 3, 3> icAij = cA.invert();
+    //tensor<value, 3, 3> icAij = cA.invert();
+
+    tensor<value, 3, 3> icAij = raise_both(cA, cY);
 
     value dtK = 0;
 

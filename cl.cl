@@ -351,7 +351,8 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
     my_out->gB1 = v.gB1 + dtgB1 * timestep;
     my_out->gB2 = v.gB2 + dtgB2 * timestep;
 
-    if(z == 125 && x == 20 && y == 125)
+
+    if(z == 125 && x == 125 && y == 125)
     {
         printf("DtY %f\n", dtcYij0);
         printf("Aij0 %f\n", v.cA0);
