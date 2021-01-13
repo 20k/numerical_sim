@@ -77,6 +77,8 @@ struct intermediate_bssnok_data
 {
     ///christoffel symbols are symmetric in the lower 2 indices
     float christoffel[3 * 6];
+    float digA[3];
+    float digB[3*3];
 };
 
 float finite_difference(float upper, float lower, float scale)
@@ -197,6 +199,22 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
         my_out->christoffel[k * 3 + 4] = christoff_big[k * 3 * 3 + 1 * 3 + 2];
         my_out->christoffel[k * 3 + 5] = christoff_big[k * 3 * 3 + 2 * 3 + 2];
     }
+
+    my_out->digA[0] = DIFFX(gA);
+    my_out->digA[1] = DIFFY(gA);
+    my_out->digA[2] = DIFFZ(gA);
+
+    my_out->digB[0 * 3 + 0] = DIFFX(gB0);
+    my_out->digB[1 * 3 + 0] = DIFFY(gB0);
+    my_out->digB[2 * 2 + 0] = DIFFZ(gB0);
+
+    my_out->digB[0 * 3 + 1] = DIFFX(gB1);
+    my_out->digB[1 * 3 + 1] = DIFFY(gB1);
+    my_out->digB[2 * 2 + 1] = DIFFZ(gB1);
+
+    my_out->digB[0 * 3 + 2] = DIFFX(gB2);
+    my_out->digB[1 * 3 + 2] = DIFFY(gB2);
+    my_out->digB[2 * 2 + 2] = DIFFZ(gB2);
 }
 
 __kernel

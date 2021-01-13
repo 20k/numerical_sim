@@ -42,6 +42,7 @@ struct bssnok_data
 struct intermediate_bssnok_data
 {
     cl_float christoffel[3 * 6];
+    cl_float digA[6];
 };
 
 bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
@@ -73,6 +74,7 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
     std::vector<float> black_hole_m{1};
 
     ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
+    ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is
     for(int i=0; i < (int)black_hole_r.size(); i++)
     {
         float Mi = black_hole_m[i];
@@ -412,6 +414,27 @@ build_eqs()
     cGi.idx(0).make_value("v.cGi0");
     cGi.idx(1).make_value("v.cGi1");
     cGi.idx(2).make_value("v.cGi2");
+
+    tensor<value, 3> digA;
+    digA.idx(0).make_value("ik.digA[0]");
+    digA.idx(1).make_value("ik.digA[1]");
+    digA.idx(2).make_value("ik.digA[2]");
+
+    tensor<value, 3, 3> digB;
+
+    ///derivative
+    for(int i=0; i < 3; i++)
+    {
+        ///value
+        for(int j=0; j < 3; j++)
+        {
+            int idx = i * 3 + j;
+
+            std::string name = "ik.digB[" + std::to_string(idx) + "]";
+
+            digB.idx(i, j).make_value(name);
+        }
+    }
 
     value gA;
     gA.make_value("v.gA");
