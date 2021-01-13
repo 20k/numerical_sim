@@ -130,26 +130,26 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
 
     float dkYij[3 * 6] = {0};
 
-    dkYij[0 * 3 + 0] = DIFFXI(cY, 0);
-    dkYij[0 * 3 + 1] = DIFFXI(cY, 1);
-    dkYij[0 * 3 + 2] = DIFFXI(cY, 2);
-    dkYij[0 * 3 + 3] = DIFFXI(cY, 3);
-    dkYij[0 * 3 + 4] = DIFFXI(cY, 4);
-    dkYij[0 * 3 + 5] = DIFFXI(cY, 5);
+    dkYij[0 * 6 + 0] = DIFFXI(cY, 0);
+    dkYij[0 * 6 + 1] = DIFFXI(cY, 1);
+    dkYij[0 * 6 + 2] = DIFFXI(cY, 2);
+    dkYij[0 * 6 + 3] = DIFFXI(cY, 3);
+    dkYij[0 * 6 + 4] = DIFFXI(cY, 4);
+    dkYij[0 * 6 + 5] = DIFFXI(cY, 5);
 
-    dkYij[1 * 3 + 0] = DIFFYI(cY, 0);
-    dkYij[1 * 3 + 1] = DIFFYI(cY, 1);
-    dkYij[1 * 3 + 2] = DIFFYI(cY, 2);
-    dkYij[1 * 3 + 3] = DIFFYI(cY, 3);
-    dkYij[1 * 3 + 4] = DIFFYI(cY, 4);
-    dkYij[1 * 3 + 5] = DIFFYI(cY, 5);
+    dkYij[1 * 6 + 0] = DIFFYI(cY, 0);
+    dkYij[1 * 6 + 1] = DIFFYI(cY, 1);
+    dkYij[1 * 6 + 2] = DIFFYI(cY, 2);
+    dkYij[1 * 6 + 3] = DIFFYI(cY, 3);
+    dkYij[1 * 6 + 4] = DIFFYI(cY, 4);
+    dkYij[1 * 6 + 5] = DIFFYI(cY, 5);
 
-    dkYij[2 * 3 + 0] = DIFFZI(cY, 0);
-    dkYij[2 * 3 + 1] = DIFFZI(cY, 1);
-    dkYij[2 * 3 + 2] = DIFFZI(cY, 2);
-    dkYij[2 * 3 + 3] = DIFFZI(cY, 3);
-    dkYij[2 * 3 + 4] = DIFFZI(cY, 4);
-    dkYij[2 * 3 + 5] = DIFFZI(cY, 5);
+    dkYij[2 * 6 + 0] = DIFFZI(cY, 0);
+    dkYij[2 * 6 + 1] = DIFFZI(cY, 1);
+    dkYij[2 * 6 + 2] = DIFFZI(cY, 2);
+    dkYij[2 * 6 + 3] = DIFFZI(cY, 3);
+    dkYij[2 * 6 + 4] = DIFFZI(cY, 4);
+    dkYij[2 * 6 + 5] = DIFFZI(cY, 5);
 
     int index_table[3][3] = {{0, 1, 2},
                              {1, 3, 4},
@@ -192,12 +192,12 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
     #pragma unroll
     for(int k=0; k < 3; k++)
     {
-        my_out->christoffel[k * 3 + 0] = christoff_big[k * 3 * 3 + 0 * 3 + 0];
-        my_out->christoffel[k * 3 + 1] = christoff_big[k * 3 * 3 + 0 * 3 + 1];
-        my_out->christoffel[k * 3 + 2] = christoff_big[k * 3 * 3 + 0 * 3 + 2];
-        my_out->christoffel[k * 3 + 3] = christoff_big[k * 3 * 3 + 1 * 3 + 1];
-        my_out->christoffel[k * 3 + 4] = christoff_big[k * 3 * 3 + 1 * 3 + 2];
-        my_out->christoffel[k * 3 + 5] = christoff_big[k * 3 * 3 + 2 * 3 + 2];
+        my_out->christoffel[k * 6 + 0] = christoff_big[k * 3 * 3 + 0 * 3 + 0];
+        my_out->christoffel[k * 6 + 1] = christoff_big[k * 3 * 3 + 0 * 3 + 1];
+        my_out->christoffel[k * 6 + 2] = christoff_big[k * 3 * 3 + 0 * 3 + 2];
+        my_out->christoffel[k * 6 + 3] = christoff_big[k * 3 * 3 + 1 * 3 + 1];
+        my_out->christoffel[k * 6 + 4] = christoff_big[k * 3 * 3 + 1 * 3 + 2];
+        my_out->christoffel[k * 6 + 5] = christoff_big[k * 3 * 3 + 2 * 3 + 2];
     }
 
     my_out->digA[0] = DIFFX(gA);
