@@ -404,7 +404,7 @@ tensor<T, N, N> gpu_covariant_derivative_low_vec(const tensor<T, N>& v_in, const
 
             for(int b=0; b < N; b++)
             {
-                sum += christoff.idx(b, c, a) * v_in.idx(b);
+                sum = sum + christoff.idx(b, c, a) * v_in.idx(b);
             }
 
             lac.idx(a, c) = hacky_differentiate(v_in.idx(a), c) - sum;
@@ -427,7 +427,7 @@ T gpu_trace(const tensor<T, N, N>& mT, const tensor<T, N, N>& metric)
     {
         for(int j=0; j < N; j++)
         {
-            ret += inverse.idx(i, j) * mT.idx(i, j);
+            ret = ret + inverse.idx(i, j) * mT.idx(i, j);
         }
     }
 
@@ -667,6 +667,19 @@ build_eqs()
 
     tensor<value, 3, 3> dtcAij;
 
+    tensor<value, 3, 3> with_trace;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value trace_free_interior_1 = -gpu_covariant_derivative_low_vec(digA, Yij, christoff_Yij).idx(j, i);
+            value trace_free_interior_2 = gA * Rij.idx(i, j);
+
+            with_trace.idx(i, j) = trace_free_interior_1 + trace_free_interior_2;
+        }
+    }
+
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
@@ -675,23 +688,18 @@ build_eqs()
 
             for(int k=0; k < 3; k++)
             {
-                ///derivative returns (a, c) in the indices
-                ///where c is the coordinate index
-                /*value trace_free_interior_1 = -gpu_covariant_derivative_low_vec(digA, Yij, christoff_Yij).idx(j, i);
-                value trace_free_interior_2 = gA * Rij.idx(i, j);
-
-                value p1 = X * gpu_trace_free(trace_free_interior_1 + trace_free_interior_2, Yij);
-
-                value p2 = a * (K * cA.idx(i, j) - 2 * cA.idx(i, k) * mixed_cAij.idx(k, j));
-
-                value p3 = gpu_lie_derivative_weight(gB, cA);
-
-                sum = sum + p1 + p2 + p3;*/
-
-                ///not correct, only sum the repeated indices
-
-                //sum = sum + X * gpu_trace_free(gpu_covariant_derivative_scalar(dg), Yij);
+                sum = cA.idx(i, k) * mixed_cAij.idx(k, j);
             }
+
+            value trace_free_part = gpu_trace_free(with_trace, Yij).idx(i, j);
+
+            value p1 = X * trace_free_part;
+
+            value p2 = gA * (K * cA.idx(i, j) - 2 * sum);
+
+            value p3 = gpu_lie_derivative_weight(gB, cA).idx(i, j);
+
+            dtcAij.idx(i, j) = p1 + p2 + p3;
         }
     }
 }
