@@ -499,7 +499,9 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
 
     float max_scalar = 0;
 
-    for(int z = 1; z < dim.z-1; z++)
+    //for(int z = 1; z < dim.z-1; z++)
+
+    int z = dim.z/2;
     {
         ///conformal christoffel derivatives
         float dcGijk[3 * 3 * 6];

@@ -63,6 +63,15 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
         }
     }
 
+    auto interpolating_polynomial = [](float x)
+    {
+        ///https://www.wolframalpha.com/input/?i=InterpolatingPolynomial%5B%7B%7B%7B0%7D%2C+0%2C+0%2C+0%7D%2C+%7B%7B1%7D%2C+1%2C+0%2C+0%7D%7D%2C+%7Bx%7D%5D
+
+        ///(1 + (-3 + 6 (-1 + x)) (-1 + x)) x^3
+
+        return (1 + (-3 + 6 * (-1 + x)) * (-1 + x)) * x * x * x;
+    };
+
     ///I could fix this by improving the dual library to allow for algebraic substitution
     float BL_conformal = 1;
 
@@ -86,6 +95,29 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
         BL_conformal = BL_conformal + Mi / (2 * fabs(r - ri));
     }
 
+    auto f_r = [&](float r)
+    {
+        float r_max = 0.8;
+        float r_min = 0.2;
+
+        if(r <= r_min)
+            return 0.f;
+
+        if(r >= r_max)
+            return 1.f;
+
+        float r_scaled = (r - r_min) / (r_max - r_min);
+
+        return interpolating_polynomial(r_scaled);
+    };
+
+    /*for(float r = 0; r < 10; r+= 0.01)
+    {
+        printf("R %f %f\n", r, f_r(r));
+    }*/
+
+    ///todo: Stuff
+    ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 5.17
     tensor<float, 3, 3> yij;
 
     for(int i=0; i < 3; i++)
@@ -93,9 +125,17 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
         for(int j=0; j < 3; j++)
         {
             yij.idx(i, j) = pow(BL_conformal, 4) * kronecker.idx(i, j);
+
+            if(i == j)
+            {
+                yij.idx(i, j) = f_r(r) * yij.idx(i, j) + (1 - f_r(r)) * 99999;
+            }
+            else
+            {
+                yij.idx(i, j) = f_r(r) * yij.idx(i, j);
+            }
         }
     }
-
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
     float Y = yij.det();
 
@@ -145,23 +185,7 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
     std::string v2 = "y";
     std::string v3 = "z";
 
-    /*tensor<value, 3, 3, 3> christoff = christoffel_symbols_2(cyij, vec<3, std::string>{v1, v2, v3});
-
     ///3.59 says the christoffel symbols are 0 in cartesian
-    {
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                for(int k=0; k < 3; k++)
-                {
-                    assert(christoff.idx(i, j, k).get_constant() == 0);
-
-                    //std::cout << "CIJK " << type_to_string(christoff.idx(i, j, k)) << std::endl;
-                }
-            }
-        }
-    }*/
 
     tensor<float, 3, 3, 3> christoff;
 
@@ -241,6 +265,9 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
     ret.cGi0 = cGi[0];
     ret.cGi1 = cGi[1];
     ret.cGi2 = cGi[2];
+
+    ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
+    ///5.17: Kij is processed with the weighting function, which strongly implies that its not just fine to ditch it
 
     ret.K = 0;
     ret.X = X;
@@ -949,7 +976,7 @@ int main()
     std::array<cl::buffer, 2> bssnok_datas{clctx.ctx, clctx.ctx};
     int which_data = 0;
 
-    vec3i size = {100, 100, 100};
+    vec3i size = {250, 250, 250};
 
     bssnok_datas[0].alloc(size.x() * size.y() * size.z() * sizeof(bssnok_data));
     bssnok_datas[1].alloc(size.x() * size.y() * size.z() * sizeof(bssnok_data));
@@ -957,7 +984,7 @@ int main()
     cl::buffer intermediate(clctx.ctx);
     intermediate.alloc(size.x() * size.y() * size.z() * sizeof(intermediate_bssnok_data));
 
-    float c_at_max = 5;
+    float c_at_max = 8;
     float scale = c_at_max / size.largest_elem();
     std::vector<bssnok_data> cpu_data;
 
@@ -977,6 +1004,16 @@ int main()
     }
 
     bssnok_datas[0].write(clctx.cqueue, cpu_data);
+
+    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
+
+    cl::args fl2;
+    fl2.push_back(bssnok_datas[0]);
+    fl2.push_back(scale);
+    fl2.push_back(clsize);
+    fl2.push_back(intermediate);
+
+    clctx.cqueue.exec("calculate_intermediate_data", fl2, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
     int which_buffer = 0;
 
@@ -1016,8 +1053,6 @@ int main()
 
             ImGui::End();
 
-        vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
-
         cl::args render;
         render.push_back(bssnok_datas[which_data]);
         render.push_back(scale);
@@ -1037,7 +1072,7 @@ int main()
 
             clctx.cqueue.exec("calculate_intermediate_data", fl, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
-            float timestep = 0.01;
+            float timestep = 0.00001;
 
             cl::args a1;
             a1.push_back(bssnok_datas[which_data]);
