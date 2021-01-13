@@ -39,6 +39,11 @@ struct bssnok_data
     cl_float gB2;
 };
 
+struct intermediate_bssnok_data
+{
+    cl_float christoffel[3 * 6];
+};
+
 bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
 {
     tensor<float, 3, 3> kronecker;
@@ -295,6 +300,71 @@ tensor<T, N, N> gpu_lie_derivative_weight(const tensor<T, N>& B, const tensor<T,
     return lie;
 }
 
+///mT symmetric?
+tensor<value, 3, 3> raise_index(const tensor<value, 3, 3>& mT, const tensor<value, 3, 3>& metric)
+{
+    tensor<value, 3, 3> inverse = metric.invert();
+
+    tensor<value, 3, 3> ret;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value sum = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                sum = sum + mT.idx(i, k) * inverse.idx(k, j);
+            }
+
+            ret.idx(i, j) = sum;
+        }
+    }
+
+    return ret;
+}
+
+
+template<typename T, int N>
+inline
+tensor<T, N> gpu_covariant_derivative_scalar(const T& in, const tensor<T, N, N>& metric)
+{
+    tensor<T, N> ret;
+
+    for(int i=0; i < N; i++)
+    {
+        ret.idx(i) = hacky_differentiate(in.differentiate, i);
+    }
+
+    return ret;
+}
+
+template<typename T, typename U, int N>
+inline
+tensor<T, N, N> gpu_high_covariant_derivative_scalar(const T& in, const tensor<T, N, N>& metric)
+{
+    tensor<T, N, N> iv_metric = metric.invert();
+
+    tensor<T, N> deriv_low = gpu_covariant_derivative_scalar(in, metric);
+
+    tensor<T, N> ret;
+
+    for(int i=0; i < N; i++)
+    {
+        T sum = 0;
+
+        for(int p=0; p < N; p++)
+        {
+            sum += iv_metric.idx(i, p) * deriv_low.idx(p);
+        }
+
+        ret.idx(i) = sum;
+    }
+
+    return ret;
+}
+
 inline
 std::vector<std::pair<std::string, std::string>>
 build_eqs()
@@ -392,6 +462,9 @@ int main()
 
     bssnok_datas[0].alloc(size.x() * size.y() * size.z() * sizeof(bssnok_data));
     bssnok_datas[1].alloc(size.x() * size.y() * size.z() * sizeof(bssnok_data));
+
+    cl::buffer intermediate(clctx.ctx);
+    intermediate.alloc(size.x() * size.y() * size.z() * sizeof(intermediate_bssnok_data));
 
     float c_at_max = 10;
     std::vector<bssnok_data> cpu_data;

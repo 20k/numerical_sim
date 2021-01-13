@@ -30,6 +30,55 @@ struct bssnok_data
     float gB2;
 };
 
+///for matrix with a unity determininant, which is ONLY cYij
+void matrix_3x3_invert(float data[9], float out[9])
+{
+    float d = 1;
+
+    float a11 = data[0 * 3 + 0];
+    float a12 = data[0 * 3 + 1];
+    float a13 = data[0 * 3 + 2];
+
+    float a21 = data[1 * 3 + 0];
+    float a22 = data[1 * 3 + 1];
+    float a23 = data[1 * 3 + 2];
+
+    float a31 = data[2 * 3 + 0];
+    float a32 = data[2 * 3 + 1];
+    float a33 = data[2 * 3 + 2];
+
+    float x0 = (a22 * a33 - a23 * a32) * d;
+    float y0 = (a13 * a32 - a12 * a33) * d;
+    float z0 = (a12 * a23 - a13 * a22) * d;
+
+    float x1 = (a23 * a31 - a21 * a33) * d;
+    float y1 = (a11 * a33 - a13 * a31) * d;
+    float z1 = (a13 * a21 - a11 * a23) * d;
+
+    float x2 = (a21 * a32 - a22 * a31) * d;
+    float y2 = (a12 * a31 - a11 * a32) * d;
+    float z2 = (a11 * a22 - a12 * a21) * d;
+
+    out[0 * 3 + 0] = x0;
+    out[0 * 3 + 1] = y0;
+    out[0 * 3 + 2] = z0;
+
+    out[1 * 3 + 0] = x1;
+    out[1 * 3 + 1] = y1;
+    out[1 * 3 + 2] = z1;
+
+    out[2 * 3 + 0] = x2;
+    out[2 * 3 + 1] = y2;
+    out[2 * 3 + 2] = z2;
+}
+
+///todo: This can be eliminated by use of local memory and using different approximations to the derivatives at the boundary
+struct intermediate_bssnok_data
+{
+    ///christoffel symbols are symmetric in the lower 2 indices
+    float christoffel[3 * 6];
+};
+
 float finite_difference(float upper, float lower, float scale)
 {
     return (upper - lower) / (2 * scale);
@@ -49,8 +98,104 @@ float finite_difference(float upper, float lower, float scale)
 #define DIFFYI(v, i) DIFFY(v##i)
 #define DIFFZI(v, i) DIFFZ(v##i)
 
+///https://en.wikipedia.org/wiki/Ricci_curvature#Definition_via_local_coordinates_on_a_smooth_manifold
 __kernel
-void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, float scale, int4 dim)
+void calculate_intermediate_data(__global struct bssnok_data* in, float scale, int4 dim, __global struct intermediate_bssnok_data* out)
+{
+    int x = get_global_id(0);
+    int y = get_global_id(1);
+    int z = get_global_id(2);
+
+    if(x >= dim.x || y >= dim.y || z >= dim.z)
+        return;
+
+    if(x == 0 || x == dim.x-1 || y == 0 || y == dim.y - 1 || z == 0 || z == dim.z - 1)
+        return;
+
+    struct bssnok_data v = in[IDX(x, y, z)];
+
+    float Yij[9] = {v.cY0, v.cY1, v.cY2,
+                    v.cY1, v.cY3, v.cY4,
+                    v.cY2, v.cY4, v.cY5};
+
+    float iYij[9];
+
+    matrix_3x3_invert(Yij, iYij);
+
+    float dkYij[6 * 3] = {0};
+
+    dkYij[0 * 3 + 0] = DIFFXI(cY, 0);
+    dkYij[0 * 3 + 1] = DIFFXI(cY, 1);
+    dkYij[0 * 3 + 2] = DIFFXI(cY, 2);
+    dkYij[0 * 3 + 3] = DIFFXI(cY, 3);
+    dkYij[0 * 3 + 4] = DIFFXI(cY, 4);
+    dkYij[0 * 3 + 5] = DIFFXI(cY, 5);
+
+    dkYij[1 * 3 + 0] = DIFFYI(cY, 0);
+    dkYij[1 * 3 + 1] = DIFFYI(cY, 1);
+    dkYij[1 * 3 + 2] = DIFFYI(cY, 2);
+    dkYij[1 * 3 + 3] = DIFFYI(cY, 3);
+    dkYij[1 * 3 + 4] = DIFFYI(cY, 4);
+    dkYij[1 * 3 + 5] = DIFFYI(cY, 5);
+
+    dkYij[2 * 3 + 0] = DIFFZI(cY, 0);
+    dkYij[2 * 3 + 1] = DIFFZI(cY, 1);
+    dkYij[2 * 3 + 2] = DIFFZI(cY, 2);
+    dkYij[2 * 3 + 3] = DIFFZI(cY, 3);
+    dkYij[2 * 3 + 4] = DIFFZI(cY, 4);
+    dkYij[2 * 3 + 5] = DIFFZI(cY, 5);
+
+    int index_table[3][3] = {{0, 1, 2},
+                             {1, 3, 4},
+                             {2, 4, 5}};
+
+    float christoff_big[3 * 3 * 3] = {0};
+
+    #pragma unroll
+    for(int k=0; k < 3; k++)
+    {
+        #pragma unroll
+        for(int i=0; i < 3; i++)
+        {
+            #pragma unroll
+            for(int j=0; j < 3; j++)
+            {
+                float sum = 0;
+
+                #pragma unroll
+                for(int l=0; l < 3; l++)
+                {
+                    float g_inv = iYij[k * 3 + l];
+
+                    int symmetric_index1 = index_table[j][l];
+                    int symmetric_index2 = index_table[i][l];
+                    int symmetric_index3 = index_table[i][j];
+
+                    sum += g_inv * dkYij[i * 3 + symmetric_index1];
+                    sum += g_inv * dkYij[j * 3 + symmetric_index2];
+                    sum -= g_inv * dkYij[l * 3 + symmetric_index3];
+                }
+
+                christoff_big[k * 3 * 3 + i * 3 + j] = 0.5 * sum;
+            }
+        }
+    }
+
+    struct intermediate_bssnok_data* my_out = &out[IDX(x, y, z)];
+
+    for(int k=0; k < 3; k++)
+    {
+        my_out->christoffel[k * 3 + 0] = christoff_big[k * 3 * 3 + 0 * 3 + 0];
+        my_out->christoffel[k * 3 + 1] = christoff_big[k * 3 * 3 + 0 * 3 + 1];
+        my_out->christoffel[k * 3 + 2] = christoff_big[k * 3 * 3 + 0 * 3 + 2];
+        my_out->christoffel[k * 3 + 3] = christoff_big[k * 3 * 3 + 1 * 3 + 1];
+        my_out->christoffel[k * 3 + 4] = christoff_big[k * 3 * 3 + 1 * 3 + 2];
+        my_out->christoffel[k * 3 + 5] = christoff_big[k * 3 * 3 + 2 * 3 + 2];
+    }
+}
+
+__kernel
+void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
