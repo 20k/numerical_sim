@@ -472,7 +472,7 @@ get_initial_conditions_eqs(vec3f centre, float scale)
     //std::cout << "n0 " << norm.idx(0).substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
     //std::cout << "y0 " << yij.idx(0, 0).substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
 
-    tensor<value, 3, 3> nearly_Kij = gpu_lie_derivative_weight_arbitrary(norm, yij, -1, variables);
+    tensor<value, 3, 3> nearly_Kij = gpu_lie_derivative_weight_arbitrary(norm, yij, 0, variables);
 
     //std::cout << "ni0 " << nearly_Kij.idx(0, 0).substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
 
@@ -956,6 +956,10 @@ build_eqs()
     {
         for(int j=0; j < 3; j++)
         {
+            ///https://arxiv.org/pdf/gr-qc/0511048.pdf (1)
+            //dtcYij.idx(i, j) = -2 * gA * cA.idx(i, j) + lie_cYij.idx(i, j);
+
+            ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.66
             dtcYij.idx(i, j) = -2 * gA + lie_cYij.idx(i, j);
         }
     }
@@ -1040,6 +1044,7 @@ build_eqs()
 
     tensor<value, 3, 3> with_trace;
 
+    ///todo: Investigate this, there's a good chance dtcAij is whats broken
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
