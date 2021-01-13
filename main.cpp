@@ -480,7 +480,7 @@ get_initial_conditions_eqs(vec3f centre, float scale)
 
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf (21)
 
-    tensor<value, 3, 3> inverse_yij = yij.invert();
+    tensor<value, 3, 3> inverse_cyij = cyij.invert();
 
     tensor<value, 3> cGi;
 
@@ -490,7 +490,7 @@ get_initial_conditions_eqs(vec3f centre, float scale)
 
         for(int j=0; j < 3; j++)
         {
-            sum = sum + inverse_yij.idx(i, j).differentiate(variables[j]);
+            sum = sum + inverse_cyij.idx(i, j).differentiate(variables[j]);
         }
 
         cGi.idx(i) = -sum;
@@ -500,6 +500,21 @@ get_initial_conditions_eqs(vec3f centre, float scale)
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
+    //#define OLDFLAT
+    #ifdef OLDFLAT
+    for(int i=0; i < 3; i++)
+    {
+        cGi.idx(i) = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            cAij.idx(i, j) = 0;
+        }
+    }
+
+    K = 0;
+    #endif // OLDFLAT
+
     std::vector<std::pair<std::string, std::string>> equations;
 
     for(int i=0; i < 6; i++)
@@ -507,7 +522,7 @@ get_initial_conditions_eqs(vec3f centre, float scale)
         vec2i index = linear_indices[i];
 
         std::string y_name = "init_cY" + std::to_string(i);
-        std::string a_name = "init_AY" + std::to_string(i);
+        std::string a_name = "init_cA" + std::to_string(i);
 
         equations.push_back({y_name, type_to_string(cyij.idx(index.x(), index.y()))});
         equations.push_back({a_name, type_to_string(cAij.idx(index.x(), index.y()))});
@@ -1242,6 +1257,13 @@ int main()
     bssnok_datas[0].write(clctx.cqueue, cpu_data);*/
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
+
+    cl::args init;
+    init.push_back(bssnok_datas[0]);
+    init.push_back(scale);
+    init.push_back(clsize);
+
+    clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
     cl::args fl2;
     fl2.push_back(bssnok_datas[0]);

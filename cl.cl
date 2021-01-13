@@ -116,7 +116,33 @@ void calculate_initial_conditions(__global struct bssnok_data* in, float scale, 
     if(x >= dim.x || y >= dim.y || z >= dim.z)
         return;
 
+    struct bssnok_data* f = &in[IDX(x, y, z)];
 
+    f->cY0 = init_cY0;
+    f->cY1 = init_cY1;
+    f->cY2 = init_cY2;
+    f->cY3 = init_cY3;
+    f->cY4 = init_cY4;
+    f->cY5 = init_cY5;
+
+    f->cA0 = init_cA0;
+    f->cA1 = init_cA1;
+    f->cA2 = init_cA2;
+    f->cA3 = init_cA3;
+    f->cA4 = init_cA4;
+    f->cA5 = init_cA5;
+
+    f->cGi0 = init_cGi0;
+    f->cGi1 = init_cGi1;
+    f->cGi2 = init_cGi2;
+
+    f->K = init_K;
+    f->X = init_X;
+
+    f->gA = init_gA;
+    f->gB0 = init_gB0;
+    f->gB1 = init_gB1;
+    f->gB2 = init_gB2;
 }
 
 ///https://en.wikipedia.org/wiki/Ricci_curvature#Definition_via_local_coordinates_on_a_smooth_manifold
