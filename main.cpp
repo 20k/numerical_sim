@@ -284,7 +284,7 @@ bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
 
 template<typename T, int N>
 inline
-tensor<T, N, N> gpu_lie_derivative_weight_arbitrary(const tensor<T, N>& B, const tensor<T, N, N>& mT, float weight)
+tensor<T, N, N> gpu_lie_derivative_weight_arbitrary(const tensor<T, N>& B, const tensor<T, N, N>& mT, float weight, const std::array<U, N>& variables)
 {
     tensor<T, N, N> lie;
 
@@ -296,10 +296,10 @@ tensor<T, N, N> gpu_lie_derivative_weight_arbitrary(const tensor<T, N>& B, const
 
             for(int k=0; k < N; k++)
             {
-                sum = sum + B.idx(k) * hacky_differentiate(mT.idx(i, j), k);
-                sum = sum + mT.idx(i, k) * hacky_differentiate(B.idx(k), j);
-                sum = sum + mT.idx(k, j) * hacky_differentiate(B.idx(k), i);
-                sum = sum + weight * mT.idx(i, j) * hacky_differentiate(B.idx(k), k);
+                sum = sum + B.idx(k) * mT.idx(i, j).differentiate(variables[k]);
+                sum = sum + mT.idx(i, k) * B.idx(k).differentiate(variables[j]);
+                sum = sum + mT.idx(k, j) * B.idx(k).differentiate(variables[i]);
+                sum = sum + weight * mT.idx(i, j) * B.idx(k).differentiate(variables[k]);
             }
 
             lie.idx(i, j) = sum;
@@ -309,6 +309,25 @@ tensor<T, N, N> gpu_lie_derivative_weight_arbitrary(const tensor<T, N>& B, const
     return lie;
 }
 
+///https://arxiv.org/pdf/gr-qc/9810065.pdf
+template<typename T, int N>
+inline
+T gpu_trace(const tensor<T, N, N>& mT, const tensor<T, N, N>& metric)
+{
+    tensor<T, N, N> inverse = metric.invert();
+
+    T ret = 0;
+
+    for(int i=0; i < N; i++)
+    {
+        for(int j=0; j < N; j++)
+        {
+            ret = ret + inverse.idx(i, j) * mT.idx(i, j);
+        }
+    }
+
+    return ret;
+}
 
 inline
 std::vector<std::pair<std::string, std::string>>
@@ -319,6 +338,8 @@ get_initial_conditions_eqs(vec3f centre, float scale)
     pos[0].make_value("x");
     pos[1].make_value("y");
     pos[2].make_value("z");
+
+    std::array<std::string, 3> variables = {"x", "y", "z"};
 
     tensor<value, 3, 3> kronecker;
 
@@ -421,7 +442,21 @@ get_initial_conditions_eqs(vec3f centre, float scale)
     norm.idx(1) = -gB1 / gA;
     norm.idx(2) = -gB2 / gA;
 
-    //tensor<value, 3, 3> = gpu_lie_
+    tensor<value, 3, 3> nearly_Kij = gpu_lie_derivative_weight_arbitrary(norm, yij, 0, variables);
+
+    tensor<value, 3, 3> Kij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            Kij.idx(i, j) = nearly_Kij.idx(i, j) / -2.f;
+
+            Kij.idx(i, j) = f_r(r) * Kij.idx(i, j);
+        }
+    }
+
+    value K = gpu_trace(Kij, yij);
 
     value X = exp(-4 * conformal_factor);
 
@@ -596,26 +631,6 @@ tensor<T, N, N> gpu_covariant_derivative_low_vec(const tensor<T, N>& v_in, const
     }
 
     return lac;
-}
-
-///https://arxiv.org/pdf/gr-qc/9810065.pdf
-template<typename T, int N>
-inline
-T gpu_trace(const tensor<T, N, N>& mT, const tensor<T, N, N>& metric)
-{
-    tensor<T, N, N> inverse = metric.invert();
-
-    T ret = 0;
-
-    for(int i=0; i < N; i++)
-    {
-        for(int j=0; j < N; j++)
-        {
-            ret = ret + inverse.idx(i, j) * mT.idx(i, j);
-        }
-    }
-
-    return ret;
 }
 
 template<typename T, int N>
