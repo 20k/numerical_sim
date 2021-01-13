@@ -122,6 +122,8 @@ void calculate_initial_conditions(__global struct bssnok_data* in, float scale, 
     float y = iy;
     float z = iz;
 
+    float conformal_factor = init_conformal_factor;
+
     f->cY0 = init_cY0;
     f->cY1 = init_cY1;
     f->cY2 = init_cY2;
@@ -143,12 +145,14 @@ void calculate_initial_conditions(__global struct bssnok_data* in, float scale, 
     f->K = init_K;
     f->X = init_X;
 
-    f->gA = init_gA;
-    f->gB0 = init_gB0;
-    f->gB1 = init_gB1;
-    f->gB2 = init_gB2;
+    float bl_conformal = init_bl_conformal;
 
-    if(x == 50 && y == 50 && z == 50)
+    f->gA = 1/bl_conformal;
+    f->gB0 = 1/bl_conformal;
+    f->gB1 = 1/bl_conformal;
+    f->gB2 = 1/bl_conformal;
+
+    /*if(x == 50 && y == 50 && z == 50)
     {
         printf("gTEST0 %f\n", f->cY0);
         printf("TEST1 %f\n", f->cY1);
@@ -159,7 +163,7 @@ void calculate_initial_conditions(__global struct bssnok_data* in, float scale, 
         printf("TESTb0 %f\n", f->gB0);
         printf("TESTX %f\n", f->X);
         printf("TESTgA %f\n", f->gA);
-    }
+    }*/
 }
 
 ///https://en.wikipedia.org/wiki/Ricci_curvature#Definition_via_local_coordinates_on_a_smooth_manifold
@@ -342,6 +346,11 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
     my_out->gB0 = v.gB0 + dtgB0 * timestep;
     my_out->gB1 = v.gB1 + dtgB1 * timestep;
     my_out->gB2 = v.gB2 + dtgB2 * timestep;
+
+    if(z == 125 && x == 20 && y == 125)
+    {
+        printf("DtA %f\n", dtcAij0);
+    }
 
     /*float Rjk[9];
 

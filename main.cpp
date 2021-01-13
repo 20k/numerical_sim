@@ -420,6 +420,8 @@ get_initial_conditions_eqs(vec3f centre, float scale)
 
     ///phi
     value conformal_factor = (1/12.f) * log(Y);
+    value conformal_factor_concrete;
+    conformal_factor_concrete.make_value("conformal_factor");
 
     tensor<value, 3, 3> cyij;
 
@@ -474,7 +476,7 @@ get_initial_conditions_eqs(vec3f centre, float scale)
     {
         for(int j=0; j < 3; j++)
         {
-            cAij.idx(i, j) = exp(-4 * conformal_factor) * Aij.idx(i, j);
+            cAij.idx(i, j) = exp(-4 * conformal_factor_concrete) * Aij.idx(i, j);
         }
     }
 
@@ -496,11 +498,11 @@ get_initial_conditions_eqs(vec3f centre, float scale)
         cGi.idx(i) = -sum;
     }
 
-    value X = exp(-4 * conformal_factor);
+    value X = exp(-4 * conformal_factor_concrete);
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
-    #define OLDFLAT
+    //#define OLDFLAT
     #ifdef OLDFLAT
     for(int i=0; i < 3; i++)
     {
@@ -534,10 +536,14 @@ get_initial_conditions_eqs(vec3f centre, float scale)
 
     equations.push_back({"init_K", type_to_string(K)});
     equations.push_back({"init_X", type_to_string(X)});
-    equations.push_back({"init_gA", type_to_string(gA)});
+
+    equations.push_back({"init_bl_conformal", type_to_string(BL_conformal)});
+    equations.push_back({"init_conformal_factor", type_to_string(conformal_factor)});
+
+    /*equations.push_back({"init_gA", type_to_string(gA)});
     equations.push_back({"init_gB0", type_to_string(gB0)});
     equations.push_back({"init_gB1", type_to_string(gB1)});
-    equations.push_back({"init_gB2", type_to_string(gB2)});
+    equations.push_back({"init_gB2", type_to_string(gB2)});*/
 
     //equations.push_back({"init_det", type_to_string(cyij.det())});
 
@@ -1256,7 +1262,7 @@ int main()
 
     bssnok_datas[0].write(clctx.cqueue, cpu_data);*/
 
-    bssnok_data test_init = get_conditions({50, 50, 50}, centre, scale);
+    /*bssnok_data test_init = get_conditions({50, 50, 50}, centre, scale);
 
     std::cout << "TEST0 " << test_init.cY0 << std::endl;
     std::cout << "TEST1 " << test_init.cY1 << std::endl;
@@ -1266,7 +1272,7 @@ int main()
     std::cout << "TEST5 " << test_init.cY5 << std::endl;
     std::cout << "TESTb0 " << test_init.gB0 << std::endl;
     std::cout << "TESTX " << test_init.X << std::endl;
-    std::cout << "TESTgA " << test_init.gA << std::endl;
+    std::cout << "TESTgA " << test_init.gA << std::endl;*/
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
