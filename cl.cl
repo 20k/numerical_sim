@@ -163,6 +163,7 @@ void calculate_initial_conditions(__global struct bssnok_data* in, float scale, 
         printf("TESTb0 %f\n", f->gB0);
         printf("TESTX %f\n", f->X);
         printf("TESTgA %f\n", f->gA);
+        printf("TESTK %f\n", f->K);
     }*/
 }
 
