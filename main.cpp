@@ -48,7 +48,7 @@ struct intermediate_bssnok_data
     cl_float Yij[6];
 };
 
-#if 0
+#if 1
 bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
 {
     tensor<float, 3, 3> kronecker;
@@ -383,14 +383,14 @@ get_initial_conditions_eqs(vec3f centre, float scale)
         BL_conformal = BL_conformal + Mi / (2 * fabs(r - ri));
     }
 
-    auto f_r = [&](value r)
+    auto f_r = [&](value r_in)
     {
         value r_max = 0.8;
         value r_min = 0.2;
 
-        r = max(min(r, r_max), r_min);
+        r_in = max(min(r_in, r_max), r_min);
 
-        value scaled = (r - r_min) / (r_max - r_min);
+        value scaled = (r_in - r_min) / (r_max - r_min);
 
         return interpolating_polynomial(scaled);
     };
@@ -500,7 +500,7 @@ get_initial_conditions_eqs(vec3f centre, float scale)
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
-    //#define OLDFLAT
+    #define OLDFLAT
     #ifdef OLDFLAT
     for(int i=0; i < 3; i++)
     {
@@ -538,6 +538,8 @@ get_initial_conditions_eqs(vec3f centre, float scale)
     equations.push_back({"init_gB0", type_to_string(gB0)});
     equations.push_back({"init_gB1", type_to_string(gB1)});
     equations.push_back({"init_gB2", type_to_string(gB2)});
+
+    //equations.push_back({"init_det", type_to_string(cyij.det())});
 
     return equations;
 }
@@ -1247,14 +1249,22 @@ int main()
             {
                 vec3f pos = {x, y, z};
 
-
-
                 cpu_data.push_back(get_conditions(pos, centre, scale));
             }
         }
     }
 
     bssnok_datas[0].write(clctx.cqueue, cpu_data);*/
+
+    /*bssnok_data test_init = get_conditions({50, 50, 50}, centre, scale);
+
+    std::cout << "TEST0 " << test_init.cY0 << std::endl;
+    std::cout << "TEST1 " << test_init.cY1 << std::endl;
+    std::cout << "TEST2 " << test_init.cY2 << std::endl;
+    std::cout << "TEST3 " << test_init.cY3 << std::endl;
+    std::cout << "TEST4 " << test_init.cY4 << std::endl;
+    std::cout << "TEST5 " << test_init.cY5 << std::endl;
+    std::cout << "TESTb0 " << test_init.gB0 << std::endl;*/
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
