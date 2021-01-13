@@ -43,6 +43,9 @@ struct intermediate_bssnok_data
 {
     cl_float christoffel[3 * 6];
     cl_float digA[6];
+    cl_float digB[3*3];
+    cl_float phi;
+    cl_float Yij[6];
 };
 
 bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
@@ -674,7 +677,11 @@ build_eqs()
     {
         for(int j=0; j < 3; j++)
         {
-            Yij.idx(i, j) = cY.idx(i, j) / X;
+            int linear_idx = index_table[i][j];
+
+            std::string name = "ik.Yij[" + std::to_string(linear_idx) + "]";
+
+            Yij.idx(i, j).make_value(name);
         }
     }
 
@@ -872,6 +879,17 @@ int main()
 
     std::string argument_string = "-O3 -cl-std=CL2.2 ";
 
+    std::vector<std::pair<std::string, std::string>> equations = build_eqs();
+
+    for(auto& i : equations)
+    {
+        std::string str = "-D" + i.first + "=" + i.second + " ";
+
+        argument_string += str;
+    }
+
+    std::cout << "ARGS " << argument_string << std::endl;
+
     cl::program prog(clctx.ctx, "cl.cl");
     prog.build(clctx.ctx, argument_string);
 
@@ -889,6 +907,7 @@ int main()
     rtex[1].create_from_texture(tex[1].handle);
 
     std::array<cl::buffer, 2> bssnok_datas{clctx.ctx, clctx.ctx};
+    int which_data = 0;
 
     vec3i size = {100, 100, 100};
 
@@ -920,8 +939,6 @@ int main()
     bssnok_datas[0].write(clctx.cqueue, cpu_data);
 
     int which_buffer = 0;
-
-    get_conditions({0, 1, 0}, {0, 0, 0}, 1);
 
     while(!win.should_close())
     {
