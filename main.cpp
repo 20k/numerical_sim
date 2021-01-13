@@ -329,6 +329,26 @@ T gpu_trace(const tensor<T, N, N>& mT, const tensor<T, N, N>& metric)
     return ret;
 }
 
+value f_r(value r)
+{
+    auto interpolating_polynomial = [](value x)
+    {
+        ///https://www.wolframalpha.com/input/?i=InterpolatingPolynomial%5B%7B%7B%7B0%7D%2C+0%2C+0%2C+0%7D%2C+%7B%7B1%7D%2C+1%2C+0%2C+0%7D%7D%2C+%7Bx%7D%5D
+        ///(1 + (-3 + 6 (-1 + x)) (-1 + x)) x^3
+
+        return (1 + (-3 + 6 * (-1 + x)) * (-1 + x)) * x * x * x;
+    };
+
+    value r_max = 0.8;
+    value r_min = 0.2;
+
+    r = max(min(r, r_max), r_min);
+
+    value scaled = (r - r_min) / (r_max - r_min);
+
+    return interpolating_polynomial(scaled);
+}
+
 inline
 std::vector<std::pair<std::string, std::string>>
 get_initial_conditions_eqs(vec3f centre, float scale)
@@ -338,6 +358,13 @@ get_initial_conditions_eqs(vec3f centre, float scale)
     pos[0].make_value("x");
     pos[1].make_value("y");
     pos[2].make_value("z");
+
+    //#define DEBUG
+    #ifdef DEBUG
+    pos[0].make_value("20");
+    pos[1].make_value("125");
+    pos[2].make_value("125");
+    #endif // DEBUG
 
     std::array<std::string, 3> variables = {"x", "y", "z"};
 
@@ -354,13 +381,7 @@ get_initial_conditions_eqs(vec3f centre, float scale)
         }
     }
 
-    auto interpolating_polynomial = [](value x)
-    {
-        ///https://www.wolframalpha.com/input/?i=InterpolatingPolynomial%5B%7B%7B%7B0%7D%2C+0%2C+0%2C+0%7D%2C+%7B%7B1%7D%2C+1%2C+0%2C+0%7D%7D%2C+%7Bx%7D%5D
-        ///(1 + (-3 + 6 (-1 + x)) (-1 + x)) x^3
 
-        return (1 + (-3 + 6 * (-1 + x)) * (-1 + x)) * x * x * x;
-    };
 
     value BL_conformal = 1;
 
@@ -368,7 +389,11 @@ get_initial_conditions_eqs(vec3f centre, float scale)
 
     value r = (pos - vcentre).length() * scale;
 
+    //std::cout << "REQ " << type_to_string(r) << std::endl;
+
     r = max(r, 0.01f);
+
+   // std::cout << "FR " << r.substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
 
     std::vector<float> black_hole_r{0};
     std::vector<float> black_hole_m{1};
@@ -382,18 +407,6 @@ get_initial_conditions_eqs(vec3f centre, float scale)
 
         BL_conformal = BL_conformal + Mi / (2 * fabs(r - ri));
     }
-
-    auto f_r = [&](value r_in)
-    {
-        value r_max = 0.8;
-        value r_min = 0.2;
-
-        r_in = max(min(r_in, r_max), r_min);
-
-        value scaled = (r_in - r_min) / (r_max - r_min);
-
-        return interpolating_polynomial(scaled);
-    };
 
     ///ok so: I'm pretty sure this is correct
     tensor<value, 3, 3> yij;
@@ -414,6 +427,8 @@ get_initial_conditions_eqs(vec3f centre, float scale)
             }
         }
     }
+
+    //std::cout << "YIJ " << yij.idx(0, 0).substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
 
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
     value Y = yij.det();
@@ -444,7 +459,12 @@ get_initial_conditions_eqs(vec3f centre, float scale)
     norm.idx(1) = -gB1 / gA;
     norm.idx(2) = -gB2 / gA;
 
-    tensor<value, 3, 3> nearly_Kij = gpu_lie_derivative_weight_arbitrary(norm, yij, 0, variables);
+    //std::cout << "n0 " << norm.idx(0).substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
+    //std::cout << "y0 " << yij.idx(0, 0).substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
+
+    tensor<value, 3, 3> nearly_Kij = gpu_lie_derivative_weight_arbitrary(norm, yij, -1, variables);
+
+    //std::cout << "ni0 " << nearly_Kij.idx(0, 0).substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
 
     tensor<value, 3, 3> Kij;
 
@@ -460,6 +480,9 @@ get_initial_conditions_eqs(vec3f centre, float scale)
 
     value K = gpu_trace(Kij, yij);
 
+    //std::cout << "K " << K.substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
+    //std::cout << "Kij " << Kij.idx(0, 0).substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
+
     tensor<value, 3, 3> Aij;
 
     for(int i=0; i < 3; i++)
@@ -470,15 +493,20 @@ get_initial_conditions_eqs(vec3f centre, float scale)
         }
     }
 
+    //std::cout << "AIJ0 " << (Aij.idx(0, 0).substitute("x", 20).substitute("y", 125).substitute("z", 125)).get_constant() << std::endl;
+    //std::cout << "TFAIJ0 " << (gpu_trace(Aij, yij).substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant()) << std::endl;
+    //assert(false);
+
     tensor<value, 3, 3> cAij;
 
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
-            cAij.idx(i, j) = exp(-4 * conformal_factor_concrete) * Aij.idx(i, j);
+            cAij.idx(i, j) = exp(-4 * conformal_factor) * Aij.idx(i, j);
         }
     }
+
 
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf (21)
 
@@ -502,7 +530,7 @@ get_initial_conditions_eqs(vec3f centre, float scale)
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
-    //#define OLDFLAT
+    #define OLDFLAT
     #ifdef OLDFLAT
     for(int i=0; i < 3; i++)
     {

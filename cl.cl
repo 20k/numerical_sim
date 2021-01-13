@@ -302,6 +302,9 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
     if(x == 0 || x == dim.x-1 || y == 0 || y == dim.y - 1 || z == 0 || z == dim.z - 1)
         return;
 
+    float3 centre = {dim.x/2, dim.y/2, dim.z/2};
+    float r = fast_length((float3){x, y, z} - centre);
+
     struct bssnok_data v = in[IDX(x, y, z)];
     struct intermediate_bssnok_data ik = temp_in[IDX(x, y, z)];
 
@@ -350,7 +353,8 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
 
     if(z == 125 && x == 20 && y == 125)
     {
-        printf("DtA %f\n", dtcAij0);
+        printf("DtY %f\n", dtcYij0);
+        printf("Aij0 %f\n", v.cA0);
     }
 
     /*float Rjk[9];
