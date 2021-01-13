@@ -555,6 +555,9 @@ build_eqs()
     value K;
     K.make_value("v.K");
 
+    value phi;
+    phi.make_value("ik.phi");
+
     tensor<value, 3, 3, 3> cGijk;
 
     for(int i=0; i < 3; i++)
@@ -755,6 +758,63 @@ build_eqs()
         }
 
         dtK = -sum1 + sum2 + sum3;
+    }
+
+    tensor<value, 3> dtcGi;
+
+    ///https://arxiv.org/pdf/gr-qc/0511048.pdf
+    ///could likely eliminate the dphi term
+
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            value s1 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                s1 = s1 + icY.idx(j, k) * hacky_differentiate(digB.idx(k, i), j);
+            }
+
+            value s2 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                s2 = s2 + (1.f/3.f) * icY.idx(i, j) * hacky_differentiate(digB.idx(k, k), j);
+            }
+
+            value s3 = gB.idx(j) * hacky_differentiate(cGi.idx(j), j);
+
+            value s4 = -cGi.idx(j) * hacky_differentiate(gB.idx(i), j);
+
+            value s5 = (2.f/3.f) * cGi.idx(i) * hacky_differentiate(gB.idx(j), j);
+
+            value s6 = -2 * icAij.idx(i, j) * hacky_differentiate(gA, j);
+
+            value s7 = 0;
+
+            {
+                value s8 = 0;
+
+                for(int k=0; k < 3; k++)
+                {
+                    s8 = s8 + cGijk.idx(i, j, k) * icAij.idx(j, k);
+                }
+
+                value s9 = 6 * icAij.idx(i, j) * hacky_differentiate(phi, j);
+
+                value s10 = -(2.f/3.f) * icY.idx(i, j) * hacky_differentiate(K, j);
+
+                s7 = 2 * gA * (s8 + s9 + s10);
+            }
+
+
+            sum = sum + s1 + s2 + s3 + s4 + s5 + s6 + s7;
+        }
+
+        dtcGi.idx(i) = sum;
     }
 }
 

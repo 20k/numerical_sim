@@ -79,6 +79,7 @@ struct intermediate_bssnok_data
     float christoffel[3 * 6];
     float digA[3];
     float digB[3*3];
+    float phi;
 };
 
 float finite_difference(float upper, float lower, float scale)
@@ -215,6 +216,8 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
     my_out->digB[0 * 3 + 2] = DIFFX(gB2);
     my_out->digB[1 * 3 + 2] = DIFFY(gB2);
     my_out->digB[2 * 3 + 2] = DIFFZ(gB2);
+
+    my_out->phi = 0.25f * log(1.f/v.X);
 }
 
 __kernel
