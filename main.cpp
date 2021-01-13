@@ -369,6 +369,10 @@ inline
 std::vector<std::pair<std::string, std::string>>
 build_eqs()
 {
+    int index_table[3][3] = {{0, 1, 2},
+                             {1, 3, 4},
+                             {2, 4, 5}};
+
     tensor<value, 3, 3> cY;
 
     cY.idx(0, 0).make_value("v.cY0"); cY.idx(0, 1).make_value("v.cY1"); cY.idx(0, 2).make_value("v.cY2");
@@ -401,12 +405,26 @@ build_eqs()
     value K;
     K.make_value("v.K");
 
-    tensor<value, 3, 3, 3, 3> dcGi;
+    tensor<value, 3, 3, 3> cGijk;
 
-    int index_table[3][3] = {{0, 1, 2},
-                             {1, 3, 4},
-                             {2, 4, 5}};
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                int symmetric_index = index_table[j][k];
 
+                int final_index = i * 6 + symmetric_index;
+
+                std::string name = "ik.christoffel[" + std::to_string(final_index) + "]";
+
+                cGijk.idx(i, j, k) = name;
+            }
+        }
+    }
+
+    tensor<value, 3, 3, 3, 3> dcGijk;
     ///coordinate derivative direction
     for(int i=0; i < 3; i++)
     {
@@ -422,9 +440,9 @@ build_eqs()
 
                     int final_index = i * 3 * 6 + j * 6 + symmetric_index;
 
-                    std::string name = "dcGi[" + std::to_string(final_index) + "]";
+                    std::string name = "dcGijk[" + std::to_string(final_index) + "]";
 
-                    dcGi.idx(i, j, k, l).make_value(name);
+                    dcGijk.idx(i, j, k, l).make_value(name);
                 }
             }
         }
@@ -447,6 +465,26 @@ build_eqs()
     for(int i=0; i < 3; i++)
     {
         dtX = dtX + (2.f/3.f) * X * (gA * K - hacky_differentiate(gB.idx(i), i)) + gB.idx(i) * hacky_differentiate(X, i);
+    }
+
+    tensor<value, 3, 3> Rij;
+
+    for(int j=0; j < 3; j++)
+    {
+        for(int k=0; k < 3; k++)
+        {
+            value sum = 0;
+
+            for(int i=0; i < 3; i++)
+            {
+                for(int p=0; p < 3; p++)
+                {
+                    sum = sum + dcGijk.idx(i, i, j, k) - dcGijk.idx(j, i, i, k) + cGijk.idx(i, i, p) * cGijk.idx(p, j, k) - cGijk.idx(i, j, p) * cGijk.idx(p, i, k);
+                }
+            }
+
+            Rij.idx(j, k) = sum;
+        }
     }
 }
 

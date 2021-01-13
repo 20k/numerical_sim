@@ -126,7 +126,7 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
 
     matrix_3x3_invert(Yij, iYij);
 
-    float dkYij[6 * 3] = {0};
+    float dkYij[3 * 6] = {0};
 
     dkYij[0 * 3 + 0] = DIFFXI(cY, 0);
     dkYij[0 * 3 + 1] = DIFFXI(cY, 1);
@@ -220,13 +220,14 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
                              {2, 4, 5}};
 
     ///conformal christoffel derivatives
-    float dcGi[3 * 3 * 6];
+    float dcGijk[3 * 3 * 6];
 
+    #pragma unroll
     for(int i=0; i < 3 * 6; i++)
     {
-        dcGi[0 * 3 * 6 + i] = INTERMEDIATE_DIFFX(christoffel[i]);
-        dcGi[1 * 3 * 6 + i] = INTERMEDIATE_DIFFY(christoffel[i]);
-        dcGi[2 * 3 * 6 + i] = INTERMEDIATE_DIFFZ(christoffel[i]);
+        dcGijk[0 * 3 * 6 + i] = INTERMEDIATE_DIFFX(christoffel[i]);
+        dcGijk[1 * 3 * 6 + i] = INTERMEDIATE_DIFFY(christoffel[i]);
+        dcGijk[2 * 3 * 6 + i] = INTERMEDIATE_DIFFZ(christoffel[i]);
     }
 
     /*float Rjk[9];
@@ -248,7 +249,7 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
                     int symmetric_index5 = index_table[j][p];
                     int symmetric_index6 = index_table[i][k];
 
-                    sum += dcGi[i * 3 * 6 + ]
+                    sum += dcGijk[i * 3 * 6 + ]
                 }
             }
         }
