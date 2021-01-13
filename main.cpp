@@ -389,6 +389,13 @@ tensor<T, N, N> gpu_high_covariant_derivative_scalar(const T& in, const tensor<T
     return ret;
 }
 
+template<typename T, int N>
+inline
+tensor<T, N, N, N> gpu_high_covariant_derivative_vec(const tensor<T, N>& in, const tensor<T, N, N>& metric)
+{
+    tensor<T, N, N> iv_metric = metric.invert();
+}
+
 ///https://en.wikipedia.org/wiki/Covariant_derivative#Covariant_derivative_by_field_type
 template<typename T, int N>
 inline
@@ -660,6 +667,8 @@ build_eqs()
         }
     }
 
+    tensor<value, 3, 3> iYij = Yij.invert();
+
     tensor<value, 3, 3, 3> christoff_Yij = gpu_christoffel_symbols_2(Yij);
 
     ///Aki G^kj
@@ -701,6 +710,43 @@ build_eqs()
 
             dtcAij.idx(i, j) = p1 + p2 + p3;
         }
+    }
+
+    tensor<value, 3, 3> icAij = cA.invert();
+
+    value dtK = 0;
+
+    {
+        value sum1 = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                sum1 = sum1 + iYij.idx(i, j) * gpu_covariant_derivative_low_vec(digA, Yij, christoff_Yij).idx(i, j);
+            }
+        }
+
+        value sum2 = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                sum2 = sum2 + cA.idx(i, j) * icAij.idx(i, j);
+            }
+        }
+
+        sum2 = gA * (sum2 + (1.f/3.f) * K * K);
+
+        value sum3 = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            sum3 = sum3 + gB.idx(i) * hacky_differentiate(K, i);
+        }
+
+        dtK = -sum1 + sum2 + sum3;
     }
 }
 
