@@ -498,7 +498,33 @@ get_initial_conditions_eqs(vec3f centre, float scale)
 
     value X = exp(-4 * conformal_factor);
 
-    return {};
+    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
+
+    std::vector<std::pair<std::string, std::string>> equations;
+
+    for(int i=0; i < 6; i++)
+    {
+        vec2i index = linear_indices[i];
+
+        std::string y_name = "init_cY" + std::to_string(i);
+        std::string a_name = "init_AY" + std::to_string(i);
+
+        equations.push_back({y_name, type_to_string(cyij.idx(index.x(), index.y()))});
+        equations.push_back({a_name, type_to_string(cAij.idx(index.x(), index.y()))});
+    }
+
+    equations.push_back({"init_cGi0", type_to_string(cGi.idx(0))});
+    equations.push_back({"init_cGi1", type_to_string(cGi.idx(1))});
+    equations.push_back({"init_cGi2", type_to_string(cGi.idx(2))});
+
+    equations.push_back({"init_K", type_to_string(K)});
+    equations.push_back({"init_X", type_to_string(X)});
+    equations.push_back({"init_gA", type_to_string(gA)});
+    equations.push_back({"init_gB0", type_to_string(gB0)});
+    equations.push_back({"init_gB1", type_to_string(gB1)});
+    equations.push_back({"init_gB2", type_to_string(gB2)});
+
+    return equations;
 }
 
 ///todo: I know for a fact that clang is too silly to optimise out the memory lookups
