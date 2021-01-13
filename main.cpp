@@ -563,6 +563,7 @@ value hacky_differentiate(value in, int idx)
         nstr.erase(nstr.begin());
 
         value ret;
+        ret.make_value("nan");
 
         if(idx == 0)
             ret.make_value("DIFFX(" + nstr + ")");
@@ -582,6 +583,7 @@ value hacky_differentiate(value in, int idx)
         nstr.erase(nstr.begin());
 
         value ret;
+        ret.make_value("nan");
 
         if(idx == 0)
             ret.make_value("INTERMEDIATE_DIFFX(" + nstr + ")");
