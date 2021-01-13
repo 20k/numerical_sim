@@ -352,7 +352,7 @@ tensor<value, 3, 3> raise_index(const tensor<value, 3, 3>& mT, const tensor<valu
 
 template<typename T, int N>
 inline
-tensor<T, N> gpu_covariant_derivative_scalar(const T& in, const tensor<T, N, N>& metric)
+tensor<T, N> gpu_covariant_derivative_scalar(const T& in)
 {
     tensor<T, N> ret;
 
@@ -370,7 +370,7 @@ tensor<T, N, N> gpu_high_covariant_derivative_scalar(const T& in, const tensor<T
 {
     tensor<T, N, N> iv_metric = metric.invert();
 
-    tensor<T, N> deriv_low = gpu_covariant_derivative_scalar(in, metric);
+    tensor<T, N> deriv_low = gpu_covariant_derivative_scalar(in);
 
     tensor<T, N> ret;
 
@@ -389,6 +389,102 @@ tensor<T, N, N> gpu_high_covariant_derivative_scalar(const T& in, const tensor<T
     return ret;
 }
 
+///https://en.wikipedia.org/wiki/Covariant_derivative#Covariant_derivative_by_field_type
+template<typename T, int N>
+inline
+tensor<T, N, N> gpu_covariant_derivative_low_vec(const tensor<T, N>& v_in, const tensor<T, N, N>& metric, const tensor<T, N, N, N>& christoff)
+{
+    tensor<T, N, N> lac;
+
+    for(int a=0; a < N; a++)
+    {
+        for(int c=0; c < N; c++)
+        {
+            T sum = 0;
+
+            for(int b=0; b < N; b++)
+            {
+                sum += christoff.idx(b, c, a) * v_in.idx(b);
+            }
+
+            lac.idx(a, c) = hacky_differentiate(v_in.idx(a), c) - sum;
+        }
+    }
+
+    return lac;
+}
+
+///https://arxiv.org/pdf/gr-qc/9810065.pdf
+template<typename T, int N>
+inline
+T gpu_trace(const tensor<T, N, N>& mT, const tensor<T, N, N>& metric)
+{
+    tensor<T, N, N> inverse = metric.invert();
+
+    T ret = 0;
+
+    for(int i=0; i < N; i++)
+    {
+        for(int j=0; j < N; j++)
+        {
+            ret += inverse.idx(i, j) * mT.idx(i, j);
+        }
+    }
+
+    return ret;
+}
+
+template<typename T, int N>
+inline
+tensor<T, N, N> gpu_trace_free(const tensor<T, N, N>& mT, const tensor<T, N, N>& metric)
+{
+    tensor<T, N, N> inverse = metric.invert();
+
+    tensor<T, N, N> TF;
+    T t = gpu_trace(mT, metric);
+
+    for(int i=0; i < N; i++)
+    {
+        for(int j=0; j < N; j++)
+        {
+            TF.idx(i, j) = mT.idx(i, j) - (1/3.f) * metric.idx(i, j) * t;
+        }
+    }
+
+    return TF;
+}
+
+template<typename T, int N>
+inline
+tensor<T, N, N, N> gpu_christoffel_symbols_2(const tensor<T, N, N>& metric)
+{
+    tensor<T, N, N, N> christoff;
+    tensor<T, N, N> inverted = metric.invert();
+
+    for(int i=0; i < N; i++)
+    {
+        for(int k=0; k < N; k++)
+        {
+            for(int l=0; l < N; l++)
+            {
+                T sum = 0;
+
+                for(int m=0; m < N; m++)
+                {
+                    sum = sum + inverted.idx(i, m) * hacky_differentiate(metric.idx(m, k), l);
+                    sum = sum + inverted.idx(i, m) * hacky_differentiate(metric.idx(m, l), k);
+                    sum = sum - inverted.idx(i, m) * hacky_differentiate(metric.idx(k, l), m);
+                }
+
+                christoff.idx(i, k, l) = 0.5 * sum;
+            }
+        }
+    }
+
+    return christoff;
+}
+
+
 inline
 std::vector<std::pair<std::string, std::string>>
 build_eqs()
@@ -402,6 +498,8 @@ build_eqs()
     cY.idx(0, 0).make_value("v.cY0"); cY.idx(0, 1).make_value("v.cY1"); cY.idx(0, 2).make_value("v.cY2");
     cY.idx(1, 0).make_value("v.cY1"); cY.idx(1, 1).make_value("v.cY3"); cY.idx(1, 2).make_value("v.cY4");
     cY.idx(2, 0).make_value("v.cY2"); cY.idx(2, 1).make_value("v.cY4"); cY.idx(2, 2).make_value("v.cY5");
+
+    tensor<value, 3, 3> icY = cY.invert();
 
     tensor<value, 3, 3> cA;
 
@@ -493,15 +591,15 @@ build_eqs()
         }
     }
 
-    tensor<value, 3, 3> lie_Yij = gpu_lie_derivative_weight(gB, cY);
+    tensor<value, 3, 3> lie_cYij = gpu_lie_derivative_weight(gB, cY);
 
-    tensor<value, 3, 3> dtYij;
+    tensor<value, 3, 3> dtcYij;
 
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
-            dtYij.idx(i, j) = -2 * gA + lie_Yij.idx(i, j);
+            dtcYij.idx(i, j) = -2 * gA + lie_cYij.idx(i, j);
         }
     }
 
@@ -514,27 +612,88 @@ build_eqs()
 
     tensor<value, 3, 3> Rij;
 
-    for(int j=0; j < 3; j++)
+    ///https://en.wikipedia.org/wiki/Ricci_curvature#Definition_via_local_coordinates_on_a_smooth_manifold
+    for(int i=0; i < 3; i++)
     {
-        for(int k=0; k < 3; k++)
+        for(int j=0; j < 3; j++)
         {
             value sum = 0;
 
-            for(int i=0; i < 3; i++)
+            for(int a=0; a < 3; a++)
             {
-                for(int p=0; p < 3; p++)
+                sum = sum + dcGijk.idx(a, a, i, j);
+            }
+
+            value sum2 = 0;
+
+            for(int a=0; a < 3; a++)
+            {
+                sum2 = sum2 + dcGijk.idx(i, a, a, j);
+            }
+
+            value sum3 = 0;
+
+            for(int a=0; a < 3; a++)
+            {
+                for(int b=0; b < 3; b++)
                 {
-                    sum = sum + dcGijk.idx(i, i, j, k) - dcGijk.idx(j, i, i, k) + cGijk.idx(i, i, p) * cGijk.idx(p, j, k) - cGijk.idx(i, j, p) * cGijk.idx(p, i, k);
+                    sum3 = sum3 + cGijk.idx(a, a, b) * cGijk.idx(b, i, j) - cGijk.idx(a, i, b) * cGijk.idx(b, a, j);
                 }
             }
 
-            Rij.idx(j, k) = sum;
+            Rij.idx(i, j) = sum - sum2 + sum3;
         }
     }
 
-    //tensor<value, 3, 3> dtcAij;
+    ///recover Yij from X and cYij
+    ///https://arxiv.org/pdf/gr-qc/0511048.pdf
+    ///https://arxiv.org/pdf/gr-qc/9810065.pdf
+    ///X = exp(-4 phi)
+    ///consider trying to eliminate
+    tensor<value, 3, 3> Yij;
 
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            Yij.idx(i, j) = cY.idx(i, j) / X;
+        }
+    }
 
+    tensor<value, 3, 3, 3> christoff_Yij = gpu_christoffel_symbols_2(Yij);
+
+    ///Aki G^kj
+    tensor<value, 3, 3> mixed_cAij = raise_index(cA, cY);
+
+    tensor<value, 3, 3> dtcAij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value sum = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                ///derivative returns (a, c) in the indices
+                ///where c is the coordinate index
+                /*value trace_free_interior_1 = -gpu_covariant_derivative_low_vec(digA, Yij, christoff_Yij).idx(j, i);
+                value trace_free_interior_2 = gA * Rij.idx(i, j);
+
+                value p1 = X * gpu_trace_free(trace_free_interior_1 + trace_free_interior_2, Yij);
+
+                value p2 = a * (K * cA.idx(i, j) - 2 * cA.idx(i, k) * mixed_cAij.idx(k, j));
+
+                value p3 = gpu_lie_derivative_weight(gB, cA);
+
+                sum = sum + p1 + p2 + p3;*/
+
+                ///not correct, only sum the repeated indices
+
+                //sum = sum + X * gpu_trace_free(gpu_covariant_derivative_scalar(dg), Yij);
+            }
+        }
+    }
 }
 
 int main()
