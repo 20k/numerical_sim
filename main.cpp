@@ -420,7 +420,9 @@ build_eqs()
                 {
                     int symmetric_index = index_table[k][l];
 
-                    std::string name = "dcGi[" + std::to_string(i) + "*3*6+" + std::to_string(j) + "*6+" + std::to_string(symmetric_index) + "]";
+                    int final_index = i * 3 * 6 + j * 6 + symmetric_index;
+
+                    std::string name = "dcGi[" + std::to_string(final_index) + "]";
 
                     dcGi.idx(i, j, k, l).make_value(name);
                 }
