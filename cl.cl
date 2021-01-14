@@ -250,7 +250,7 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
 ///todo: need to correctly evolve boundaries
 ///todo: need to factor out the differentials
 __kernel
-void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, float timestep)
+void evolve(__global const struct bssnok_data* restrict in, __global struct bssnok_data* restrict out, float scale, int4 dim, __global const struct intermediate_bssnok_data* temp_in, float timestep)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
