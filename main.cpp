@@ -349,6 +349,262 @@ value f_r(value r)
     return interpolating_polynomial(scaled);
 }
 
+///todo: I know for a fact that clang is too silly to optimise out the memory lookups
+value hacky_differentiate(value in, int idx)
+{
+    assert(in.is_value());
+
+    if(in.value_payload.value().starts_with("v."))
+    {
+        std::string nstr = in.value_payload.value();
+
+        nstr.erase(nstr.begin());
+        nstr.erase(nstr.begin());
+
+        value ret;
+        ret.make_value("nan");
+
+        if(idx == 0)
+            ret.make_value("DIFFX(" + nstr + ")");
+        else if(idx == 1)
+            ret.make_value("DIFFY(" + nstr + ")");
+        else if(idx == 2)
+            ret.make_value("DIFFZ(" + nstr + ")");
+        else
+            assert(false);
+
+        return ret;
+    }
+    else if(in.value_payload.value().starts_with("ik."))
+    {
+        std::string nstr = in.value_payload.value();
+
+        nstr.erase(nstr.begin());
+        nstr.erase(nstr.begin());
+        nstr.erase(nstr.begin());
+
+        value ret;
+        ret.make_value("nan");
+
+        if(idx == 0)
+            ret.make_value("INTERMEDIATE_DIFFX(" + nstr + ")");
+        else if(idx == 1)
+            ret.make_value("INTERMEDIATE_DIFFY(" + nstr + ")");
+        else if(idx == 2)
+            ret.make_value("INTERMEDIATE_DIFFZ(" + nstr + ")");
+        else
+            assert(false);
+
+        return ret;
+    }
+
+    assert(false);
+}
+
+template<typename T, int N>
+inline
+tensor<T, N, N> gpu_lie_derivative_weight(const tensor<T, N>& B, const tensor<T, N, N>& mT)
+{
+    tensor<T, N, N> lie;
+
+    for(int i=0; i < N; i++)
+    {
+        for(int j=0; j < N; j++)
+        {
+            T sum = 0;
+
+            for(int k=0; k < N; k++)
+            {
+                sum = sum + B.idx(k) * hacky_differentiate(mT.idx(i, j), k);
+                sum = sum + mT.idx(i, k) * hacky_differentiate(B.idx(k), j);
+                sum = sum + mT.idx(k, j) * hacky_differentiate(B.idx(k), i);
+                sum = sum - (2.f/3.f) * mT.idx(i, j) * hacky_differentiate(B.idx(k), k);
+            }
+
+            lie.idx(i, j) = sum;
+        }
+    }
+
+    return lie;
+}
+
+///mT symmetric?
+tensor<value, 3, 3> raise_index(const tensor<value, 3, 3>& mT, const tensor<value, 3, 3>& metric)
+{
+    tensor<value, 3, 3> inverse = metric.invert();
+
+    tensor<value, 3, 3> ret;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value sum = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                sum = sum + mT.idx(i, k) * inverse.idx(k, j);
+            }
+
+            ret.idx(i, j) = sum;
+        }
+    }
+
+    return ret;
+}
+
+
+template<typename T, int N>
+inline
+tensor<T, N> gpu_covariant_derivative_scalar(const T& in)
+{
+    tensor<T, N> ret;
+
+    for(int i=0; i < N; i++)
+    {
+        ret.idx(i) = hacky_differentiate(in.differentiate, i);
+    }
+
+    return ret;
+}
+
+template<typename T, typename U, int N>
+inline
+tensor<T, N, N> gpu_high_covariant_derivative_scalar(const T& in, const tensor<T, N, N>& metric)
+{
+    tensor<T, N, N> iv_metric = metric.invert();
+
+    tensor<T, N> deriv_low = gpu_covariant_derivative_scalar(in);
+
+    tensor<T, N> ret;
+
+    for(int i=0; i < N; i++)
+    {
+        T sum = 0;
+
+        for(int p=0; p < N; p++)
+        {
+            sum += iv_metric.idx(i, p) * deriv_low.idx(p);
+        }
+
+        ret.idx(i) = sum;
+    }
+
+    return ret;
+}
+
+template<typename T, int N>
+inline
+tensor<T, N, N, N> gpu_high_covariant_derivative_vec(const tensor<T, N>& in, const tensor<T, N, N>& metric)
+{
+    tensor<T, N, N> iv_metric = metric.invert();
+}
+
+///https://en.wikipedia.org/wiki/Covariant_derivative#Covariant_derivative_by_field_type
+template<typename T, int N>
+inline
+tensor<T, N, N> gpu_covariant_derivative_low_vec(const tensor<T, N>& v_in, const tensor<T, N, N>& metric, const tensor<T, N, N, N>& christoff)
+{
+    tensor<T, N, N> lac;
+
+    for(int a=0; a < N; a++)
+    {
+        for(int c=0; c < N; c++)
+        {
+            T sum = 0;
+
+            for(int b=0; b < N; b++)
+            {
+                sum = sum + christoff.idx(b, c, a) * v_in.idx(b);
+            }
+
+            lac.idx(a, c) = hacky_differentiate(v_in.idx(a), c) - sum;
+        }
+    }
+
+    return lac;
+}
+
+template<typename T, int N>
+inline
+tensor<T, N, N> gpu_trace_free(const tensor<T, N, N>& mT, const tensor<T, N, N>& metric)
+{
+    tensor<T, N, N> inverse = metric.invert();
+
+    tensor<T, N, N> TF;
+    T t = gpu_trace(mT, metric);
+
+    for(int i=0; i < N; i++)
+    {
+        for(int j=0; j < N; j++)
+        {
+            TF.idx(i, j) = mT.idx(i, j) - (1/3.f) * metric.idx(i, j) * t;
+        }
+    }
+
+    return TF;
+}
+
+template<typename T, int N>
+inline
+tensor<T, N, N, N> gpu_christoffel_symbols_2(const tensor<T, N, N>& metric)
+{
+    tensor<T, N, N, N> christoff;
+    tensor<T, N, N> inverted = metric.invert();
+
+    for(int i=0; i < N; i++)
+    {
+        for(int k=0; k < N; k++)
+        {
+            for(int l=0; l < N; l++)
+            {
+                T sum = 0;
+
+                for(int m=0; m < N; m++)
+                {
+                    sum = sum + inverted.idx(i, m) * hacky_differentiate(metric.idx(m, k), l);
+                    sum = sum + inverted.idx(i, m) * hacky_differentiate(metric.idx(m, l), k);
+                    sum = sum - inverted.idx(i, m) * hacky_differentiate(metric.idx(k, l), m);
+                }
+
+                christoff.idx(i, k, l) = 0.5 * sum;
+            }
+        }
+    }
+
+    return christoff;
+}
+
+template<typename T, int N>
+inline
+tensor<T, N, N> raise_both(const tensor<T, N, N>& mT, const tensor<T, N, N>& metric)
+{
+    tensor<T, N, N> inverse = metric.invert();
+
+    tensor<T, N, N> ret;
+
+    for(int a=0; a < N; a++)
+    {
+        for(int b=0; b < N; b++)
+        {
+            T sum = 0;
+
+            for(int g = 0; g < N; g++)
+            {
+                for(int d = 0; d < N; d++)
+                {
+                    sum = sum + inverse.idx(a, g) * inverse.idx(b, d) * mT.idx(g, d);
+                }
+            }
+
+            ret.idx(a, b) = sum;
+        }
+    }
+
+    return ret;
+}
+
+
 inline
 std::vector<std::pair<std::string, value>>
 get_initial_conditions_eqs(vec3f centre, float scale)
@@ -588,256 +844,6 @@ get_initial_conditions_eqs(vec3f centre, float scale)
     return equations;
 }
 
-///todo: I know for a fact that clang is too silly to optimise out the memory lookups
-value hacky_differentiate(value in, int idx)
-{
-    assert(in.is_value());
-
-    if(in.value_payload.value().starts_with("v."))
-    {
-        std::string nstr = in.value_payload.value();
-
-        nstr.erase(nstr.begin());
-        nstr.erase(nstr.begin());
-
-        value ret;
-        ret.make_value("nan");
-
-        if(idx == 0)
-            ret.make_value("DIFFX(" + nstr + ")");
-        if(idx == 1)
-            ret.make_value("DIFFY(" + nstr + ")");
-        if(idx == 2)
-            ret.make_value("DIFFZ(" + nstr + ")");
-
-        return ret;
-    }
-    else if(in.value_payload.value().starts_with("ik."))
-    {
-        std::string nstr = in.value_payload.value();
-
-        nstr.erase(nstr.begin());
-        nstr.erase(nstr.begin());
-        nstr.erase(nstr.begin());
-
-        value ret;
-        ret.make_value("nan");
-
-        if(idx == 0)
-            ret.make_value("INTERMEDIATE_DIFFX(" + nstr + ")");
-        if(idx == 1)
-            ret.make_value("INTERMEDIATE_DIFFY(" + nstr + ")");
-        if(idx == 2)
-            ret.make_value("INTERMEDIATE_DIFFZ(" + nstr + ")");
-
-        return ret;
-    }
-
-    assert(false);
-}
-
-template<typename T, int N>
-inline
-tensor<T, N, N> gpu_lie_derivative_weight(const tensor<T, N>& B, const tensor<T, N, N>& mT)
-{
-    tensor<T, N, N> lie;
-
-    for(int i=0; i < N; i++)
-    {
-        for(int j=0; j < N; j++)
-        {
-            T sum = 0;
-
-            for(int k=0; k < N; k++)
-            {
-                sum = sum + B.idx(k) * hacky_differentiate(mT.idx(i, j), k);
-                sum = sum + mT.idx(i, k) * hacky_differentiate(B.idx(k), j);
-                sum = sum + mT.idx(k, j) * hacky_differentiate(B.idx(k), i);
-                sum = sum - (2.f/3.f) * mT.idx(i, j) * hacky_differentiate(B.idx(k), k);
-            }
-
-            lie.idx(i, j) = sum;
-        }
-    }
-
-    return lie;
-}
-
-///mT symmetric?
-tensor<value, 3, 3> raise_index(const tensor<value, 3, 3>& mT, const tensor<value, 3, 3>& metric)
-{
-    tensor<value, 3, 3> inverse = metric.invert();
-
-    tensor<value, 3, 3> ret;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            value sum = 0;
-
-            for(int k=0; k < 3; k++)
-            {
-                sum = sum + mT.idx(i, k) * inverse.idx(k, j);
-            }
-
-            ret.idx(i, j) = sum;
-        }
-    }
-
-    return ret;
-}
-
-
-template<typename T, int N>
-inline
-tensor<T, N> gpu_covariant_derivative_scalar(const T& in)
-{
-    tensor<T, N> ret;
-
-    for(int i=0; i < N; i++)
-    {
-        ret.idx(i) = hacky_differentiate(in.differentiate, i);
-    }
-
-    return ret;
-}
-
-template<typename T, typename U, int N>
-inline
-tensor<T, N, N> gpu_high_covariant_derivative_scalar(const T& in, const tensor<T, N, N>& metric)
-{
-    tensor<T, N, N> iv_metric = metric.invert();
-
-    tensor<T, N> deriv_low = gpu_covariant_derivative_scalar(in);
-
-    tensor<T, N> ret;
-
-    for(int i=0; i < N; i++)
-    {
-        T sum = 0;
-
-        for(int p=0; p < N; p++)
-        {
-            sum += iv_metric.idx(i, p) * deriv_low.idx(p);
-        }
-
-        ret.idx(i) = sum;
-    }
-
-    return ret;
-}
-
-template<typename T, int N>
-inline
-tensor<T, N, N, N> gpu_high_covariant_derivative_vec(const tensor<T, N>& in, const tensor<T, N, N>& metric)
-{
-    tensor<T, N, N> iv_metric = metric.invert();
-}
-
-///https://en.wikipedia.org/wiki/Covariant_derivative#Covariant_derivative_by_field_type
-template<typename T, int N>
-inline
-tensor<T, N, N> gpu_covariant_derivative_low_vec(const tensor<T, N>& v_in, const tensor<T, N, N>& metric, const tensor<T, N, N, N>& christoff)
-{
-    tensor<T, N, N> lac;
-
-    for(int a=0; a < N; a++)
-    {
-        for(int c=0; c < N; c++)
-        {
-            T sum = 0;
-
-            for(int b=0; b < N; b++)
-            {
-                sum = sum + christoff.idx(b, c, a) * v_in.idx(b);
-            }
-
-            lac.idx(a, c) = hacky_differentiate(v_in.idx(a), c) - sum;
-        }
-    }
-
-    return lac;
-}
-
-template<typename T, int N>
-inline
-tensor<T, N, N> gpu_trace_free(const tensor<T, N, N>& mT, const tensor<T, N, N>& metric)
-{
-    tensor<T, N, N> inverse = metric.invert();
-
-    tensor<T, N, N> TF;
-    T t = gpu_trace(mT, metric);
-
-    for(int i=0; i < N; i++)
-    {
-        for(int j=0; j < N; j++)
-        {
-            TF.idx(i, j) = mT.idx(i, j) - (1/3.f) * metric.idx(i, j) * t;
-        }
-    }
-
-    return TF;
-}
-
-template<typename T, int N>
-inline
-tensor<T, N, N, N> gpu_christoffel_symbols_2(const tensor<T, N, N>& metric)
-{
-    tensor<T, N, N, N> christoff;
-    tensor<T, N, N> inverted = metric.invert();
-
-    for(int i=0; i < N; i++)
-    {
-        for(int k=0; k < N; k++)
-        {
-            for(int l=0; l < N; l++)
-            {
-                T sum = 0;
-
-                for(int m=0; m < N; m++)
-                {
-                    sum = sum + inverted.idx(i, m) * hacky_differentiate(metric.idx(m, k), l);
-                    sum = sum + inverted.idx(i, m) * hacky_differentiate(metric.idx(m, l), k);
-                    sum = sum - inverted.idx(i, m) * hacky_differentiate(metric.idx(k, l), m);
-                }
-
-                christoff.idx(i, k, l) = 0.5 * sum;
-            }
-        }
-    }
-
-    return christoff;
-}
-
-template<typename T, int N>
-inline
-tensor<T, N, N> raise_both(const tensor<T, N, N>& mT, const tensor<T, N, N>& metric)
-{
-    tensor<T, N, N> inverse = metric.invert();
-
-    tensor<T, N, N> ret;
-
-    for(int a=0; a < N; a++)
-    {
-        for(int b=0; b < N; b++)
-        {
-            T sum = 0;
-
-            for(int g = 0; g < N; g++)
-            {
-                for(int d = 0; d < N; d++)
-                {
-                    sum = sum + inverse.idx(a, g) * inverse.idx(b, d) * mT.idx(g, d);
-                }
-            }
-
-            ret.idx(a, b) = sum;
-        }
-    }
-
-    return ret;
-}
 
 inline
 std::vector<std::pair<std::string, value>> build_intermediate()
