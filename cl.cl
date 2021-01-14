@@ -472,7 +472,7 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
 
     if(x == 125 && y == 125)
     {
-        printf("scalar %f\n", max_scalar);
+        //printf("scalar %f\n", max_scalar);
     }
 
     max_scalar = max_scalar * 100;

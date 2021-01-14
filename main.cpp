@@ -1008,6 +1008,7 @@ void build_eqs(equation_context& ctx)
         dtX = (2.f/3.f) * X * (gA * K - s1) + s2;
     }
 
+    ///ok use the proper form
     tensor<value, 3, 3> cRij;
 
     ///https://en.wikipedia.org/wiki/Ricci_curvature#Definition_via_local_coordinates_on_a_smooth_manifold
