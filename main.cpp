@@ -840,6 +840,107 @@ tensor<T, N, N> raise_both(const tensor<T, N, N>& mT, const tensor<T, N, N>& met
 }
 
 inline
+std::vector<std::pair<std::string, value>> build_intermediate()
+{
+    std::vector<std::pair<std::string, value>> equations;
+
+    int index_table[3][3] = {{0, 1, 2},
+                             {1, 3, 4},
+                             {2, 4, 5}};
+
+    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
+
+    tensor<value, 3, 3> cY;
+
+    cY.idx(0, 0).make_value("v.cY0"); cY.idx(0, 1).make_value("v.cY1"); cY.idx(0, 2).make_value("v.cY2");
+    cY.idx(1, 0).make_value("v.cY1"); cY.idx(1, 1).make_value("v.cY3"); cY.idx(1, 2).make_value("v.cY4");
+    cY.idx(2, 0).make_value("v.cY2"); cY.idx(2, 1).make_value("v.cY4"); cY.idx(2, 2).make_value("v.cY5");
+
+    value gA;
+    gA.make_value("v.gA");
+
+    value X;
+    X.make_value("v.X");
+
+    tensor<value, 3> gB;
+    gB.idx(0).make_value("v.gB0");
+    gB.idx(1).make_value("v.gB1");
+    gB.idx(2).make_value("v.gB2");
+
+    tensor<value, 3, 3, 3> christoff = gpu_christoffel_symbols_2(cY);
+
+    tensor<value, 3> digA;
+
+    for(int i=0; i < 3; i++)
+    {
+        digA.idx(i) = hacky_differentiate(gA, i);
+    }
+
+    tensor<value, 3, 3> digB;
+
+    ///derivative
+    for(int i=0; i < 3; i++)
+    {
+        ///index
+        for(int j=0; j < 3; j++)
+        {
+            digB.idx(i, j) = hacky_differentiate(gB.idx(j), i);
+        }
+    }
+
+    ///or 0.25f * log(1.f/v.X);
+    value phi = -0.25f * log(X);
+
+    tensor<value, 3, 3> Yij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            Yij.idx(i, j) = cY.idx(i, j) / X;
+        }
+    }
+
+    for(int k=0; k < 3; k++)
+    {
+        for(int i=0; i < 6; i++)
+        {
+            vec2i idx = linear_indices[i];
+
+            int linear_idx = k * 6 + i;
+
+            equations.push_back({"init_christoffel" + std::to_string(linear_idx), christoff.idx(k, idx.x(), idx.y())});
+        }
+    }
+
+    for(int i=0; i < 3; i++)
+    {
+        equations.push_back({"init_digA" + std::to_string(i), digA.idx(i)});
+    }
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            int linear_idx = i * 3 + j;
+
+            equations.push_back({"init_digB" + std::to_string(linear_idx), digB.idx(i, j)});
+        }
+    }
+
+    equations.push_back({"init_phi", phi});
+
+    for(int i=0; i < 6; i++)
+    {
+        vec2i idx = linear_indices[i];
+
+        equations.push_back({"init_Yij" + std::to_string(i), Yij.idx(idx.x(), idx.y())});
+    }
+
+    return equations;
+}
+
+inline
 std::vector<std::pair<std::string, value>>
 build_eqs()
 {
@@ -1303,6 +1404,8 @@ int main()
 
     std::vector<std::pair<std::string, value>> equations2 = get_initial_conditions_eqs(centre, scale);
 
+    std::vector<std::pair<std::string, value>> equations3 = build_intermediate();
+
     for(auto& i : equations)
     {
         std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
@@ -1311,6 +1414,13 @@ int main()
     }
 
     for(auto& i : equations2)
+    {
+        std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
+
+        argument_string += str;
+    }
+
+    for(auto& i : equations3)
     {
         std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
 
@@ -1462,6 +1572,14 @@ int main()
             clctx.cqueue.exec("evolve", a1, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
             which_data = (which_data + 1) % 2;
+
+            cl::args fl3;
+            fl3.push_back(bssnok_datas[which_data]);
+            fl3.push_back(scale);
+            fl3.push_back(clsize);
+            fl3.push_back(intermediate);
+
+            clctx.cqueue.exec("calculate_intermediate_data", fl3, {size.x(), size.y(), size.z()}, {8, 8, 1});
         }
 
         clctx.cqueue.flush();

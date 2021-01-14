@@ -202,111 +202,49 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
 
     struct bssnok_data v = in[IDX(x, y, z)];
 
-    float Yij[9] = {v.cY0, v.cY1, v.cY2,
-                    v.cY1, v.cY3, v.cY4,
-                    v.cY2, v.cY4, v.cY5};
-
-    float iYij[9];
-
-    matrix_3x3_invert(Yij, iYij);
-
-    float dkYij[3 * 6] = {0};
-
-    dkYij[0 * 6 + 0] = DIFFXI(cY, 0);
-    dkYij[0 * 6 + 1] = DIFFXI(cY, 1);
-    dkYij[0 * 6 + 2] = DIFFXI(cY, 2);
-    dkYij[0 * 6 + 3] = DIFFXI(cY, 3);
-    dkYij[0 * 6 + 4] = DIFFXI(cY, 4);
-    dkYij[0 * 6 + 5] = DIFFXI(cY, 5);
-
-    dkYij[1 * 6 + 0] = DIFFYI(cY, 0);
-    dkYij[1 * 6 + 1] = DIFFYI(cY, 1);
-    dkYij[1 * 6 + 2] = DIFFYI(cY, 2);
-    dkYij[1 * 6 + 3] = DIFFYI(cY, 3);
-    dkYij[1 * 6 + 4] = DIFFYI(cY, 4);
-    dkYij[1 * 6 + 5] = DIFFYI(cY, 5);
-
-    dkYij[2 * 6 + 0] = DIFFZI(cY, 0);
-    dkYij[2 * 6 + 1] = DIFFZI(cY, 1);
-    dkYij[2 * 6 + 2] = DIFFZI(cY, 2);
-    dkYij[2 * 6 + 3] = DIFFZI(cY, 3);
-    dkYij[2 * 6 + 4] = DIFFZI(cY, 4);
-    dkYij[2 * 6 + 5] = DIFFZI(cY, 5);
-
-    int index_table[3][3] = {{0, 1, 2},
-                             {1, 3, 4},
-                             {2, 4, 5}};
-
-    float christoff_big[3 * 3 * 3] = {0};
-
-    #pragma unroll
-    for(int k=0; k < 3; k++)
-    {
-        #pragma unroll
-        for(int i=0; i < 3; i++)
-        {
-            #pragma unroll
-            for(int j=0; j < 3; j++)
-            {
-                float sum = 0;
-
-                #pragma unroll
-                for(int l=0; l < 3; l++)
-                {
-                    float g_inv = iYij[k * 3 + l];
-
-                    int symmetric_index1 = index_table[j][l];
-                    int symmetric_index2 = index_table[i][l];
-                    int symmetric_index3 = index_table[i][j];
-
-                    sum += g_inv * dkYij[i * 6 + symmetric_index1];
-                    sum += g_inv * dkYij[j * 6 + symmetric_index2];
-                    sum -= g_inv * dkYij[l * 6 + symmetric_index3];
-                }
-
-                christoff_big[k * 3 * 3 + i * 3 + j] = 0.5 * sum;
-            }
-        }
-    }
-
     struct intermediate_bssnok_data* my_out = &out[IDX(x, y, z)];
 
-    #pragma unroll
-    for(int k=0; k < 3; k++)
-    {
-        my_out->christoffel[k * 6 + 0] = christoff_big[k * 3 * 3 + 0 * 3 + 0];
-        my_out->christoffel[k * 6 + 1] = christoff_big[k * 3 * 3 + 0 * 3 + 1];
-        my_out->christoffel[k * 6 + 2] = christoff_big[k * 3 * 3 + 0 * 3 + 2];
-        my_out->christoffel[k * 6 + 3] = christoff_big[k * 3 * 3 + 1 * 3 + 1];
-        my_out->christoffel[k * 6 + 4] = christoff_big[k * 3 * 3 + 1 * 3 + 2];
-        my_out->christoffel[k * 6 + 5] = christoff_big[k * 3 * 3 + 2 * 3 + 2];
-    }
+    my_out->christoffel[0] = init_christoffel0;
+    my_out->christoffel[1] = init_christoffel1;
+    my_out->christoffel[2] = init_christoffel2;
+    my_out->christoffel[3] = init_christoffel3;
+    my_out->christoffel[4] = init_christoffel4;
+    my_out->christoffel[5] = init_christoffel5;
+    my_out->christoffel[6] = init_christoffel6;
+    my_out->christoffel[7] = init_christoffel7;
+    my_out->christoffel[8] = init_christoffel8;
+    my_out->christoffel[9] = init_christoffel9;
+    my_out->christoffel[10] = init_christoffel10;
+    my_out->christoffel[11] = init_christoffel11;
+    my_out->christoffel[12] = init_christoffel12;
+    my_out->christoffel[13] = init_christoffel13;
+    my_out->christoffel[14] = init_christoffel14;
+    my_out->christoffel[15] = init_christoffel15;
+    my_out->christoffel[16] = init_christoffel16;
+    my_out->christoffel[17] = init_christoffel17;
 
-    my_out->digA[0] = DIFFX(gA);
-    my_out->digA[1] = DIFFY(gA);
-    my_out->digA[2] = DIFFZ(gA);
+    my_out->digA[0] = init_digA0;
+    my_out->digA[1] = init_digA1;
+    my_out->digA[2] = init_digA2;
 
-    my_out->digB[0 * 3 + 0] = DIFFX(gB0);
-    my_out->digB[1 * 3 + 0] = DIFFY(gB0);
-    my_out->digB[2 * 3 + 0] = DIFFZ(gB0);
+    my_out->digB[0] = init_digB0;
+    my_out->digB[1] = init_digB1;
+    my_out->digB[2] = init_digB2;
+    my_out->digB[3] = init_digB3;
+    my_out->digB[4] = init_digB4;
+    my_out->digB[5] = init_digB5;
+    my_out->digB[6] = init_digB6;
+    my_out->digB[7] = init_digB7;
+    my_out->digB[8] = init_digB8;
 
-    my_out->digB[0 * 3 + 1] = DIFFX(gB1);
-    my_out->digB[1 * 3 + 1] = DIFFY(gB1);
-    my_out->digB[2 * 3 + 1] = DIFFZ(gB1);
+    my_out->phi = init_phi;
 
-    my_out->digB[0 * 3 + 2] = DIFFX(gB2);
-    my_out->digB[1 * 3 + 2] = DIFFY(gB2);
-    my_out->digB[2 * 3 + 2] = DIFFZ(gB2);
-
-    //my_out->phi = 0.25f * log(1.f/v.X);
-    my_out->phi = -0.25f * log(v.X);
-
-    my_out->Yij[0] = v.cY0 / v.X;
-    my_out->Yij[1] = v.cY1 / v.X;
-    my_out->Yij[2] = v.cY2 / v.X;
-    my_out->Yij[3] = v.cY3 / v.X;
-    my_out->Yij[4] = v.cY4 / v.X;
-    my_out->Yij[5] = v.cY5 / v.X;
+    my_out->Yij[0] = init_Yij0;
+    my_out->Yij[1] = init_Yij1;
+    my_out->Yij[2] = init_Yij2;
+    my_out->Yij[3] = init_Yij3;
+    my_out->Yij[4] = init_Yij4;
+    my_out->Yij[5] = init_Yij5;
 }
 
 __kernel
@@ -634,7 +572,12 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
         max_scalar = max(ascalar, max_scalar);
     }
 
-    max_scalar = max_scalar * 1000;
+    if(x == 20 && y == 125)
+    {
+        printf("scalar %f\n", max_scalar);
+    }
+
+    max_scalar = max_scalar * 1;
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 
