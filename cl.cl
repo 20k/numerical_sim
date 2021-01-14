@@ -287,35 +287,38 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
         if(x == 0)
             xdir = 2;
         if(x == 1)
-            xdir = 1;
+            xdir = 2;
 
         if(x == dim.x - 1)
             xdir = -2;
         if(x == dim.x - 2)
-            xdir = -1;
+            xdir = -2;
 
         if(y == 0)
             ydir = 2;
         if(y == 1)
-            ydir = 1;
+            ydir = 2;
 
         if(y == dim.y - 1)
             ydir = -2;
         if(y == dim.y - 2)
-            ydir = -1;
+            ydir = -2;
 
         if(z == 0)
             zdir = 2;
         if(z == 1)
-            zdir = 1;
+            zdir = 2;
 
         if(z == dim.z - 1)
             zdir = -2;
         if(z == dim.z - 2)
-            zdir = -1;
+            zdir = -2;
+
+        if(xdir == 0 && ydir == 0 && zdir == 0)
+            return;
 
         in[IDX(x, y, z)] = in[IDX(x + xdir, y + ydir, z + zdir)];
-        iin[IDX(x, y, z)] = iin[IDX(x + xdir, y + ydir, z + zdir)];
+        //iin[IDX(x, y, z)] = iin[IDX(x + xdir, y + ydir, z + zdir)];
     }
 }
 
