@@ -730,17 +730,25 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
    // std::cout << "FR " << r.substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
 
-    std::vector<float> black_hole_r{0};
-    std::vector<float> black_hole_m{1};
+    std::vector<vec3f> black_hole_pos{{0,0,0}};
+    std::vector<float> black_hole_m{0.5};
 
     ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
     ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is
-    for(int i=0; i < (int)black_hole_r.size(); i++)
+    for(int i=0; i < (int)black_hole_m.size(); i++)
     {
         float Mi = black_hole_m[i];
-        float ri = black_hole_r[i];
+        vec3f ri = black_hole_pos[i];
 
-        BL_conformal = BL_conformal + Mi / (2 * fabs(r - ri));
+        vec<3, value> vri = {ri.x(), ri.y(), ri.z()};
+
+        value dist = (pos - vcentre - vri).length() * scale;
+
+        dist = max(dist, 0.01f);
+
+        BL_conformal = BL_conformal + Mi / (2 * dist);
+
+        //BL_conformal = BL_conformal + Mi / (2 * fabs(r - ri));
     }
 
     ///ok so: I'm pretty sure this is correct
