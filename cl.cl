@@ -359,6 +359,22 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
         printf("DtA %f\n", dtcAij0);
         printf("Aij0 %f\n", v.cA0);
         printf("X %f\n", v.X);
+
+        /*float dbg = debug_val;
+
+        printf("Debug %f\n", debug_val);*/
+
+        /*float d0 = debug_val0;
+        float d1 = debug_val1;
+        float d2 = debug_val2;
+        float d3 = debug_val3;
+        float d4 = debug_val4;
+        float d5 = debug_val5;
+        float d6 = debug_val6;
+        float d7 = debug_val7;
+        float d8 = debug_val8;
+
+        printf("Vals: %f %f %f %f %f %f %f %f %f\n", d0, d1, d2, d3, d4, d5, d6, d7, d8);*/
     }
 
     /*float Rjk[9];

@@ -419,7 +419,7 @@ get_initial_conditions_eqs(vec3f centre, float scale)
 
             if(i == j)
             {
-                yij.idx(i, j) = f_r(r) * yij.idx(i, j) + (1 - f_r(r)) * 99999;
+                yij.idx(i, j) = f_r(r) * yij.idx(i, j) + (1 - f_r(r)) * 999999;
             }
             else
             {
@@ -1077,9 +1077,30 @@ build_eqs()
 
             value p3 = gpu_lie_derivative_weight(gB, cA).idx(i, j);
 
+            /*if(i == 0 && j == 0)
+            {
+                for(int dd=0; dd < 3; dd++)
+                {
+                    for(int kk=0; kk < 3; kk++)
+                    {
+                        int lidx = dd * 3 + kk;
+
+                        equations.push_back({"debug_val" + std::to_string(lidx), iYij.idx(dd, kk)});
+                    }
+                }
+
+
+                //equations.push_back({"debug_val", Yij.det()});
+
+                //equations.push_back({"debug_val", gpu_trace(with_trace, Yij)});
+
+                //equations.push_back({"debug_val", -gpu_covariant_derivative_low_vec(digA, Yij, christoff_Yij).idx(j, i)});
+            }*/
+
             dtcAij.idx(i, j) = p1 + p2 + p3;
         }
     }
+
 
     //tensor<value, 3, 3> icAij = cA.invert();
 
