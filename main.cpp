@@ -37,6 +37,10 @@ struct bssnok_data
     cl_float gB0;
     cl_float gB1;
     cl_float gB2;
+
+    cl_float gBB0;
+    cl_float gBB1;
+    cl_float gBB2;
 };
 
 struct intermediate_bssnok_data
@@ -562,15 +566,15 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         }
     }
 
-    value gA = 1/BL_conformal;
+    /*value gA = 1/BL_conformal;
     value gB0 = 1/BL_conformal;
     value gB1 = 1/BL_conformal;
-    value gB2 = 1/BL_conformal;
+    value gB2 = 1/BL_conformal;*/
 
-    /*value gA = 1/(BL_conformal * BL_conformal);
+    value gA = 1/(BL_conformal * BL_conformal);
     value gB0 = 0;
     value gB1 = 0;
-    value gB2 = 0;*/
+    value gB2 = 0;
 
     /*value gA = 1;
     value gB0 = 0;
@@ -691,10 +695,10 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ctx.add("init_bl_conformal", BL_conformal);
     ctx.add("init_conformal_factor", conformal_factor);
 
-    /*equations.push_back({"init_gA", type_to_string(gA)});
-    equations.push_back({"init_gB0", type_to_string(gB0)});
-    equations.push_back({"init_gB1", type_to_string(gB1)});
-    equations.push_back({"init_gB2", type_to_string(gB2)});*/
+    ctx.add("init_gA", type_to_string(gA));
+    ctx.add("init_gB0", type_to_string(gB0));
+    ctx.add("init_gB1", type_to_string(gB1));
+    ctx.add("init_gB2", type_to_string(gB2));
 
     //equations.push_back({"init_det", type_to_string(cyij.det())});
 }

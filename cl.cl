@@ -28,6 +28,9 @@ struct bssnok_data
     float gB0;
     float gB1;
     float gB2;
+    float gBB0;
+    float gBB1;
+    float gBB2;
 };
 
 #define DIDX(x, y) data[x * 3 + y]
@@ -169,10 +172,19 @@ void calculate_initial_conditions(__global struct bssnok_data* in, float scale, 
 
     float bl_conformal = init_bl_conformal;
 
-    f->gA = 1/bl_conformal;
+    /*f->gA = 1/bl_conformal;
     f->gB0 = 1/bl_conformal;
     f->gB1 = 1/bl_conformal;
-    f->gB2 = 1/bl_conformal;
+    f->gB2 = 1/bl_conformal;*/
+
+    f->gA = init_gA;
+    f->gB0 = init_gB0;
+    f->gB1 = init_gB1;
+    f->gB2 = init_gB2;
+
+    //f->gBB0 = init_gBB0;
+    //f->gBB1 = init_gBB1;
+    //f->gBB2 = init_gBB2;
 
     /*if(x == 50 && y == 50 && z == 50)
     {
