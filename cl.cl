@@ -310,9 +310,9 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
             zdir = 1;
 
         if(z == dim.z - 1)
-            z = -2;
+            zdir = -2;
         if(z == dim.z - 2)
-            z = -1;
+            zdir = -1;
 
         in[IDX(x, y, z)] = in[IDX(x + xdir, y + ydir, z + zdir)];
         iin[IDX(x, y, z)] = iin[IDX(x + xdir, y + ydir, z + zdir)];
