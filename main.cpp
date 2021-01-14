@@ -104,7 +104,7 @@ value f_r(value r)
         return (1 + (-3 + 6 * (-1 + x)) * (-1 + x)) * x * x * x;
     };
 
-    value r_max = 0.4;
+    value r_max = 0.8;
     value r_min = 0.2;
 
     r = max(min(r, r_max), r_min);
@@ -497,12 +497,15 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
    // std::cout << "FR " << r.substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
 
-    std::vector<vec3f> black_hole_pos{{-25,0,0}, {25, 0, 0}};
-    std::vector<float> black_hole_m{0.25, 0.25};
+    //std::vector<vec3f> black_hole_pos{{-25,0,0}, {25, 0, 0}};
+    //std::vector<float> black_hole_m{0.25, 0.25};
+
+    std::vector<vec3f> black_hole_pos{{0.1,0,0}};
+    std::vector<float> black_hole_m{1};
 
     ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
     ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is
-    for(int i=1; i < (int)black_hole_m.size(); i++)
+    for(int i=0; i < (int)black_hole_m.size(); i++)
     {
         float Mi = black_hole_m[i];
         vec3f ri = black_hole_pos[i];
@@ -529,7 +532,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
             /*if(i == j)
             {
-                yij.idx(i, j) = f_r(r) * yij.idx(i, j) + (1 - f_r(r)) * 999;
+                yij.idx(i, j) = f_r(r) * yij.idx(i, j) + (1 - f_r(r)) * 9999;
             }
             else
             {
@@ -1540,7 +1543,7 @@ int main()
 
             clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
-            float timestep = 0.001;
+            float timestep = 0.01;
 
             cl::args a1;
             a1.push_back(bssnok_datas[which_data]);
