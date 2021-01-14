@@ -614,5 +614,9 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
         max_scalar = max(ascalar, max_scalar);
     }
 
+    max_scalar = max_scalar * 10000;
+
+    max_scalar = clamp(max_scalar, 0.f, 1.f);
+
     write_imagef(screen, (int2){x, y}, (float4){max_scalar, max_scalar, max_scalar, 1});
 }
