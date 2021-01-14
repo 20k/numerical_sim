@@ -496,9 +496,30 @@ tensor<T, N, N> gpu_high_covariant_derivative_scalar(const T& in, const tensor<T
 
 template<typename T, int N>
 inline
-tensor<T, N, N, N> gpu_high_covariant_derivative_vec(const tensor<T, N>& in, const tensor<T, N, N>& metric)
+tensor<T, N, N> gpu_high_covariant_derivative_vec(const tensor<T, N>& in, const tensor<T, N, N>& metric)
 {
     tensor<T, N, N> iv_metric = metric.invert();
+
+    tensor<T, N> deriv_low = gpu_covariant_derivative_low_vec(in, metric, gpu_christoffel_symbols_2(metric));
+
+    tensor<T, N, N> ret;
+
+    for(int s=0; s < N; s++)
+    {
+        for(int j=0; j < N; j++)
+        {
+            T sum = 0;
+
+            for(int p=0; p < N; p++)
+            {
+                sum = sum + iv_metric.idx(s, p) * deriv_low.idx(j, p);
+            }
+
+            ret.idx(j, s) = sum;
+        }
+    }
+
+    return ret;
 }
 
 ///https://en.wikipedia.org/wiki/Covariant_derivative#Covariant_derivative_by_field_type
@@ -913,6 +934,7 @@ std::vector<std::pair<std::string, value>> build_intermediate()
         }
     }
 
+    tensor<value, 3> dphi;
 
     {
 
@@ -938,8 +960,6 @@ std::vector<std::pair<std::string, value>> build_intermediate()
 
         value pz = X_to_phi(rz);
         value pmz = X_to_phi(rmz);
-
-        tensor<value, 3> dphi;
 
         dphi.idx(0) = "finite_difference(" + type_to_string(px) + "," + type_to_string(pmx) + ",scale)";
         dphi.idx(1) = "finite_difference(" + type_to_string(py) + "," + type_to_string(pmy) + ",scale)";
@@ -1024,6 +1044,11 @@ build_eqs()
     digA.idx(0).make_value("ik.digA[0]");
     digA.idx(1).make_value("ik.digA[1]");
     digA.idx(2).make_value("ik.digA[2]");
+
+    tensor<value, 3> dphi;
+    dphi.idx(0).make_value("ik.dphi[0]");
+    dphi.idx(1).make_value("ik.dphi[1]");
+    dphi.idx(2).make_value("ik.dphi[2]");
 
     tensor<value, 3, 3> digB;
 
