@@ -501,7 +501,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
    // std::cout << "FR " << r.substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
 
-    std::vector<vec3f> black_hole_pos{{-25.1,0,0}, {25.1, 0, 0}};
+    std::vector<vec3f> black_hole_pos{{-15.1,0,0}, {15.1, 0, 0}};
     std::vector<float> black_hole_m{0.25, 0.25};
 
     //std::vector<vec3f> black_hole_pos{{0.1,0,0}};
@@ -1558,7 +1558,7 @@ int main()
                 clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
             }
 
-            float timestep = 0.001;
+            float timestep = 0.01;
 
             cl::args a1;
             a1.push_back(bssnok_datas[which_data]);
