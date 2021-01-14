@@ -49,240 +49,6 @@ struct intermediate_bssnok_data
     cl_float Yij[6];
 };
 
-#if 1
-bssnok_data get_conditions(vec3f pos, vec3f centre, float scale)
-{
-    tensor<float, 3, 3> kronecker;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            if(i == j)
-                kronecker.idx(i, j) = 1;
-            else
-                kronecker.idx(i, j) = 0;
-        }
-    }
-
-    auto interpolating_polynomial = [](float x)
-    {
-        ///https://www.wolframalpha.com/input/?i=InterpolatingPolynomial%5B%7B%7B%7B0%7D%2C+0%2C+0%2C+0%7D%2C+%7B%7B1%7D%2C+1%2C+0%2C+0%7D%7D%2C+%7Bx%7D%5D
-
-        ///(1 + (-3 + 6 (-1 + x)) (-1 + x)) x^3
-
-        return (1 + (-3 + 6 * (-1 + x)) * (-1 + x)) * x * x * x;
-    };
-
-    ///I could fix this by improving the dual library to allow for algebraic substitution
-    float BL_conformal = 1;
-
-    float r = (pos - centre).length() * scale;
-
-    if(r < 0.01)
-        r = 0.01;
-
-    //value vr("r");
-
-    std::vector<float> black_hole_r{0};
-    std::vector<float> black_hole_m{1};
-
-    ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
-    ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is
-    for(int i=0; i < (int)black_hole_r.size(); i++)
-    {
-        float Mi = black_hole_m[i];
-        float ri = black_hole_r[i];
-
-        BL_conformal = BL_conformal + Mi / (2 * fabs(r - ri));
-    }
-
-    auto f_r = [&](float r)
-    {
-        float r_max = 0.8;
-        float r_min = 0.2;
-
-        if(r <= r_min)
-            return 0.f;
-
-        if(r >= r_max)
-            return 1.f;
-
-        float r_scaled = (r - r_min) / (r_max - r_min);
-
-        return interpolating_polynomial(r_scaled);
-    };
-
-    ///todo: Stuff
-    ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 5.17
-    tensor<float, 3, 3> yij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            yij.idx(i, j) = pow(BL_conformal, 4) * kronecker.idx(i, j);
-
-            if(i == j)
-            {
-                yij.idx(i, j) = f_r(r) * yij.idx(i, j) + (1 - f_r(r)) * 99999;
-            }
-            else
-            {
-                yij.idx(i, j) = f_r(r) * yij.idx(i, j);
-            }
-        }
-    }
-    ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
-    float Y = yij.det();
-
-    ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses pre 3.65
-    float conformal_factor = (1/12.f) * log(Y);
-
-    tensor<float, 3, 3> cyij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            cyij.idx(i, j) = exp(-4 * conformal_factor) * yij.idx(i, j);
-        }
-    }
-
-    ///determinant of cyij is 1
-    ///
-    {
-        float cY = cyij.det();
-        //float real_value = cY.get_constant();
-        float real_value = cY;
-
-        //std::cout << "REAL " << real_value << std::endl;
-    }
-
-    float real_conformal = conformal_factor;
-
-    ///so, via 3.47, Kij = Aij + (1/3) Yij K
-    ///via 3.55, Kij = 0 for the initial conditions
-    ///therefore Aij = 0
-    ///cAij = exp(-4 phi) Aij
-    ///therefore cAij = 0?
-
-    ///no, none of this is right, they're talking about two separate variables
-    ///once we spatially vary the conformal factor, the metric is no longer globally flat, so there are
-    ///christoffal symbols
-    tensor<float, 3, 3> cAij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            cAij.idx(i, j) = 0;
-        }
-    }
-
-    float X = exp(-4 * real_conformal);
-
-    std::string v1 = "x";
-    std::string v2 = "y";
-    std::string v3 = "z";
-
-    ///3.59 says the christoffel symbols are 0 in cartesian
-
-    tensor<float, 3, 3, 3> christoff;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            for(int k=0; k < 3; k++)
-            {
-                christoff.idx(i, j, k) = 0;
-            }
-        }
-    }
-
-    tensor<float, 3, 3> inverse_cYij = cyij.invert();
-    vec3f cGi = {0,0,0};
-
-    ///https://arxiv.org/pdf/gr-qc/9810065.pdf (21)
-    ///aka cy^jk cGijk
-
-    for(int i=0; i < 3; i++)
-    {
-        float sum = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            for(int k=0; k < 3; k++)
-            {
-                sum += inverse_cYij.idx(j, k) * christoff.idx(i, j, k);
-            }
-        }
-
-        cGi[i] = sum;
-    }
-
-    for(int i=0; i < 3; i++)
-    {
-        if(cGi[i] != 0)
-        {
-            std::cout << cGi[i] << std::endl;
-            std::cout << "y " << Y << std::endl;
-        }
-
-        assert(cGi[i] == 0);
-    }
-
-    /*auto iv_cYij = cyij.invert();
-
-    tensor<float, 4> cGi;
-
-    for(int i=0; i < 4; i++)
-    {
-        cGi = iv_cYij.differentiate()
-    }*/
-
-    ///Kij = Aij + (1/3) yij K, where K is trace
-    ///in the initial data, Kij = 0
-    ///Which means K = 0
-    ///which means that Aij.. is 0?
-
-    bssnok_data ret;
-
-    ret.cA0 = cAij.idx(0, 0);
-    ret.cA1 = cAij.idx(0, 1);
-    ret.cA2 = cAij.idx(0, 2);
-    ret.cA3 = cAij.idx(1, 1);
-    ret.cA4 = cAij.idx(1, 2);
-    ret.cA5 = cAij.idx(2, 2);
-
-    ret.cY0 = cyij.idx(0, 0);
-    ret.cY1 = cyij.idx(0, 1);
-    ret.cY2 = cyij.idx(0, 2);
-    ret.cY3 = cyij.idx(1, 1);
-    ret.cY4 = cyij.idx(1, 2);
-    ret.cY5 = cyij.idx(2, 2);
-
-    ret.cGi0 = cGi[0];
-    ret.cGi1 = cGi[1];
-    ret.cGi2 = cGi[2];
-
-    ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
-    ///5.17: Kij is processed with the weighting function, which strongly implies that its not just fine to ditch it
-
-    ret.K = 0;
-    ret.X = X;
-
-    ///https://arxiv.org/pdf/1404.6523.pdf section A, initial data
-    ret.gA = 1/BL_conformal;
-    ret.gB0 = 1/BL_conformal;
-    ret.gB1 = 1/BL_conformal;
-    ret.gB2 = 1/BL_conformal;
-
-    return ret;
-}
-#endif // 0
-
 template<typename T, typename U, int N, size_t M>
 inline
 tensor<T, N, N> gpu_lie_derivative_weight_arbitrary(const tensor<T, N>& B, const tensor<T, N, N>& mT, float weight, const std::array<U, M>& variables)
@@ -1695,6 +1461,8 @@ int main()
 
     int which_buffer = 0;
 
+    bool run = false;
+
     while(!win.should_close())
     {
         win.poll();
@@ -1729,7 +1497,12 @@ int main()
             if(ImGui::Button("Step"))
                 step = true;
 
+            ImGui::Checkbox("Run", &run);
+
             ImGui::End();
+
+        if(run)
+            step = true;
 
         cl::args render;
         render.push_back(bssnok_datas[which_data]);
@@ -1749,6 +1522,13 @@ int main()
             fl.push_back(intermediate);
 
             clctx.cqueue.exec("calculate_intermediate_data", fl, {size.x(), size.y(), size.z()}, {8, 8, 1});
+
+            cl::args cleaner;
+            cleaner.push_back(bssnok_datas[which_data]);
+            cleaner.push_back(intermediate);
+            cleaner.push_back(clsize);
+
+            clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
             float timestep = 0.001;
 
@@ -1771,6 +1551,13 @@ int main()
             fl3.push_back(intermediate);
 
             clctx.cqueue.exec("calculate_intermediate_data", fl3, {size.x(), size.y(), size.z()}, {8, 8, 1});
+
+            cl::args cleaner2;
+            cleaner2.push_back(bssnok_datas[which_data]);
+            cleaner2.push_back(intermediate);
+            cleaner2.push_back(clsize);
+
+            clctx.cqueue.exec("clean_data", cleaner2, {size.x(), size.y(), size.z()}, {8, 8, 1});
         }
 
         clctx.cqueue.flush();

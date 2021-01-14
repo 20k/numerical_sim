@@ -256,6 +256,40 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
     my_out->Yij[5] = init_Yij5;
 }
 
+__kernel
+void clean_data(__global struct bssnok_data* in, __global struct intermediate_bssnok_data* iin, int4 dim)
+{
+    int x = get_global_id(0);
+    int y = get_global_id(1);
+    int z = get_global_id(2);
+
+    if(x >= dim.x || y >= dim.y || z >= dim.z)
+        return;
+
+    if(x <= 1 || x >= dim.x - 2 || y <= 1 || y >= dim.y - 2 || z <= 1 || z >= dim.z - 2)
+    {
+        int xdir = 0;
+        int ydir = 0;
+        int zdir = 0;
+
+        if(x <= 1)
+            xdir = 2;
+        if(x >= dim.x - 2)
+            xdir = -2;
+        if(y <= 1)
+            ydir = 2;
+        if(y >= dim.y - 2)
+            ydir = -2;
+        if(z <= 1)
+            zdir = 2;
+        if(z >= dim.z - 2)
+            zdir = -2;
+
+        in[IDX(x, y, z)] = in[IDX(x + xdir, y + ydir, z + zdir)];
+        iin[IDX(x, y, z)] = iin[IDX(x + xdir, y + ydir, z + zdir)];
+    }
+}
+
 ///todo: need to correctly evolve boundaries
 ///todo: need to factor out the differentials
 __kernel
@@ -323,6 +357,7 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     my_out->gB2 = v.gB2 + dtgB2 * timestep;
 
 
+    #if 0
     if(z == 125 && x == 20 && y == 125)
     {
         float scalar = scalar_curvature;
@@ -350,6 +385,7 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
 
         printf("Vals: %f %f %f %f %f %f %f %f %f\n", d0, d1, d2, d3, d4, d5, d6, d7, d8);*/
     }
+    #endif // 0
 }
 
 __kernel
