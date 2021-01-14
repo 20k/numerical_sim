@@ -30,10 +30,29 @@ struct bssnok_data
     float gB2;
 };
 
+#define DIDX(x, y) data[x * 3 + y]
+
+float determinant(float data[9])
+{
+    float a11 = DIDX(0, 0);
+    float a12 = DIDX(0, 1);
+    float a13 = DIDX(0, 2);
+
+    float a21 = DIDX(1, 0);
+    float a22 = DIDX(1, 1);
+    float a23 = DIDX(1, 2);
+
+    float a31 = DIDX(2, 0);
+    float a32 = DIDX(2, 1);
+    float a33 = DIDX(2, 2);
+
+    return a11*a22*a33 + a21*a32*a13 + a31*a12*a23 - a11*a32*a23 - a31*a22*a13 - a21*a12*a33;
+}
+
 ///for matrix with a unity determininant, which is ONLY cYij
 void matrix_3x3_invert(float data[9], float out[9])
 {
-    float d = 1;
+    float d = 1/determinant(data);
 
     float a11 = data[0 * 3 + 0];
     float a12 = data[0 * 3 + 1];
@@ -240,9 +259,9 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
                     int symmetric_index2 = index_table[i][l];
                     int symmetric_index3 = index_table[i][j];
 
-                    sum += g_inv * dkYij[i * 3 + symmetric_index1];
-                    sum += g_inv * dkYij[j * 3 + symmetric_index2];
-                    sum -= g_inv * dkYij[l * 3 + symmetric_index3];
+                    sum += g_inv * dkYij[i * 6 + symmetric_index1];
+                    sum += g_inv * dkYij[j * 6 + symmetric_index2];
+                    sum -= g_inv * dkYij[l * 6 + symmetric_index3];
                 }
 
                 christoff_big[k * 3 * 3 + i * 3 + j] = 0.5 * sum;
@@ -353,16 +372,17 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
     my_out->gB2 = v.gB2 + dtgB2 * timestep;
 
 
-    if(z == 125 && x == 125 && y == 125)
+    if(z == 125 && x == 20 && y == 125)
     {
         printf("DtY %f\n", dtcYij0);
         printf("DtA %f\n", dtcAij0);
         printf("Aij0 %f\n", v.cA0);
         printf("X %f\n", v.X);
+        printf("A %f\n", v.gA);
 
-        /*float dbg = debug_val;
+        float dbg = debug_val;
 
-        printf("Debug %f\n", debug_val);*/
+        printf("Debug %f\n", debug_val);
 
         /*float d0 = debug_val0;
         float d1 = debug_val1;

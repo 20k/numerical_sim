@@ -959,10 +959,15 @@ build_eqs()
         for(int j=0; j < 3; j++)
         {
             ///https://arxiv.org/pdf/gr-qc/0511048.pdf (1)
-            //dtcYij.idx(i, j) = -2 * gA * cA.idx(i, j) + lie_cYij.idx(i, j);
+            dtcYij.idx(i, j) = -2 * gA * cA.idx(i, j) + lie_cYij.idx(i, j);
 
             ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.66
-            dtcYij.idx(i, j) = -2 * gA + lie_cYij.idx(i, j);
+            //dtcYij.idx(i, j) = -2 * gA + lie_cYij.idx(i, j);
+
+            if(i == 0 && j == 0)
+            {
+                equations.push_back({"debug_val", lie_cYij.idx(i, j)});
+            }
         }
     }
 
