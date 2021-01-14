@@ -497,12 +497,12 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
    // std::cout << "FR " << r.substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
 
-    std::vector<vec3f> black_hole_pos{{-50,0,0}, {50, 0, 0}};
+    std::vector<vec3f> black_hole_pos{{-25,0,0}, {25, 0, 0}};
     std::vector<float> black_hole_m{0.25, 0.25};
 
     ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
     ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is
-    for(int i=0; i < (int)black_hole_m.size(); i++)
+    for(int i=1; i < (int)black_hole_m.size(); i++)
     {
         float Mi = black_hole_m[i];
         vec3f ri = black_hole_pos[i];
@@ -1348,7 +1348,8 @@ int main()
     std::string argument_string = "-O3 -cl-std=CL2.2 ";
 
 
-    vec3i size = {250, 250, 250};
+    vec3i size = {200, 200, 200};
+    //vec3i size = {250, 250, 250};
     float c_at_max = 8;
     float scale = c_at_max / size.largest_elem();
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
@@ -1451,6 +1452,13 @@ int main()
 
     clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
+    cl::args initial_clean;
+    initial_clean.push_back(bssnok_datas[0]);
+    initial_clean.push_back(intermediate);
+    initial_clean.push_back(clsize);
+
+    clctx.cqueue.exec("clean_data", initial_clean, {size.x(), size.y(), size.z()}, {8, 8, 1});
+
     cl::args fl2;
     fl2.push_back(bssnok_datas[0]);
     fl2.push_back(scale);
@@ -1458,6 +1466,8 @@ int main()
     fl2.push_back(intermediate);
 
     clctx.cqueue.exec("calculate_intermediate_data", fl2, {size.x(), size.y(), size.z()}, {8, 8, 1});
+
+    clctx.cqueue.exec("clean_data", initial_clean, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
     int which_buffer = 0;
 
