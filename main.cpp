@@ -350,7 +350,7 @@ value f_r(value r)
 }
 
 inline
-std::vector<std::pair<std::string, std::string>>
+std::vector<std::pair<std::string, value>>
 get_initial_conditions_eqs(vec3f centre, float scale)
 {
     vec<3, value> pos;
@@ -555,7 +555,7 @@ get_initial_conditions_eqs(vec3f centre, float scale)
     K = 0;
     #endif // OLDFLAT
 
-    std::vector<std::pair<std::string, std::string>> equations;
+    std::vector<std::pair<std::string, value>> equations;
 
     for(int i=0; i < 6; i++)
     {
@@ -564,19 +564,19 @@ get_initial_conditions_eqs(vec3f centre, float scale)
         std::string y_name = "init_cY" + std::to_string(i);
         std::string a_name = "init_cA" + std::to_string(i);
 
-        equations.push_back({y_name, type_to_string(cyij.idx(index.x(), index.y()))});
-        equations.push_back({a_name, type_to_string(cAij.idx(index.x(), index.y()))});
+        equations.push_back({y_name, cyij.idx(index.x(), index.y())});
+        equations.push_back({a_name, cAij.idx(index.x(), index.y())});
     }
 
-    equations.push_back({"init_cGi0", type_to_string(cGi.idx(0))});
-    equations.push_back({"init_cGi1", type_to_string(cGi.idx(1))});
-    equations.push_back({"init_cGi2", type_to_string(cGi.idx(2))});
+    equations.push_back({"init_cGi0", cGi.idx(0)});
+    equations.push_back({"init_cGi1", cGi.idx(1)});
+    equations.push_back({"init_cGi2", cGi.idx(2)});
 
-    equations.push_back({"init_K", type_to_string(K)});
-    equations.push_back({"init_X", type_to_string(X)});
+    equations.push_back({"init_K", K});
+    equations.push_back({"init_X", X});
 
-    equations.push_back({"init_bl_conformal", type_to_string(BL_conformal)});
-    equations.push_back({"init_conformal_factor", type_to_string(conformal_factor)});
+    equations.push_back({"init_bl_conformal", BL_conformal});
+    equations.push_back({"init_conformal_factor", conformal_factor});
 
     /*equations.push_back({"init_gA", type_to_string(gA)});
     equations.push_back({"init_gB0", type_to_string(gB0)});
@@ -840,9 +840,11 @@ tensor<T, N, N> raise_both(const tensor<T, N, N>& mT, const tensor<T, N, N>& met
 }
 
 inline
-std::vector<std::pair<std::string, std::string>>
+std::vector<std::pair<std::string, value>>
 build_eqs()
 {
+    std::vector<std::pair<std::string, value>> equations;
+
     int index_table[3][3] = {{0, 1, 2},
                              {1, 3, 4},
                              {2, 4, 5}};
@@ -1202,8 +1204,6 @@ build_eqs()
         }
     }
 
-    std::vector<std::pair<std::string, std::string>> equations;
-
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
     for(int i=0; i < 6; i++)
@@ -1212,10 +1212,10 @@ build_eqs()
 
         vec2i idx = linear_indices[i];
 
-        equations.push_back({name, type_to_string(dtcYij.idx(idx.x(), idx.y()))});
+        equations.push_back({name, dtcYij.idx(idx.x(), idx.y())});
     }
 
-    equations.push_back({"dtX", type_to_string(dtX)});
+    equations.push_back({"dtX", dtX});
 
     for(int i=0; i < 6; i++)
     {
@@ -1223,28 +1223,28 @@ build_eqs()
 
         vec2i idx = linear_indices[i];
 
-        equations.push_back({name, type_to_string(dtcAij.idx(idx.x(), idx.y()))});
+        equations.push_back({name, dtcAij.idx(idx.x(), idx.y())});
     }
 
-    equations.push_back({"dtK", type_to_string(dtK)});
+    equations.push_back({"dtK", dtK});
 
     for(int i=0; i < 3; i++)
     {
         std::string name = "dtcGi" + std::to_string(i);
 
-        equations.push_back({name, type_to_string(dtcGi.idx(i))});
+        equations.push_back({name, dtcGi.idx(i)});
     }
 
-    equations.push_back({"dtgA", type_to_string(dtgA)});
+    equations.push_back({"dtgA", dtgA});
 
     for(int i=0; i < 3; i++)
     {
         std::string name = "dtgB" + std::to_string(i);
 
-        equations.push_back({name, type_to_string(dtgB.idx(i))});
+        equations.push_back({name, dtgB.idx(i)});
     }
 
-    equations.push_back({"scalar_curvature", type_to_string(scalar_curvature)});
+    equations.push_back({"scalar_curvature", scalar_curvature});
 
     return equations;
 }
@@ -1268,25 +1268,25 @@ int main()
 
     std::string argument_string = "-O3 -cl-std=CL2.2 ";
 
-    std::vector<std::pair<std::string, std::string>> equations = build_eqs();
+    std::vector<std::pair<std::string, value>> equations = build_eqs();
 
     vec3i size = {250, 250, 250};
     float c_at_max = 8;
     float scale = c_at_max / size.largest_elem();
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
-    std::vector<std::pair<std::string, std::string>> equations2 = get_initial_conditions_eqs(centre, scale);
+    std::vector<std::pair<std::string, value>> equations2 = get_initial_conditions_eqs(centre, scale);
 
     for(auto& i : equations)
     {
-        std::string str = "-D" + i.first + "=" + i.second + " ";
+        std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
 
         argument_string += str;
     }
 
     for(auto& i : equations2)
     {
-        std::string str = "-D" + i.first + "=" + i.second + " ";
+        std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
 
         argument_string += str;
     }

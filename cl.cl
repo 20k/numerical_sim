@@ -356,6 +356,7 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
     if(z == 125 && x == 125 && y == 125)
     {
         printf("DtY %f\n", dtcYij0);
+        printf("DtA %f\n", dtcAij0);
         printf("Aij0 %f\n", v.cA0);
         printf("X %f\n", v.X);
     }
