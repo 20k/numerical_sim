@@ -638,6 +638,36 @@ struct equation_context
     {
         values.push_back({name, v});
     }
+
+    void build(std::string& argument_string, int idx)
+    {
+        for(auto& i : values)
+        {
+            std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
+
+            argument_string += str;
+        }
+
+        if(temporaries.size() == 0)
+        {
+            argument_string += "-DTEMP_COUNT" + std::to_string(idx) + "=1 -DTEMPORARIES={0} ";
+            return;
+        }
+
+        argument_string += "-DTEMP_COUNT" + std::to_string(idx) + "=" + std::to_string(temporaries.size()) + " ";
+
+        std::string temporary_string;
+
+        for(auto& i : temporaries)
+        {
+            temporary_string += type_to_string(i.second) + ",";
+        }
+
+        if(temporary_string.size() > 0 && temporary_string.back() == ',')
+            temporary_string.pop_back();
+
+        argument_string += "-DTEMPORARIES" + std::to_string(idx) + "=" + temporary_string + " ";
+    }
 };
 
 inline
@@ -954,7 +984,6 @@ void build_intermediate(equation_context& ctx)
     tensor<value, 3> dphi;
 
     {
-
         value rx;
         value rmx;
         value ry;
@@ -1527,20 +1556,22 @@ int main()
 
     std::string argument_string = "-O3 -cl-std=CL2.2 ";
 
-    equation_context ctx;
-
-    build_eqs(ctx);
 
     vec3i size = {250, 250, 250};
     float c_at_max = 8;
     float scale = c_at_max / size.largest_elem();
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
-    get_initial_conditions_eqs(ctx, centre, scale);
+    equation_context ctx1;
+    get_initial_conditions_eqs(ctx1, centre, scale);
 
-    build_intermediate(ctx);
+    equation_context ctx2;
+    build_eqs(ctx2);
 
-    for(auto& i : ctx.values)
+    equation_context ctx3;
+    build_intermediate(ctx3);
+
+    /*for(auto& i : ctx.values)
     {
         std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
 
@@ -1556,7 +1587,11 @@ int main()
         temporary_string += type_to_string(i.second) + ",";
     }
 
-    argument_string += "-DTEMPORARIES=" + temporary_string + " ";
+    argument_string += "-DTEMPORARIES=" + temporary_string + " ";*/
+
+    ctx1.build(argument_string, 0);
+    ctx2.build(argument_string, 1);
+    ctx3.build(argument_string, 2);
 
     std::cout << "ARGS " << argument_string << std::endl;
 
