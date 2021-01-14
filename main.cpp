@@ -313,9 +313,9 @@ tensor<T, N, N> gpu_lie_derivative_weight_arbitrary(const tensor<T, N>& B, const
 ///https://arxiv.org/pdf/gr-qc/9810065.pdf
 template<typename T, int N>
 inline
-T gpu_trace(const tensor<T, N, N>& mT, const tensor<T, N, N>& metric)
+T gpu_trace(const tensor<T, N, N>& mT, const metric<T, N, N>& met)
 {
-    tensor<T, N, N> inverse = metric.invert();
+    inverse_metric<T, N, N> inverse = met.invert();
 
     T ret = 0;
 
@@ -430,9 +430,9 @@ tensor<T, N, N> gpu_lie_derivative_weight(const tensor<T, N>& B, const tensor<T,
 }
 
 ///mT symmetric?
-tensor<value, 3, 3> raise_index(const tensor<value, 3, 3>& mT, const tensor<value, 3, 3>& metric)
+tensor<value, 3, 3> raise_index(const tensor<value, 3, 3>& mT, const metric<value, 3, 3>& met)
 {
-    tensor<value, 3, 3> inverse = metric.invert();
+    inverse_metric<value, 3, 3> inverse = met.invert();
 
     tensor<value, 3, 3> ret;
 
@@ -471,9 +471,9 @@ tensor<T, N> gpu_covariant_derivative_scalar(const T& in)
 
 template<typename T, int N>
 inline
-tensor<T, N> gpu_high_covariant_derivative_scalar(const T& in, const tensor<T, N, N>& metric)
+tensor<T, N> gpu_high_covariant_derivative_scalar(const T& in, const metric<T, N, N>& met)
 {
-    tensor<T, N, N> iv_metric = metric.invert();
+    tensor<T, N, N> iv_metric = met.invert();
 
     tensor<T, N> deriv_low = gpu_covariant_derivative_scalar<T, N>(in);
 
@@ -497,9 +497,9 @@ tensor<T, N> gpu_high_covariant_derivative_scalar(const T& in, const tensor<T, N
 ///https://en.wikipedia.org/wiki/Covariant_derivative#Covariant_derivative_by_field_type
 template<typename T, int N>
 inline
-tensor<T, N, N> gpu_covariant_derivative_low_vec(const tensor<T, N>& v_in, const tensor<T, N, N>& metric)
+tensor<T, N, N> gpu_covariant_derivative_low_vec(const tensor<T, N>& v_in, const metric<T, N, N>& met)
 {
-    auto christoff = gpu_christoffel_symbols_2(metric);
+    auto christoff = gpu_christoffel_symbols_2(met);
 
     tensor<T, N, N> lac;
 
@@ -523,11 +523,11 @@ tensor<T, N, N> gpu_covariant_derivative_low_vec(const tensor<T, N>& v_in, const
 
 template<typename T, int N>
 inline
-tensor<T, N, N> gpu_high_covariant_derivative_vec(const tensor<T, N>& in, const tensor<T, N, N>& metric)
+tensor<T, N, N> gpu_high_covariant_derivative_vec(const tensor<T, N>& in, const metric<T, N, N>& met)
 {
-    tensor<T, N, N> iv_metric = metric.invert();
+    tensor<T, N, N> iv_metric = met.invert();
 
-    tensor<T, N, N> deriv_low = gpu_covariant_derivative_low_vec(in, metric);
+    tensor<T, N, N> deriv_low = gpu_covariant_derivative_low_vec(in, met);
 
     tensor<T, N, N> ret;
 
@@ -551,18 +551,18 @@ tensor<T, N, N> gpu_high_covariant_derivative_vec(const tensor<T, N>& in, const 
 
 template<typename T, int N>
 inline
-tensor<T, N, N> gpu_trace_free(const tensor<T, N, N>& mT, const tensor<T, N, N>& metric)
+tensor<T, N, N> gpu_trace_free(const tensor<T, N, N>& mT, const metric<T, N, N>& met)
 {
-    tensor<T, N, N> inverse = metric.invert();
+    tensor<T, N, N> inverse = met.invert();
 
     tensor<T, N, N> TF;
-    T t = gpu_trace(mT, metric);
+    T t = gpu_trace(mT, met);
 
     for(int i=0; i < N; i++)
     {
         for(int j=0; j < N; j++)
         {
-            TF.idx(i, j) = mT.idx(i, j) - (1/3.f) * metric.idx(i, j) * t;
+            TF.idx(i, j) = mT.idx(i, j) - (1/3.f) * met.idx(i, j) * t;
         }
     }
 
@@ -571,10 +571,10 @@ tensor<T, N, N> gpu_trace_free(const tensor<T, N, N>& mT, const tensor<T, N, N>&
 
 template<typename T, int N>
 inline
-tensor<T, N, N, N> gpu_christoffel_symbols_2(const tensor<T, N, N>& metric)
+tensor<T, N, N, N> gpu_christoffel_symbols_2(const metric<T, N, N>& met)
 {
     tensor<T, N, N, N> christoff;
-    tensor<T, N, N> inverted = metric.invert();
+    tensor<T, N, N> inverted = met.invert();
 
     for(int i=0; i < N; i++)
     {
@@ -586,9 +586,9 @@ tensor<T, N, N, N> gpu_christoffel_symbols_2(const tensor<T, N, N>& metric)
 
                 for(int m=0; m < N; m++)
                 {
-                    sum = sum + inverted.idx(i, m) * hacky_differentiate(metric.idx(m, k), l);
-                    sum = sum + inverted.idx(i, m) * hacky_differentiate(metric.idx(m, l), k);
-                    sum = sum - inverted.idx(i, m) * hacky_differentiate(metric.idx(k, l), m);
+                    sum = sum + inverted.idx(i, m) * hacky_differentiate(met.idx(m, k), l);
+                    sum = sum + inverted.idx(i, m) * hacky_differentiate(met.idx(m, l), k);
+                    sum = sum - inverted.idx(i, m) * hacky_differentiate(met.idx(k, l), m);
                 }
 
                 christoff.idx(i, k, l) = 0.5 * sum;
@@ -601,9 +601,9 @@ tensor<T, N, N, N> gpu_christoffel_symbols_2(const tensor<T, N, N>& metric)
 
 template<typename T, int N>
 inline
-tensor<T, N, N> raise_both(const tensor<T, N, N>& mT, const tensor<T, N, N>& metric)
+tensor<T, N, N> raise_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met)
 {
-    tensor<T, N, N> inverse = metric.invert();
+    tensor<T, N, N> inverse = met.invert();
 
     tensor<T, N, N> ret;
 
@@ -662,7 +662,6 @@ get_initial_conditions_eqs(vec3f centre, float scale)
     }
 
 
-
     value BL_conformal = 1;
 
     vec<3, value> vcentre = {centre.x(), centre.y(), centre.z()};
@@ -689,7 +688,7 @@ get_initial_conditions_eqs(vec3f centre, float scale)
     }
 
     ///ok so: I'm pretty sure this is correct
-    tensor<value, 3, 3> yij;
+    metric<value, 3, 3> yij;
 
     for(int i=0; i < 3; i++)
     {
@@ -718,7 +717,7 @@ get_initial_conditions_eqs(vec3f centre, float scale)
     value conformal_factor_concrete;
     conformal_factor_concrete.make_value("conformal_factor");
 
-    tensor<value, 3, 3> cyij;
+    metric<value, 3, 3> cyij;
 
     ///checked, cyij is correct
     for(int i=0; i < 3; i++)
@@ -800,7 +799,7 @@ get_initial_conditions_eqs(vec3f centre, float scale)
 
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf (21)
 
-    tensor<value, 3, 3> inverse_cyij = cyij.invert();
+    inverse_metric<value, 3, 3> inverse_cyij = cyij.invert();
 
     tensor<value, 3> cGi;
 
@@ -880,7 +879,7 @@ std::vector<std::pair<std::string, value>> build_intermediate()
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
-    tensor<value, 3, 3> cY;
+    metric<value, 3, 3> cY;
 
     cY.idx(0, 0).make_value("v.cY0"); cY.idx(0, 1).make_value("v.cY1"); cY.idx(0, 2).make_value("v.cY2");
     cY.idx(1, 0).make_value("v.cY1"); cY.idx(1, 1).make_value("v.cY3"); cY.idx(1, 2).make_value("v.cY4");
@@ -926,7 +925,7 @@ std::vector<std::pair<std::string, value>> build_intermediate()
     ///or 0.25f * log(1.f/v.X);
     value phi = X_to_phi(X);
 
-    tensor<value, 3, 3> Yij;
+    metric<value, 3, 3> Yij;
 
     for(int i=0; i < 3; i++)
     {
@@ -1022,13 +1021,13 @@ build_eqs()
                              {1, 3, 4},
                              {2, 4, 5}};
 
-    tensor<value, 3, 3> cY;
+    metric<value, 3, 3> cY;
 
     cY.idx(0, 0).make_value("v.cY0"); cY.idx(0, 1).make_value("v.cY1"); cY.idx(0, 2).make_value("v.cY2");
     cY.idx(1, 0).make_value("v.cY1"); cY.idx(1, 1).make_value("v.cY3"); cY.idx(1, 2).make_value("v.cY4");
     cY.idx(2, 0).make_value("v.cY2"); cY.idx(2, 1).make_value("v.cY4"); cY.idx(2, 2).make_value("v.cY5");
 
-    tensor<value, 3, 3> icY = cY.invert();
+    inverse_metric<value, 3, 3> icY = cY.invert();
 
     tensor<value, 3, 3> cA;
 
@@ -1246,7 +1245,7 @@ build_eqs()
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf
     ///X = exp(-4 phi)
     ///consider trying to eliminate
-    tensor<value, 3, 3> Yij;
+    metric<value, 3, 3> Yij;
 
     for(int i=0; i < 3; i++)
     {
@@ -1260,7 +1259,7 @@ build_eqs()
         }
     }
 
-    tensor<value, 3, 3> iYij = Yij.invert();
+    inverse_metric<value, 3, 3> iYij = Yij.invert();
 
     ///Aki G^kj
     tensor<value, 3, 3> mixed_cAij = raise_index(cA, cY);
