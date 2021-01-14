@@ -617,16 +617,16 @@ tensor<T, N, N> raise_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met
 
 struct equation_context
 {
-    static inline int idx = 0;
     std::vector<std::pair<std::string, value>> values;
+    std::vector<std::pair<std::string, value>> temporaries;
 
     void pin(value& v)
     {
-        std::string name = "pv" + std::to_string(idx++);
+        std::string name = "pv[" + std::to_string(temporaries.size()) + "]";
 
         value old = v;
 
-        values.push_back({name, old});
+        temporaries.push_back({name, old});
 
         value facade;
         facade.make_value(name);
@@ -1539,6 +1539,16 @@ int main()
         argument_string += str;
     }
 
+    argument_string += "-DTEMP_COUNT=" + std::to_string(ctx.temporaries.size()) + " ";
+
+    std::string temporary_string;
+
+    for(auto& i : ctx.temporaries)
+    {
+        temporary_string += type_to_string(i.second) + ",";
+    }
+
+    argument_string += "-DTEMPORARIES=" + temporary_string + " ";
 
     std::cout << "ARGS " << argument_string << std::endl;
 

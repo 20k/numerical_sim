@@ -138,6 +138,8 @@ void calculate_initial_conditions(__global struct bssnok_data* in, float scale, 
 
     struct bssnok_data* f = &in[IDX(ix, iy, iz)];
 
+    //float pv[TEMP_COUNT] = {TEMPORARIES};
+
     float x = ix;
     float y = iy;
     float z = iz;
@@ -204,6 +206,8 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
     struct bssnok_data v = in[IDX(x, y, z)];
 
     struct intermediate_bssnok_data* my_out = &out[IDX(x, y, z)];
+
+    float pv[TEMP_COUNT] = {TEMPORARIES};
 
     my_out->christoffel[0] = init_christoffel0;
     my_out->christoffel[1] = init_christoffel1;
@@ -272,6 +276,8 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
 
     struct bssnok_data v = in[IDX(x, y, z)];
     struct intermediate_bssnok_data ik = temp_in[IDX(x, y, z)];
+
+    float pv[TEMP_COUNT] = {TEMPORARIES};
 
     int index_table[3][3] = {{0, 1, 2},
                              {1, 3, 4},
@@ -382,6 +388,8 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
 
         struct bssnok_data v = in[IDX(x, y, z)];
         struct intermediate_bssnok_data ik = temp_in[IDX(x, y, z)];
+
+        float pv[TEMP_COUNT] = {TEMPORARIES};
 
         float curvature = scalar_curvature;
 
