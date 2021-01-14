@@ -257,7 +257,7 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
     if(x >= dim.x || y >= dim.y || z >= dim.z)
         return;
 
-    if(x == 0 || x == dim.x-1 || y == 0 || y == dim.y - 1 || z == 0 || z == dim.z - 1)
+    if(x <= 1 || x >= dim.x - 2 || y <= 1 || y >= dim.y - 2 || z <= 1 || z >= dim.z - 2)
         return;
 
     float3 centre = {dim.x/2, dim.y/2, dim.z/2};
@@ -312,11 +312,14 @@ void evolve(__global struct bssnok_data* in, __global struct bssnok_data* out, f
 
     if(z == 125 && x == 20 && y == 125)
     {
+        float scalar = scalar_curvature;
+
         printf("DtY %f\n", dtcYij0);
         printf("DtA %f\n", dtcAij0);
         printf("Aij0 %f\n", v.cA0);
         printf("X %f\n", v.X);
         printf("A %f\n", v.gA);
+        printf("Scalar %f\n", scalar);
 
         float dbg = debug_val;
 
@@ -537,7 +540,7 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
     if(x >= dim.x || y >= dim.y)
         return;
 
-    if(x == 0 || x == dim.x-1 || y == 0 || y == dim.y - 1)
+    if(x <= 2 || x >= dim.x - 3 || y <= 2 || y >= dim.y - 3)
         return;
 
 
@@ -547,7 +550,7 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
 
     float max_scalar = 0;
 
-    for(int z = 1; z < dim.z-1; z++)
+    for(int z = 20; z < dim.z-20; z++)
 
     //int z = dim.z/2;
     {
@@ -577,7 +580,7 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
         printf("scalar %f\n", max_scalar);
     }
 
-    max_scalar = max_scalar * 1;
+    max_scalar = max_scalar * 1000;
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 
