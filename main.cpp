@@ -45,6 +45,7 @@ struct intermediate_bssnok_data
     cl_float digA[6];
     cl_float digB[3*3];
     cl_float phi;
+    cl_float dphi[3];
     cl_float Yij[6];
 };
 
@@ -894,8 +895,13 @@ std::vector<std::pair<std::string, value>> build_intermediate()
         }
     }
 
+    auto X_to_phi = [](value X)
+    {
+        return -0.25f * log(X);
+    };
+
     ///or 0.25f * log(1.f/v.X);
-    value phi = -0.25f * log(X);
+    value phi = X_to_phi(X);
 
     tensor<value, 3, 3> Yij;
 
@@ -906,6 +912,40 @@ std::vector<std::pair<std::string, value>> build_intermediate()
             Yij.idx(i, j) = cY.idx(i, j) / X;
         }
     }
+
+
+    {
+
+        value rx;
+        value rmx;
+        value ry;
+        value rmy;
+        value rz;
+        value rmz;
+
+        rx.make_value("in[IDX(x+1,y,z)].X");
+        rmx.make_value("in[IDX(x-1,y,z)].X");
+        ry.make_value("in[IDX(x,y+1,z)].X");
+        rmy.make_value("in[IDX(x,y-1,z)].X");
+        rz.make_value("in[IDX(x,y,z+1)].X");
+        rmz.make_value("in[IDX(x,y,z-1)].X");
+
+        value px = X_to_phi(rx);
+        value pmx = X_to_phi(rmx);
+
+        value py = X_to_phi(ry);
+        value pmy = X_to_phi(rmy);
+
+        value pz = X_to_phi(rz);
+        value pmz = X_to_phi(rmz);
+
+        tensor<value, 3> dphi;
+
+        dphi.idx(0) = "finite_difference(" + type_to_string(px) + "," + type_to_string(pmx) + ",scale)";
+        dphi.idx(1) = "finite_difference(" + type_to_string(py) + "," + type_to_string(pmy) + ",scale)";
+        dphi.idx(2) = "finite_difference(" + type_to_string(pz) + "," + type_to_string(pmz) + ",scale)";
+    }
+
 
     for(int k=0; k < 3; k++)
     {
@@ -935,6 +975,10 @@ std::vector<std::pair<std::string, value>> build_intermediate()
     }
 
     equations.push_back({"init_phi", phi});
+
+    equations.push_back({"init_dphi0", dphi.idx(0)});
+    equations.push_back({"init_dphi1", dphi.idx(1)});
+    equations.push_back({"init_dphi2", dphi.idx(2)});
 
     for(int i=0; i < 6; i++)
     {
@@ -1093,7 +1137,7 @@ build_eqs()
         dtX = (2.f/3.f) * X * (gA * K - s1) + s2;
     }
 
-    tensor<value, 3, 3> Rij;
+    tensor<value, 3, 3> cRij;
 
     ///https://en.wikipedia.org/wiki/Ricci_curvature#Definition_via_local_coordinates_on_a_smooth_manifold
     for(int i=0; i < 3; i++)
@@ -1124,7 +1168,7 @@ build_eqs()
                 }
             }
 
-            Rij.idx(i, j) = sum - sum2 + sum3;
+            cRij.idx(i, j) = sum - sum2 + sum3;
         }
     }
 
