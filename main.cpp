@@ -879,7 +879,7 @@ std::vector<std::pair<std::string, value>> build_intermediate()
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
-    metric<value, 3, 3> cY;
+    unit_metric<value, 3, 3> cY;
 
     cY.idx(0, 0).make_value("v.cY0"); cY.idx(0, 1).make_value("v.cY1"); cY.idx(0, 2).make_value("v.cY2");
     cY.idx(1, 0).make_value("v.cY1"); cY.idx(1, 1).make_value("v.cY3"); cY.idx(1, 2).make_value("v.cY4");
@@ -967,7 +967,6 @@ std::vector<std::pair<std::string, value>> build_intermediate()
         dphi.idx(2) = "finite_difference(" + type_to_string(pz) + "," + type_to_string(pmz) + ",scale)";
     }
 
-
     for(int k=0; k < 3; k++)
     {
         for(int i=0; i < 6; i++)
@@ -1021,7 +1020,7 @@ build_eqs()
                              {1, 3, 4},
                              {2, 4, 5}};
 
-    metric<value, 3, 3> cY;
+    unit_metric<value, 3, 3> cY;
 
     cY.idx(0, 0).make_value("v.cY0"); cY.idx(0, 1).make_value("v.cY1"); cY.idx(0, 2).make_value("v.cY2");
     cY.idx(1, 0).make_value("v.cY1"); cY.idx(1, 1).make_value("v.cY3"); cY.idx(1, 2).make_value("v.cY4");
