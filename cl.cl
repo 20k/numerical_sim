@@ -271,54 +271,104 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
 __kernel
 void clean_data(__global struct bssnok_data* in, __global struct intermediate_bssnok_data* iin, int4 dim)
 {
-    int x = get_global_id(0);
-    int y = get_global_id(1);
-    int z = get_global_id(2);
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
 
-    if(x >= dim.x || y >= dim.y || z >= dim.z)
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    if(x <= 1 || x >= dim.x - 2 || y <= 1 || y >= dim.y - 2 || z <= 1 || z >= dim.z - 2)
+    float x = ix;
+    float y = iy;
+    float z = iz;
+
+    if(ix <= 1 || ix >= dim.x - 2 || iy <= 1 || iy >= dim.y - 2 || iz <= 1 || iz >= dim.z - 2)
     {
         int xdir = 0;
         int ydir = 0;
         int zdir = 0;
 
-        if(x == 0)
+        if(ix == 0)
             xdir = 2;
-        if(x == 1)
-            xdir = 2;
+        if(ix == 1)
+            xdir = 1;
 
-        if(x == dim.x - 1)
+        if(ix == dim.x - 1)
             xdir = -2;
-        if(x == dim.x - 2)
-            xdir = -2;
+        if(ix == dim.x - 2)
+            xdir = -1;
 
-        if(y == 0)
+        if(iy == 0)
             ydir = 2;
-        if(y == 1)
-            ydir = 2;
+        if(iy == 1)
+            ydir = 1;
 
-        if(y == dim.y - 1)
+        if(iy == dim.y - 1)
             ydir = -2;
-        if(y == dim.y - 2)
-            ydir = -2;
+        if(iy == dim.y - 2)
+            ydir = -1;
 
-        if(z == 0)
+        if(iz == 0)
             zdir = 2;
-        if(z == 1)
-            zdir = 2;
+        if(iz == 1)
+            zdir = 1;
 
-        if(z == dim.z - 1)
+        if(iz == dim.z - 1)
             zdir = -2;
-        if(z == dim.z - 2)
-            zdir = -2;
+        if(iz == dim.z - 2)
+            zdir = -1;
 
-        if(xdir == 0 && ydir == 0 && zdir == 0)
+        /*if(xdir == 0 && ydir == 0 && zdir == 0)
+            return;*/
+
+        float border_distance = max(z, fabs(dim.z - 1 - z)) + max(y, fabs(dim.y - 1 - y)) + max(x, fabs(dim.x - 1 - x));
+
+        if(border_distance >= 10)
             return;
 
-        in[IDX(x, y, z)] = in[IDX(x + xdir, y + ydir, z + zdir)];
-        //iin[IDX(x, y, z)] = iin[IDX(x + xdir, y + ydir, z + zdir)];
+        float frac = 1 - (border_distance / 10);
+
+        //frac = 0;
+
+        //if(abs(xdir) == 1 || abs(ydir) == 1 || abs(zdir) == 1)
+        {
+            //in[IDX(x, y, z)] = in[IDX(x + xdir, y + ydir, z + zdir)];
+            struct bssnok_data* me = &in[IDX(ix, iy, iz)];
+
+            float conformal_factor = init_conformal_factor;
+
+            //if(abs(xdir) != 2 && abs(ydir) != 2 && abs(zdir) != 2)
+            /*me->cY0 = mix(me->cY0, init_cY0, frac);
+            me->cY1 = mix(me->cY1, init_cY1, frac);
+            me->cY2 = mix(me->cY2, init_cY2, frac);
+            me->cY3 = mix(me->cY3, init_cY3, frac);
+            me->cY4 = mix(me->cY4, init_cY4, frac);
+            me->cY5 = mix(me->cY5, init_cY5, frac);
+
+            me->cA0 = mix(me->cA0, init_cA0, frac);
+            me->cA1 = mix(me->cA1, init_cA1, frac);
+            me->cA2 = mix(me->cA2, init_cA2, frac);
+            me->cA3 = mix(me->cA3, init_cA3, frac);
+            me->cA4 = mix(me->cA4, init_cA4, frac);
+            me->cA5 = mix(me->cA5, init_cA5, frac);
+
+            me->K = mix(me->K, init_K, frac);
+            me->X = mix(me->X, init_X, frac);;
+
+            me->gA = mix(me->gA, init_gA, frac);
+            me->gB0 = mix(me->gB0, init_gB0, frac);
+            me->gB1 = mix(me->gB1, init_gB1, frac);
+            me->gB2 = mix(me->gB2, init_gB2, frac);
+
+            me->cGi0 = mix(me->cGi0, init_cGi0, frac);
+            me->cGi1 = mix(me->cGi1, init_cGi1, frac);
+            me->cGi2 = mix(me->cGi2, init_cGi2, frac);*/
+        }
+        //else
+        {
+            in[IDX(ix, iy, iz)] = in[IDX(ix + xdir, iy + ydir, iz + zdir)];
+        }
+        //iin[IDX(ix, iy, iz)] = iin[IDX(ix + xdir, iy + ydir, iz + zdir)];
     }
 }
 
@@ -390,7 +440,7 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
 
 
     #if 1
-    if(z == 125 && x == 20 && y == 125)
+    if(z == 125 && x == 2 && y == 125)
     {
         float scalar = scalar_curvature;
 
@@ -400,6 +450,7 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
         printf("X %f\n", v.X);
         printf("A %f\n", v.gA);
         printf("Scalar %f\n", scalar);
+        printf("dcGijk0 %f\n", dcGijk[0]);
 
         float dbg = debug_val;
 

@@ -1475,7 +1475,7 @@ int main()
 
     clctx.cqueue.exec("calculate_intermediate_data", fl2, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
-    clctx.cqueue.exec("clean_data", initial_clean, {size.x(), size.y(), size.z()}, {8, 8, 1});
+    //clctx.cqueue.exec("clean_data", initial_clean, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
     int which_buffer = 0;
 
@@ -1556,7 +1556,7 @@ int main()
                 cleaner.push_back(intermediate);
                 cleaner.push_back(clsize);
 
-                clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
+                //clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
             }
 
             float timestep = 0.01;
@@ -1596,7 +1596,7 @@ int main()
                 cleaner.push_back(intermediate);
                 cleaner.push_back(clsize);
 
-                clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
+                //clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
             }
         }
 
