@@ -339,7 +339,7 @@ value f_r(value r)
         return (1 + (-3 + 6 * (-1 + x)) * (-1 + x)) * x * x * x;
     };
 
-    value r_max = 0.8;
+    value r_max = 0.4;
     value r_min = 0.2;
 
     r = max(min(r, r_max), r_min);
@@ -417,14 +417,14 @@ get_initial_conditions_eqs(vec3f centre, float scale)
         {
             yij.idx(i, j) = pow(BL_conformal, 4) * kronecker.idx(i, j);
 
-            if(i == j)
+            /*if(i == j)
             {
-                yij.idx(i, j) = f_r(r) * yij.idx(i, j) + (1 - f_r(r)) * 999999;
+                yij.idx(i, j) = f_r(r) * yij.idx(i, j) + (1 - f_r(r)) * 999;
             }
             else
             {
                 yij.idx(i, j) = f_r(r) * yij.idx(i, j);
-            }
+            }*/
         }
     }
 
@@ -484,7 +484,7 @@ get_initial_conditions_eqs(vec3f centre, float scale)
         {
             Kij.idx(i, j) = nearly_Kij.idx(i, j) / -2.f;
 
-            Kij.idx(i, j) = f_r(r) * Kij.idx(i, j);
+            //Kij.idx(i, j) = f_r(r) * Kij.idx(i, j);
         }
     }
 
@@ -1559,7 +1559,7 @@ int main()
 
             clctx.cqueue.exec("calculate_intermediate_data", fl, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
-            float timestep = 0.00001;
+            float timestep = 0.001;
 
             cl::args a1;
             a1.push_back(bssnok_datas[which_data]);
