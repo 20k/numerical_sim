@@ -634,7 +634,7 @@ struct equation_context
         v = facade;
     }
 
-    void add(const std::string& name, value v)
+    void add(const std::string& name, const value& v)
     {
         values.push_back({name, v});
     }
@@ -892,6 +892,14 @@ void build_intermediate(equation_context& ctx)
     cY.idx(2, 0).make_value("v.cY2"); cY.idx(2, 1).make_value("v.cY4"); cY.idx(2, 2).make_value("v.cY5");
 
     inverse_metric<value, 3, 3> icY = cY.invert();
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            ctx.pin(icY.idx(i, j));
+        }
+    }
 
     value gA;
     gA.make_value("v.gA");
