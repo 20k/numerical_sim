@@ -1532,6 +1532,15 @@ int main()
 
         if(step)
         {
+            {
+                cl::args cleaner;
+                cleaner.push_back(bssnok_datas[which_data]);
+                cleaner.push_back(intermediate);
+                cleaner.push_back(clsize);
+
+                clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
+            }
+
             cl::args fl;
             fl.push_back(bssnok_datas[which_data]);
             fl.push_back(scale);
@@ -1540,12 +1549,14 @@ int main()
 
             clctx.cqueue.exec("calculate_intermediate_data", fl, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
-            cl::args cleaner;
-            cleaner.push_back(bssnok_datas[which_data]);
-            cleaner.push_back(intermediate);
-            cleaner.push_back(clsize);
+            {
+                cl::args cleaner;
+                cleaner.push_back(bssnok_datas[which_data]);
+                cleaner.push_back(intermediate);
+                cleaner.push_back(clsize);
 
-            clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
+                clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
+            }
 
             float timestep = 0.01;
 
@@ -1561,6 +1572,15 @@ int main()
 
             which_data = (which_data + 1) % 2;
 
+            {
+                cl::args cleaner;
+                cleaner.push_back(bssnok_datas[which_data]);
+                cleaner.push_back(intermediate);
+                cleaner.push_back(clsize);
+
+                clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
+            }
+
             cl::args fl3;
             fl3.push_back(bssnok_datas[which_data]);
             fl3.push_back(scale);
@@ -1569,12 +1589,14 @@ int main()
 
             clctx.cqueue.exec("calculate_intermediate_data", fl3, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
-            cl::args cleaner2;
-            cleaner2.push_back(bssnok_datas[which_data]);
-            cleaner2.push_back(intermediate);
-            cleaner2.push_back(clsize);
+            {
+                cl::args cleaner;
+                cleaner.push_back(bssnok_datas[which_data]);
+                cleaner.push_back(intermediate);
+                cleaner.push_back(clsize);
 
-            clctx.cqueue.exec("clean_data", cleaner2, {size.x(), size.y(), size.z()}, {8, 8, 1});
+                clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
+            }
         }
 
         clctx.cqueue.flush();
