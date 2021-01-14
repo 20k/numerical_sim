@@ -686,6 +686,7 @@ tensor<T, N, N> raise_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met
     return ret;
 }
 
+///https://cds.cern.ch/record/337814/files/9711015.pdf
 inline
 void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale)
 {
@@ -730,8 +731,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
    // std::cout << "FR " << r.substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
 
-    std::vector<vec3f> black_hole_pos{{0,0,0}};
-    std::vector<float> black_hole_m{0.5};
+    std::vector<vec3f> black_hole_pos{{-50,0,0}, {50, 0, 0}};
+    std::vector<float> black_hole_m{0.25, 0.25};
 
     ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
     ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is
@@ -744,7 +745,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
         value dist = (pos - vcentre - vri).length() * scale;
 
-        dist = max(dist, 0.01f);
+        dist = max(dist, 0.1f);
 
         BL_conformal = BL_conformal + Mi / (2 * dist);
 
