@@ -313,10 +313,8 @@ tensor<T, N, N> gpu_lie_derivative_weight_arbitrary(const tensor<T, N>& B, const
 ///https://arxiv.org/pdf/gr-qc/9810065.pdf
 template<typename T, int N>
 inline
-T gpu_trace(const tensor<T, N, N>& mT, const metric<T, N, N>& met)
+T gpu_trace(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
 {
-    inverse_metric<T, N, N> inverse = met.invert();
-
     T ret = 0;
 
     for(int i=0; i < N; i++)
@@ -430,10 +428,8 @@ tensor<T, N, N> gpu_lie_derivative_weight(const tensor<T, N>& B, const tensor<T,
 }
 
 ///mT symmetric?
-tensor<value, 3, 3> raise_index(const tensor<value, 3, 3>& mT, const metric<value, 3, 3>& met)
+tensor<value, 3, 3> raise_index(const tensor<value, 3, 3>& mT, const metric<value, 3, 3>& met, const inverse_metric<value, 3, 3>& inverse)
 {
-    inverse_metric<value, 3, 3> inverse = met.invert();
-
     tensor<value, 3, 3> ret;
 
     for(int i=0; i < 3; i++)
@@ -471,10 +467,8 @@ tensor<T, N> gpu_covariant_derivative_scalar(const T& in)
 
 template<typename T, int N>
 inline
-tensor<T, N> gpu_high_covariant_derivative_scalar(const T& in, const metric<T, N, N>& met)
+tensor<T, N> gpu_high_covariant_derivative_scalar(const T& in, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
 {
-    tensor<T, N, N> iv_metric = met.invert();
-
     tensor<T, N> deriv_low = gpu_covariant_derivative_scalar<T, N>(in);
 
     tensor<T, N> ret;
@@ -485,7 +479,7 @@ tensor<T, N> gpu_high_covariant_derivative_scalar(const T& in, const metric<T, N
 
         for(int p=0; p < N; p++)
         {
-            sum = sum + iv_metric.idx(i, p) * deriv_low.idx(p);
+            sum = sum + inverse.idx(i, p) * deriv_low.idx(p);
         }
 
         ret.idx(i) = sum;
@@ -497,9 +491,9 @@ tensor<T, N> gpu_high_covariant_derivative_scalar(const T& in, const metric<T, N
 ///https://en.wikipedia.org/wiki/Covariant_derivative#Covariant_derivative_by_field_type
 template<typename T, int N>
 inline
-tensor<T, N, N> gpu_covariant_derivative_low_vec(const tensor<T, N>& v_in, const metric<T, N, N>& met)
+tensor<T, N, N> gpu_covariant_derivative_low_vec(const tensor<T, N>& v_in, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
 {
-    auto christoff = gpu_christoffel_symbols_2(met);
+    auto christoff = gpu_christoffel_symbols_2(met, inverse);
 
     tensor<T, N, N> lac;
 
@@ -523,11 +517,9 @@ tensor<T, N, N> gpu_covariant_derivative_low_vec(const tensor<T, N>& v_in, const
 
 template<typename T, int N>
 inline
-tensor<T, N, N> gpu_high_covariant_derivative_vec(const tensor<T, N>& in, const metric<T, N, N>& met)
+tensor<T, N, N> gpu_high_covariant_derivative_vec(const tensor<T, N>& in, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
 {
-    tensor<T, N, N> iv_metric = met.invert();
-
-    tensor<T, N, N> deriv_low = gpu_covariant_derivative_low_vec(in, met);
+    tensor<T, N, N> deriv_low = gpu_covariant_derivative_low_vec(in, met, inverse);
 
     tensor<T, N, N> ret;
 
@@ -539,7 +531,7 @@ tensor<T, N, N> gpu_high_covariant_derivative_vec(const tensor<T, N>& in, const 
 
             for(int p=0; p < N; p++)
             {
-                sum = sum + iv_metric.idx(s, p) * deriv_low.idx(j, p);
+                sum = sum + inverse.idx(s, p) * deriv_low.idx(j, p);
             }
 
             ret.idx(j, s) = sum;
@@ -551,12 +543,10 @@ tensor<T, N, N> gpu_high_covariant_derivative_vec(const tensor<T, N>& in, const 
 
 template<typename T, int N>
 inline
-tensor<T, N, N> gpu_trace_free(const tensor<T, N, N>& mT, const metric<T, N, N>& met)
+tensor<T, N, N> gpu_trace_free(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
 {
-    tensor<T, N, N> inverse = met.invert();
-
     tensor<T, N, N> TF;
-    T t = gpu_trace(mT, met);
+    T t = gpu_trace(mT, met, inverse);
 
     for(int i=0; i < N; i++)
     {
@@ -571,10 +561,9 @@ tensor<T, N, N> gpu_trace_free(const tensor<T, N, N>& mT, const metric<T, N, N>&
 
 template<typename T, int N>
 inline
-tensor<T, N, N, N> gpu_christoffel_symbols_2(const metric<T, N, N>& met)
+tensor<T, N, N, N> gpu_christoffel_symbols_2(const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
 {
     tensor<T, N, N, N> christoff;
-    tensor<T, N, N> inverted = met.invert();
 
     for(int i=0; i < N; i++)
     {
@@ -586,9 +575,9 @@ tensor<T, N, N, N> gpu_christoffel_symbols_2(const metric<T, N, N>& met)
 
                 for(int m=0; m < N; m++)
                 {
-                    sum = sum + inverted.idx(i, m) * hacky_differentiate(met.idx(m, k), l);
-                    sum = sum + inverted.idx(i, m) * hacky_differentiate(met.idx(m, l), k);
-                    sum = sum - inverted.idx(i, m) * hacky_differentiate(met.idx(k, l), m);
+                    sum = sum + inverse.idx(i, m) * hacky_differentiate(met.idx(m, k), l);
+                    sum = sum + inverse.idx(i, m) * hacky_differentiate(met.idx(m, l), k);
+                    sum = sum - inverse.idx(i, m) * hacky_differentiate(met.idx(k, l), m);
                 }
 
                 christoff.idx(i, k, l) = 0.5 * sum;
@@ -601,10 +590,8 @@ tensor<T, N, N, N> gpu_christoffel_symbols_2(const metric<T, N, N>& met)
 
 template<typename T, int N>
 inline
-tensor<T, N, N> raise_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met)
+tensor<T, N, N> raise_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
 {
-    tensor<T, N, N> inverse = met.invert();
-
     tensor<T, N, N> ret;
 
     for(int a=0; a < N; a++)
@@ -628,10 +615,33 @@ tensor<T, N, N> raise_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met
     return ret;
 }
 
+struct equation_context
+{
+    static inline int idx = 0;
+    std::vector<std::pair<std::string, value>> values;
+
+    void pin(value& v)
+    {
+        std::string name = "pv" + std::to_string(idx++);
+
+        value old = v;
+
+        values.push_back({name, old});
+
+        value facade;
+        facade.make_value(name);
+
+        v = facade;
+    }
+
+    void add(const std::string& name, value v)
+    {
+        values.push_back({name, v});
+    }
+};
 
 inline
-std::vector<std::pair<std::string, value>>
-get_initial_conditions_eqs(vec3f centre, float scale)
+void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale)
 {
     vec<3, value> pos;
 
@@ -767,7 +777,7 @@ get_initial_conditions_eqs(vec3f centre, float scale)
         }
     }
 
-    value K = gpu_trace(Kij, yij);
+    value K = gpu_trace(Kij, yij, yij.invert());
 
     //std::cout << "K " << K.substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
     //std::cout << "Kij " << Kij.idx(0, 0).substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
@@ -843,19 +853,19 @@ get_initial_conditions_eqs(vec3f centre, float scale)
         std::string y_name = "init_cY" + std::to_string(i);
         std::string a_name = "init_cA" + std::to_string(i);
 
-        equations.push_back({y_name, cyij.idx(index.x(), index.y())});
-        equations.push_back({a_name, cAij.idx(index.x(), index.y())});
+        ctx.add(y_name, cyij.idx(index.x(), index.y()));
+        ctx.add(a_name, cAij.idx(index.x(), index.y()));
     }
 
-    equations.push_back({"init_cGi0", cGi.idx(0)});
-    equations.push_back({"init_cGi1", cGi.idx(1)});
-    equations.push_back({"init_cGi2", cGi.idx(2)});
+    ctx.add("init_cGi0", cGi.idx(0));
+    ctx.add("init_cGi1", cGi.idx(1));
+    ctx.add("init_cGi2", cGi.idx(2));
 
-    equations.push_back({"init_K", K});
-    equations.push_back({"init_X", X});
+    ctx.add("init_K", K);
+    ctx.add("init_X", X);
 
-    equations.push_back({"init_bl_conformal", BL_conformal});
-    equations.push_back({"init_conformal_factor", conformal_factor});
+    ctx.add("init_bl_conformal", BL_conformal);
+    ctx.add("init_conformal_factor", conformal_factor);
 
     /*equations.push_back({"init_gA", type_to_string(gA)});
     equations.push_back({"init_gB0", type_to_string(gB0)});
@@ -863,16 +873,12 @@ get_initial_conditions_eqs(vec3f centre, float scale)
     equations.push_back({"init_gB2", type_to_string(gB2)});*/
 
     //equations.push_back({"init_det", type_to_string(cyij.det())});
-
-    return equations;
 }
 
 
 inline
-std::vector<std::pair<std::string, value>> build_intermediate()
+void build_intermediate(equation_context& ctx)
 {
-    std::vector<std::pair<std::string, value>> equations;
-
     int index_table[3][3] = {{0, 1, 2},
                              {1, 3, 4},
                              {2, 4, 5}};
@@ -885,6 +891,8 @@ std::vector<std::pair<std::string, value>> build_intermediate()
     cY.idx(1, 0).make_value("v.cY1"); cY.idx(1, 1).make_value("v.cY3"); cY.idx(1, 2).make_value("v.cY4");
     cY.idx(2, 0).make_value("v.cY2"); cY.idx(2, 1).make_value("v.cY4"); cY.idx(2, 2).make_value("v.cY5");
 
+    inverse_metric<value, 3, 3> icY = cY.invert();
+
     value gA;
     gA.make_value("v.gA");
 
@@ -896,7 +904,7 @@ std::vector<std::pair<std::string, value>> build_intermediate()
     gB.idx(1).make_value("v.gB1");
     gB.idx(2).make_value("v.gB2");
 
-    tensor<value, 3, 3, 3> christoff = gpu_christoffel_symbols_2(cY);
+    tensor<value, 3, 3, 3> christoff = gpu_christoffel_symbols_2(cY, icY);
 
     tensor<value, 3> digA;
 
@@ -975,13 +983,13 @@ std::vector<std::pair<std::string, value>> build_intermediate()
 
             int linear_idx = k * 6 + i;
 
-            equations.push_back({"init_christoffel" + std::to_string(linear_idx), christoff.idx(k, idx.x(), idx.y())});
+            ctx.add("init_christoffel" + std::to_string(linear_idx), christoff.idx(k, idx.x(), idx.y()));
         }
     }
 
     for(int i=0; i < 3; i++)
     {
-        equations.push_back({"init_digA" + std::to_string(i), digA.idx(i)});
+        ctx.add("init_digA" + std::to_string(i), digA.idx(i));
     }
 
     for(int i=0; i < 3; i++)
@@ -990,32 +998,27 @@ std::vector<std::pair<std::string, value>> build_intermediate()
         {
             int linear_idx = i * 3 + j;
 
-            equations.push_back({"init_digB" + std::to_string(linear_idx), digB.idx(i, j)});
+            ctx.add("init_digB" + std::to_string(linear_idx), digB.idx(i, j));
         }
     }
 
-    equations.push_back({"init_phi", phi});
+    ctx.add("init_phi", phi);
 
-    equations.push_back({"init_dphi0", dphi.idx(0)});
-    equations.push_back({"init_dphi1", dphi.idx(1)});
-    equations.push_back({"init_dphi2", dphi.idx(2)});
+    ctx.add("init_dphi0", dphi.idx(0));
+    ctx.add("init_dphi1", dphi.idx(1));
+    ctx.add("init_dphi2", dphi.idx(2));
 
     for(int i=0; i < 6; i++)
     {
         vec2i idx = linear_indices[i];
 
-        equations.push_back({"init_Yij" + std::to_string(i), Yij.idx(idx.x(), idx.y())});
+        ctx.add("init_Yij" + std::to_string(i), Yij.idx(idx.x(), idx.y()));
     }
-
-    return equations;
 }
 
 inline
-std::vector<std::pair<std::string, value>>
-build_eqs()
+void build_eqs(equation_context& ctx)
 {
-    std::vector<std::pair<std::string, value>> equations;
-
     int index_table[3][3] = {{0, 1, 2},
                              {1, 3, 4},
                              {2, 4, 5}};
@@ -1027,6 +1030,14 @@ build_eqs()
     cY.idx(2, 0).make_value("v.cY2"); cY.idx(2, 1).make_value("v.cY4"); cY.idx(2, 2).make_value("v.cY5");
 
     inverse_metric<value, 3, 3> icY = cY.invert();
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            ctx.pin(icY.idx(i, j));
+        }
+    }
 
     tensor<value, 3, 3> cA;
 
@@ -1142,7 +1153,7 @@ build_eqs()
 
             if(i == 0 && j == 0)
             {
-                equations.push_back({"debug_val", lie_cYij.idx(i, j)});
+                ctx.add("debug_val", lie_cYij.idx(i, j));
             }
         }
     }
@@ -1203,13 +1214,13 @@ build_eqs()
     {
         for(int j=0; j < 3; j++)
         {
-            value s1 = -2 * gpu_covariant_derivative_low_vec(dphi, cY).idx(j, i);
+            value s1 = -2 * gpu_covariant_derivative_low_vec(dphi, cY, icY).idx(j, i);
 
             value s2 = 0;
 
             for(int l=0; l < 3; l++)
             {
-                s2 = s2 + gpu_high_covariant_derivative_vec(dphi, cY).idx(l, l);
+                s2 = s2 + gpu_high_covariant_derivative_vec(dphi, cY, icY).idx(l, l);
             }
 
             s2 = -2 * cY.idx(i, j) * s2;
@@ -1220,7 +1231,7 @@ build_eqs()
 
             for(int l=0; l < 3; l++)
             {
-                s4 = s4 + gpu_high_covariant_derivative_scalar(phi, cY).idx(l) * dphi.idx(l);
+                s4 = s4 + gpu_high_covariant_derivative_scalar(phi, cY, icY).idx(l) * dphi.idx(l);
             }
 
             s4 = -4 * cY.idx(i, j) * s4;
@@ -1261,7 +1272,7 @@ build_eqs()
     inverse_metric<value, 3, 3> iYij = Yij.invert();
 
     ///Aki G^kj
-    tensor<value, 3, 3> mixed_cAij = raise_index(cA, cY);
+    tensor<value, 3, 3> mixed_cAij = raise_index(cA, cY, icY);
 
     tensor<value, 3, 3> dtcAij;
 
@@ -1272,7 +1283,7 @@ build_eqs()
     {
         for(int j=0; j < 3; j++)
         {
-            value trace_free_interior_1 = -gpu_covariant_derivative_low_vec(digA, Yij).idx(j, i);
+            value trace_free_interior_1 = -gpu_covariant_derivative_low_vec(digA, Yij, iYij).idx(j, i);
             value trace_free_interior_2 = gA * Rij.idx(i, j);
 
             with_trace.idx(i, j) = trace_free_interior_1 + trace_free_interior_2;
@@ -1290,7 +1301,7 @@ build_eqs()
                 sum = cA.idx(i, k) * mixed_cAij.idx(k, j);
             }
 
-            value trace_free_part = gpu_trace_free(with_trace, Yij).idx(i, j);
+            value trace_free_part = gpu_trace_free(with_trace, Yij, iYij).idx(i, j);
 
             value p1 = X * trace_free_part;
 
@@ -1325,7 +1336,7 @@ build_eqs()
 
     //tensor<value, 3, 3> icAij = cA.invert();
 
-    tensor<value, 3, 3> icAij = raise_both(cA, cY);
+    tensor<value, 3, 3> icAij = raise_both(cA, cY, icY);
 
     value dtK = 0;
 
@@ -1336,7 +1347,7 @@ build_eqs()
         {
             for(int j=0; j < 3; j++)
             {
-                sum1 = sum1 + iYij.idx(i, j) * gpu_covariant_derivative_low_vec(digA, Yij).idx(i, j);
+                sum1 = sum1 + iYij.idx(i, j) * gpu_covariant_derivative_low_vec(digA, Yij, iYij).idx(i, j);
             }
         }
 
@@ -1454,10 +1465,10 @@ build_eqs()
 
         vec2i idx = linear_indices[i];
 
-        equations.push_back({name, dtcYij.idx(idx.x(), idx.y())});
+        ctx.add(name, dtcYij.idx(idx.x(), idx.y()));
     }
 
-    equations.push_back({"dtX", dtX});
+    ctx.add("dtX", dtX);
 
     for(int i=0; i < 6; i++)
     {
@@ -1465,30 +1476,28 @@ build_eqs()
 
         vec2i idx = linear_indices[i];
 
-        equations.push_back({name, dtcAij.idx(idx.x(), idx.y())});
+        ctx.add(name, dtcAij.idx(idx.x(), idx.y()));
     }
 
-    equations.push_back({"dtK", dtK});
+    ctx.add("dtK", dtK);
 
     for(int i=0; i < 3; i++)
     {
         std::string name = "dtcGi" + std::to_string(i);
 
-        equations.push_back({name, dtcGi.idx(i)});
+        ctx.add(name, dtcGi.idx(i));
     }
 
-    equations.push_back({"dtgA", dtgA});
+    ctx.add("dtgA", dtgA);
 
     for(int i=0; i < 3; i++)
     {
         std::string name = "dtgB" + std::to_string(i);
 
-        equations.push_back({name, dtgB.idx(i)});
+        ctx.add(name, dtgB.idx(i));
     }
 
-    equations.push_back({"scalar_curvature", scalar_curvature});
-
-    return equations;
+    ctx.add("scalar_curvature", scalar_curvature);
 }
 
 int main()
@@ -1510,37 +1519,26 @@ int main()
 
     std::string argument_string = "-O3 -cl-std=CL2.2 ";
 
-    std::vector<std::pair<std::string, value>> equations = build_eqs();
+    equation_context ctx;
+
+    build_eqs(ctx);
 
     vec3i size = {250, 250, 250};
     float c_at_max = 8;
     float scale = c_at_max / size.largest_elem();
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
-    std::vector<std::pair<std::string, value>> equations2 = get_initial_conditions_eqs(centre, scale);
+    get_initial_conditions_eqs(ctx, centre, scale);
 
-    std::vector<std::pair<std::string, value>> equations3 = build_intermediate();
+    build_intermediate(ctx);
 
-    for(auto& i : equations)
+    for(auto& i : ctx.values)
     {
         std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
 
         argument_string += str;
     }
 
-    for(auto& i : equations2)
-    {
-        std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
-
-        argument_string += str;
-    }
-
-    for(auto& i : equations3)
-    {
-        std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
-
-        argument_string += str;
-    }
 
     std::cout << "ARGS " << argument_string << std::endl;
 
