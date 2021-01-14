@@ -462,7 +462,7 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
 
         //float curvature = scalar_curvature;
 
-        float curvature = (ik.Yij[0] + ik.Yij[1] + ik.Yij[2] + ik.Yij[3] + ik.Yij[4] + ik.Yij[5]) / 1000.;
+        float curvature = (ik.Yij[0] + ik.Yij[1] + ik.Yij[2] + ik.Yij[3] + ik.Yij[4] + ik.Yij[5]) / 10000.;
         //float curvature = v.cY0 + v.cY1 + v.cY2 + v.cY3 + v.cY4 + v.cY5;
 
         float ascalar = fabs(curvature);
