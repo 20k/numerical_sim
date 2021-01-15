@@ -45,7 +45,7 @@ struct bssnok_data
 
 struct intermediate_bssnok_data
 {
-    cl_float christoffel[3 * 6];
+    cl_float dcYij[3 * 6];
     cl_float digA[6];
     cl_float digB[3*3];
     cl_float phi;
@@ -451,6 +451,26 @@ tensor<T, N, N, N> gpu_christoffel_symbols_2(equation_context& ctx, const metric
 
 template<typename T, int N>
 inline
+tensor<T, N, N, N> gpu_christoffel_symbols_1(equation_context& ctx, const metric<T, N, N>& met)
+{
+    tensor<T, N, N, N> christoff;
+
+    for(int c=0; c < N; c++)
+    {
+        for(int a=0; a < N; a++)
+        {
+            for(int b=0; b < N; b++)
+            {
+                christoff.idx(c, a, b) = 0.5f * (hacky_differentiate(ctx, met.idx(c, a), b) + hacky_differentiate(ctx, met.idx(c, b), a) - hacky_differentiate(ctx, met.idx(a, b), c));
+            }
+        }
+    }
+
+    return christoff;
+}
+
+template<typename T, int N>
+inline
 tensor<T, N, N> raise_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
 {
     tensor<T, N, N> ret;
@@ -768,7 +788,7 @@ void build_intermediate(equation_context& ctx)
     gB.idx(1).make_value("v.gB1");
     gB.idx(2).make_value("v.gB2");
 
-    tensor<value, 3, 3, 3> christoff = gpu_christoffel_symbols_2(ctx, cY, icY);
+    //tensor<value, 3, 3, 3> christoff = gpu_christoffel_symbols_2(ctx, cY, icY);
 
     tensor<value, 3> digA;
 
@@ -838,7 +858,7 @@ void build_intermediate(equation_context& ctx)
         dphi.idx(2) = "finite_difference(" + type_to_string(pz) + "," + type_to_string(pmz) + ",scale)";
     }
 
-    for(int k=0; k < 3; k++)
+    /*for(int k=0; k < 3; k++)
     {
         for(int i=0; i < 6; i++)
         {
@@ -847,6 +867,18 @@ void build_intermediate(equation_context& ctx)
             int linear_idx = k * 6 + i;
 
             ctx.add("init_christoffel" + std::to_string(linear_idx), christoff.idx(k, idx.x(), idx.y()));
+        }
+    }*/
+
+    for(int k=0; k < 3; k++)
+    {
+        for(int i=0; i < 6; i++)
+        {
+            value diff = hacky_differentiate(ctx, "v.cY" + std::to_string(i), k);
+
+            int linear_idx = k * 6 + i;
+
+            ctx.add("init_dcYij" + std::to_string(linear_idx), diff);
         }
     }
 
@@ -962,7 +994,26 @@ void build_eqs(equation_context& ctx)
     value phi;
     phi.make_value("ik.phi");
 
-    tensor<value, 3, 3, 3> cGijk;
+    tensor<value, 3, 3, 3> dcYij;
+
+    for(int k=0; k < 3; k++)
+    {
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                int symmetric_index = index_table[i][j];
+
+                int final_index = k * 6 + symmetric_index;
+
+                std::string name = "ik.dcYij[" + std::to_string(final_index) + "]";
+
+                dcYij.idx(k, i, j) = name;
+            }
+        }
+    }
+
+    /*tensor<value, 3, 3, 3> cGijk;
 
     for(int i=0; i < 3; i++)
     {
@@ -979,9 +1030,9 @@ void build_eqs(equation_context& ctx)
                 cGijk.idx(i, j, k) = name;
             }
         }
-    }
+    }*/
 
-    tensor<value, 3, 3, 3, 3> dcGijk;
+    /*tensor<value, 3, 3, 3, 3> dcGijk;
     ///coordinate derivative direction
     for(int i=0; i < 3; i++)
     {
@@ -1003,7 +1054,7 @@ void build_eqs(equation_context& ctx)
                 }
             }
         }
-    }
+    }*/
 
     tensor<value, 3, 3> lie_cYij = gpu_lie_derivative_weight(ctx, gB, cY);
 
@@ -1047,7 +1098,7 @@ void build_eqs(equation_context& ctx)
     tensor<value, 3, 3> cRij;
 
     ///https://en.wikipedia.org/wiki/Ricci_curvature#Definition_via_local_coordinates_on_a_smooth_manifold
-    for(int i=0; i < 3; i++)
+    /*for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
@@ -1076,6 +1127,65 @@ void build_eqs(equation_context& ctx)
             }
 
             cRij.idx(i, j) = sum - sum2 + sum3;
+        }
+    }*/
+
+    tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, cY);
+    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, cY, icY);
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value s1 = 0;
+
+            for(int l=0; l < 3; l++)
+            {
+                for(int m=0; m < 3; m++)
+                {
+                    s1 = s1 + -0.5f * icY.idx(l, m) * hacky_differentiate(ctx, dcYij.idx(m, i, j), l);
+                }
+            }
+
+            value s2 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                s2 = s2 + 0.5f * (cY.idx(k, i) * hacky_differentiate(ctx, cGi.idx(k), j) + cY.idx(k, j) * hacky_differentiate(ctx, cGi.idx(k), i));
+            }
+
+            value s3 = 0;
+
+            ///could factor out cGi
+            for(int k=0; k < 3; k++)
+            {
+                s3 = s3 + 0.5f * (cGi.idx(k) * christoff1.idx(i, j, k) + cGi.idx(k) * christoff1.idx(j, i, k));
+            }
+
+            value s4 = 0;
+
+            for(int m=0; m < 3; m++)
+            {
+                for(int l=0; l < 3; l++)
+                {
+                    value inner1 = 0;
+                    value inner2 = 0;
+
+                    for(int k=0; k < 3; k++)
+                    {
+                        inner1 = inner1 + 0.5f * (2 * christoff2.idx(k, l, i) * christoff1.idx(j, k, m) + 2 * christoff2.idx(k, l, j) * christoff1.idx(i, k, m));
+                    }
+
+                    for(int k=0; k < 3; k++)
+                    {
+                        inner2 = inner2 + christoff2.idx(k, i, m) * christoff1.idx(k, l, j);
+                    }
+
+                    s4 = s4 + icY.idx(l, m) * (inner1 + inner2);
+                }
+            }
+
+            cRij.idx(i, j) = s1 + s2 + s3 + s4;
         }
     }
 
@@ -1291,7 +1401,7 @@ void build_eqs(equation_context& ctx)
 
                 for(int k=0; k < 3; k++)
                 {
-                    s8 = s8 + cGijk.idx(i, j, k) * icAij.idx(j, k);
+                    s8 = s8 + christoff2.idx(i, j, k) * icAij.idx(j, k);
                 }
 
                 value s9 = 6 * icAij.idx(i, j) * hacky_differentiate(ctx, phi, j);

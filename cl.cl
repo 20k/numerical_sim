@@ -98,7 +98,8 @@ void matrix_3x3_invert(float data[9], float out[9])
 struct intermediate_bssnok_data
 {
     ///christoffel symbols are symmetric in the lower 2 indices
-    float christoffel[3 * 6];
+    //float christoffel[3 * 6];
+    float dcYij[3 * 6];
     float digA[3];
     float digB[3*3];
     float phi;
@@ -225,24 +226,24 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
 
     float pv[TEMP_COUNT1] = {TEMPORARIES1};
 
-    my_out->christoffel[0] = init_christoffel0;
-    my_out->christoffel[1] = init_christoffel1;
-    my_out->christoffel[2] = init_christoffel2;
-    my_out->christoffel[3] = init_christoffel3;
-    my_out->christoffel[4] = init_christoffel4;
-    my_out->christoffel[5] = init_christoffel5;
-    my_out->christoffel[6] = init_christoffel6;
-    my_out->christoffel[7] = init_christoffel7;
-    my_out->christoffel[8] = init_christoffel8;
-    my_out->christoffel[9] = init_christoffel9;
-    my_out->christoffel[10] = init_christoffel10;
-    my_out->christoffel[11] = init_christoffel11;
-    my_out->christoffel[12] = init_christoffel12;
-    my_out->christoffel[13] = init_christoffel13;
-    my_out->christoffel[14] = init_christoffel14;
-    my_out->christoffel[15] = init_christoffel15;
-    my_out->christoffel[16] = init_christoffel16;
-    my_out->christoffel[17] = init_christoffel17;
+    my_out->dcYij[0] = init_dcYij0;
+    my_out->dcYij[1] = init_dcYij1;
+    my_out->dcYij[2] = init_dcYij2;
+    my_out->dcYij[3] = init_dcYij3;
+    my_out->dcYij[4] = init_dcYij4;
+    my_out->dcYij[5] = init_dcYij5;
+    my_out->dcYij[6] = init_dcYij6;
+    my_out->dcYij[7] = init_dcYij7;
+    my_out->dcYij[8] = init_dcYij8;
+    my_out->dcYij[9] = init_dcYij9;
+    my_out->dcYij[10] = init_dcYij10;
+    my_out->dcYij[11] = init_dcYij11;
+    my_out->dcYij[12] = init_dcYij12;
+    my_out->dcYij[13] = init_dcYij13;
+    my_out->dcYij[14] = init_dcYij14;
+    my_out->dcYij[15] = init_dcYij15;
+    my_out->dcYij[16] = init_dcYij16;
+    my_out->dcYij[17] = init_dcYij17;
 
     my_out->digA[0] = init_digA0;
     my_out->digA[1] = init_digA1;
@@ -435,7 +436,7 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
                              {2, 4, 5}};
 
     ///conformal christoffel derivatives
-    float dcGijk[3 * 3 * 6];
+    /*float dcGijk[3 * 3 * 6];
 
     #pragma unroll
     for(int i=0; i < 3 * 6; i++)
@@ -443,7 +444,7 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
         dcGijk[0 * 3 * 6 + i] = INTERMEDIATE_DIFFX(christoffel[i]);
         dcGijk[1 * 3 * 6 + i] = INTERMEDIATE_DIFFY(christoffel[i]);
         dcGijk[2 * 3 * 6 + i] = INTERMEDIATE_DIFFZ(christoffel[i]);
-    }
+    }*/
 
     struct bssnok_data* my_out = &out[IDX(x, y, z)];
 
@@ -551,7 +552,7 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
     int z = dim.z/2;
     {
         ///conformal christoffel derivatives
-        float dcGijk[3 * 3 * 6];
+        /*float dcGijk[3 * 3 * 6];
 
         #pragma unroll
         for(int i=0; i < 3 * 6; i++)
@@ -559,7 +560,7 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
             dcGijk[0 * 3 * 6 + i] = INTERMEDIATE_DIFFX(christoffel[i]);
             dcGijk[1 * 3 * 6 + i] = INTERMEDIATE_DIFFY(christoffel[i]);
             dcGijk[2 * 3 * 6 + i] = INTERMEDIATE_DIFFZ(christoffel[i]);
-        }
+        }*/
 
         struct bssnok_data v = in[IDX(x, y, z)];
         struct intermediate_bssnok_data ik = temp_in[IDX(x, y, z)];
