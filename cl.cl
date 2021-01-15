@@ -182,6 +182,10 @@ void calculate_initial_conditions(__global struct bssnok_data* in, float scale, 
     f->gB1 = init_gB1;
     f->gB2 = init_gB2;
 
+    f->gBB0 = init_gBB0;
+    f->gBB1 = init_gBB1;
+    f->gBB2 = init_gBB2;
+
     //f->gBB0 = init_gBB0;
     //f->gBB1 = init_gBB1;
     //f->gBB2 = init_gBB2;
@@ -271,53 +275,127 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
 __kernel
 void clean_data(__global struct bssnok_data* in, __global struct intermediate_bssnok_data* iin, int4 dim)
 {
-    int x = get_global_id(0);
-    int y = get_global_id(1);
-    int z = get_global_id(2);
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
 
-    if(x >= dim.x || y >= dim.y || z >= dim.z)
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    if(x <= 1 || x >= dim.x - 2 || y <= 1 || y >= dim.y - 2 || z <= 1 || z >= dim.z - 2)
+    if(ix <= 1 || ix >= dim.x - 2 || iy <= 1 || iy >= dim.y - 2 || iz <= 1 || iz >= dim.z - 2)
     {
         int xdir = 0;
         int ydir = 0;
         int zdir = 0;
 
-        if(x == 0)
+        if(ix == 0)
             xdir = 2;
-        if(x == 1)
+        if(ix == 1)
             xdir = 2;
 
-        if(x == dim.x - 1)
+        if(ix == dim.x - 1)
             xdir = -2;
-        if(x == dim.x - 2)
+        if(ix == dim.x - 2)
             xdir = -2;
 
-        if(y == 0)
+        if(iy == 0)
             ydir = 2;
-        if(y == 1)
+        if(iy == 1)
             ydir = 2;
 
-        if(y == dim.y - 1)
+        if(iy == dim.y - 1)
             ydir = -2;
-        if(y == dim.y - 2)
+        if(iy == dim.y - 2)
             ydir = -2;
 
-        if(z == 0)
+        if(iz == 0)
             zdir = 2;
-        if(z == 1)
+        if(iz == 1)
             zdir = 2;
 
-        if(z == dim.z - 1)
+        if(iz == dim.z - 1)
             zdir = -2;
-        if(z == dim.z - 2)
+        if(iz == dim.z - 2)
             zdir = -2;
 
         if(xdir == 0 && ydir == 0 && zdir == 0)
             return;
 
-        in[IDX(x, y, z)] = in[IDX(x + xdir, y + ydir, z + zdir)];
+        /*in[IDX(x, y, z)] = in[IDX(x + xdir, y + ydir, z + zdir)];*/
+
+        struct bssnok_data v = in[IDX(ix, iy, iz)];
+        //struct bssnok_data o = v;
+        struct bssnok_data o = in[IDX(ix + xdir, iy + ydir, iz + zdir)];
+
+        float x = ix;
+        float y = iy;
+        float z = iz;
+
+        float conformal_factor = init_conformal_factor;
+
+        v.cY0 = init_cY0;
+        v.cY1 = init_cY1;
+        v.cY2 = init_cY2;
+        v.cY3 = init_cY3;
+        v.cY4 = init_cY4;
+        v.cY5 = init_cY5;
+
+        v.cA0 = init_cA0;
+        v.cA1 = init_cA1;
+        v.cA2 = init_cA2;
+        v.cA3 = init_cA3;
+        v.cA4 = init_cA4;
+        v.cA5 = init_cA5;
+
+        v.cGi0 = init_cGi0;
+        v.cGi1 = init_cGi1;
+        v.cGi2 = init_cGi2;
+
+        v.K = init_K;
+        v.X = init_X;
+
+        float bl_conformal = init_bl_conformal;
+
+        v.gA = init_gA;
+        v.gB0 = init_gB0;
+        v.gB1 = init_gB1;
+        v.gB2 = init_gB2;
+
+        float factor = 0.5;
+
+        v.cY0 = mix(v.cY0, o.cY0, factor);
+        v.cY1 = mix(v.cY1, o.cY1, factor);
+        v.cY2 = mix(v.cY2, o.cY2, factor);
+        v.cY3 = mix(v.cY3, o.cY3, factor);
+        v.cY4 = mix(v.cY4, o.cY4, factor);
+        v.cY5 = mix(v.cY5, o.cY5, factor);
+
+        v.cA0 = mix(v.cA0, o.cA0, factor);
+        v.cA1 = mix(v.cA1, o.cA1, factor);
+        v.cA2 = mix(v.cA2, o.cA2, factor);
+        v.cA3 = mix(v.cA3, o.cA3, factor);
+        v.cA4 = mix(v.cA4, o.cA4, factor);
+        v.cA5 = mix(v.cA5, o.cA5, factor);
+
+        v.cGi0 = mix(v.cGi0, o.cGi0, factor);
+        v.cGi1 = mix(v.cGi1, o.cGi1, factor);
+        v.cGi2 = mix(v.cGi2, o.cGi2, factor);
+
+        v.K = mix(v.K, o.K, factor);
+        v.X = mix(v.X, o.X, factor);
+
+        //float bl_conformal = init_bl_conformal;
+
+        v.gA = mix(v.gA, o.gA, factor);
+        v.gB0 = mix(v.gB0, o.gB0, factor);
+        v.gB1 = mix(v.gB1, o.gB1, factor);
+        v.gB2 = mix(v.gB2, o.gB2, factor);
+        v.gBB0 = mix(v.gBB0, o.gBB0, factor);
+        v.gBB1 = mix(v.gBB1, o.gBB1, factor);
+        v.gBB2 = mix(v.gBB2, o.gBB2, factor);
+
+        in[IDX(ix, iy, iz)] = v;
+
         //iin[IDX(x, y, z)] = iin[IDX(x + xdir, y + ydir, z + zdir)];
     }
 }
@@ -377,7 +455,7 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     my_out->cA5 = v.cA5 + dtcAij5 * timestep;
 
     my_out->cGi0 = v.cGi0 + dtcGi0 * timestep;
-    my_out->cGi1 = v.cGi0 + dtcGi1 * timestep;
+    my_out->cGi1 = v.cGi1 + dtcGi1 * timestep;
     my_out->cGi2 = v.cGi2 + dtcGi2 * timestep;
 
     my_out->K = v.K + dtK * timestep;
@@ -387,6 +465,10 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     my_out->gB0 = v.gB0 + dtgB0 * timestep;
     my_out->gB1 = v.gB1 + dtgB1 * timestep;
     my_out->gB2 = v.gB2 + dtgB2 * timestep;
+
+    my_out->gBB0 = v.gBB0 + dtgBB0 * timestep;
+    my_out->gBB1 = v.gBB1 + dtgBB1 * timestep;
+    my_out->gBB2 = v.gBB2 + dtgBB2 * timestep;
 
 
     #if 1

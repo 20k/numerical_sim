@@ -576,6 +576,10 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     value gB1 = 0;
     value gB2 = 0;
 
+    value gBB0 = 0;
+    value gBB1 = 0;
+    value gBB2 = 0;
+
     /*value gA = 1;
     value gB0 = 0;
     value gB1 = 0;
@@ -661,7 +665,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     #ifdef OLDFLAT
     for(int i=0; i < 3; i++)
     {
-        cGi.idx(i) = 0;
+        //cGi.idx(i) = 0;
 
         for(int j=0; j < 3; j++)
         {
@@ -695,10 +699,14 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ctx.add("init_bl_conformal", BL_conformal);
     ctx.add("init_conformal_factor", conformal_factor);
 
-    ctx.add("init_gA", type_to_string(gA));
-    ctx.add("init_gB0", type_to_string(gB0));
-    ctx.add("init_gB1", type_to_string(gB1));
-    ctx.add("init_gB2", type_to_string(gB2));
+    ctx.add("init_gA", gA);
+    ctx.add("init_gB0", gB0);
+    ctx.add("init_gB1", gB1);
+    ctx.add("init_gB2", gB2);
+
+    ctx.add("init_gBB0", gBB0);
+    ctx.add("init_gBB1", gBB1);
+    ctx.add("init_gBB2", gBB2);
 
     //equations.push_back({"init_det", type_to_string(cyij.det())});
 }
@@ -919,6 +927,11 @@ void build_eqs(equation_context& ctx)
     gB.idx(0).make_value("v.gB0");
     gB.idx(1).make_value("v.gB1");
     gB.idx(2).make_value("v.gB2");
+
+    tensor<value, 3> gBB;
+    gBB.idx(0).make_value("v.gBB0");
+    gBB.idx(1).make_value("v.gBB1");
+    gBB.idx(2).make_value("v.gBB2");
 
     value X;
     X.make_value("v.X");
@@ -1273,7 +1286,7 @@ void build_eqs(equation_context& ctx)
         dtgA = dtgA + gB.idx(i) * hacky_differentiate(ctx, gA, i) * gA;
     }
 
-    tensor<value, 3> dtgB;
+    /*tensor<value, 3> dtgB;
 
     ///https://arxiv.org/pdf/1404.6523.pdf (4)
     for(int i=0; i < 3; i++)
@@ -1281,6 +1294,22 @@ void build_eqs(equation_context& ctx)
         float N = 1.375;
 
         dtgB.idx(i) = (3.f/4.f) * cGi.idx(i) - N * gB.idx(i);
+    }*/
+
+    tensor<value, 3> dtgB;
+    tensor<value, 3> dtgBB;
+
+    ///https://arxiv.org/pdf/gr-qc/0511048.pdf (11)
+    for(int i=0; i < 3; i++)
+    {
+        dtgB.idx(i) = gBB.idx(i);
+    }
+
+    for(int i=0; i < 3; i++)
+    {
+        float N = 2;
+
+        dtgBB.idx(i) = (3.f/4.f) * dtcGi.idx(i) - N * gBB.idx(i);
     }
 
     value scalar_curvature = 0;
@@ -1331,6 +1360,13 @@ void build_eqs(equation_context& ctx)
         std::string name = "dtgB" + std::to_string(i);
 
         ctx.add(name, dtgB.idx(i));
+    }
+
+    for(int i=0; i < 3; i++)
+    {
+        std::string name = "dtgBB" + std::to_string(i);
+
+        ctx.add(name, dtgBB.idx(i));
     }
 
     ctx.add("scalar_curvature", scalar_curvature);
@@ -1475,7 +1511,7 @@ int main()
 
     clctx.cqueue.exec("calculate_intermediate_data", fl2, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
-    clctx.cqueue.exec("clean_data", initial_clean, {size.x(), size.y(), size.z()}, {8, 8, 1});
+    //clctx.cqueue.exec("clean_data", initial_clean, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
     int which_buffer = 0;
 
@@ -1556,10 +1592,10 @@ int main()
                 cleaner.push_back(intermediate);
                 cleaner.push_back(clsize);
 
-                clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
+                //clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
             }
 
-            float timestep = 0.01;
+            float timestep = 0.1;
 
             cl::args a1;
             a1.push_back(bssnok_datas[which_data]);
@@ -1596,7 +1632,7 @@ int main()
                 cleaner.push_back(intermediate);
                 cleaner.push_back(clsize);
 
-                clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
+                //clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
             }
         }
 
