@@ -1453,6 +1453,11 @@ void build_eqs(equation_context& ctx)
         dtgBB.idx(i) = (3.f/4.f) * dtcGi.idx(i) - N * gBB.idx(i);
     }
 
+    /*tensor<value, 3> dtgBB;
+    dtgBB.idx(0) = 0;
+    dtgBB.idx(1) = 0;
+    dtgBB.idx(2) = 0;*/
+
     value scalar_curvature = 0;
 
     for(int i=0; i < 3; i++)
