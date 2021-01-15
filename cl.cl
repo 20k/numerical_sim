@@ -483,8 +483,8 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     {
         float scalar = scalar_curvature;
 
-        printf("DtY %f\n", dtcYij0);
-        printf("DtA %f\n", dtcAij0);
+        printf("DtY0 %f\n", dtcYij0);
+        printf("DtA0 %f\n", dtcAij0);
         printf("Aij0 %f\n", v.cA0);
         printf("Aij1 %f\n", v.cA1);
         printf("Aij2 %f\n", v.cA2);
