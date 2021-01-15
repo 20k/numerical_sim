@@ -501,11 +501,11 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
    // std::cout << "FR " << r.substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
 
-    std::vector<vec3f> black_hole_pos{{-5.1,0,0}, {5.1, 0, 0}};
-    std::vector<float> black_hole_m{1, 1};
+    //std::vector<vec3f> black_hole_pos{{-5.1,0,0}, {5.1, 0, 0}};
+    //std::vector<float> black_hole_m{1, 1};
 
-    //std::vector<vec3f> black_hole_pos{{0.1,0,0}};
-    //std::vector<float> black_hole_m{0.25};
+    std::vector<vec3f> black_hole_pos{{0.1,0,0}};
+    std::vector<float> black_hole_m{1};
 
     ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
     ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is
@@ -769,12 +769,12 @@ void build_intermediate(equation_context& ctx)
         }
     }
 
+    ///or 0.25f * log(1.f/v.X);
     auto X_to_phi = [](value X)
     {
         return -0.25f * log(X);
     };
 
-    ///or 0.25f * log(1.f/v.X);
     value phi = X_to_phi(X);
 
     metric<value, 3, 3> Yij;

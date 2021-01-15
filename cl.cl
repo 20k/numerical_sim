@@ -272,6 +272,8 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
     my_out->Yij[5] = init_Yij5;
 }
 
+///https://cds.cern.ch/record/517706/files/0106072.pdf
+///boundary conditions
 __kernel
 void clean_data(__global struct bssnok_data* in, __global struct intermediate_bssnok_data* iin, int4 dim)
 {
@@ -361,7 +363,12 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
         v.gB1 = init_gB1;
         v.gB2 = init_gB2;
 
-        float factor = 0.5;
+        /*v.gA = 1;
+        v.gB0 = 0;
+        v.gB1 = 0;
+        v.gB2 = 0;*/
+
+        float factor = 0.25;
 
         v.cY0 = mix(v.cY0, o.cY0, factor);
         v.cY1 = mix(v.cY1, o.cY1, factor);
@@ -479,8 +486,26 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
         printf("DtY %f\n", dtcYij0);
         printf("DtA %f\n", dtcAij0);
         printf("Aij0 %f\n", v.cA0);
+        printf("Aij1 %f\n", v.cA1);
+        printf("Aij2 %f\n", v.cA2);
+        printf("Aij3 %f\n", v.cA3);
+        printf("Aij4 %f\n", v.cA4);
+        printf("Aij5 %f\n", v.cA5);
+        printf("Yij0 %f\n", v.cY0);
+        printf("Yij1 %f\n", v.cY1);
+        printf("Yij2 %f\n", v.cY2);
+        printf("Yij3 %f\n", v.cY3);
+        printf("Yij4 %f\n", v.cY4);
+        printf("Yij5 %f\n", v.cY5);
+        printf("cGi0 %f\n", v.cGi0);
+        printf("cGi1 %f\n", v.cGi1);
+        printf("cGi2 %f\n", v.cGi2);
         printf("X %f\n", v.X);
-        printf("A %f\n", v.gA);
+        printf("K %f\n", v.K);
+        printf("gA %f\n", v.gA);
+        printf("gB0 %f\n", v.gB0);
+        printf("gB1 %f\n", v.gB1);
+        printf("gB2 %f\n", v.gB2);
         printf("Scalar %f\n", scalar);
 
         float dbg = debug_val;
