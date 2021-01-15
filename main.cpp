@@ -504,6 +504,7 @@ tensor<T, N, N> raise_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met
 ///https://cds.cern.ch/record/517706/files/0106072.pdf this paper has a lot of good info on soaking up boundary conditions
 ///https://arxiv.org/pdf/1309.2960.pdf double fisheye
 ///https://arxiv.org/pdf/gr-qc/0505055.pdf better differentiation. Enforces the algebraic constraints det(cY) = 1, and subtracts the trace of Aij each frame
+///manually enforce the conditions when X=0
 inline
 void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale)
 {
@@ -548,8 +549,14 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
    // std::cout << "FR " << r.substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
 
-    std::vector<vec3f> black_hole_pos{{-5.1,0,0}, {5.1, 0, 0}};
-    std::vector<float> black_hole_m{0.25f, 0.25f};
+    auto san_black_hole_pos = [&](vec3f in)
+    {
+        return floor(in / scale) + (vec3f){0.5, 0, 0};
+    };
+
+    ///https://arxiv.org/pdf/gr-qc/0505055.pdf
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515, 0, 0}), san_black_hole_pos({1.1515, 0, 0})};
+    std::vector<float> black_hole_m{0.5f, 0.5f};
     //std::vector<float> black_hole_m{0.1f, 0.1f};
     //std::vector<float> black_hole_m{1, 1};
 
