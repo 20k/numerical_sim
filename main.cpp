@@ -9,6 +9,8 @@
 #include <geodesic/dual_value.hpp>
 #include <geodesic/numerical.hpp>
 
+//#define USE_GBB
+
 ///all conformal variables are explicitly labelled
 struct bssnok_data
 {
@@ -38,9 +40,11 @@ struct bssnok_data
     cl_float gB1;
     cl_float gB2;
 
-    /*cl_float gBB0;
+    #ifdef USE_GBB
+    cl_float gBB0;
     cl_float gBB1;
-    cl_float gBB2;*/
+    cl_float gBB2;
+    #endif // USE_GBB
 };
 
 struct intermediate_bssnok_data
@@ -497,6 +501,9 @@ tensor<T, N, N> raise_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met
 }
 
 ///https://cds.cern.ch/record/337814/files/9711015.pdf
+///https://cds.cern.ch/record/517706/files/0106072.pdf this paper has a lot of good info on soaking up boundary conditions
+///https://arxiv.org/pdf/1309.2960.pdf double fisheye
+///https://arxiv.org/pdf/gr-qc/0505055.pdf better differentiation. Enforces the algebraic constraints det(cY) = 1, and subtracts the trace of Aij each frame
 inline
 void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale)
 {
@@ -617,10 +624,6 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     value gB0 = 0;
     value gB1 = 0;
     value gB2 = 0;
-
-    /*value gBB0 = 0;
-    value gBB1 = 0;
-    value gBB2 = 0;*/
 
     /*value gA = 1;
     value gB0 = 0;
@@ -746,9 +749,15 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ctx.add("init_gB1", gB1);
     ctx.add("init_gB2", gB2);
 
-    /*ctx.add("init_gBB0", gBB0);
+    #ifdef USE_GBB
+    value gBB0 = 0;
+    value gBB1 = 0;
+    value gBB2 = 0;
+
+    ctx.add("init_gBB0", gBB0);
     ctx.add("init_gBB1", gBB1);
-    ctx.add("init_gBB2", gBB2);*/
+    ctx.add("init_gBB2", gBB2);
+    #endif // USE_GBB
 
     //equations.push_back({"init_det", type_to_string(cyij.det())});
 }
@@ -1005,10 +1014,12 @@ void build_eqs(equation_context& ctx)
     gB.idx(1).make_value("v.gB1");
     gB.idx(2).make_value("v.gB2");
 
-    /*tensor<value, 3> gBB;
+    #ifdef USE_GBB
+    tensor<value, 3> gBB;
     gBB.idx(0).make_value("v.gBB0");
     gBB.idx(1).make_value("v.gBB1");
-    gBB.idx(2).make_value("v.gBB2");*/
+    gBB.idx(2).make_value("v.gBB2");
+    #endif // USE_GBB
 
     value X;
     X.make_value("v.X");
@@ -1243,7 +1254,7 @@ void build_eqs(equation_context& ctx)
         }
     }
 
-    ctx.add("debug_val", 0);
+    ctx.add("debug_val", gpu_trace(cA, cY, icY));
 
     tensor<value, 3, 3> Rij;
 
@@ -1355,10 +1366,7 @@ void build_eqs(equation_context& ctx)
 
         for(int i=0; i < 3; i++)
         {
-            for(int j=0; j < 3; j++)
-            {
-                sum1 = sum1 + iYij.idx(i, j) * gpu_covariant_derivative_low_vec(ctx, digA, Yij, iYij).idx(i, j);
-            }
+            sum1 = sum1 + gpu_high_covariant_derivative_vec(ctx, digA, Yij, iYij).idx(i, i);
         }
 
         value sum2 = 0;
@@ -1449,6 +1457,7 @@ void build_eqs(equation_context& ctx)
 
     //ctx.add("debug_val", dtgA);
 
+    #ifndef USE_GBB
     tensor<value, 3> dtgB;
 
     ///https://arxiv.org/pdf/1404.6523.pdf (4)
@@ -1459,7 +1468,14 @@ void build_eqs(equation_context& ctx)
         dtgB.idx(i) = (3.f/4.f) * derived_cGi.idx(i) - N * gB.idx(i);
     }
 
-    /*tensor<value, 3> dtgB;
+    tensor<value, 3> dtgBB;
+    dtgBB.idx(0) = 0;
+    dtgBB.idx(1) = 0;
+    dtgBB.idx(2) = 0;
+
+    #else
+
+    tensor<value, 3> dtgB;
     tensor<value, 3> dtgBB;
 
     ///https://arxiv.org/pdf/gr-qc/0511048.pdf (11)
@@ -1473,12 +1489,9 @@ void build_eqs(equation_context& ctx)
         float N = 2;
 
         dtgBB.idx(i) = (3.f/4.f) * dtcGi.idx(i) - N * gBB.idx(i);
-    }*/
+    }
 
-    tensor<value, 3> dtgBB;
-    dtgBB.idx(0) = 0;
-    dtgBB.idx(1) = 0;
-    dtgBB.idx(2) = 0;
+    #endif // USE_GBB
 
     value scalar_curvature = 0;
 
@@ -1562,7 +1575,7 @@ int main()
 
     vec3i size = {280, 280, 280};
     //vec3i size = {250, 250, 250};
-    float c_at_max = 16;
+    float c_at_max = 24;
     float scale = c_at_max / size.largest_elem();
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
