@@ -541,11 +541,11 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
    // std::cout << "FR " << r.substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
 
-    //std::vector<vec3f> black_hole_pos{{-5.1,0,0}, {5.1, 0, 0}};
-    //std::vector<float> black_hole_m{1, 1};
+    std::vector<vec3f> black_hole_pos{{-5.1,0,0}, {5.1, 0, 0}};
+    std::vector<float> black_hole_m{1, 1};
 
-    std::vector<vec3f> black_hole_pos{{0.1,0,0}};
-    std::vector<float> black_hole_m{1};
+    //std::vector<vec3f> black_hole_pos{{0.1,0,0}};
+    //std::vector<float> black_hole_m{1};
 
     ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
     ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is
@@ -1427,7 +1427,7 @@ void build_eqs(equation_context& ctx)
 
     //ctx.add("debug_val", dtgA);
 
-    /*tensor<value, 3> dtgB;
+    tensor<value, 3> dtgB;
 
     ///https://arxiv.org/pdf/1404.6523.pdf (4)
     for(int i=0; i < 3; i++)
@@ -1435,9 +1435,9 @@ void build_eqs(equation_context& ctx)
         float N = 1.375;
 
         dtgB.idx(i) = (3.f/4.f) * cGi.idx(i) - N * gB.idx(i);
-    }*/
+    }
 
-    tensor<value, 3> dtgB;
+    /*tensor<value, 3> dtgB;
     tensor<value, 3> dtgBB;
 
     ///https://arxiv.org/pdf/gr-qc/0511048.pdf (11)
@@ -1451,12 +1451,12 @@ void build_eqs(equation_context& ctx)
         float N = 2;
 
         dtgBB.idx(i) = (3.f/4.f) * dtcGi.idx(i) - N * gBB.idx(i);
-    }
+    }*/
 
-    /*tensor<value, 3> dtgBB;
+    tensor<value, 3> dtgBB;
     dtgBB.idx(0) = 0;
     dtgBB.idx(1) = 0;
-    dtgBB.idx(2) = 0;*/
+    dtgBB.idx(2) = 0;
 
     value scalar_curvature = 0;
 
@@ -1721,7 +1721,7 @@ int main()
                 cleaner.push_back(intermediate);
                 cleaner.push_back(clsize);
 
-                clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
+                clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {128, 1, 1});
             }
 
             cl::args fl;
@@ -1730,7 +1730,7 @@ int main()
             fl.push_back(clsize);
             fl.push_back(intermediate);
 
-            clctx.cqueue.exec("calculate_intermediate_data", fl, {size.x(), size.y(), size.z()}, {8, 8, 1});
+            clctx.cqueue.exec("calculate_intermediate_data", fl, {size.x(), size.y(), size.z()}, {128, 1, 1});
 
             {
                 cl::args cleaner;
@@ -1751,7 +1751,7 @@ int main()
             a1.push_back(intermediate);
             a1.push_back(timestep);
 
-            clctx.cqueue.exec("evolve", a1, {size.x(), size.y(), size.z()}, {8, 8, 1});
+            clctx.cqueue.exec("evolve", a1, {size.x(), size.y(), size.z()}, {128, 1, 1});
 
             which_data = (which_data + 1) % 2;
 
@@ -1761,7 +1761,7 @@ int main()
                 cleaner.push_back(intermediate);
                 cleaner.push_back(clsize);
 
-                clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
+                clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {128, 1, 1});
             }
 
             cl::args fl3;
@@ -1770,7 +1770,7 @@ int main()
             fl3.push_back(clsize);
             fl3.push_back(intermediate);
 
-            clctx.cqueue.exec("calculate_intermediate_data", fl3, {size.x(), size.y(), size.z()}, {8, 8, 1});
+            clctx.cqueue.exec("calculate_intermediate_data", fl3, {size.x(), size.y(), size.z()}, {128, 1, 1});
 
             {
                 cl::args cleaner;
