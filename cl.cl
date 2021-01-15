@@ -368,7 +368,7 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
         v.gB1 = 0;
         v.gB2 = 0;*/
 
-        float factor = 0.25;
+        float factor = 0;//0.25;
 
         v.cY0 = mix(v.cY0, o.cY0, factor);
         v.cY1 = mix(v.cY1, o.cY1, factor);
@@ -568,6 +568,11 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
         float pv[TEMP_COUNT2] = {TEMPORARIES2};
 
         //float curvature = scalar_curvature;
+
+        /*if(x == 3 && y == 125)
+        {
+            printf("Ik %f\n", ik.Yij[0]);
+        }*/
 
         float curvature = (ik.Yij[0] + ik.Yij[1] + ik.Yij[2] + ik.Yij[3] + ik.Yij[4] + ik.Yij[5]) / 100000.;
         //float curvature = v.cY0 + v.cY1 + v.cY2 + v.cY3 + v.cY4 + v.cY5;

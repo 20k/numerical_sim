@@ -999,12 +999,14 @@ void build_eqs(equation_context& ctx)
             ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.66
             //dtcYij.idx(i, j) = -2 * gA + lie_cYij.idx(i, j);
 
-            if(i == 0 && j == 0)
+            /*if(i == 0 && j == 0)
             {
                 ctx.add("debug_val", lie_cYij.idx(i, j));
-            }
+            }*/
         }
     }
+
+    ctx.add("debug_val", cY.det());
 
     value dtX = 0;
 
