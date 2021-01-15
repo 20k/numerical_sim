@@ -913,6 +913,7 @@ void build_intermediate(equation_context& ctx)
     }
 }
 
+///https://arxiv.org/pdf/gr-qc/0206072.pdf on stability, they recompute cGi where it does nto hae a derivative
 inline
 void build_eqs(equation_context& ctx)
 {
@@ -947,6 +948,28 @@ void build_eqs(equation_context& ctx)
     cGi.idx(0).make_value("v.cGi0");
     cGi.idx(1).make_value("v.cGi1");
     cGi.idx(2).make_value("v.cGi2");
+
+    tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, cY);
+    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, cY, icY);
+
+    tensor<value, 3> derived_cGi;
+
+    ///https://arxiv.org/pdf/gr-qc/0206072.pdf page 4
+    ///or https://arxiv.org/pdf/gr-qc/0511048.pdf after 7 actually
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                sum = sum + icY.idx(j, k) * christoff2.idx(i, j, k);
+            }
+        }
+
+        derived_cGi.idx(i) = sum;
+    }
 
     tensor<value, 3> digA;
     digA.idx(0).make_value("ik.digA[0]");
@@ -1131,9 +1154,6 @@ void build_eqs(equation_context& ctx)
             cRij.idx(i, j) = sum - sum2 + sum3;
         }
     }*/
-
-    tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, cY);
-    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, cY, icY);
 
     for(int i=0; i < 3; i++)
     {
@@ -1743,7 +1763,7 @@ int main()
                 //clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
             }
 
-            float timestep = 0.001;
+            float timestep = 0.01;
 
             cl::args a1;
             a1.push_back(bssnok_datas[which_data]);
