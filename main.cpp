@@ -707,7 +707,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     #ifdef OLDFLAT
     for(int i=0; i < 3; i++)
     {
-        //cGi.idx(i) = 0;
+        cGi.idx(i) = 0;
 
         for(int j=0; j < 3; j++)
         {
@@ -1181,7 +1181,7 @@ void build_eqs(equation_context& ctx)
             ///could factor out cGi
             for(int k=0; k < 3; k++)
             {
-                s3 = s3 + 0.5f * (cGi.idx(k) * christoff1.idx(i, j, k) + cGi.idx(k) * christoff1.idx(j, i, k));
+                s3 = s3 + 0.5f * (derived_cGi.idx(k) * christoff1.idx(i, j, k) + derived_cGi.idx(k) * christoff1.idx(j, i, k));
             }
 
             value s4 = 0;
@@ -1410,9 +1410,9 @@ void build_eqs(equation_context& ctx)
 
             value s3 = gB.idx(j) * hacky_differentiate(ctx, cGi.idx(i), j);
 
-            value s4 = -cGi.idx(j) * hacky_differentiate(ctx, gB.idx(i), j);
+            value s4 = -derived_cGi.idx(j) * hacky_differentiate(ctx, gB.idx(i), j);
 
-            value s5 = (2.f/3.f) * cGi.idx(i) * hacky_differentiate(ctx, gB.idx(j), j);
+            value s5 = (2.f/3.f) * derived_cGi.idx(i) * hacky_differentiate(ctx, gB.idx(j), j);
 
             value s6 = -2 * icAij.idx(i, j) * hacky_differentiate(ctx, gA, j);
 
@@ -1456,7 +1456,7 @@ void build_eqs(equation_context& ctx)
     {
         float N = 1.375;
 
-        dtgB.idx(i) = (3.f/4.f) * cGi.idx(i) - N * gB.idx(i);
+        dtgB.idx(i) = (3.f/4.f) * derived_cGi.idx(i) - N * gB.idx(i);
     }
 
     /*tensor<value, 3> dtgB;

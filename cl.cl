@@ -480,7 +480,7 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
 
 
     #if 1
-    if(z == 125 && x == 2 && y == 125)
+    if(z == 125 && x == 120 && y == 125)
     {
         float scalar = scalar_curvature;
 
