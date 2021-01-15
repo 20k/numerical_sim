@@ -281,7 +281,8 @@ tensor<value, 3, 3> raise_index(const tensor<value, 3, 3>& mT, const metric<valu
 
             for(int k=0; k < 3; k++)
             {
-                sum = sum + mT.idx(i, k) * inverse.idx(k, j);
+                sum = sum + inverse.idx(i, k) * mT.idx(k, j);
+                //sum = sum + mT.idx(i, k) * inverse.idx(k, j);
             }
 
             ret.idx(i, j) = sum;
@@ -1006,7 +1007,7 @@ void build_eqs(equation_context& ctx)
         }
     }
 
-    //ctx.add("debug_val", cY.det());
+    ctx.add("debug_val", cY.det());
 
     value dtX = 0;
 
@@ -1288,7 +1289,7 @@ void build_eqs(equation_context& ctx)
         dtgA = dtgA + gB.idx(i) * hacky_differentiate(ctx, gA, i) * gA;
     }
 
-    ctx.add("debug_val", dtgA);
+    //ctx.add("debug_val", dtgA);
 
     /*tensor<value, 3> dtgB;
 
