@@ -1103,16 +1103,6 @@ void build_eqs(equation_context& ctx)
             for(int l=0; l < 3; l++)
             {
                 s4 = s4 + raise_index(dphi, cY, icY).idx(l) * dphi.idx(l);
-
-                //s4 = s4 + gpu_high_covariant_derivative_scalar(ctx, phi, cY, icY).idx(l) * dphi.idx(l);
-
-                if(l == 0 && i == 0 && j == 0)
-                {
-                    //ctx.add("debug_val", hacky_differentiate(ctx, phi, l));
-                    //ctx.add("debug_val", dphi.idx(l));
-                    ctx.add("debug_val", raise_index(dphi, cY, icY).idx(l));
-                    //ctx.add("debug_val", gpu_high_covariant_derivative_scalar(ctx, phi, cY, icY).idx(l));
-                }
             }
 
             s4 = -4 * cY.idx(i, j) * s4;
@@ -1120,6 +1110,8 @@ void build_eqs(equation_context& ctx)
             Rphiij.idx(i, j) = s1 + s2 + s3 + s4;
         }
     }
+
+    ctx.add("debug_val", 0);
 
     tensor<value, 3, 3> Rij;
 
