@@ -339,6 +339,7 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
 
         float conformal_factor = init_conformal_factor;
 
+        #if 1
         v.cY0 = init_cY0;
         v.cY1 = init_cY1;
         v.cY2 = init_cY2;
@@ -407,6 +408,32 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
         v.gBB1 = mix(v.gBB1, o.gBB1, factor);
         v.gBB2 = mix(v.gBB2, o.gBB2, factor);
         #endif // USE_GBB
+        #endif // 0
+
+        /*v.cY0 = 1;
+        v.cY1 = 0;
+        v.cY2 = 0;
+        v.cY3 = 1;
+        v.cY4 = 0;
+        v.cY5 = 1;
+
+        v.cA0 = 0;
+        v.cA1 = 0;
+        v.cA2 = 0;
+        v.cA3 = 0;
+        v.cA4 = 0;
+        v.cA5 = 0;
+
+        v.cGi0 = 0;
+        v.cGi1 = 0;
+        v.cGi2 = 0;
+
+        v.X = 1;
+        v.K = 0;
+        v.gA = 0;
+        v.gB0 = 0;
+        v.gB1 = 0;
+        v.gB2 = 0;*/
 
         in[IDX(ix, iy, iz)] = v;
 
