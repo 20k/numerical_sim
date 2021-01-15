@@ -28,9 +28,9 @@ struct bssnok_data
     float gB0;
     float gB1;
     float gB2;
-    float gBB0;
-    float gBB1;
-    float gBB2;
+    //float gBB0;
+    //float gBB1;
+    //float gBB2;
 };
 
 #define DIDX(x, y) data[x * 3 + y]
@@ -183,9 +183,9 @@ void calculate_initial_conditions(__global struct bssnok_data* in, float scale, 
     f->gB1 = init_gB1;
     f->gB2 = init_gB2;
 
-    f->gBB0 = init_gBB0;
-    f->gBB1 = init_gBB1;
-    f->gBB2 = init_gBB2;
+    //f->gBB0 = init_gBB0;
+    //f->gBB1 = init_gBB1;
+    //f->gBB2 = init_gBB2;
 
     //f->gBB0 = init_gBB0;
     //f->gBB1 = init_gBB1;
@@ -398,9 +398,9 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
         v.gB0 = mix(v.gB0, o.gB0, factor);
         v.gB1 = mix(v.gB1, o.gB1, factor);
         v.gB2 = mix(v.gB2, o.gB2, factor);
-        v.gBB0 = mix(v.gBB0, o.gBB0, factor);
-        v.gBB1 = mix(v.gBB1, o.gBB1, factor);
-        v.gBB2 = mix(v.gBB2, o.gBB2, factor);
+        //v.gBB0 = mix(v.gBB0, o.gBB0, factor);
+        //v.gBB1 = mix(v.gBB1, o.gBB1, factor);
+        //v.gBB2 = mix(v.gBB2, o.gBB2, factor);
 
         in[IDX(ix, iy, iz)] = v;
 
@@ -474,9 +474,9 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     my_out->gB1 = v.gB1 + dtgB1 * timestep;
     my_out->gB2 = v.gB2 + dtgB2 * timestep;
 
-    my_out->gBB0 = v.gBB0 + dtgBB0 * timestep;
-    my_out->gBB1 = v.gBB1 + dtgBB1 * timestep;
-    my_out->gBB2 = v.gBB2 + dtgBB2 * timestep;
+    //my_out->gBB0 = v.gBB0 + dtgBB0 * timestep;
+    //my_out->gBB1 = v.gBB1 + dtgBB1 * timestep;
+    //my_out->gBB2 = v.gBB2 + dtgBB2 * timestep;
 
 
     #if 1

@@ -38,9 +38,9 @@ struct bssnok_data
     cl_float gB1;
     cl_float gB2;
 
-    cl_float gBB0;
+    /*cl_float gBB0;
     cl_float gBB1;
-    cl_float gBB2;
+    cl_float gBB2;*/
 };
 
 struct intermediate_bssnok_data
@@ -616,9 +616,9 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     value gB1 = 0;
     value gB2 = 0;
 
-    value gBB0 = 0;
+    /*value gBB0 = 0;
     value gBB1 = 0;
-    value gBB2 = 0;
+    value gBB2 = 0;*/
 
     /*value gA = 1;
     value gB0 = 0;
@@ -744,9 +744,9 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ctx.add("init_gB1", gB1);
     ctx.add("init_gB2", gB2);
 
-    ctx.add("init_gBB0", gBB0);
+    /*ctx.add("init_gBB0", gBB0);
     ctx.add("init_gBB1", gBB1);
-    ctx.add("init_gBB2", gBB2);
+    ctx.add("init_gBB2", gBB2);*/
 
     //equations.push_back({"init_det", type_to_string(cyij.det())});
 }
@@ -980,10 +980,10 @@ void build_eqs(equation_context& ctx)
     gB.idx(1).make_value("v.gB1");
     gB.idx(2).make_value("v.gB2");
 
-    tensor<value, 3> gBB;
+    /*tensor<value, 3> gBB;
     gBB.idx(0).make_value("v.gBB0");
     gBB.idx(1).make_value("v.gBB1");
-    gBB.idx(2).make_value("v.gBB2");
+    gBB.idx(2).make_value("v.gBB2");*/
 
     value X;
     X.make_value("v.X");
@@ -1538,9 +1538,9 @@ int main()
     std::string argument_string = "-O3 -cl-std=CL2.2 ";
 
 
-    vec3i size = {250, 250, 250};
+    vec3i size = {280, 280, 280};
     //vec3i size = {250, 250, 250};
-    float c_at_max = 8;
+    float c_at_max = 32;
     float scale = c_at_max / size.largest_elem();
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
