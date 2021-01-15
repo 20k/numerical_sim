@@ -293,6 +293,25 @@ tensor<value, 3, 3> raise_index(const tensor<value, 3, 3>& mT, const metric<valu
 }
 
 
+tensor<value, 3> raise_index(const tensor<value, 3>& mT, const metric<value, 3, 3>& met, const inverse_metric<value, 3, 3>& inverse)
+{
+    tensor<value, 3> ret;
+
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            sum = sum + inverse.idx(i, j) * mT.idx(j);
+        }
+
+        ret.idx(i) = sum;
+    }
+
+    return ret;
+}
+
 template<typename T, int N>
 inline
 tensor<T, N> gpu_covariant_derivative_scalar(equation_context& ctx, const T& in)
@@ -1007,7 +1026,7 @@ void build_eqs(equation_context& ctx)
         }
     }
 
-    ctx.add("debug_val", cY.det());
+    //ctx.add("debug_val", cY.det());
 
     value dtX = 0;
 
@@ -1083,7 +1102,17 @@ void build_eqs(equation_context& ctx)
 
             for(int l=0; l < 3; l++)
             {
-                s4 = s4 + gpu_high_covariant_derivative_scalar(ctx, phi, cY, icY).idx(l) * dphi.idx(l);
+                s4 = s4 + raise_index(dphi, cY, icY).idx(l) * dphi.idx(l);
+
+                //s4 = s4 + gpu_high_covariant_derivative_scalar(ctx, phi, cY, icY).idx(l) * dphi.idx(l);
+
+                if(l == 0 && i == 0 && j == 0)
+                {
+                    //ctx.add("debug_val", hacky_differentiate(ctx, phi, l));
+                    //ctx.add("debug_val", dphi.idx(l));
+                    ctx.add("debug_val", raise_index(dphi, cY, icY).idx(l));
+                    //ctx.add("debug_val", gpu_high_covariant_derivative_scalar(ctx, phi, cY, icY).idx(l));
+                }
             }
 
             s4 = -4 * cY.idx(i, j) * s4;
@@ -1154,6 +1183,11 @@ void build_eqs(equation_context& ctx)
             }
 
             value trace_free_part = gpu_trace_free(with_trace, Yij, iYij).idx(i, j);
+
+            if(i == 0 && j == 0)
+            {
+                //ctx.add("debug_val", gpu_trace(gpu_trace_free(with_trace, Yij, iYij), Yij, iYij));
+            }
 
             value p1 = X * trace_free_part;
 
