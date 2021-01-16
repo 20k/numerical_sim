@@ -440,9 +440,13 @@ tensor<T, N, N, N> gpu_christoffel_symbols_2(equation_context& ctx, const metric
 
                 for(int m=0; m < N; m++)
                 {
-                    sum = sum + inverse.idx(i, m) * hacky_differentiate(ctx, met.idx(m, k), l);
-                    sum = sum + inverse.idx(i, m) * hacky_differentiate(ctx, met.idx(m, l), k);
-                    sum = sum - inverse.idx(i, m) * hacky_differentiate(ctx, met.idx(k, l), m);
+                    value local = 0;
+
+                    local = local + hacky_differentiate(ctx, met.idx(m, k), l);
+                    local = local + hacky_differentiate(ctx, met.idx(m, l), k);
+                    local = local - hacky_differentiate(ctx, met.idx(k, l), m);
+
+                    sum = sum + local * inverse.idx(i, m);
                 }
 
                 christoff.idx(i, k, l) = 0.5 * sum;
@@ -1321,6 +1325,8 @@ void build_eqs(equation_context& ctx)
         for(int j=0; j < 3; j++)
         {
             Rij.idx(i, j) = Rphiij.idx(i, j) + cRij.idx(i, j);
+
+            ctx.pin(Rij.idx(i, j));
         }
     }
 
@@ -1382,7 +1388,9 @@ void build_eqs(equation_context& ctx)
                 //ctx.add("debug_val", gpu_trace(gpu_trace_free(with_trace, Yij, iYij), Yij, iYij));
                 //ctx.add("debug_val", trace_free_part);
 
-                ctx.add("debug_val", gpu_covariant_derivative_low_vec(ctx, digA, Yij, iYij).idx(j, i));
+                ctx.add("debug_val", gA * Rij.idx(i, j));
+
+                //ctx.add("debug_val", gpu_covariant_derivative_low_vec(ctx, digA, Yij, iYij).idx(j, i));
             }
 
             value p1 = X * trace_free_part;
