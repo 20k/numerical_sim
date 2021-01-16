@@ -789,7 +789,7 @@ void build_constraints(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            fixed_cY.idx(i, j) = cY.idx(i, j) * det_cY_pow;
+            fixed_cY.idx(i, j) = cY.idx(i, j) / det_cY_pow;
         }
     }
 
