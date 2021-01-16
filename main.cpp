@@ -880,6 +880,8 @@ void build_intermediate(equation_context& ctx)
 
     value phi = X_to_phi(X);
 
+    ctx.pin(phi);
+
     metric<value, 3, 3> Yij;
 
     for(int i=0; i < 3; i++)
@@ -1169,7 +1171,7 @@ void build_eqs(equation_context& ctx)
         }
     }
 
-    ctx.add("debug_val", cY.det());
+    //ctx.add("debug_val", cY.det());
 
     value dtX = 0;
 
@@ -1378,6 +1380,9 @@ void build_eqs(equation_context& ctx)
             if(i == 0 && j == 0)
             {
                 //ctx.add("debug_val", gpu_trace(gpu_trace_free(with_trace, Yij, iYij), Yij, iYij));
+                //ctx.add("debug_val", trace_free_part);
+
+                ctx.add("debug_val", gpu_covariant_derivative_low_vec(ctx, digA, Yij, iYij).idx(j, i));
             }
 
             value p1 = X * trace_free_part;

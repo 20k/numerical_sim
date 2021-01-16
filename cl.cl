@@ -692,7 +692,7 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     NANCHECK(gBB2);*/
 
     #if 1
-    if(x == 125 && y == 125 && z == 125)
+    if(x == 125 && y == 100 && z == 125)
     {
         float scalar = scalar_curvature;
 
