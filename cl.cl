@@ -107,7 +107,7 @@ struct intermediate_bssnok_data
     float dcYij[3 * 6];
     float digA[3];
     float digB[3*3];
-    float phi;
+    //float phi;
     float dphi[3];
     float Yij[6];
 };
@@ -392,7 +392,7 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
     my_out->digB[7] = init_digB7;
     my_out->digB[8] = init_digB8;
 
-    my_out->phi = init_phi;
+    //my_out->phi = init_phi;
 
     my_out->dphi[0] = init_dphi0;
     my_out->dphi[1] = init_dphi1;

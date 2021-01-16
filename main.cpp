@@ -52,7 +52,7 @@ struct intermediate_bssnok_data
     cl_float dcYij[3 * 6];
     cl_float digA[6];
     cl_float digB[3*3];
-    cl_float phi;
+    //cl_float phi;
     cl_float dphi[3];
     cl_float Yij[6];
 };
@@ -592,6 +592,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         {
             float u = 0.01;
 
+            ///https://arxiv.org/pdf/gr-qc/0511048.pdf
             yij.idx(i, j) = pow(BL_conformal + u, 4) * kronecker.idx(i, j);
 
             /*if(i == j)
@@ -959,7 +960,7 @@ void build_intermediate(equation_context& ctx)
         }
     }
 
-    ctx.add("init_phi", phi);
+    //ctx.add("init_phi", phi);
 
     ctx.add("init_dphi0", dphi.idx(0));
     ctx.add("init_dphi1", dphi.idx(1));
@@ -1506,7 +1507,16 @@ void build_eqs(equation_context& ctx)
                     s8 = s8 + christoff2.idx(i, j, k) * icAij.idx(j, k);
                 }
 
-                value s9 = 6 * icAij.idx(i, j) * hacky_differentiate(ctx, phi, j);
+                value s9 = 6 * icAij.idx(i, j) * dphi.idx(j);
+
+                s9 = dual_if(isfinite(s9), [&]()
+                {
+                    return s9;
+                },
+                []()
+                {
+                    return 0;
+                });
 
                 value s10 = -(2.f/3.f) * icY.idx(i, j) * hacky_differentiate(ctx, K, j);
 
