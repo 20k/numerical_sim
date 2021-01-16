@@ -117,6 +117,20 @@ float finite_difference(float upper, float lower, float scale)
     return (upper - lower) / (2 * scale);
 }
 
+float r_to_phys(float r)
+{
+    float a = 3;
+    float r0 = 5.5f * 0.5f;
+    float s = 1.2f * 0.5f;
+
+    ///https://arxiv.org/pdf/gr-qc/0505055.pdf 5.5
+    float R_r = (s / (2 * r * tanh(r0/s))) * log(cosh((r + r0)/s)/cosh((r - r0)/s));
+
+    float r_phys = r * (a + (1 - a) * R_r);
+
+    return r_phys;
+}
+
 #define IDX(i, j, k) ((k) * dim.x * dim.y + (j) * dim.x + (i))
 
 #define DIFFX(var) finite_difference(in[IDX(x+1, y, z)].var, in[IDX(x-1, y, z)].var, scale)
@@ -135,6 +149,87 @@ float finite_difference(float upper, float lower, float scale)
 #define DIFFYI(v, i) DIFFY(v##i)
 #define DIFFZI(v, i) DIFFZ(v##i)
 
+/*float3 transform_position(int x, int y, int z, int4 dim, float scale)
+{
+    float3 centre = {dim.x/2, dim.y/2, dim.z/2};
+    float3 pos = {x, y, z};
+
+    float3 diff = pos - centre;
+
+    float coordinate_r = fast_length(diff);
+    coordinate_r = max(coordinate_r, 0.001f);
+
+    float physical_r = r_to_phys(coordinate_r);
+
+    float3 scaled_offset = diff * (physical_r / coordinate_r);
+    //float3 scaled_offset = diff * (physical_r / coordinate_r);
+
+    float3 unscaled = scaled_offset / 3;
+
+    if(z == 125)
+    {
+        printf("%f %f\n", coordinate_r, physical_r);
+    }
+
+    return unscaled;
+}*/
+
+float polynomial(float x)
+{
+    return (1 + (-3 + 6 * (-1 + x)) * (-1 + x)) * x * x * x;
+}
+
+float3 transform_position(int x, int y, int z, int4 dim, float scale)
+{
+    float3 centre = {dim.x/2, dim.y/2, dim.z/2};
+    float3 pos = {x, y, z};
+
+    float3 diff = pos - centre;
+
+    float len = length(diff);
+
+    if(len == 0)
+        return diff;
+
+    if(len <= 0.0001)
+        len = 0.0001;
+
+    float real_len = len * scale;
+
+    float r0 = 5.5f * 0.5f;
+    float bulge_amount = 3;
+    float s = 1.2f * 0.5f;
+
+    ///so, real_len goes from 0 -> edge
+    ///we want to keep that mapping, just redistribute the precision
+    ///
+
+    float edge = max(max(dim.x, dim.y), dim.z) * scale;
+
+    float r_frac = (real_len / edge);
+
+    float min_transition_r = (r0 / edge);
+    float max_transition_r = 1;
+
+    ///so, between 0 and r0 * bulge, we should have coordinate of 0 -> r
+    ///between r0 * bulge and edge, we should have coordinates of r0 * bulge -> edge
+
+    float next_rad = 0;
+
+    if(real_len < r0 * bulge_amount)
+    {
+        next_rad = (real_len/bulge_amount) / scale;
+    }
+    else
+    {
+        float frac = (real_len - r0 * bulge_amount) / (edge - r0 * bulge_amount);
+
+        next_rad = (r0 + frac * (edge - r0)) / scale;
+    }
+
+    return diff * next_rad / len;
+}
+
 __kernel
 void calculate_initial_conditions(__global struct bssnok_data* in, float scale, int4 dim)
 {
@@ -149,9 +244,11 @@ void calculate_initial_conditions(__global struct bssnok_data* in, float scale, 
 
     //float pv[TEMP_COUNT] = {TEMPORARIES};
 
-    float x = ix;
-    float y = iy;
-    float z = iz;
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
+
+    float ox = offset.x;
+    float oy = offset.y;
+    float oz = offset.z;
 
     float conformal_factor = init_conformal_factor;
 
@@ -279,7 +376,7 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
 ///https://cds.cern.ch/record/517706/files/0106072.pdf
 ///boundary conditions
 __kernel
-void clean_data(__global struct bssnok_data* in, __global struct intermediate_bssnok_data* iin, int4 dim)
+void clean_data(__global struct bssnok_data* in, __global struct intermediate_bssnok_data* iin, float scale, int4 dim)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -333,9 +430,16 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
         //struct bssnok_data o = v;
         struct bssnok_data o = in[IDX(ix + xdir, iy + ydir, iz + zdir)];
 
-        float x = ix;
+        /*float x = ix;
         float y = iy;
-        float z = iz;
+        float z = iz;*/
+
+        float3 offset = transform_position(ix, iy, iz, dim, scale);
+
+        float ox = offset.x;
+        float oy = offset.y;
+        float oz = offset.z;
+
 
         float conformal_factor = init_conformal_factor;
 

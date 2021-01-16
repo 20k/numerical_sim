@@ -510,9 +510,9 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 {
     vec<3, value> pos;
 
-    pos[0].make_value("x");
-    pos[1].make_value("y");
-    pos[2].make_value("z");
+    pos[0].make_value("ox");
+    pos[1].make_value("oy");
+    pos[2].make_value("oz");
 
     //#define DEBUG
     #ifdef DEBUG
@@ -521,7 +521,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     pos[2].make_value("125");
     #endif // DEBUG
 
-    std::array<std::string, 3> variables = {"x", "y", "z"};
+    std::array<std::string, 3> variables = {"ox", "oy", "oz"};
 
     tensor<value, 3, 3> kronecker;
 
@@ -539,9 +539,11 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
     value BL_conformal = 1;
 
-    vec<3, value> vcentre = {centre.x(), centre.y(), centre.z()};
+    //vec<3, value> vcentre = {centre.x(), centre.y(), centre.z()};
 
-    value r = (pos - vcentre).length() * scale;
+    //value r = (pos - vcentre).length() * scale;
+
+    value r = pos.length() * scale;
 
     //std::cout << "REQ " << type_to_string(r) << std::endl;
 
@@ -572,9 +574,9 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
         vec<3, value> vri = {ri.x(), ri.y(), ri.z()};
 
-        value dist = (pos - vcentre - vri).length() * scale;
+        value dist = (pos - vri).length() * scale;
 
-        dist = max(dist, 0.1f);
+        dist = max(dist, 0.01f);
 
         BL_conformal = BL_conformal + Mi / (2 * dist);
 
@@ -930,6 +932,9 @@ void build_intermediate(equation_context& ctx)
 }
 
 ///https://arxiv.org/pdf/gr-qc/0206072.pdf on stability, they recompute cGi where it does nto hae a derivative
+///todo: X
+///todo: fisheye
+///todo: better differentiation
 inline
 void build_eqs(equation_context& ctx)
 {
@@ -1560,8 +1565,31 @@ void build_eqs(equation_context& ctx)
     ctx.add("scalar_curvature", scalar_curvature);
 }
 
+float fisheye(float r)
+{
+    float a = 3;
+    float r0 = 5.5f * 0.5f;
+    float s = 1.2f * 0.5f;
+
+    float other = 0;
+
+    ///https://arxiv.org/pdf/gr-qc/0505055.pdf 5.5
+    float R_r = (s / (2 * r * tanh(r0/s))) * log(cosh((r + r0)/s)/cosh((r - r0)/s));
+
+    float r_phys = r * (a + (1 - a) * R_r);
+
+    return r_phys;
+}
+
 int main()
 {
+    for(float r = 0; r <= 100; r += 1)
+    {
+        printf("Fish %f %f\n", r, fisheye(r));
+    }
+
+    //return 0;
+
     int width = 1422;
     int height = 800;
 
@@ -1579,8 +1607,7 @@ int main()
 
     std::string argument_string = "-O3 -cl-std=CL2.2 ";
 
-
-    vec3i size = {280, 280, 280};
+    vec3i size = {260, 260, 260};
     //vec3i size = {250, 250, 250};
     float c_at_max = 24;
     float scale = c_at_max / size.largest_elem();
@@ -1687,6 +1714,7 @@ int main()
     cl::args initial_clean;
     initial_clean.push_back(bssnok_datas[0]);
     initial_clean.push_back(intermediate);
+    initial_clean.push_back(scale);
     initial_clean.push_back(clsize);
 
     clctx.cqueue.exec("clean_data", initial_clean, {size.x(), size.y(), size.z()}, {8, 8, 1});
@@ -1761,6 +1789,7 @@ int main()
                 cl::args cleaner;
                 cleaner.push_back(bssnok_datas[which_data]);
                 cleaner.push_back(intermediate);
+                cleaner.push_back(scale);
                 cleaner.push_back(clsize);
 
                 clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {128, 1, 1});
@@ -1773,15 +1802,6 @@ int main()
             fl.push_back(intermediate);
 
             clctx.cqueue.exec("calculate_intermediate_data", fl, {size.x(), size.y(), size.z()}, {128, 1, 1});
-
-            {
-                cl::args cleaner;
-                cleaner.push_back(bssnok_datas[which_data]);
-                cleaner.push_back(intermediate);
-                cleaner.push_back(clsize);
-
-                //clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
-            }
 
             float timestep = 0.01;
 
@@ -1801,6 +1821,7 @@ int main()
                 cl::args cleaner;
                 cleaner.push_back(bssnok_datas[which_data]);
                 cleaner.push_back(intermediate);
+                cleaner.push_back(scale);
                 cleaner.push_back(clsize);
 
                 clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {128, 1, 1});
@@ -1813,15 +1834,6 @@ int main()
             fl3.push_back(intermediate);
 
             clctx.cqueue.exec("calculate_intermediate_data", fl3, {size.x(), size.y(), size.z()}, {128, 1, 1});
-
-            {
-                cl::args cleaner;
-                cleaner.push_back(bssnok_datas[which_data]);
-                cleaner.push_back(intermediate);
-                cleaner.push_back(clsize);
-
-                //clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {8, 8, 1});
-            }
         }
 
         clctx.cqueue.flush();
