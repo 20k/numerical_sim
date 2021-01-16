@@ -557,13 +557,13 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     };
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, 0, 0}), san_black_hole_pos({1.1515 * 0.5f, 0, 0})};
-    std::vector<float> black_hole_m{0.5f, 0.5f};
+    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, 0, 0}), san_black_hole_pos({1.1515 * 0.5f, 0, 0})};
+    //std::vector<float> black_hole_m{0.5f, 0.5f};
     //std::vector<float> black_hole_m{0.1f, 0.1f};
     //std::vector<float> black_hole_m{1, 1};
 
-    //std::vector<vec3f> black_hole_pos{{0.1,0,0}};
-    //std::vector<float> black_hole_m{1};
+    std::vector<vec3f> black_hole_pos{{0.,0,0}};
+    std::vector<float> black_hole_m{1};
 
     ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
     ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is
@@ -576,7 +576,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
         value dist = (pos - vri).length() * scale;
 
-        dist = max(dist, 0.000001f);
+        dist = max(dist, 0.01f);
 
         BL_conformal = BL_conformal + Mi / (2 * dist);
 
