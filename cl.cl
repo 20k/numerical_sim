@@ -318,23 +318,25 @@ void enforce_algebraic_constraints(__global struct bssnok_data* in, float scale,
 
     struct bssnok_data v = in[IDX(x, y, z)];
 
+    struct bssnok_data out = in[IDX(x, y, z)];
+
     float pv[TEMP_COUNT3] = {TEMPORARIES3};
 
-    v.cY0 = fix_cY0;
-    v.cY1 = fix_cY1;
-    v.cY2 = fix_cY2;
-    v.cY3 = fix_cY3;
-    v.cY4 = fix_cY4;
-    v.cY5 = fix_cY5;
+    out.cY0 = fix_cY0;
+    out.cY1 = fix_cY1;
+    out.cY2 = fix_cY2;
+    out.cY3 = fix_cY3;
+    out.cY4 = fix_cY4;
+    out.cY5 = fix_cY5;
 
-    v.cA0 = fix_cA0;
-    v.cA1 = fix_cA1;
-    v.cA2 = fix_cA2;
-    v.cA3 = fix_cA3;
-    v.cA4 = fix_cA4;
-    v.cA5 = fix_cA5;
+    out.cA0 = fix_cA0;
+    out.cA1 = fix_cA1;
+    out.cA2 = fix_cA2;
+    out.cA3 = fix_cA3;
+    out.cA4 = fix_cA4;
+    out.cA5 = fix_cA5;
 
-    in[IDX(x, y, z)] = v;
+    in[IDX(x, y, z)] = out;
 }
 
 ///https://en.wikipedia.org/wiki/Ricci_curvature#Definition_via_local_coordinates_on_a_smooth_manifold
@@ -461,6 +463,8 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
         //struct bssnok_data o = v;
         struct bssnok_data o = in[IDX(ix + xdir, iy + ydir, iz + zdir)];
 
+        struct bssnok_data out = v;
+
         /*float x = ix;
         float y = iy;
         float z = iz;*/
@@ -475,40 +479,40 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
         float conformal_factor = init_conformal_factor;
 
         #if 1
-        v.cY0 = init_cY0;
-        v.cY1 = init_cY1;
-        v.cY2 = init_cY2;
-        v.cY3 = init_cY3;
-        v.cY4 = init_cY4;
-        v.cY5 = init_cY5;
+        out.cY0 = init_cY0;
+        out.cY1 = init_cY1;
+        out.cY2 = init_cY2;
+        out.cY3 = init_cY3;
+        out.cY4 = init_cY4;
+        out.cY5 = init_cY5;
 
-        v.cA0 = init_cA0;
-        v.cA1 = init_cA1;
-        v.cA2 = init_cA2;
-        v.cA3 = init_cA3;
-        v.cA4 = init_cA4;
-        v.cA5 = init_cA5;
+        out.cA0 = init_cA0;
+        out.cA1 = init_cA1;
+        out.cA2 = init_cA2;
+        out.cA3 = init_cA3;
+        out.cA4 = init_cA4;
+        out.cA5 = init_cA5;
 
-        v.cGi0 = init_cGi0;
-        v.cGi1 = init_cGi1;
-        v.cGi2 = init_cGi2;
+        out.cGi0 = init_cGi0;
+        out.cGi1 = init_cGi1;
+        out.cGi2 = init_cGi2;
 
-        v.K = init_K;
-        v.X = init_X;
+        out.K = init_K;
+        out.X = init_X;
 
         float bl_conformal = init_bl_conformal;
 
-        v.gA = init_gA;
-        v.gB0 = init_gB0;
-        v.gB1 = init_gB1;
-        v.gB2 = init_gB2;
+        out.gA = init_gA;
+        out.gB0 = init_gB0;
+        out.gB1 = init_gB1;
+        out.gB2 = init_gB2;
 
         /*v.gA = 1;
         v.gB0 = 0;
         v.gB1 = 0;
         v.gB2 = 0;*/
 
-        float factor = 0;//0.25;
+        /*float factor = 0;//0.25;
 
         v.cY0 = mix(v.cY0, o.cY0, factor);
         v.cY1 = mix(v.cY1, o.cY1, factor);
@@ -542,7 +546,7 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
         v.gBB0 = mix(v.gBB0, o.gBB0, factor);
         v.gBB1 = mix(v.gBB1, o.gBB1, factor);
         v.gBB2 = mix(v.gBB2, o.gBB2, factor);
-        #endif // USE_GBB
+        #endif // USE_GBB*/
         #endif // 0
 
         /*v.cY0 = 1;
@@ -570,7 +574,7 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
         v.gB1 = 0;
         v.gB2 = 0;*/
 
-        in[IDX(ix, iy, iz)] = v;
+        in[IDX(ix, iy, iz)] = out;
 
         //iin[IDX(x, y, z)] = iin[IDX(x + xdir, y + ydir, z + zdir)];
     }
@@ -650,7 +654,7 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
 
 
     #if 1
-    if(z == 125 && x == 2 && y == 125)
+    if(z == 125 && x == 125 && y == 125)
     {
         float scalar = scalar_curvature;
 
