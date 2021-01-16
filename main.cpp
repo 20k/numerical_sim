@@ -932,9 +932,10 @@ void build_intermediate(equation_context& ctx)
 }
 
 ///https://arxiv.org/pdf/gr-qc/0206072.pdf on stability, they recompute cGi where it does nto hae a derivative
-///todo: X: This is think is why we're getting nans
+///todo: X: This is think is why we're getting nans. Half done
 ///todo: fisheye - half done
 ///todo: better differentiation
+///todo: Enforce the algebraic constraints in this paper: https://arxiv.org/pdf/gr-qc/0505055.pdf. 3.21 and 3.22
 inline
 void build_eqs(equation_context& ctx)
 {
