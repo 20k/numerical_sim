@@ -9,7 +9,7 @@
 #include <geodesic/dual_value.hpp>
 #include <geodesic/numerical.hpp>
 
-//#define USE_GBB
+#define USE_GBB
 
 ///all conformal variables are explicitly labelled
 struct bssnok_data
@@ -1665,7 +1665,7 @@ int main()
 
     std::string argument_string = "-O3 -cl-std=CL2.2 ";
 
-    vec3i size = {260, 260, 260};
+    vec3i size = {250, 250, 250};
     //vec3i size = {250, 250, 250};
     float c_at_max = 24;
     float scale = c_at_max / size.largest_elem();

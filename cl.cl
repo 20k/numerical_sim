@@ -1,7 +1,7 @@
 ///https://arxiv.org/pdf/1404.6523.pdf
 ///Gauge evolution equations
 
-//#define USE_GBB
+#define USE_GBB
 
 struct bssnok_data
 {
@@ -506,6 +506,12 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
         out.gB0 = init_gB0;
         out.gB1 = init_gB1;
         out.gB2 = init_gB2;
+
+        #ifdef USE_GBB
+        out.gBB0 = init_gBB0;
+        out.gBB1 = init_gBB1;
+        out.gBB2 = init_gBB2;
+        #endif // USE_GBB
 
         /*v.gA = 1;
         v.gB0 = 0;
