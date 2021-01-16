@@ -586,6 +586,8 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
     }
 }
 
+#define NANCHECK(w) if(isnan(my_out->w)){printf("NAN " #w " %i %i %i\n", x, y, z); debug = true;}
+
 ///todo: need to correctly evolve boundaries
 ///todo: need to factor out the differentials
 __kernel
@@ -658,9 +660,39 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     my_out->gBB2 = v.gBB2 + dtgBB2 * timestep;
     #endif // USE_GBB
 
+    bool debug = false;
+
+    NANCHECK(cY0);
+    NANCHECK(cY1);
+    NANCHECK(cY2);
+    NANCHECK(cY3);
+    NANCHECK(cY4);
+    NANCHECK(cY5);
+
+    NANCHECK(cA0);
+    NANCHECK(cA1);
+    NANCHECK(cA2);
+    NANCHECK(cA3);
+    NANCHECK(cA4);
+    NANCHECK(cA5);
+
+    NANCHECK(cGi0);
+    NANCHECK(cGi1);
+    NANCHECK(cGi2);
+
+    NANCHECK(K);
+    NANCHECK(X);
+    NANCHECK(gA);
+    NANCHECK(gB0);
+    NANCHECK(gB1);
+    NANCHECK(gB2);
+
+    NANCHECK(gBB0);
+    NANCHECK(gBB1);
+    NANCHECK(gBB2);
 
     #if 1
-    if(z == 125 && x == 125 && y == 125)
+    if(debug)
     {
         float scalar = scalar_curvature;
 
