@@ -771,6 +771,46 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     //equations.push_back({"init_det", type_to_string(cyij.det())});
 }
 
+inline
+void build_constraints(equation_context& ctx)
+{
+    unit_metric<value, 3, 3> fixed_cY;
+    unit_metric<value, 3, 3> cY;
+
+    cY.idx(0, 0).make_value("v.cY0"); cY.idx(0, 1).make_value("v.cY1"); cY.idx(0, 2).make_value("v.cY2");
+    cY.idx(1, 0).make_value("v.cY1"); cY.idx(1, 1).make_value("v.cY3"); cY.idx(1, 2).make_value("v.cY4");
+    cY.idx(2, 0).make_value("v.cY2"); cY.idx(2, 1).make_value("v.cY4"); cY.idx(2, 2).make_value("v.cY5");
+
+    value det_cY_pow = pow(cY.det(), 1.f/3.f);
+
+    ctx.pin(det_cY_pow);
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            fixed_cY.idx(i, j) = cY.idx(i, j) * det_cY_pow;
+        }
+    }
+
+    tensor<value, 3, 3> cA;
+
+    cA.idx(0, 0).make_value("v.cA0"); cA.idx(0, 1).make_value("v.cA1"); cA.idx(0, 2).make_value("v.cA2");
+    cA.idx(1, 0).make_value("v.cA1"); cA.idx(1, 1).make_value("v.cA3"); cA.idx(1, 2).make_value("v.cA4");
+    cA.idx(2, 0).make_value("v.cA2"); cA.idx(2, 1).make_value("v.cA4"); cA.idx(2, 2).make_value("v.cA5");
+
+    tensor<value, 3, 3> fixed_cA = gpu_trace_free(cA, fixed_cY, fixed_cY.invert());
+
+    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
+
+    for(int i=0; i < 6; i++)
+    {
+        vec2i idx = linear_indices[i];
+
+        ctx.add("fix_cY" + std::to_string(i), fixed_cY.idx(idx.x(), idx.y()));
+        ctx.add("fix_cA" + std::to_string(i), fixed_cA.idx(idx.x(), idx.y()));
+    }
+}
 
 inline
 void build_intermediate(equation_context& ctx)
@@ -1126,7 +1166,7 @@ void build_eqs(equation_context& ctx)
         }
     }
 
-    //ctx.add("debug_val", cY.det());
+    ctx.add("debug_val", cY.det());
 
     value dtX = 0;
 
@@ -1267,7 +1307,7 @@ void build_eqs(equation_context& ctx)
         }
     }
 
-    ctx.add("debug_val", gpu_trace(cA, cY, icY));
+    //ctx.add("debug_val", gpu_trace(cA, cY, icY));
 
     tensor<value, 3, 3> Rij;
 
@@ -1640,6 +1680,9 @@ int main()
     equation_context ctx3;
     build_eqs(ctx3);
 
+    equation_context ctx4;
+    build_constraints(ctx4);
+
     /*for(auto& i : ctx.values)
     {
         std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
@@ -1661,6 +1704,7 @@ int main()
     ctx1.build(argument_string, 0);
     ctx2.build(argument_string, 1);
     ctx3.build(argument_string, 2);
+    ctx4.build(argument_string, 3);
 
     std::cout << "ARGS " << argument_string << std::endl;
 
@@ -1737,6 +1781,13 @@ int main()
 
     clctx.cqueue.exec("clean_data", initial_clean, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
+    cl::args initial_constraints;
+    initial_constraints.push_back(bssnok_datas[0]);
+    initial_constraints.push_back(scale);
+    initial_constraints.push_back(clsize);
+
+    clctx.cqueue.exec("enforce_algebraic_constraints", initial_constraints, {size.x(), size.y(), size.z()}, {8, 8, 1});
+
     cl::args fl2;
     fl2.push_back(bssnok_datas[0]);
     fl2.push_back(scale);
@@ -1812,6 +1863,13 @@ int main()
 
                 clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {128, 1, 1});
             }
+
+            cl::args constraints;
+            constraints.push_back(bssnok_datas[0]);
+            constraints.push_back(scale);
+            constraints.push_back(clsize);
+
+            clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {size.x(), size.y(), size.z()}, {128, 1, 1});
 
             cl::args fl;
             fl.push_back(bssnok_datas[which_data]);

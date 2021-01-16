@@ -306,6 +306,37 @@ void calculate_initial_conditions(__global struct bssnok_data* in, float scale, 
     }*/
 }
 
+__kernel
+void enforce_algebraic_constraints(__global struct bssnok_data* in, float scale, int4 dim)
+{
+    int x = get_global_id(0);
+    int y = get_global_id(1);
+    int z = get_global_id(2);
+
+    if(x >= dim.x || y >= dim.y || z >= dim.z)
+        return;
+
+    struct bssnok_data v = in[IDX(x, y, z)];
+
+    float pv[TEMP_COUNT3] = {TEMPORARIES3};
+
+    v.cY0 = fix_cY0;
+    v.cY1 = fix_cY1;
+    v.cY2 = fix_cY2;
+    v.cY3 = fix_cY3;
+    v.cY4 = fix_cY4;
+    v.cY5 = fix_cY5;
+
+    v.cA0 = fix_cA0;
+    v.cA1 = fix_cA1;
+    v.cA2 = fix_cA2;
+    v.cA3 = fix_cA3;
+    v.cA4 = fix_cA4;
+    v.cA5 = fix_cA5;
+
+    in[IDX(x, y, z)] = v;
+}
+
 ///https://en.wikipedia.org/wiki/Ricci_curvature#Definition_via_local_coordinates_on_a_smooth_manifold
 __kernel
 void calculate_intermediate_data(__global struct bssnok_data* in, float scale, int4 dim, __global struct intermediate_bssnok_data* out)
