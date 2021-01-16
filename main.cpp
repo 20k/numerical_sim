@@ -932,8 +932,8 @@ void build_intermediate(equation_context& ctx)
 }
 
 ///https://arxiv.org/pdf/gr-qc/0206072.pdf on stability, they recompute cGi where it does nto hae a derivative
-///todo: X
-///todo: fisheye
+///todo: X: This is think is why we're getting nans
+///todo: fisheye - half done
 ///todo: better differentiation
 inline
 void build_eqs(equation_context& ctx)
@@ -1362,7 +1362,24 @@ void build_eqs(equation_context& ctx)
                 //equations.push_back({"debug_val", -gpu_covariant_derivative_low_vec(digA, Yij, christoff_Yij).idx(j, i)});
             }*/
 
-            dtcAij.idx(i, j) = p1 + p2 + p3;
+            value sanitised = dual_types::dual_if(X <= 0.000001, []()
+            {
+                return 0;
+            },
+            [&]()
+            {
+                return dual_types::dual_if(isfinite(p1),
+                [&]()
+                {
+                    return p1;
+                },
+                []()
+                {
+                    return 0;
+                });
+            });
+
+            dtcAij.idx(i, j) = sanitised + p2 + p3;
         }
     }
 
