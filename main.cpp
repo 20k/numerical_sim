@@ -576,7 +576,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
         value dist = (pos - vri).length() * scale;
 
-        dist = max(dist, 0.01f);
+        dist = max(dist, 0.000001f);
 
         BL_conformal = BL_conformal + Mi / (2 * dist);
 
@@ -590,7 +590,9 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     {
         for(int j=0; j < 3; j++)
         {
-            yij.idx(i, j) = pow(BL_conformal, 4) * kronecker.idx(i, j);
+            float u = 0.01;
+
+            yij.idx(i, j) = pow(BL_conformal + u, 4) * kronecker.idx(i, j);
 
             /*if(i == j)
             {
