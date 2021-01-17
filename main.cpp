@@ -573,6 +573,95 @@ inverse_metric<value, 4, 4> get_full_metric_inverse(const metric<value, 3, 3>& Y
     return ig;
 }
 
+///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 5.12
+tensor<value, 4> promote_3tensor_low(const tensor<value, 3>& in, const tensor<value, 3>& gB)
+{
+    tensor<value, 4, 3> AuI;
+    tensor<value, 4, 3> AUi;
+
+    AuI.idx(0, 0) = gB.idx(0);
+    AuI.idx(0, 1) = gB.idx(1);
+    AuI.idx(0, 2) = gB.idx(2);
+
+    AuI.idx(1, 0) = 1;
+    AuI.idx(1, 1) = 0;
+    AuI.idx(1, 2) = 0;
+    AuI.idx(2, 0) = 0;
+    AuI.idx(2, 1) = 1;
+    AuI.idx(2, 2) = 0;
+    AuI.idx(3, 0) = 0;
+    AuI.idx(3, 1) = 0;
+    AuI.idx(3, 2) = 1;
+
+    AUi.idx(0, 0) = 0;
+    AUi.idx(0, 1) = 0;
+    AUi.idx(0, 2) = 0;
+
+    AUi.idx(1, 0) = 1;
+    AUi.idx(1, 1) = 0;
+    AUi.idx(1, 2) = 0;
+    AUi.idx(2, 0) = 0;
+    AUi.idx(2, 1) = 1;
+    AUi.idx(2, 2) = 0;
+    AUi.idx(3, 0) = 0;
+    AUi.idx(3, 1) = 0;
+    AUi.idx(3, 2) = 1;
+
+    tensor<value, 4> ret;
+
+    for(int v=0; v < 4; v++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            sum = AuI.idx(v, j) * in.idx(j);
+        }
+
+        ret.idx(v) = sum;
+    }
+
+    return ret;
+}
+
+tensor<value, 3, 3> adm_derivative_low_vec(equation_context& ctx, const tensor<value, 3>& in, const metric<value, 3, 3>& Yij, const value& gA, const tensor<value, 3>& gB)
+{
+    ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.33
+    tensor<value, 4> nup;
+    nup.idx(0) = 1/gA;
+    nup.idx(1) = 1/gB.idx(0);
+    nup.idx(2) = 1/gB.idx(1);
+    nup.idx(3) = 1/gB.idx(2);
+
+    tensor<value, 4> ndown;
+    ndown.idx(0) = -gA;
+    ndown.idx(1) = 0;
+    ndown.idx(2) = 0;
+    ndown.idx(3) = 0;
+
+    metric<value, 4, 4> yPu;
+
+    ///https://javierrubioblog.files.wordpress.com/2017/08/adm.pdf
+    for(int p=0; p < 4; p++)
+    {
+        for(int u=0; u < 4; u++)
+        {
+            value kronecker = (p == u) ? 1 : 0;
+
+            yPu.idx(p, u) = kronecker + nup.idx(p) * ndown.idx(u);
+        }
+    }
+
+    tensor<value, 4> promoted = promote_3tensor_low(in, gB);
+
+    metric<value, 4, 4> guv = get_full_metric(Yij, gA, gB);
+    inverse_metric<value, 4, 4> iguv = get_full_metric_inverse(Yij, gA, gB);
+
+    tensor<value, 4, 4> regular_cov = gpu_covariant_derivative_low_vec(ctx, promoted, guv, iguv);
+
+    tensor<value, 3, 3> ret;
+}
+
 ///https://cds.cern.ch/record/337814/files/9711015.pdf
 ///https://cds.cern.ch/record/517706/files/0106072.pdf this paper has a lot of good info on soaking up boundary conditions
 ///https://arxiv.org/pdf/1309.2960.pdf double fisheye
