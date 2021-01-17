@@ -505,7 +505,7 @@ tensor<T, N, N> raise_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met
 }
 
 ///https://javierrubioblog.files.wordpress.com/2017/08/adm1.pdf 5.10+
-/*metric<value, 4, 4> get_full_metric(const metric<value, 3, 3>& Yij, const value& gA, const tensor<value, 3>& gB)
+metric<value, 4, 4> get_full_metric(const metric<value, 3, 3>& Yij, const value& gA, const tensor<value, 3>& gB)
 {
     metric<value, 4, 4> g;
 
@@ -546,7 +546,32 @@ tensor<T, N, N> raise_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met
     }
 
     return g;
-}*/
+}
+
+inverse_metric<value, 4, 4> get_full_metric_inverse(const metric<value, 3, 3>& Yij, const value& gA, const tensor<value, 3>& gB)
+{
+    inverse_metric<value, 4, 4> ig;
+
+    ig.idx(0, 0) = -1/(gA * gA);
+
+    for(int i=1; i < 4; i++)
+    {
+        ig.idx(0, i) = (1.f/(gA * gA)) * gB.idx(i - 1);
+        ig.idx(i, 0) = ig.idx(0, i);
+    }
+
+    auto inverse = Yij.invert();
+
+    for(int i=1; i < 4; i++)
+    {
+        for(int j=1; j < 4; j++)
+        {
+            ig.idx(i, j) = inverse.idx(i - 1, j - 1) - (1/(gA * gA)) * gB.idx(i - 1) * gB.idx(j - 1);
+        }
+    }
+
+    return ig;
+}
 
 ///https://cds.cern.ch/record/337814/files/9711015.pdf
 ///https://cds.cern.ch/record/517706/files/0106072.pdf this paper has a lot of good info on soaking up boundary conditions
