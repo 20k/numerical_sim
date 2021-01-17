@@ -224,6 +224,8 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
     {
         float frac = (real_len - r0 * bulge_amount) / (edge - r0 * bulge_amount);
 
+        frac = polynomial(frac);
+
         next_rad = (r0 + frac * (edge - r0)) / scale;
     }
 

@@ -984,7 +984,9 @@ void build_intermediate(equation_context& ctx)
 ///todo: X: This is think is why we're getting nans. Half done
 ///todo: fisheye - half done
 ///todo: better differentiation
-///todo: Enforce the algebraic constraints in this paper: https://arxiv.org/pdf/gr-qc/0505055.pdf. 3.21 and 3.22
+///todo: Enforce the algebraic constraints in this paper: https://arxiv.org/pdf/gr-qc/0505055.pdf. 3.21 and 3.22 - done
+///todo: if I use a mirror boundary condition, it'd simulate an infinite grid of black hole pairs colliding
+///they would however all be relatively far away from each other, so this may turn out fairly acceptably
 inline
 void build_eqs(equation_context& ctx)
 {
