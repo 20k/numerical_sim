@@ -316,7 +316,7 @@ tensor<value, 3> raise_index(const tensor<value, 3>& mT, const metric<value, 3, 
     return ret;
 }
 
-template<typename T, int N>
+/*template<typename T, int N>
 inline
 tensor<T, N> gpu_covariant_derivative_scalar(equation_context& ctx, const T& in)
 {
@@ -351,7 +351,7 @@ tensor<T, N> gpu_high_covariant_derivative_scalar(equation_context& ctx, const T
     }
 
     return ret;
-}
+}*/
 
 ///https://en.wikipedia.org/wiki/Covariant_derivative#Covariant_derivative_by_field_type
 template<typename T, int N>
@@ -503,6 +503,50 @@ tensor<T, N, N> raise_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met
 
     return ret;
 }
+
+///https://javierrubioblog.files.wordpress.com/2017/08/adm1.pdf 5.10+
+/*metric<value, 4, 4> get_full_metric(const metric<value, 3, 3>& Yij, const value& gA, const tensor<value, 3>& gB)
+{
+    metric<value, 4, 4> g;
+
+    value i00 = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            i00 = Yij.idx(i, j) * gB.idx(i) * gB.idx(j);
+        }
+    }
+
+    i00 = i00 - gA * gA;
+
+    g.idx(0, 0) = i00;
+
+    ///careful with i here because this exposes the fact that Yij is secretly indexed from 1-4 in the maths, not 0-3
+    for(int i=1; i < 4; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            sum = sum + Yij.idx(i - 1, j) * gB.idx(j);
+        }
+
+        g.idx(0, i) = sum;
+        g.idx(i, 0) = sum;
+    }
+
+    for(int i=1; i < 4; i++)
+    {
+        for(int j=1; j < 4; j++)
+        {
+            g.idx(i, j) = Yij.idx(i-1, j-1);
+        }
+    }
+
+    return g;
+}*/
 
 ///https://cds.cern.ch/record/337814/files/9711015.pdf
 ///https://cds.cern.ch/record/517706/files/0106072.pdf this paper has a lot of good info on soaking up boundary conditions
