@@ -1318,6 +1318,8 @@ void build_eqs(equation_context& ctx)
         }
     }
 
+    //ctx.add("debug_val", Rphiij.idx(i, j));
+
     //ctx.add("debug_val", gpu_trace(cA, cY, icY));
 
     tensor<value, 3, 3> Rij;
@@ -1350,6 +1352,8 @@ void build_eqs(equation_context& ctx)
             Yij.idx(i, j).make_value(name);
         }
     }
+
+    ctx.add("debug_val", Yij.idx(0, 1));
 
     inverse_metric<value, 3, 3> iYij = Yij.invert();
 
@@ -1390,7 +1394,8 @@ void build_eqs(equation_context& ctx)
                 //ctx.add("debug_val", gpu_trace(gpu_trace_free(with_trace, Yij, iYij), Yij, iYij));
                 //ctx.add("debug_val", trace_free_part);
 
-                ctx.add("debug_val", gA * Rij.idx(i, j));
+                //ctx.add("debug_val", cRij.idx(i, j));
+                //ctx.add("debug_val", gA * Rij.idx(i, j));
 
                 //ctx.add("debug_val", gpu_covariant_derivative_low_vec(ctx, digA, Yij, iYij).idx(j, i));
             }
@@ -1829,6 +1834,8 @@ int main()
 
     bool run = false;
 
+    float time_elapsed_s = 0;
+
     while(!win.should_close())
     {
         win.poll();
@@ -1864,6 +1871,8 @@ int main()
                 step = true;
 
             ImGui::Checkbox("Run", &run);
+
+            ImGui::Text("Time: %f\n", time_elapsed_s);
 
             ImGui::End();
 
@@ -1937,6 +1946,8 @@ int main()
             fl3.push_back(intermediate);
 
             clctx.cqueue.exec("calculate_intermediate_data", fl3, {size.x(), size.y(), size.z()}, {128, 1, 1});
+
+            time_elapsed_s += timestep;
         }
 
         clctx.cqueue.flush();
