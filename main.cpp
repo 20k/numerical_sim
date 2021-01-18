@@ -638,8 +638,31 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     //std::vector<vec3f> black_hole_pos{{0.,0,0}};
     //std::vector<float> black_hole_m{1};
 
+    float total_mass = 0;
+    vec3f barycentre = {0,0,0};
+
+    for(int i=0; i < (int)black_hole_pos.size(); i++)
+    {
+        total_mass += black_hole_m[i];
+        barycentre += black_hole_m[i] * black_hole_pos[i];
+    }
+
+    barycentre /= total_mass;
+
+    value schwarzs_conformal = 0;
+
+    {
+        vec<3, value> vri = {barycentre.x(), barycentre.y(), barycentre.z()};
+        value dist = (pos - vri).length() * scale;
+
+        dist = max(dist, 0.01f);
+
+        schwarzs_conformal = total_mass / (2 * dist);
+    }
+
     ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
     ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is
+    ///todo pt 2: Try sponging to schwarzschild
     for(int i=0; i < (int)black_hole_m.size(); i++)
     {
         float Mi = black_hole_m[i];
@@ -652,12 +675,13 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         dist = max(dist, 0.01f);
 
         BL_conformal = BL_conformal + Mi / (2 * dist);
-
-        //BL_conformal = BL_conformal + Mi / (2 * fabs(r - ri));
     }
+
+    //BL_conformal = schwarzs_conformal;
 
     ///ok so: I'm pretty sure this is correct
     metric<value, 3, 3> yij;
+    metric<value, 3, 3> schwarzs_yij;
 
     for(int i=0; i < 3; i++)
     {
@@ -667,6 +691,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
             ///https://arxiv.org/pdf/gr-qc/0511048.pdf
             yij.idx(i, j) = pow(BL_conformal + u, 4) * kronecker.idx(i, j);
+            schwarzs_yij.idx(i, j) = pow(schwarzs_conformal + u, 4) * kronecker.idx(i, j);
 
             /*if(i == j)
             {
@@ -683,6 +708,9 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
     value Y = yij.det();
+    value schwarzs_conformal_factor = (1/12.f) * log(schwarzs_yij.det());
+
+    ctx.pin(schwarzs_conformal_factor);
 
     ///phi
     value conformal_factor = (1/12.f) * log(Y);
@@ -690,6 +718,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     conformal_factor_concrete.make_value("conformal_factor");
 
     metric<value, 3, 3> cyij;
+    metric<value, 3, 3> schwarzs_cyij;
 
     ///checked, cyij is correct
     for(int i=0; i < 3; i++)
@@ -697,6 +726,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         for(int j=0; j < 3; j++)
         {
             cyij.idx(i, j) = exp(-4 * conformal_factor) * yij.idx(i, j);
+            schwarzs_cyij.idx(i, j) = exp(-4 * schwarzs_conformal_factor) * schwarzs_yij.idx(i, j);
         }
     }
 
@@ -788,6 +818,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     }
 
     value X = exp(-4 * conformal_factor_concrete);
+    value schwarzs_X = exp(-4 * schwarzs_conformal_factor);
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
@@ -806,8 +837,6 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     K = 0;
     #endif // OLDFLAT
 
-    std::vector<std::pair<std::string, value>> equations;
-
     for(int i=0; i < 6; i++)
     {
         vec2i index = linear_indices[i];
@@ -819,12 +848,22 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         ctx.add(a_name, cAij.idx(index.x(), index.y()));
     }
 
+    for(int i=0; i < 6; i++)
+    {
+        vec2i index = linear_indices[i];
+
+        std::string y_name = "schwarzs_init_cY" + std::to_string(i);
+
+        ctx.add(y_name, schwarzs_cyij.idx(index.x(), index.y()));
+    }
+
     ctx.add("init_cGi0", cGi.idx(0));
     ctx.add("init_cGi1", cGi.idx(1));
     ctx.add("init_cGi2", cGi.idx(2));
 
     ctx.add("init_K", K);
     ctx.add("init_X", X);
+    ctx.add("schwarzs_init_X", schwarzs_X);
 
     ctx.add("init_bl_conformal", BL_conformal);
     ctx.add("init_conformal_factor", conformal_factor);
@@ -843,8 +882,6 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ctx.add("init_gBB1", gBB1);
     ctx.add("init_gBB2", gBB2);
     #endif // USE_GBB
-
-    //equations.push_back({"init_det", type_to_string(cyij.det())});
 }
 
 inline
@@ -1771,9 +1808,9 @@ int main()
 
     std::string argument_string = "-O3 -cl-std=CL2.2 ";
 
-    vec3i size = {280, 280, 280};
+    vec3i size = {250, 250, 250};
     //vec3i size = {250, 250, 250};
-    float c_at_max = 36;
+    float c_at_max = 28;
     float scale = c_at_max / size.largest_elem();
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
@@ -1873,6 +1910,7 @@ int main()
     std::cout << "TESTgA " << test_init.gA << std::endl;*/
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
+    cl_float time_elapsed_s = 0;
 
     cl::args init;
     init.push_back(bssnok_datas[0]);
@@ -1886,6 +1924,7 @@ int main()
     initial_clean.push_back(intermediate);
     initial_clean.push_back(scale);
     initial_clean.push_back(clsize);
+    initial_clean.push_back(time_elapsed_s);
 
     clctx.cqueue.exec("clean_data", initial_clean, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
@@ -1909,8 +1948,6 @@ int main()
     int which_buffer = 0;
 
     bool run = false;
-
-    float time_elapsed_s = 0;
 
     while(!win.should_close())
     {
@@ -1961,12 +1998,13 @@ int main()
         render.push_back(clsize);
         render.push_back(intermediate);
         render.push_back(rtex[which_buffer]);
+        render.push_back(time_elapsed_s);
 
         clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
 
         if(step)
         {
-            {
+            /*{
                 cl::args cleaner;
                 cleaner.push_back(bssnok_datas[which_data]);
                 cleaner.push_back(intermediate);
@@ -1974,7 +2012,7 @@ int main()
                 cleaner.push_back(clsize);
 
                 clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {128, 1, 1});
-            }
+            }*/
 
             cl::args constraints;
             constraints.push_back(bssnok_datas[0]);
@@ -2000,6 +2038,7 @@ int main()
             a1.push_back(clsize);
             a1.push_back(intermediate);
             a1.push_back(timestep);
+            a1.push_back(time_elapsed_s);
 
             clctx.cqueue.exec("evolve", a1, {size.x(), size.y(), size.z()}, {128, 1, 1});
 

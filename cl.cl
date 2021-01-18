@@ -210,7 +210,7 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
     ///
 
     ///this incorrectly scales, should be edge/2
-    float edge = max(max(dim.x, dim.y), dim.z) * scale;
+    float edge = max(max(dim.x, dim.y), dim.z) * scale / 2;
 
     float r_frac = (real_len / edge);
 
@@ -255,13 +255,13 @@ void calculate_initial_conditions(__global struct bssnok_data* in, float scale, 
 
     struct bssnok_data* f = &in[IDX(ix, iy, iz)];
 
-    //float pv[TEMP_COUNT] = {TEMPORARIES};
-
     float3 offset = transform_position(ix, iy, iz, dim, scale);
 
     float ox = offset.x;
     float oy = offset.y;
     float oz = offset.z;
+
+    float pv[TEMP_COUNT0] = {TEMPORARIES0};
 
     float conformal_factor = init_conformal_factor;
 
@@ -421,26 +421,28 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
     my_out->Yij[5] = init_Yij5;
 }
 
-float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim)
+float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float time)
 {
     float edge_half = scale * (dim.x/2);
 
-    float sponge_r0 = edge_half/2;
+    float sponge_r0 = edge_half/1.4f;
+    //float sponge_r0 = edge_half/2;
     float sponge_r1 = edge_half/1.1f;
 
-    float r = fast_length((float3){x, y, z});
+    float r = fast_length((float3){x, y, z}) * scale;
 
     r = clamp(r, sponge_r0, sponge_r1);
 
     float r_frac = (r - sponge_r0) / (sponge_r1 - sponge_r0);
 
-    return r_frac;
+    return r_frac * pow(r_frac, fabs(sin(time / (2 * M_PI))));
 }
 
 ///https://cds.cern.ch/record/517706/files/0106072.pdf
 ///boundary conditions
+///todo: damp to schwarzschild, not initial conditions?
 __kernel
-void clean_data(__global struct bssnok_data* in, __global struct intermediate_bssnok_data* iin, float scale, int4 dim)
+void clean_data(__global struct bssnok_data* in, __global struct intermediate_bssnok_data* iin, float scale, int4 dim, float time)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -461,22 +463,83 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
         float oy = offset.y;
         float oz = offset.z;
 
-        float sponge_factor = sponge_damp_coeff(ox, oy, oz, scale, dim);
+        float sponge_factor = sponge_damp_coeff(ox, oy, oz, scale, dim, time);
 
         if(sponge_factor <= 0)
             return;
 
+        float pv[TEMP_COUNT0] = {TEMPORARIES0};
+
         struct bssnok_data v = in[IDX(ix, iy, iz)];
+
+        float bl_conformal = init_bl_conformal;
+        float conformal_factor = init_conformal_factor;
 
         struct bssnok_data out = v;
 
-        float conformal_factor = init_conformal_factor;
-        out.cY0 = mix(v.cY0, init_cY0, sponge_factor);
-        out.cY1 = mix(v.cY1,init_cY1, sponge_factor);
-        out.cY2 = mix(v.cY2,init_cY2, sponge_factor);
-        out.cY3 = mix(v.cY3,init_cY3, sponge_factor);
-        out.cY4 = mix(v.cY4,init_cY4, sponge_factor);
-        out.cY5 = mix(v.cY5,init_cY5, sponge_factor);
+        float schwarzs_cY0 = schwarzs_init_cY0;
+        float schwarzs_cY1 = schwarzs_init_cY1;
+        float schwarzs_cY2 = schwarzs_init_cY2;
+        float schwarzs_cY3 = schwarzs_init_cY3;
+        float schwarzs_cY4 = schwarzs_init_cY4;
+        float schwarzs_cY5 = schwarzs_init_cY5;
+
+        float schwarzs_X = schwarzs_init_X;
+
+        float initial_cY0 = init_cY0;
+        float initial_cY1 = init_cY1;
+        float initial_cY2 = init_cY2;
+        float initial_cY3 = init_cY3;
+        float initial_cY4 = init_cY4;
+        float initial_cY5 = init_cY5;
+
+        float initial_X = init_X;
+
+        float fin_cY0 = initial_cY0;
+        float fin_cY1 = initial_cY1;
+        float fin_cY2 = initial_cY2;
+        float fin_cY3 = initial_cY3;
+        float fin_cY4 = initial_cY4;
+        float fin_cY5 = initial_cY5;
+
+        float fin_X = initial_X;
+
+        float initial_error = 0;
+        float schwarzs_error = 0;
+
+        initial_error += fabs(initial_cY0 - v.cY0);
+        initial_error += fabs(initial_cY1 - v.cY1);
+        initial_error += fabs(initial_cY2 - v.cY2);
+        initial_error += fabs(initial_cY3 - v.cY3);
+        initial_error += fabs(initial_cY4 - v.cY4);
+        initial_error += fabs(initial_cY5 - v.cY5);
+        initial_error += fabs(initial_X - v.X);
+
+        schwarzs_error += fabs(schwarzs_cY0 - v.cY0);
+        schwarzs_error += fabs(schwarzs_cY1 - v.cY1);
+        schwarzs_error += fabs(schwarzs_cY2 - v.cY2);
+        schwarzs_error += fabs(schwarzs_cY3 - v.cY3);
+        schwarzs_error += fabs(schwarzs_cY4 - v.cY4);
+        schwarzs_error += fabs(schwarzs_cY5 - v.cY5);
+        schwarzs_error += fabs(schwarzs_X - v.X);
+
+        if(schwarzs_error < initial_error)
+        {
+            fin_cY0 = schwarzs_cY0;
+            fin_cY1 = schwarzs_cY1;
+            fin_cY2 = schwarzs_cY2;
+            fin_cY3 = schwarzs_cY3;
+            fin_cY4 = schwarzs_cY4;
+            fin_cY5 = schwarzs_cY5;
+            fin_X = schwarzs_X;
+        }
+
+        out.cY0 = mix(v.cY0,fin_cY0, sponge_factor);
+        out.cY1 = mix(v.cY1,fin_cY1, sponge_factor);
+        out.cY2 = mix(v.cY2,fin_cY2, sponge_factor);
+        out.cY3 = mix(v.cY3,fin_cY3, sponge_factor);
+        out.cY4 = mix(v.cY4,fin_cY4, sponge_factor);
+        out.cY5 = mix(v.cY5,fin_cY5, sponge_factor);
 
         out.cA0 = mix(v.cA0,init_cA0, sponge_factor);
         out.cA1 = mix(v.cA1,init_cA1, sponge_factor);
@@ -490,9 +553,7 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
         out.cGi2 = mix(v.cGi2,init_cGi2, sponge_factor);
 
         out.K = mix(v.K,init_K, sponge_factor);
-        out.X = mix(v.X,init_X, sponge_factor);
-
-        float bl_conformal = init_bl_conformal;
+        out.X = mix(v.X,fin_X, sponge_factor);
 
         out.gA = mix(v.gA,init_gA, sponge_factor);
         out.gB0 = mix(v.gB0,init_gB0, sponge_factor);
@@ -544,7 +605,7 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
 ///todo: need to correctly evolve boundaries
 ///todo: need to factor out the differentials
 __kernel
-void evolve(__global const struct bssnok_data* restrict in, __global struct bssnok_data* restrict out, float scale, int4 dim, __global const struct intermediate_bssnok_data* temp_in, float timestep)
+void evolve(__global const struct bssnok_data* restrict in, __global struct bssnok_data* restrict out, float scale, int4 dim, __global const struct intermediate_bssnok_data* temp_in, float timestep, float time)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
@@ -557,6 +618,12 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     if(x < BORDER_WIDTH*2 || x >= dim.x - BORDER_WIDTH*2 || y < BORDER_WIDTH*2 || y >= dim.y - BORDER_WIDTH*2 || z < BORDER_WIDTH*2 || z >= dim.z - BORDER_WIDTH*2)
         return;
     #endif // SYMMETRY_BOUNDARY
+
+    float3 transform_pos = transform_position(x, y, z, dim, scale);
+    float sponge_factor = sponge_damp_coeff(transform_pos.x, transform_pos.y, transform_pos.z, scale, dim, time);
+
+    //if(sponge_factor == 1)
+    //    return;
 
     float3 centre = {dim.x/2, dim.y/2, dim.z/2};
     float r = fast_length((float3){x, y, z} - centre);
@@ -646,7 +713,7 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     NANCHECK(gBB1);
     NANCHECK(gBB2);*/
 
-    #if 1
+    #if 0
     //if(debug)
     //if(x == 5 && y == 6 && z == 4)
     //if(x == 125 && y == 100 && z == 125)
@@ -699,7 +766,7 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
 }
 
 __kernel
-void render(__global struct bssnok_data* in, float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, __write_only image2d_t screen)
+void render(__global struct bssnok_data* in, float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, __write_only image2d_t screen, float time)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
@@ -709,6 +776,7 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
 
     if(x <= 4 || x >= dim.x - 5 || y <= 4 || y >= dim.y - 5)
         return;
+
 
 
     int index_table[3][3] = {{0, 1, 2},
@@ -732,6 +800,15 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
             dcGijk[2 * 3 * 6 + i] = INTERMEDIATE_DIFFZ(christoffel[i]);
         }*/
 
+        float3 transform_pos = transform_position(x, y, z, dim, scale);
+        float sponge_factor = sponge_damp_coeff(transform_pos.x, transform_pos.y, transform_pos.z, scale, dim, time);
+
+        if(sponge_factor > 0)
+        {
+            write_imagef(screen, (int2){x, y}, (float4)(sponge_factor, 0, 0, 1));
+            return;
+        }
+
         struct bssnok_data v = in[IDX(x, y, z)];
         struct intermediate_bssnok_data ik = temp_in[IDX(x, y, z)];
 
@@ -745,7 +822,7 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
             printf("Ik %f\n", ik.Yij[0]);
         }*/
 
-        float curvature = (ik.Yij[0] + ik.Yij[1] + ik.Yij[2] + ik.Yij[3] + ik.Yij[4] + ik.Yij[5]) / 1000.;
+        float curvature = (fabs(ik.Yij[0]) + fabs(ik.Yij[1]) + fabs(ik.Yij[2]) + fabs(ik.Yij[3]) + fabs(ik.Yij[4]) + fabs(ik.Yij[5])) / 1000.;
         //float curvature = v.cY0 + v.cY1 + v.cY2 + v.cY3 + v.cY4 + v.cY5;
 
         float ascalar = fabs(curvature);
