@@ -1,7 +1,7 @@
 ///https://arxiv.org/pdf/1404.6523.pdf
 ///Gauge evolution equations
 
-//#define SYMMETRY_BOUNDARY
+#define SYMMETRY_BOUNDARY
 
 #define USE_GBB
 
