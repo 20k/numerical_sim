@@ -696,7 +696,7 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
 
     bool debug = false;
 
-    /*NANCHECK(cY0);
+    NANCHECK(cY0);
     NANCHECK(cY1);
     NANCHECK(cY2);
     NANCHECK(cY3);
@@ -721,15 +721,17 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     NANCHECK(gB1);
     NANCHECK(gB2);
 
+    #ifdef USE_GBB
     NANCHECK(gBB0);
     NANCHECK(gBB1);
-    NANCHECK(gBB2);*/
+    NANCHECK(gBB2);
+    #endif // USE_GBB
 
-    #if 0
-    //if(debug)
+    #if 1
+    if(debug)
     //if(x == 5 && y == 6 && z == 4)
     //if(x == 125 && y == 100 && z == 125)
-    if(x == 125 && y == 125 && z == 125)
+    //if(x == 125 && y == 125 && z == 125)
     {
         float scalar = scalar_curvature;
 
