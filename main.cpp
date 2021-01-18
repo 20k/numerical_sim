@@ -1588,12 +1588,29 @@ void build_eqs(equation_context& ctx)
     #ifndef USE_GBB
     tensor<value, 3> dtgB;
 
+    /*
     ///https://arxiv.org/pdf/1404.6523.pdf (4)
     for(int i=0; i < 3; i++)
     {
         float N = 1.375;
 
         dtgB.idx(i) = (3.f/4.f) * derived_cGi.idx(i) - N * gB.idx(i);
+    }*/
+
+    ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
+
+    for(int i=0; i < 3; i++)
+    {
+        float N = 0.1;
+
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            sum = gB.idx(j) * hacky_differentiate(ctx, gB.idx(i), j);
+        }
+
+        dtgB.idx(i) = (3.f/4.f) * derived_cGi.idx(i) + sum - N * gB.idx(i);
     }
 
     tensor<value, 3> dtgBB;
