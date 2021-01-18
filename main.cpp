@@ -189,7 +189,8 @@ struct equation_context
     }
 };
 
-#define SYMMETRY_BOUNDARY
+//#define SYMMETRY_BOUNDARY
+#define BORDER_WIDTH 2
 
 ///todo: I know for a fact that clang is too silly to optimise out the memory lookups
 value hacky_differentiate(equation_context& ctx, value in, int idx)
@@ -1810,6 +1811,8 @@ int main()
     ctx2.build(argument_string, 1);
     ctx3.build(argument_string, 2);
     ctx4.build(argument_string, 3);
+
+    argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 
     std::cout << "ARGS " << argument_string << std::endl;
 

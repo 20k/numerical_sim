@@ -1,7 +1,7 @@
 ///https://arxiv.org/pdf/1404.6523.pdf
 ///Gauge evolution equations
 
-#define SYMMETRY_BOUNDARY
+//#define SYMMETRY_BOUNDARY
 
 //#define USE_GBB
 
@@ -363,7 +363,7 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(x == 0 || x == dim.x-1 || y == 0 || y == dim.y - 1 || z == 0 || z == dim.z - 1)
+    if(x < BORDER_WIDTH || x >= dim.x - BORDER_WIDTH || y < BORDER_WIDTH || y >= dim.y - BORDER_WIDTH || z < BORDER_WIDTH || z >= dim.z - BORDER_WIDTH)
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -436,7 +436,7 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    if(ix <= 1 || ix >= dim.x - 2 || iy <= 1 || iy >= dim.y - 2 || iz <= 1 || iz >= dim.z - 2)
+    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2)
     {
         struct bssnok_data v = in[IDX(ix, iy, iz)];
 
@@ -533,7 +533,7 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(x <= 1 || x >= dim.x - 2 || y <= 1 || y >= dim.y - 2 || z <= 1 || z >= dim.z - 2)
+    if(x < BORDER_WIDTH*2 || x >= dim.x - BORDER_WIDTH*2 || y < BORDER_WIDTH*2 || y >= dim.y - BORDER_WIDTH*2 || z < BORDER_WIDTH*2 || z >= dim.z - BORDER_WIDTH*2)
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -686,7 +686,7 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
     if(x >= dim.x || y >= dim.y)
         return;
 
-    if(x <= 2 || x >= dim.x - 3 || y <= 2 || y >= dim.y - 3)
+    if(x <= 4 || x >= dim.x - 5 || y <= 4 || y >= dim.y - 5)
         return;
 
 
