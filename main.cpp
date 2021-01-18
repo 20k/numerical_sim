@@ -898,33 +898,11 @@ void build_intermediate(equation_context& ctx)
 
     tensor<value, 3> dphi;
 
+    for(int i=0; i < 3; i++)
     {
-        value rx;
-        value rmx;
-        value ry;
-        value rmy;
-        value rz;
-        value rmz;
+        value dX = hacky_differentiate(ctx, X, i);
 
-        rx.make_value("in[IDX(x+1,y,z)].X");
-        rmx.make_value("in[IDX(x-1,y,z)].X");
-        ry.make_value("in[IDX(x,y+1,z)].X");
-        rmy.make_value("in[IDX(x,y-1,z)].X");
-        rz.make_value("in[IDX(x,y,z+1)].X");
-        rmz.make_value("in[IDX(x,y,z-1)].X");
-
-        value px = X_to_phi(rx);
-        value pmx = X_to_phi(rmx);
-
-        value py = X_to_phi(ry);
-        value pmy = X_to_phi(rmy);
-
-        value pz = X_to_phi(rz);
-        value pmz = X_to_phi(rmz);
-
-        dphi.idx(0) = "finite_difference(" + type_to_string(px) + "," + type_to_string(pmx) + ",scale)";
-        dphi.idx(1) = "finite_difference(" + type_to_string(py) + "," + type_to_string(pmy) + ",scale)";
-        dphi.idx(2) = "finite_difference(" + type_to_string(pz) + "," + type_to_string(pmz) + ",scale)";
+        dphi.idx(i) = -dX / (4 * X);
     }
 
     /*for(int k=0; k < 3; k++)
