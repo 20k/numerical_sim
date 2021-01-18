@@ -280,24 +280,32 @@ value hacky_differentiate(equation_context& ctx, value in, int idx)
 
     auto index = [&](const std::string& x, const std::string& y, const std::string& z)
     {
-        return index_buffer(val, buffer, index_raw(x, y, z));
+        return value(index_buffer(val, buffer, index_raw(x, y, z)));
     };
+
+    value scale = "scale";
 
     value final_command;
 
     if(idx == 0)
     {
-        final_command = finite_difference(index(xp1, y, z), index(xm1, y, z));
+        final_command = (-index(xp2, y, z) + 8 * index(xp1, y, z) - 8 * index(xm1, y, z) + index(xm2, y, z)) / (12 * scale);
+
+        //final_command = finite_difference(index(xp1, y, z), index(xm1, y, z));
     }
 
     if(idx == 1)
     {
-        final_command = finite_difference(index(x, yp1, z), index(x, ym1, z));
+        final_command = (-index(x, yp2, z) + 8 * index(x, yp1, z) - 8 * index(x, ym1, z) + index(x, ym2, z)) / (12 * scale);
+
+        //final_command = finite_difference(index(x, yp1, z), index(x, ym1, z));
     }
 
     if(idx == 2)
     {
-        final_command = finite_difference(index(x, y, zp1), index(x, y, zm1));
+        final_command = (-index(x, y, zp2) + 8 * index(x, y, zp1) - 8 * index(x, y, zm1) + index(x, y, zm2)) / (12 * scale);
+
+        //final_command = finite_difference(index(x, y, zp1), index(x, y, zm1));
     }
 
     ctx.pin(final_command);
