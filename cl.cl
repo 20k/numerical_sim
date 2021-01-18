@@ -201,7 +201,8 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
     float real_len = len * scale;
 
     float r0 = 5.5f * 0.5f;
-    float bulge_amount = 3;
+    float bulge_amount = 2;
+    //float bulge_amount = 3;
     float s = 1.2f * 0.5f;
 
     ///so, real_len goes from 0 -> edge
@@ -228,9 +229,14 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
     {
         float frac = (real_len - r0 * bulge_amount) / (edge - r0 * bulge_amount);
 
-        frac = polynomial(frac);
+        float extra = 0;
 
-        next_rad = (r0 + frac * (edge - r0)) / scale;
+        if(frac > 1)
+            extra = frac - 1;
+
+        frac = polynomial(clamp(frac, 0.f, 1.f));
+
+        next_rad = (r0 + frac * (edge - r0) + extra * (edge - r0)) / scale;
     }
 
     return diff * next_rad / len;

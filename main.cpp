@@ -1601,7 +1601,8 @@ void build_eqs(equation_context& ctx)
 
     for(int i=0; i < 3; i++)
     {
-        float N = 0.1;
+        float N = 2;
+        //float N = 0.1;
 
         value sum = 0;
 
