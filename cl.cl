@@ -425,9 +425,9 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
 {
     float edge_half = scale * (dim.x/2);
 
-    float sponge_r0 = edge_half/1.4f;
+    float sponge_r0 = scale * ((dim.x/2) - 16);
     //float sponge_r0 = edge_half/2;
-    float sponge_r1 = edge_half/1.1f;
+    float sponge_r1 = scale * ((dim.x/2) - 4);
 
     float r = fast_length((float3){x, y, z}) * scale;
 
@@ -477,14 +477,14 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
 
         struct bssnok_data out = v;
 
-        float schwarzs_cY0 = schwarzs_init_cY0;
+        /*float schwarzs_cY0 = schwarzs_init_cY0;
         float schwarzs_cY1 = schwarzs_init_cY1;
         float schwarzs_cY2 = schwarzs_init_cY2;
         float schwarzs_cY3 = schwarzs_init_cY3;
         float schwarzs_cY4 = schwarzs_init_cY4;
         float schwarzs_cY5 = schwarzs_init_cY5;
 
-        float schwarzs_X = schwarzs_init_X;
+        float schwarzs_X = schwarzs_init_X;*/
 
         float initial_cY0 = init_cY0;
         float initial_cY1 = init_cY1;
@@ -534,7 +534,7 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
             fin_X = schwarzs_X;
         }*/
 
-        float time_frac = time / 10.f;
+        /*float time_frac = time / 6.f;
 
         time_frac = clamp(time_frac, 0.f, 1.f);
 
@@ -544,7 +544,7 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
         fin_cY3 = mix(fin_cY3, schwarzs_cY3, time_frac);
         fin_cY4 = mix(fin_cY4, schwarzs_cY4, time_frac);
         fin_cY5 = mix(fin_cY5, schwarzs_cY5, time_frac);
-        fin_X = mix(fin_X, schwarzs_X, time_frac);
+        fin_X = mix(fin_X, schwarzs_X, time_frac);*/
 
         out.cY0 = mix(v.cY0,fin_cY0, sponge_factor);
         out.cY1 = mix(v.cY1,fin_cY1, sponge_factor);
