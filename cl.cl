@@ -188,7 +188,7 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
 
     float3 diff = pos - centre;
 
-    //return diff;
+    return diff;
 
     float len = length(diff);
 
