@@ -422,54 +422,9 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
 
     if(ix <= 1 || ix >= dim.x - 2 || iy <= 1 || iy >= dim.y - 2 || iz <= 1 || iz >= dim.z - 2)
     {
-        int xdir = 0;
-        int ydir = 0;
-        int zdir = 0;
-
-        if(ix == 0)
-            xdir = 2;
-        if(ix == 1)
-            xdir = 2;
-
-        if(ix == dim.x - 1)
-            xdir = -2;
-        if(ix == dim.x - 2)
-            xdir = -2;
-
-        if(iy == 0)
-            ydir = 2;
-        if(iy == 1)
-            ydir = 2;
-
-        if(iy == dim.y - 1)
-            ydir = -2;
-        if(iy == dim.y - 2)
-            ydir = -2;
-
-        if(iz == 0)
-            zdir = 2;
-        if(iz == 1)
-            zdir = 2;
-
-        if(iz == dim.z - 1)
-            zdir = -2;
-        if(iz == dim.z - 2)
-            zdir = -2;
-
-        if(xdir == 0 && ydir == 0 && zdir == 0)
-            return;
-
-        /*in[IDX(x, y, z)] = in[IDX(x + xdir, y + ydir, z + zdir)];*/
-
         struct bssnok_data v = in[IDX(ix, iy, iz)];
-        //struct bssnok_data o = v;
-        struct bssnok_data o = in[IDX(ix + xdir, iy + ydir, iz + zdir)];
 
         struct bssnok_data out = v;
-
-        /*float x = ix;
-        float y = iy;
-        float z = iz;*/
 
         float3 offset = transform_position(ix, iy, iz, dim, scale);
 
@@ -477,10 +432,8 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
         float oy = offset.y;
         float oz = offset.z;
 
-
         float conformal_factor = init_conformal_factor;
 
-        #if 1
         out.cY0 = init_cY0;
         out.cY1 = init_cY1;
         out.cY2 = init_cY2;
@@ -520,43 +473,6 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
         v.gB1 = 0;
         v.gB2 = 0;*/
 
-        /*float factor = 0;//0.25;
-
-        v.cY0 = mix(v.cY0, o.cY0, factor);
-        v.cY1 = mix(v.cY1, o.cY1, factor);
-        v.cY2 = mix(v.cY2, o.cY2, factor);
-        v.cY3 = mix(v.cY3, o.cY3, factor);
-        v.cY4 = mix(v.cY4, o.cY4, factor);
-        v.cY5 = mix(v.cY5, o.cY5, factor);
-
-        v.cA0 = mix(v.cA0, o.cA0, factor);
-        v.cA1 = mix(v.cA1, o.cA1, factor);
-        v.cA2 = mix(v.cA2, o.cA2, factor);
-        v.cA3 = mix(v.cA3, o.cA3, factor);
-        v.cA4 = mix(v.cA4, o.cA4, factor);
-        v.cA5 = mix(v.cA5, o.cA5, factor);
-
-        v.cGi0 = mix(v.cGi0, o.cGi0, factor);
-        v.cGi1 = mix(v.cGi1, o.cGi1, factor);
-        v.cGi2 = mix(v.cGi2, o.cGi2, factor);
-
-        v.K = mix(v.K, o.K, factor);
-        v.X = mix(v.X, o.X, factor);
-
-        //float bl_conformal = init_bl_conformal;
-
-        v.gA = mix(v.gA, o.gA, factor);
-        v.gB0 = mix(v.gB0, o.gB0, factor);
-        v.gB1 = mix(v.gB1, o.gB1, factor);
-        v.gB2 = mix(v.gB2, o.gB2, factor);
-
-        #ifdef USE_GBB
-        v.gBB0 = mix(v.gBB0, o.gBB0, factor);
-        v.gBB1 = mix(v.gBB1, o.gBB1, factor);
-        v.gBB2 = mix(v.gBB2, o.gBB2, factor);
-        #endif // USE_GBB*/
-        #endif // 0
-
         /*v.cY0 = 1;
         v.cY1 = 0;
         v.cY2 = 0;
@@ -583,8 +499,6 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
         v.gB2 = 0;*/
 
         in[IDX(ix, iy, iz)] = out;
-
-        //iin[IDX(x, y, z)] = iin[IDX(x + xdir, y + ydir, z + zdir)];
     }
 }
 
