@@ -281,7 +281,11 @@ value hacky_differentiate(equation_context& ctx, value in, int idx)
 
     auto index = [&](const std::string& x, const std::string& y, const std::string& z)
     {
-        return value(index_buffer(val, buffer, index_raw(x, y, z)));
+        value v = value(index_buffer(val, buffer, index_raw(x, y, z)));
+
+        ctx.pin(v);
+
+        return v;
     };
 
     value scale = "scale";

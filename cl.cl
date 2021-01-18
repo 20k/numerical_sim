@@ -507,7 +507,7 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
         float initial_error = 0;
         float schwarzs_error = 0;
 
-        initial_error += fabs(initial_cY0 - v.cY0);
+        /*initial_error += fabs(initial_cY0 - v.cY0);
         initial_error += fabs(initial_cY1 - v.cY1);
         initial_error += fabs(initial_cY2 - v.cY2);
         initial_error += fabs(initial_cY3 - v.cY3);
@@ -532,7 +532,19 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
             fin_cY4 = schwarzs_cY4;
             fin_cY5 = schwarzs_cY5;
             fin_X = schwarzs_X;
-        }
+        }*/
+
+        float time_frac = time / 10.f;
+
+        time_frac = clamp(time_frac, 0.f, 1.f);
+
+        fin_cY0 = mix(fin_cY0, schwarzs_cY0, time_frac);
+        fin_cY1 = mix(fin_cY1, schwarzs_cY1, time_frac);
+        fin_cY2 = mix(fin_cY2, schwarzs_cY2, time_frac);
+        fin_cY3 = mix(fin_cY3, schwarzs_cY3, time_frac);
+        fin_cY4 = mix(fin_cY4, schwarzs_cY4, time_frac);
+        fin_cY5 = mix(fin_cY5, schwarzs_cY5, time_frac);
+        fin_X = mix(fin_X, schwarzs_X, time_frac);
 
         out.cY0 = mix(v.cY0,fin_cY0, sponge_factor);
         out.cY1 = mix(v.cY1,fin_cY1, sponge_factor);
