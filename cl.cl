@@ -209,6 +209,7 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
     ///we want to keep that mapping, just redistribute the precision
     ///
 
+    ///this incorrectly scales, should be edge/2
     float edge = max(max(dim.x, dim.y), dim.z) * scale;
 
     float r_frac = (real_len / edge);
@@ -420,6 +421,22 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
     my_out->Yij[5] = init_Yij5;
 }
 
+float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim)
+{
+    float edge_half = scale * (dim.x/2);
+
+    float sponge_r0 = edge_half/2;
+    float sponge_r1 = edge_half/1.1f;
+
+    float r = fast_length((float3){x, y, z});
+
+    r = clamp(r, sponge_r0, sponge_r1);
+
+    float r_frac = (r - sponge_r0) / (sponge_r1 - sponge_r0);
+
+    return r_frac;
+}
+
 ///https://cds.cern.ch/record/517706/files/0106072.pdf
 ///boundary conditions
 __kernel
@@ -436,47 +453,51 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2)
+    //if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2)
     {
-        struct bssnok_data v = in[IDX(ix, iy, iz)];
-
-        struct bssnok_data out = v;
-
         float3 offset = transform_position(ix, iy, iz, dim, scale);
 
         float ox = offset.x;
         float oy = offset.y;
         float oz = offset.z;
 
+        float sponge_factor = sponge_damp_coeff(ox, oy, oz, scale, dim);
+
+        if(sponge_factor <= 0)
+            return;
+
+        struct bssnok_data v = in[IDX(ix, iy, iz)];
+
+        struct bssnok_data out = v;
+
         float conformal_factor = init_conformal_factor;
+        out.cY0 = mix(v.cY0, init_cY0, sponge_factor);
+        out.cY1 = mix(v.cY1,init_cY1, sponge_factor);
+        out.cY2 = mix(v.cY2,init_cY2, sponge_factor);
+        out.cY3 = mix(v.cY3,init_cY3, sponge_factor);
+        out.cY4 = mix(v.cY4,init_cY4, sponge_factor);
+        out.cY5 = mix(v.cY5,init_cY5, sponge_factor);
 
-        out.cY0 = init_cY0;
-        out.cY1 = init_cY1;
-        out.cY2 = init_cY2;
-        out.cY3 = init_cY3;
-        out.cY4 = init_cY4;
-        out.cY5 = init_cY5;
+        out.cA0 = mix(v.cA0,init_cA0, sponge_factor);
+        out.cA1 = mix(v.cA1,init_cA1, sponge_factor);
+        out.cA2 = mix(v.cA2,init_cA2, sponge_factor);
+        out.cA3 = mix(v.cA3,init_cA3, sponge_factor);
+        out.cA4 = mix(v.cA4,init_cA4, sponge_factor);
+        out.cA5 = mix(v.cA5,init_cA5, sponge_factor);
 
-        out.cA0 = init_cA0;
-        out.cA1 = init_cA1;
-        out.cA2 = init_cA2;
-        out.cA3 = init_cA3;
-        out.cA4 = init_cA4;
-        out.cA5 = init_cA5;
+        out.cGi0 = mix(v.cGi0,init_cGi0, sponge_factor);
+        out.cGi1 = mix(v.cGi1,init_cGi1, sponge_factor);
+        out.cGi2 = mix(v.cGi2,init_cGi2, sponge_factor);
 
-        out.cGi0 = init_cGi0;
-        out.cGi1 = init_cGi1;
-        out.cGi2 = init_cGi2;
-
-        out.K = init_K;
-        out.X = init_X;
+        out.K = mix(v.K,init_K, sponge_factor);
+        out.X = mix(v.X,init_X, sponge_factor);
 
         float bl_conformal = init_bl_conformal;
 
-        out.gA = init_gA;
-        out.gB0 = init_gB0;
-        out.gB1 = init_gB1;
-        out.gB2 = init_gB2;
+        out.gA = mix(v.gA,init_gA, sponge_factor);
+        out.gB0 = mix(v.gB0,init_gB0, sponge_factor);
+        out.gB1 = mix(v.gB1,init_gB1, sponge_factor);
+        out.gB2 = mix(v.gB2,init_gB2, sponge_factor);
 
         #ifdef USE_GBB
         out.gBB0 = init_gBB0;
