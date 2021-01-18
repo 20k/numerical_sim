@@ -233,18 +233,34 @@ value hacky_differentiate(equation_context& ctx, value in, int idx)
     std::string yp1 = "y+1";
     std::string zp1 = "z+1";
 
+    std::string xp2 = "x+2";
+    std::string yp2 = "y+2";
+    std::string zp2 = "z+2";
+
     std::string xm1 = "x-1";
     std::string ym1 = "y-1";
     std::string zm1 = "z-1";
+
+    std::string xm2 = "x-2";
+    std::string ym2 = "y-2";
+    std::string zm2 = "z-2";
 
     #ifdef SYMMETRY_BOUNDARY
     xp1 = "(" + xp1 + ")%dim.x";
     yp1 = "(" + yp1 + ")%dim.y";
     zp1 = "(" + zp1 + ")%dim.z";
 
+    xp2 = "(" + xp2 + ")%dim.x";
+    yp2 = "(" + yp2 + ")%dim.y";
+    zp2 = "(" + zp2 + ")%dim.z";
+
     xm1 = "abs(" + xm1 + ")";
     ym1 = "abs(" + ym1 + ")";
     zm1 = "abs(" + zm1 + ")";
+
+    xm2 = "abs(" + xm2 + ")";
+    ym2 = "abs(" + ym2 + ")";
+    zm2 = "abs(" + zm2 + ")";
     #endif // SYMMETRY_BOUNDARY
 
     auto index = [](const std::string& x, const std::string& y, const std::string& z)
@@ -262,21 +278,26 @@ value hacky_differentiate(equation_context& ctx, value in, int idx)
         return "finite_difference(" + upper + "," + lower + ",scale)";
     };
 
+    auto evaluate_at = [&](const std::string& x, const std::string& y, const std::string& z)
+    {
+        return index_buffer(val, buffer, index(x, y, z));
+    };
+
     value final_command;
 
     if(idx == 0)
     {
-        final_command = finite_difference(index_buffer(val, buffer, index(xp1, y, z)), index_buffer(val, buffer, index(xm1, y, z)));
+        final_command = finite_difference(evaluate_at(xp1, y, z), evaluate_at(xm1, y, z));
     }
 
     if(idx == 1)
     {
-        final_command = finite_difference(index_buffer(val, buffer, index(x, yp1, z)), index_buffer(val, buffer, index(x, ym1, z)));
+        final_command = finite_difference(evaluate_at(x, yp1, z), evaluate_at(x, ym1, z));
     }
 
     if(idx == 2)
     {
-        final_command = finite_difference(index_buffer(val, buffer, index(x, y, zp1)), index_buffer(val, buffer, index(x, y, zm1)));
+        final_command = finite_difference(evaluate_at(x, y, zp1), evaluate_at(x, y, zm1));
     }
 
     ctx.pin(final_command);
@@ -596,17 +617,17 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
     auto san_black_hole_pos = [&](vec3f in)
     {
-        return floor(in / scale) + (vec3f){0.5, 0, 0};
+        return floor(in / scale) + (vec3f){0.5, 0.5, 0.5};
     };
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
-    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, 0, 0}), san_black_hole_pos({1.1515 * 0.5f, 0, 0})};
-    //std::vector<float> black_hole_m{0.5f, 0.5f};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, 0, 0}), san_black_hole_pos({1.1515 * 0.5f, 0, 0})};
+    std::vector<float> black_hole_m{0.5f, 0.5f};
     //std::vector<float> black_hole_m{0.1f, 0.1f};
     //std::vector<float> black_hole_m{1, 1};
 
-    std::vector<vec3f> black_hole_pos{{0.,0,0}};
-    std::vector<float> black_hole_m{1};
+    //std::vector<vec3f> black_hole_pos{{0.,0,0}};
+    //std::vector<float> black_hole_m{1};
 
     ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
     ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is
