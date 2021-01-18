@@ -3,7 +3,7 @@
 
 #define SYMMETRY_BOUNDARY
 
-#define USE_GBB
+//#define USE_GBB
 
 struct bssnok_data
 {
@@ -187,6 +187,8 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
     float3 pos = {x, y, z};
 
     float3 diff = pos - centre;
+
+    return diff;
 
     float len = length(diff);
 
@@ -619,8 +621,9 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
 
     #if 1
     //if(debug)
-    if(x == 5 && y == 6 && z == 4)
+    //if(x == 5 && y == 6 && z == 4)
     //if(x == 125 && y == 100 && z == 125)
+    if(x == 125 && y == 125 && z == 125)
     {
         float scalar = scalar_curvature;
 

@@ -9,7 +9,7 @@
 #include <geodesic/dual_value.hpp>
 #include <geodesic/numerical.hpp>
 
-#define USE_GBB
+//#define USE_GBB
 
 ///all conformal variables are explicitly labelled
 struct bssnok_data
@@ -300,7 +300,7 @@ tensor<T, N, N> gpu_lie_derivative_weight(equation_context& ctx, const tensor<T,
             {
                 sum = sum + B.idx(k) * hacky_differentiate(ctx, mT.idx(i, j), k);
                 sum = sum + mT.idx(i, k) * hacky_differentiate(ctx, B.idx(k), j);
-                sum = sum + mT.idx(k, j) * hacky_differentiate(ctx, B.idx(k), i);
+                sum = sum + mT.idx(j, k) * hacky_differentiate(ctx, B.idx(k), i);
                 sum = sum - (2.f/3.f) * mT.idx(i, j) * hacky_differentiate(ctx, B.idx(k), k);
             }
 
@@ -1370,7 +1370,9 @@ void build_eqs(equation_context& ctx)
         }
     }
 
-    ctx.add("debug_val", Yij.idx(0, 1));
+    ctx.add("debug_val", derived_cGi.idx(0));
+
+    //ctx.add("debug_val", Yij.idx(0, 1));
 
     inverse_metric<value, 3, 3> iYij = Yij.invert();
 
@@ -1566,6 +1568,12 @@ void build_eqs(equation_context& ctx)
         }
 
         dtcGi.idx(i) = sum;
+    }
+
+    ///DAMP?
+    for(int i=0; i < 3; i++)
+    {
+        //dtcGi.idx(i) = dtcGi.idx(i) + (derived_cGi.idx(i) - cGi.idx(i)) * 10;
     }
 
     value dtgA = -2 * gA * K;
