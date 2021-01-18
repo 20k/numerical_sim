@@ -1,6 +1,8 @@
 ///https://arxiv.org/pdf/1404.6523.pdf
 ///Gauge evolution equations
 
+//#define SYMMETRY_BOUNDARY
+
 #define USE_GBB
 
 struct bssnok_data
@@ -352,8 +354,10 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
     if(x >= dim.x || y >= dim.y || z >= dim.z)
         return;
 
+    #ifndef SYMMETRY_BOUNDARY
     if(x == 0 || x == dim.x-1 || y == 0 || y == dim.y - 1 || z == 0 || z == dim.z - 1)
         return;
+    #endif // SYMMETRY_BOUNDARY
 
     struct bssnok_data v = in[IDX(x, y, z)];
 
@@ -416,6 +420,10 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
     int ix = get_global_id(0);
     int iy = get_global_id(1);
     int iz = get_global_id(2);
+
+    #ifdef SYMMETRY_BOUNDARY
+    return;
+    #endif // SYMMETRY_BOUNDARY
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -516,8 +524,10 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     if(x >= dim.x || y >= dim.y || z >= dim.z)
         return;
 
+    #ifndef SYMMETRY_BOUNDARY
     if(x <= 1 || x >= dim.x - 2 || y <= 1 || y >= dim.y - 2 || z <= 1 || z >= dim.z - 2)
         return;
+    #endif // SYMMETRY_BOUNDARY
 
     float3 centre = {dim.x/2, dim.y/2, dim.z/2};
     float r = fast_length((float3){x, y, z} - centre);
@@ -576,9 +586,9 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     my_out->gBB2 = v.gBB2 + dtgBB2 * timestep;
     #endif // USE_GBB
 
-    /*bool debug = false;
+    bool debug = false;
 
-    NANCHECK(cY0);
+    /*NANCHECK(cY0);
     NANCHECK(cY1);
     NANCHECK(cY2);
     NANCHECK(cY3);
@@ -608,7 +618,9 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     NANCHECK(gBB2);*/
 
     #if 1
-    if(x == 125 && y == 100 && z == 125)
+    //if(debug)
+    if(x == 5 && y == 6 && z == 4)
+    //if(x == 125 && y == 100 && z == 125)
     {
         float scalar = scalar_curvature;
 

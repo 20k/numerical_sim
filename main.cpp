@@ -189,60 +189,99 @@ struct equation_context
     }
 };
 
+#define SYMMETRY_BOUNDARY
+
 ///todo: I know for a fact that clang is too silly to optimise out the memory lookups
 value hacky_differentiate(equation_context& ctx, value in, int idx)
 {
     assert(in.is_value());
 
+    assert(in.value_payload.value().starts_with("v.") || in.value_payload.value().starts_with("ik."));
+
+    std::string buffer;
+    std::string val;
+
     if(in.value_payload.value().starts_with("v."))
     {
-        std::string nstr = in.value_payload.value();
+        buffer = "in";
 
-        nstr.erase(nstr.begin());
-        nstr.erase(nstr.begin());
+        val = in.value_payload.value();
 
-        value ret;
-        ret.make_value("nan");
-
-        if(idx == 0)
-            ret.make_value("DIFFX(" + nstr + ")");
-        else if(idx == 1)
-            ret.make_value("DIFFY(" + nstr + ")");
-        else if(idx == 2)
-            ret.make_value("DIFFZ(" + nstr + ")");
-        else
-            assert(false);
-
-        ctx.pin(ret);
-
-        return ret;
+        val.erase(val.begin());
+        val.erase(val.begin());
     }
     else if(in.value_payload.value().starts_with("ik."))
     {
-        std::string nstr = in.value_payload.value();
+        buffer = "temp_in";
 
-        nstr.erase(nstr.begin());
-        nstr.erase(nstr.begin());
-        nstr.erase(nstr.begin());
+        val = in.value_payload.value();
 
-        value ret;
-        ret.make_value("nan");
-
-        if(idx == 0)
-            ret.make_value("INTERMEDIATE_DIFFX(" + nstr + ")");
-        else if(idx == 1)
-            ret.make_value("INTERMEDIATE_DIFFY(" + nstr + ")");
-        else if(idx == 2)
-            ret.make_value("INTERMEDIATE_DIFFZ(" + nstr + ")");
-        else
-            assert(false);
-
-        ctx.pin(ret);
-
-        return ret;
+        val.erase(val.begin());
+        val.erase(val.begin());
+        val.erase(val.begin());
     }
 
-    assert(false);
+    std::string dimx = "dim.x";
+    std::string dimy = "dim.y";
+    std::string dimz = "dim.z";
+
+    std::string x = "x";
+    std::string y = "y";
+    std::string z = "z";
+
+    std::string xp1 = "x+1";
+    std::string yp1 = "y+1";
+    std::string zp1 = "z+1";
+
+    std::string xm1 = "x-1";
+    std::string ym1 = "y-1";
+    std::string zm1 = "z-1";
+
+    #ifdef SYMMETRY_BOUNDARY
+    xp1 = "(" + xp1 + ")%dim.x";
+    yp1 = "(" + yp1 + ")%dim.y";
+    zp1 = "(" + zp1 + ")%dim.z";
+
+    xm1 = "abs(" + xm1 + ")";
+    ym1 = "abs(" + ym1 + ")";
+    zm1 = "abs(" + zm1 + ")";
+    #endif // SYMMETRY_BOUNDARY
+
+    auto index = [](const std::string& x, const std::string& y, const std::string& z)
+    {
+        return "IDX(" + x + "," + y + "," + z + ")";
+    };
+
+    auto index_buffer = [](const std::string& variable, const std::string& buffer, const std::string& with_what)
+    {
+        return buffer + "[" + with_what + "]." + variable;
+    };
+
+    auto finite_difference = [](const std::string& upper, const std::string& lower)
+    {
+        return "finite_difference(" + upper + "," + lower + ",scale)";
+    };
+
+    value final_command;
+
+    if(idx == 0)
+    {
+        final_command = finite_difference(index_buffer(val, buffer, index(xp1, y, z)), index_buffer(val, buffer, index(xm1, y, z)));
+    }
+
+    if(idx == 1)
+    {
+        final_command = finite_difference(index_buffer(val, buffer, index(x, yp1, z)), index_buffer(val, buffer, index(x, ym1, z)));
+    }
+
+    if(idx == 2)
+    {
+        final_command = finite_difference(index_buffer(val, buffer, index(x, y, zp1)), index_buffer(val, buffer, index(x, y, zm1)));
+    }
+
+    ctx.pin(final_command);
+
+    return final_command;
 }
 
 template<typename T, int N>
