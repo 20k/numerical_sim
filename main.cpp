@@ -263,7 +263,7 @@ value hacky_differentiate(equation_context& ctx, value in, int idx)
     zm2 = "abs(" + zm2 + ")";
     #endif // SYMMETRY_BOUNDARY
 
-    auto index = [](const std::string& x, const std::string& y, const std::string& z)
+    auto index_raw = [](const std::string& x, const std::string& y, const std::string& z)
     {
         return "IDX(" + x + "," + y + "," + z + ")";
     };
@@ -278,26 +278,26 @@ value hacky_differentiate(equation_context& ctx, value in, int idx)
         return "finite_difference(" + upper + "," + lower + ",scale)";
     };
 
-    auto evaluate_at = [&](const std::string& x, const std::string& y, const std::string& z)
+    auto index = [&](const std::string& x, const std::string& y, const std::string& z)
     {
-        return index_buffer(val, buffer, index(x, y, z));
+        return index_buffer(val, buffer, index_raw(x, y, z));
     };
 
     value final_command;
 
     if(idx == 0)
     {
-        final_command = finite_difference(evaluate_at(xp1, y, z), evaluate_at(xm1, y, z));
+        final_command = finite_difference(index(xp1, y, z), index(xm1, y, z));
     }
 
     if(idx == 1)
     {
-        final_command = finite_difference(evaluate_at(x, yp1, z), evaluate_at(x, ym1, z));
+        final_command = finite_difference(index(x, yp1, z), index(x, ym1, z));
     }
 
     if(idx == 2)
     {
-        final_command = finite_difference(evaluate_at(x, y, zp1), evaluate_at(x, y, zm1));
+        final_command = finite_difference(index(x, y, zp1), index(x, y, zm1));
     }
 
     ctx.pin(final_command);
