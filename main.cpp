@@ -1771,9 +1771,9 @@ int main()
 
     std::string argument_string = "-O3 -cl-std=CL2.2 ";
 
-    vec3i size = {250, 250, 250};
+    vec3i size = {280, 280, 280};
     //vec3i size = {250, 250, 250};
-    float c_at_max = 24;
+    float c_at_max = 36;
     float scale = c_at_max / size.largest_elem();
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
