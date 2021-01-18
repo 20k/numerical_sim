@@ -1501,6 +1501,7 @@ void build_eqs(equation_context& ctx)
         dtK = -sum1 + sum2 + sum3;
     }
 
+    ///these seem to suffer from oscillations
     tensor<value, 3> dtcGi;
 
     ///https://arxiv.org/pdf/gr-qc/0511048.pdf
