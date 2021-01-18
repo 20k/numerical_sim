@@ -1580,7 +1580,7 @@ void build_eqs(equation_context& ctx)
 
     for(int i=0; i < 3; i++)
     {
-        dtgA = dtgA + gB.idx(i) * hacky_differentiate(ctx, gA, i) * gA;
+        dtgA = dtgA + gB.idx(i) * hacky_differentiate(ctx, gA, i);
     }
 
     //ctx.add("debug_val", dtgA);
