@@ -1184,9 +1184,6 @@ void build_eqs(equation_context& ctx)
     value K;
     K.make_value("v.K");
 
-    value phi;
-    phi.make_value("ik.phi");
-
     tensor<value, 3, 3, 3> dcYij;
 
     for(int k=0; k < 3; k++)
@@ -1206,6 +1203,26 @@ void build_eqs(equation_context& ctx)
         }
     }
 
+    ///dcgA alias
+    for(int i=0; i < 3; i++)
+    {
+        value v = hacky_differentiate(ctx, gA, i, false);
+
+        ctx.alias(v, digA.idx(i));
+    }
+
+    ///dcgB alias
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value v = hacky_differentiate(ctx, gB.idx(j), i, false);
+
+            ctx.alias(v, digB.idx(i, j));
+        }
+    }
+
+    ///dcYij alias
     for(int k=0; k < 3; k++)
     {
         for(int i=0; i < 3; i++)
