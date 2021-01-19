@@ -772,6 +772,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     value Y = yij.det();
     value schwarzs_conformal_factor = (1/12.f) * log(schwarzs_yij.det());
 
+    inverse_metric<value, 3, 3> iyij = yij.invert();
+
     ctx.pin(schwarzs_conformal_factor);
 
     ///phi
@@ -795,7 +797,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     inverse_metric<value, 3, 3> icY = cyij.invert();
 
     ///calculate icAij from https://arxiv.org/pdf/gr-qc/0206072.pdf (58)
-    tensor<value, 3, 3> icAij;
+    tensor<value, 3, 3> iKij;
 
     for(int i=0; i < 3; i++)
     {
@@ -824,17 +826,19 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
                     {
                         for(int l=0; l < 3; l++)
                         {
-                            lsum = lsum + cyij.idx(k, l) * normal[k] * P[l];
+                            lsum = lsum + yij.idx(k, l) * normal[k] * P[l];
                         }
                     }
 
-                    bh_sum = bh_sum + (3.f / (2.f * dist * dist)) * (normal[i] * P[j] + normal[j] * P[i] - (icY.idx(i, j) - normal[i] * normal[j]) * lsum);
+                    bh_sum = bh_sum + (3.f / (2.f * dist * dist)) * (normal[i] * P[j] + normal[j] * P[i] - (iyij.idx(i, j) - normal[i] * normal[j]) * lsum);
                 }
             }
 
-            icAij.idx(i, j) = bh_sum;
+            iKij.idx(i, j) = bh_sum;
         }
     }
+
+    tensor<value, 3, 3> Kij = lower_both(iKij, yij);
 
     /*value gA = 1/BL_conformal;
     value gB0 = 1/BL_conformal;
@@ -913,11 +917,32 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     }
     #endif // 0
 
-    tensor<value, 3, 3> iYij = yij.invert();
+    //tensor<value, 3, 3> iYij = yij.invert();
 
     tensor<value, 3> cGi;
-    tensor<value, 3, 3> cAij = lower_both(icAij, cyij);
-    value K;
+    //tensor<value, 3, 3> cAij = lower_both(icAij, cyij);
+    value K = gpu_trace(Kij, yij, iyij);
+
+    tensor<value, 3, 3> Aij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            Aij.idx(i, j) = Kij.idx(i, j) - (1.f/3.f) * yij.idx(i, j) * K;
+        }
+    }
+
+    tensor<value, 3, 3> cAij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            cAij.idx(i, j) = exp(-4 * conformal_factor) * Aij.idx(i, j);
+        }
+    }
+
 
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf (58)
 
@@ -934,7 +959,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
         for(int j=0; j < 3; j++)
         {
-            //cAij.idx(i, j) = 0;
+            cAij.idx(i, j) = 0;
         }
     }
 
