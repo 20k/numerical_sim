@@ -1812,9 +1812,9 @@ int main()
 
     std::string argument_string = "-O3 -cl-std=CL2.2 ";
 
-    vec3i size = {260, 260, 260};
+    vec3i size = {270, 270, 270};
     //vec3i size = {250, 250, 250};
-    float c_at_max = 36;
+    float c_at_max = 40;
     float scale = c_at_max / size.largest_elem();
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
@@ -2008,31 +2008,6 @@ int main()
 
         if(step)
         {
-            /*{
-                cl::args cleaner;
-                cleaner.push_back(bssnok_datas[which_data]);
-                cleaner.push_back(intermediate);
-                cleaner.push_back(scale);
-                cleaner.push_back(clsize);
-
-                clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {128, 1, 1});
-            }*/
-
-            cl::args constraints;
-            constraints.push_back(bssnok_datas[0]);
-            constraints.push_back(scale);
-            constraints.push_back(clsize);
-
-            clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {size.x(), size.y(), size.z()}, {128, 1, 1});
-
-            cl::args fl;
-            fl.push_back(bssnok_datas[which_data]);
-            fl.push_back(scale);
-            fl.push_back(clsize);
-            fl.push_back(intermediate);
-
-            clctx.cqueue.exec("calculate_intermediate_data", fl, {size.x(), size.y(), size.z()}, {128, 1, 1});
-
             float timestep = 0.01;
 
             cl::args a1;
@@ -2065,6 +2040,14 @@ int main()
             fl3.push_back(intermediate);
 
             clctx.cqueue.exec("calculate_intermediate_data", fl3, {size.x(), size.y(), size.z()}, {128, 1, 1});
+
+            cl::args constraints;
+            constraints.push_back(bssnok_datas[0]);
+            constraints.push_back(scale);
+            constraints.push_back(clsize);
+
+            clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {size.x(), size.y(), size.z()}, {128, 1, 1});
+
 
             time_elapsed_s += timestep;
         }
