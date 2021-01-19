@@ -126,6 +126,7 @@ struct equation_context
 {
     std::vector<std::pair<std::string, value>> values;
     std::vector<std::pair<std::string, value>> temporaries;
+    std::vector<std::pair<value, value>> aliases;
 
     void pin(value& v)
     {
@@ -141,6 +142,15 @@ struct equation_context
             }
         }
 
+        for(auto& i : aliases)
+        {
+            if(dual_types::equivalent(v, i.first))
+            {
+                v = i.second;
+                return;
+            }
+        }
+
         std::string name = "pv[" + std::to_string(temporaries.size()) + "]";
 
         value old = v;
@@ -151,6 +161,20 @@ struct equation_context
         facade.make_value(name);
 
         v = facade;
+    }
+
+    void alias(value& concrete, value& alias)
+    {
+        for(auto& i : aliases)
+        {
+            if(dual_types::equivalent(concrete, i.first))
+            {
+                concrete = i.second;
+                return;
+            }
+        }
+
+        aliases.push_back({concrete, alias});
     }
 
     void add(const std::string& name, const value& v)
@@ -193,7 +217,7 @@ struct equation_context
 #define BORDER_WIDTH 2
 
 ///todo: I know for a fact that clang is too silly to optimise out the memory lookups
-value hacky_differentiate(equation_context& ctx, value in, int idx)
+value hacky_differentiate(equation_context& ctx, value in, int idx, bool pin = true)
 {
     assert(in.is_value());
 
@@ -313,7 +337,10 @@ value hacky_differentiate(equation_context& ctx, value in, int idx)
         //final_command = finite_difference(index(x, y, zp1), index(x, y, zm1));
     }
 
-    ctx.pin(final_command);
+    if(pin)
+    {
+        ctx.pin(final_command);
+    }
 
     return final_command;
 }
@@ -1110,28 +1137,6 @@ void build_eqs(equation_context& ctx)
     cGi.idx(1).make_value("v.cGi1");
     cGi.idx(2).make_value("v.cGi2");
 
-    tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, cY);
-    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, cY, icY);
-
-    tensor<value, 3> derived_cGi;
-
-    ///https://arxiv.org/pdf/gr-qc/0206072.pdf page 4
-    ///or https://arxiv.org/pdf/gr-qc/0511048.pdf after 7 actually
-    for(int i=0; i < 3; i++)
-    {
-        value sum = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            for(int k=0; k < 3; k++)
-            {
-                sum = sum + icY.idx(j, k) * christoff2.idx(i, j, k);
-            }
-        }
-
-        derived_cGi.idx(i) = sum;
-    }
-
     tensor<value, 3> digA;
     digA.idx(0).make_value("ik.digA[0]");
     digA.idx(1).make_value("ik.digA[1]");
@@ -1200,6 +1205,43 @@ void build_eqs(equation_context& ctx)
             }
         }
     }
+
+    for(int k=0; k < 3; k++)
+    {
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                value v = hacky_differentiate(ctx, cY.idx(i, j), k, false);
+
+                ctx.alias(v, dcYij.idx(k, i, j));
+            }
+        }
+    }
+
+
+    tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, cY);
+    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, cY, icY);
+
+    tensor<value, 3> derived_cGi;
+
+    ///https://arxiv.org/pdf/gr-qc/0206072.pdf page 4
+    ///or https://arxiv.org/pdf/gr-qc/0511048.pdf after 7 actually
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                sum = sum + icY.idx(j, k) * christoff2.idx(i, j, k);
+            }
+        }
+
+        derived_cGi.idx(i) = sum;
+    }
+
 
     /*tensor<value, 3, 3, 3> cGijk;
 
