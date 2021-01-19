@@ -604,6 +604,34 @@ tensor<T, N, N> raise_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met
     return ret;
 }
 
+template<typename T, int N>
+inline
+tensor<T, N, N> lower_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met)
+{
+    tensor<T, N, N> ret;
+
+    for(int a=0; a < N; a++)
+    {
+        for(int b=0; b < N; b++)
+        {
+            T sum = 0;
+
+            for(int g = 0; g < N; g++)
+            {
+                for(int d = 0; d < N; d++)
+                {
+                    sum = sum + met.idx(a, g) * met.idx(b, d) * mT.idx(g, d);
+                }
+            }
+
+            ret.idx(a, b) = sum;
+        }
+    }
+
+    return ret;
+}
+
+///https://arxiv.org/pdf/gr-qc/0206072.pdf alternative initial conditions
 ///https://cds.cern.ch/record/337814/files/9711015.pdf
 ///https://cds.cern.ch/record/517706/files/0106072.pdf this paper has a lot of good info on soaking up boundary conditions
 ///https://arxiv.org/pdf/1309.2960.pdf double fisheye
