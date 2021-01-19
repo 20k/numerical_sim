@@ -102,6 +102,8 @@ void matrix_3x3_invert(float data[9], float out[9])
 }
 
 ///todo: This can be eliminated by use of local memory and using different approximations to the derivatives at the boundary
+///need to work out why precaching the differentials of these didn't make much difference compared to bssnok_data
+///it might be because they're arrays
 struct intermediate_bssnok_data
 {
     ///christoffel symbols are symmetric in the lower 2 indices
