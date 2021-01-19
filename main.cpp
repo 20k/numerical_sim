@@ -690,15 +690,15 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     };
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
-    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, -0.01, -0.01}), san_black_hole_pos({1.1515 * 0.5f, 0.01, 0.01})};
-    //std::vector<float> black_hole_m{0.5f, 0.5f};
-    //std::vector<vec3f> black_hole_velocity{{0, 0.5, 0}, {0, -0.5, 0}}; ///pick better velocities
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, -0.01, -0.01}), san_black_hole_pos({1.1515 * 0.5f, 0.01, 0.01})};
+    std::vector<float> black_hole_m{0.5f, 0.5f};
+    std::vector<vec3f> black_hole_velocity{{0, 0.25, 0}, {0, -0.25, 0}}; ///pick better velocities
     //std::vector<float> black_hole_m{0.1f, 0.1f};
     //std::vector<float> black_hole_m{1, 1};
 
-    std::vector<vec3f> black_hole_pos{{0,0,0}};
-    std::vector<float> black_hole_m{1};
-    std::vector<vec3f> black_hole_velocity{{0, 0.4, 0}};
+    //std::vector<vec3f> black_hole_pos{{0,0,0}};
+    //std::vector<float> black_hole_m{1};
+    //std::vector<vec3f> black_hole_velocity{{0, 0.4, 0}};
 
     float total_mass = 0;
     vec3f barycentre = {0,0,0};
@@ -797,7 +797,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     inverse_metric<value, 3, 3> icY = cyij.invert();
 
     ///calculate icAij from https://arxiv.org/pdf/gr-qc/0206072.pdf (58)
-    tensor<value, 3, 3> iKij;
+    tensor<value, 3, 3> icAij;
 
     for(int i=0; i < 3; i++)
     {
@@ -834,11 +834,9 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
                 }
             }
 
-            iKij.idx(i, j) = bh_sum;
+            icAij.idx(i, j) = bh_sum;
         }
     }
-
-    tensor<value, 3, 3> Kij = lower_both(iKij, yij);
 
     /*value gA = 1/BL_conformal;
     value gB0 = 1/BL_conformal;
@@ -919,30 +917,9 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
     //tensor<value, 3, 3> iYij = yij.invert();
 
+    tensor<value, 3, 3> cAij = lower_both(icAij, cyij);
     tensor<value, 3> cGi;
-    //tensor<value, 3, 3> cAij = lower_both(icAij, cyij);
-    value K = gpu_trace(Kij, yij, iyij);
-
-    tensor<value, 3, 3> Aij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            Aij.idx(i, j) = Kij.idx(i, j) - (1.f/3.f) * yij.idx(i, j) * K;
-        }
-    }
-
-    tensor<value, 3, 3> cAij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            cAij.idx(i, j) = exp(-4 * conformal_factor) * Aij.idx(i, j);
-        }
-    }
-
+    value K = 0;
 
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf (58)
 
@@ -959,7 +936,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
         for(int j=0; j < 3; j++)
         {
-            cAij.idx(i, j) = 0;
+            //cAij.idx(i, j) = 0;
         }
     }
 
