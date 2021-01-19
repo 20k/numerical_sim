@@ -638,6 +638,7 @@ tensor<T, N, N> lower_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met
 ///https://arxiv.org/pdf/gr-qc/0505055.pdf better differentiation. Enforces the algebraic constraints det(cY) = 1, and subtracts the trace of Aij each frame
 ///manually enforce the conditions when X=0
 ///todo: even schwarzschild explodes after t=7
+///todo: this paper suggests having a very short timestep initially while the gauge conditions settle down: https://arxiv.org/pdf/1404.6523.pdf, then increasing it
 inline
 void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale)
 {
@@ -692,7 +693,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, -0.01, -0.01}), san_black_hole_pos({1.1515 * 0.5f, 0.01, 0.01})};
     std::vector<float> black_hole_m{0.5f, 0.5f};
-    std::vector<vec3f> black_hole_velocity{{0, 0.25, 0}, {0, -0.25, 0}}; ///pick better velocities
+    std::vector<vec3f> black_hole_velocity{{0, 0.5, 0}, {0, -0.5, 0}}; ///pick better velocities
     //std::vector<float> black_hole_m{0.1f, 0.1f};
     //std::vector<float> black_hole_m{1, 1};
 
@@ -2190,7 +2191,7 @@ int main()
 
         if(step)
         {
-            float timestep = 0.01;
+            float timestep = 0.001;
 
             cl::args a1;
             a1.push_back(bssnok_datas[which_data]);
