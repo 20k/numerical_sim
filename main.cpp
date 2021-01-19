@@ -1238,9 +1238,13 @@ void build_eqs(equation_context& ctx)
 
     for(int k=0; k < 3; k++)
     {
-        for(int i=0; i < 5; i++)
+        for(int i=0; i < 6; i++)
         {
             hacky_differentiate(ctx, "v.cY" + std::to_string(i), k);
+        }
+
+        for(int i=0; i < 6; i++)
+        {
             hacky_differentiate(ctx, "v.cA" + std::to_string(i), k);
         }
 
