@@ -637,6 +637,7 @@ tensor<T, N, N> lower_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met
 ///https://arxiv.org/pdf/1309.2960.pdf double fisheye
 ///https://arxiv.org/pdf/gr-qc/0505055.pdf better differentiation. Enforces the algebraic constraints det(cY) = 1, and subtracts the trace of Aij each frame
 ///manually enforce the conditions when X=0
+///todo: even schwarzschild explodes after t=7
 inline
 void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale)
 {
