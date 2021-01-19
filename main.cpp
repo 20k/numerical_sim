@@ -698,7 +698,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
     std::vector<vec3f> black_hole_pos{{0,0,0}};
     std::vector<float> black_hole_m{1};
-    std::vector<vec3f> black_hole_velocity{{0, 0.5, 0}};
+    std::vector<vec3f> black_hole_velocity{{0, 0.4, 0}};
 
     float total_mass = 0;
     vec3f barycentre = {0,0,0};
@@ -749,7 +749,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     {
         for(int j=0; j < 3; j++)
         {
-            float u = 0.01;
+            float u = 0.0;
 
             ///https://arxiv.org/pdf/gr-qc/0511048.pdf
             yij.idx(i, j) = pow(BL_conformal + u, 4) * kronecker.idx(i, j);
@@ -803,7 +803,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         {
             value bh_sum = 0;
 
-            /*for(int bh_idx = 0; bh_idx < (int)black_hole_pos.size(); bh_idx++)
+            for(int bh_idx = 0; bh_idx < (int)black_hole_pos.size(); bh_idx++)
             {
                 float Mi = black_hole_m[bh_idx];
                 vec3f ri = black_hole_pos[bh_idx];
@@ -830,7 +830,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
                     bh_sum = bh_sum + (3.f / (2.f * dist * dist)) * (normal[i] * P[j] + normal[j] * P[i] - (icY.idx(i, j) - normal[i] * normal[j]) * lsum);
                 }
-            }*/
+            }
 
             icAij.idx(i, j) = bh_sum;
         }
