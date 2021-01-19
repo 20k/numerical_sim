@@ -1581,7 +1581,9 @@ void build_eqs(equation_context& ctx)
     ///https://arxiv.org/pdf/gr-qc/0511048.pdf
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf
     ///X = exp(-4 phi)
-    ///consider trying to eliminate
+    ///consider trying to eliminate via https://arxiv.org/pdf/gr-qc/0206072.pdf (27). I think this is what you're meant to do
+    ///to eliminate the dependency on the non conformal metric entirely. This would improve stability quite significantly
+    ///near the puncture
     metric<value, 3, 3> Yij;
 
     for(int i=0; i < 3; i++)
