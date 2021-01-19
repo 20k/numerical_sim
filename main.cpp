@@ -9,6 +9,22 @@
 #include <geodesic/dual_value.hpp>
 #include <geodesic/numerical.hpp>
 
+/**
+current paper set
+https://arxiv.org/pdf/gr-qc/0505055.pdf - fourth order numerical paper, finite differencing
+https://arxiv.org/pdf/gr-qc/0511048.pdf - good reference, th eone with lies and bssn
+https://arxiv.org/pdf/gr-qc/0206072.pdf - binary initial conditions, caij
+https://link.springer.com/article/10.12942/lrr-2000-5#Equ48 - initial conditions
+https://arxiv.org/pdf/gr-qc/9703066.pdf - binary black hole initial conditions
+https://arxiv.org/pdf/gr-qc/0605030.pdf - moving puncture gauge conditions
+https://arxiv.org/pdf/1404.6523.pdf - gauge conditions, 2014 so check this one again
+https://arxiv.org/pdf/gr-qc/0005043.pdf - initial conditions
+https://cds.cern.ch/record/337814/files/9711015.pdf - initial conditions
+https://cds.cern.ch/record/517706/files/0106072.pdf - general review
+https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses - thesis
+https://arxiv.org/pdf/0704.0782.pdf - boundary conditions
+*/
+
 //#define USE_GBB
 
 ///all conformal variables are explicitly labelled
