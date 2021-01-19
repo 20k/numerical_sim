@@ -696,7 +696,7 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     my_out->gBB2 = v.gBB2 + dtgBB2 * timestep;
     #endif // USE_GBB
 
-    bool debug = false;
+    /*bool debug = false;
 
     NANCHECK(cY0);
     NANCHECK(cY1);
@@ -727,9 +727,9 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     NANCHECK(gBB0);
     NANCHECK(gBB1);
     NANCHECK(gBB2);
-    #endif // USE_GBB
+    #endif // USE_GBB*/
 
-    #if 1
+    #if 0
     if(debug)
     //if(x == 5 && y == 6 && z == 4)
     //if(x == 125 && y == 100 && z == 125)
