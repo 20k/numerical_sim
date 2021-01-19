@@ -701,28 +701,6 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     //std::vector<float> black_hole_m{1};
     //std::vector<vec3f> black_hole_velocity{{0, 0.4, 0}};
 
-    float total_mass = 0;
-    vec3f barycentre = {0,0,0};
-
-    for(int i=0; i < (int)black_hole_pos.size(); i++)
-    {
-        total_mass += black_hole_m[i];
-        barycentre += black_hole_m[i] * black_hole_pos[i];
-    }
-
-    barycentre /= total_mass;
-
-    value schwarzs_conformal = 0;
-
-    {
-        vec<3, value> vri = {barycentre.x(), barycentre.y(), barycentre.z()};
-        value dist = (pos - vri).length() * scale;
-
-        dist = max(dist, 0.1f);
-
-        schwarzs_conformal = total_mass / (2 * dist);
-    }
-
     ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
     ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is
     ///todo pt 2: Try sponging to schwarzschild
@@ -740,11 +718,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         BL_conformal = BL_conformal + Mi / (2 * dist);
     }
 
-    //BL_conformal = schwarzs_conformal;
-
     ///ok so: I'm pretty sure this is correct
     metric<value, 3, 3> yij;
-    metric<value, 3, 3> schwarzs_yij;
 
     for(int i=0; i < 3; i++)
     {
@@ -754,7 +729,6 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
             ///https://arxiv.org/pdf/gr-qc/0511048.pdf
             yij.idx(i, j) = pow(BL_conformal + u, 4) * kronecker.idx(i, j);
-            schwarzs_yij.idx(i, j) = pow(schwarzs_conformal + u, 4) * kronecker.idx(i, j);
 
             /*if(i == j)
             {
@@ -767,15 +741,10 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         }
     }
 
-    //std::cout << "YIJ " << yij.idx(0, 0).substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
-
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
     value Y = yij.det();
-    value schwarzs_conformal_factor = (1/12.f) * log(schwarzs_yij.det());
 
     inverse_metric<value, 3, 3> iyij = yij.invert();
-
-    ctx.pin(schwarzs_conformal_factor);
 
     ///phi
     value conformal_factor = (1/12.f) * log(Y);
@@ -783,7 +752,6 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ctx.pin(conformal_factor);
 
     metric<value, 3, 3> cyij;
-    metric<value, 3, 3> schwarzs_cyij;
 
     ///checked, cyij is correct
     for(int i=0; i < 3; i++)
@@ -791,7 +759,6 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         for(int j=0; j < 3; j++)
         {
             cyij.idx(i, j) = exp(-4 * conformal_factor) * yij.idx(i, j);
-            schwarzs_cyij.idx(i, j) = exp(-4 * schwarzs_conformal_factor) * schwarzs_yij.idx(i, j);
         }
     }
 
@@ -806,7 +773,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         {
             value bh_sum = 0;
 
-            for(int bh_idx = 0; bh_idx < (int)black_hole_pos.size(); bh_idx++)
+            /*for(int bh_idx = 0; bh_idx < (int)black_hole_pos.size(); bh_idx++)
             {
                 float Mi = black_hole_m[bh_idx];
                 vec3f ri = black_hole_pos[bh_idx];
@@ -833,7 +800,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
                     bh_sum = bh_sum + (3.f / (2.f * dist * dist)) * (normal[i] * P[j] + normal[j] * P[i] - (iyij.idx(i, j) - normal[i] * normal[j]) * lsum);
                 }
-            }
+            }*/
 
             icAij.idx(i, j) = bh_sum;
         }
@@ -925,7 +892,6 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf (58)
 
     value X = exp(-4 * conformal_factor);
-    value schwarzs_X = exp(-4 * schwarzs_conformal_factor);
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
@@ -937,7 +903,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
         for(int j=0; j < 3; j++)
         {
-            //cAij.idx(i, j) = 0;
+            cAij.idx(i, j) = 0;
         }
     }
 
@@ -955,22 +921,12 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         ctx.add(a_name, cAij.idx(index.x(), index.y()));
     }
 
-    for(int i=0; i < 6; i++)
-    {
-        vec2i index = linear_indices[i];
-
-        std::string y_name = "schwarzs_init_cY" + std::to_string(i);
-
-        ctx.add(y_name, schwarzs_cyij.idx(index.x(), index.y()));
-    }
-
     ctx.add("init_cGi0", cGi.idx(0));
     ctx.add("init_cGi1", cGi.idx(1));
     ctx.add("init_cGi2", cGi.idx(2));
 
     ctx.add("init_K", K);
     ctx.add("init_X", X);
-    ctx.add("schwarzs_init_X", schwarzs_X);
 
     ctx.add("init_bl_conformal", BL_conformal);
     ctx.add("init_conformal_factor", conformal_factor);
@@ -1662,42 +1618,11 @@ void build_eqs(equation_context& ctx)
 
             value trace_free_part = gpu_trace_free(with_trace, Yij, iYij).idx(i, j);
 
-            if(i == 0 && j == 0)
-            {
-                //ctx.add("debug_val", gpu_trace(gpu_trace_free(with_trace, Yij, iYij), Yij, iYij));
-                //ctx.add("debug_val", trace_free_part);
-
-                //ctx.add("debug_val", cRij.idx(i, j));
-                //ctx.add("debug_val", gA * Rij.idx(i, j));
-
-                //ctx.add("debug_val", gpu_covariant_derivative_low_vec(ctx, digA, Yij, iYij).idx(j, i));
-            }
-
             value p1 = X * trace_free_part;
 
             value p2 = gA * (K * cA.idx(i, j) - 2 * sum);
 
             value p3 = gpu_lie_derivative_weight(ctx, gB, cA).idx(i, j);
-
-            /*if(i == 0 && j == 0)
-            {
-                for(int dd=0; dd < 3; dd++)
-                {
-                    for(int kk=0; kk < 3; kk++)
-                    {
-                        int lidx = dd * 3 + kk;
-
-                        equations.push_back({"debug_val" + std::to_string(lidx), iYij.idx(dd, kk)});
-                    }
-                }
-
-
-                //equations.push_back({"debug_val", Yij.det()});
-
-                //equations.push_back({"debug_val", gpu_trace(with_trace, Yij)});
-
-                //equations.push_back({"debug_val", -gpu_covariant_derivative_low_vec(digA, Yij, christoff_Yij).idx(j, i)});
-            }*/
 
             value sanitised = dual_types::dual_if(X <= 0.000001, []()
             {
@@ -1719,9 +1644,6 @@ void build_eqs(equation_context& ctx)
             dtcAij.idx(i, j) = sanitised + p2 + p3;
         }
     }
-
-
-    //tensor<value, 3, 3> icAij = cA.invert();
 
     tensor<value, 3, 3> icAij = raise_both(cA, cY, icY);
 
@@ -2133,6 +2055,7 @@ int main()
     //clctx.cqueue.exec("clean_data", initial_clean, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
     int which_buffer = 0;
+    int steps = 0;
 
     bool run = false;
 
@@ -2191,7 +2114,18 @@ int main()
 
         if(step)
         {
-            float timestep = 0.001;
+            float timestep = 0.02;
+
+            if(steps < 30)
+                timestep = 0.02;
+
+            if(steps < 20)
+                timestep = 0.01;
+
+            if(steps < 10)
+                timestep = 0.001;
+
+            steps++;
 
             cl::args a1;
             a1.push_back(bssnok_datas[which_data]);
