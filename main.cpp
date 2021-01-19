@@ -691,6 +691,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, -0.01, -0.01}), san_black_hole_pos({1.1515 * 0.5f, 0.01, 0.01})};
     std::vector<float> black_hole_m{0.5f, 0.5f};
+    std::vector<vec3f> linear_velocity{{0, 0.5, 0}, {0, -0.5, 0}}; ///pick better velocities
     //std::vector<float> black_hole_m{0.1f, 0.1f};
     //std::vector<float> black_hole_m{1, 1};
 
@@ -773,8 +774,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
     ///phi
     value conformal_factor = (1/12.f) * log(Y);
-    value conformal_factor_concrete;
-    conformal_factor_concrete.make_value("conformal_factor");
+
+    ctx.pin(conformal_factor);
 
     metric<value, 3, 3> cyij;
     metric<value, 3, 3> schwarzs_cyij;
@@ -804,17 +805,13 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     value gB1 = 0;
     value gB2 = 0;*/
 
+    #if 0
     tensor<value, 3> norm;
     norm.idx(0) = -gB0 / gA;
     norm.idx(1) = -gB1 / gA;
     norm.idx(2) = -gB2 / gA;
 
-    //std::cout << "n0 " << norm.idx(0).substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
-    //std::cout << "y0 " << yij.idx(0, 0).substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
-
     tensor<value, 3, 3> nearly_Kij = gpu_lie_derivative_weight_arbitrary(norm, yij, 0, variables);
-
-    //std::cout << "ni0 " << nearly_Kij.idx(0, 0).substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
 
     tensor<value, 3, 3> Kij;
 
@@ -830,9 +827,6 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
     value K = gpu_trace(Kij, yij, yij.invert());
 
-    //std::cout << "K " << K.substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
-    //std::cout << "Kij " << Kij.idx(0, 0).substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
-
     tensor<value, 3, 3> Aij;
 
     for(int i=0; i < 3; i++)
@@ -842,10 +836,6 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
             Aij.idx(i, j) = Kij.idx(i, j) - (1.f/3.f) * yij.idx(i, j) * K;
         }
     }
-
-    //std::cout << "AIJ0 " << (Aij.idx(0, 0).substitute("x", 20).substitute("y", 125).substitute("z", 125)).get_constant() << std::endl;
-    //std::cout << "TFAIJ0 " << (gpu_trace(Aij, yij).substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant()) << std::endl;
-    //assert(false);
 
     tensor<value, 3, 3> cAij;
 
@@ -875,8 +865,13 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
         cGi.idx(i) = -sum;
     }
+    #endif // 0
 
-    value X = exp(-4 * conformal_factor_concrete);
+    tensor<value, 3> cGi;
+    tensor<value, 3, 3> cAij;
+    value K;
+
+    value X = exp(-4 * conformal_factor);
     value schwarzs_X = exp(-4 * schwarzs_conformal_factor);
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
