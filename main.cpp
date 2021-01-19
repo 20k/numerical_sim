@@ -933,7 +933,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
         for(int j=0; j < 3; j++)
         {
-            cAij.idx(i, j) = 0;
+            //cAij.idx(i, j) = 0;
         }
     }
 
