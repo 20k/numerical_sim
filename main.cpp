@@ -689,14 +689,15 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     };
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, -0.01, -0.01}), san_black_hole_pos({1.1515 * 0.5f, 0.01, 0.01})};
-    std::vector<float> black_hole_m{0.5f, 0.5f};
-    std::vector<vec3f> linear_velocity{{0, 0.5, 0}, {0, -0.5, 0}}; ///pick better velocities
+    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, -0.01, -0.01}), san_black_hole_pos({1.1515 * 0.5f, 0.01, 0.01})};
+    //std::vector<float> black_hole_m{0.5f, 0.5f};
+    //std::vector<vec3f> black_hole_velocity{{0, 0.5, 0}, {0, -0.5, 0}}; ///pick better velocities
     //std::vector<float> black_hole_m{0.1f, 0.1f};
     //std::vector<float> black_hole_m{1, 1};
 
-    //std::vector<vec3f> black_hole_pos{{0.,0,0}};
-    //std::vector<float> black_hole_m{1};
+    std::vector<vec3f> black_hole_pos{{0,0,0}};
+    std::vector<float> black_hole_m{1};
+    std::vector<vec3f> black_hole_velocity{{0, 0.5, 0}};
 
     float total_mass = 0;
     vec3f barycentre = {0,0,0};
@@ -715,7 +716,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         vec<3, value> vri = {barycentre.x(), barycentre.y(), barycentre.z()};
         value dist = (pos - vri).length() * scale;
 
-        dist = max(dist, 0.01f);
+        dist = max(dist, 0.1f);
 
         schwarzs_conformal = total_mass / (2 * dist);
     }
@@ -732,7 +733,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
         value dist = (pos - vri).length() * scale;
 
-        dist = max(dist, 0.01f);
+        dist = max(dist, 0.1f);
 
         BL_conformal = BL_conformal + Mi / (2 * dist);
     }
@@ -787,6 +788,50 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         {
             cyij.idx(i, j) = exp(-4 * conformal_factor) * yij.idx(i, j);
             schwarzs_cyij.idx(i, j) = exp(-4 * schwarzs_conformal_factor) * schwarzs_yij.idx(i, j);
+        }
+    }
+
+    inverse_metric<value, 3, 3> icY = cyij.invert();
+
+    ///calculate icAij from https://arxiv.org/pdf/gr-qc/0206072.pdf (58)
+    tensor<value, 3, 3> icAij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value bh_sum = 0;
+
+            /*for(int bh_idx = 0; bh_idx < (int)black_hole_pos.size(); bh_idx++)
+            {
+                float Mi = black_hole_m[bh_idx];
+                vec3f ri = black_hole_pos[bh_idx];
+
+                vec<3, value> vri = {ri.x(), ri.y(), ri.z()};
+
+                value dist = (pos - vri).length() * scale;
+
+                dist = max(dist, 0.1f);
+
+                {
+                    vec3f P = black_hole_velocity[bh_idx] * black_hole_m[bh_idx];
+                    vec<3, value> normal = (vec<3, value>){0, 0, -1} / dist;
+
+                    value lsum = 0;
+
+                    for(int k=0; k < 3; k++)
+                    {
+                        for(int l=0; l < 3; l++)
+                        {
+                            lsum = lsum + cyij.idx(k, l) * normal[k] * P[l];
+                        }
+                    }
+
+                    bh_sum = bh_sum + (3.f / (2.f * dist * dist)) * (normal[i] * P[j] + normal[j] * P[i] - (icY.idx(i, j) - normal[i] * normal[j]) * lsum);
+                }
+            }*/
+
+            icAij.idx(i, j) = bh_sum;
         }
     }
 
@@ -867,9 +912,13 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     }
     #endif // 0
 
+    tensor<value, 3, 3> iYij = yij.invert();
+
     tensor<value, 3> cGi;
-    tensor<value, 3, 3> cAij;
+    tensor<value, 3, 3> cAij = lower_both(icAij, cyij);
     value K;
+
+    ///https://arxiv.org/pdf/gr-qc/0206072.pdf (58)
 
     value X = exp(-4 * conformal_factor);
     value schwarzs_X = exp(-4 * schwarzs_conformal_factor);
