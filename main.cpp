@@ -217,7 +217,7 @@ struct equation_context
 #define BORDER_WIDTH 2
 
 ///todo: I know for a fact that clang is too silly to optimise out the memory lookups
-value hacky_differentiate(equation_context& ctx, value in, int idx, bool pin = true)
+value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true)
 {
     assert(in.is_value());
 
@@ -1234,6 +1234,23 @@ void build_eqs(equation_context& ctx)
                 ctx.alias(v, dcYij.idx(k, i, j));
             }
         }
+    }
+
+    for(int k=0; k < 3; k++)
+    {
+        for(int i=0; i < 5; i++)
+        {
+            hacky_differentiate(ctx, "v.cY" + std::to_string(i), k);
+            hacky_differentiate(ctx, "v.cA" + std::to_string(i), k);
+        }
+
+        for(int i=0; i < 3; i++)
+        {
+            hacky_differentiate(ctx, "v.cGi" + std::to_string(i), k);
+        }
+
+        hacky_differentiate(ctx, "v.K", k);
+        hacky_differentiate(ctx, "v.X", k);
     }
 
 
