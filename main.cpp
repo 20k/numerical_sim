@@ -1253,6 +1253,33 @@ void build_eqs(equation_context& ctx)
         hacky_differentiate(ctx, "v.X", k);
     }
 
+    for(int k=0; k < 3; k++)
+    {
+        for(int i=0; i < 3 * 6; i++)
+        {
+            hacky_differentiate(ctx, "ik.dcYij[" + std::to_string(i) + "]", k);
+        }
+
+        for(int i=0; i < 3; i++)
+        {
+            hacky_differentiate(ctx, "ik.digA[" + std::to_string(i) + "]", k);
+        }
+
+        for(int i=0; i < 3; i++)
+        {
+            hacky_differentiate(ctx, "ik.digB[" + std::to_string(i) + "]", k);
+        }
+
+        for(int i=0; i < 3; i++)
+        {
+            hacky_differentiate(ctx, "ik.dphi[" + std::to_string(i) + "]", k);
+        }
+
+        for(int i=0; i < 6; i++)
+        {
+            hacky_differentiate(ctx, "ik.Yij[" + std::to_string(i) + "]", k);
+        }
+    }
 
     tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, cY);
     tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, cY, icY);
