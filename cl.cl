@@ -113,7 +113,6 @@ struct intermediate_bssnok_data
     float digB[3*3];
     //float phi;
     float dphi[3];
-    float Yij[6];
 };
 
 float finite_difference(float upper, float lower, float scale)
@@ -414,13 +413,6 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
     my_out->dphi[0] = init_dphi0;
     my_out->dphi[1] = init_dphi1;
     my_out->dphi[2] = init_dphi2;
-
-    my_out->Yij[0] = init_Yij0;
-    my_out->Yij[1] = init_Yij1;
-    my_out->Yij[2] = init_Yij2;
-    my_out->Yij[3] = init_Yij3;
-    my_out->Yij[4] = init_Yij4;
-    my_out->Yij[5] = init_Yij5;
 }
 
 float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float time)
@@ -839,7 +831,9 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
             printf("Ik %f\n", ik.Yij[0]);
         }*/
 
-        float curvature = (fabs(ik.Yij[0]) + fabs(ik.Yij[1]) + fabs(ik.Yij[2]) + fabs(ik.Yij[3]) + fabs(ik.Yij[4]) + fabs(ik.Yij[5])) / 1000.;
+        float curvature = (fabs(v.cY0/v.X) + fabs(v.cY1/v.X) + fabs(v.cY2/v.X) + fabs(v.cY3/v.X) + fabs(v.cY4/v.X) + fabs(v.cY5/v.X)) / 1000.f;
+
+        //float curvature = (fabs(v.Yij[0]) + fabs(ik.Yij[1]) + fabs(ik.Yij[2]) + fabs(ik.Yij[3]) + fabs(ik.Yij[4]) + fabs(ik.Yij[5])) / 1000.;
         //float curvature = v.cY0 + v.cY1 + v.cY2 + v.cY3 + v.cY4 + v.cY5;
 
         float ascalar = fabs(curvature);

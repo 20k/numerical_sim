@@ -70,7 +70,6 @@ struct intermediate_bssnok_data
     cl_float digB[3*3];
     //cl_float phi;
     cl_float dphi[3];
-    cl_float Yij[6];
 };
 
 template<typename T, typename U, int N, size_t M>
@@ -1134,13 +1133,6 @@ void build_intermediate(equation_context& ctx)
     ctx.add("init_dphi0", dphi.idx(0));
     ctx.add("init_dphi1", dphi.idx(1));
     ctx.add("init_dphi2", dphi.idx(2));
-
-    for(int i=0; i < 6; i++)
-    {
-        vec2i idx = linear_indices[i];
-
-        ctx.add("init_Yij" + std::to_string(i), Yij.idx(idx.x(), idx.y()));
-    }
 }
 
 ///https://arxiv.org/pdf/gr-qc/0206072.pdf on stability, they recompute cGi where it does nto hae a derivative
@@ -1338,11 +1330,6 @@ void build_eqs(equation_context& ctx)
         for(int i=0; i < 3; i++)
         {
             hacky_differentiate(ctx, "ik.dphi[" + std::to_string(i) + "]", k);
-        }
-
-        for(int i=0; i < 6; i++)
-        {
-            hacky_differentiate(ctx, "ik.Yij[" + std::to_string(i) + "]", k);
         }
     }
 
@@ -1603,11 +1590,7 @@ void build_eqs(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            int linear_idx = index_table[i][j];
-
-            std::string name = "ik.Yij[" + std::to_string(linear_idx) + "]";
-
-            Yij.idx(i, j).make_value(name);
+            Yij.idx(i, j) = cY.idx(i, j) / X;
         }
     }
 
@@ -1645,7 +1628,6 @@ void build_eqs(equation_context& ctx)
         }
     }
 
-    value dbg_sum = 0;
 
     ///todo: Investigate this, there's a good chance dtcAij is whats broken
     for(int i=0; i < 3; i++)
@@ -1653,7 +1635,7 @@ void build_eqs(equation_context& ctx)
         for(int j=0; j < 3; j++)
         {
             ///Moved X inside the trace free bracket and expanded it
-            value trace_free_interior_old = -X * gpu_covariant_derivative_low_vec(ctx, digA, Yij, iYij).idx(j, i);
+            //value trace_free_interior_old = -X * gpu_covariant_derivative_low_vec(ctx, digA, Yij, iYij).idx(j, i);
 
             value trace_free_interior_1 = X * hacky_differentiate(ctx, digA.idx(j), i);
 
@@ -1668,13 +1650,9 @@ void build_eqs(equation_context& ctx)
 
             value trace_free_interior_2 = X * gA * Rij.idx(i, j);
 
-            dbg_sum = trace_free_interior_old + trace_free_interior_1;
-
             with_trace.idx(i, j) = -trace_free_interior_1 + trace_free_interior_2;
         }
     }
-
-    ctx.add("debug_val", dbg_sum);
 
     for(int i=0; i < 3; i++)
     {
