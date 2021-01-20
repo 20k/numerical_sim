@@ -1685,7 +1685,32 @@ void build_eqs(equation_context& ctx)
 
         for(int i=0; i < 3; i++)
         {
-            sum1 = sum1 + gpu_high_covariant_derivative_vec(ctx, digA, Yij, iYij).idx(i, i);
+            value christoffel_sum = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                christoffel_sum = christoffel_sum - X * derived_cGi.idx(k) * digA.idx(k);
+            }
+
+            value s1 = 0;
+
+            for(int j=0; j < 3; j++)
+            {
+                ///pull X out
+                s1 = s1 + X * icY.idx(i, j) * hacky_differentiate(ctx, digA.idx(j), i);
+            }
+
+            value s3 = 0;
+
+            for(int j=0; j < 3; j++)
+            {
+                s3 = s3 + 2 * (-1.f/4.f) * icY.idx(i, j) * hacky_differentiate(ctx, X, i) * digA.idx(j);
+            }
+
+
+            sum1 = sum1 + s1 + christoffel_sum + s3;
+
+            //sum1 = sum1 + gpu_high_covariant_derivative_vec(ctx, digA, Yij, iYij).idx(i, i);
         }
 
         value sum2 = 0;
