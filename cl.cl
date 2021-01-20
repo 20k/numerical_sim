@@ -762,8 +762,10 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
         printf("gB2 %f\n", v.gB2);
         printf("Scalar %f\n", scalar);
 
-        //float dbg = debug_val;
-        //printf("Debug %f\n", debug_val);
+        #ifdef debug_val
+        float dbg = debug_val;
+        printf("Debug %f\n", debug_val);
+        #endif // debug_val
 
         /*float d0 = debug_val0;
         float d1 = debug_val1;

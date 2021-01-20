@@ -1645,13 +1645,15 @@ void build_eqs(equation_context& ctx)
         }
     }
 
+    value dbg_sum = 0;
+
     ///todo: Investigate this, there's a good chance dtcAij is whats broken
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
             ///Moved X inside the trace free bracket and expanded it
-            //value trace_free_interior_1 = -X * gpu_covariant_derivative_low_vec(ctx, digA, Yij, iYij).idx(j, i);
+            value trace_free_interior_old = -X * gpu_covariant_derivative_low_vec(ctx, digA, Yij, iYij).idx(j, i);
 
             value trace_free_interior_1 = X * hacky_differentiate(ctx, digA.idx(j), i);
 
@@ -1666,9 +1668,13 @@ void build_eqs(equation_context& ctx)
 
             value trace_free_interior_2 = X * gA * Rij.idx(i, j);
 
+            dbg_sum = trace_free_interior_old + trace_free_interior_1;
+
             with_trace.idx(i, j) = -trace_free_interior_1 + trace_free_interior_2;
         }
     }
+
+    ctx.add("debug_val", dbg_sum);
 
     for(int i=0; i < 3; i++)
     {
