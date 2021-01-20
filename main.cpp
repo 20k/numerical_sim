@@ -1598,7 +1598,7 @@ void build_eqs(equation_context& ctx)
         }
     }
 
-    ctx.add("debug_val", derived_cGi.idx(0));
+    //ctx.add("debug_val", derived_cGi.idx(0));
 
     //ctx.add("debug_val", Yij.idx(0, 1));
 
@@ -1634,7 +1634,20 @@ void build_eqs(equation_context& ctx)
                 sum = cA.idx(i, k) * mixed_cAij.idx(k, j);
             }
 
-            value trace_free_part = gpu_trace_free(with_trace, Yij, iYij).idx(i, j);
+            ///so
+            ///the trace is calculated as iYij Vij, where Vij is whatever
+            ///if Yij = cYij / X
+            ///https://en.wikipedia.org/wiki/Invertible_matrix#Other_properties
+            ///then iYij = = X * icYij
+            ///the trace is the sum X * icYij * Vij
+            ///making something trace free is denoted as Vij - (1/3) metij * V, where V = trace
+            ///= Vij - (1/3) Yij * V
+            ///= Vij - (1/3) (cYij / X) * V
+            ///but the trace is the sum of something multiplied by X
+            ///= Vij - (1/3) cYij (icYkl Vkl)
+            ///therefore I think constant factor multiplications to the metric make no difference to the trace calculation, so we can use
+            ///cY here instead of Yij
+            value trace_free_part = gpu_trace_free(with_trace, cY, icY).idx(i, j);
 
             value p1 = X * trace_free_part;
 
