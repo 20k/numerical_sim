@@ -1081,16 +1081,6 @@ void build_intermediate(equation_context& ctx)
 
     ctx.pin(phi);
 
-    metric<value, 3, 3> Yij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            Yij.idx(i, j) = cY.idx(i, j) / X;
-        }
-    }
-
     tensor<value, 3> dphi;
 
     for(int i=0; i < 3; i++)
