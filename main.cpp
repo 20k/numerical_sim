@@ -1624,6 +1624,8 @@ void build_eqs(equation_context& ctx)
                 }
 
                 xcChristoff.idx(k, i, j) = X * christoff2.idx(k, i, j) - 0.5f * (kronecker.idx(k,i) * hacky_differentiate(ctx, X, j) + kronecker.idx(k, j) * hacky_differentiate(ctx, X, i) + lsum);
+
+                ctx.pin(xcChristoff.idx(k, i, j));
             }
         }
     }
