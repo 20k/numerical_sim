@@ -1768,6 +1768,26 @@ void build_eqs(equation_context& ctx)
         dtK = -sum1 + sum2 + sum3;
     }
 
+    ///a / X
+    value gA_X = 0;
+
+    {
+        float min_X = 0.00001;
+
+        gA_X = dual_if(X <= min_X,
+        [&]()
+        {
+            ///linearly interpolate to 0
+            value value_at_min = gA / min_X;
+
+            return value_at_min * (X / min_X);
+        },
+        [&]()
+        {
+            return gA / X;
+        });
+    }
+
     ///these seem to suffer from oscillations
     tensor<value, 3> dtcGi;
 
@@ -1812,7 +1832,7 @@ void build_eqs(equation_context& ctx)
                     s8 = s8 + christoff2.idx(i, j, k) * icAij.idx(j, k);
                 }
 
-                value s9 = 6 * icAij.idx(i, j) * dphi.idx(j);
+                /*value s9 = 6 * icAij.idx(i, j) * dphi.idx(j);
 
                 s9 = dual_if(isfinite(s9), [&]()
                 {
@@ -1821,11 +1841,13 @@ void build_eqs(equation_context& ctx)
                 []()
                 {
                     return 0;
-                });
+                });*/
+
+                value s9 = (-1/4.f) * gA_X * 6 * icAij.idx(i, j) * hacky_differentiate(ctx, X, j);
 
                 value s10 = -(2.f/3.f) * icY.idx(i, j) * hacky_differentiate(ctx, K, j);
 
-                s7 = 2 * gA * (s8 + s9 + s10);
+                s7 = 2 * (gA * s8 + s9 + gA * s10);
             }
 
 
