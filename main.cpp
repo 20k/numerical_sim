@@ -1157,6 +1157,19 @@ void build_eqs(equation_context& ctx)
                              {1, 3, 4},
                              {2, 4, 5}};
 
+    tensor<value, 3, 3> kronecker;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            if(i == j)
+                kronecker.idx(i, j) = 1;
+            else
+                kronecker.idx(i, j) = 0;
+        }
+    }
+
     unit_metric<value, 3, 3> cY;
 
     cY.idx(0, 0).make_value("v.cY0"); cY.idx(0, 1).make_value("v.cY1"); cY.idx(0, 2).make_value("v.cY2");
@@ -1611,15 +1624,49 @@ void build_eqs(equation_context& ctx)
 
     tensor<value, 3, 3> with_trace;
 
+
+    tensor<value, 3, 3, 3> xcChristoff;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                value lsum = 0;
+
+                for(int l=0; l < 3; l++)
+                {
+                    lsum = lsum - cY.idx(i, j) * icY.idx(k, l) * hacky_differentiate(ctx, X, l);
+                }
+
+                xcChristoff.idx(k, i, j) = X * christoff2.idx(k, i, j) - 0.5f * (kronecker.idx(k,i) * hacky_differentiate(ctx, X, j) + kronecker.idx(k, j) * hacky_differentiate(ctx, X, i) + lsum);
+            }
+        }
+    }
+
     ///todo: Investigate this, there's a good chance dtcAij is whats broken
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
-            value trace_free_interior_1 = -gpu_covariant_derivative_low_vec(ctx, digA, Yij, iYij).idx(j, i);
-            value trace_free_interior_2 = gA * Rij.idx(i, j);
+            ///Moved X inside the trace free bracket and expanded it
+            //value trace_free_interior_1 = -X * gpu_covariant_derivative_low_vec(ctx, digA, Yij, iYij).idx(j, i);
 
-            with_trace.idx(i, j) = trace_free_interior_1 + trace_free_interior_2;
+            value trace_free_interior_1 = X * hacky_differentiate(ctx, digA.idx(j), i);
+
+            value reduced = 0;
+
+            for(int b=0; b < 3; b++)
+            {
+                reduced = reduced + xcChristoff.idx(b, i, j) * digA.idx(b);
+            }
+
+            trace_free_interior_1 = trace_free_interior_1 - reduced;
+
+            value trace_free_interior_2 = X * gA * Rij.idx(i, j);
+
+            with_trace.idx(i, j) = -trace_free_interior_1 + trace_free_interior_2;
         }
     }
 
@@ -1649,7 +1696,7 @@ void build_eqs(equation_context& ctx)
             ///cY here instead of Yij
             value trace_free_part = gpu_trace_free(with_trace, cY, icY).idx(i, j);
 
-            value p1 = X * trace_free_part;
+            value p1 = trace_free_part;
 
             value p2 = gA * (K * cA.idx(i, j) - 2 * sum);
 
