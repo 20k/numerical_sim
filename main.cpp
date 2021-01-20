@@ -2145,13 +2145,7 @@ int main()
 
         if(step)
         {
-            float timestep = 0.02;
-
-            if(steps < 30)
-                timestep = 0.02;
-
-            if(steps < 20)
-                timestep = 0.01;
+            float timestep = 0.01;
 
             if(steps < 10)
                 timestep = 0.001;
