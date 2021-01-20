@@ -634,7 +634,7 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     float3 centre = {dim.x/2, dim.y/2, dim.z/2};
     float r = fast_length((float3){x, y, z} - centre);
 
-    struct bssnok_data v = in[IDX(x, y, z)];
+    struct bssnok_data* v = &in[IDX(x, y, z)];
     struct intermediate_bssnok_data ik = temp_in[IDX(x, y, z)];
 
     float pv[TEMP_COUNT2] = {TEMPORARIES2};
@@ -656,31 +656,31 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
 
     struct bssnok_data* my_out = &out[IDX(x, y, z)];
 
-    my_out->cY0 = v.cY0 + dtcYij0 * timestep;
-    my_out->cY1 = v.cY1 + dtcYij1 * timestep;
-    my_out->cY2 = v.cY2 + dtcYij2 * timestep;
-    my_out->cY3 = v.cY3 + dtcYij3 * timestep;
-    my_out->cY4 = v.cY4 + dtcYij4 * timestep;
-    my_out->cY5 = v.cY5 + dtcYij5 * timestep;
+    my_out->cY0 = v->cY0 + dtcYij0 * timestep;
+    my_out->cY1 = v->cY1 + dtcYij1 * timestep;
+    my_out->cY2 = v->cY2 + dtcYij2 * timestep;
+    my_out->cY3 = v->cY3 + dtcYij3 * timestep;
+    my_out->cY4 = v->cY4 + dtcYij4 * timestep;
+    my_out->cY5 = v->cY5 + dtcYij5 * timestep;
 
-    my_out->cA0 = v.cA0 + dtcAij0 * timestep;
-    my_out->cA1 = v.cA1 + dtcAij1 * timestep;
-    my_out->cA2 = v.cA2 + dtcAij2 * timestep;
-    my_out->cA3 = v.cA3 + dtcAij3 * timestep;
-    my_out->cA4 = v.cA4 + dtcAij4 * timestep;
-    my_out->cA5 = v.cA5 + dtcAij5 * timestep;
+    my_out->cA0 = v->cA0 + dtcAij0 * timestep;
+    my_out->cA1 = v->cA1 + dtcAij1 * timestep;
+    my_out->cA2 = v->cA2 + dtcAij2 * timestep;
+    my_out->cA3 = v->cA3 + dtcAij3 * timestep;
+    my_out->cA4 = v->cA4 + dtcAij4 * timestep;
+    my_out->cA5 = v->cA5 + dtcAij5 * timestep;
 
-    my_out->cGi0 = v.cGi0 + dtcGi0 * timestep;
-    my_out->cGi1 = v.cGi1 + dtcGi1 * timestep;
-    my_out->cGi2 = v.cGi2 + dtcGi2 * timestep;
+    my_out->cGi0 = v->cGi0 + dtcGi0 * timestep;
+    my_out->cGi1 = v->cGi1 + dtcGi1 * timestep;
+    my_out->cGi2 = v->cGi2 + dtcGi2 * timestep;
 
-    my_out->K = v.K + dtK * timestep;
-    my_out->X = v.X + dtX * timestep;
+    my_out->K = v->K + dtK * timestep;
+    my_out->X = v->X + dtX * timestep;
 
-    my_out->gA = v.gA + dtgA * timestep;
-    my_out->gB0 = v.gB0 + dtgB0 * timestep;
-    my_out->gB1 = v.gB1 + dtgB1 * timestep;
-    my_out->gB2 = v.gB2 + dtgB2 * timestep;
+    my_out->gA = v->gA + dtgA * timestep;
+    my_out->gB0 = v->gB0 + dtgB0 * timestep;
+    my_out->gB1 = v->gB1 + dtgB1 * timestep;
+    my_out->gB2 = v->gB2 + dtgB2 * timestep;
 
     #ifdef USE_GBB
     my_out->gBB0 = v.gBB0 + dtgBB0 * timestep;
@@ -818,7 +818,7 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
             return;
         }
 
-        struct bssnok_data v = in[IDX(x, y, z)];
+        struct bssnok_data* v = &in[IDX(x, y, z)];
         struct intermediate_bssnok_data ik = temp_in[IDX(x, y, z)];
 
         ///reuses the evolve parameters
@@ -831,7 +831,7 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
             printf("Ik %f\n", ik.Yij[0]);
         }*/
 
-        float curvature = (fabs(v.cY0/v.X) + fabs(v.cY1/v.X) + fabs(v.cY2/v.X) + fabs(v.cY3/v.X) + fabs(v.cY4/v.X) + fabs(v.cY5/v.X)) / 1000.f;
+        float curvature = (fabs(v->cY0/v->X) + fabs(v->cY1/v->X) + fabs(v->cY2/v->X) + fabs(v->cY3/v->X) + fabs(v->cY4/v->X) + fabs(v->cY5/v->X)) / 1000.f;
 
         //float curvature = (fabs(v.Yij[0]) + fabs(ik.Yij[1]) + fabs(ik.Yij[2]) + fabs(ik.Yij[3]) + fabs(ik.Yij[4]) + fabs(ik.Yij[5])) / 1000.;
         //float curvature = v.cY0 + v.cY1 + v.cY2 + v.cY3 + v.cY4 + v.cY5;

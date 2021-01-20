@@ -236,12 +236,22 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
 {
     assert(in.is_value());
 
-    assert(in.value_payload.value().starts_with("v.") || in.value_payload.value().starts_with("ik."));
+    assert(in.value_payload.value().starts_with("v->") || in.value_payload.value().starts_with("v.") || in.value_payload.value().starts_with("ik."));
 
     std::string buffer;
     std::string val;
 
-    if(in.value_payload.value().starts_with("v."))
+    if(in.value_payload.value().starts_with("v->"))
+    {
+        buffer = "in";
+
+        val = in.value_payload.value();
+
+        val.erase(val.begin());
+        val.erase(val.begin());
+        val.erase(val.begin());
+    }
+    else if(in.value_payload.value().starts_with("v."))
     {
         buffer = "in";
 
@@ -729,7 +739,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
         value dist = (pos - vri).length() * scale;
 
-        dist = max(dist, 0.1f);
+        dist = max(dist, 0.001f);
 
         BL_conformal = BL_conformal + Mi / (2 * dist);
     }
@@ -1165,9 +1175,9 @@ void build_eqs(equation_context& ctx)
 
     unit_metric<value, 3, 3> cY;
 
-    cY.idx(0, 0).make_value("v.cY0"); cY.idx(0, 1).make_value("v.cY1"); cY.idx(0, 2).make_value("v.cY2");
-    cY.idx(1, 0).make_value("v.cY1"); cY.idx(1, 1).make_value("v.cY3"); cY.idx(1, 2).make_value("v.cY4");
-    cY.idx(2, 0).make_value("v.cY2"); cY.idx(2, 1).make_value("v.cY4"); cY.idx(2, 2).make_value("v.cY5");
+    cY.idx(0, 0).make_value("v->cY0"); cY.idx(0, 1).make_value("v->cY1"); cY.idx(0, 2).make_value("v->cY2");
+    cY.idx(1, 0).make_value("v->cY1"); cY.idx(1, 1).make_value("v->cY3"); cY.idx(1, 2).make_value("v->cY4");
+    cY.idx(2, 0).make_value("v->cY2"); cY.idx(2, 1).make_value("v->cY4"); cY.idx(2, 2).make_value("v->cY5");
 
     inverse_metric<value, 3, 3> icY = cY.invert();
 
@@ -1181,15 +1191,15 @@ void build_eqs(equation_context& ctx)
 
     tensor<value, 3, 3> cA;
 
-    cA.idx(0, 0).make_value("v.cA0"); cA.idx(0, 1).make_value("v.cA1"); cA.idx(0, 2).make_value("v.cA2");
-    cA.idx(1, 0).make_value("v.cA1"); cA.idx(1, 1).make_value("v.cA3"); cA.idx(1, 2).make_value("v.cA4");
-    cA.idx(2, 0).make_value("v.cA2"); cA.idx(2, 1).make_value("v.cA4"); cA.idx(2, 2).make_value("v.cA5");
+    cA.idx(0, 0).make_value("v->cA0"); cA.idx(0, 1).make_value("v->cA1"); cA.idx(0, 2).make_value("v->cA2");
+    cA.idx(1, 0).make_value("v->cA1"); cA.idx(1, 1).make_value("v->cA3"); cA.idx(1, 2).make_value("v->cA4");
+    cA.idx(2, 0).make_value("v->cA2"); cA.idx(2, 1).make_value("v->cA4"); cA.idx(2, 2).make_value("v->cA5");
 
     ///the christoffel symbol
     tensor<value, 3> cGi;
-    cGi.idx(0).make_value("v.cGi0");
-    cGi.idx(1).make_value("v.cGi1");
-    cGi.idx(2).make_value("v.cGi2");
+    cGi.idx(0).make_value("v->cGi0");
+    cGi.idx(1).make_value("v->cGi1");
+    cGi.idx(2).make_value("v->cGi2");
 
     tensor<value, 3> digA;
     digA.idx(0).make_value("ik.digA[0]");
@@ -1218,12 +1228,12 @@ void build_eqs(equation_context& ctx)
     }
 
     value gA;
-    gA.make_value("v.gA");
+    gA.make_value("v->gA");
 
     tensor<value, 3> gB;
-    gB.idx(0).make_value("v.gB0");
-    gB.idx(1).make_value("v.gB1");
-    gB.idx(2).make_value("v.gB2");
+    gB.idx(0).make_value("v->gB0");
+    gB.idx(1).make_value("v->gB1");
+    gB.idx(2).make_value("v->gB2");
 
     #ifdef USE_GBB
     tensor<value, 3> gBB;
@@ -1233,10 +1243,10 @@ void build_eqs(equation_context& ctx)
     #endif // USE_GBB
 
     value X;
-    X.make_value("v.X");
+    X.make_value("v->X");
 
     value K;
-    K.make_value("v.K");
+    K.make_value("v->K");
 
     tensor<value, 3, 3, 3> dcYij;
 
@@ -1294,21 +1304,21 @@ void build_eqs(equation_context& ctx)
     {
         for(int i=0; i < 6; i++)
         {
-            hacky_differentiate(ctx, "v.cY" + std::to_string(i), k);
+            hacky_differentiate(ctx, "v->cY" + std::to_string(i), k);
         }
 
         for(int i=0; i < 6; i++)
         {
-            hacky_differentiate(ctx, "v.cA" + std::to_string(i), k);
+            hacky_differentiate(ctx, "v->cA" + std::to_string(i), k);
         }
 
         for(int i=0; i < 3; i++)
         {
-            hacky_differentiate(ctx, "v.cGi" + std::to_string(i), k);
+            hacky_differentiate(ctx, "v->cGi" + std::to_string(i), k);
         }
 
-        hacky_differentiate(ctx, "v.K", k);
-        hacky_differentiate(ctx, "v.X", k);
+        hacky_differentiate(ctx, "v->K", k);
+        hacky_differentiate(ctx, "v->X", k);
     }
 
     for(int k=0; k < 3; k++)
