@@ -23,6 +23,11 @@ https://cds.cern.ch/record/337814/files/9711015.pdf - initial conditions
 https://cds.cern.ch/record/517706/files/0106072.pdf - general review
 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses - thesis
 https://arxiv.org/pdf/0704.0782.pdf - boundary conditions
+https://d-nb.info/999452606/34 - wave extraction
+https://arxiv.org/pdf/gr-qc/0204002.pdf - bssn modification
+https://arxiv.org/pdf/0811.1600.pdf - wave extraction
+https://arxiv.org/pdf/1202.1038.pdf - bssn modification
+https://arxiv.org/pdf/1606.02532.pdf - extracting waveforms
 */
 
 //#define USE_GBB
@@ -2029,7 +2034,7 @@ int main()
 
     std::string argument_string = "-O3 -cl-std=CL2.2 ";
 
-    vec3i size = {270, 270, 270};
+    vec3i size = {280, 280, 280};
     //vec3i size = {250, 250, 250};
     float c_at_max = 40;
     float scale = c_at_max / size.largest_elem();
