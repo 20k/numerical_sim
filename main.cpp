@@ -28,6 +28,7 @@ https://arxiv.org/pdf/gr-qc/0204002.pdf - bssn modification
 https://arxiv.org/pdf/0811.1600.pdf - wave extraction
 https://arxiv.org/pdf/1202.1038.pdf - bssn modification
 https://arxiv.org/pdf/1606.02532.pdf - extracting waveforms
+https://arxiv.org/pdf/gr-qc/0104063.pdf - this gives the tetrads in 5.6c
 */
 
 //#define USE_GBB
@@ -1990,6 +1991,52 @@ void build_eqs(equation_context& ctx)
     }
 
     ctx.add("scalar_curvature", scalar_curvature);
+}
+
+///assumes unigrid
+inline
+void extract_waveforms(equation_context& ctx)
+{
+    unit_metric<value, 3, 3> cY;
+
+    cY.idx(0, 0).make_value("v->cY0"); cY.idx(0, 1).make_value("v->cY1"); cY.idx(0, 2).make_value("v->cY2");
+    cY.idx(1, 0).make_value("v->cY1"); cY.idx(1, 1).make_value("v->cY3"); cY.idx(1, 2).make_value("v->cY4");
+    cY.idx(2, 0).make_value("v->cY2"); cY.idx(2, 1).make_value("v->cY4"); cY.idx(2, 2).make_value("v->cY5");
+
+    vec<3, value> pos;
+    pos.x() = "offset.x";
+    pos.y() = "offset.y";
+    pos.z() = "offset.z";
+
+    value s = pos.length();
+    value theta = acos(pos.z() / s);
+    value phi = atan2(pos.y(), pos.x());
+
+    ///covariant derivative is just partial differentiation
+
+    dual_types::complex<value, value> i = dual_types::unit_i();
+
+    vec<3, value> pd_s;
+    pd_s.x() = s.differentiate("offset.x");
+    pd_s.y() = s.differentiate("offset.y");
+    pd_s.z() = s.differentiate("offset.z");
+
+    vec<3, value> pd_theta;
+    pd_theta.x() = theta.differentiate("offset.x");
+    pd_theta.y() = theta.differentiate("offset.y");
+    pd_theta.z() = theta.differentiate("offset.z");
+
+    vec<3, value> pd_phi;
+    pd_phi.x() = phi.differentiate("offset.x");
+    pd_phi.y() = phi.differentiate("offset.y");
+    pd_phi.z() = phi.differentiate("offset.z");
+
+    vec<4, dual_types::complex<value, value>> cval;
+
+    cval.x() = 0;
+    cval.y() = pd_theta.x() + i * pd_phi.x();
+    cval.z() = pd_theta.y() + i * pd_phi.y();
+    cval.w() = pd_theta.z() + i * pd_phi.z();
 }
 
 float fisheye(float r)

@@ -852,3 +852,25 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
 
     write_imagef(screen, (int2){x, y}, (float4){max_scalar, max_scalar, max_scalar, 1});
 }
+
+__kernel
+void extract_waveform(__global struct bssnok_data* in, float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, int4 pos)
+{
+    int x = get_global_id(0);
+    int y = get_global_id(1);
+    int z = get_global_id(2);
+
+    if(x >= dim.x || y >= dim.y || z >= dim.z)
+        return;
+
+    if(x != pos.x || y != pos.y || z != pos.z)
+        return;
+
+    float3 offset = transform_position(x, y, z, dim, scale);
+
+    float s = length(offset);
+    float theta = acos(z / s);
+    float phi = atan2(y, x);
+
+    struct bssnok_data* v = &in[IDX(x, y, z)];
+}
