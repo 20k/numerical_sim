@@ -29,6 +29,7 @@ https://arxiv.org/pdf/0811.1600.pdf - wave extraction
 https://arxiv.org/pdf/1202.1038.pdf - bssn modification
 https://arxiv.org/pdf/1606.02532.pdf - extracting waveforms
 https://arxiv.org/pdf/gr-qc/0104063.pdf - this gives the tetrads in 5.6c
+https://asd.gsfc.nasa.gov/archive/astrogravs/docs/lit/ringdown_date.html - stuff
 */
 
 //#define USE_GBB
@@ -2003,12 +2004,51 @@ void extract_waveforms(equation_context& ctx)
     cY.idx(1, 0).make_value("v->cY1"); cY.idx(1, 1).make_value("v->cY3"); cY.idx(1, 2).make_value("v->cY4");
     cY.idx(2, 0).make_value("v->cY2"); cY.idx(2, 1).make_value("v->cY4"); cY.idx(2, 2).make_value("v->cY5");
 
+    value X = "v->X";
+
     vec<3, value> pos;
     pos.x() = "offset.x";
     pos.y() = "offset.y";
     pos.z() = "offset.z";
 
-    value s = pos.length();
+    metric<value, 3, 3> Yij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            Yij.idx(i, j) = cY.idx(i, j) / X;
+        }
+    }
+
+    inverse_metric<value, 3, 3> iYij = Yij.invert();
+
+    ///can raise and lower the indices... its a regular tensor bizarrely
+    auto eijk_func = [](int i, int j, int k)
+    {
+        if((i == 0 && j == 1 && k == 2) || (i == 1 && j == 2 && k == 0) || (i == 2 && j == 0 && k == 1))
+            return 1;
+
+        if(i == j || j == k || k == i)
+            return 0;
+
+        return -1;
+    };
+
+    tensor<value, 3, 3, 3> eijk;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                eijk.idx(i, j, k) = eijk_func(i, j, k);
+            }
+        }
+    }
+
+    /*value s = pos.length();
     value theta = acos(pos.z() / s);
     value phi = atan2(pos.y(), pos.x());
 
@@ -2036,7 +2076,84 @@ void extract_waveforms(equation_context& ctx)
     cval.x() = 0;
     cval.y() = pd_theta.x() + i * pd_phi.x();
     cval.z() = pd_theta.y() + i * pd_phi.y();
-    cval.w() = pd_theta.z() + i * pd_phi.z();
+    cval.w() = pd_theta.z() + i * pd_phi.z();*/
+
+    ///https://arxiv.org/pdf/gr-qc/0104063.pdf
+    ///so, according to the lazarus project:
+    ///https://d-nb.info/999452606/34 and 6.16c.. though there's a typo there
+
+    ///gab is their spatial metric in lazarus
+
+    vec<3, value> v1a = {-pos.y(), pos.x(), 0};
+    vec<3, value> v2a = {pos.x(), pos.y(), pos.z()};
+    vec<3, value> v3a;
+
+    for(int a=0; a < 3; a++)
+    {
+        value sum = 0;
+
+        for(int d=0; d < 3; d++)
+        {
+            for(int c=0; c < 3; c++)
+            {
+                for(int b=0; b < 3; b++)
+                {
+                    sum = sum + iYij.idx(a, d) * eijk.idx(d, b, c) * v1a[b] * v2a[c];
+                }
+            }
+        }
+
+        v3a[a] = pow(Yij.det(), 0.5f) * sum;
+    }
+
+    auto v_idx = [&](int idx)
+    {
+        if(idx == 0)
+            return v1a;
+
+        if(idx == 1)
+            return v2a;
+
+        if(idx == 2)
+            return v3a;
+    };
+
+    auto wij = [&](int i, int j)
+    {
+        auto v_i = v_idx(i);
+        auto v_j = v_idx(j);
+
+        value sum = 0;
+
+        for(int a=0; a < 3; a++)
+        {
+            for(int b=0; b < 3; b++)
+            {
+                sum = sum + v_i[a] * v_j[b] * Yij.idx(a, b);
+            }
+        }
+
+        return sum;
+    };
+
+    ///https://arxiv.org/pdf/gr-qc/0104063.pdf 5.7. I already have code for doing this but lets stay exact
+    v1a = v1a / sqrt(wij(0, 0));
+    v2a = (v2a - v1a * wij(0, 1)) / (wij(1, 1));
+    v3a = (v3a - v1a * wij(0, 2) - v2a * wij(1, 2)) / sqrt(wij(3, 3));
+
+    vec<4, value> thetau = {0, v3a[0], v3a[1], v3a[2]};
+    vec<4, value> phiu = {0, v1a[0], v1a[1], v1a[2]};
+
+    dual_types::complex<value> unit_i = dual_types::unit_i();
+
+    tensor<dual_types::complex<value>, 4> mu;
+
+    for(int i=0; i < 4; i++)
+    {
+        mu.idx(i) = dual_types::complex<value>(1.f/sqrt(2.f)) * (thetau[i] + unit_i * phiu[i]);
+    }
+
+    //vec<4, dual_types::complex<value>> mu = (1.f/sqrt(2)) * (thetau + i * phiu);
 }
 
 float fisheye(float r)
