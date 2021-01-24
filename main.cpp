@@ -2107,10 +2107,32 @@ tensor<T, N...> raise_index_generic(const tensor<T, N...>& mT, const inverse_met
     return raise_index_impl(mT, met, index);
 }
 
+template<typename T>
+inline
+auto finite_difference_func(T func, value x, value y, value z, value scale, int direction)
+{
+    if(direction == 0)
+    {
+        return (func(x + 1, y, z) - func(x - 1, y, z)) / (2 * scale);
+    }
+    if(direction == 1)
+    {
+        return (func(x, y + 1, z) - func(x, y - 1, z)) / (2 * scale);
+    }
+    if(direction == 2)
+    {
+        return (func(x, y, z + 1) - func(x, y, z - 1)) / (2 * scale);
+    }
+}
+
 ///assumes unigrid
 inline
 void extract_waveforms(equation_context& ctx)
 {
+    value x = "x";
+    value y = "y";
+    value z = "z";
+
     int index_table[3][3] = {{0, 1, 2},
                              {1, 3, 4},
                              {2, 4, 5}};
@@ -2182,6 +2204,8 @@ void extract_waveforms(equation_context& ctx)
 
     value K;
     K.make_value("v->K");
+
+    value scale = "scale";
 
     tensor<value, 3, 3, 3> dcYij;
 
@@ -2419,6 +2443,43 @@ void extract_waveforms(equation_context& ctx)
             Kij.idx(i, j) = (1/X) * (cA.idx(i, j) + (1.f/3.f) * cY.idx(i, j) * K);
         }
     }
+
+    auto get_kij = [index_table](value lx, value ly, value lz)
+    {
+        std::string sx = type_to_string(lx);
+        std::string sy = type_to_string(ly);
+        std::string sz = type_to_string(lz);
+
+        std::string buf = "in[IDX(" + sx + "," + sy + "," + sz + ")]";
+
+        value lX = buf + ".X";
+
+        tensor<value, 3, 3> lcA;
+        unit_metric<value, 3, 3> lcY;
+
+        for(int kk=0; kk < 3; kk++)
+        {
+            for(int jj=0; jj < 3; jj++)
+            {
+                lcA.idx(kk, jj) = buf + ".cA" + std::to_string(index_table[kk][jj]);
+                lcY.idx(kk, jj) = buf + ".cY" + std::to_string(index_table[kk][jj]);
+            }
+        }
+
+        value lK = buf + ".K";
+
+        tensor<value, 3, 3> lKij;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                lKij.idx(i, j) = (1/lX) * (lcA.idx(i, j) + (1.f/3.f) * lcY.idx(i, j) * lK);
+            }
+        }
+
+        return lKij;
+    };
 
     metric<value, 3, 3> Yij;
 
