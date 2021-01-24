@@ -1994,6 +1994,83 @@ void build_eqs(equation_context& ctx)
     ctx.add("scalar_curvature", scalar_curvature);
 }
 
+template<typename T, int N>
+inline
+tensor<T, N, N> raise_index_impl(const tensor<T, N, N>& mT, const inverse_metric<T, N, N>& met, int index)
+{
+    tensor<T, N, N> ret;
+
+    for(int i=0; i < N; i++)
+    {
+        for(int j=0; j < N; j++)
+        {
+            T sum = 0;
+
+            for(int s=0; s < N; s++)
+            {
+                if(index == 0)
+                {
+                    sum = sum + met.idx(i, s) * mT.idx(s, j);
+                }
+
+                if(index == 1)
+                {
+                    sum = sum + met.idx(j, s) * mT.idx(i, s);
+                }
+            }
+
+            ret.idx(i, j) = sum;
+        }
+    }
+}
+
+template<typename T, int N>
+inline
+tensor<T, N, N, N> raise_index_impl(const tensor<T, N, N, N>& mT, const inverse_metric<T, N, N>& met, int index)
+{
+    tensor<T, N, N, N> ret;
+
+    for(int i=0; i < N; i++)
+    {
+        for(int j=0; j < N; j++)
+        {
+            for(int k=0; k < N; k++)
+            {
+                T sum = 0;
+
+                for(int s=0; s < N; s++)
+                {
+                    if(index == 0)
+                    {
+                        sum = sum + met.idx(i, s) * mT.idx(s, j, k);
+                    }
+
+                    if(index == 1)
+                    {
+                        sum = sum + met.idx(j, s) * mT.idx(i, s, k);
+                    }
+
+                    if(index == 2)
+                    {
+                        sum = sum + met.idx(k, s) * mT.idx(i, j, s);
+                    }
+                }
+
+                ret.idx(i, j, k) = sum;
+            }
+        }
+    }
+}
+
+template<typename T, int U, int... N>
+inline
+tensor<T, N...> raise_index_generic(const tensor<T, N...>& mT, const inverse_metric<T, U, U>& met, int index)
+{
+    tensor<T, N...> ret;
+
+    return raise_index_impl(mT, met, index);
+}
+
 ///assumes unigrid
 inline
 void extract_waveforms(equation_context& ctx)
