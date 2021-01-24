@@ -2125,6 +2125,19 @@ void extract_waveforms(equation_context& ctx)
         }
     }
 
+    tensor<value, 3, 3, 3> eijk_tensor;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                eijk_tensor.idx(i, j, k) = sqrt(Yij.det()) * eijk.idx(i, j, k);
+            }
+        }
+    }
+
     /*value s = pos.length();
     value theta = acos(pos.z() / s);
     value phi = atan2(pos.y(), pos.x());
@@ -2229,6 +2242,10 @@ void extract_waveforms(equation_context& ctx)
     {
         mu.idx(i) = dual_types::complex<value>(1.f/sqrt(2.f)) * (thetau[i] + unit_i * phiu[i]);
     }
+
+    tensor<value, 3, 3, 3> raised_eijk = raise_index_generic(raise_index_generic(eijk_tensor, iYij, 1), iYij, 2);
+
+
 
     //vec<4, dual_types::complex<value>> mu = (1.f/sqrt(2)) * (thetau + i * phiu);
 }
