@@ -2561,7 +2561,7 @@ void extract_waveforms(equation_context& ctx)
     ///https://arxiv.org/pdf/gr-qc/0104063.pdf 5.7. I already have code for doing this but lets stay exact
     v1a = v1a / sqrt(wij(0, 0));
     v2a = (v2a - v1a * wij(0, 1)) / (wij(1, 1));
-    v3a = (v3a - v1a * wij(0, 2) - v2a * wij(1, 2)) / sqrt(wij(3, 3));
+    v3a = (v3a - v1a * wij(0, 2) - v2a * wij(1, 2)) / sqrt(wij(2, 2));
 
     vec<4, value> thetau = {0, v3a[0], v3a[1], v3a[2]};
     vec<4, value> phiu = {0, v1a[0], v1a[1], v1a[2]};
