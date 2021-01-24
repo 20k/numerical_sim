@@ -185,6 +185,42 @@ struct equation_context
         v = facade;
     }
 
+    template<typename T, int N>
+    void pin(tensor<T, N>& mT)
+    {
+        for(int i=0; i < N; i++)
+        {
+            pin(mT.idx(i));
+        }
+    }
+
+    template<typename T, int N>
+    void pin(tensor<T, N, N>& mT)
+    {
+        for(int i=0; i < N; i++)
+        {
+            for(int j=0; j < N; j++)
+            {
+                pin(mT.idx(i, j));
+            }
+        }
+    }
+
+    template<typename T, int N>
+    void pin(tensor<T, N, N, N>& mT)
+    {
+        for(int i=0; i < N; i++)
+        {
+            for(int j=0; j < N; j++)
+            {
+                for(int k=0; k < N; k++)
+                {
+                    pin(mT.idx(i, j, k));
+                }
+            }
+        }
+    }
+
     void alias(value& concrete, value& alias)
     {
         for(auto& i : aliases)
@@ -2075,18 +2111,314 @@ tensor<T, N...> raise_index_generic(const tensor<T, N...>& mT, const inverse_met
 inline
 void extract_waveforms(equation_context& ctx)
 {
+    int index_table[3][3] = {{0, 1, 2},
+                             {1, 3, 4},
+                             {2, 4, 5}};
+
     unit_metric<value, 3, 3> cY;
 
     cY.idx(0, 0).make_value("v->cY0"); cY.idx(0, 1).make_value("v->cY1"); cY.idx(0, 2).make_value("v->cY2");
     cY.idx(1, 0).make_value("v->cY1"); cY.idx(1, 1).make_value("v->cY3"); cY.idx(1, 2).make_value("v->cY4");
     cY.idx(2, 0).make_value("v->cY2"); cY.idx(2, 1).make_value("v->cY4"); cY.idx(2, 2).make_value("v->cY5");
 
-    value X = "v->X";
+    inverse_metric<value, 3, 3> icY = cY.invert();
+
+    ctx.pin(icY);
+
+    tensor<value, 3, 3> cA;
+
+    cA.idx(0, 0).make_value("v->cA0"); cA.idx(0, 1).make_value("v->cA1"); cA.idx(0, 2).make_value("v->cA2");
+    cA.idx(1, 0).make_value("v->cA1"); cA.idx(1, 1).make_value("v->cA3"); cA.idx(1, 2).make_value("v->cA4");
+    cA.idx(2, 0).make_value("v->cA2"); cA.idx(2, 1).make_value("v->cA4"); cA.idx(2, 2).make_value("v->cA5");
+
+    tensor<value, 3> cGi;
+    cGi.idx(0).make_value("v->cGi0");
+    cGi.idx(1).make_value("v->cGi1");
+    cGi.idx(2).make_value("v->cGi2");
+
+    tensor<value, 3> digA;
+    digA.idx(0).make_value("ik.digA[0]");
+    digA.idx(1).make_value("ik.digA[1]");
+    digA.idx(2).make_value("ik.digA[2]");
+
+    tensor<value, 3> dphi;
+    dphi.idx(0).make_value("ik.dphi[0]");
+    dphi.idx(1).make_value("ik.dphi[1]");
+    dphi.idx(2).make_value("ik.dphi[2]");
+
+    tensor<value, 3, 3> digB;
+
+    ///derivative
+    for(int i=0; i < 3; i++)
+    {
+        ///value
+        for(int j=0; j < 3; j++)
+        {
+            int idx = i * 3 + j;
+
+            std::string name = "ik.digB[" + std::to_string(idx) + "]";
+
+            digB.idx(i, j).make_value(name);
+        }
+    }
+
+    value gA;
+    gA.make_value("v->gA");
+
+    tensor<value, 3> gB;
+    gB.idx(0).make_value("v->gB0");
+    gB.idx(1).make_value("v->gB1");
+    gB.idx(2).make_value("v->gB2");
+
+    #ifdef USE_GBB
+    tensor<value, 3> gBB;
+    gBB.idx(0).make_value("v.gBB0");
+    gBB.idx(1).make_value("v.gBB1");
+    gBB.idx(2).make_value("v.gBB2");
+    #endif // USE_GBB
+
+    value X;
+    X.make_value("v->X");
+
+    value K;
+    K.make_value("v->K");
+
+    tensor<value, 3, 3, 3> dcYij;
+
+    for(int k=0; k < 3; k++)
+    {
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                int symmetric_index = index_table[i][j];
+
+                int final_index = k * 6 + symmetric_index;
+
+                std::string name = "ik.dcYij[" + std::to_string(final_index) + "]";
+
+                dcYij.idx(k, i, j) = name;
+            }
+        }
+    }
+
+    ///dcgA alias
+    for(int i=0; i < 3; i++)
+    {
+        value v = hacky_differentiate(ctx, gA, i, false);
+
+        ctx.alias(v, digA.idx(i));
+    }
+
+    ///dcgB alias
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value v = hacky_differentiate(ctx, gB.idx(j), i, false);
+
+            ctx.alias(v, digB.idx(i, j));
+        }
+    }
+
+    ///dcYij alias
+    for(int k=0; k < 3; k++)
+    {
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                value v = hacky_differentiate(ctx, cY.idx(i, j), k, false);
+
+                ctx.alias(v, dcYij.idx(k, i, j));
+            }
+        }
+    }
+
+    for(int k=0; k < 3; k++)
+    {
+        for(int i=0; i < 6; i++)
+        {
+            hacky_differentiate(ctx, "v->cY" + std::to_string(i), k);
+        }
+
+        for(int i=0; i < 6; i++)
+        {
+            hacky_differentiate(ctx, "v->cA" + std::to_string(i), k);
+        }
+
+        for(int i=0; i < 3; i++)
+        {
+            hacky_differentiate(ctx, "v->cGi" + std::to_string(i), k);
+        }
+
+        hacky_differentiate(ctx, "v->K", k);
+        hacky_differentiate(ctx, "v->X", k);
+    }
+
+    for(int k=0; k < 3; k++)
+    {
+        for(int i=0; i < 3 * 6; i++)
+        {
+            hacky_differentiate(ctx, "ik.dcYij[" + std::to_string(i) + "]", k);
+        }
+
+        for(int i=0; i < 3; i++)
+        {
+            hacky_differentiate(ctx, "ik.digA[" + std::to_string(i) + "]", k);
+        }
+
+        for(int i=0; i < 3; i++)
+        {
+            hacky_differentiate(ctx, "ik.digB[" + std::to_string(i) + "]", k);
+        }
+
+        for(int i=0; i < 3; i++)
+        {
+            hacky_differentiate(ctx, "ik.dphi[" + std::to_string(i) + "]", k);
+        }
+    }
+
+    tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, cY);
+    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, cY, icY);
+
+    tensor<value, 3> derived_cGi;
+
+    ///https://arxiv.org/pdf/gr-qc/0206072.pdf page 4
+    ///or https://arxiv.org/pdf/gr-qc/0511048.pdf after 7 actually
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                sum = sum + icY.idx(j, k) * christoff2.idx(i, j, k);
+            }
+        }
+
+        derived_cGi.idx(i) = sum;
+    }
 
     vec<3, value> pos;
     pos.x() = "offset.x";
     pos.y() = "offset.y";
     pos.z() = "offset.z";
+
+    tensor<value, 3, 3> cRij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value s1 = 0;
+
+            for(int l=0; l < 3; l++)
+            {
+                for(int m=0; m < 3; m++)
+                {
+                    s1 = s1 + -0.5f * icY.idx(l, m) * hacky_differentiate(ctx, dcYij.idx(m, i, j), l);
+                }
+            }
+
+            value s2 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                s2 = s2 + 0.5f * (cY.idx(k, i) * hacky_differentiate(ctx, cGi.idx(k), j) + cY.idx(k, j) * hacky_differentiate(ctx, cGi.idx(k), i));
+            }
+
+            value s3 = 0;
+
+            ///could factor out cGi
+            for(int k=0; k < 3; k++)
+            {
+                s3 = s3 + 0.5f * (derived_cGi.idx(k) * christoff1.idx(i, j, k) + derived_cGi.idx(k) * christoff1.idx(j, i, k));
+            }
+
+            value s4 = 0;
+
+            for(int m=0; m < 3; m++)
+            {
+                for(int l=0; l < 3; l++)
+                {
+                    value inner1 = 0;
+                    value inner2 = 0;
+
+                    for(int k=0; k < 3; k++)
+                    {
+                        inner1 = inner1 + 0.5f * (2 * christoff2.idx(k, l, i) * christoff1.idx(j, k, m) + 2 * christoff2.idx(k, l, j) * christoff1.idx(i, k, m));
+                    }
+
+                    for(int k=0; k < 3; k++)
+                    {
+                        inner2 = inner2 + christoff2.idx(k, i, m) * christoff1.idx(k, l, j);
+                    }
+
+                    s4 = s4 + icY.idx(l, m) * (inner1 + inner2);
+                }
+            }
+
+            cRij.idx(i, j) = s1 + s2 + s3 + s4;
+        }
+    }
+
+    tensor<value, 3, 3> Rphiij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value s1 = -2 * gpu_covariant_derivative_low_vec(ctx, dphi, cY, icY).idx(j, i);
+
+            value s2 = 0;
+
+            for(int l=0; l < 3; l++)
+            {
+                s2 = s2 + gpu_high_covariant_derivative_vec(ctx, dphi, cY, icY).idx(l, l);
+            }
+
+            s2 = -2 * cY.idx(i, j) * s2;
+
+            value s3 = 4 * (dphi.idx(i)) * (dphi.idx(j));
+
+            value s4 = 0;
+
+            for(int l=0; l < 3; l++)
+            {
+                s4 = s4 + raise_index(dphi, cY, icY).idx(l) * dphi.idx(l);
+            }
+
+            s4 = -4 * cY.idx(i, j) * s4;
+
+            Rphiij.idx(i, j) = s1 + s2 + s3 + s4;
+        }
+    }
+
+    tensor<value, 3, 3> Rij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            Rij.idx(i, j) = Rphiij.idx(i, j) + cRij.idx(i, j);
+
+            ctx.pin(Rij.idx(i, j));
+        }
+    }
+
+    tensor<value, 3, 3> Kij;
+
+    ///https://arxiv.org/pdf/gr-qc/0505055.pdf 3.6
+    ///https://arxiv.org/pdf/gr-qc/0511048.pdf note that these equations are the same (just before (1)), its because they're using the non conformal metric
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            Kij.idx(i, j) = (1/X) * (cA.idx(i, j) + (1.f/3.f) * cY.idx(i, j) * K);
+        }
+    }
 
     metric<value, 3, 3> Yij;
 
@@ -2310,6 +2642,9 @@ int main()
     equation_context ctx4;
     build_constraints(ctx4);
 
+    equation_context ctx5;
+    extract_waveforms(ctx5);
+
     /*for(auto& i : ctx.values)
     {
         std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
@@ -2332,6 +2667,7 @@ int main()
     ctx2.build(argument_string, 1);
     ctx3.build(argument_string, 2);
     ctx4.build(argument_string, 3);
+    ctx5.build(argument_string, 4);
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 

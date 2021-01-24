@@ -873,4 +873,7 @@ void extract_waveform(__global struct bssnok_data* in, float scale, int4 dim, __
     float phi = atan2(y, x);
 
     struct bssnok_data* v = &in[IDX(x, y, z)];
+    struct intermediate_bssnok_data ik = temp_in[IDX(x, y, z)];
+
+    float pv[TEMP_COUNT4] = {TEMPORARIES4};
 }
