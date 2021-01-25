@@ -3085,9 +3085,11 @@ int main()
 
             clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {size.x(), size.y(), size.z()}, {128, 1, 1});
 
-            float r_extract = 20;
+            float r_extract = c_at_max/4;
 
-            cl_int4 pos = {clsize[0]/2, clsize[1]/2 + r_extract / scale, clsize[2]/2, 0};
+            printf("OFF %f\n", r_extract/scale);
+
+            cl_int4 pos = {clsize.x()/2, clsize.y()/2 + r_extract / scale, clsize.z()/2, 0};
 
             cl::args waveform_args;
             waveform_args.push_back(bssnok_datas[which_data]);

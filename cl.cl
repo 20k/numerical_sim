@@ -892,6 +892,8 @@ void extract_waveform(__global struct bssnok_data* in, float scale, int4 dim, __
     waveform_out[0].x = w4_real;
     waveform_out[0].y = w4_complex;
 
+    printf("WAV %f\n", waveform_out[0].x);
+
     #ifdef w4_debugr
     printf("Debugw4r %f\n", w4_debugr);
     #endif // w4_debug
