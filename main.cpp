@@ -1651,7 +1651,6 @@ void build_eqs(equation_context& ctx)
 
     tensor<value, 3, 3> with_trace;
 
-
     tensor<value, 3, 3, 3> xcChristoff;
 
     for(int i=0; i < 3; i++)
@@ -2135,6 +2134,19 @@ auto finite_difference_func(T func, value x, value y, value z, value scale, int 
 inline
 void extract_waveforms(equation_context& ctx)
 {
+    tensor<value, 3, 3> kronecker;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            if(i == j)
+                kronecker.idx(i, j) = 1;
+            else
+                kronecker.idx(i, j) = 0;
+        }
+    }
+
     value x = "x";
     value y = "y";
     value z = "z";
@@ -2501,7 +2513,42 @@ void extract_waveforms(equation_context& ctx)
 
     ctx.pin(iYij);
 
-    auto christoff_Y = gpu_christoffel_symbols_2(ctx, Yij, iYij);
+    //auto christoff_Y = gpu_christoffel_symbols_2(ctx, Yij, iYij);
+
+    tensor<value, 3, 3, 3> xcChristoff;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                value lsum = 0;
+
+                for(int l=0; l < 3; l++)
+                {
+                    lsum = lsum - cY.idx(i, j) * icY.idx(k, l) * hacky_differentiate(ctx, X, l);
+                }
+
+                xcChristoff.idx(k, i, j) = X * christoff2.idx(k, i, j) - 0.5f * (kronecker.idx(k,i) * hacky_differentiate(ctx, X, j) + kronecker.idx(k, j) * hacky_differentiate(ctx, X, i) + lsum);
+
+                ctx.pin(xcChristoff.idx(k, i, j));
+            }
+        }
+    }
+
+    tensor<value, 3, 3, 3> christoff_Y;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                christoff_Y.idx(i, j, k) = xcChristoff.idx(i, j, k) / X;
+            }
+        }
+    }
 
     ///l, j, k
     ///aka: i, j, covariant derivative
@@ -2719,6 +2766,8 @@ void extract_waveforms(equation_context& ctx)
         w4 = sum;
     }
 
+    ctx.add("w4_real", w4.real);
+    ctx.add("w4_complex", w4.imaginary);
 
     //vec<4, dual_types::complex<value>> mu = (1.f/sqrt(2)) * (thetau + i * phiu);
 }
@@ -2841,6 +2890,9 @@ int main()
     cl::buffer intermediate(clctx.ctx);
     intermediate.alloc(size.x() * size.y() * size.z() * sizeof(intermediate_bssnok_data));
 
+    cl::buffer waveform(clctx.ctx);
+    waveform.alloc(sizeof(cl_float2));
+
     /*std::vector<bssnok_data> cpu_data;
 
     for(int z=0; z < size.z(); z++)
@@ -2904,6 +2956,10 @@ int main()
 
     clctx.cqueue.exec("calculate_intermediate_data", fl2, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
+    std::vector<cl::read_info<cl_float2>> read_data;
+
+    std::vector<float> real_graph;
+
     //clctx.cqueue.exec("clean_data", initial_clean, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
     int which_buffer = 0;
@@ -2948,6 +3004,11 @@ int main()
             ImGui::Checkbox("Run", &run);
 
             ImGui::Text("Time: %f\n", time_elapsed_s);
+
+            if(real_graph.size() > 0)
+            {
+                ImGui::PlotLines("w4", &real_graph[0], real_graph.size());
+            }
 
             ImGui::End();
 
@@ -3005,12 +3066,35 @@ int main()
             clctx.cqueue.exec("calculate_intermediate_data", fl3, {size.x(), size.y(), size.z()}, {128, 1, 1});
 
             cl::args constraints;
-            constraints.push_back(bssnok_datas[0]);
+            constraints.push_back(bssnok_datas[which_data]);
             constraints.push_back(scale);
             constraints.push_back(clsize);
 
             clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {size.x(), size.y(), size.z()}, {128, 1, 1});
 
+            float r_extract = 20;
+
+            cl_int4 pos = {0, r_extract / scale, 0, 0};
+
+            cl::args waveform_args;
+            waveform_args.push_back(bssnok_datas[which_data]);
+            waveform_args.push_back(scale);
+            waveform_args.push_back(clsize);
+            waveform_args.push_back(intermediate);
+            waveform_args.push_back(pos);
+            waveform_args.push_back(waveform);
+
+            clctx.cqueue.exec("extract_waveform", waveform_args, {size.x(), size.y(), size.z()}, {128, 1, 1});
+
+            cl::read_info<cl_float2> data = waveform.read_async<cl_float2>(clctx.cqueue, 1);
+
+            data.evt.block();
+
+            cl_float2 val = *data.data;
+
+            data.consume();
+
+            real_graph.push_back(val.s[0]);
 
             time_elapsed_s += timestep;
         }

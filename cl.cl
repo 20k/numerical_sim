@@ -854,7 +854,7 @@ void render(__global struct bssnok_data* in, float scale, int4 dim, __global str
 }
 
 __kernel
-void extract_waveform(__global struct bssnok_data* in, float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, int4 pos)
+void extract_waveform(__global struct bssnok_data* in, float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, int4 pos, __global float2* waveform_out)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
@@ -868,9 +868,9 @@ void extract_waveform(__global struct bssnok_data* in, float scale, int4 dim, __
 
     float3 offset = transform_position(x, y, z, dim, scale);
 
-    float s = length(offset);
+    /*float s = length(offset);
     float theta = acos(z / s);
-    float phi = atan2(y, x);
+    float phi = atan2(y, x);*/
 
     struct bssnok_data* v = &in[IDX(x, y, z)];
     struct intermediate_bssnok_data ik = temp_in[IDX(x, y, z)];
