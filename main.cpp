@@ -2096,6 +2096,8 @@ tensor<T, N, N, N> raise_index_impl(const tensor<T, N, N, N>& mT, const inverse_
             }
         }
     }
+
+    return ret;
 }
 
 template<typename T, int U, int... N>
@@ -2123,6 +2125,8 @@ auto finite_difference_func(T func, value x, value y, value z, value scale, int 
     {
         return (func(x, y, z + 1) - func(x, y, z - 1)) / (2 * scale);
     }
+
+    assert(false);
 }
 
 ///assumes unigrid
@@ -2444,7 +2448,7 @@ void extract_waveforms(equation_context& ctx)
         }
     }
 
-    auto get_kij = [index_table](value lx, value ly, value lz)
+    auto get_kij = [index_table](int v1, int v2, value lx, value ly, value lz)
     {
         std::string sx = type_to_string(lx);
         std::string sy = type_to_string(ly);
@@ -2478,7 +2482,7 @@ void extract_waveforms(equation_context& ctx)
             }
         }
 
-        return lKij;
+        return lKij.idx(v1, v2);
     };
 
     metric<value, 3, 3> Yij;
@@ -2492,6 +2496,41 @@ void extract_waveforms(equation_context& ctx)
     }
 
     inverse_metric<value, 3, 3> iYij = Yij.invert();
+
+    ctx.pin(iYij);
+
+    auto christoff_Y = gpu_christoffel_symbols_2(ctx, Yij, iYij);
+
+    ///l, j, k
+    ///aka: i, j, covariant derivative
+    ///or a, b; c in wikipedia notation
+    tensor<value, 3, 3, 3> cdKij;
+
+    for(int c=0; c < 3; c++)
+    {
+        for(int b=0; b < 3; b++)
+        {
+            for(int a=0; a < 3; a++)
+            {
+                ///yeah this is horrible for performance but honestly i just want this to go away
+                auto bound_kij = [&](value x, value y, value z)
+                {
+                    return get_kij(a, b, x, y, z);
+                };
+
+                value deriv = finite_difference_func(bound_kij, x, y, z, scale, c);
+
+                value sum = 0;
+
+                for(int d=0; d < 3; d++)
+                {
+                    sum = sum - christoff_Y.idx(d, c, a) * Kij.idx(d, b) - christoff_Y.idx(d, c, b) * Kij.idx(a, d);
+                }
+
+                cdKij.idx(a, b, c) = deriv + sum;
+            }
+        }
+    }
 
     ///can raise and lower the indices... its a regular tensor bizarrely
     auto eijk_func = [](int i, int j, int k)
@@ -2599,6 +2638,8 @@ void extract_waveforms(equation_context& ctx)
 
         if(idx == 2)
             return v3a;
+
+        assert(false);
     };
 
     auto wij = [&](int i, int j)
