@@ -2206,6 +2206,21 @@ dual_types::complex<value> Ylm(int l, int in_m, value x, value y, value z, value
     {
         coeff = (A_m(x, y, m) - unit_i * B_m(x, y, m));
     }
+
+    float coeff2 = sqrt((2 * l + 1) / (4 * M_PI)) * pow(2, -l) * sqrt(factorial(l - m) / factorial(l + m));
+
+    value sum = 0;
+
+    for(int k=0; k < (l - m)/2; k++)
+    {
+        float p1 = (pow(-1, k) * factorial(2 * l - 2 * k)) / (factorial(k) * factorial(l - k) * factorial(l - 2 * k - m));
+
+        value p2 = pow(z, l - 2 * k - m) / pow(r, l - 2 * k);
+
+        sum = sum + p1 * p2;
+    }
+
+    return coeff * coeff2 * sum;
 }
 
 ///assumes unigrid
