@@ -2058,6 +2058,8 @@ tensor<T, N, N> raise_index_impl(const tensor<T, N, N>& mT, const inverse_metric
             ret.idx(i, j) = sum;
         }
     }
+
+    return ret;
 }
 
 template<typename T, int N>
@@ -2679,6 +2681,43 @@ void extract_waveforms(equation_context& ctx)
 
     tensor<value, 3, 3, 3> raised_eijk = raise_index_generic(raise_index_generic(eijk_tensor, iYij, 1), iYij, 2);
 
+
+    dual_types::complex<value> w4;
+
+    {
+        dual_types::complex<value> sum(0.f);
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                dual_types::complex<value> k_sum_1(0.f);
+                dual_types::complex<value> k_sum_2(0.f);
+
+                for(int k=0; k < 3; k++)
+                {
+                    dual_types::complex<value> rhs_sum(0.f);
+
+                    for(int l=0; l < 3; l++)
+                    {
+                        rhs_sum = rhs_sum + unit_i * raised_eijk.idx(i, k, l) * cdKij.idx(l, j, k);
+                    }
+
+                    k_sum_2 = k_sum_2 + rhs_sum;
+
+                    k_sum_1 = k_sum_1 + Kij.idx(i, k) * raise_index_generic(Kij, iYij, 0).idx(i, j);
+                }
+
+                dual_types::complex<value> inner_sum = -Rij.idx(i, j) - K * Kij.idx(i, j) + k_sum_1 + k_sum_2;
+
+                ///mu is a 4 vector, but we use it spatially
+                ///this exposes the fact that i really runs from 1-4 instead of 0-3
+                sum = sum + inner_sum * mu.idx(i + 1) * mu.idx(j + 1);
+            }
+        }
+
+        w4 = sum;
+    }
 
 
     //vec<4, dual_types::complex<value>> mu = (1.f/sqrt(2)) * (thetau + i * phiu);
