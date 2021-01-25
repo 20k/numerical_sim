@@ -2406,6 +2406,8 @@ void extract_waveforms(equation_context& ctx)
         }
     }
 
+    ctx.pin(cRij);
+
     tensor<value, 3, 3> Rphiij;
 
     for(int i=0; i < 3; i++)
@@ -2438,6 +2440,8 @@ void extract_waveforms(equation_context& ctx)
         }
     }
 
+    ctx.pin(Rphiij);
+
     tensor<value, 3, 3> Rij;
 
     for(int i=0; i < 3; i++)
@@ -2446,9 +2450,10 @@ void extract_waveforms(equation_context& ctx)
         {
             Rij.idx(i, j) = Rphiij.idx(i, j) + cRij.idx(i, j);
 
-            ctx.pin(Rij.idx(i, j));
         }
     }
+
+    ctx.pin(Rij);
 
     tensor<value, 3, 3> Kij;
 
@@ -2468,7 +2473,7 @@ void extract_waveforms(equation_context& ctx)
         std::string sy = type_to_string(ly);
         std::string sz = type_to_string(lz);
 
-        std::string buf = "in[IDX(" + sx + "," + sy + "," + sz + ")]";
+        std::string buf = "in[IDX((int)(" + sx + "),(int)(" + sy + "),(int)(" + sz + "))]";
 
         value lX = buf + ".X";
 
@@ -2550,6 +2555,8 @@ void extract_waveforms(equation_context& ctx)
         }
     }
 
+    ctx.pin(christoff_Y);
+
     ///l, j, k
     ///aka: i, j, covariant derivative
     ///or a, b; c in wikipedia notation
@@ -2580,6 +2587,8 @@ void extract_waveforms(equation_context& ctx)
             }
         }
     }
+
+    ctx.pin(cdKij);
 
     ///can raise and lower the indices... its a regular tensor bizarrely
     auto eijk_func = [](int i, int j, int k)
@@ -2618,6 +2627,8 @@ void extract_waveforms(equation_context& ctx)
             }
         }
     }
+
+    ctx.pin(eijk_tensor);
 
     /*value s = pos.length();
     value theta = acos(pos.z() / s);
