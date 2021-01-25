@@ -2130,6 +2130,84 @@ auto finite_difference_func(T func, value scale, int direction)
     assert(false);
 }
 
+inline
+int factorial(int i)
+{
+    if(i == 0)
+        return 1;
+
+    return i * factorial(i - 1);
+}
+
+///https://en.wikipedia.org/wiki/Spin-weighted_spherical_harmonics#Representation_as_functions
+///https://arxiv.org/pdf/1606.02532.pdf 415
+dual_types::complex<value> Ylm0(int l, value z, value r)
+{
+    float coeff = sqrt((2 * l + 1) / (4 * M_PI)) * pow(2, -l);
+
+    value sum = 0;
+
+    for(int k=0; k < l/2; k++)
+    {
+        float p1 = pow(-1, k);
+
+        float p2 = factorial(2 * l - 2 * k) / (factorial(k) * factorial(l - k) * factorial(l - 2 * k));
+
+        value p3 = pow(z/r, l - 2 * k);
+
+        sum = sum + p1 * p2 * p3;
+    }
+
+    return dual_types::complex<value>(coeff * sum);
+}
+
+inline
+dual_types::complex<value> A_m(value x, value y, int m)
+{
+    value sum = 0;
+
+    for(int k=0; k < m; k++)
+    {
+        sum = sum + (factorial(m) / (factorial(k) * factorial(m - k))) * pow(x, k) * pow(y, m - k) * cos(M_PI * (m - k)/2.f);
+    }
+
+    return dual_types::complex<value>(sum);
+}
+
+inline
+dual_types::complex<value> B_m(value x, value y, int m)
+{
+    value sum = 0;
+
+    for(int k=0; k < m; k++)
+    {
+        sum = sum + (factorial(m) / (factorial(k) * factorial(m - k))) * pow(x, k) * pow(y, m - k) * sin(M_PI * (m - k)/2.f);
+    }
+
+    return dual_types::complex<value>(sum);
+}
+
+inline
+dual_types::complex<value> Ylm(int l, int in_m, value x, value y, value z, value r)
+{
+    if(in_m == 0)
+        return Ylm0(l, z, r);
+
+    int m = abs(in_m);
+
+    dual_types::complex<value> coeff(0.f, 0.f);
+    dual_types::complex<value> unit_i = dual_types::unit_i();
+
+    if(in_m > 0)
+    {
+        coeff = pow(-1, m) * (A_m(x, y, m) + unit_i * B_m(x, y, m));
+    }
+    else
+    {
+        coeff = (A_m(x, y, m) - unit_i * B_m(x, y, m));
+    }
+}
+
 ///assumes unigrid
 inline
 void extract_waveforms(equation_context& ctx)
@@ -3020,7 +3098,9 @@ int main()
 
             if(real_graph.size() > 0)
             {
+                ImGui::PushItemWidth(400);
                 ImGui::PlotLines("w4", &real_graph[0], real_graph.size());
+                ImGui::PopItemWidth();
             }
 
             ImGui::End();
