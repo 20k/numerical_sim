@@ -877,6 +877,26 @@ void extract_waveform(__global struct bssnok_data* in, float scale, int4 dim, __
 
     float pv[TEMP_COUNT4] = {TEMPORARIES4};
 
+    /*for(int i=0; i < TEMP_COUNT4; i++)
+    {
+        if(!isfinite(pv[i]))
+        {
+            printf("%i idx is not finite %f\n", i, pv[i]);
+        }
+    }*/
+
+    printf("Scale %f\n", scale);
+
+    printf("X %f\n", v->X);
+
     waveform_out[0].x = w4_real;
     waveform_out[0].y = w4_complex;
+
+    #ifdef w4_debugr
+    printf("Debugw4r %f\n", w4_debugr);
+    #endif // w4_debug
+
+    #ifdef w4_debugi
+    printf("Debugw4i %f\n", w4_debugi);
+    #endif // w4_debug
 }

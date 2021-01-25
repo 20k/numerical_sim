@@ -2112,19 +2112,19 @@ tensor<T, N...> raise_index_generic(const tensor<T, N...>& mT, const inverse_met
 
 template<typename T>
 inline
-auto finite_difference_func(T func, value x, value y, value z, value scale, int direction)
+auto finite_difference_func(T func, value scale, int direction)
 {
     if(direction == 0)
     {
-        return (func(x + 1, y, z) - func(x - 1, y, z)) / (2 * scale);
+        return (func(1, 0, 0) - func(-1, 0, 0)) / (2 * scale);
     }
     if(direction == 1)
     {
-        return (func(x, y + 1, z) - func(x, y - 1, z)) / (2 * scale);
+        return (func(0, 1, 0) - func(0, -1, 0)) / (2 * scale);
     }
     if(direction == 2)
     {
-        return (func(x, y, z + 1) - func(x, y, z - 1)) / (2 * scale);
+        return (func(0, 0, 1) - func(0, 0, -1)) / (2 * scale);
     }
 
     assert(false);
@@ -2134,6 +2134,8 @@ auto finite_difference_func(T func, value x, value y, value z, value scale, int 
 inline
 void extract_waveforms(equation_context& ctx)
 {
+    printf("Extracting waveforms\n");
+
     tensor<value, 3, 3> kronecker;
 
     for(int i=0; i < 3; i++)
@@ -2146,10 +2148,6 @@ void extract_waveforms(equation_context& ctx)
                 kronecker.idx(i, j) = 0;
         }
     }
-
-    value x = "x";
-    value y = "y";
-    value z = "z";
 
     int index_table[3][3] = {{0, 1, 2},
                              {1, 3, 4},
@@ -2467,13 +2465,13 @@ void extract_waveforms(equation_context& ctx)
         }
     }
 
-    auto get_kij = [index_table](int v1, int v2, value lx, value ly, value lz)
+    auto get_kij = [index_table](int v1, int v2, int ox, int oy, int oz)
     {
-        std::string sx = type_to_string(lx);
-        std::string sy = type_to_string(ly);
-        std::string sz = type_to_string(lz);
+        std::string sx = "x+" + std::to_string(ox);
+        std::string sy = "y+" + std::to_string(oy);
+        std::string sz = "z+" + std::to_string(oz);
 
-        std::string buf = "in[IDX((int)(" + sx + "),(int)(" + sy + "),(int)(" + sz + "))]";
+        std::string buf = "in[IDX(" + sx + "," + sy + "," + sz + ")]";
 
         value lX = buf + ".X";
 
@@ -2497,7 +2495,7 @@ void extract_waveforms(equation_context& ctx)
         {
             for(int j=0; j < 3; j++)
             {
-                lKij.idx(i, j) = (1/lX) * (lcA.idx(i, j) + (1.f/3.f) * lcY.idx(i, j) * lK);
+                lKij.idx(i, j) = (1.f/lX) * (lcA.idx(i, j) + (1.f/3.f) * lcY.idx(i, j) * lK);
             }
         }
 
@@ -2569,12 +2567,12 @@ void extract_waveforms(equation_context& ctx)
             for(int a=0; a < 3; a++)
             {
                 ///yeah this is horrible for performance but honestly i just want this to go away
-                auto bound_kij = [&](value x, value y, value z)
+                auto bound_kij = [&](int ox, int oy, int oz)
                 {
-                    return get_kij(a, b, x, y, z);
+                    return get_kij(a, b, ox, oy, oz);
                 };
 
-                value deriv = finite_difference_func(bound_kij, x, y, z, scale, c);
+                value deriv = finite_difference_func(bound_kij, scale, c);
 
                 value sum = 0;
 
@@ -2739,7 +2737,6 @@ void extract_waveforms(equation_context& ctx)
 
     tensor<value, 3, 3, 3> raised_eijk = raise_index_generic(raise_index_generic(eijk_tensor, iYij, 1), iYij, 2);
 
-
     dual_types::complex<value> w4;
 
     {
@@ -2763,7 +2760,7 @@ void extract_waveforms(equation_context& ctx)
 
                     k_sum_2 = k_sum_2 + rhs_sum;
 
-                    k_sum_1 = k_sum_1 + Kij.idx(i, k) * raise_index_generic(Kij, iYij, 0).idx(i, j);
+                    k_sum_1 = k_sum_1 + Kij.idx(i, k) * raise_index_generic(Kij, iYij, 0).idx(k, j);
                 }
 
                 dual_types::complex<value> inner_sum = -Rij.idx(i, j) - K * Kij.idx(i, j) + k_sum_1 + k_sum_2;
@@ -2777,8 +2774,13 @@ void extract_waveforms(equation_context& ctx)
         w4 = sum;
     }
 
+    //std::cout << "MUr " << type_to_string(mu.idx(1).real) << std::endl;
+    //std::cout << "MUi " << type_to_string(mu.idx(1).imaginary) << std::endl;
+
     ctx.add("w4_real", w4.real);
     ctx.add("w4_complex", w4.imaginary);
+    //ctx.add("w4_debugr", mu.idx(1).real);
+    //ctx.add("w4_debugi", mu.idx(1).imaginary);
 
     //vec<4, dual_types::complex<value>> mu = (1.f/sqrt(2)) * (thetau + i * phiu);
 }
@@ -2872,7 +2874,7 @@ int main()
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 
-    std::cout << "ARGS " << argument_string << std::endl;
+    //std::cout << "ARGS " << argument_string << std::endl;
 
     cl::program prog(clctx.ctx, "cl.cl");
     prog.build(clctx.ctx, argument_string);
@@ -3085,7 +3087,7 @@ int main()
 
             float r_extract = 20;
 
-            cl_int4 pos = {0, r_extract / scale, 0, 0};
+            cl_int4 pos = {clsize[0]/2, clsize[1]/2 + r_extract / scale, clsize[2]/2, 0};
 
             cl::args waveform_args;
             waveform_args.push_back(bssnok_datas[which_data]);
