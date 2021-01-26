@@ -2141,7 +2141,7 @@ int factorial(int i)
     return i * factorial(i - 1);
 }
 ///https://arxiv.org/pdf/1906.03877.pdf 8
-/*
+
 
 inline
 int choose(int n, int k)
@@ -2149,7 +2149,7 @@ int choose(int n, int k)
     return factorial(n) / (factorial(k) * factorial(n - k));
 }
 
-float sPlm(int s, int l, int m, value theta, value phi)
+/*float sPlm(int s, int l, int m, value theta, value phi)
 {
     auto sNlm = [](int s, int l, int m)
     {
@@ -2178,41 +2178,6 @@ float sPlm(int s, int l, int m, value theta, value phi)
     };
 }*/
 
-///https://svn.einsteintoolkit.org/cactus/PITTNullCode/SphericalHarmonicDecomp/trunk/src/sYlm.cc
-///I have no idea how or why this works
-value sPlm(int s, int l, int m, value theta)
-{
-    value temp = 0;
-    s= -s;
-
-    assert(l>=abs(s));
-    assert(l>=abs(m));
-
-    const float sc = (1-2*(abs(s)%2))*
-        sqrt((2*l+1)/(4 * M_PI)*factorial(l+m)*factorial(l-m)*factorial(l+s)*factorial(l-s));
-
-    for(int k = std::max(0, m-s); k <= std::min(l+m, l-s); k++)
-
-    {
-        float t = sc;
-
-        t /= factorial(l+m-k);
-        t /= factorial(l-s-k);
-        t /= factorial(k);
-        t /= factorial(k+s-m);
-
-        temp = temp + (1-2*(abs(k)%2))*t*
-           pow(cos(0.5f*theta),(float)(2*l+m-s-2*k))*
-           pow(sin(0.5f*theta),(float)(2*k+s-m));
-    }
-
-    return temp;
-}
-
-dual_types::complex<value> sYlm(int s, int l, int m, value theta, value phi)
-{
-    return sPlm(s,l,m,theta) * expi(m*phi);
-}
 
 ///assumes unigrid
 inline
