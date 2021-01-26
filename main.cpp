@@ -30,6 +30,8 @@ https://arxiv.org/pdf/1202.1038.pdf - bssn modification
 https://arxiv.org/pdf/1606.02532.pdf - extracting waveforms
 https://arxiv.org/pdf/gr-qc/0104063.pdf - this gives the tetrads in 5.6c
 https://asd.gsfc.nasa.gov/archive/astrogravs/docs/lit/ringdown_date.html - stuff
+https://www.black-holes.org/
+https://aip.scitation.org/doi/am-pdf/10.1063/1.4962723
 */
 
 //#define USE_GBB
@@ -2138,121 +2140,78 @@ int factorial(int i)
 
     return i * factorial(i - 1);
 }
-
-///https://en.wikipedia.org/wiki/Spin-weighted_spherical_harmonics#Representation_as_functions
-///https://arxiv.org/pdf/1606.02532.pdf 415
-dual_types::complex<value> Ylm0(int l, value z, value r)
-{
-    float coeff = sqrt((2 * l + 1) / (4 * M_PI)) * pow(2, -l);
-
-    value sum = 0;
-
-    for(int k=0; k < l/2; k++)
-    {
-        float p1 = pow(-1, k);
-
-        float p2 = factorial(2 * l - 2 * k) / (factorial(k) * factorial(l - k) * factorial(l - 2 * k));
-
-        value p3 = pow(z/r, l - 2 * k);
-
-        sum = sum + p1 * p2 * p3;
-    }
-
-    return dual_types::complex<value>(coeff * sum);
-}
+///https://arxiv.org/pdf/1906.03877.pdf 8
+/*
 
 inline
-dual_types::complex<value> A_m(value x, value y, int m)
+int choose(int n, int k)
 {
-    value sum = 0;
-
-    for(int k=0; k < m; k++)
-    {
-        sum = sum + (factorial(m) / (factorial(k) * factorial(m - k))) * pow(x, k) * pow(y, m - k) * cos(M_PI * (m - k)/2.f);
-    }
-
-    return dual_types::complex<value>(sum);
+    return factorial(n) / (factorial(k) * factorial(n - k));
 }
 
-inline
-dual_types::complex<value> B_m(value x, value y, int m)
+float sPlm(int s, int l, int m, value theta, value phi)
 {
-    value sum = 0;
-
-    for(int k=0; k < m; k++)
+    auto sNlm = [](int s, int l, int m)
     {
-        sum = sum + (factorial(m) / (factorial(k) * factorial(m - k))) * pow(x, k) * pow(y, m - k) * sin(M_PI * (m - k)/2.f);
-    }
+        float p1 = (2 * l + 1) / (4 * M_PI);
+        float p2 = (float)factorial(l + m) / factorial(l + s);
+        float p3 = (float)factorial(l - m) / factorial(l - s);
 
-    return dual_types::complex<value>(sum);
-}
-
-inline
-dual_types::complex<value> Ylm(int l, int in_m, value x, value y, value z, value r)
-{
-    if(in_m == 0)
-        return Ylm0(l, z, r);
-
-    int m = abs(in_m);
-
-    dual_types::complex<value> coeff(0.f, 0.f);
-    dual_types::complex<value> unit_i = dual_types::unit_i();
-
-    if(in_m > 0)
-    {
-        coeff = pow(-1, m) * (A_m(x, y, m) + unit_i * B_m(x, y, m));
-    }
-    else
-    {
-        coeff = (A_m(x, y, m) - unit_i * B_m(x, y, m));
-    }
-
-    float coeff2 = sqrt((2 * l + 1) / (4 * M_PI)) * pow(2, -l) * sqrt(factorial(l - m) / factorial(l + m));
-
-    value sum = 0;
-
-    for(int k=0; k < (l - m)/2; k++)
-    {
-        float p1 = (pow(-1, k) * factorial(2 * l - 2 * k)) / (factorial(k) * factorial(l - k) * factorial(l - 2 * k - m));
-
-        value p2 = pow(z, l - 2 * k - m) / pow(r, l - 2 * k);
-
-        sum = sum + p1 * p2;
-    }
-
-    return coeff * coeff2 * sum;
-}
-
-inline
-dual_types::complex<value> sYlm(int s, int l, int m, value x, value y, value z, value r)
-{
-    if(s == 0)
-        return Ylm(l, m, x, y, z, r);
-
-    auto d_bar = [](int s, int l, int m, value x, value y, value z, value r)
-    {
-        return -sqrt((l + s) * (l - s + 1)) * sYlm(s-1, l, m, x, y, z, r);
+        return pow(-1, m) * sqrt(p1 * p2 * p3);
     };
 
-    if(l < abs(s))
-        return 0;
-
-    ///this restriction could be lifted if necessary
-    assert(-l <= s && s <= 0);
-
-    if(-l <= s && s <= 0)
+    auto rsMlm(int r, int s, int l, int m)
     {
-        float coeff = sqrt(factorial(l + s) / factorial(l - s));
 
-        float coeff2 = pow(-1, s);
+    };
 
-        value base_val = Ylm(l, m, x, y, z);
+    auto sPlm(int s, int l, int m, value x, value y)
+    {
+        float coeff = pow(x, 2 * l);
 
-        for(int i=0; i < -s; i++)
+        value sum = 0;
+
+        for(int r=0; r < l - s; r++)
         {
-            base_val = d_bar(s, l, m, x, y, z, r);
+            sum = sum +
         }
+    };
+}*/
+
+///https://svn.einsteintoolkit.org/cactus/PITTNullCode/SphericalHarmonicDecomp/trunk/src/sYlm.cc
+///I have no idea how or why this works
+value sPlm(int s, int l, int m, value theta)
+{
+    value temp = 0;
+    s= -s;
+
+    assert(l>=abs(s));
+    assert(l>=abs(m));
+
+    const float sc = (1-2*(abs(s)%2))*
+        sqrt((2*l+1)/(4 * M_PI)*factorial(l+m)*factorial(l-m)*factorial(l+s)*factorial(l-s));
+
+    for(int k = std::max(0, m-s); k <= std::min(l+m, l-s); k++)
+
+    {
+        float t = sc;
+
+        t /= factorial(l+m-k);
+        t /= factorial(l-s-k);
+        t /= factorial(k);
+        t /= factorial(k+s-m);
+
+        temp = temp + (1-2*(abs(k)%2))*t*
+           pow(cos(0.5f*theta),(float)(2*l+m-s-2*k))*
+           pow(sin(0.5f*theta),(float)(2*k+s-m));
     }
+
+    return temp;
+}
+
+dual_types::complex<value> sYlm(int s, int l, int m, value theta, value phi)
+{
+    return sPlm(s,l,m,theta) * expi(m*phi);
 }
 
 ///assumes unigrid
