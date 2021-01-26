@@ -32,6 +32,7 @@ https://arxiv.org/pdf/gr-qc/0104063.pdf - this gives the tetrads in 5.6c
 https://asd.gsfc.nasa.gov/archive/astrogravs/docs/lit/ringdown_date.html - stuff
 https://www.black-holes.org/
 https://aip.scitation.org/doi/am-pdf/10.1063/1.4962723
+https://arxiv.org/pdf/1906.03877.pdf - spherical harmonics
 */
 
 //#define USE_GBB
@@ -2133,23 +2134,26 @@ auto finite_difference_func(T func, value scale, int direction)
 }
 
 inline
-int factorial(int i)
+int64_t factorial(int i)
 {
     if(i == 0)
         return 1;
 
     return i * factorial(i - 1);
 }
+
 ///https://arxiv.org/pdf/1906.03877.pdf 8
 
-
-inline
+/*inline
 int choose(int n, int k)
 {
+    if(n < 0 || k < 0 || k - n < 0)
+        return 0;
+
     return factorial(n) / (factorial(k) * factorial(n - k));
 }
 
-/*float sPlm(int s, int l, int m, value theta, value phi)
+float sPlm(int s, int l, int m, value theta, value phi)
 {
     auto sNlm = [](int s, int l, int m)
     {
@@ -2162,7 +2166,12 @@ int choose(int n, int k)
 
     auto rsMlm(int r, int s, int l, int m)
     {
+        int c1 = choose(l - s, r);
+        int c2 = choose(l + s, r + s - m);
+        int c3 = pow(-1, l - r - s);
 
+        assert(c1 != 0);
+        assert(c2 != 0);
     };
 
     auto sPlm(int s, int l, int m, value x, value y)
@@ -2177,6 +2186,41 @@ int choose(int n, int k)
         }
     };
 }*/
+
+///aha!
+///https://arxiv.org/pdf/0709.0093.pdf
+///at last! A non horrible reference and non gpl reference for negative spin!
+///this is where the cactus code comes from as well
+inline
+dual_types::complex<value> sYlm(int negative_s, int l, int m, value theta, value phi)
+{
+    int s = negative_s;
+
+    auto dlms = [&]()
+    {
+        int k1 = std::max(0, m - s);
+        int k2 = std::min(l + m, l - s);
+
+        value sum = 0;
+
+        for(int k=k1; k < k2; k++)
+        {
+            float cp1 = (double)(pow(-1, k) * sqrt(factorial(l + m) * factorial(l - m) * factorial(l + s) * factorial(l - s))) /
+                        (factorial(l + m - k) * factorial(l - s - k) * factorial(k) * factorial(k + s - m));
+
+            value cp2 = pow(cos(theta/2), 2 * l + m - s - 2 * k);
+            value cp3 = pow(sin(theta/2), 2 * k + s - m);
+
+            sum = sum + cp1 * cp2 * cp3;
+        }
+
+        return sum;
+    };
+
+    value coeff = pow(-1, s) * sqrt((2 * l + 1) / (4 * M_PI));
+
+    return coeff * dlms() * expi(m * phi);
+}
 
 
 ///assumes unigrid
