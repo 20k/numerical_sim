@@ -2164,6 +2164,8 @@ dual_types::complex<value> sYlm(int negative_s, int l, int m, value theta, value
             float cp1 = (double)(pow(-1, k) * sqrt(factorial(l + m) * factorial(l - m) * factorial(l + s) * factorial(l - s))) /
                         (factorial(l + m - k) * factorial(l - s - k) * factorial(k) * factorial(k + s - m));
 
+            assert(isfinite(cp1));
+
             value cp2 = pow(cos(theta/2), 2 * l + m - s - 2 * k);
             value cp3 = pow(sin(theta/2), 2 * k + s - m);
 
@@ -2178,6 +2180,8 @@ dual_types::complex<value> sYlm(int negative_s, int l, int m, value theta, value
     return coeff * dlms() * expi(m * phi);
 }
 
+///https://scc.ustc.edu.cn/zlsc/sugon/intel/ipp/ipp_manual/IPPM/ippm_ch9/ch9_SHT.htm this states you can approximate
+///a spherical harmonic transform integral with simple summation
 
 ///assumes unigrid
 inline
