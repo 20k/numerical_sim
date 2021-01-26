@@ -2143,50 +2143,6 @@ int64_t factorial(int i)
 }
 
 ///https://arxiv.org/pdf/1906.03877.pdf 8
-
-/*inline
-int choose(int n, int k)
-{
-    if(n < 0 || k < 0 || k - n < 0)
-        return 0;
-
-    return factorial(n) / (factorial(k) * factorial(n - k));
-}
-
-float sPlm(int s, int l, int m, value theta, value phi)
-{
-    auto sNlm = [](int s, int l, int m)
-    {
-        float p1 = (2 * l + 1) / (4 * M_PI);
-        float p2 = (float)factorial(l + m) / factorial(l + s);
-        float p3 = (float)factorial(l - m) / factorial(l - s);
-
-        return pow(-1, m) * sqrt(p1 * p2 * p3);
-    };
-
-    auto rsMlm(int r, int s, int l, int m)
-    {
-        int c1 = choose(l - s, r);
-        int c2 = choose(l + s, r + s - m);
-        int c3 = pow(-1, l - r - s);
-
-        assert(c1 != 0);
-        assert(c2 != 0);
-    };
-
-    auto sPlm(int s, int l, int m, value x, value y)
-    {
-        float coeff = pow(x, 2 * l);
-
-        value sum = 0;
-
-        for(int r=0; r < l - s; r++)
-        {
-            sum = sum +
-        }
-    };
-}*/
-
 ///aha!
 ///https://arxiv.org/pdf/0709.0093.pdf
 ///at last! A non horrible reference and non gpl reference for negative spin!
