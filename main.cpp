@@ -2223,6 +2223,38 @@ dual_types::complex<value> Ylm(int l, int in_m, value x, value y, value z, value
     return coeff * coeff2 * sum;
 }
 
+inline
+dual_types::complex<value> sYlm(int s, int l, int m, value x, value y, value z, value r)
+{
+    if(s == 0)
+        return Ylm(l, m, x, y, z, r);
+
+    auto d_bar = [](int s, int l, int m, value x, value y, value z, value r)
+    {
+        return -sqrt((l + s) * (l - s + 1)) * sYlm(s-1, l, m, x, y, z, r);
+    };
+
+    if(l < abs(s))
+        return 0;
+
+    ///this restriction could be lifted if necessary
+    assert(-l <= s && s <= 0);
+
+    if(-l <= s && s <= 0)
+    {
+        float coeff = sqrt(factorial(l + s) / factorial(l - s));
+
+        float coeff2 = pow(-1, s);
+
+        value base_val = Ylm(l, m, x, y, z);
+
+        for(int i=0; i < -s; i++)
+        {
+            base_val = d_bar(s, l, m, x, y, z, r);
+        }
+    }
+}
+
 ///assumes unigrid
 inline
 void extract_waveforms(equation_context& ctx)
