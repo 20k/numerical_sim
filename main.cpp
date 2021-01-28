@@ -2180,6 +2180,14 @@ dual_types::complex<value> sYlm(int negative_s, int l, int m, value theta, value
     return coeff * dlms() * expi(m * phi);
 }
 
+///c++ is an incomplete language, std::pow is not constexpr language
+template<typename T>
+inline
+constexpr T square(const T& val)
+{
+    return val * val;
+}
+
 inline
 constexpr float chebyshev2(int which, float x)
 {
@@ -2191,6 +2199,52 @@ constexpr float chebyshev2(int which, float x)
 
     return 2 * x * chebyshev2(which - 1, x) - chebyshev2(which - 2, x);
 }
+
+inline
+constexpr float legendre(int which, float x)
+{
+    if(which == 0)
+        return 1;
+
+    if(which == 1)
+        return x;
+
+    int n = which - 1;
+    int np1 = which;
+
+    return ((2 * n + 1) * x * legendre(n, x) - n * legendre(n-1, x)) / ((float)np1);
+}
+
+/*inline
+constexpr float legendre_pdash(int n, float x)
+{
+    return (-n * x * legendre(n, x) + n * legendre(n - 1, x) )
+}*/
+
+///https://mathworld.wolfram.com/Legendre-GaussQuadrature.html
+inline
+constexpr float legendre_weights(int n, float xi)
+{
+    return (2 * (1 - xi * xi)) / (square(n + 1) * square(legendre(n+1, xi)));
+}
+
+struct harmonic
+{
+    int l = 0;
+    int m = 0;
+    value v = 0;
+};
+
+struct spherical_harmonics
+{
+    std::vector<harmonic> info;
+
+    void load(const value& v)
+    {
+        int num_nodes = 10;
+        //int num_
+    }
+};
 
 ///https://scc.ustc.edu.cn/zlsc/sugon/intel/ipp/ipp_manual/IPPM/ippm_ch9/ch9_SHT.htm this states you can approximate
 ///a spherical harmonic transform integral with simple summation
