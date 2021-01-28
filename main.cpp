@@ -2953,6 +2953,13 @@ int main()
 {
     //return 0;
 
+    for(float v = 0; v <= M_PI * 10; v += 0.01)
+    {
+        auto harm = get_harmonic(v, 2, 0);
+
+        printf("HARM %f\n", harm.real);
+    }
+
     int width = 1422;
     int height = 800;
 
@@ -3264,7 +3271,11 @@ int main()
 
             real_graph.push_back(val.s[0]);
 
-            real_decomp.push_back(get_harmonic(val.s[0], 2, 0).real);
+            float harmonic = get_harmonic(val.s[0], 2, 0).real;
+
+            printf("Harm %f\n", harmonic);
+
+            real_decomp.push_back(harmonic);
 
             time_elapsed_s += timestep;
         }
