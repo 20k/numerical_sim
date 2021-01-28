@@ -3115,6 +3115,7 @@ int main()
     std::vector<cl::read_info<cl_float2>> read_data;
 
     std::vector<float> real_graph;
+    std::vector<float> real_decomp;
 
     //clctx.cqueue.exec("clean_data", initial_clean, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
@@ -3164,7 +3165,14 @@ int main()
             if(real_graph.size() > 0)
             {
                 ImGui::PushItemWidth(400);
-                ImGui::PlotLines("w4", &real_graph[0], real_graph.size());
+                ImGui::PlotLines("w4      ", &real_graph[0], real_graph.size());
+                ImGui::PopItemWidth();
+            }
+
+            if(real_decomp.size() > 0)
+            {
+                ImGui::PushItemWidth(400);
+                ImGui::PlotLines("w4_l2_m0", &real_decomp[0], real_decomp.size());
                 ImGui::PopItemWidth();
             }
 
@@ -3255,6 +3263,8 @@ int main()
             data.consume();
 
             real_graph.push_back(val.s[0]);
+
+            real_decomp.push_back(get_harmonic(val.s[0], 2, 0).real);
 
             time_elapsed_s += timestep;
         }
