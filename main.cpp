@@ -2168,15 +2168,15 @@ dual_types::complex<T> sYlm(int negative_s, int l, int m, T theta, T phi)
 
         T sum = 0;
 
-        for(int k=k1; k < k2; k++)
+        for(int k=k1; k <= k2; k++)
         {
-            float cp1 = (double)(pow(-1, k) * sqrt(factorial(l + m) * factorial(l - m) * factorial(l + s) * factorial(l - s))) /
-                        (factorial(l + m - k) * factorial(l - s - k) * factorial(k) * factorial(k + s - m));
+            float cp1 = (double)(pow(-1, k) * sqrt((double)(factorial(l + m) * factorial(l - m) * factorial(l + s) * factorial(l - s)))) /
+                        ((double)(factorial(l + m - k) * factorial(l - s - k) * factorial(k) * factorial(k + s - m)));
 
             assert(isfinite(cp1));
 
-            T cp2 = pow(cos(theta/2), 2 * l + m - s - 2 * k);
-            T cp3 = pow(sin(theta/2), 2 * k + s - m);
+            T cp2 = pow(cos(theta/2.f), 2 * l + m - s - 2 * k);
+            T cp3 = pow(sin(theta/2.f), 2 * k + s - m);
 
             sum = sum + cp1 * cp2 * cp3;
         }
@@ -2240,11 +2240,13 @@ auto spherical_integrate(const T& f_theta_phi, int n)
     ///0 -> 2pi, phi
     for(int i=0; i < n; i++)
     {
+        variable_type lsum = 0;
+        float xi = nodes[i];
+
         ///theta
         for(int j=0; j < n; j++)
         {
-            float w = weights[i] * weights[j];
-            float xi = nodes[i];
+            float w = weights[j];
             float xj = nodes[j];
 
             float final_valphi = ((iupper - ilower)/2.f) * xi + (iupper + ilower) / 2.f;
@@ -2252,19 +2254,26 @@ auto spherical_integrate(const T& f_theta_phi, int n)
 
             auto func_eval = w * f_theta_phi(final_valtheta, final_valphi);
 
-            sum = sum + func_eval;
+            //printf("VPhi %f %f\n", final_valtheta, final_valphi);
+            //printf("Gval %f\n", func_eval.real);
+
+            lsum = lsum + func_eval;
         }
+
+        sum = sum + weights[i] * lsum;
     }
 
     return ((iupper - ilower) / 2.f) * ((jupper - jlower) / 2.f) * sum;
 }
 
 inline
-dual_types::complex<float> get_harmonic(float value, int l, int m)
+dual_types::complex<float> get_harmonic(const dual_types::complex<float>& value, int l, int m)
 {
     auto func = [&](float theta, float phi)
     {
         dual_types::complex<float> harmonic = sYlm(2, l, m, theta, phi);
+
+        //printf("Hreal %f\n", harmonic.real);
 
         return value * harmonic;
     };
@@ -2953,12 +2962,12 @@ int main()
 {
     //return 0;
 
-    for(float v = 0; v <= M_PI * 10; v += 0.01)
+    /*for(float v = 0; v <= M_PI * 10; v += 0.01)
     {
         auto harm = get_harmonic(v, 2, 0);
 
         printf("HARM %f\n", harm.real);
-    }
+    }*/
 
     int width = 1422;
     int height = 800;
@@ -3269,9 +3278,11 @@ int main()
 
             data.consume();
 
+            dual_types::complex<float> w4 = {val.s[0], val.s[1]};
+
             real_graph.push_back(val.s[0]);
 
-            float harmonic = get_harmonic(val.s[0], 2, 0).real;
+            float harmonic = get_harmonic(w4, 2, 0).real;
 
             printf("Harm %f\n", harmonic);
 
