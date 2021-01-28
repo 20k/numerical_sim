@@ -2180,9 +2180,20 @@ dual_types::complex<value> sYlm(int negative_s, int l, int m, value theta, value
     return coeff * dlms() * expi(m * phi);
 }
 
+inline
+constexpr float chebyshev2(int which, float x)
+{
+    if(which == 0)
+        return 1.f;
+
+    if(which == 1)
+        return 2 * x;
+
+    return 2 * x * chebyshev2(which - 1, x) - chebyshev2(which - 2, x);
+}
+
 ///https://scc.ustc.edu.cn/zlsc/sugon/intel/ipp/ipp_manual/IPPM/ippm_ch9/ch9_SHT.htm this states you can approximate
 ///a spherical harmonic transform integral with simple summation
-
 ///assumes unigrid
 inline
 void extract_waveforms(equation_context& ctx)
