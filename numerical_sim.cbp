@@ -122,6 +122,7 @@
 		<Unit filename="deps/toolkit/texture.cpp" />
 		<Unit filename="deps/toolkit/texture.hpp" />
 		<Unit filename="deps/toolkit/vertex.hpp" />
+		<Unit filename="legendre_nodes.h" />
 		<Unit filename="legendre_weights.h" />
 		<Unit filename="main.cpp" />
 		<Extensions>

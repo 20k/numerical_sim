@@ -9,6 +9,7 @@
 #include <geodesic/dual_value.hpp>
 #include <geodesic/numerical.hpp>
 #include "legendre_weights.h"
+#include "legendre_nodes.h"
 
 /**
 current paper set
@@ -2181,52 +2182,11 @@ dual_types::complex<value> sYlm(int negative_s, int l, int m, value theta, value
     return coeff * dlms() * expi(m * phi);
 }
 
-///c++ is an incomplete language, std::pow is not constexpr language
 template<typename T>
 inline
-constexpr T square(const T& val)
+auto integrate(float lowerbound, float upperbound, const T& f_x)
 {
-    return val * val;
-}
 
-inline
-constexpr float chebyshev2(int which, float x)
-{
-    if(which == 0)
-        return 1.f;
-
-    if(which == 1)
-        return 2 * x;
-
-    return 2 * x * chebyshev2(which - 1, x) - chebyshev2(which - 2, x);
-}
-
-inline
-constexpr float legendre(int which, float x)
-{
-    if(which == 0)
-        return 1;
-
-    if(which == 1)
-        return x;
-
-    int n = which - 1;
-    int np1 = which;
-
-    return ((2 * n + 1) * x * legendre(n, x) - n * legendre(n-1, x)) / ((float)np1);
-}
-
-/*inline
-constexpr float legendre_pdash(int n, float x)
-{
-    return (-n * x * legendre(n, x) + n * legendre(n - 1, x) )
-}*/
-
-///https://mathworld.wolfram.com/Legendre-GaussQuadrature.html
-inline
-constexpr float legendre_weights(int n, float xi)
-{
-    return (2 * (1 - xi * xi)) / (square(n + 1) * square(legendre(n+1, xi)));
 }
 
 struct harmonic
