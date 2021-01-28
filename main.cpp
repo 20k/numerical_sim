@@ -2144,13 +2144,20 @@ int64_t factorial(int i)
     return i * factorial(i - 1);
 }
 
+inline
+dual_types::complex<float> expi(float val)
+{
+    return dual_types::complex<float>(cos(val), sin(val));
+}
+
 ///https://arxiv.org/pdf/1906.03877.pdf 8
 ///aha!
 ///https://arxiv.org/pdf/0709.0093.pdf
 ///at last! A non horrible reference and non gpl reference for negative spin!
 ///this is where the cactus code comes from as well
+template<typename T>
 inline
-dual_types::complex<value> sYlm(int negative_s, int l, int m, value theta, value phi)
+dual_types::complex<T> sYlm(int negative_s, int l, int m, T theta, T phi)
 {
     int s = negative_s;
 
@@ -2159,7 +2166,7 @@ dual_types::complex<value> sYlm(int negative_s, int l, int m, value theta, value
         int k1 = std::max(0, m - s);
         int k2 = std::min(l + m, l - s);
 
-        value sum = 0;
+        T sum = 0;
 
         for(int k=k1; k < k2; k++)
         {
@@ -2168,8 +2175,8 @@ dual_types::complex<value> sYlm(int negative_s, int l, int m, value theta, value
 
             assert(isfinite(cp1));
 
-            value cp2 = pow(cos(theta/2), 2 * l + m - s - 2 * k);
-            value cp3 = pow(sin(theta/2), 2 * k + s - m);
+            T cp2 = pow(cos(theta/2), 2 * l + m - s - 2 * k);
+            T cp3 = pow(sin(theta/2), 2 * k + s - m);
 
             sum = sum + cp1 * cp2 * cp3;
         }
@@ -2177,12 +2184,15 @@ dual_types::complex<value> sYlm(int negative_s, int l, int m, value theta, value
         return sum;
     };
 
-    value coeff = pow(-1, s) * sqrt((2 * l + 1) / (4 * M_PI));
+    T coeff = pow(-1, s) * sqrt((2 * l + 1) / (4 * M_PI));
 
     return coeff * dlms() * expi(m * phi);
 }
 
 ///https://pomax.github.io/bezierinfo/legendre-gauss.html
+///https://cbeentjes.github.io/files/Ramblings/QuadratureSphere.pdf
+///http://homepage.divms.uiowa.edu/~atkinson/papers/SphereQuad1982.pdf
+
 template<typename T>
 inline
 auto integrate(float lowerbound, float upperbound, const T& f_x, int n)
@@ -2199,7 +2209,7 @@ auto integrate(float lowerbound, float upperbound, const T& f_x, int n)
         float wi = weights[i];
         float xi = nodes[i];
 
-        float final_val = ((upperbound - lowerbound)/2.f) * xi + (upperbound - lowerbound) / 2.f;
+        float final_val = ((upperbound - lowerbound)/2.f) * xi + (upperbound + lowerbound) / 2.f;
 
         auto func_eval = wi * f_x(final_val);
 
@@ -2209,22 +2219,62 @@ auto integrate(float lowerbound, float upperbound, const T& f_x, int n)
     return ((upperbound - lowerbound) / 2.f) * sum;
 }
 
-struct harmonic
+template<typename T>
+inline
+auto spherical_integrate(const T& f_theta_phi, int n)
 {
-    int l = 0;
-    int m = 0;
-    value v = 0;
-};
+    using variable_type = decltype(f_theta_phi(0.f, 0.f));
 
-struct spherical_harmonics
-{
-    std::vector<harmonic> info;
+    variable_type sum = 0;
 
-    void load(const value& v)
+    std::vector<float> weights = get_legendre_weights(n);
+    std::vector<float> nodes = get_legendre_nodes(n);
+
+    float iupper = 2 * M_PI;
+    float ilower = 0;
+
+    float jupper = M_PI;
+    float jlower = 0;
+
+    ///https://cbeentjes.github.io/files/Ramblings/QuadratureSphere.pdf7 7
+    ///0 -> 2pi, phi
+    for(int i=0; i < n; i++)
     {
+        ///theta
+        for(int j=0; j < n; j++)
+        {
+            float w = weights[i] * weights[j];
+            float xi = nodes[i];
+            float xj = nodes[j];
 
+            float final_valphi = ((iupper - ilower)/2.f) * xi + (iupper + ilower) / 2.f;
+            float final_valtheta = ((jupper - jlower)/2.f) * xj + (jupper + jlower) / 2.f;
+
+            auto func_eval = w * f_theta_phi(final_valtheta, final_valphi);
+
+            sum = sum + func_eval;
+        }
     }
-};
+
+    return ((iupper - ilower) / 2.f) * ((jupper - jlower) / 2.f) * sum;
+}
+
+inline
+dual_types::complex<float> get_harmonic(float value, int l, int m)
+{
+    auto func = [&](float theta, float phi)
+    {
+        dual_types::complex<float> harmonic = sYlm(2, l, m, theta, phi);
+
+        return value * harmonic;
+    };
+
+    int n = 16;
+
+    dual_types::complex<float> harmonic = spherical_integrate(func, n);
+
+    return harmonic;
+}
 
 ///https://scc.ustc.edu.cn/zlsc/sugon/intel/ipp/ipp_manual/IPPM/ippm_ch9/ch9_SHT.htm this states you can approximate
 ///a spherical harmonic transform integral with simple summation
