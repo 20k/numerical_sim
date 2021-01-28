@@ -5,7 +5,7 @@
 
 ///https://pomax.github.io/bezierinfo/legendre-gauss.html
 inline
-std::vector<float> get_weight(int n)
+std::vector<float> get_legendre_weights(int n)
 {
 
 if(n == 2){ return {

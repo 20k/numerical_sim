@@ -2182,11 +2182,31 @@ dual_types::complex<value> sYlm(int negative_s, int l, int m, value theta, value
     return coeff * dlms() * expi(m * phi);
 }
 
+///https://pomax.github.io/bezierinfo/legendre-gauss.html
 template<typename T>
 inline
-auto integrate(float lowerbound, float upperbound, const T& f_x)
+auto integrate(float lowerbound, float upperbound, const T& f_x, int n)
 {
+    using variable_type = decltype(f_x(0.f));
 
+    variable_type sum = 0;
+
+    std::vector<float> weights = get_legendre_weights(n);
+    std::vector<float> nodes = get_legendre_nodes(n);
+
+    for(int i=0; i < n; i++)
+    {
+        float wi = weights[i];
+        float xi = nodes[i];
+
+        float final_val = ((upperbound - lowerbound)/2.f) * xi + (upperbound - lowerbound) / 2.f;
+
+        auto func_eval = wi * f_x(final_val);
+
+        sum = sum + func_eval;
+    }
+
+    return ((upperbound - lowerbound) / 2.f) * sum;
 }
 
 struct harmonic
@@ -2202,8 +2222,7 @@ struct spherical_harmonics
 
     void load(const value& v)
     {
-        int num_nodes = 10;
-        //int num_
+
     }
 };
 
