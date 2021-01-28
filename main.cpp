@@ -8,6 +8,7 @@
 #include <geodesic/dual.hpp>
 #include <geodesic/dual_value.hpp>
 #include <geodesic/numerical.hpp>
+#include "legendre_weights.h"
 
 /**
 current paper set
@@ -2921,11 +2922,6 @@ float fisheye(float r)
 
 int main()
 {
-    for(float r = 0; r <= 100; r += 1)
-    {
-        printf("Fish %f %f\n", r, fisheye(r));
-    }
-
     //return 0;
 
     int width = 1422;
