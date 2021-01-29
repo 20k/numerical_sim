@@ -773,7 +773,7 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     }
     #endif // 0
 
-    if(x == 125 && y == 100 && z == 125)
+    if(x == dim.x/2 && y == dim.y/2 - 5 && z == dim.z/2)
     {
         #ifdef debug_val
         float dbg = debug_val;

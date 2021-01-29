@@ -1390,6 +1390,11 @@ void build_eqs(equation_context& ctx)
         {
             hacky_differentiate(ctx, "ik.dphi[" + std::to_string(i) + "]", k);
         }
+
+        for(int i=0; i < 3; i++)
+        {
+            hacky_differentiate(ctx, "ik.dX[" + std::to_string(i) + "]", k);
+        }
     }
 
     tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, cY);
@@ -1609,8 +1614,8 @@ void build_eqs(equation_context& ctx)
         }
     }
 
-    //value dbg1 = 0;
-    //value dbg2 = 0;
+    value dbg1 = 0;
+    value dbg2 = 0;
 
     tensor<value, 3, 3> xgARphiij;
 
@@ -1639,10 +1644,10 @@ void build_eqs(equation_context& ctx)
 
             s1XgA = -2 * (1.f/4.f) * s1XgA;
 
-            //value s1XgA2 = -2 * X * gA * gpu_covariant_derivative_low_vec(ctx, dphi, cY, icY).idx(j, i);
+            value s1XgA2 = -2 * X * gA * gpu_covariant_derivative_low_vec(ctx, dphi, cY, icY).idx(j, i);
 
-            //dbg1 = dbg1 + s1XgA;
-            //dbg2 = dbg2 + s1XgA2;
+            dbg1 = dbg1 + s1XgA;
+            dbg2 = dbg2 + s1XgA2;
 
             value s2 = 0;
 
@@ -1670,6 +1675,12 @@ void build_eqs(equation_context& ctx)
 
     //ctx.add("debug_val", dbg1);
     //ctx.add("debug_val2", dbg2);
+
+    //ctx.add("debug_val", dphi.idx(2));
+    //ctx.add("debug_val2", -dX.idx(2) / (4 * X));
+
+    ctx.add("debug_val", hacky_differentiate(ctx, dphi.idx(0), 0));
+    ctx.add("debug_val2", 0.25f * -hacky_differentiate(ctx, dX.idx(0), 0)/X + 0.25f * (dX.idx(0) / X) * (dX.idx(0) / X));
 
     //ctx.add("debug_val", Rphiij.idx(i, j));
 
