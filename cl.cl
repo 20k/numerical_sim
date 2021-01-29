@@ -773,16 +773,19 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     }
     #endif // 0
 
+    if(x == 125 && y == 100 && z == 125)
+    {
+        #ifdef debug_val
+        float dbg = debug_val;
+        printf("Debug %f\n", dbg);
+        #endif // debug_val
 
-    #ifdef debug_val
-    float dbg = debug_val;
-    printf("Debug %f\n", debug_val);
-    #endif // debug_val
+        #ifdef debug_val2
+        float dbg2 = debug_val2;
+        printf("Debug2 %f\n", dbg2);
+        #endif // debug_val2
+    }
 
-    #ifdef debug_val2
-    float dbg = debug_val2;
-    printf("Debug2 %f\n", debug_val2);
-    #endif // debug_val2
 
 }
 

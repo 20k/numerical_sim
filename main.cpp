@@ -1609,6 +1609,9 @@ void build_eqs(equation_context& ctx)
         }
     }
 
+    //value dbg1 = 0;
+    //value dbg2 = 0;
+
     tensor<value, 3, 3> xgARphiij;
 
     for(int i=0; i < 3; i++)
@@ -1636,13 +1639,10 @@ void build_eqs(equation_context& ctx)
 
             s1XgA = -2 * s1XgA;
 
-            value s1XgA2 = -2 * X * gA * gpu_covariant_derivative_low_vec(ctx, dphi, cY, icY).idx(j, i);
+            //value s1XgA2 = -2 * X * gA * gpu_covariant_derivative_low_vec(ctx, dphi, cY, icY).idx(j, i);
 
-            if(i == 0 && j == 0)
-            {
-                ctx.add("debug_val", s1XgA);
-                ctx.add("debug_val2", s1XgA2);
-            }
+            //dbg1 = dbg1 + s1XgA;
+            //dbg2 = dbg2 + s1XgA2;
 
             value s2 = 0;
 
@@ -1667,6 +1667,9 @@ void build_eqs(equation_context& ctx)
             xgARphiij.idx(i, j) = s1XgA + X * gA * (s2 + s3 + s4);
         }
     }
+
+    //ctx.add("debug_val", dbg1);
+    //ctx.add("debug_val2", dbg2);
 
     //ctx.add("debug_val", Rphiij.idx(i, j));
 
