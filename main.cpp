@@ -1120,16 +1120,6 @@ void build_intermediate(equation_context& ctx)
         }
     }
 
-    ///or 0.25f * log(1.f/v.X);
-    auto X_to_phi = [](value X)
-    {
-        return -0.25f * log(X);
-    };
-
-    value phi = X_to_phi(X);
-
-    ctx.pin(phi);
-
     tensor<value, 3> dphi;
     tensor<value, 3> dX;
 
