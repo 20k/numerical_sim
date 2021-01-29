@@ -759,11 +759,6 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
         printf("gB2 %f\n", v.gB2);
         printf("Scalar %f\n", scalar);
 
-        #ifdef debug_val
-        float dbg = debug_val;
-        printf("Debug %f\n", debug_val);
-        #endif // debug_val
-
         /*float d0 = debug_val0;
         float d1 = debug_val1;
         float d2 = debug_val2;
@@ -777,6 +772,18 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
         printf("Vals: %f %f %f %f %f %f %f %f %f\n", d0, d1, d2, d3, d4, d5, d6, d7, d8);*/
     }
     #endif // 0
+
+
+    #ifdef debug_val
+    float dbg = debug_val;
+    printf("Debug %f\n", debug_val);
+    #endif // debug_val
+
+    #ifdef debug_val2
+    float dbg = debug_val2;
+    printf("Debug2 %f\n", debug_val2);
+    #endif // debug_val2
+
 }
 
 __kernel
@@ -890,14 +897,14 @@ void extract_waveform(__global struct bssnok_data* in, float scale, int4 dim, __
         }
     }*/
 
-    printf("Scale %f\n", scale);
+    //printf("Scale %f\n", scale);
 
-    printf("X %f\n", v->X);
+    //printf("X %f\n", v->X);
 
     waveform_out[0].x = w4_real;
     waveform_out[0].y = w4_complex;
 
-    printf("WAV %f\n", waveform_out[0].x);
+    //printf("WAV %f\n", waveform_out[0].x);
 
     #ifdef w4_debugr
     printf("Debugw4r %f\n", w4_debugr);

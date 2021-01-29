@@ -1636,7 +1636,13 @@ void build_eqs(equation_context& ctx)
 
             s1XgA = -2 * s1XgA;
 
-            //value s1XgA = -2 * X * gA * gpu_covariant_derivative_low_vec(ctx, dphi, cY, icY).idx(j, i);
+            value s1XgA2 = -2 * X * gA * gpu_covariant_derivative_low_vec(ctx, dphi, cY, icY).idx(j, i);
+
+            if(i == 0 && j == 0)
+            {
+                ctx.add("debug_val", s1XgA);
+                ctx.add("debug_val2", s1XgA2);
+            }
 
             value s2 = 0;
 
