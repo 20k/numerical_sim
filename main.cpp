@@ -3186,12 +3186,12 @@ int main()
                 ImGui::PopItemWidth();
             }
 
-            if(real_decomp.size() > 0)
+            /*if(real_decomp.size() > 0)
             {
                 ImGui::PushItemWidth(400);
                 ImGui::PlotLines("w4_l2_m0", &real_decomp[0], real_decomp.size());
                 ImGui::PopItemWidth();
-            }
+            }*/
 
             ImGui::End();
 
