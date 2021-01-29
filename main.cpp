@@ -2266,6 +2266,7 @@ auto spherical_integrate(const T& f_theta_phi, int n)
     return ((iupper - ilower) / 2.f) * ((jupper - jlower) / 2.f) * sum;
 }
 
+///this isn't correct at all. The integration might be fine, but we can't take the spherical harmonics of a constant
 inline
 dual_types::complex<float> get_harmonic(const dual_types::complex<float>& value, int l, int m)
 {
