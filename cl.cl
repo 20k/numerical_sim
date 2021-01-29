@@ -113,6 +113,7 @@ struct intermediate_bssnok_data
     float digB[3*3];
     //float phi;
     float dphi[3];
+    float dX[3];
 };
 
 float finite_difference(float upper, float lower, float scale)
@@ -413,6 +414,10 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
     my_out->dphi[0] = init_dphi0;
     my_out->dphi[1] = init_dphi1;
     my_out->dphi[2] = init_dphi2;
+
+    my_out->dX[0] = init_dX0;
+    my_out->dX[1] = init_dX1;
+    my_out->dX[2] = init_dX2;
 }
 
 float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float time)

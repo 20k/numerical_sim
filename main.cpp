@@ -82,6 +82,7 @@ struct intermediate_bssnok_data
     cl_float digB[3*3];
     //cl_float phi;
     cl_float dphi[3];
+    cl_float dX[3];
 };
 
 template<typename T, typename U, int N, size_t M>
@@ -1130,12 +1131,14 @@ void build_intermediate(equation_context& ctx)
     ctx.pin(phi);
 
     tensor<value, 3> dphi;
+    tensor<value, 3> dX;
 
     for(int i=0; i < 3; i++)
     {
-        value dX = hacky_differentiate(ctx, X, i);
+        value ldX = hacky_differentiate(ctx, X, i);
 
-        dphi.idx(i) = -dX / (4 * X);
+        dphi.idx(i) = -ldX / (4 * X);
+        dX.idx(i) = ldX;
     }
 
     /*for(int k=0; k < 3; k++)
@@ -1182,6 +1185,10 @@ void build_intermediate(equation_context& ctx)
     ctx.add("init_dphi0", dphi.idx(0));
     ctx.add("init_dphi1", dphi.idx(1));
     ctx.add("init_dphi2", dphi.idx(2));
+
+    ctx.add("init_dX0", dX.idx(0));
+    ctx.add("init_dX1", dX.idx(1));
+    ctx.add("init_dX2", dX.idx(2));
 }
 
 ///https://arxiv.org/pdf/gr-qc/0206072.pdf on stability, they recompute cGi where it does nto hae a derivative
@@ -1248,6 +1255,11 @@ void build_eqs(equation_context& ctx)
     dphi.idx(0).make_value("ik.dphi[0]");
     dphi.idx(1).make_value("ik.dphi[1]");
     dphi.idx(2).make_value("ik.dphi[2]");
+
+    tensor<value, 3> dX;
+    dX.idx(0) = "ik.dX[0]";
+    dX.idx(1) = "ik.dX[1]";
+    dX.idx(2) = "ik.dX[2]";
 
     tensor<value, 3, 3> digB;
 
@@ -1338,6 +1350,14 @@ void build_eqs(equation_context& ctx)
         }
     }
 
+    ///dX alias
+    for(int i=0; i < 3; i++)
+    {
+        value v = hacky_differentiate(ctx, X, i, false);
+
+        ctx.alias(v, dX.idx(i));
+    }
+
     for(int k=0; k < 3; k++)
     {
         for(int i=0; i < 6; i++)
@@ -1356,7 +1376,7 @@ void build_eqs(equation_context& ctx)
         }
 
         hacky_differentiate(ctx, "v->K", k);
-        hacky_differentiate(ctx, "v->X", k);
+        //hacky_differentiate(ctx, "v->X", k);
     }
 
     for(int k=0; k < 3; k++)
@@ -1486,8 +1506,29 @@ void build_eqs(equation_context& ctx)
         dtX = (2.f/3.f) * X * (gA * K - s1) + s2;
     }
 
+    ///a / X
+    value gA_X = 0;
+
+    {
+        float min_X = 0.00001;
+
+        gA_X = dual_if(X <= min_X,
+        [&]()
+        {
+            ///linearly interpolate to 0
+            value value_at_min = gA / min_X;
+
+            return value_at_min * (X / min_X);
+        },
+        [&]()
+        {
+            return gA / X;
+        });
+    }
+
+
     ///ok use the proper form
-    tensor<value, 3, 3> cRij;
+    tensor<value, 3, 3> xgAcRij;
 
     ///https://en.wikipedia.org/wiki/Ricci_curvature#Definition_via_local_coordinates_on_a_smooth_manifold
     /*for(int i=0; i < 3; i++)
@@ -1574,11 +1615,11 @@ void build_eqs(equation_context& ctx)
                 }
             }
 
-            cRij.idx(i, j) = s1 + s2 + s3 + s4;
+            xgAcRij.idx(i, j) = X * gA * (s1 + s2 + s3 + s4);
         }
     }
 
-    tensor<value, 3, 3> Rphiij;
+    tensor<value, 3, 3> xgARphiij;
 
     for(int i=0; i < 3; i++)
     {
@@ -1606,7 +1647,7 @@ void build_eqs(equation_context& ctx)
 
             s4 = -4 * cY.idx(i, j) * s4;
 
-            Rphiij.idx(i, j) = s1 + s2 + s3 + s4;
+            xgARphiij.idx(i, j) = X * gA * (s1 + s2 + s3 + s4);
         }
     }
 
@@ -1614,15 +1655,15 @@ void build_eqs(equation_context& ctx)
 
     //ctx.add("debug_val", gpu_trace(cA, cY, icY));
 
-    tensor<value, 3, 3> Rij;
+    tensor<value, 3, 3> xgARij;
 
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
-            Rij.idx(i, j) = Rphiij.idx(i, j) + cRij.idx(i, j);
+            xgARij.idx(i, j) = xgARphiij.idx(i, j) + xgAcRij.idx(i, j);
 
-            ctx.pin(Rij.idx(i, j));
+            ctx.pin(xgARij.idx(i, j));
         }
     }
 
@@ -1698,7 +1739,7 @@ void build_eqs(equation_context& ctx)
 
             trace_free_interior_1 = trace_free_interior_1 - reduced;
 
-            value trace_free_interior_2 = X * gA * Rij.idx(i, j);
+            value trace_free_interior_2 = xgARij.idx(i, j);
 
             with_trace.idx(i, j) = -trace_free_interior_1 + trace_free_interior_2;
         }
@@ -1814,26 +1855,6 @@ void build_eqs(equation_context& ctx)
         }
 
         dtK = -sum1 + sum2 + sum3;
-    }
-
-    ///a / X
-    value gA_X = 0;
-
-    {
-        float min_X = 0.00001;
-
-        gA_X = dual_if(X <= min_X,
-        [&]()
-        {
-            ///linearly interpolate to 0
-            value value_at_min = gA / min_X;
-
-            return value_at_min * (X / min_X);
-        },
-        [&]()
-        {
-            return gA / X;
-        });
     }
 
     ///these seem to suffer from oscillations
@@ -1974,7 +1995,7 @@ void build_eqs(equation_context& ctx)
 
     #endif // USE_GBB
 
-    value scalar_curvature = 0;
+    /*value scalar_curvature = 0;
 
     for(int i=0; i < 3; i++)
     {
@@ -1982,7 +2003,7 @@ void build_eqs(equation_context& ctx)
         {
             scalar_curvature = scalar_curvature + iYij.idx(i, j) * Rij.idx(i, j);
         }
-    }
+    }*/
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
@@ -2031,7 +2052,7 @@ void build_eqs(equation_context& ctx)
         ctx.add(name, dtgBB.idx(i));
     }
 
-    ctx.add("scalar_curvature", scalar_curvature);
+    //ctx.add("scalar_curvature", scalar_curvature);
 }
 
 template<typename T, int N>
