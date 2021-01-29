@@ -1623,21 +1623,21 @@ void build_eqs(equation_context& ctx)
             value s1XgA = 0;
 
             {
-                value p1 = (-1.f/4.f) * gA * hacky_differentiate(ctx, dX.idx(j), i);
+                value p1 = -gA * hacky_differentiate(ctx, dX.idx(j), i);
 
-                value p2 = (1.f/4.f) * gA_X * dX.idx(i) * dX.idx(j);
+                value p2 = gA_X * dX.idx(i) * dX.idx(j);
 
                 value p3s = 0;
 
                 for(int k=0; k < 3; k++)
                 {
-                    p3s = p3s + christoff2.idx(k, i, j) * -dX.idx(k)/4.f;
+                    p3s = p3s + christoff2.idx(k, i, j) * -dX.idx(k);
                 }
 
                 s1XgA = p1 + p2 - gA * p3s;
             }
 
-            s1XgA = -2 * s1XgA;
+            s1XgA = -2 * (1.f/4.f) * s1XgA;
 
             //value s1XgA2 = -2 * X * gA * gpu_covariant_derivative_low_vec(ctx, dphi, cY, icY).idx(j, i);
 
