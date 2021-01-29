@@ -1625,7 +1625,28 @@ void build_eqs(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            value s1 = -2 * gpu_covariant_derivative_low_vec(ctx, dphi, cY, icY).idx(j, i);
+            //value s1 = -2 * gpu_covariant_derivative_low_vec(ctx, dphi, cY, icY).idx(j, i);
+
+            /*value s1XgA = 0;
+
+            {
+                value p1 = (-1.f/4.f) * gA * hacky_differentiate(ctx, dX.idx(j), i);
+
+                value p2 = (1.f/4.f) * gA_X * dX.idx(i) * dX.idx(j);
+
+                value p3s = 0;
+
+                for(int k=0; k < 3; k++)
+                {
+                    p3s = p3s + christoff2.idx(k, i, j) * -dX.idx(i)/4.f;
+                }
+
+                s1XgA = p1 + p2 - gA * p3s;
+            }
+
+            s1XgA = -2 * s1XgA;*/
+
+            value s1XgA = -2 * X * gA * gpu_covariant_derivative_low_vec(ctx, dphi, cY, icY).idx(j, i);
 
             value s2 = 0;
 
@@ -1647,7 +1668,7 @@ void build_eqs(equation_context& ctx)
 
             s4 = -4 * cY.idx(i, j) * s4;
 
-            xgARphiij.idx(i, j) = X * gA * (s1 + s2 + s3 + s4);
+            xgARphiij.idx(i, j) = s1XgA + X * gA * (s2 + s3 + s4);
         }
     }
 
