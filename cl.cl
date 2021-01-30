@@ -113,7 +113,9 @@ struct intermediate_bssnok_data
     float digB[3*3];
     //float phi;
     float dphi[3];
+    #ifdef X_SUB
     float dX[3];
+    #endif // X_SUB
 };
 
 float finite_difference(float upper, float lower, float scale)
@@ -415,9 +417,11 @@ void calculate_intermediate_data(__global struct bssnok_data* in, float scale, i
     my_out->dphi[1] = init_dphi1;
     my_out->dphi[2] = init_dphi2;
 
+    #ifdef X_SUB
     my_out->dX[0] = init_dX0;
     my_out->dX[1] = init_dX1;
     my_out->dX[2] = init_dX2;
+    #endif // X_SUB
 }
 
 float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float time)
@@ -693,9 +697,9 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     my_out->gBB2 = v.gBB2 + dtgBB2 * timestep;
     #endif // USE_GBB
 
-    /*bool debug = false;
+    bool debug = false;
 
-    NANCHECK(cY0);
+    /*NANCHECK(cY0);
     NANCHECK(cY1);
     NANCHECK(cY2);
     NANCHECK(cY3);
@@ -724,40 +728,40 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     NANCHECK(gBB0);
     NANCHECK(gBB1);
     NANCHECK(gBB2);
-    #endif // USE_GBB*/
+    #endif // USE_GBB
+    */
 
-    #if 0
+    #if 1
     //if(debug)
     //if(x == 5 && y == 6 && z == 4)
-    if(x == 125 && y == 100 && z == 125)
+    //if(x == 125 && y == 100 && z == 125)
     //if(x == 125 && y == 125 && z == 125)
+    ///135 139 138
+    if(x == 135 && y == 139 && z == 138)
     {
-        float scalar = scalar_curvature;
-
         printf("DtY0 %f\n", dtcYij0);
         printf("DtA0 %f\n", dtcAij0);
-        printf("Aij0 %f\n", v.cA0);
-        printf("Aij1 %f\n", v.cA1);
-        printf("Aij2 %f\n", v.cA2);
-        printf("Aij3 %f\n", v.cA3);
-        printf("Aij4 %f\n", v.cA4);
-        printf("Aij5 %f\n", v.cA5);
-        printf("Yij0 %f\n", v.cY0);
-        printf("Yij1 %f\n", v.cY1);
-        printf("Yij2 %f\n", v.cY2);
-        printf("Yij3 %f\n", v.cY3);
-        printf("Yij4 %f\n", v.cY4);
-        printf("Yij5 %f\n", v.cY5);
-        printf("cGi0 %f\n", v.cGi0);
-        printf("cGi1 %f\n", v.cGi1);
-        printf("cGi2 %f\n", v.cGi2);
-        printf("X %f\n", v.X);
-        printf("K %f\n", v.K);
-        printf("gA %f\n", v.gA);
-        printf("gB0 %f\n", v.gB0);
-        printf("gB1 %f\n", v.gB1);
-        printf("gB2 %f\n", v.gB2);
-        printf("Scalar %f\n", scalar);
+        printf("Aij0 %f\n", v->cA0);
+        printf("Aij1 %f\n", v->cA1);
+        printf("Aij2 %f\n", v->cA2);
+        printf("Aij3 %f\n", v->cA3);
+        printf("Aij4 %f\n", v->cA4);
+        printf("Aij5 %f\n", v->cA5);
+        printf("Yij0 %f\n", v->cY0);
+        printf("Yij1 %f\n", v->cY1);
+        printf("Yij2 %f\n", v->cY2);
+        printf("Yij3 %f\n", v->cY3);
+        printf("Yij4 %f\n", v->cY4);
+        printf("Yij5 %f\n", v->cY5);
+        printf("cGi0 %f\n", v->cGi0);
+        printf("cGi1 %f\n", v->cGi1);
+        printf("cGi2 %f\n", v->cGi2);
+        printf("X %f\n", v->X);
+        printf("K %f\n", v->K);
+        printf("gA %f\n", v->gA);
+        printf("gB0 %f\n", v->gB0);
+        printf("gB1 %f\n", v->gB1);
+        printf("gB2 %f\n", v->gB2);
 
         /*float d0 = debug_val0;
         float d1 = debug_val1;

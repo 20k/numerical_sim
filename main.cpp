@@ -82,7 +82,10 @@ struct intermediate_bssnok_data
     cl_float digB[3*3];
     //cl_float phi;
     cl_float dphi[3];
+
+    #ifdef X_SUB
     cl_float dX[3];
+    #endif // X_SUB
 };
 
 template<typename T, typename U, int N, size_t M>
@@ -1176,9 +1179,11 @@ void build_intermediate(equation_context& ctx)
     ctx.add("init_dphi1", dphi.idx(1));
     ctx.add("init_dphi2", dphi.idx(2));
 
+    #ifdef X_SUB
     ctx.add("init_dX0", dX.idx(0));
     ctx.add("init_dX1", dX.idx(1));
     ctx.add("init_dX2", dX.idx(2));
+    #endif // X_SUB
 }
 
 ///https://arxiv.org/pdf/gr-qc/0206072.pdf on stability, they recompute cGi where it does nto hae a derivative
@@ -1246,10 +1251,12 @@ void build_eqs(equation_context& ctx)
     dphi.idx(1).make_value("ik.dphi[1]");
     dphi.idx(2).make_value("ik.dphi[2]");
 
+    #ifdef X_SUB
     tensor<value, 3> dX;
     dX.idx(0) = "ik.dX[0]";
     dX.idx(1) = "ik.dX[1]";
     dX.idx(2) = "ik.dX[2]";
+    #endif // X_SUB
 
     tensor<value, 3, 3> digB;
 
@@ -1340,6 +1347,7 @@ void build_eqs(equation_context& ctx)
         }
     }
 
+    #ifdef X_SUB
     ///dX alias
     for(int i=0; i < 3; i++)
     {
@@ -1347,6 +1355,7 @@ void build_eqs(equation_context& ctx)
 
         ctx.alias(v, dX.idx(i));
     }
+    #endif // X_SUB
 
     for(int k=0; k < 3; k++)
     {
@@ -1516,7 +1525,6 @@ void build_eqs(equation_context& ctx)
         });
     }
 
-
     ///ok use the proper form
     tensor<value, 3, 3> xgAcRij;
 
@@ -1609,6 +1617,7 @@ void build_eqs(equation_context& ctx)
         }
     }
 
+    #ifdef X_SUB
     tensor<value, 3, 3> xgADiDjphi;
 
     for(int i=0; i < 3; i++)
@@ -1629,10 +1638,9 @@ void build_eqs(equation_context& ctx)
             xgADiDjphi.idx(i, j) = 0.25f * (p1 + p2 - gA * p3s);
         }
     }
+    #endif // X_SUB
 
-    //value dbg1 = 0;
-    //value dbg2 = 0;
-
+    #ifdef X_SUB
     tensor<value, 3, 3> xgARphiij;
 
     for(int i=0; i < 3; i++)
@@ -1693,13 +1701,35 @@ void build_eqs(equation_context& ctx)
             xgARphiij.idx(i, j) = s1XgA + s2XgA + s3XgA + s4XgA;
         }
     }
+    #else
+    tensor<value, 3, 3> xgARphiij;
 
-    //ctx.add("debug_val", dbg1);
-    //ctx.add("debug_val2", dbg2);
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value s1 = -2 * gpu_covariant_derivative_low_vec(ctx, dphi, cY, icY).idx(j, i);
 
-    //ctx.add("debug_val", Rphiij.idx(i, j));
+            value s2 = 0;
 
-    //ctx.add("debug_val", gpu_trace(cA, cY, icY));
+            for(int l=0; l < 3; l++)
+            {
+                s2 = s2 + gpu_high_covariant_derivative_vec(ctx, dphi, cY, icY).idx(l, l);
+            }
+
+            value s3 = 4 * (dphi.idx(i)) * (dphi.idx(j));
+
+            value s4 = 0;
+
+            for(int l=0; l < 3; l++)
+            {
+                s4 = s4 + raise_index(dphi, cY, icY).idx(l) * dphi.idx(l);
+            }
+
+            xgARphiij.idx(i, j) = X * gA * (s1 + s2 + s3 + s4);
+        }
+    }
+    #endif
 
     tensor<value, 3, 3> xgARij;
 
@@ -3324,7 +3354,7 @@ int main()
 
             float r_extract = c_at_max/4;
 
-            printf("OFF %f\n", r_extract/scale);
+            //printf("OFF %f\n", r_extract/scale);
 
             cl_int4 pos = {clsize.x()/2, clsize.y()/2 + r_extract / scale, clsize.z()/2, 0};
 
@@ -3352,7 +3382,7 @@ int main()
 
             float harmonic = get_harmonic(w4, 2, 0).real;
 
-            printf("Harm %f\n", harmonic);
+            //printf("Harm %f\n", harmonic);
 
             real_decomp.push_back(harmonic);
 
