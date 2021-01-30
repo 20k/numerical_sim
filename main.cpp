@@ -1609,6 +1609,27 @@ void build_eqs(equation_context& ctx)
         }
     }
 
+    tensor<value, 3, 3> xgADiDjphi;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value p1 = -gA * hacky_differentiate(ctx, dX.idx(j), i);
+
+            value p2 = gA_X * dX.idx(i) * dX.idx(j);
+
+            value p3s = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                p3s = p3s + christoff2.idx(k, i, j) * -dX.idx(k);
+            }
+
+            xgADiDjphi.idx(i, j) = 0.25f * (p1 + p2 - gA * p3s);
+        }
+    }
+
     //value dbg1 = 0;
     //value dbg2 = 0;
 
@@ -1620,51 +1641,56 @@ void build_eqs(equation_context& ctx)
         {
             //value s1 = -2 * gpu_covariant_derivative_low_vec(ctx, dphi, cY, icY).idx(j, i);
 
-            value s1XgA = 0;
-
-            {
-                value p1 = -gA * hacky_differentiate(ctx, dX.idx(j), i);
-
-                value p2 = gA_X * dX.idx(i) * dX.idx(j);
-
-                value p3s = 0;
-
-                for(int k=0; k < 3; k++)
-                {
-                    p3s = p3s + christoff2.idx(k, i, j) * -dX.idx(k);
-                }
-
-                s1XgA = p1 + p2 - gA * p3s;
-            }
-
-            s1XgA = -2 * (1.f/4.f) * s1XgA;
+            value s1XgA = -2 * xgADiDjphi.idx(i, j);
 
             //value s1XgA2 = -2 * X * gA * gpu_covariant_derivative_low_vec(ctx, dphi, cY, icY).idx(j, i);
 
             //dbg1 = dbg1 + s1XgA;
             //dbg2 = dbg2 + s1XgA2;
 
-            value s2 = 0;
+            /*value s2 = 0;
 
             for(int l=0; l < 3; l++)
             {
                 s2 = s2 + gpu_high_covariant_derivative_vec(ctx, dphi, cY, icY).idx(l, l);
+            }*/
+
+            value s2XgA = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                for(int s=0; s < 3; s++)
+                {
+                    s2XgA = s2XgA + icY.idx(k, s) * xgADiDjphi.idx(s, k);
+                }
             }
 
-            s2 = -2 * cY.idx(i, j) * s2;
+            s2XgA = -2 * cY.idx(i, j) * s2XgA;
 
-            value s3 = 4 * (dphi.idx(i)) * (dphi.idx(j));
+            //value s3 = 4 * (dphi.idx(i)) * (dphi.idx(j));
 
-            value s4 = 0;
+            value s3XgA = 4 * (1.f/16.f) * gA_X * dX.idx(i) * dX.idx(j);
+
+            /*value s4 = 0;
 
             for(int l=0; l < 3; l++)
             {
                 s4 = s4 + raise_index(dphi, cY, icY).idx(l) * dphi.idx(l);
+            }*/
+
+            value s4XgA = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                for(int s=0; s < 3; s++)
+                {
+                    s4XgA = s4XgA + icY.idx(k, s) * (1/16.f) * gA_X * dX.idx(s) * dX.idx(k);
+                }
             }
 
-            s4 = -4 * cY.idx(i, j) * s4;
+            s4XgA = -4 * cY.idx(i, j) * s4XgA;
 
-            xgARphiij.idx(i, j) = s1XgA + X * gA * (s2 + s3 + s4);
+            xgARphiij.idx(i, j) = s1XgA + s2XgA + s3XgA + s4XgA;
         }
     }
 
