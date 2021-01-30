@@ -1717,6 +1717,8 @@ void build_eqs(equation_context& ctx)
                 s2 = s2 + gpu_high_covariant_derivative_vec(ctx, dphi, cY, icY).idx(l, l);
             }
 
+            s2 = -2 * cY.idx(i, j) * s2;
+
             value s3 = 4 * (dphi.idx(i)) * (dphi.idx(j));
 
             value s4 = 0;
@@ -1725,6 +1727,8 @@ void build_eqs(equation_context& ctx)
             {
                 s4 = s4 + raise_index(dphi, cY, icY).idx(l) * dphi.idx(l);
             }
+
+            s4 = -4 * cY.idx(i, j) * s4;
 
             xgARphiij.idx(i, j) = X * gA * (s1 + s2 + s3 + s4);
         }
