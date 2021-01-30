@@ -381,10 +381,7 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
     {
         value v = value(index_buffer(val, buffer, index_raw(x, y, z)));
 
-        if(pin)
-        {
-            ctx.pin(v);
-        }
+        ctx.pin(v);
 
         return v;
     };
@@ -1393,11 +1390,6 @@ void build_eqs(equation_context& ctx)
         {
             hacky_differentiate(ctx, "ik.dphi[" + std::to_string(i) + "]", k);
         }
-
-        for(int i=0; i < 3; i++)
-        {
-            //hacky_differentiate(ctx, "ik.dX[" + std::to_string(i) + "]", k);
-        }
     }
 
     tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, cY);
@@ -1617,12 +1609,12 @@ void build_eqs(equation_context& ctx)
         }
     }
 
-    value dbg1 = 0;
-    value dbg2 = 0;
+    //value dbg1 = 0;
+    //value dbg2 = 0;
 
     tensor<value, 3, 3> xgARphiij;
 
-    /*for(int i=0; i < 3; i++)
+    for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
@@ -1647,10 +1639,10 @@ void build_eqs(equation_context& ctx)
 
             s1XgA = -2 * (1.f/4.f) * s1XgA;
 
-            value s1XgA2 = -2 * X * gA * gpu_covariant_derivative_low_vec(ctx, dphi, cY, icY).idx(j, i);
+            //value s1XgA2 = -2 * X * gA * gpu_covariant_derivative_low_vec(ctx, dphi, cY, icY).idx(j, i);
 
-            dbg1 = dbg1 + s1XgA;
-            dbg2 = dbg2 + s1XgA2;
+            //dbg1 = dbg1 + s1XgA;
+            //dbg2 = dbg2 + s1XgA2;
 
             value s2 = 0;
 
@@ -1674,47 +1666,10 @@ void build_eqs(equation_context& ctx)
 
             xgARphiij.idx(i, j) = s1XgA + X * gA * (s2 + s3 + s4);
         }
-    }*/
+    }
 
     //ctx.add("debug_val", dbg1);
     //ctx.add("debug_val2", dbg2);
-
-    //ctx.add("debug_val", dphi.idx(2));
-    //ctx.add("debug_val2", -dX.idx(2) / (4 * X));
-
-    //ctx.add("debug_val", hacky_differentiate(ctx, dphi.idx(0), 0));
-    //ctx.add("debug_val2", -0.25f * hacky_differentiate(ctx, dX.idx(0), 0, false)/X + 0.25f * dX.idx(0) * dX.idx(0)/(X*X));
-
-    value x5 = "in[IDX(x+2,y,z)].X";
-    value x4 = "in[IDX(x+1,y,z)].X";
-    value x3 = "in[IDX(x,y,z)].X";
-    value x2 = "in[IDX(x-1,y,z)].X";
-    value x1 = "in[IDX(x-2,y,z)].X";
-
-    value phi5 = -0.25f * log(x5);
-    value phi4 = -0.25f * log(x4);
-    value phi3 = -0.25f * log(x3);
-    value phi2 = -0.25f * log(x2);
-    value phi1 = -0.25f * log(x1);
-
-    value scale = "scale";
-
-    value dp2 = (phi5 - phi3) / (2 * scale);
-    value dp1 = (phi3 - phi1) / (2 * scale);
-
-    value ddp = (dp2 - dp1) / (2 * scale);
-
-    //ctx.add("debug_val2", ((-0.25f * log(x5) - 0.25f * log(x1) + 0.5 * log(x3)) / (2 * scale)) / (2 * scale));
-
-    //ctx.add("debug_val2", ddp);
-
-    ctx.add("debug_val", dphi.idx(0));
-    ctx.add("debug_val2", dp2);
-
-    std::cout << "VAL " << type_to_string(-0.25f * hacky_differentiate(ctx, dX.idx(0), 0, false)/X + 0.25f * dX.idx(0) * dX.idx(0)/(X*X)) << std::endl;
-
-
-    //ctx.add("debug_val2", -0.25f * hacky_differentiate(ctx, dX.idx(0), 0)/X + 0.25f * (dX.idx(0) / X) * (dX.idx(0) / X));
 
     //ctx.add("debug_val", Rphiij.idx(i, j));
 

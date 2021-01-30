@@ -356,7 +356,7 @@ void enforce_algebraic_constraints(__global struct bssnok_data* in, float scale,
 
 ///https://en.wikipedia.org/wiki/Ricci_curvature#Definition_via_local_coordinates_on_a_smooth_manifold
 __kernel
-void calculate_intermediate_data(const __global struct bssnok_data* in, float scale, int4 dim, __global struct intermediate_bssnok_data* out)
+void calculate_intermediate_data(__global struct bssnok_data* in, float scale, int4 dim, __global struct intermediate_bssnok_data* out)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
@@ -370,7 +370,7 @@ void calculate_intermediate_data(const __global struct bssnok_data* in, float sc
         return;
     #endif // SYMMETRY_BOUNDARY
 
-    const struct bssnok_data v = in[IDX(x, y, z)];
+    struct bssnok_data v = in[IDX(x, y, z)];
 
     struct intermediate_bssnok_data* my_out = &out[IDX(x, y, z)];
 
@@ -773,7 +773,7 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
     }
     #endif // 0
 
-    if(x == dim.x/2 && y == dim.y/2 - 5 && z == dim.z/2)
+    if(x == 125 && y == 100 && z == 125)
     {
         #ifdef debug_val
         float dbg = debug_val;
