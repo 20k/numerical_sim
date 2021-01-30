@@ -1375,7 +1375,7 @@ void build_eqs(equation_context& ctx)
         }
 
         hacky_differentiate(ctx, "v->K", k);
-        //hacky_differentiate(ctx, "v->X", k);
+        hacky_differentiate(ctx, "v->X", k);
     }
 
     for(int k=0; k < 3; k++)
