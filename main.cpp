@@ -381,7 +381,10 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
     {
         value v = value(index_buffer(val, buffer, index_raw(x, y, z)));
 
-        ctx.pin(v);
+        if(pin)
+        {
+            ctx.pin(v);
+        }
 
         return v;
     };
@@ -1393,7 +1396,7 @@ void build_eqs(equation_context& ctx)
 
         for(int i=0; i < 3; i++)
         {
-            hacky_differentiate(ctx, "ik.dX[" + std::to_string(i) + "]", k);
+            //hacky_differentiate(ctx, "ik.dX[" + std::to_string(i) + "]", k);
         }
     }
 
@@ -1619,7 +1622,7 @@ void build_eqs(equation_context& ctx)
 
     tensor<value, 3, 3> xgARphiij;
 
-    for(int i=0; i < 3; i++)
+    /*for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
@@ -1671,7 +1674,7 @@ void build_eqs(equation_context& ctx)
 
             xgARphiij.idx(i, j) = s1XgA + X * gA * (s2 + s3 + s4);
         }
-    }
+    }*/
 
     //ctx.add("debug_val", dbg1);
     //ctx.add("debug_val2", dbg2);
@@ -1680,7 +1683,21 @@ void build_eqs(equation_context& ctx)
     //ctx.add("debug_val2", -dX.idx(2) / (4 * X));
 
     ctx.add("debug_val", hacky_differentiate(ctx, dphi.idx(0), 0));
-    ctx.add("debug_val2", 0.25f * -hacky_differentiate(ctx, dX.idx(0), 0)/X + 0.25f * (dX.idx(0) / X) * (dX.idx(0) / X));
+    //ctx.add("debug_val2", -0.25f * hacky_differentiate(ctx, dX.idx(0), 0, false)/X + 0.25f * dX.idx(0) * dX.idx(0)/(X*X));
+
+    value x5 = "in[IDX(x+2,y,z)].X";
+    value x3 = "in[IDX(x,y,z)].X";
+    value x1 = "in[IDX(x-2,y,z)].X";
+
+    value scale = "scale";
+
+    //ctx.add("debug_val2", -0.25f * (log(x5) + -log(x1)) + 0.5f * log(x3));
+    ctx.add("debug_val2", ((-0.25f * log(x5) - 0.25f * log(x1) + 0.5 * log(x3)) / (2 * scale)) / (2 * scale));
+
+    std::cout << "VAL " << type_to_string(-0.25f * hacky_differentiate(ctx, dX.idx(0), 0, false)/X + 0.25f * dX.idx(0) * dX.idx(0)/(X*X)) << std::endl;
+
+
+    //ctx.add("debug_val2", -0.25f * hacky_differentiate(ctx, dX.idx(0), 0)/X + 0.25f * (dX.idx(0) / X) * (dX.idx(0) / X));
 
     //ctx.add("debug_val", Rphiij.idx(i, j));
 
