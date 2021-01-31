@@ -279,8 +279,47 @@ struct equation_context
 //#define SYMMETRY_BOUNDARY
 #define BORDER_WIDTH 2
 
+inline
+std::pair<std::string, std::string> decompose_variable(std::string str)
+{
+    std::string buffer;
+    std::string val;
+
+    if(str.starts_with("v->"))
+    {
+        buffer = "in";
+
+        val = str;
+
+        val.erase(val.begin());
+        val.erase(val.begin());
+        val.erase(val.begin());
+    }
+    else if(str.starts_with("v."))
+    {
+        buffer = "in";
+
+        val = str;
+
+        val.erase(val.begin());
+        val.erase(val.begin());
+    }
+    else if(str.starts_with("ik."))
+    {
+        buffer = "temp_in";
+
+        val = str;
+
+        val.erase(val.begin());
+        val.erase(val.begin());
+        val.erase(val.begin());
+    }
+
+    return {buffer, val};
+}
+
 ///todo: I know for a fact that clang is too silly to optimise out the memory lookups
-value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true)
+value hacky_differentiate_single(equation_context& ctx, const value& in, int idx, bool pin = true)
 {
     assert(in.is_value());
 
@@ -409,6 +448,130 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
 
         final_command = (index(x, y, zp1) - index(x, y, zm1)) / (2 * scale);
     }
+
+    if(pin)
+    {
+        ctx.pin(final_command);
+    }
+
+    return final_command;
+}
+
+value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true)
+{
+    std::vector<std::string> variables = in.get_all_variables();
+
+    value cp = in;
+
+    std::string dimx = "dim.x";
+    std::string dimy = "dim.y";
+    std::string dimz = "dim.z";
+
+    std::string x = "x";
+    std::string y = "y";
+    std::string z = "z";
+
+    std::string xp1 = "x+1";
+    std::string yp1 = "y+1";
+    std::string zp1 = "z+1";
+
+    std::string xp2 = "x+2";
+    std::string yp2 = "y+2";
+    std::string zp2 = "z+2";
+
+    std::string xm1 = "x-1";
+    std::string ym1 = "y-1";
+    std::string zm1 = "z-1";
+
+    std::string xm2 = "x-2";
+    std::string ym2 = "y-2";
+    std::string zm2 = "z-2";
+
+    #ifdef SYMMETRY_BOUNDARY
+    xp1 = "(" + xp1 + ")%dim.x";
+    yp1 = "(" + yp1 + ")%dim.y";
+    zp1 = "(" + zp1 + ")%dim.z";
+
+    xp2 = "(" + xp2 + ")%dim.x";
+    yp2 = "(" + yp2 + ")%dim.y";
+    zp2 = "(" + zp2 + ")%dim.z";
+
+    xm1 = "abs(" + xm1 + ")";
+    ym1 = "abs(" + ym1 + ")";
+    zm1 = "abs(" + zm1 + ")";
+
+    xm2 = "abs(" + xm2 + ")";
+    ym2 = "abs(" + ym2 + ")";
+    zm2 = "abs(" + zm2 + ")";
+    #endif // SYMMETRY_BOUNDARY
+
+    auto index_raw = [](const std::string& x, const std::string& y, const std::string& z)
+    {
+        return "IDX(" + x + "," + y + "," + z + ")";
+    };
+
+    auto index_buffer = [](const std::string& variable, const std::string& buffer, const std::string& with_what)
+    {
+        return buffer + "[" + with_what + "]." + variable;
+    };
+
+    auto index = [&ctx, index_buffer, index_raw](const std::string& val, const std::string& buffer, const std::string& x, const std::string& y, const std::string& z)
+    {
+        value v = value(index_buffer(val, buffer, index_raw(x, y, z)));
+
+        ctx.pin(v);
+
+        return v;
+    };
+
+    std::string x1 = "x";
+    std::string x2 = "x";
+    std::string y1 = "y";
+    std::string y2 = "y";
+    std::string z1 = "z";
+    std::string z2 = "z";
+
+    if(idx == 0)
+    {
+        x1 = "x-1";
+        x2 = "x+1";
+    }
+
+    if(idx == 1)
+    {
+        y1 = "y-1";
+        y2 = "y+1";
+    }
+
+    if(idx == 2)
+    {
+        z1 = "z-1";
+        z2 = "z+1";
+    }
+
+    std::map<std::string, std::string> substitutions1;
+    std::map<std::string, std::string> substitutions2;
+
+    for(auto& i : variables)
+    {
+        std::pair<std::string, std::string> decomp = decompose_variable(i);
+
+        value to_sub1 = index(decomp.second, decomp.first, x1, y1, z1);
+        value to_sub2 = index(decomp.second, decomp.first, x2, y2, z2);
+
+        substitutions1[i] = type_to_string(to_sub1);
+        substitutions2[i] = type_to_string(to_sub2);
+    }
+
+    value val1 = cp;
+    val1.substitute(substitutions1);
+
+    value val2 = cp;
+    val2.substitute(substitutions2);
+
+    value scale = "scale";
+
+    value final_command = (val2 - val1) / (2 * scale);
 
     if(pin)
     {
