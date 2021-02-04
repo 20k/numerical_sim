@@ -2273,8 +2273,6 @@ template<typename T, int U, int... N>
 inline
 tensor<T, N...> raise_index_generic(const tensor<T, N...>& mT, const inverse_metric<T, U, U>& met, int index)
 {
-    tensor<T, N...> ret;
-
     return raise_index_impl(mT, met, index);
 }
 
