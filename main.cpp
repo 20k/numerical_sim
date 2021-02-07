@@ -705,11 +705,18 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
         z2 = "z+1";
     }*/
 
-    constexpr int elements = 3;
+    constexpr int elements = 5;
 
-    std::array<std::string, elements> xs {"x", "x", "x"};
-    std::array<std::string, elements> ys {"y", "y", "y"};
-    std::array<std::string, elements> zs {"z", "z", "z"};
+    std::array<std::string, elements> xs;
+    std::array<std::string, elements> ys;
+    std::array<std::string, elements> zs;
+
+    for(int i=0; i < elements; i++)
+    {
+        xs[i] = "x";
+        ys[i] = "y";
+        zs[i] = "z";
+    }
 
     for(int i=0; i < elements; i++)
     {
@@ -771,7 +778,8 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
         vars[i].substitute(substitutions[i]);
     }
 
-    value final_command = (vars[2] - vars[0]) / (2 * scale);
+    value final_command = (vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
+    //value final_command = (vars[3] - vars[1]) / (2 * scale);
 
     if(pin)
     {
