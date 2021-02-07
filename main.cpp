@@ -2995,48 +2995,6 @@ void extract_waveforms(equation_context& ctx)
         }
     }
 
-    auto get_kij = [index_table](int v1, int v2, int ox, int oy, int oz)
-    {
-        std::string sx = "x+" + std::to_string(ox);
-        std::string sy = "y+" + std::to_string(oy);
-        std::string sz = "z+" + std::to_string(oz);
-
-        std::string buf = "in[IDX(" + sx + "," + sy + "," + sz + ")]";
-
-        //value lX = buf + ".X";
-
-        value lX = "X[IDX(" + sx + "," + sy + "," + sz + ")]";
-
-        tensor<value, 3, 3> lcA;
-        unit_metric<value, 3, 3> lcY;
-
-        for(int kk=0; kk < 3; kk++)
-        {
-            for(int jj=0; jj < 3; jj++)
-            {
-                //lcA.idx(kk, jj) = buf + ".cA" + std::to_string(index_table[kk][jj]);
-                //lcY.idx(kk, jj) = buf + ".cY" + std::to_string(index_table[kk][jj]);
-
-                lcA.idx(kk, jj) = "cA" + std::to_string(index_table[kk][jj]) + "[IDX(" + sx + "," + sy + "," + sz + ")]";
-                lcY.idx(kk, jj) = "cY" + std::to_string(index_table[kk][jj]) + "[IDX(" + sx + "," + sy + "," + sz + ")]";
-            }
-        }
-
-        value lK = "K[IDX(" + sx + "," + sy + "," + sz + ")]";
-
-        tensor<value, 3, 3> lKij;
-
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                lKij.idx(i, j) = (1.f/lX) * (lcA.idx(i, j) + (1.f/3.f) * lcY.idx(i, j) * lK);
-            }
-        }
-
-        return lKij.idx(v1, v2);
-    };
-
     metric<value, 3, 3> Yij;
 
     for(int i=0; i < 3; i++)
@@ -3101,13 +3059,7 @@ void extract_waveforms(equation_context& ctx)
         {
             for(int a=0; a < 3; a++)
             {
-                ///yeah this is horrible for performance but honestly i just want this to go away
-                auto bound_kij = [&](int ox, int oy, int oz)
-                {
-                    return get_kij(a, b, ox, oy, oz);
-                };
-
-                value deriv = finite_difference_func(bound_kij, scale, c);
+                value deriv = hacky_differentiate(ctx, Kij.idx(a, b), c);
 
                 value sum = 0;
 

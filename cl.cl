@@ -172,7 +172,7 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
     float r2 = edge - 32 * scale;
     float r3 = edge;
 
-    float bulge_amount = 2;
+    float bulge_amount = 1;
 
     float r1b = r1 / bulge_amount;
     float r2b = r2;
