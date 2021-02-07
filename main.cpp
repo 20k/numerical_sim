@@ -42,22 +42,6 @@ https://arxiv.org/pdf/1906.03877.pdf - spherical harmonics
 ///all conformal variables are explicitly labelled
 struct bssnok_data
 {
-    /**
-    conformal
-    [0, 1, 2,
-     X, 3, 4,
-     X, X, 5]
-    */
-    //cl_float cY0, cY1, cY2, cY3, cY4, cY5;
-
-    /**
-    conformal
-    [0, 1, 2,
-     X, 3, 4,
-     X, X, 5]
-    */
-    cl_float cA0, cA1, cA2, cA3, cA4, cA5;
-
     cl_float cGi0, cGi1, cGi2;
 
     cl_float K;
@@ -322,6 +306,7 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
 
         uses_extension = true;
     }
+
     else if(str.starts_with("cY0"))
     {
         buffer = "cY0";
@@ -350,6 +335,37 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
     else if(str.starts_with("cY5"))
     {
         buffer = "cY5";
+        val = buffer;
+    }
+
+    else if(str.starts_with("cA0"))
+    {
+        buffer = "cA0";
+        val = buffer;
+    }
+    else if(str.starts_with("cA1"))
+    {
+        buffer = "cA1";
+        val = buffer;
+    }
+    else if(str.starts_with("cA2"))
+    {
+        buffer = "cY2";
+        val = buffer;
+    }
+    else if(str.starts_with("cA3"))
+    {
+        buffer = "cA3";
+        val = buffer;
+    }
+    else if(str.starts_with("cA4"))
+    {
+        buffer = "cA4";
+        val = buffer;
+    }
+    else if(str.starts_with("cA5"))
+    {
+        buffer = "cA5";
         val = buffer;
     }
     else
@@ -1297,9 +1313,9 @@ void build_constraints(equation_context& ctx)
 
     tensor<value, 3, 3> cA;
 
-    cA.idx(0, 0).make_value("v.cA0"); cA.idx(0, 1).make_value("v.cA1"); cA.idx(0, 2).make_value("v.cA2");
-    cA.idx(1, 0).make_value("v.cA1"); cA.idx(1, 1).make_value("v.cA3"); cA.idx(1, 2).make_value("v.cA4");
-    cA.idx(2, 0).make_value("v.cA2"); cA.idx(2, 1).make_value("v.cA4"); cA.idx(2, 2).make_value("v.cA5");
+    cA.idx(0, 0).make_value("cA0[IDX(x,y,z)]"); cA.idx(0, 1).make_value("cA1[IDX(x,y,z)]"); cA.idx(0, 2).make_value("cA2[IDX(x,y,z)]");
+    cA.idx(1, 0).make_value("cA1[IDX(x,y,z)]"); cA.idx(1, 1).make_value("cA3[IDX(x,y,z)]"); cA.idx(1, 2).make_value("cA4[IDX(x,y,z)]");
+    cA.idx(2, 0).make_value("cA2[IDX(x,y,z)]"); cA.idx(2, 1).make_value("cA4[IDX(x,y,z)]"); cA.idx(2, 2).make_value("cA5[IDX(x,y,z)]");
 
     tensor<value, 3, 3> fixed_cA = gpu_trace_free(cA, fixed_cY, fixed_cY.invert());
 
@@ -1481,9 +1497,9 @@ void build_eqs(equation_context& ctx)
 
     tensor<value, 3, 3> cA;
 
-    cA.idx(0, 0).make_value("v->cA0"); cA.idx(0, 1).make_value("v->cA1"); cA.idx(0, 2).make_value("v->cA2");
-    cA.idx(1, 0).make_value("v->cA1"); cA.idx(1, 1).make_value("v->cA3"); cA.idx(1, 2).make_value("v->cA4");
-    cA.idx(2, 0).make_value("v->cA2"); cA.idx(2, 1).make_value("v->cA4"); cA.idx(2, 2).make_value("v->cA5");
+    cA.idx(0, 0).make_value("cA0[IDX(x,y,z)]"); cA.idx(0, 1).make_value("cA1[IDX(x,y,z)]"); cA.idx(0, 2).make_value("cA2[IDX(x,y,z)]");
+    cA.idx(1, 0).make_value("cA1[IDX(x,y,z)]"); cA.idx(1, 1).make_value("cA3[IDX(x,y,z)]"); cA.idx(1, 2).make_value("cA4[IDX(x,y,z)]");
+    cA.idx(2, 0).make_value("cA2[IDX(x,y,z)]"); cA.idx(2, 1).make_value("cA4[IDX(x,y,z)]"); cA.idx(2, 2).make_value("cA5[IDX(x,y,z)]");
 
     ///the christoffel symbol
     tensor<value, 3> cGi;
@@ -1599,7 +1615,7 @@ void build_eqs(equation_context& ctx)
 
         for(int i=0; i < 6; i++)
         {
-            hacky_differentiate(ctx, "v->cA" + std::to_string(i), k);
+            hacky_differentiate(ctx, "cA" + std::to_string(i), k);
         }
 
         for(int i=0; i < 3; i++)
@@ -2573,9 +2589,9 @@ void extract_waveforms(equation_context& ctx)
 
     tensor<value, 3, 3> cA;
 
-    cA.idx(0, 0).make_value("v->cA0"); cA.idx(0, 1).make_value("v->cA1"); cA.idx(0, 2).make_value("v->cA2");
-    cA.idx(1, 0).make_value("v->cA1"); cA.idx(1, 1).make_value("v->cA3"); cA.idx(1, 2).make_value("v->cA4");
-    cA.idx(2, 0).make_value("v->cA2"); cA.idx(2, 1).make_value("v->cA4"); cA.idx(2, 2).make_value("v->cA5");
+    cA.idx(0, 0).make_value("cA0[IDX(x,y,z)]"); cA.idx(0, 1).make_value("cA1[IDX(x,y,z)]"); cA.idx(0, 2).make_value("cA2[IDX(x,y,z)]");
+    cA.idx(1, 0).make_value("cA1[IDX(x,y,z)]"); cA.idx(1, 1).make_value("cA3[IDX(x,y,z)]"); cA.idx(1, 2).make_value("cA4[IDX(x,y,z)]");
+    cA.idx(2, 0).make_value("cA2[IDX(x,y,z)]"); cA.idx(2, 1).make_value("cA4[IDX(x,y,z)]"); cA.idx(2, 2).make_value("cA5[IDX(x,y,z)]");
 
     tensor<value, 3> cGi;
     cGi.idx(0).make_value("v->cGi0");
@@ -2692,7 +2708,7 @@ void extract_waveforms(equation_context& ctx)
 
         for(int i=0; i < 6; i++)
         {
-            hacky_differentiate(ctx, "v->cA" + std::to_string(i), k);
+            hacky_differentiate(ctx, "cA" + std::to_string(i), k);
         }
 
         for(int i=0; i < 3; i++)
@@ -2890,9 +2906,10 @@ void extract_waveforms(equation_context& ctx)
         {
             for(int jj=0; jj < 3; jj++)
             {
-                lcA.idx(kk, jj) = buf + ".cA" + std::to_string(index_table[kk][jj]);
+                //lcA.idx(kk, jj) = buf + ".cA" + std::to_string(index_table[kk][jj]);
                 //lcY.idx(kk, jj) = buf + ".cY" + std::to_string(index_table[kk][jj]);
 
+                lcA.idx(kk, jj) = "cA" + std::to_string(index_table[kk][jj]) + "[IDX(" + sx + "," + sy + "," + sz + ")]";
                 lcY.idx(kk, jj) = "cY" + std::to_string(index_table[kk][jj]) + "[IDX(" + sx + "," + sy + "," + sz + ")]";
             }
         }
@@ -3316,7 +3333,7 @@ int main()
 
     for(int idx=0; idx < 2; idx++)
     {
-        int buffer_count = 6;
+        int buffer_count = 12;
 
         for(int kk=0; kk < buffer_count; kk++)
         {

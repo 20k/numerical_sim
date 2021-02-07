@@ -7,22 +7,6 @@
 
 struct bssnok_data
 {
-    /**
-    conformal
-    [0, 1, 2,
-     X, 3, 4,
-     X, X, 5]
-    */
-    //float cY0, cY1, cY2, cY3, cY4, cY5;
-
-    /**
-    conformal
-    [0, 1, 2,
-     X, 3, 4,
-     X, X, 5]
-    */
-    float cA0, cA1, cA2, cA3, cA4, cA5;
-
     float cGi0, cGi1, cGi2;
 
     float K;
@@ -246,6 +230,7 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
 
 __kernel
 void calculate_initial_conditions(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+                                  __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                                   __global struct bssnok_data* in, float scale, int4 dim)
 {
     int ix = get_global_id(0);
@@ -276,12 +261,12 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
     cY4[index] = init_cY4;
     cY5[index] = init_cY5;
 
-    f->cA0 = init_cA0;
-    f->cA1 = init_cA1;
-    f->cA2 = init_cA2;
-    f->cA3 = init_cA3;
-    f->cA4 = init_cA4;
-    f->cA5 = init_cA5;
+    cA0[index] = init_cA0;
+    cA1[index] = init_cA1;
+    cA2[index] = init_cA2;
+    cA3[index] = init_cA3;
+    cA4[index] = init_cA4;
+    cA5[index] = init_cA5;
 
     f->cGi0 = init_cGi0;
     f->cGi1 = init_cGi1;
@@ -325,6 +310,7 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
 
 __kernel
 void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+                                   __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                                    __global struct bssnok_data* in, float scale, int4 dim)
 {
     int x = get_global_id(0);
@@ -363,12 +349,12 @@ void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __g
     cY4[index] = fixed_cY4;
     cY5[index] = fixed_cY5;
 
-    out.cA0 = fixed_cA0;
-    out.cA1 = fixed_cA1;
-    out.cA2 = fixed_cA2;
-    out.cA3 = fixed_cA3;
-    out.cA4 = fixed_cA4;
-    out.cA5 = fixed_cA5;
+    cA0[index] = fixed_cA0;
+    cA1[index] = fixed_cA1;
+    cA2[index] = fixed_cA2;
+    cA3[index] = fixed_cA3;
+    cA4[index] = fixed_cA4;
+    cA5[index] = fixed_cA5;
 
     in[IDX(x, y, z)] = out;
 }
@@ -376,6 +362,7 @@ void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __g
 ///https://en.wikipedia.org/wiki/Ricci_curvature#Definition_via_local_coordinates_on_a_smooth_manifold
 __kernel
 void calculate_intermediate_data(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+                                 __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                                  __global struct bssnok_data* in, float scale, int4 dim, __global struct intermediate_bssnok_data* out)
 {
     int x = get_global_id(0);
@@ -460,6 +447,7 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
 ///todo: damp to schwarzschild, not initial conditions?
 __kernel
 void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+                __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                 __global struct bssnok_data* in, __global struct intermediate_bssnok_data* iin, float scale, int4 dim, float time)
 {
     int ix = get_global_id(0);
@@ -510,6 +498,13 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
         float initial_cY3 = init_cY3;
         float initial_cY4 = init_cY4;
         float initial_cY5 = init_cY5;
+
+        float initial_cA0 = init_cA0;
+        float initial_cA1 = init_cA1;
+        float initial_cA2 = init_cA2;
+        float initial_cA3 = init_cA3;
+        float initial_cA4 = init_cA4;
+        float initial_cA5 = init_cA5;
 
         float initial_X = init_X;
 
@@ -573,12 +568,12 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
         cY4[index] = mix(cY4[index],fin_cY4, sponge_factor);
         cY5[index] = mix(cY5[index],fin_cY5, sponge_factor);
 
-        out.cA0 = mix(v.cA0,init_cA0, sponge_factor);
-        out.cA1 = mix(v.cA1,init_cA1, sponge_factor);
-        out.cA2 = mix(v.cA2,init_cA2, sponge_factor);
-        out.cA3 = mix(v.cA3,init_cA3, sponge_factor);
-        out.cA4 = mix(v.cA4,init_cA4, sponge_factor);
-        out.cA5 = mix(v.cA5,init_cA5, sponge_factor);
+        cA0[index] = mix(cA0[index],initial_cA0, sponge_factor);
+        cA1[index] = mix(cA1[index],initial_cA1, sponge_factor);
+        cA2[index] = mix(cA2[index],initial_cA2, sponge_factor);
+        cA3[index] = mix(cA3[index],initial_cA3, sponge_factor);
+        cA4[index] = mix(cA4[index],initial_cA4, sponge_factor);
+        cA5[index] = mix(cA5[index],initial_cA5, sponge_factor);
 
         out.cGi0 = mix(v.cGi0,init_cGi0, sponge_factor);
         out.cGi1 = mix(v.cGi1,init_cGi1, sponge_factor);
@@ -638,7 +633,9 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
 ///todo: need to factor out the differentials
 __kernel
 void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+            __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
             __global float* ocY0, __global float* ocY1, __global float* ocY2, __global float* ocY3, __global float* ocY4, __global float* ocY5,
+            __global float* ocA0, __global float* ocA1, __global float* ocA2, __global float* ocA3, __global float* ocA4, __global float* ocA5,
             __global const struct bssnok_data* restrict in, __global struct bssnok_data* restrict out, float scale, int4 dim, __global const struct intermediate_bssnok_data* temp_in, float timestep, float time)
 {
     int x = get_global_id(0);
@@ -684,19 +681,21 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
 
     struct bssnok_data* my_out = &out[IDX(x, y, z)];
 
-    ocY0[IDX(x, y, z)] = cY0[IDX(x, y, z)] + dtcYij0 * timestep;
-    ocY1[IDX(x, y, z)] = cY1[IDX(x, y, z)] + dtcYij1 * timestep;
-    ocY2[IDX(x, y, z)] = cY2[IDX(x, y, z)] + dtcYij2 * timestep;
-    ocY3[IDX(x, y, z)] = cY3[IDX(x, y, z)] + dtcYij3 * timestep;
-    ocY4[IDX(x, y, z)] = cY4[IDX(x, y, z)] + dtcYij4 * timestep;
-    ocY5[IDX(x, y, z)] = cY5[IDX(x, y, z)] + dtcYij5 * timestep;
+    int index = IDX(x, y, z);
 
-    my_out->cA0 = v->cA0 + dtcAij0 * timestep;
-    my_out->cA1 = v->cA1 + dtcAij1 * timestep;
-    my_out->cA2 = v->cA2 + dtcAij2 * timestep;
-    my_out->cA3 = v->cA3 + dtcAij3 * timestep;
-    my_out->cA4 = v->cA4 + dtcAij4 * timestep;
-    my_out->cA5 = v->cA5 + dtcAij5 * timestep;
+    ocY0[index] = cY0[index] + dtcYij0 * timestep;
+    ocY1[index] = cY1[index] + dtcYij1 * timestep;
+    ocY2[index] = cY2[index] + dtcYij2 * timestep;
+    ocY3[index] = cY3[index] + dtcYij3 * timestep;
+    ocY4[index] = cY4[index] + dtcYij4 * timestep;
+    ocY5[index] = cY5[index] + dtcYij5 * timestep;
+
+    ocA0[index] = cA0[index] + dtcAij0 * timestep;
+    ocA1[index] = cA1[index] + dtcAij1 * timestep;
+    ocA2[index] = cA2[index] + dtcAij2 * timestep;
+    ocA3[index] = cA3[index] + dtcAij3 * timestep;
+    ocA4[index] = cA4[index] + dtcAij4 * timestep;
+    ocA5[index] = cA5[index] + dtcAij5 * timestep;
 
     my_out->cGi0 = v->cGi0 + dtcGi0 * timestep;
     my_out->cGi1 = v->cGi1 + dtcGi1 * timestep;
@@ -804,6 +803,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
 
 __kernel
 void render(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+            __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
             __global struct bssnok_data* in, float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, __write_only image2d_t screen, float time)
 {
     int x = get_global_id(0);
@@ -886,6 +886,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
 
 __kernel
 void extract_waveform(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+                      __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                       __global struct bssnok_data* in, float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, int4 pos, __global float2* waveform_out)
 {
     int x = get_global_id(0);
