@@ -42,6 +42,9 @@ https://arxiv.org/pdf/1906.03877.pdf - spherical harmonics
 ///all conformal variables are explicitly labelled
 /*struct bssnok_data
 {
+    //6 units of cY
+    //6 units of cA
+
     cl_float cGi0, cGi1, cGi2;
 
     cl_float K;
@@ -57,7 +60,10 @@ https://arxiv.org/pdf/1906.03877.pdf - spherical harmonics
     cl_float gBB1;
     cl_float gBB2;
     #endif // USE_GBB
-};*/
+};
+///total size = 21
+
+*/
 
 struct intermediate_bssnok_data
 {
@@ -3370,22 +3376,37 @@ int main()
     rtex[0].create_from_texture(tex[0].handle);
     rtex[1].create_from_texture(tex[1].handle);
 
-    //std::array<cl::buffer, 2> bssnok_datas{clctx.ctx, clctx.ctx};
     int which_data = 0;
-
-    //bssnok_datas[0].alloc(size.x() * size.y() * size.z() * sizeof(bssnok_data));
-    //bssnok_datas[1].alloc(size.x() * size.y() * size.z() * sizeof(bssnok_data));
 
     std::array<std::vector<cl::buffer>, 2> generic_data;
 
+    std::array<bool, 21> redundant_buffers
+    {
+        true, true, true, true, true, true, //dtcYij makes differentiating this unnecessary
+        false, false, false, false, false, false, ///cA
+        false, false, false, ///cGi
+        false, ///K
+        false, ///X
+        true, true, true, true, ///gA, gB0, gB1, gB2,
+    };
+
     for(int idx=0; idx < 2; idx++)
     {
-        int buffer_count = 12+9;
+        constexpr int buffer_count = 12+9;
+
+        static_assert(sizeof(redundant_buffers) == buffer_count);
 
         for(int kk=0; kk < buffer_count; kk++)
         {
-            generic_data[idx].emplace_back(clctx.ctx);
-            generic_data[idx].back().alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+            if(redundant_buffers[kk] && idx == 1)
+            {
+                generic_data[idx].push_back(generic_data[0][kk]);
+            }
+            else
+            {
+                generic_data[idx].emplace_back(clctx.ctx);
+                generic_data[idx].back().alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+            }
         }
     }
 
