@@ -3148,7 +3148,7 @@ int main()
 
     std::string argument_string = "-O3 -cl-std=CL2.2 ";
 
-    vec3i size = {280, 280, 280};
+    vec3i size = {290, 290, 290};
     //vec3i size = {250, 250, 250};
     float c_at_max = 40;
     float scale = c_at_max / size.largest_elem();

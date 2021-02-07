@@ -429,7 +429,9 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
 
     float r_frac = (r - sponge_r0) / (sponge_r1 - sponge_r0);
 
-    return r_frac * pow(r_frac, fabs(sin(time / (2 * M_PI))));
+    return r_frac;
+
+    //return r_frac * pow(r_frac, fabs(sin(time / (2 * M_PI))));
 }
 
 ///https://cds.cern.ch/record/517706/files/0106072.pdf
