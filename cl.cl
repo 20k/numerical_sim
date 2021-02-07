@@ -13,7 +13,7 @@ struct bssnok_data
      X, 3, 4,
      X, X, 5]
     */
-    float cY0, cY1, cY2, cY3, cY4, cY5;
+    //float cY0, cY1, cY2, cY3, cY4, cY5;
 
     /**
     conformal
@@ -245,7 +245,8 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
 }
 
 __kernel
-void calculate_initial_conditions(__global struct bssnok_data* in, float scale, int4 dim)
+void calculate_initial_conditions(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+                                  __global struct bssnok_data* in, float scale, int4 dim)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -266,12 +267,14 @@ void calculate_initial_conditions(__global struct bssnok_data* in, float scale, 
 
     float conformal_factor = init_conformal_factor;
 
-    f->cY0 = init_cY0;
-    f->cY1 = init_cY1;
-    f->cY2 = init_cY2;
-    f->cY3 = init_cY3;
-    f->cY4 = init_cY4;
-    f->cY5 = init_cY5;
+    int index = IDX(x, y, z);
+
+    cY0[index] = init_cY0;
+    cY1[index] = init_cY1;
+    cY2[index] = init_cY2;
+    cY3[index] = init_cY3;
+    cY4[index] = init_cY4;
+    cY5[index] = init_cY5;
 
     f->cA0 = init_cA0;
     f->cA1 = init_cA1;
@@ -321,7 +324,9 @@ void calculate_initial_conditions(__global struct bssnok_data* in, float scale, 
 }
 
 __kernel
-void enforce_algebraic_constraints(__global struct bssnok_data* in, float scale, int4 dim)
+void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+                                   __global float* ocY0, __global float* ocY1, __global float* ocY2, __global float* ocY3, __global float* ocY4, __global float* ocY5,
+                                   __global struct bssnok_data* in, float scale, int4 dim)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
@@ -336,12 +341,14 @@ void enforce_algebraic_constraints(__global struct bssnok_data* in, float scale,
 
     float pv[TEMP_COUNT3] = {TEMPORARIES3};
 
-    out.cY0 = fix_cY0;
-    out.cY1 = fix_cY1;
-    out.cY2 = fix_cY2;
-    out.cY3 = fix_cY3;
-    out.cY4 = fix_cY4;
-    out.cY5 = fix_cY5;
+    int index = IDX(x, y, z);
+
+    ocY0[index] = fix_cY0;
+    ocY1[index] = fix_cY1;
+    ocY2[index] = fix_cY2;
+    ocY3[index] = fix_cY3;
+    ocY4[index] = fix_cY4;
+    ocY5[index] = fix_cY5;
 
     out.cA0 = fix_cA0;
     out.cA1 = fix_cA1;
@@ -355,7 +362,8 @@ void enforce_algebraic_constraints(__global struct bssnok_data* in, float scale,
 
 ///https://en.wikipedia.org/wiki/Ricci_curvature#Definition_via_local_coordinates_on_a_smooth_manifold
 __kernel
-void calculate_intermediate_data(__global struct bssnok_data* in, float scale, int4 dim, __global struct intermediate_bssnok_data* out)
+void calculate_intermediate_data(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+                                 __global struct bssnok_data* in, float scale, int4 dim, __global struct intermediate_bssnok_data* out)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
@@ -438,7 +446,9 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
 ///boundary conditions
 ///todo: damp to schwarzschild, not initial conditions?
 __kernel
-void clean_data(__global struct bssnok_data* in, __global struct intermediate_bssnok_data* iin, float scale, int4 dim, float time)
+void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+                __global float* ocY0, __global float* ocY1, __global float* ocY2, __global float* ocY3, __global float* ocY4, __global float* ocY5,
+                __global struct bssnok_data* in, __global struct intermediate_bssnok_data* iin, float scale, int4 dim, float time)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -542,12 +552,14 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
         fin_cY5 = mix(fin_cY5, schwarzs_cY5, time_frac);
         fin_X = mix(fin_X, schwarzs_X, time_frac);*/
 
-        out.cY0 = mix(v.cY0,fin_cY0, sponge_factor);
-        out.cY1 = mix(v.cY1,fin_cY1, sponge_factor);
-        out.cY2 = mix(v.cY2,fin_cY2, sponge_factor);
-        out.cY3 = mix(v.cY3,fin_cY3, sponge_factor);
-        out.cY4 = mix(v.cY4,fin_cY4, sponge_factor);
-        out.cY5 = mix(v.cY5,fin_cY5, sponge_factor);
+        int index = IDX(ix, iy, iz);
+
+        ocY0[index] = mix(cY0[index],fin_cY0, sponge_factor);
+        ocY1[index] = mix(cY1[index],fin_cY1, sponge_factor);
+        ocY2[index] = mix(cY2[index],fin_cY2, sponge_factor);
+        ocY3[index] = mix(cY3[index],fin_cY3, sponge_factor);
+        ocY4[index] = mix(cY4[index],fin_cY4, sponge_factor);
+        ocY5[index] = mix(cY5[index],fin_cY5, sponge_factor);
 
         out.cA0 = mix(v.cA0,init_cA0, sponge_factor);
         out.cA1 = mix(v.cA1,init_cA1, sponge_factor);
@@ -613,7 +625,9 @@ void clean_data(__global struct bssnok_data* in, __global struct intermediate_bs
 ///todo: need to correctly evolve boundaries
 ///todo: need to factor out the differentials
 __kernel
-void evolve(__global const struct bssnok_data* restrict in, __global struct bssnok_data* restrict out, float scale, int4 dim, __global const struct intermediate_bssnok_data* temp_in, float timestep, float time)
+void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+            __global float* ocY0, __global float* ocY1, __global float* ocY2, __global float* ocY3, __global float* ocY4, __global float* ocY5,
+            __global const struct bssnok_data* restrict in, __global struct bssnok_data* restrict out, float scale, int4 dim, __global const struct intermediate_bssnok_data* temp_in, float timestep, float time)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
@@ -658,12 +672,12 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
 
     struct bssnok_data* my_out = &out[IDX(x, y, z)];
 
-    my_out->cY0 = v->cY0 + dtcYij0 * timestep;
-    my_out->cY1 = v->cY1 + dtcYij1 * timestep;
-    my_out->cY2 = v->cY2 + dtcYij2 * timestep;
-    my_out->cY3 = v->cY3 + dtcYij3 * timestep;
-    my_out->cY4 = v->cY4 + dtcYij4 * timestep;
-    my_out->cY5 = v->cY5 + dtcYij5 * timestep;
+    ocY0[IDX(x, y, z)] = cY0[IDX(x, y, z)] + dtcYij0 * timestep;
+    ocY1[IDX(x, y, z)] = cY1[IDX(x, y, z)] + dtcYij1 * timestep;
+    ocY2[IDX(x, y, z)] = cY2[IDX(x, y, z)] + dtcYij2 * timestep;
+    ocY3[IDX(x, y, z)] = cY3[IDX(x, y, z)] + dtcYij3 * timestep;
+    ocY4[IDX(x, y, z)] = cY4[IDX(x, y, z)] + dtcYij4 * timestep;
+    ocY5[IDX(x, y, z)] = cY5[IDX(x, y, z)] + dtcYij5 * timestep;
 
     my_out->cA0 = v->cA0 + dtcAij0 * timestep;
     my_out->cA1 = v->cA1 + dtcAij1 * timestep;
@@ -777,7 +791,8 @@ void evolve(__global const struct bssnok_data* restrict in, __global struct bssn
 }
 
 __kernel
-void render(__global struct bssnok_data* in, float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, __write_only image2d_t screen, float time)
+void render(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+            __global struct bssnok_data* in, float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, __write_only image2d_t screen, float time)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);

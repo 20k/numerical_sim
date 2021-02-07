@@ -48,7 +48,7 @@ struct bssnok_data
      X, 3, 4,
      X, X, 5]
     */
-    cl_float cY0, cY1, cY2, cY3, cY4, cY5;
+    //cl_float cY0, cY1, cY2, cY3, cY4, cY5;
 
     /**
     conformal
@@ -314,6 +314,40 @@ std::pair<std::string, std::string> decompose_variable(std::string str)
         val.erase(val.begin());
         val.erase(val.begin());
     }
+    else if(str.starts_with("cY0"))
+    {
+        buffer = "cY0";
+        val = buffer;
+    }
+    else if(str.starts_with("cY1"))
+    {
+        buffer = "cY1";
+        val = buffer;
+    }
+    else if(str.starts_with("cY2"))
+    {
+        buffer = "cY2";
+        val = buffer;
+    }
+    else if(str.starts_with("cY3"))
+    {
+        buffer = "cY3";
+        val = buffer;
+    }
+    else if(str.starts_with("cY4"))
+    {
+        buffer = "cY4";
+        val = buffer;
+    }
+    else if(str.starts_with("cY5"))
+    {
+        buffer = "cY5";
+        val = buffer;
+    }
+    else
+    {
+        assert(false);
+    }
 
     return {buffer, val};
 }
@@ -323,40 +357,77 @@ value hacky_differentiate_single(equation_context& ctx, const value& in, int idx
 {
     assert(in.is_value());
 
-    assert(in.value_payload.value().starts_with("v->") || in.value_payload.value().starts_with("v.") || in.value_payload.value().starts_with("ik."));
+    //assert(in.value_payload.value().starts_with("v->") || in.value_payload.value().starts_with("v.") || in.value_payload.value().starts_with("ik."));
 
     std::string buffer;
     std::string val;
 
-    if(in.value_payload.value().starts_with("v->"))
+    std::string in_val = in.value_payload.value();
+
+    if(in_val.starts_with("v->"))
     {
         buffer = "in";
 
-        val = in.value_payload.value();
+        val = in_val;
 
         val.erase(val.begin());
         val.erase(val.begin());
         val.erase(val.begin());
     }
-    else if(in.value_payload.value().starts_with("v."))
+    else if(in_val.starts_with("v."))
     {
         buffer = "in";
 
-        val = in.value_payload.value();
+        val = in_val;
 
         val.erase(val.begin());
         val.erase(val.begin());
     }
-    else if(in.value_payload.value().starts_with("ik."))
+    else if(in_val.starts_with("ik."))
     {
         buffer = "temp_in";
 
-        val = in.value_payload.value();
+        val = in_val;
 
         val.erase(val.begin());
         val.erase(val.begin());
         val.erase(val.begin());
     }
+    else if(in_val.starts_with("cY0"))
+    {
+        buffer = "cY0";
+        val = buffer;
+    }
+    else if(in_val.starts_with("cY1"))
+    {
+        buffer = "cY1";
+        val = buffer;
+    }
+    else if(in_val.starts_with("cY2"))
+    {
+        buffer = "cY2";
+        val = buffer;
+    }
+    else if(in_val.starts_with("cY3"))
+    {
+        buffer = "cY3";
+        val = buffer;
+    }
+    else if(in_val.starts_with("cY4"))
+    {
+        buffer = "cY4";
+        val = buffer;
+    }
+    else if(in_val.starts_with("cY5"))
+    {
+        buffer = "cY5";
+        val = buffer;
+    }
+    else
+    {
+        assert(false);
+    }
+
 
     std::string dimx = "dim.x";
     std::string dimy = "dim.y";
@@ -1190,9 +1261,9 @@ void build_constraints(equation_context& ctx)
     unit_metric<value, 3, 3> fixed_cY;
     unit_metric<value, 3, 3> cY;
 
-    cY.idx(0, 0).make_value("v.cY0"); cY.idx(0, 1).make_value("v.cY1"); cY.idx(0, 2).make_value("v.cY2");
-    cY.idx(1, 0).make_value("v.cY1"); cY.idx(1, 1).make_value("v.cY3"); cY.idx(1, 2).make_value("v.cY4");
-    cY.idx(2, 0).make_value("v.cY2"); cY.idx(2, 1).make_value("v.cY4"); cY.idx(2, 2).make_value("v.cY5");
+    cY.idx(0, 0).make_value("cY0[IDX(x,y,z)]"); cY.idx(0, 1).make_value("cY1[IDX(x,y,z)]"); cY.idx(0, 2).make_value("cY2[IDX(x,y,z)]");
+    cY.idx(1, 0).make_value("cY1[IDX(x,y,z)]"); cY.idx(1, 1).make_value("cY3[IDX(x,y,z)]"); cY.idx(1, 2).make_value("cY4[IDX(x,y,z)]");
+    cY.idx(2, 0).make_value("cY2[IDX(x,y,z)]"); cY.idx(2, 1).make_value("cY4[IDX(x,y,z)]"); cY.idx(2, 2).make_value("cY5[IDX(x,y,z)]");
 
     value det_cY_pow = pow(cY.det(), 1.f/3.f);
 
@@ -1236,9 +1307,9 @@ void build_intermediate(equation_context& ctx)
 
     unit_metric<value, 3, 3> cY;
 
-    cY.idx(0, 0).make_value("v.cY0"); cY.idx(0, 1).make_value("v.cY1"); cY.idx(0, 2).make_value("v.cY2");
-    cY.idx(1, 0).make_value("v.cY1"); cY.idx(1, 1).make_value("v.cY3"); cY.idx(1, 2).make_value("v.cY4");
-    cY.idx(2, 0).make_value("v.cY2"); cY.idx(2, 1).make_value("v.cY4"); cY.idx(2, 2).make_value("v.cY5");
+    cY.idx(0, 0).make_value("cY0[IDX(x,y,z)]"); cY.idx(0, 1).make_value("cY1[IDX(x,y,z)]"); cY.idx(0, 2).make_value("cY2[IDX(x,y,z)]");
+    cY.idx(1, 0).make_value("cY1[IDX(x,y,z)]"); cY.idx(1, 1).make_value("cY3[IDX(x,y,z)]"); cY.idx(1, 2).make_value("cY4[IDX(x,y,z)]");
+    cY.idx(2, 0).make_value("cY2[IDX(x,y,z)]"); cY.idx(2, 1).make_value("cY4[IDX(x,y,z)]"); cY.idx(2, 2).make_value("cY5[IDX(x,y,z)]");
 
     inverse_metric<value, 3, 3> icY = cY.invert();
 
@@ -1317,7 +1388,7 @@ void build_intermediate(equation_context& ctx)
     {
         for(int i=0; i < 6; i++)
         {
-            value diff = hacky_differentiate(ctx, "v.cY" + std::to_string(i), k);
+            value diff = hacky_differentiate(ctx, "cY" + std::to_string(i) + "[IDX(x,y,z)]", k);
 
             int linear_idx = k * 6 + i;
 
@@ -1376,7 +1447,7 @@ void build_eqs(equation_context& ctx)
 
     unit_metric<value, 3, 3> cY;
 
-    cY.idx(0, 0).make_value("v->cY0"); cY.idx(0, 1).make_value("v->cY1"); cY.idx(0, 2).make_value("v->cY2");
+    cY.idx(0, 0).make_value("cY0"); cY.idx(0, 1).make_value("v->cY1"); cY.idx(0, 2).make_value("v->cY2");
     cY.idx(1, 0).make_value("v->cY1"); cY.idx(1, 1).make_value("v->cY3"); cY.idx(1, 2).make_value("v->cY4");
     cY.idx(2, 0).make_value("v->cY2"); cY.idx(2, 1).make_value("v->cY4"); cY.idx(2, 2).make_value("v->cY5");
 
@@ -2474,9 +2545,9 @@ void extract_waveforms(equation_context& ctx)
 
     unit_metric<value, 3, 3> cY;
 
-    cY.idx(0, 0).make_value("v->cY0"); cY.idx(0, 1).make_value("v->cY1"); cY.idx(0, 2).make_value("v->cY2");
-    cY.idx(1, 0).make_value("v->cY1"); cY.idx(1, 1).make_value("v->cY3"); cY.idx(1, 2).make_value("v->cY4");
-    cY.idx(2, 0).make_value("v->cY2"); cY.idx(2, 1).make_value("v->cY4"); cY.idx(2, 2).make_value("v->cY5");
+    cY.idx(0, 0).make_value("cY0[IDX(x,y,z)]"); cY.idx(0, 1).make_value("cY1[IDX(x,y,z)]"); cY.idx(0, 2).make_value("cY2[IDX(x,y,z)]");
+    cY.idx(1, 0).make_value("cY1[IDX(x,y,z)]"); cY.idx(1, 1).make_value("cY3[IDX(x,y,z)]"); cY.idx(1, 2).make_value("cY4[IDX(x,y,z)]");
+    cY.idx(2, 0).make_value("cY2[IDX(x,y,z)]"); cY.idx(2, 1).make_value("cY4[IDX(x,y,z)]"); cY.idx(2, 2).make_value("cY5[IDX(x,y,z)]");
 
     inverse_metric<value, 3, 3> icY = cY.invert();
 
