@@ -2487,26 +2487,6 @@ tensor<T, N...> raise_index_generic(const tensor<T, N...>& mT, const inverse_met
     return raise_index_impl(mT, met, index);
 }
 
-template<typename T>
-inline
-auto finite_difference_func(T func, value scale, int direction)
-{
-    if(direction == 0)
-    {
-        return (func(1, 0, 0) - func(-1, 0, 0)) / (2 * scale);
-    }
-    if(direction == 1)
-    {
-        return (func(0, 1, 0) - func(0, -1, 0)) / (2 * scale);
-    }
-    if(direction == 2)
-    {
-        return (func(0, 0, 1) - func(0, 0, -1)) / (2 * scale);
-    }
-
-    assert(false);
-}
-
 inline
 int64_t factorial(int i)
 {
