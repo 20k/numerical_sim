@@ -40,7 +40,7 @@ https://arxiv.org/pdf/1906.03877.pdf - spherical harmonics
 //#define USE_GBB
 
 ///all conformal variables are explicitly labelled
-struct bssnok_data
+/*struct bssnok_data
 {
     cl_float cGi0, cGi1, cGi2;
 
@@ -57,7 +57,7 @@ struct bssnok_data
     cl_float gBB1;
     cl_float gBB2;
     #endif // USE_GBB
-};
+};*/
 
 struct intermediate_bssnok_data
 {
@@ -366,6 +366,51 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
     else if(str.starts_with("cA5"))
     {
         buffer = "cA5";
+        val = buffer;
+    }
+    else if(str.starts_with("cGi0"))
+    {
+        buffer = "cGi0";
+        val = buffer;
+    }
+    else if(str.starts_with("cGi1"))
+    {
+        buffer = "cGi1";
+        val = buffer;
+    }
+    else if(str.starts_with("cGi2"))
+    {
+        buffer = "cGi2";
+        val = buffer;
+    }
+    else if(str.starts_with("X"))
+    {
+        buffer = "X";
+        val = buffer;
+    }
+    else if(str.starts_with("K"))
+    {
+        buffer = "K";
+        val = buffer;
+    }
+    else if(str.starts_with("gA"))
+    {
+        buffer = "gA";
+        val = buffer;
+    }
+    else if(str.starts_with("gB0"))
+    {
+        buffer = "gB0";
+        val = buffer;
+    }
+    else if(str.starts_with("gB1"))
+    {
+        buffer = "gB1";
+        val = buffer;
+    }
+    else if(str.starts_with("gB2"))
+    {
+        buffer = "gB2";
         val = buffer;
     }
     else
@@ -1356,15 +1401,15 @@ void build_intermediate(equation_context& ctx)
     }
 
     value gA;
-    gA.make_value("v.gA");
+    gA.make_value("gA[IDX(x,y,z)]");
 
     value X;
-    X.make_value("v.X");
+    X.make_value("X[IDX(x,y,z)]");
 
     tensor<value, 3> gB;
-    gB.idx(0).make_value("v.gB0");
-    gB.idx(1).make_value("v.gB1");
-    gB.idx(2).make_value("v.gB2");
+    gB.idx(0).make_value("gB0[IDX(x,y,z)]");
+    gB.idx(1).make_value("gB1[IDX(x,y,z)]");
+    gB.idx(2).make_value("gB2[IDX(x,y,z)]");
 
     //tensor<value, 3, 3, 3> christoff = gpu_christoffel_symbols_2(ctx, cY, icY);
 
@@ -1503,9 +1548,9 @@ void build_eqs(equation_context& ctx)
 
     ///the christoffel symbol
     tensor<value, 3> cGi;
-    cGi.idx(0).make_value("v->cGi0");
-    cGi.idx(1).make_value("v->cGi1");
-    cGi.idx(2).make_value("v->cGi2");
+    cGi.idx(0).make_value("cGi0[IDX(x,y,z)]");
+    cGi.idx(1).make_value("cGi1[IDX(x,y,z)]");
+    cGi.idx(2).make_value("cGi2[IDX(x,y,z)]");
 
     tensor<value, 3> digA;
     digA.idx(0).make_value("ik.digA[0]");
@@ -1534,12 +1579,12 @@ void build_eqs(equation_context& ctx)
     }
 
     value gA;
-    gA.make_value("v->gA");
+    gA.make_value("gA[IDX(x,y,z)]");
 
     tensor<value, 3> gB;
-    gB.idx(0).make_value("v->gB0");
-    gB.idx(1).make_value("v->gB1");
-    gB.idx(2).make_value("v->gB2");
+    gB.idx(0).make_value("gB0[IDX(x,y,z)]");
+    gB.idx(1).make_value("gB1[IDX(x,y,z)]");
+    gB.idx(2).make_value("gB2[IDX(x,y,z)]");
 
     #ifdef USE_GBB
     tensor<value, 3> gBB;
@@ -1549,10 +1594,10 @@ void build_eqs(equation_context& ctx)
     #endif // USE_GBB
 
     value X;
-    X.make_value("v->X");
+    X.make_value("X[IDX(x,y,z)]");
 
     value K;
-    K.make_value("v->K");
+    K.make_value("K[IDX(x,y,z)]");
 
     tensor<value, 3, 3, 3> dcYij;
 
@@ -1620,11 +1665,11 @@ void build_eqs(equation_context& ctx)
 
         for(int i=0; i < 3; i++)
         {
-            hacky_differentiate(ctx, "v->cGi" + std::to_string(i), k);
+            hacky_differentiate(ctx, "cGi" + std::to_string(i), k);
         }
 
-        hacky_differentiate(ctx, "v->K", k);
-        hacky_differentiate(ctx, "v->X", k);
+        hacky_differentiate(ctx, "K", k);
+        hacky_differentiate(ctx, "X", k);
     }
 
     for(int k=0; k < 3; k++)
@@ -2594,9 +2639,9 @@ void extract_waveforms(equation_context& ctx)
     cA.idx(2, 0).make_value("cA2[IDX(x,y,z)]"); cA.idx(2, 1).make_value("cA4[IDX(x,y,z)]"); cA.idx(2, 2).make_value("cA5[IDX(x,y,z)]");
 
     tensor<value, 3> cGi;
-    cGi.idx(0).make_value("v->cGi0");
-    cGi.idx(1).make_value("v->cGi1");
-    cGi.idx(2).make_value("v->cGi2");
+    cGi.idx(0).make_value("cGi0[IDX(x,y,z)]");
+    cGi.idx(1).make_value("cGi1[IDX(x,y,z)]");
+    cGi.idx(2).make_value("cGi2[IDX(x,y,z)]");
 
     tensor<value, 3> digA;
     digA.idx(0).make_value("ik.digA[0]");
@@ -2625,12 +2670,12 @@ void extract_waveforms(equation_context& ctx)
     }
 
     value gA;
-    gA.make_value("v->gA");
+    gA.make_value("gA[IDX(x,y,z)]");
 
     tensor<value, 3> gB;
-    gB.idx(0).make_value("v->gB0");
-    gB.idx(1).make_value("v->gB1");
-    gB.idx(2).make_value("v->gB2");
+    gB.idx(0).make_value("gB0[IDX(x,y,z)]");
+    gB.idx(1).make_value("gB1[IDX(x,y,z)]");
+    gB.idx(2).make_value("gB2[IDX(x,y,z)]");
 
     #ifdef USE_GBB
     tensor<value, 3> gBB;
@@ -2640,10 +2685,10 @@ void extract_waveforms(equation_context& ctx)
     #endif // USE_GBB
 
     value X;
-    X.make_value("v->X");
+    X.make_value("X[IDX(x,y,z)]");
 
     value K;
-    K.make_value("v->K");
+    K.make_value("K[IDX(x,y,z)]");
 
     value scale = "scale";
 
@@ -2713,11 +2758,11 @@ void extract_waveforms(equation_context& ctx)
 
         for(int i=0; i < 3; i++)
         {
-            hacky_differentiate(ctx, "v->cGi" + std::to_string(i), k);
+            hacky_differentiate(ctx, "cGi" + std::to_string(i), k);
         }
 
-        hacky_differentiate(ctx, "v->K", k);
-        hacky_differentiate(ctx, "v->X", k);
+        hacky_differentiate(ctx, "K", k);
+        hacky_differentiate(ctx, "X", k);
     }
 
     for(int k=0; k < 3; k++)
@@ -2897,7 +2942,9 @@ void extract_waveforms(equation_context& ctx)
 
         std::string buf = "in[IDX(" + sx + "," + sy + "," + sz + ")]";
 
-        value lX = buf + ".X";
+        //value lX = buf + ".X";
+
+        value lX = "X[IDX(" + sx + "," + sy + "," + sz + ")]";
 
         tensor<value, 3, 3> lcA;
         unit_metric<value, 3, 3> lcY;
@@ -2914,7 +2961,7 @@ void extract_waveforms(equation_context& ctx)
             }
         }
 
-        value lK = buf + ".K";
+        value lK = "K[IDX(" + sx + "," + sy + "," + sz + ")]";
 
         tensor<value, 3, 3> lKij;
 
@@ -3323,17 +3370,17 @@ int main()
     rtex[0].create_from_texture(tex[0].handle);
     rtex[1].create_from_texture(tex[1].handle);
 
-    std::array<cl::buffer, 2> bssnok_datas{clctx.ctx, clctx.ctx};
+    //std::array<cl::buffer, 2> bssnok_datas{clctx.ctx, clctx.ctx};
     int which_data = 0;
 
-    bssnok_datas[0].alloc(size.x() * size.y() * size.z() * sizeof(bssnok_data));
-    bssnok_datas[1].alloc(size.x() * size.y() * size.z() * sizeof(bssnok_data));
+    //bssnok_datas[0].alloc(size.x() * size.y() * size.z() * sizeof(bssnok_data));
+    //bssnok_datas[1].alloc(size.x() * size.y() * size.z() * sizeof(bssnok_data));
 
     std::array<std::vector<cl::buffer>, 2> generic_data;
 
     for(int idx=0; idx < 2; idx++)
     {
-        int buffer_count = 12;
+        int buffer_count = 12+9;
 
         for(int kk=0; kk < buffer_count; kk++)
         {
@@ -3387,7 +3434,7 @@ int main()
         init.push_back(i);
     }
 
-    init.push_back(bssnok_datas[0]);
+    //init.push_back(bssnok_datas[0]);
     init.push_back(scale);
     init.push_back(clsize);
 
@@ -3400,7 +3447,7 @@ int main()
         initial_clean.push_back(i);
     }
 
-    initial_clean.push_back(bssnok_datas[0]);
+    //initial_clean.push_back(bssnok_datas[0]);
     initial_clean.push_back(intermediate);
     initial_clean.push_back(scale);
     initial_clean.push_back(clsize);
@@ -3415,7 +3462,7 @@ int main()
         initial_constraints.push_back(i);
     }
 
-    initial_constraints.push_back(bssnok_datas[0]);
+    //initial_constraints.push_back(bssnok_datas[0]);
     initial_constraints.push_back(scale);
     initial_constraints.push_back(clsize);
 
@@ -3428,7 +3475,7 @@ int main()
         fl2.push_back(i);
     }
 
-    fl2.push_back(bssnok_datas[0]);
+    //fl2.push_back(bssnok_datas[0]);
     fl2.push_back(scale);
     fl2.push_back(clsize);
     fl2.push_back(intermediate);
@@ -3511,7 +3558,7 @@ int main()
             render.push_back(i);
         }
 
-        render.push_back(bssnok_datas[which_data]);
+        //render.push_back(bssnok_datas[which_data]);
         render.push_back(scale);
         render.push_back(clsize);
         render.push_back(intermediate);
@@ -3541,8 +3588,8 @@ int main()
                 a1.push_back(i);
             }
 
-            a1.push_back(bssnok_datas[which_data]);
-            a1.push_back(bssnok_datas[(which_data + 1) % 2]);
+            //a1.push_back(bssnok_datas[which_data]);
+            //a1.push_back(bssnok_datas[(which_data + 1) % 2]);
             a1.push_back(scale);
             a1.push_back(clsize);
             a1.push_back(intermediate);
@@ -3561,7 +3608,7 @@ int main()
                     cleaner.push_back(i);
                 }
 
-                cleaner.push_back(bssnok_datas[which_data]);
+                //cleaner.push_back(bssnok_datas[which_data]);
                 cleaner.push_back(intermediate);
                 cleaner.push_back(scale);
                 cleaner.push_back(clsize);
@@ -3576,7 +3623,7 @@ int main()
                 fl3.push_back(i);
             }
 
-            fl3.push_back(bssnok_datas[which_data]);
+            //fl3.push_back(bssnok_datas[which_data]);
             fl3.push_back(scale);
             fl3.push_back(clsize);
             fl3.push_back(intermediate);
@@ -3590,7 +3637,7 @@ int main()
                 constraints.push_back(i);
             }
 
-            constraints.push_back(bssnok_datas[which_data]);
+            //constraints.push_back(bssnok_datas[which_data]);
             constraints.push_back(scale);
             constraints.push_back(clsize);
 
@@ -3609,7 +3656,7 @@ int main()
                 waveform_args.push_back(i);
             }
 
-            waveform_args.push_back(bssnok_datas[which_data]);
+            //waveform_args.push_back(bssnok_datas[which_data]);
             waveform_args.push_back(scale);
             waveform_args.push_back(clsize);
             waveform_args.push_back(intermediate);
