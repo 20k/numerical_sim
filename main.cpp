@@ -680,7 +680,7 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
         return v;
     };
 
-    std::string x1 = "x";
+    /*std::string x1 = "x";
     std::string x2 = "x";
     std::string y1 = "y";
     std::string y2 = "y";
@@ -703,9 +703,27 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
     {
         z1 = "z-1";
         z2 = "z+1";
+    }*/
+
+    constexpr int elements = 3;
+
+    std::array<std::string, elements> xs {"x", "x", "x"};
+    std::array<std::string, elements> ys {"y", "y", "y"};
+    std::array<std::string, elements> zs {"z", "z", "z"};
+
+    for(int i=0; i < elements; i++)
+    {
+        int offset = i - (elements - 1)/2;
+
+        if(idx == 0)
+            xs[i] += "+" + std::to_string(offset);
+        if(idx == 1)
+            ys[i] += "+" + std::to_string(offset);
+        if(idx == 2)
+            zs[i] += "+" + std::to_string(offset);
     }
 
-    std::map<std::string, std::string> substitutions1;
+    /*std::map<std::string, std::string> substitutions1;
     std::map<std::string, std::string> substitutions2;
 
     for(auto& i : variables)
@@ -717,9 +735,23 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
 
         substitutions1[i] = type_to_string(to_sub1);
         substitutions2[i] = type_to_string(to_sub2);
+    }*/
+
+    std::array<std::map<std::string, std::string>, elements> substitutions;
+
+    for(auto& i : variables)
+    {
+        std::tuple<std::string, std::string, bool> decomp = decompose_variable(i);
+
+        for(int kk=0; kk < elements; kk++)
+        {
+            value to_sub = index(std::get<1>(decomp), std::get<0>(decomp), std::get<2>(decomp), xs[kk], ys[kk], zs[kk]);
+
+            substitutions[kk][i] = type_to_string(to_sub);
+        }
     }
 
-    value val1 = cp;
+    /*value val1 = cp;
     val1.substitute(substitutions1);
 
     value val2 = cp;
@@ -727,7 +759,19 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
 
     value scale = "scale";
 
-    value final_command = (val2 - val1) / (2 * scale);
+    value final_command = (val2 - val1) / (2 * scale);*/
+
+    value scale = "scale";
+
+    std::array<value, elements> vars;
+
+    for(int i=0; i < elements; i++)
+    {
+        vars[i] = cp;
+        vars[i].substitute(substitutions[i]);
+    }
+
+    value final_command = (vars[2] - vars[0]) / (2 * scale);
 
     if(pin)
     {
@@ -3309,9 +3353,9 @@ int main()
 
     std::string argument_string = "-O3 -cl-std=CL2.2 ";
 
-    vec3i size = {280, 280, 280};
+    vec3i size = {300, 300, 300};
     //vec3i size = {250, 250, 250};
-    float c_at_max = 40;
+    float c_at_max = 45;
     float scale = c_at_max / size.largest_elem();
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
