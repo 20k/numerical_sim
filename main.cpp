@@ -778,8 +778,8 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
         vars[i].substitute(substitutions[i]);
     }
 
-    value final_command = (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
-    //value final_command = (vars[3] - vars[1]) / (2 * scale);
+    //value final_command = (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
+    value final_command = (vars[3] - vars[1]) / (2 * scale);
 
     if(pin)
     {
