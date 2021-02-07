@@ -267,7 +267,7 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
 
     float conformal_factor = init_conformal_factor;
 
-    int index = IDX(x, y, z);
+    int index = IDX(ix, iy, iz);
 
     cY0[index] = init_cY0;
     cY1[index] = init_cY1;
@@ -325,7 +325,6 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
 
 __kernel
 void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
-                                   __global float* ocY0, __global float* ocY1, __global float* ocY2, __global float* ocY3, __global float* ocY4, __global float* ocY5,
                                    __global struct bssnok_data* in, float scale, int4 dim)
 {
     int x = get_global_id(0);
@@ -343,19 +342,33 @@ void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __g
 
     int index = IDX(x, y, z);
 
-    ocY0[index] = fix_cY0;
-    ocY1[index] = fix_cY1;
-    ocY2[index] = fix_cY2;
-    ocY3[index] = fix_cY3;
-    ocY4[index] = fix_cY4;
-    ocY5[index] = fix_cY5;
+    float fixed_cY0 = fix_cY0;
+    float fixed_cY1 = fix_cY1;
+    float fixed_cY2 = fix_cY2;
+    float fixed_cY3 = fix_cY3;
+    float fixed_cY4 = fix_cY4;
+    float fixed_cY5 = fix_cY5;
 
-    out.cA0 = fix_cA0;
-    out.cA1 = fix_cA1;
-    out.cA2 = fix_cA2;
-    out.cA3 = fix_cA3;
-    out.cA4 = fix_cA4;
-    out.cA5 = fix_cA5;
+    float fixed_cA0 = fix_cA0;
+    float fixed_cA1 = fix_cA1;
+    float fixed_cA2 = fix_cA2;
+    float fixed_cA3 = fix_cA3;
+    float fixed_cA4 = fix_cA4;
+    float fixed_cA5 = fix_cA5;
+
+    cY0[index] = fixed_cY0;
+    cY1[index] = fixed_cY1;
+    cY2[index] = fixed_cY2;
+    cY3[index] = fixed_cY3;
+    cY4[index] = fixed_cY4;
+    cY5[index] = fixed_cY5;
+
+    out.cA0 = fixed_cA0;
+    out.cA1 = fixed_cA1;
+    out.cA2 = fixed_cA2;
+    out.cA3 = fixed_cA3;
+    out.cA4 = fixed_cA4;
+    out.cA5 = fixed_cA5;
 
     in[IDX(x, y, z)] = out;
 }
@@ -447,7 +460,6 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
 ///todo: damp to schwarzschild, not initial conditions?
 __kernel
 void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
-                __global float* ocY0, __global float* ocY1, __global float* ocY2, __global float* ocY3, __global float* ocY4, __global float* ocY5,
                 __global struct bssnok_data* in, __global struct intermediate_bssnok_data* iin, float scale, int4 dim, float time)
 {
     int ix = get_global_id(0);
@@ -554,12 +566,12 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
 
         int index = IDX(ix, iy, iz);
 
-        ocY0[index] = mix(cY0[index],fin_cY0, sponge_factor);
-        ocY1[index] = mix(cY1[index],fin_cY1, sponge_factor);
-        ocY2[index] = mix(cY2[index],fin_cY2, sponge_factor);
-        ocY3[index] = mix(cY3[index],fin_cY3, sponge_factor);
-        ocY4[index] = mix(cY4[index],fin_cY4, sponge_factor);
-        ocY5[index] = mix(cY5[index],fin_cY5, sponge_factor);
+        cY0[index] = mix(cY0[index],fin_cY0, sponge_factor);
+        cY1[index] = mix(cY1[index],fin_cY1, sponge_factor);
+        cY2[index] = mix(cY2[index],fin_cY2, sponge_factor);
+        cY3[index] = mix(cY3[index],fin_cY3, sponge_factor);
+        cY4[index] = mix(cY4[index],fin_cY4, sponge_factor);
+        cY5[index] = mix(cY5[index],fin_cY5, sponge_factor);
 
         out.cA0 = mix(v.cA0,init_cA0, sponge_factor);
         out.cA1 = mix(v.cA1,init_cA1, sponge_factor);
@@ -841,6 +853,8 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         ///reuses the evolve parameters
         float pv[TEMP_COUNT2] = {TEMPORARIES2};
 
+        int index = IDX(x, y, z);
+
         //float curvature = scalar_curvature;
 
         /*if(x == 3 && y == 125)
@@ -848,7 +862,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
             printf("Ik %f\n", ik.Yij[0]);
         }*/
 
-        float curvature = (fabs(v->cY0/v->X) + fabs(v->cY1/v->X) + fabs(v->cY2/v->X) + fabs(v->cY3/v->X) + fabs(v->cY4/v->X) + fabs(v->cY5/v->X)) / 1000.f;
+        float curvature = (fabs(cY0[index]/v->X) + fabs(cY1[index]/v->X) + fabs(cY2[index]/v->X) + fabs(cY3[index]/v->X) + fabs(cY4[index]/v->X) + fabs(cY5[index]/v->X)) / 1000.f;
 
         //float curvature = (fabs(v.Yij[0]) + fabs(ik.Yij[1]) + fabs(ik.Yij[2]) + fabs(ik.Yij[3]) + fabs(ik.Yij[4]) + fabs(ik.Yij[5])) / 1000.;
         //float curvature = v.cY0 + v.cY1 + v.cY2 + v.cY3 + v.cY4 + v.cY5;
@@ -871,7 +885,8 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
 }
 
 __kernel
-void extract_waveform(__global struct bssnok_data* in, float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, int4 pos, __global float2* waveform_out)
+void extract_waveform(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+                      __global struct bssnok_data* in, float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, int4 pos, __global float2* waveform_out)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);

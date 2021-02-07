@@ -280,10 +280,12 @@ struct equation_context
 #define BORDER_WIDTH 2
 
 inline
-std::pair<std::string, std::string> decompose_variable(std::string str)
+std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
 {
     std::string buffer;
     std::string val;
+
+    bool uses_extension = false;
 
     if(str.starts_with("v->"))
     {
@@ -294,6 +296,8 @@ std::pair<std::string, std::string> decompose_variable(std::string str)
         val.erase(val.begin());
         val.erase(val.begin());
         val.erase(val.begin());
+
+        uses_extension = true;
     }
     else if(str.starts_with("v."))
     {
@@ -303,6 +307,8 @@ std::pair<std::string, std::string> decompose_variable(std::string str)
 
         val.erase(val.begin());
         val.erase(val.begin());
+
+        uses_extension = true;
     }
     else if(str.starts_with("ik."))
     {
@@ -313,6 +319,8 @@ std::pair<std::string, std::string> decompose_variable(std::string str)
         val.erase(val.begin());
         val.erase(val.begin());
         val.erase(val.begin());
+
+        uses_extension = true;
     }
     else if(str.starts_with("cY0"))
     {
@@ -349,7 +357,7 @@ std::pair<std::string, std::string> decompose_variable(std::string str)
         assert(false);
     }
 
-    return {buffer, val};
+    return {buffer, val, uses_extension};
 }
 
 ///todo: I know for a fact that clang is too silly to optimise out the memory lookups
@@ -586,9 +594,19 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
         return buffer + "[" + with_what + "]." + variable;
     };
 
-    auto index = [&ctx, index_buffer, index_raw](const std::string& val, const std::string& buffer, const std::string& x, const std::string& y, const std::string& z)
+    auto index_without_extension = [](const std::string& buffer, const std::string& with_what)
     {
-        value v = value(index_buffer(val, buffer, index_raw(x, y, z)));
+        return buffer + "[" + with_what + "]";
+    };
+
+    auto index = [&ctx, index_buffer, index_without_extension, index_raw](const std::string& val, const std::string& buffer, bool uses_extension, const std::string& x, const std::string& y, const std::string& z)
+    {
+        value v;
+
+        if(uses_extension)
+            v = value(index_buffer(val, buffer, index_raw(x, y, z)));
+        else
+            v = value(index_without_extension(buffer, index_raw(x, y, z)));
 
         ctx.pin(v);
 
@@ -625,10 +643,10 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
 
     for(auto& i : variables)
     {
-        std::pair<std::string, std::string> decomp = decompose_variable(i);
+        std::tuple<std::string, std::string, bool> decomp = decompose_variable(i);
 
-        value to_sub1 = index(decomp.second, decomp.first, x1, y1, z1);
-        value to_sub2 = index(decomp.second, decomp.first, x2, y2, z2);
+        value to_sub1 = index(std::get<1>(decomp), std::get<0>(decomp), std::get<2>(decomp), x1, y1, z1);
+        value to_sub2 = index(std::get<1>(decomp), std::get<0>(decomp), std::get<2>(decomp), x2, y2, z2);
 
         substitutions1[i] = type_to_string(to_sub1);
         substitutions2[i] = type_to_string(to_sub2);
@@ -1447,9 +1465,9 @@ void build_eqs(equation_context& ctx)
 
     unit_metric<value, 3, 3> cY;
 
-    cY.idx(0, 0).make_value("cY0"); cY.idx(0, 1).make_value("v->cY1"); cY.idx(0, 2).make_value("v->cY2");
-    cY.idx(1, 0).make_value("v->cY1"); cY.idx(1, 1).make_value("v->cY3"); cY.idx(1, 2).make_value("v->cY4");
-    cY.idx(2, 0).make_value("v->cY2"); cY.idx(2, 1).make_value("v->cY4"); cY.idx(2, 2).make_value("v->cY5");
+    cY.idx(0, 0).make_value("cY0[IDX(x,y,z)]"); cY.idx(0, 1).make_value("cY1[IDX(x,y,z)]"); cY.idx(0, 2).make_value("cY2[IDX(x,y,z)]");
+    cY.idx(1, 0).make_value("cY1[IDX(x,y,z)]"); cY.idx(1, 1).make_value("cY3[IDX(x,y,z)]"); cY.idx(1, 2).make_value("cY4[IDX(x,y,z)]");
+    cY.idx(2, 0).make_value("cY2[IDX(x,y,z)]"); cY.idx(2, 1).make_value("cY4[IDX(x,y,z)]"); cY.idx(2, 2).make_value("cY5[IDX(x,y,z)]");
 
     inverse_metric<value, 3, 3> icY = cY.invert();
 
@@ -1576,7 +1594,7 @@ void build_eqs(equation_context& ctx)
     {
         for(int i=0; i < 6; i++)
         {
-            hacky_differentiate(ctx, "v->cY" + std::to_string(i), k);
+            hacky_differentiate(ctx, "cY" + std::to_string(i), k);
         }
 
         for(int i=0; i < 6; i++)
@@ -2669,7 +2687,7 @@ void extract_waveforms(equation_context& ctx)
     {
         for(int i=0; i < 6; i++)
         {
-            hacky_differentiate(ctx, "v->cY" + std::to_string(i), k);
+            hacky_differentiate(ctx, "cY" + std::to_string(i), k);
         }
 
         for(int i=0; i < 6; i++)
@@ -2873,7 +2891,9 @@ void extract_waveforms(equation_context& ctx)
             for(int jj=0; jj < 3; jj++)
             {
                 lcA.idx(kk, jj) = buf + ".cA" + std::to_string(index_table[kk][jj]);
-                lcY.idx(kk, jj) = buf + ".cY" + std::to_string(index_table[kk][jj]);
+                //lcY.idx(kk, jj) = buf + ".cY" + std::to_string(index_table[kk][jj]);
+
+                lcY.idx(kk, jj) = "cY" + std::to_string(index_table[kk][jj]) + "[IDX(" + sx + "," + sy + "," + sz + ")]";
             }
         }
 
@@ -3266,7 +3286,7 @@ int main()
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 
-    //std::cout << "ARGS " << argument_string << std::endl;
+    std::cout << "ARGS " << argument_string << std::endl;
 
     cl::program prog(clctx.ctx, "cl.cl");
     prog.build(clctx.ctx, argument_string);
@@ -3291,6 +3311,19 @@ int main()
 
     bssnok_datas[0].alloc(size.x() * size.y() * size.z() * sizeof(bssnok_data));
     bssnok_datas[1].alloc(size.x() * size.y() * size.z() * sizeof(bssnok_data));
+
+    std::array<std::vector<cl::buffer>, 2> generic_data;
+
+    for(int idx=0; idx < 2; idx++)
+    {
+        int buffer_count = 6;
+
+        for(int kk=0; kk < buffer_count; kk++)
+        {
+            generic_data[idx].emplace_back(clctx.ctx);
+            generic_data[idx].back().alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+        }
+    }
 
     cl::buffer intermediate(clctx.ctx);
     intermediate.alloc(size.x() * size.y() * size.z() * sizeof(intermediate_bssnok_data));
@@ -3331,6 +3364,12 @@ int main()
     cl_float time_elapsed_s = 0;
 
     cl::args init;
+
+    for(auto& i : generic_data[0])
+    {
+        init.push_back(i);
+    }
+
     init.push_back(bssnok_datas[0]);
     init.push_back(scale);
     init.push_back(clsize);
@@ -3338,6 +3377,12 @@ int main()
     clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
     cl::args initial_clean;
+
+    for(auto& i : generic_data[0])
+    {
+        initial_clean.push_back(i);
+    }
+
     initial_clean.push_back(bssnok_datas[0]);
     initial_clean.push_back(intermediate);
     initial_clean.push_back(scale);
@@ -3347,6 +3392,12 @@ int main()
     clctx.cqueue.exec("clean_data", initial_clean, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
     cl::args initial_constraints;
+
+    for(auto& i : generic_data[0])
+    {
+        initial_constraints.push_back(i);
+    }
+
     initial_constraints.push_back(bssnok_datas[0]);
     initial_constraints.push_back(scale);
     initial_constraints.push_back(clsize);
@@ -3354,6 +3405,12 @@ int main()
     clctx.cqueue.exec("enforce_algebraic_constraints", initial_constraints, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
     cl::args fl2;
+
+    for(auto& i : generic_data[0])
+    {
+        fl2.push_back(i);
+    }
+
     fl2.push_back(bssnok_datas[0]);
     fl2.push_back(scale);
     fl2.push_back(clsize);
@@ -3431,6 +3488,12 @@ int main()
             step = true;
 
         cl::args render;
+
+        for(auto& i : generic_data[which_data])
+        {
+            render.push_back(i);
+        }
+
         render.push_back(bssnok_datas[which_data]);
         render.push_back(scale);
         render.push_back(clsize);
@@ -3450,6 +3513,17 @@ int main()
             steps++;
 
             cl::args a1;
+
+            for(auto& i : generic_data[which_data])
+            {
+                a1.push_back(i);
+            }
+
+            for(auto& i : generic_data[(which_data + 1) % 2])
+            {
+                a1.push_back(i);
+            }
+
             a1.push_back(bssnok_datas[which_data]);
             a1.push_back(bssnok_datas[(which_data + 1) % 2]);
             a1.push_back(scale);
@@ -3464,6 +3538,12 @@ int main()
 
             {
                 cl::args cleaner;
+
+                for(auto& i : generic_data[which_data])
+                {
+                    cleaner.push_back(i);
+                }
+
                 cleaner.push_back(bssnok_datas[which_data]);
                 cleaner.push_back(intermediate);
                 cleaner.push_back(scale);
@@ -3473,6 +3553,12 @@ int main()
             }
 
             cl::args fl3;
+
+            for(auto& i : generic_data[which_data])
+            {
+                fl3.push_back(i);
+            }
+
             fl3.push_back(bssnok_datas[which_data]);
             fl3.push_back(scale);
             fl3.push_back(clsize);
@@ -3481,6 +3567,12 @@ int main()
             clctx.cqueue.exec("calculate_intermediate_data", fl3, {size.x(), size.y(), size.z()}, {128, 1, 1});
 
             cl::args constraints;
+
+            for(auto& i : generic_data[which_data])
+            {
+                constraints.push_back(i);
+            }
+
             constraints.push_back(bssnok_datas[which_data]);
             constraints.push_back(scale);
             constraints.push_back(clsize);
@@ -3494,6 +3586,12 @@ int main()
             cl_int4 pos = {clsize.x()/2, clsize.y()/2 + r_extract / scale, clsize.z()/2, 0};
 
             cl::args waveform_args;
+
+            for(auto& i : generic_data[which_data])
+            {
+                waveform_args.push_back(i);
+            }
+
             waveform_args.push_back(bssnok_datas[which_data]);
             waveform_args.push_back(scale);
             waveform_args.push_back(clsize);
