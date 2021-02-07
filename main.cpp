@@ -350,7 +350,7 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
     }
     else if(str.starts_with("cA2"))
     {
-        buffer = "cY2";
+        buffer = "cA2";
         val = buffer;
     }
     else if(str.starts_with("cA3"))
