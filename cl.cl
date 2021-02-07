@@ -154,7 +154,7 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
 
     float3 diff = pos - centre;
 
-    return diff;
+    //return diff;
 
     float len = length(diff);
 
@@ -166,47 +166,41 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
 
     float real_len = len * scale;
 
-    float r0 = 5.5f * 0.5f;
+    float edge = max(max(dim.x, dim.y), dim.z) * scale / 2;
+
+    float r1 = 20.f;
+    float r2 = edge - 64;
+    float r3 = edge;
+
+
     float bulge_amount = 2;
     //float bulge_amount = 3;
     float s = 1.2f * 0.5f;
 
-    ///so, real_len goes from 0 -> edge
-    ///we want to keep that mapping, just redistribute the precision
-    ///
+    float r1b = r1 / bulge_amount;
+    float r2b = r2;
+    float r3b = r3;
 
-    ///this incorrectly scales, should be edge/2
-    float edge = max(max(dim.x, dim.y), dim.z) * scale / 2;
+    float rad = 0;
 
-    float r_frac = (real_len / edge);
-
-    float min_transition_r = (r0 / edge);
-    float max_transition_r = 1;
-
-    ///so, between 0 and r0 * bulge, we should have coordinate of 0 -> r
-    ///between r0 * bulge and edge, we should have coordinates of r0 * bulge -> edge
-
-    float next_rad = 0;
-
-    if(real_len < r0 * bulge_amount)
+    if(real_len < r1)
     {
-        next_rad = (real_len/bulge_amount) / scale;
+        rad = (real_len * r1b / r1) / scale;
+    }
+    else if(real_len < r2)
+    {
+        float frac = (real_len - r1) / (r2 - r1);
+
+        float polynomial_frac = polynomial(clamp(frac, 0.f, 1.f));
+
+        rad = (r1b + (polynomial_frac * (r2b - r1b))) / scale;
     }
     else
     {
-        float frac = (real_len - r0 * bulge_amount) / (edge - r0 * bulge_amount);
-
-        float extra = 0;
-
-        if(frac > 1)
-            extra = frac - 1;
-
-        frac = polynomial(clamp(frac, 0.f, 1.f));
-
-        next_rad = (r0 + frac * (edge - r0) + extra * (edge - r0)) / scale;
+        rad = real_len / scale;
     }
 
-    return diff * next_rad / len;
+    return diff * rad / len;
 }
 
 __kernel

@@ -675,7 +675,7 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
         else
             v = value(index_without_extension(buffer, index_raw(x, y, z)));
 
-        ctx.pin(v);
+        //ctx.pin(v);
 
         return v;
     };
@@ -777,6 +777,9 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
         vars[i] = cp;
         vars[i].substitute(substitutions[i]);
     }
+
+    ctx.pin(vars[3]);
+    ctx.pin(vars[1]);
 
     //value final_command = (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
     value final_command = (vars[3] - vars[1]) / (2 * scale);
