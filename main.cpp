@@ -2731,8 +2731,6 @@ void extract_waveforms(equation_context& ctx)
     value K;
     K.make_value("K[IDX(x,y,z)]");
 
-    value scale = "scale";
-
     tensor<value, 3, 3, 3> dcYij;
 
     for(int k=0; k < 3; k++)
