@@ -869,14 +869,14 @@ void extract_waveform(__global float* cY0, __global float* cY1, __global float* 
 
     int index = IDX(ix, iy, iz);
 
-    printf("Scale %f\n", scale);
+    //printf("Scale %f\n", scale);
 
-    printf("X %f\n", X[index]);
+    //printf("X %f\n", X[index]);
 
     waveform_out[0].x = w4_real;
     waveform_out[0].y = w4_complex;
 
-    printf("WAV %f\n", waveform_out[0].x);
+    //printf("WAV %f\n", waveform_out[0].x);
 
     #ifdef w4_debugr
     printf("Debugw4r %f\n", w4_debugr);

@@ -2063,6 +2063,11 @@ void build_eqs(equation_context& ctx)
                 s1 = s1 + icY.idx(j, k) * hacky_differentiate(ctx, digB.idx(k, i), j);
             }
 
+            if(i == 0 && j == 0)
+            {
+                ctx.add("debug_val", hacky_differentiate(ctx, digB.idx(0, 0), 0));
+            }
+
             value s2 = 0;
 
             for(int k=0; k < 3; k++)
@@ -3519,7 +3524,7 @@ int main()
 
             float harmonic = get_harmonic(w4, 2, 0).real;
 
-            printf("Harm %f\n", harmonic);
+            //printf("Harm %f\n", harmonic);
 
             real_decomp.push_back(harmonic);
 
