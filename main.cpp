@@ -421,6 +421,8 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
     }
     else
     {
+        std::cout << "input " << str << std::endl;
+
         assert(false);
     }
 
@@ -1426,6 +1428,7 @@ void build_eqs(equation_context& ctx)
     cY.idx(2, 0).make_value("cY2[IDX(ix,iy,iz)]"); cY.idx(2, 1).make_value("cY4[IDX(ix,iy,iz)]"); cY.idx(2, 2).make_value("cY5[IDX(ix,iy,iz)]");
 
     inverse_metric<value, 3, 3> icY = cY.invert();
+    inverse_metric<value, 3, 3> unpinned_icY = cY.invert();
 
     for(int i=0; i < 3; i++)
     {
@@ -1603,10 +1606,7 @@ void build_eqs(equation_context& ctx)
 
         for(int j=0; j < 3; j++)
         {
-            for(int k=0; k < 3; k++)
-            {
-                sum = sum + icY.idx(j, k) * christoff2.idx(i, j, k);
-            }
+            sum = sum - hacky_differentiate(ctx, unpinned_icY.idx(i, j), j);
         }
 
         derived_cGi.idx(i) = sum;
