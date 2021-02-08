@@ -427,182 +427,6 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
     return {buffer, val, uses_extension};
 }
 
-///todo: I know for a fact that clang is too silly to optimise out the memory lookups
-value hacky_differentiate_single(equation_context& ctx, const value& in, int idx, bool pin = true)
-{
-    assert(in.is_value());
-
-    //assert(in.value_payload.value().starts_with("v->") || in.value_payload.value().starts_with("v.") || in.value_payload.value().starts_with("ik."));
-
-    std::string buffer;
-    std::string val;
-
-    std::string in_val = in.value_payload.value();
-
-    if(in_val.starts_with("v->"))
-    {
-        buffer = "in";
-
-        val = in_val;
-
-        val.erase(val.begin());
-        val.erase(val.begin());
-        val.erase(val.begin());
-    }
-    else if(in_val.starts_with("v."))
-    {
-        buffer = "in";
-
-        val = in_val;
-
-        val.erase(val.begin());
-        val.erase(val.begin());
-    }
-    else if(in_val.starts_with("ik."))
-    {
-        buffer = "temp_in";
-
-        val = in_val;
-
-        val.erase(val.begin());
-        val.erase(val.begin());
-        val.erase(val.begin());
-    }
-    else if(in_val.starts_with("cY0"))
-    {
-        buffer = "cY0";
-        val = buffer;
-    }
-    else if(in_val.starts_with("cY1"))
-    {
-        buffer = "cY1";
-        val = buffer;
-    }
-    else if(in_val.starts_with("cY2"))
-    {
-        buffer = "cY2";
-        val = buffer;
-    }
-    else if(in_val.starts_with("cY3"))
-    {
-        buffer = "cY3";
-        val = buffer;
-    }
-    else if(in_val.starts_with("cY4"))
-    {
-        buffer = "cY4";
-        val = buffer;
-    }
-    else if(in_val.starts_with("cY5"))
-    {
-        buffer = "cY5";
-        val = buffer;
-    }
-    else
-    {
-        assert(false);
-    }
-
-
-    std::string dimx = "dim.x";
-    std::string dimy = "dim.y";
-    std::string dimz = "dim.z";
-
-    std::string x = "x";
-    std::string y = "y";
-    std::string z = "z";
-
-    std::string xp1 = "x+1";
-    std::string yp1 = "y+1";
-    std::string zp1 = "z+1";
-
-    std::string xp2 = "x+2";
-    std::string yp2 = "y+2";
-    std::string zp2 = "z+2";
-
-    std::string xm1 = "x-1";
-    std::string ym1 = "y-1";
-    std::string zm1 = "z-1";
-
-    std::string xm2 = "x-2";
-    std::string ym2 = "y-2";
-    std::string zm2 = "z-2";
-
-    #ifdef SYMMETRY_BOUNDARY
-    xp1 = "(" + xp1 + ")%dim.x";
-    yp1 = "(" + yp1 + ")%dim.y";
-    zp1 = "(" + zp1 + ")%dim.z";
-
-    xp2 = "(" + xp2 + ")%dim.x";
-    yp2 = "(" + yp2 + ")%dim.y";
-    zp2 = "(" + zp2 + ")%dim.z";
-
-    xm1 = "abs(" + xm1 + ")";
-    ym1 = "abs(" + ym1 + ")";
-    zm1 = "abs(" + zm1 + ")";
-
-    xm2 = "abs(" + xm2 + ")";
-    ym2 = "abs(" + ym2 + ")";
-    zm2 = "abs(" + zm2 + ")";
-    #endif // SYMMETRY_BOUNDARY
-
-    auto index_raw = [](const std::string& x, const std::string& y, const std::string& z)
-    {
-        return "IDX(" + x + "," + y + "," + z + ")";
-    };
-
-    auto index_buffer = [](const std::string& variable, const std::string& buffer, const std::string& with_what)
-    {
-        return buffer + "[" + with_what + "]." + variable;
-    };
-
-    auto finite_difference = [](const std::string& upper, const std::string& lower)
-    {
-        return "finite_difference(" + upper + "," + lower + ",scale)";
-    };
-
-    auto index = [&](const std::string& x, const std::string& y, const std::string& z)
-    {
-        value v = value(index_buffer(val, buffer, index_raw(x, y, z)));
-
-        ctx.pin(v);
-
-        return v;
-    };
-
-    value scale = "scale";
-
-    value final_command;
-
-    if(idx == 0)
-    {
-        //final_command = (-index(xp2, y, z) + 8 * index(xp1, y, z) - 8 * index(xm1, y, z) + index(xm2, y, z)) / (12 * scale);
-
-        final_command = (index(xp1, y, z) - index(xm1, y, z)) / (2 * scale);
-    }
-
-    if(idx == 1)
-    {
-        //final_command = (-index(x, yp2, z) + 8 * index(x, yp1, z) - 8 * index(x, ym1, z) + index(x, ym2, z)) / (12 * scale);
-
-        final_command = (index(x, yp1, z) - index(x, ym1, z)) / (2 * scale);
-    }
-
-    if(idx == 2)
-    {
-        //final_command = (-index(x, y, zp2) + 8 * index(x, y, zp1) - 8 * index(x, y, zm1) + index(x, y, zm2)) / (12 * scale);
-
-        final_command = (index(x, y, zp1) - index(x, y, zm1)) / (2 * scale);
-    }
-
-    if(pin)
-    {
-        ctx.pin(final_command);
-    }
-
-    return final_command;
-}
-
 value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true)
 {
     std::vector<std::string> variables = in.get_all_variables();
@@ -613,25 +437,25 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
     std::string dimy = "dim.y";
     std::string dimz = "dim.z";
 
-    std::string x = "x";
-    std::string y = "y";
-    std::string z = "z";
+    std::string x = "ix";
+    std::string y = "iy";
+    std::string z = "iz";
 
-    std::string xp1 = "x+1";
-    std::string yp1 = "y+1";
-    std::string zp1 = "z+1";
+    std::string xp1 = "ix+1";
+    std::string yp1 = "iy+1";
+    std::string zp1 = "iz+1";
 
-    std::string xp2 = "x+2";
-    std::string yp2 = "y+2";
-    std::string zp2 = "z+2";
+    std::string xp2 = "ix+2";
+    std::string yp2 = "iy+2";
+    std::string zp2 = "iz+2";
 
-    std::string xm1 = "x-1";
-    std::string ym1 = "y-1";
-    std::string zm1 = "z-1";
+    std::string xm1 = "ix-1";
+    std::string ym1 = "iy-1";
+    std::string zm1 = "iz-1";
 
-    std::string xm2 = "x-2";
-    std::string ym2 = "y-2";
-    std::string zm2 = "z-2";
+    std::string xm2 = "ix-2";
+    std::string ym2 = "iy-2";
+    std::string zm2 = "iz-2";
 
     #ifdef SYMMETRY_BOUNDARY
     xp1 = "(" + xp1 + ")%dim.x";
@@ -713,9 +537,9 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
 
     for(int i=0; i < elements; i++)
     {
-        xs[i] = "x";
-        ys[i] = "y";
-        zs[i] = "z";
+        xs[i] = "ix";
+        ys[i] = "iy";
+        zs[i] = "iz";
     }
 
     for(int i=0; i < elements; i++)
@@ -1401,9 +1225,9 @@ void build_constraints(equation_context& ctx)
     unit_metric<value, 3, 3> fixed_cY;
     unit_metric<value, 3, 3> cY;
 
-    cY.idx(0, 0).make_value("cY0[IDX(x,y,z)]"); cY.idx(0, 1).make_value("cY1[IDX(x,y,z)]"); cY.idx(0, 2).make_value("cY2[IDX(x,y,z)]");
-    cY.idx(1, 0).make_value("cY1[IDX(x,y,z)]"); cY.idx(1, 1).make_value("cY3[IDX(x,y,z)]"); cY.idx(1, 2).make_value("cY4[IDX(x,y,z)]");
-    cY.idx(2, 0).make_value("cY2[IDX(x,y,z)]"); cY.idx(2, 1).make_value("cY4[IDX(x,y,z)]"); cY.idx(2, 2).make_value("cY5[IDX(x,y,z)]");
+    cY.idx(0, 0).make_value("cY0[IDX(ix,iy,iz)]"); cY.idx(0, 1).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(0, 2).make_value("cY2[IDX(ix,iy,iz)]");
+    cY.idx(1, 0).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(1, 1).make_value("cY3[IDX(ix,iy,iz)]"); cY.idx(1, 2).make_value("cY4[IDX(ix,iy,iz)]");
+    cY.idx(2, 0).make_value("cY2[IDX(ix,iy,iz)]"); cY.idx(2, 1).make_value("cY4[IDX(ix,iy,iz)]"); cY.idx(2, 2).make_value("cY5[IDX(ix,iy,iz)]");
 
     value det_cY_pow = pow(cY.det(), 1.f/3.f);
 
@@ -1419,9 +1243,9 @@ void build_constraints(equation_context& ctx)
 
     tensor<value, 3, 3> cA;
 
-    cA.idx(0, 0).make_value("cA0[IDX(x,y,z)]"); cA.idx(0, 1).make_value("cA1[IDX(x,y,z)]"); cA.idx(0, 2).make_value("cA2[IDX(x,y,z)]");
-    cA.idx(1, 0).make_value("cA1[IDX(x,y,z)]"); cA.idx(1, 1).make_value("cA3[IDX(x,y,z)]"); cA.idx(1, 2).make_value("cA4[IDX(x,y,z)]");
-    cA.idx(2, 0).make_value("cA2[IDX(x,y,z)]"); cA.idx(2, 1).make_value("cA4[IDX(x,y,z)]"); cA.idx(2, 2).make_value("cA5[IDX(x,y,z)]");
+    cA.idx(0, 0).make_value("cA0[IDX(ix,iy,iz)]"); cA.idx(0, 1).make_value("cA1[IDX(ix,iy,iz)]"); cA.idx(0, 2).make_value("cA2[IDX(ix,iy,iz)]");
+    cA.idx(1, 0).make_value("cA1[IDX(ix,iy,iz)]"); cA.idx(1, 1).make_value("cA3[IDX(ix,iy,iz)]"); cA.idx(1, 2).make_value("cA4[IDX(ix,iy,iz)]");
+    cA.idx(2, 0).make_value("cA2[IDX(ix,iy,iz)]"); cA.idx(2, 1).make_value("cA4[IDX(ix,iy,iz)]"); cA.idx(2, 2).make_value("cA5[IDX(ix,iy,iz)]");
 
     tensor<value, 3, 3> fixed_cA = gpu_trace_free(cA, fixed_cY, fixed_cY.invert());
 
@@ -1447,9 +1271,9 @@ void build_intermediate(equation_context& ctx)
 
     unit_metric<value, 3, 3> cY;
 
-    cY.idx(0, 0).make_value("cY0[IDX(x,y,z)]"); cY.idx(0, 1).make_value("cY1[IDX(x,y,z)]"); cY.idx(0, 2).make_value("cY2[IDX(x,y,z)]");
-    cY.idx(1, 0).make_value("cY1[IDX(x,y,z)]"); cY.idx(1, 1).make_value("cY3[IDX(x,y,z)]"); cY.idx(1, 2).make_value("cY4[IDX(x,y,z)]");
-    cY.idx(2, 0).make_value("cY2[IDX(x,y,z)]"); cY.idx(2, 1).make_value("cY4[IDX(x,y,z)]"); cY.idx(2, 2).make_value("cY5[IDX(x,y,z)]");
+    cY.idx(0, 0).make_value("cY0[IDX(ix,iy,iz)]"); cY.idx(0, 1).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(0, 2).make_value("cY2[IDX(ix,iy,iz)]");
+    cY.idx(1, 0).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(1, 1).make_value("cY3[IDX(ix,iy,iz)]"); cY.idx(1, 2).make_value("cY4[IDX(ix,iy,iz)]");
+    cY.idx(2, 0).make_value("cY2[IDX(ix,iy,iz)]"); cY.idx(2, 1).make_value("cY4[IDX(ix,iy,iz)]"); cY.idx(2, 2).make_value("cY5[IDX(ix,iy,iz)]");
 
     inverse_metric<value, 3, 3> icY = cY.invert();
 
@@ -1462,15 +1286,15 @@ void build_intermediate(equation_context& ctx)
     }
 
     value gA;
-    gA.make_value("gA[IDX(x,y,z)]");
+    gA.make_value("gA[IDX(ix,iy,iz)]");
 
     value X;
-    X.make_value("X[IDX(x,y,z)]");
+    X.make_value("X[IDX(ix,iy,iz)]");
 
     tensor<value, 3> gB;
-    gB.idx(0).make_value("gB0[IDX(x,y,z)]");
-    gB.idx(1).make_value("gB1[IDX(x,y,z)]");
-    gB.idx(2).make_value("gB2[IDX(x,y,z)]");
+    gB.idx(0).make_value("gB0[IDX(ix,iy,iz)]");
+    gB.idx(1).make_value("gB1[IDX(ix,iy,iz)]");
+    gB.idx(2).make_value("gB2[IDX(ix,iy,iz)]");
 
     //tensor<value, 3, 3, 3> christoff = gpu_christoffel_symbols_2(ctx, cY, icY);
 
@@ -1528,7 +1352,7 @@ void build_intermediate(equation_context& ctx)
     {
         for(int i=0; i < 6; i++)
         {
-            value diff = hacky_differentiate(ctx, "cY" + std::to_string(i) + "[IDX(x,y,z)]", k);
+            value diff = hacky_differentiate(ctx, "cY" + std::to_string(i) + "[IDX(ix,iy,iz)]", k);
 
             int linear_idx = k * 6 + i;
 
@@ -1587,9 +1411,9 @@ void build_eqs(equation_context& ctx)
 
     unit_metric<value, 3, 3> cY;
 
-    cY.idx(0, 0).make_value("cY0[IDX(x,y,z)]"); cY.idx(0, 1).make_value("cY1[IDX(x,y,z)]"); cY.idx(0, 2).make_value("cY2[IDX(x,y,z)]");
-    cY.idx(1, 0).make_value("cY1[IDX(x,y,z)]"); cY.idx(1, 1).make_value("cY3[IDX(x,y,z)]"); cY.idx(1, 2).make_value("cY4[IDX(x,y,z)]");
-    cY.idx(2, 0).make_value("cY2[IDX(x,y,z)]"); cY.idx(2, 1).make_value("cY4[IDX(x,y,z)]"); cY.idx(2, 2).make_value("cY5[IDX(x,y,z)]");
+    cY.idx(0, 0).make_value("cY0[IDX(ix,iy,iz)]"); cY.idx(0, 1).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(0, 2).make_value("cY2[IDX(ix,iy,iz)]");
+    cY.idx(1, 0).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(1, 1).make_value("cY3[IDX(ix,iy,iz)]"); cY.idx(1, 2).make_value("cY4[IDX(ix,iy,iz)]");
+    cY.idx(2, 0).make_value("cY2[IDX(ix,iy,iz)]"); cY.idx(2, 1).make_value("cY4[IDX(ix,iy,iz)]"); cY.idx(2, 2).make_value("cY5[IDX(ix,iy,iz)]");
 
     inverse_metric<value, 3, 3> icY = cY.invert();
 
@@ -1603,15 +1427,15 @@ void build_eqs(equation_context& ctx)
 
     tensor<value, 3, 3> cA;
 
-    cA.idx(0, 0).make_value("cA0[IDX(x,y,z)]"); cA.idx(0, 1).make_value("cA1[IDX(x,y,z)]"); cA.idx(0, 2).make_value("cA2[IDX(x,y,z)]");
-    cA.idx(1, 0).make_value("cA1[IDX(x,y,z)]"); cA.idx(1, 1).make_value("cA3[IDX(x,y,z)]"); cA.idx(1, 2).make_value("cA4[IDX(x,y,z)]");
-    cA.idx(2, 0).make_value("cA2[IDX(x,y,z)]"); cA.idx(2, 1).make_value("cA4[IDX(x,y,z)]"); cA.idx(2, 2).make_value("cA5[IDX(x,y,z)]");
+    cA.idx(0, 0).make_value("cA0[IDX(ix,iy,iz)]"); cA.idx(0, 1).make_value("cA1[IDX(ix,iy,iz)]"); cA.idx(0, 2).make_value("cA2[IDX(ix,iy,iz)]");
+    cA.idx(1, 0).make_value("cA1[IDX(ix,iy,iz)]"); cA.idx(1, 1).make_value("cA3[IDX(ix,iy,iz)]"); cA.idx(1, 2).make_value("cA4[IDX(ix,iy,iz)]");
+    cA.idx(2, 0).make_value("cA2[IDX(ix,iy,iz)]"); cA.idx(2, 1).make_value("cA4[IDX(ix,iy,iz)]"); cA.idx(2, 2).make_value("cA5[IDX(ix,iy,iz)]");
 
     ///the christoffel symbol
     tensor<value, 3> cGi;
-    cGi.idx(0).make_value("cGi0[IDX(x,y,z)]");
-    cGi.idx(1).make_value("cGi1[IDX(x,y,z)]");
-    cGi.idx(2).make_value("cGi2[IDX(x,y,z)]");
+    cGi.idx(0).make_value("cGi0[IDX(ix,iy,iz)]");
+    cGi.idx(1).make_value("cGi1[IDX(ix,iy,iz)]");
+    cGi.idx(2).make_value("cGi2[IDX(ix,iy,iz)]");
 
     tensor<value, 3> digA;
     digA.idx(0).make_value("ik.digA[0]");
@@ -1640,12 +1464,12 @@ void build_eqs(equation_context& ctx)
     }
 
     value gA;
-    gA.make_value("gA[IDX(x,y,z)]");
+    gA.make_value("gA[IDX(ix,iy,iz)]");
 
     tensor<value, 3> gB;
-    gB.idx(0).make_value("gB0[IDX(x,y,z)]");
-    gB.idx(1).make_value("gB1[IDX(x,y,z)]");
-    gB.idx(2).make_value("gB2[IDX(x,y,z)]");
+    gB.idx(0).make_value("gB0[IDX(ix,iy,iz)]");
+    gB.idx(1).make_value("gB1[IDX(ix,iy,iz)]");
+    gB.idx(2).make_value("gB2[IDX(ix,iy,iz)]");
 
     #ifdef USE_GBB
     tensor<value, 3> gBB;
@@ -1655,10 +1479,10 @@ void build_eqs(equation_context& ctx)
     #endif // USE_GBB
 
     value X;
-    X.make_value("X[IDX(x,y,z)]");
+    X.make_value("X[IDX(ix,iy,iz)]");
 
     value K;
-    K.make_value("K[IDX(x,y,z)]");
+    K.make_value("K[IDX(ix,iy,iz)]");
 
     tensor<value, 3, 3, 3> dcYij;
 
@@ -2665,9 +2489,9 @@ void extract_waveforms(equation_context& ctx)
 
     unit_metric<value, 3, 3> cY;
 
-    cY.idx(0, 0).make_value("cY0[IDX(x,y,z)]"); cY.idx(0, 1).make_value("cY1[IDX(x,y,z)]"); cY.idx(0, 2).make_value("cY2[IDX(x,y,z)]");
-    cY.idx(1, 0).make_value("cY1[IDX(x,y,z)]"); cY.idx(1, 1).make_value("cY3[IDX(x,y,z)]"); cY.idx(1, 2).make_value("cY4[IDX(x,y,z)]");
-    cY.idx(2, 0).make_value("cY2[IDX(x,y,z)]"); cY.idx(2, 1).make_value("cY4[IDX(x,y,z)]"); cY.idx(2, 2).make_value("cY5[IDX(x,y,z)]");
+    cY.idx(0, 0).make_value("cY0[IDX(ix,iy,iz)]"); cY.idx(0, 1).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(0, 2).make_value("cY2[IDX(ix,iy,iz)]");
+    cY.idx(1, 0).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(1, 1).make_value("cY3[IDX(ix,iy,iz)]"); cY.idx(1, 2).make_value("cY4[IDX(ix,iy,iz)]");
+    cY.idx(2, 0).make_value("cY2[IDX(ix,iy,iz)]"); cY.idx(2, 1).make_value("cY4[IDX(ix,iy,iz)]"); cY.idx(2, 2).make_value("cY5[IDX(ix,iy,iz)]");
 
     inverse_metric<value, 3, 3> icY = cY.invert();
 
@@ -2675,14 +2499,14 @@ void extract_waveforms(equation_context& ctx)
 
     tensor<value, 3, 3> cA;
 
-    cA.idx(0, 0).make_value("cA0[IDX(x,y,z)]"); cA.idx(0, 1).make_value("cA1[IDX(x,y,z)]"); cA.idx(0, 2).make_value("cA2[IDX(x,y,z)]");
-    cA.idx(1, 0).make_value("cA1[IDX(x,y,z)]"); cA.idx(1, 1).make_value("cA3[IDX(x,y,z)]"); cA.idx(1, 2).make_value("cA4[IDX(x,y,z)]");
-    cA.idx(2, 0).make_value("cA2[IDX(x,y,z)]"); cA.idx(2, 1).make_value("cA4[IDX(x,y,z)]"); cA.idx(2, 2).make_value("cA5[IDX(x,y,z)]");
+    cA.idx(0, 0).make_value("cA0[IDX(ix,iy,iz)]"); cA.idx(0, 1).make_value("cA1[IDX(ix,iy,iz)]"); cA.idx(0, 2).make_value("cA2[IDX(ix,iy,iz)]");
+    cA.idx(1, 0).make_value("cA1[IDX(ix,iy,iz)]"); cA.idx(1, 1).make_value("cA3[IDX(ix,iy,iz)]"); cA.idx(1, 2).make_value("cA4[IDX(ix,iy,iz)]");
+    cA.idx(2, 0).make_value("cA2[IDX(ix,iy,iz)]"); cA.idx(2, 1).make_value("cA4[IDX(ix,iy,iz)]"); cA.idx(2, 2).make_value("cA5[IDX(ix,iy,iz)]");
 
     tensor<value, 3> cGi;
-    cGi.idx(0).make_value("cGi0[IDX(x,y,z)]");
-    cGi.idx(1).make_value("cGi1[IDX(x,y,z)]");
-    cGi.idx(2).make_value("cGi2[IDX(x,y,z)]");
+    cGi.idx(0).make_value("cGi0[IDX(ix,iy,iz)]");
+    cGi.idx(1).make_value("cGi1[IDX(ix,iy,iz)]");
+    cGi.idx(2).make_value("cGi2[IDX(ix,iy,iz)]");
 
     tensor<value, 3> digA;
     digA.idx(0).make_value("ik.digA[0]");
@@ -2711,12 +2535,12 @@ void extract_waveforms(equation_context& ctx)
     }
 
     value gA;
-    gA.make_value("gA[IDX(x,y,z)]");
+    gA.make_value("gA[IDX(ix,iy,iz)]");
 
     tensor<value, 3> gB;
-    gB.idx(0).make_value("gB0[IDX(x,y,z)]");
-    gB.idx(1).make_value("gB1[IDX(x,y,z)]");
-    gB.idx(2).make_value("gB2[IDX(x,y,z)]");
+    gB.idx(0).make_value("gB0[IDX(ix,iy,iz)]");
+    gB.idx(1).make_value("gB1[IDX(ix,iy,iz)]");
+    gB.idx(2).make_value("gB2[IDX(ix,iy,iz)]");
 
     #ifdef USE_GBB
     tensor<value, 3> gBB;
@@ -2726,10 +2550,10 @@ void extract_waveforms(equation_context& ctx)
     #endif // USE_GBB
 
     value X;
-    X.make_value("X[IDX(x,y,z)]");
+    X.make_value("X[IDX(ix,iy,iz)]");
 
     value K;
-    K.make_value("K[IDX(x,y,z)]");
+    K.make_value("K[IDX(ix,iy,iz)]");
 
     tensor<value, 3, 3, 3> dcYij;
 

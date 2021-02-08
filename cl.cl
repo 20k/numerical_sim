@@ -264,16 +264,16 @@ void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __g
                                    __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
                                    float scale, int4 dim)
 {
-    int x = get_global_id(0);
-    int y = get_global_id(1);
-    int z = get_global_id(2);
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
 
-    if(x >= dim.x || y >= dim.y || z >= dim.z)
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
     float pv[TEMP_COUNT3] = {TEMPORARIES3};
 
-    int index = IDX(x, y, z);
+    int index = IDX(ix, iy, iz);
 
     float fixed_cY0 = fix_cY0;
     float fixed_cY1 = fix_cY1;
@@ -311,19 +311,19 @@ void calculate_intermediate_data(__global float* cY0, __global float* cY1, __glo
                                  __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
                                  float scale, int4 dim, __global struct intermediate_bssnok_data* out)
 {
-    int x = get_global_id(0);
-    int y = get_global_id(1);
-    int z = get_global_id(2);
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
 
-    if(x >= dim.x || y >= dim.y || z >= dim.z)
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(x < BORDER_WIDTH || x >= dim.x - BORDER_WIDTH || y < BORDER_WIDTH || y >= dim.y - BORDER_WIDTH || z < BORDER_WIDTH || z >= dim.z - BORDER_WIDTH)
+    if(ix < BORDER_WIDTH || ix >= dim.x - BORDER_WIDTH || iy < BORDER_WIDTH || iy >= dim.y - BORDER_WIDTH || iz < BORDER_WIDTH || iz >= dim.z - BORDER_WIDTH)
         return;
     #endif // SYMMETRY_BOUNDARY
 
-    struct intermediate_bssnok_data* my_out = &out[IDX(x, y, z)];
+    struct intermediate_bssnok_data* my_out = &out[IDX(ix, iy, iz)];
 
     float pv[TEMP_COUNT1] = {TEMPORARIES1};
 
@@ -579,28 +579,28 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
             __global float* ocGi0, __global float* ocGi1, __global float* ocGi2, __global float* oK, __global float* oX, __global float* ogA, __global float* ogB0, __global float* ogB1, __global float* ogB2,
             float scale, int4 dim, __global const struct intermediate_bssnok_data* temp_in, float timestep, float time)
 {
-    int x = get_global_id(0);
-    int y = get_global_id(1);
-    int z = get_global_id(2);
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
 
-    if(x >= dim.x || y >= dim.y || z >= dim.z)
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(x < BORDER_WIDTH*2 || x >= dim.x - BORDER_WIDTH*2 || y < BORDER_WIDTH*2 || y >= dim.y - BORDER_WIDTH*2 || z < BORDER_WIDTH*2 || z >= dim.z - BORDER_WIDTH*2)
+    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2)
         return;
     #endif // SYMMETRY_BOUNDARY
 
-    float3 transform_pos = transform_position(x, y, z, dim, scale);
+    float3 transform_pos = transform_position(ix, iy, iz, dim, scale);
     float sponge_factor = sponge_damp_coeff(transform_pos.x, transform_pos.y, transform_pos.z, scale, dim, time);
 
     //if(sponge_factor == 1)
     //    return;
 
     float3 centre = {dim.x/2, dim.y/2, dim.z/2};
-    float r = fast_length((float3){x, y, z} - centre);
+    float r = fast_length((float3){ix, iy, iz} - centre);
 
-    struct intermediate_bssnok_data ik = temp_in[IDX(x, y, z)];
+    struct intermediate_bssnok_data ik = temp_in[IDX(ix, iy, iz)];
 
     float pv[TEMP_COUNT2] = {TEMPORARIES2};
 
@@ -619,7 +619,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         dcGijk[2 * 3 * 6 + i] = INTERMEDIATE_DIFFZ(christoffel[i]);
     }*/
 
-    int index = IDX(x, y, z);
+    int index = IDX(ix, iy, iz);
 
     ocY0[index] = cY0[index] + dtcYij0 * timestep;
     ocY1[index] = cY1[index] + dtcYij1 * timestep;
@@ -745,13 +745,13 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
             __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
             float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, __write_only image2d_t screen, float time)
 {
-    int x = get_global_id(0);
-    int y = get_global_id(1);
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
 
-    if(x >= dim.x || y >= dim.y)
+    if(ix >= dim.x || iy >= dim.y)
         return;
 
-    if(x <= 4 || x >= dim.x - 5 || y <= 4 || y >= dim.y - 5)
+    if(ix <= 4 || ix >= dim.x - 5 || iy <= 4 || iy >= dim.y - 5)
         return;
 
 
@@ -764,7 +764,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
 
     //for(int z = 20; z < dim.z-20; z++)
 
-    int z = dim.z/2;
+    int iz = dim.z/2;
     {
         ///conformal christoffel derivatives
         /*float dcGijk[3 * 3 * 6];
@@ -777,21 +777,21 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
             dcGijk[2 * 3 * 6 + i] = INTERMEDIATE_DIFFZ(christoffel[i]);
         }*/
 
-        float3 transform_pos = transform_position(x, y, z, dim, scale);
+        float3 transform_pos = transform_position(ix, iy, iz, dim, scale);
         float sponge_factor = sponge_damp_coeff(transform_pos.x, transform_pos.y, transform_pos.z, scale, dim, time);
 
         if(sponge_factor > 0)
         {
-            write_imagef(screen, (int2){x, y}, (float4)(sponge_factor, 0, 0, 1));
+            write_imagef(screen, (int2){ix, iy}, (float4)(sponge_factor, 0, 0, 1));
             return;
         }
 
-        struct intermediate_bssnok_data ik = temp_in[IDX(x, y, z)];
+        struct intermediate_bssnok_data ik = temp_in[IDX(ix, iy, iz)];
 
         ///reuses the evolve parameters
         float pv[TEMP_COUNT2] = {TEMPORARIES2};
 
-        int index = IDX(x, y, z);
+        int index = IDX(ix, iy, iz);
 
         //float curvature = scalar_curvature;
 
@@ -810,7 +810,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         max_scalar = max(ascalar, max_scalar);
     }
 
-    if(x == 125 && y == 125)
+    if(ix == 125 && iy == 125)
     {
         //printf("scalar %f\n", max_scalar);
     }
@@ -819,7 +819,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 
-    write_imagef(screen, (int2){x, y}, (float4){max_scalar, max_scalar, max_scalar, 1});
+    write_imagef(screen, (int2){ix, iy}, (float4){max_scalar, max_scalar, max_scalar, 1});
 }
 
 __kernel
@@ -828,23 +828,23 @@ void extract_waveform(__global float* cY0, __global float* cY1, __global float* 
                       __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
                      float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, int4 pos, __global float2* waveform_out)
 {
-    int x = get_global_id(0);
-    int y = get_global_id(1);
-    int z = get_global_id(2);
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
 
-    if(x >= dim.x || y >= dim.y || z >= dim.z)
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    if(x != pos.x || y != pos.y || z != pos.z)
+    if(ix != pos.x || iy != pos.y || iz != pos.z)
         return;
 
-    float3 offset = transform_position(x, y, z, dim, scale);
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
 
     /*float s = length(offset);
     float theta = acos(z / s);
     float phi = atan2(y, x);*/
 
-    struct intermediate_bssnok_data ik = temp_in[IDX(x, y, z)];
+    struct intermediate_bssnok_data ik = temp_in[IDX(ix, iy, iz)];
 
     float pv[TEMP_COUNT4] = {TEMPORARIES4};
 
@@ -856,7 +856,7 @@ void extract_waveform(__global float* cY0, __global float* cY1, __global float* 
         }
     }*/
 
-    int index = IDX(x,y,z);
+    int index = IDX(ix, iy, iz);
 
     printf("Scale %f\n", scale);
 
