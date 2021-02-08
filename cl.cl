@@ -151,7 +151,7 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
     float r2 = edge - 32 * scale;
     float r3 = edge;
 
-    float bulge_amount = 1;
+    float bulge_amount = 2;
 
     float r1b = r1 / bulge_amount;
     float r2b = r2;
@@ -177,6 +177,14 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
     }
 
     return diff * rad / len;
+}
+
+float get_distance(int x1, int y1, int z1, int x2, int y2, int z2, int4 dim, float scale)
+{
+    float3 d1 = transform_position(x1, y1, z1, dim, scale) * scale;
+    float3 d2 = transform_position(x2, y2, z2, dim, scale) * scale;
+
+    return fast_length(d2 - d1);
 }
 
 __kernel

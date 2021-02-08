@@ -606,7 +606,17 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
     ctx.pin(vars[1]);
 
     //value final_command = (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
-    value final_command = (vars[3] - vars[1]) / (2 * scale);
+    //value final_command = (vars[3] - vars[1]) / (2 * scale);
+
+    value final_command;
+
+    {
+        value h = "get_distance(ix,iy,iz," + xs[3] + "," + ys[3] + "," + zs[3] + ",dim,scale)";
+        value k = "get_distance(ix,iy,iz," + xs[1] + "," + ys[1] + "," + zs[1] + ",dim,scale)";
+
+        ///f(x + h) - f(x - k)
+        final_command = (vars[3] - vars[1]) / (h + k);
+    }
 
     if(pin)
     {
