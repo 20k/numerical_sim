@@ -80,11 +80,6 @@ struct intermediate_bssnok_data
     float dphi[3];
 };
 
-float finite_difference(float upper, float lower, float scale)
-{
-    return (upper - lower) / (2 * scale);
-}
-
 float r_to_phys(float r)
 {
     float a = 3;
@@ -100,22 +95,6 @@ float r_to_phys(float r)
 }
 
 #define IDX(i, j, k) ((k) * dim.x * dim.y + (j) * dim.x + (i))
-
-#define DIFFX(var) finite_difference(in[IDX(x+1, y, z)].var, in[IDX(x-1, y, z)].var, scale)
-#define DIFFY(var) finite_difference(in[IDX(x, y+1, z)].var, in[IDX(x, y-1, z)].var, scale)
-#define DIFFZ(var) finite_difference(in[IDX(x, y, z+1)].var, in[IDX(x, y, z-1)].var, scale)
-
-#define INTERMEDIATE_DIFFX(var) finite_difference(temp_in[IDX(x+1, y, z)].var, temp_in[IDX(x-1, y, z)].var, scale)
-#define INTERMEDIATE_DIFFY(var) finite_difference(temp_in[IDX(x, y+1, z)].var, temp_in[IDX(x, y-1, z)].var, scale)
-#define INTERMEDIATE_DIFFZ(var) finite_difference(temp_in[IDX(x, y, z+1)].var, temp_in[IDX(x, y, z-1)].var, scale)
-
-#define DIFFV(v) {DIFFX(v), DIFFY(v), DIFFZ(v)}
-
-#define DERIV_IDX(derivative_matrix, coordinate_idx, vector_idx) derivative_matrix[(coordinate_idx) * 3 + (vector_idx)]
-
-#define DIFFXI(v, i) DIFFX(v##i)
-#define DIFFYI(v, i) DIFFY(v##i)
-#define DIFFZI(v, i) DIFFZ(v##i)
 
 /*float3 transform_position(int x, int y, int z, int4 dim, float scale)
 {
