@@ -629,31 +629,58 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
 
     int index = IDX(ix, iy, iz);
 
-    ocY0[index] = cY0[index] + dtcYij0 * timestep;
-    ocY1[index] = cY1[index] + dtcYij1 * timestep;
-    ocY2[index] = cY2[index] + dtcYij2 * timestep;
-    ocY3[index] = cY3[index] + dtcYij3 * timestep;
-    ocY4[index] = cY4[index] + dtcYij4 * timestep;
-    ocY5[index] = cY5[index] + dtcYij5 * timestep;
+    float f_dtcYij0 = dtcYij0;
+    float f_dtcYij1 = dtcYij1;
+    float f_dtcYij2 = dtcYij2;
+    float f_dtcYij3 = dtcYij3;
+    float f_dtcYij4 = dtcYij4;
+    float f_dtcYij5 = dtcYij5;
 
-    ocA0[index] = cA0[index] + dtcAij0 * timestep;
-    ocA1[index] = cA1[index] + dtcAij1 * timestep;
-    ocA2[index] = cA2[index] + dtcAij2 * timestep;
-    ocA3[index] = cA3[index] + dtcAij3 * timestep;
-    ocA4[index] = cA4[index] + dtcAij4 * timestep;
-    ocA5[index] = cA5[index] + dtcAij5 * timestep;
+    float f_dtcAij0 = dtcAij0;
+    float f_dtcAij1 = dtcAij1;
+    float f_dtcAij2 = dtcAij2;
+    float f_dtcAij3 = dtcAij3;
+    float f_dtcAij4 = dtcAij4;
+    float f_dtcAij5 = dtcAij5;
 
-    ocGi0[index] = cGi0[index] + dtcGi0 * timestep;
-    ocGi1[index] = cGi1[index] + dtcGi1 * timestep;
-    ocGi2[index] = cGi2[index] + dtcGi2 * timestep;
+    float f_dtcGi0 = dtcGi0;
+    float f_dtcGi1 = dtcGi1;
+    float f_dtcGi2 = dtcGi2;
 
-    oK[index] = K[index] + dtK * timestep;
-    oX[index] = X[index] + dtX * timestep;
+    float f_dtK = dtK;
+    float f_dtX = dtX;
 
-    ogA[index] = gA[index] + dtgA * timestep;
-    ogB0[index] = gB0[index] + dtgB0 * timestep;
-    ogB1[index] = gB1[index] + dtgB1 * timestep;
-    ogB2[index] = gB2[index] + dtgB2 * timestep;
+    float f_dtgA = dtgA;
+    float f_dtgB0 = dtgB0;
+    float f_dtgB1 = dtgB1;
+    float f_dtgB2 = dtgB2;
+
+
+    ocY0[index] = cY0[index] + f_dtcYij0 * timestep;
+    ocY1[index] = cY1[index] + f_dtcYij1 * timestep;
+    ocY2[index] = cY2[index] + f_dtcYij2 * timestep;
+    ocY3[index] = cY3[index] + f_dtcYij3 * timestep;
+    ocY4[index] = cY4[index] + f_dtcYij4 * timestep;
+    ocY5[index] = cY5[index] + f_dtcYij5 * timestep;
+
+    ocA0[index] = cA0[index] + f_dtcAij0 * timestep;
+    ocA1[index] = cA1[index] + f_dtcAij1 * timestep;
+    ocA2[index] = cA2[index] + f_dtcAij2 * timestep;
+    ocA3[index] = cA3[index] + f_dtcAij3 * timestep;
+    ocA4[index] = cA4[index] + f_dtcAij4 * timestep;
+    ocA5[index] = cA5[index] + f_dtcAij5 * timestep;
+
+    ocGi0[index] = cGi0[index] + f_dtcGi0 * timestep;
+    ocGi1[index] = cGi1[index] + f_dtcGi1 * timestep;
+    ocGi2[index] = cGi2[index] + f_dtcGi2 * timestep;
+
+    oK[index] = K[index] + f_dtK * timestep;
+    oX[index] = X[index] + f_dtX * timestep;
+
+    ogA[index] = gA[index] + f_dtgA * timestep;
+    ogB0[index] = gB0[index] + f_dtgB0 * timestep;
+    ogB1[index] = gB1[index] + f_dtgB1 * timestep;
+    ogB2[index] = gB2[index] + f_dtgB2 * timestep;
 
     #ifdef USE_GBB
     my_out->gBB0 = v.gBB0 + dtgBB0 * timestep;
