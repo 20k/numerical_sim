@@ -147,8 +147,8 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
 
     float edge = max(max(dim.x, dim.y), dim.z) * scale / 2;
 
-    float r1 = 20.f;
-    float r2 = edge - 32 * scale;
+    float r1 = 10.f;
+    float r2 = edge - 64 * scale;
     float r3 = edge;
 
     float bulge_amount = 2;
@@ -574,7 +574,7 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
     }
 }
 
-#define NANCHECK(w) if(isnan(my_out->w)){printf("NAN " #w " %i %i %i\n", x, y, z); debug = true;}
+#define NANCHECK(w) if(isnan(w[index])){printf("NAN " #w " %i %i %i\n", ix, iy, iz); debug = true;}
 
 ///todo: need to correctly evolve boundaries
 ///todo: need to factor out the differentials
@@ -661,9 +661,9 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     my_out->gBB2 = v.gBB2 + dtgBB2 * timestep;
     #endif // USE_GBB
 
-    /*bool debug = false;
+    bool debug = false;
 
-    NANCHECK(cY0);
+    /*NANCHECK(cY0);
     NANCHECK(cY1);
     NANCHECK(cY2);
     NANCHECK(cY3);
@@ -686,7 +686,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     NANCHECK(gA);
     NANCHECK(gB0);
     NANCHECK(gB1);
-    NANCHECK(gB2);
+    NANCHECK(gB2);*/
 
     #ifdef USE_GBB
     NANCHECK(gBB0);
@@ -694,37 +694,40 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     NANCHECK(gBB2);
     #endif // USE_GBB*/
 
-    #if 0
+    #if 1
     //if(debug)
     //if(x == 5 && y == 6 && z == 4)
-    if(x == 125 && y == 100 && z == 125)
+    //if(ix == 125 && y == 100 && z == 125)
     //if(x == 125 && y == 125 && z == 125)
+    ///NAN cA0 111 188 111
+    ///the issue is the cGi term, again
+    if(ix == 111 && iy == 188 && iz == 111)
     {
         float scalar = scalar_curvature;
 
         printf("DtY0 %f\n", dtcYij0);
         printf("DtA0 %f\n", dtcAij0);
-        printf("Aij0 %f\n", v.cA0);
-        printf("Aij1 %f\n", v.cA1);
-        printf("Aij2 %f\n", v.cA2);
-        printf("Aij3 %f\n", v.cA3);
-        printf("Aij4 %f\n", v.cA4);
-        printf("Aij5 %f\n", v.cA5);
-        printf("Yij0 %f\n", v.cY0);
-        printf("Yij1 %f\n", v.cY1);
-        printf("Yij2 %f\n", v.cY2);
-        printf("Yij3 %f\n", v.cY3);
-        printf("Yij4 %f\n", v.cY4);
-        printf("Yij5 %f\n", v.cY5);
-        printf("cGi0 %f\n", v.cGi0);
-        printf("cGi1 %f\n", v.cGi1);
-        printf("cGi2 %f\n", v.cGi2);
-        printf("X %f\n", v.X);
-        printf("K %f\n", v.K);
-        printf("gA %f\n", v.gA);
-        printf("gB0 %f\n", v.gB0);
-        printf("gB1 %f\n", v.gB1);
-        printf("gB2 %f\n", v.gB2);
+        printf("Aij0 %f\n", cA0[index]);
+        printf("Aij1 %f\n", cA1[index]);
+        printf("Aij2 %f\n", cA2[index]);
+        printf("Aij3 %f\n", cA3[index]);
+        printf("Aij4 %f\n", cA4[index]);
+        printf("Aij5 %f\n", cA5[index]);
+        printf("Yij0 %f\n", cY0[index]);
+        printf("Yij1 %f\n", cY1[index]);
+        printf("Yij2 %f\n", cY2[index]);
+        printf("Yij3 %f\n", cY3[index]);
+        printf("Yij4 %f\n", cY4[index]);
+        printf("Yij5 %f\n", cY5[index]);
+        printf("cGi0 %f\n", cGi0[index]);
+        printf("cGi1 %f\n", cGi1[index]);
+        printf("cGi2 %f\n", cGi2[index]);
+        printf("X %f\n", X[index]);
+        printf("K %f\n", K[index]);
+        printf("gA %f\n", gA[index]);
+        printf("gB0 %f\n", gB0[index]);
+        printf("gB1 %f\n", gB1[index]);
+        printf("gB2 %f\n", gB2[index]);
         printf("Scalar %f\n", scalar);
 
         #ifdef debug_val
