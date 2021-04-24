@@ -10,6 +10,7 @@
 #include <geodesic/numerical.hpp>
 #include "legendre_weights.h"
 #include "legendre_nodes.h"
+#include <fstream>
 
 /**
 current paper set
@@ -3088,7 +3089,7 @@ void extract_waveforms(equation_context& ctx)
     //vec<4, dual_types::complex<value>> mu = (1.f/sqrt(2)) * (thetau + i * phiu);
 }
 
-float fisheye(float r)
+/*float fisheye(float r)
 {
     float a = 3;
     float r0 = 5.5f * 0.5f;
@@ -3102,7 +3103,7 @@ float fisheye(float r)
     float r_phys = r * (a + (1 - a) * R_r);
 
     return r_phys;
-}
+}*/
 
 int main()
 {
@@ -3130,9 +3131,9 @@ int main()
 
     opencl_context& clctx = *win.clctx;
 
-    std::string argument_string = "-O3 -cl-std=CL2.2 ";
+    std::string argument_string = "-O3 -cl-std=CL2.0 ";
 
-    vec3i size = {300, 300, 300};
+    vec3i size = {350, 350, 350};
     //vec3i size = {250, 250, 250};
     float c_at_max = 45;
     float scale = c_at_max / size.largest_elem();
@@ -3180,6 +3181,12 @@ int main()
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 
     std::cout << "ARGS " << argument_string << std::endl;
+
+    {
+        std::ofstream out("args.txt");
+        out << argument_string;
+    }
+
 
     cl::program prog(clctx.ctx, "cl.cl");
     prog.build(clctx.ctx, argument_string);

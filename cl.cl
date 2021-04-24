@@ -133,7 +133,7 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
 
     float3 diff = pos - centre;
 
-    //return diff;
+    return diff;
 
     float len = length(diff);
 
@@ -730,7 +730,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     ///the issue is the cGi term, again
     if(ix == 111 && iy == 188 && iz == 111)
     {
-        float scalar = scalar_curvature;
+        /*float scalar = scalar_curvature;
 
         printf("DtY0 %f\n", dtcYij0);
         printf("DtA0 %f\n", dtcAij0);
@@ -755,12 +755,13 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         printf("gB0 %f\n", gB0[index]);
         printf("gB1 %f\n", gB1[index]);
         printf("gB2 %f\n", gB2[index]);
-        printf("Scalar %f\n", scalar);
+        printf("Scalar %f\n", scalar);*/
 
-        #ifdef debug_val
+        /*#ifdef debug_val
         float dbg = debug_val;
         printf("Debug %f\n", debug_val);
         #endif // debug_val
+        */
 
         /*float d0 = debug_val0;
         float d1 = debug_val1;
@@ -848,16 +849,17 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         max_scalar = max(ascalar, max_scalar);
     }
 
-    if(ix == 125 && iy == 125)
+    /*if(ix == 125 && iy == 125)
     {
-        //printf("scalar %f\n", max_scalar);
-    }
+        printf("scalar %f\n", max_scalar);
+    }*/
 
     max_scalar = max_scalar * 10;
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 
     write_imagef(screen, (int2){ix, iy}, (float4){max_scalar, max_scalar, max_scalar, 1});
+    //write_imagef(screen, (int2){ix, iy}, (float4){max_scalar, max_scalar, max_scalar, 1});
 }
 
 __kernel
