@@ -574,6 +574,13 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
     }
 }
 
+float3 srgb_to_lin(float3 C_srgb)
+{
+    return  0.012522878f * C_srgb +
+            0.682171111f * C_srgb * C_srgb +
+            0.305306011f * C_srgb * C_srgb * C_srgb;
+}
+
 #define NANCHECK(w) if(isnan(w[index])){printf("NAN " #w " %i %i %i\n", ix, iy, iz); debug = true;}
 
 ///todo: need to correctly evolve boundaries
@@ -858,7 +865,11 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 
-    write_imagef(screen, (int2){ix, iy}, (float4){max_scalar, max_scalar, max_scalar, 1});
+    float3 col = {max_scalar, max_scalar, max_scalar};
+
+    float3 lin_col = srgb_to_lin(col);
+
+    write_imagef(screen, (int2){ix, iy}, (float4)(lin_col.xyz, 1));
     //write_imagef(screen, (int2){ix, iy}, (float4){max_scalar, max_scalar, max_scalar, 1});
 }
 

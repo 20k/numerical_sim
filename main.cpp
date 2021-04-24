@@ -3125,6 +3125,7 @@ int main()
     sett.height = height;
     sett.opencl = true;
     sett.no_double_buffer = true;
+    sett.is_srgb = true;
 
     render_window win(sett, "Geodesics");
 
