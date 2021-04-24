@@ -11,6 +11,7 @@
 #include "legendre_weights.h"
 #include "legendre_nodes.h"
 #include <fstream>
+#include <imgui/misc/freetype/imgui_freetype.h>
 
 /**
 current paper set
@@ -3129,6 +3130,18 @@ int main()
 
     assert(win.clctx);
 
+    ImFontAtlas* atlas = ImGui::GetIO().Fonts;
+    atlas->FontBuilderFlags = ImGuiFreeTypeBuilderFlags_LCD | ImGuiFreeTypeBuilderFlags_FILTER_DEFAULT | ImGuiFreeTypeBuilderFlags_LoadColor;
+
+    ImFontConfig font_cfg;
+    font_cfg.GlyphExtraSpacing = ImVec2(0, 0);
+    font_cfg.FontBuilderFlags = ImGuiFreeTypeBuilderFlags_LCD | ImGuiFreeTypeBuilderFlags_FILTER_DEFAULT | ImGuiFreeTypeBuilderFlags_LoadColor;
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    io.Fonts->Clear();
+    io.Fonts->AddFontFromFileTTF("VeraMono.ttf", 14, &font_cfg);
+
     opencl_context& clctx = *win.clctx;
 
     std::string argument_string = "-O3 -cl-std=CL2.0 ";
@@ -3421,7 +3434,7 @@ int main()
 
         if(step)
         {
-            float timestep = 0.01;
+            float timestep = 0.001;
 
             if(steps < 10)
                 timestep = 0.001;
