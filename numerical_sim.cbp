@@ -94,12 +94,14 @@
 			<Add option="-l:libboost_context-mt.a" />
 			<Add option="-lbacktrace" />
 			<Add option="-lopencl" />
+			<Add option="-lImm32" />
 		</Linker>
 		<Unit filename="cl.cl" />
-		<Unit filename="deps/imgui/examples/imgui_impl_glfw.cpp" />
-		<Unit filename="deps/imgui/examples/imgui_impl_opengl3.cpp" />
+		<Unit filename="deps/imgui/backends/imgui_impl_glfw.cpp" />
+		<Unit filename="deps/imgui/backends/imgui_impl_opengl3.cpp" />
 		<Unit filename="deps/imgui/imgui.cpp" />
 		<Unit filename="deps/imgui/imgui_draw.cpp" />
+		<Unit filename="deps/imgui/imgui_tables.cpp" />
 		<Unit filename="deps/imgui/imgui_widgets.cpp" />
 		<Unit filename="deps/imgui/misc/freetype/imgui_freetype.cpp" />
 		<Unit filename="deps/toolkit/base_serialisables.cpp" />

@@ -3197,6 +3197,7 @@ int main()
     tsett.width = width;
     tsett.height = height;
     tsett.is_srgb = false;
+    tsett.generate_mipmaps = false;
 
     std::array<texture, 2> tex;
     tex[0].load_from_memory(tsett, nullptr);
