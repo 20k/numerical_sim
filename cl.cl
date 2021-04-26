@@ -828,7 +828,9 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
 
         if(sponge_factor > 0)
         {
-            write_imagef(screen, (int2){ix, iy}, (float4)(sponge_factor, 0, 0, 1));
+            float3 sponge_col = {sponge_factor, 0, 0};
+
+            write_imagef(screen, (int2){ix, iy}, (float4)(srgb_to_lin(sponge_col), 1));
             return;
         }
 
@@ -925,4 +927,25 @@ void extract_waveform(__global float* cY0, __global float* cY1, __global float* 
     #ifdef w4_debugi
     printf("Debugw4i %f\n", w4_debugi);
     #endif // w4_debug
+}
+
+struct lightray
+{
+    float3 x;
+    float3 V;
+    float T;
+};
+
+__kernel
+void init_rays(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+               __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
+               __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
+            float scale, __global struct intermediate_bssnok_data* temp_in, __global struct lightray* rays, float3 camera_pos, float4 camera_quat,
+            float width, float height)
+{
+    int x = get_global_id(0);
+    int y = get_global_id(1);
+
+    if(x >= get_image_width(screen) || y >= get_image_height(screen))
+        return;
 }

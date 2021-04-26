@@ -67,6 +67,15 @@ https://arxiv.org/pdf/1906.03877.pdf - spherical harmonics
 
 */
 
+///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
+///38.2
+struct lightray
+{
+    cl_float3 x; ///position?
+    cl_float3 V; ///lower i, this is some sort of spatial component
+    cl_float T; ///proper time
+};
+
 struct intermediate_bssnok_data
 {
     cl_float dcYij[3 * 6];
@@ -693,6 +702,25 @@ tensor<value, 3> raise_index(const tensor<value, 3>& mT, const metric<value, 3, 
         for(int j=0; j < 3; j++)
         {
             sum = sum + inverse.idx(i, j) * mT.idx(j);
+        }
+
+        ret.idx(i) = sum;
+    }
+
+    return ret;
+}
+
+tensor<value, 3> lower_index(const tensor<value, 3>& mT, const metric<value, 3, 3>& met)
+{
+    tensor<value, 3> ret;
+
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            sum = sum + met.idx(i, j) * mT.idx(j);
         }
 
         ret.idx(i) = sum;
@@ -3088,6 +3116,90 @@ void extract_waveforms(equation_context& ctx)
     //ctx.add("w4_debugi", mu.idx(1).imaginary);
 
     //vec<4, dual_types::complex<value>> mu = (1.f/sqrt(2)) * (thetau + i * phiu);
+}
+
+metric<value, 4, 4> calculate_real_metric(const metric<value, 3, 3>& adm, const value& gA, const tensor<value, 3>& gB)
+{
+    tensor<value, 3> lower_gB = lower_index(gB, adm);
+
+    metric<value, 4, 4> ret;
+
+    value gB_sum = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        gB_sum = gB_sum + lower_gB.idx(i) * gB.idx(i);
+    }
+
+    ///https://arxiv.org/pdf/gr-qc/0703035.pdf 4.43
+    ret.idx(0, 0) = -gA * gA + gB_sum;
+
+    ///latin indices really run from 1-4
+    for(int i=1; i < 4; i++)
+    {
+        ///https://arxiv.org/pdf/gr-qc/0703035.pdf 4.45
+        ret.idx(i, 0) = lower_gB.idx(i - 1);
+        ret.idx(0, i) = ret.idx(i, 0); ///symmetry
+    }
+
+    for(int i=1; i < 4; i++)
+    {
+        for(int j=1; j < 4; j++)
+        {
+            ret.idx(i, j) = adm.idx(i - 1, j - 1);
+        }
+    }
+
+    return ret;
+}
+
+void init_geodesics(equation_context& ctx)
+{
+    vec<3, value> camera;
+    camera.x().make_value("camera_pos.x");
+    camera.y().make_value("camera_pos.y");
+    camera.z().make_value("camera_pos.z");
+
+    quaternion_base<value> camera_quat;
+    camera_quat.q.x().make_value("camera_quat.x");
+    camera_quat.q.y().make_value("camera_quat.y");
+    camera_quat.q.z().make_value("camera_quat.z");
+    camera_quat.q.w().make_value("camera_quat.w");
+
+    value width, height;
+    width.make_value("width");
+    height.make_value("height");
+
+    value cx, cy;
+    cx.make_value("x");
+    cy.make_value("y");
+
+    float FOV = 90;
+
+    float fov_rad = (FOV / 360.f) * 2 * M_PI;
+
+    value nonphysical_plane_half_width = width/2;
+    value nonphysical_f_stop = nonphysical_plane_half_width / tan(fov_rad/2);
+
+    vec<3, value> pixel_direction = {cx - width/2, cy - height/2, nonphysical_f_stop};
+}
+
+void render_geodesics(equation_context& ctx)
+{
+    value gA;
+    gA.make_value("gA[IDX(ix,iy,iz)]");
+
+    tensor<value, 3> gB;
+    gB.idx(0).make_value("gB0[IDX(ix,iy,iz)]");
+    gB.idx(1).make_value("gB1[IDX(ix,iy,iz)]");
+    gB.idx(2).make_value("gB2[IDX(ix,iy,iz)]");
+
+    tensor<value, 4> nmU;
+    nmU.idx(0) = 1/gA;
+    nmU.idx(1) = -gB.idx(0);
+    nmU.idx(2) = -gB.idx(1);
+    nmU.idx(3) = -gB.idx(2);
+
 }
 
 /*float fisheye(float r)
