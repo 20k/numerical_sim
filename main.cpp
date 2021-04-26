@@ -690,16 +690,16 @@ tensor<value, 3, 3> raise_index(const tensor<value, 3, 3>& mT, const metric<valu
     return ret;
 }
 
-
-tensor<value, 3> raise_index(const tensor<value, 3>& mT, const metric<value, 3, 3>& met, const inverse_metric<value, 3, 3>& inverse)
+template<int N>
+tensor<value, N> raise_index(const tensor<value, N>& mT, const metric<value, N, N>& met, const inverse_metric<value, N, N>& inverse)
 {
-    tensor<value, 3> ret;
+    tensor<value, N> ret;
 
-    for(int i=0; i < 3; i++)
+    for(int i=0; i < N; i++)
     {
         value sum = 0;
 
-        for(int j=0; j < 3; j++)
+        for(int j=0; j < N; j++)
         {
             sum = sum + inverse.idx(i, j) * mT.idx(j);
         }
@@ -710,15 +710,16 @@ tensor<value, 3> raise_index(const tensor<value, 3>& mT, const metric<value, 3, 
     return ret;
 }
 
-tensor<value, 3> lower_index(const tensor<value, 3>& mT, const metric<value, 3, 3>& met)
+template<int N>
+tensor<value, N> lower_index(const tensor<value, N>& mT, const metric<value, N, N>& met)
 {
-    tensor<value, 3> ret;
+    tensor<value, N> ret;
 
-    for(int i=0; i < 3; i++)
+    for(int i=0; i < N; i++)
     {
         value sum = 0;
 
-        for(int j=0; j < 3; j++)
+        for(int j=0; j < N; j++)
         {
             sum = sum + met.idx(i, j) * mT.idx(j);
         }
@@ -3149,6 +3150,97 @@ metric<value, 4, 4> calculate_real_metric(const metric<value, 3, 3>& adm, const 
             ret.idx(i, j) = adm.idx(i - 1, j - 1);
         }
     }
+
+    return ret;
+}
+
+struct frame_basis
+{
+    vec<4, value> v1;
+    vec<4, value> v2;
+    vec<4, value> v3;
+    vec<4, value> v4;
+};
+
+
+value dot_product(const vec<4, value>& u, const vec<4, value>& v, const metric<value, 4, 4>& met)
+{
+    tensor<value, 4> as_tensor;
+
+    for(int i=0; i < 4; i++)
+    {
+        as_tensor.idx(i) = u[i];
+    }
+
+    auto lowered_as_tensor = lower_index(as_tensor, met);
+
+    vec<4, value> lowered = {lowered_as_tensor.idx(0), lowered_as_tensor.idx(1), lowered_as_tensor.idx(2), lowered_as_tensor.idx(3)};
+
+    return dot(lowered, v);
+}
+
+vec<4, value> gram_proj(const vec<4, value>& u, const vec<4, value>& v, const metric<value, 4, 4>& met)
+{
+    value top = dot_product(u, v, met);
+    value bottom = dot_product(u, u, met);
+
+    return (top / bottom) * u;
+}
+
+
+vec<4, value> normalize_big_metric(const vec<4, value>& in, const metric<value, 4, 4>& met)
+{
+    value dot = dot_product(in, in, met);
+
+    return in / sqrt(fabs(dot));
+}
+
+frame_basis calculate_frame_basis(const metric<value, 4, 4>& met)
+{
+    tensor<value, 4> ti1 = {met.idx(0, 0), met.idx(0, 1), met.idx(0, 2), met.idx(0, 3)};
+    tensor<value, 4> ti2 = {met.idx(0, 1), met.idx(1, 1), met.idx(1, 2), met.idx(1, 3)};
+    tensor<value, 4> ti3 = {met.idx(0, 2), met.idx(1, 2), met.idx(2, 2), met.idx(2, 3)};
+    tensor<value, 4> ti4 = {met.idx(0, 3), met.idx(1, 3), met.idx(2, 3), met.idx(3, 3)};
+
+    ti1 = raise_index(ti1, met, met.invert());
+    ti2 = raise_index(ti2, met, met.invert());
+    ti3 = raise_index(ti3, met, met.invert());
+    ti4 = raise_index(ti4, met, met.invert());
+
+    vec<4, value> i1 = {ti1.idx(0), ti1.idx(1), ti1.idx(2), ti1.idx(3)};
+    vec<4, value> i2 = {ti2.idx(0), ti2.idx(1), ti2.idx(2), ti2.idx(3)};
+    vec<4, value> i3 = {ti3.idx(0), ti3.idx(1), ti3.idx(2), ti3.idx(3)};
+    vec<4, value> i4 = {ti4.idx(0), ti4.idx(1), ti4.idx(2), ti4.idx(3)};
+
+    vec<4, value> u1 = i1;
+
+    vec<4, value> u2 = i2;
+    u2 = u2 - gram_proj(u1, u2, met);
+
+    vec<4, value> u3 = i3;
+    u3 = u3 - gram_proj(u1, u3, met);
+    u3 = u3 - gram_proj(u2, u3, met);
+
+    vec<4, value> u4 = i4;
+    u4 = u4 - gram_proj(u1, u4, met);
+    u4 = u4 - gram_proj(u2, u4, met);
+    u4 = u4 - gram_proj(u3, u4, met);
+
+    u1 = u1.norm();
+    u2 = u2.norm();
+    u3 = u3.norm();
+    u4 = u4.norm();
+
+    u1 = normalize_big_metric(u1, met);
+    u2 = normalize_big_metric(u2, met);
+    u3 = normalize_big_metric(u3, met);
+    u4 = normalize_big_metric(u4, met);
+
+    struct frame_basis ret;
+    ret.v1 = u1;
+    ret.v2 = u2;
+    ret.v3 = u3;
+    ret.v4 = u4;
 
     return ret;
 }
