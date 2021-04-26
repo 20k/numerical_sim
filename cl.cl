@@ -941,11 +941,27 @@ void init_rays(__global float* cY0, __global float* cY1, __global float* cY2, __
                __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
             float scale, __global struct intermediate_bssnok_data* temp_in, __global struct lightray* rays, float3 camera_pos, float4 camera_quat,
-            float width, float height)
+            float width, float height, int4 dim)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
 
-    if(x >= get_image_width(screen) || y >= get_image_height(screen))
+    if(x >= width)
         return;
+
+    if(y >= height)
+        return;
+
+    ///ray location
+
+    float3 pos = camera_pos - (float3){dim.x, dim.y, dim.z}/2.f;
+
+    pos = clamp(pos, (float3)(0,0,0), (float3)(dim.x, dim.y, dim.z) - 1);
+
+    ///temporary while i don't do interpolation
+    float3 fipos = round(pos);
+
+    int ix = fipos.x;
+    int iy = fipos.y;
+    int iz = fipos.z;
 }

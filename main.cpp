@@ -3155,6 +3155,33 @@ metric<value, 4, 4> calculate_real_metric(const metric<value, 3, 3>& adm, const 
 
 void init_geodesics(equation_context& ctx)
 {
+    value gA;
+    gA.make_value("gA[IDX(ix,iy,iz)]");
+
+    tensor<value, 3> gB;
+    gB.idx(0).make_value("gB0[IDX(ix,iy,iz)]");
+    gB.idx(1).make_value("gB1[IDX(ix,iy,iz)]");
+    gB.idx(2).make_value("gB2[IDX(ix,iy,iz)]");
+
+    unit_metric<value, 3, 3> cY;
+
+    cY.idx(0, 0).make_value("cY0[IDX(ix,iy,iz)]"); cY.idx(0, 1).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(0, 2).make_value("cY2[IDX(ix,iy,iz)]");
+    cY.idx(1, 0).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(1, 1).make_value("cY3[IDX(ix,iy,iz)]"); cY.idx(1, 2).make_value("cY4[IDX(ix,iy,iz)]");
+    cY.idx(2, 0).make_value("cY2[IDX(ix,iy,iz)]"); cY.idx(2, 1).make_value("cY4[IDX(ix,iy,iz)]"); cY.idx(2, 2).make_value("cY5[IDX(ix,iy,iz)]");
+
+    value X;
+    X.make_value("X[IDX(ix,iy,iz)]");
+
+    metric<value, 3, 3> Yij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            Yij.idx(i, j) = cY.idx(i, j) / X;
+        }
+    }
+
     vec<3, value> camera;
     camera.x().make_value("camera_pos.x");
     camera.y().make_value("camera_pos.y");
@@ -3182,6 +3209,8 @@ void init_geodesics(equation_context& ctx)
     value nonphysical_f_stop = nonphysical_plane_half_width / tan(fov_rad/2);
 
     vec<3, value> pixel_direction = {cx - width/2, cy - height/2, nonphysical_f_stop};
+
+    metric<value, 4, 4> real_metric = calculate_real_metric(Yij, gA, gB);
 }
 
 void render_geodesics(equation_context& ctx)
