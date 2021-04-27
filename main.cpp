@@ -201,6 +201,15 @@ struct equation_context
     }
 
     template<typename T, int N>
+    void pin(vec<N, T>& mT)
+    {
+        for(int i=0; i < N; i++)
+        {
+            pin(mT[i]);
+        }
+    }
+
+    template<typename T, int N>
     void pin(tensor<T, N, N>& mT)
     {
         for(int i=0; i < N; i++)
@@ -3162,7 +3171,6 @@ struct frame_basis
     vec<4, value> v4;
 };
 
-
 value dot_product(const vec<4, value>& u, const vec<4, value>& v, const metric<value, 4, 4>& met)
 {
     tensor<value, 4> as_tensor;
@@ -3182,11 +3190,11 @@ value dot_product(const vec<4, value>& u, const vec<4, value>& v, const metric<v
 vec<4, value> gram_proj(const vec<4, value>& u, const vec<4, value>& v, const metric<value, 4, 4>& met)
 {
     value top = dot_product(u, v, met);
+
     value bottom = dot_product(u, u, met);
 
     return (top / bottom) * u;
 }
-
 
 vec<4, value> normalize_big_metric(const vec<4, value>& in, const metric<value, 4, 4>& met)
 {
@@ -3195,7 +3203,7 @@ vec<4, value> normalize_big_metric(const vec<4, value>& in, const metric<value, 
     return in / sqrt(fabs(dot));
 }
 
-frame_basis calculate_frame_basis(const metric<value, 4, 4>& met)
+frame_basis calculate_frame_basis(equation_context& ctx, const metric<value, 4, 4>& met)
 {
     tensor<value, 4> ti1 = {met.idx(0, 0), met.idx(0, 1), met.idx(0, 2), met.idx(0, 3)};
     tensor<value, 4> ti2 = {met.idx(0, 1), met.idx(1, 1), met.idx(1, 2), met.idx(1, 3)};
@@ -3217,14 +3225,20 @@ frame_basis calculate_frame_basis(const metric<value, 4, 4>& met)
     vec<4, value> u2 = i2;
     u2 = u2 - gram_proj(u1, u2, met);
 
+    ctx.pin(u2);
+
     vec<4, value> u3 = i3;
     u3 = u3 - gram_proj(u1, u3, met);
     u3 = u3 - gram_proj(u2, u3, met);
+
+    ctx.pin(u3);
 
     vec<4, value> u4 = i4;
     u4 = u4 - gram_proj(u1, u4, met);
     u4 = u4 - gram_proj(u2, u4, met);
     u4 = u4 - gram_proj(u3, u4, met);
+
+    ctx.pin(u4);
 
     u1 = u1.norm();
     u2 = u2.norm();
@@ -3236,7 +3250,7 @@ frame_basis calculate_frame_basis(const metric<value, 4, 4>& met)
     u3 = normalize_big_metric(u3, met);
     u4 = normalize_big_metric(u4, met);
 
-    struct frame_basis ret;
+    frame_basis ret;
     ret.v1 = u1;
     ret.v2 = u2;
     ret.v3 = u3;
@@ -3245,7 +3259,7 @@ frame_basis calculate_frame_basis(const metric<value, 4, 4>& met)
     return ret;
 }
 
-void init_geodesics(equation_context& ctx)
+void process_geodesics(equation_context& ctx)
 {
     value gA;
     gA.make_value("gA[IDX(ix,iy,iz)]");
@@ -3304,7 +3318,9 @@ void init_geodesics(equation_context& ctx)
 
     metric<value, 4, 4> real_metric = calculate_real_metric(Yij, gA, gB);
 
-    frame_basis basis = calculate_frame_basis(real_metric);
+    ctx.pin(real_metric);
+
+    frame_basis basis = calculate_frame_basis(ctx, real_metric);
 
     vec<4, value> basis_x = basis.v3;
     vec<4, value> basis_y = basis.v4;
@@ -3319,9 +3335,22 @@ void init_geodesics(equation_context& ctx)
 
     vec<4, value> lightray_velocity = pixel_x + pixel_y + pixel_z + pixel_t;
     vec<4, value> lightray_position = {0, camera.x(), camera.y(), camera.z()};
+
+    ctx.add("lv0", lightray_velocity.x());
+    ctx.add("lv1", lightray_velocity.y());
+    ctx.add("lv2", lightray_velocity.z());
+    ctx.add("lv3", lightray_velocity.w());
+
+    ctx.add("lp0", lightray_position.x());
+    ctx.add("lp1", lightray_position.y());
+    ctx.add("lp2", lightray_position.z());
+    ctx.add("lp3", lightray_position.w());
+
+    vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
+    vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
 }
 
-void render_geodesics(equation_context& ctx)
+/*void render_geodesics(equation_context& ctx)
 {
     value gA;
     gA.make_value("gA[IDX(ix,iy,iz)]");
@@ -3337,7 +3366,7 @@ void render_geodesics(equation_context& ctx)
     nmU.idx(2) = -gB.idx(1);
     nmU.idx(3) = -gB.idx(2);
 
-}
+}*/
 
 /*float fisheye(float r)
 {
@@ -3417,6 +3446,9 @@ int main()
     equation_context ctx5;
     extract_waveforms(ctx5);
 
+    equation_context ctx6;
+    process_geodesics(ctx6);
+
     /*for(auto& i : ctx.values)
     {
         std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
@@ -3440,6 +3472,7 @@ int main()
     ctx3.build(argument_string, 2);
     ctx4.build(argument_string, 3);
     ctx5.build(argument_string, 4);
+    ctx6.build(argument_string, 5);
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 
