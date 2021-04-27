@@ -3336,15 +3336,15 @@ void process_geodesics(equation_context& ctx)
     vec<4, value> lightray_velocity = pixel_x + pixel_y + pixel_z + pixel_t;
     vec<4, value> lightray_position = {0, camera.x(), camera.y(), camera.z()};
 
-    ctx.add("lv0", lightray_velocity.x());
-    ctx.add("lv1", lightray_velocity.y());
-    ctx.add("lv2", lightray_velocity.z());
-    ctx.add("lv3", lightray_velocity.w());
+    ctx.add("lv0_d", lightray_velocity.x());
+    ctx.add("lv1_d", lightray_velocity.y());
+    ctx.add("lv2_d", lightray_velocity.z());
+    ctx.add("lv3_d", lightray_velocity.w());
 
-    ctx.add("lp0", lightray_position.x());
-    ctx.add("lp1", lightray_position.y());
-    ctx.add("lp2", lightray_position.z());
-    ctx.add("lp3", lightray_position.w());
+    ctx.add("lp0_d", lightray_position.x());
+    ctx.add("lp1_d", lightray_position.y());
+    ctx.add("lp2_d", lightray_position.z());
+    ctx.add("lp3_d", lightray_position.w());
 
     vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
     vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};

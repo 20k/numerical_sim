@@ -994,4 +994,16 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
     int ix = fipos.x;
     int iy = fipos.y;
     int iz = fipos.z;
+
+    float pv[TEMP_COUNT5] = {TEMPORARIES5};
+
+    float lv0 = lv0_d;
+    float lv1 = lv1_d;
+    float lv2 = lv2_d;
+    float lv3 = lv3_d;
+
+    float lp0 = lp0_d;
+    float lp1 = lp1_d;
+    float lp2 = lp2_d;
+    float lp3 = lp3_d;
 }
