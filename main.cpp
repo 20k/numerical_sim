@@ -3303,6 +3303,22 @@ void init_geodesics(equation_context& ctx)
     vec<3, value> pixel_direction = {cx - width/2, cy - height/2, nonphysical_f_stop};
 
     metric<value, 4, 4> real_metric = calculate_real_metric(Yij, gA, gB);
+
+    frame_basis basis = calculate_frame_basis(real_metric);
+
+    vec<4, value> basis_x = basis.v3;
+    vec<4, value> basis_y = basis.v4;
+    vec<4, value> basis_z = basis.v2;
+
+    pixel_direction = pixel_direction.norm();
+
+    vec<4, value> pixel_x = pixel_direction.x() * basis_x;
+    vec<4, value> pixel_y = pixel_direction.y() * basis_y;
+    vec<4, value> pixel_z = pixel_direction.z() * basis_z;
+    vec<4, value> pixel_t = -basis.v1;
+
+    vec<4, value> lightray_velocity = pixel_x + pixel_y + pixel_z + pixel_t;
+    vec<4, value> lightray_position = {0, camera.x(), camera.y(), camera.z()};
 }
 
 void render_geodesics(equation_context& ctx)
