@@ -3259,6 +3259,45 @@ frame_basis calculate_frame_basis(equation_context& ctx, const metric<value, 4, 
     return ret;
 }
 
+struct standard_arguments
+{
+    value gA;
+    tensor<value, 3> gB;
+
+    unit_metric<value, 3, 3> cY;
+    value X;
+
+    metric<value, 3, 3> Yij;
+
+    standard_arguments()
+    {
+        gA.make_value("gA[IDX(ix,iy,iz)]");
+
+        gB.idx(0).make_value("gB0[IDX(ix,iy,iz)]");
+        gB.idx(1).make_value("gB1[IDX(ix,iy,iz)]");
+        gB.idx(2).make_value("gB2[IDX(ix,iy,iz)]");
+
+        cY.idx(0, 0).make_value("cY0[IDX(ix,iy,iz)]"); cY.idx(0, 1).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(0, 2).make_value("cY2[IDX(ix,iy,iz)]");
+        cY.idx(1, 0).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(1, 1).make_value("cY3[IDX(ix,iy,iz)]"); cY.idx(1, 2).make_value("cY4[IDX(ix,iy,iz)]");
+        cY.idx(2, 0).make_value("cY2[IDX(ix,iy,iz)]"); cY.idx(2, 1).make_value("cY4[IDX(ix,iy,iz)]"); cY.idx(2, 2).make_value("cY5[IDX(ix,iy,iz)]");
+
+        X.make_value("X[IDX(ix,iy,iz)]");
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                Yij.idx(i, j) = cY.idx(i, j) / X;
+            }
+        }
+    }
+};
+
+tensor<value, 4> get_adm_hypersurface_normal(const value& gA, const tensor<value, 3>& gB)
+{
+    return {1/gA, -gB.idx(0)/gA, -gB.idx(1)/gA, -gB.idx(2)/gA};
+}
+
 void process_geodesics(equation_context& ctx)
 {
     value gA;
@@ -3316,6 +3355,8 @@ void process_geodesics(equation_context& ctx)
 
     vec<3, value> pixel_direction = {cx - width/2, cy - height/2, nonphysical_f_stop};
 
+    pixel_direction = rot_quat(pixel_direction, camera_quat);
+
     metric<value, 4, 4> real_metric = calculate_real_metric(Yij, gA, gB);
 
     ctx.pin(real_metric);
@@ -3346,8 +3387,167 @@ void process_geodesics(equation_context& ctx)
     ctx.add("lp2_d", lightray_position.z());
     ctx.add("lp3_d", lightray_position.w());
 
+    tensor<value, 4> lightray_velocity_t = {lightray_velocity.x(), lightray_velocity.y(), lightray_velocity.z(), lightray_velocity.w()};
+
+    tensor<value, 4> velocity_lower = lower_index(lightray_velocity_t, real_metric);
+
+    tensor<value, 3> adm_V_lower = {velocity_lower.idx(1), velocity_lower.idx(2), velocity_lower.idx(3)};
+
+    tensor<value, 3> adm_V_higher = raise_index(adm_V_lower, Yij, Yij.invert());
+
+    ctx.add("V0_d", adm_V_higher.idx(0));
+    ctx.add("V1_d", adm_V_higher.idx(1));
+    ctx.add("V2_d", adm_V_higher.idx(2));
+
+    /*vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
+    vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
+
+    float step = 0.01;
+
+    vec<4, value> ipos = {"(int)round(lpv0)", "(int)round(lpv1)", "(int)round(lpv2)", "(int)round(lpv3)"};
+
+    float universe_length = (dim/2.f).max_elem();
+
+    ctx.pin("universe_size", universe_length);*/
+}
+
+void loop_geodesics(equation_context& ctx, vec3f dim)
+{
+    standard_arguments args;
+
+    //ctx.pin(args.Yij);
+
+    ///upper index, aka contravariant
     vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
     vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
+
+    tensor<value, 3, 3> digB;
+
+    ///derivative
+    for(int i=0; i < 3; i++)
+    {
+        ///index
+        for(int j=0; j < 3; j++)
+        {
+            digB.idx(i, j) = hacky_differentiate(ctx, args.gB.idx(j), i);
+        }
+    }
+
+    tensor<value, 3> digA;
+
+    for(int i=0; i < 3; i++)
+    {
+        digA.idx(i) = hacky_differentiate(ctx, args.gA, i);
+    }
+
+    float step = 0.01;
+
+    vec<4, value> ipos = {"(int)round(lpv0)", "(int)round(lpv1)", "(int)round(lpv2)", "(int)round(lpv3)"};
+
+    float universe_length = (dim/2.f).max_elem();
+
+    ctx.add("universe_size", universe_length);
+
+    tensor<value, 3> X_upper = {"lp1", "lp2", "lp3"};
+
+    tensor<value, 3> V_upper = {"V0", "V1", "V2"};
+    tensor<value, 3> V_lower = lower_index(V_upper, args.Yij);
+
+    ctx.pin(V_lower);
+
+    value WH;
+
+    {
+        value WH_sum_inner = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                WH_sum_inner += V_upper.idx(i) * V_upper.idx(j) * args.Yij.idx(i, j);
+            }
+        }
+
+        WH = sqrt(1 + WH_sum_inner);
+    }
+
+    ctx.pin(WH);
+
+    tensor<value, 3> dx;
+
+    for(int i=0; i < 3; i++)
+    {
+        dx.idx(i) = -args.gB.idx(i) + (args.gA / WH) * V_upper.idx(i);
+    }
+
+    value dTdt = args.gA / WH;
+
+    tensor<value, 3> dVi_l;
+
+    for(int i=0; i < 3; i++)
+    {
+        value p1 = -WH * digA.idx(i);
+
+        value p2 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            p2 += V_lower.idx(j) * digB.idx(i, j);
+        }
+
+        value p3 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                p3 += 0.5f * V_upper.idx(j) * V_upper.idx(k) * hacky_differentiate(ctx, args.Yij.idx(j, k), i);
+            }
+        }
+
+        dVi_l.idx(i) = p1 + p2 + p3;
+    }
+
+    tensor<value, 3> V_lower_next;
+    //tensor<value, 3> V_lower_next = V_lower + dVi_l * step;
+
+    for(int i=0; i < 3; i++)
+    {
+        V_lower_next.idx(i) = V_lower.idx(i) + dVi_l.idx(i) * step;
+    }
+
+    tensor<value, 3> V_upper_next = raise_index(V_lower_next, args.Yij, args.Yij.invert());
+
+    ctx.add("V0N_d", V_upper_next.idx(0));
+    ctx.add("V1N_d", V_upper_next.idx(1));
+    ctx.add("V2N_d", V_upper_next.idx(2));
+
+    tensor<value, 3> X_next;
+
+    for(int i=0; i < 3; i++)
+    {
+        X_next.idx(i) = X_upper.idx(i) + dx.idx(i);
+    }
+
+    //ctx.add("DTN", )
+
+    ctx.add("X0N_d", X_next.idx(0));
+    ctx.add("X1N_d", X_next.idx(1));
+    ctx.add("X2N_d", X_next.idx(2));
+
+    /**
+    [tt, tx, ty, tz,
+    xt, xx, xy, xz,
+    yt, yx, yy, yz,
+    zt, zx, zy, zz,] //???
+    */
+
+    //metric<value, 4, 4> real_metric = calculate_real_metric(Yij, gA, gB);
+    ///calculate metric partial derivatives, with a time pd of 0
+
+    //tensor<value, 4> adm_normal = get_adm_hypersurface_normal(args.gA, args.gB);
+
+    ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.81
 }
 
 /*void render_geodesics(equation_context& ctx)
@@ -3449,6 +3649,9 @@ int main()
     equation_context ctx6;
     process_geodesics(ctx6);
 
+    equation_context ctx7;
+    loop_geodesics(ctx7, {size.x(), size.y(), size.z()});
+
     /*for(auto& i : ctx.values)
     {
         std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
@@ -3473,6 +3676,7 @@ int main()
     ctx4.build(argument_string, 3);
     ctx5.build(argument_string, 4);
     ctx6.build(argument_string, 5);
+    ctx7.build(argument_string, 6);
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 
@@ -3642,9 +3846,52 @@ int main()
 
     bool run = false;
 
+    vec3f camera_pos = {175,200,150};
+    quat camera_quat;
+
     while(!win.should_close())
     {
         win.poll();
+
+        if(ImGui::IsKeyDown(GLFW_KEY_RIGHT))
+        {
+            mat3f m = mat3f().ZRot(M_PI/128);
+
+            quat q;
+            q.load_from_matrix(m);
+
+            camera_quat = q * camera_quat;
+        }
+
+        if(ImGui::IsKeyDown(GLFW_KEY_LEFT))
+        {
+            mat3f m = mat3f().ZRot(-M_PI/128);
+
+            quat q;
+            q.load_from_matrix(m);
+
+            camera_quat = q * camera_quat;
+        }
+
+        vec3f right = rot_quat({1, 0, 0}, camera_quat);
+
+        if(ImGui::IsKeyDown(GLFW_KEY_DOWN))
+        {
+            quat q;
+            q.load_from_axis_angle({right.x(), right.y(), right.z(), M_PI/128});
+
+            camera_quat = q * camera_quat;
+        }
+
+        if(ImGui::IsKeyDown(GLFW_KEY_UP))
+        {
+            quat q;
+            q.load_from_axis_angle({right.x(), right.y(), right.z(), -M_PI/128});
+
+            camera_quat = q * camera_quat;
+        }
+
+        std::cout << camera_quat.q << std::endl;
 
         auto buffer_size = rtex[which_buffer].size<2>();
 
@@ -3715,9 +3962,37 @@ int main()
 
         clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
 
+        {
+            cl::args render_args;
+
+            for(auto& i : generic_data[which_data])
+            {
+                render_args.push_back(i);
+            }
+
+            float fwidth = width;
+            float fheight = height;
+
+            cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
+            cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
+
+            render_args.push_back(scale);
+            render_args.push_back(intermediate);
+            render_args.push_back(ccamera_pos);
+            render_args.push_back(ccamera_quat);
+            render_args.push_back(fwidth);
+            render_args.push_back(fheight);
+            render_args.push_back(clsize);
+            render_args.push_back(rtex[which_buffer]);
+
+            assert(render_args.arg_list.size() == 29);
+
+            clctx.cqueue.exec("trace_rays", render_args, {width, height}, {8, 8});
+        }
+
         if(step)
         {
-            float timestep = 0.001;
+            float timestep = 0.01;
 
             if(steps < 10)
                 timestep = 0.001;
@@ -3863,5 +4138,7 @@ int main()
         }
 
         win.display();
+
+        sf::sleep(sf::milliseconds(1));
     }
 }

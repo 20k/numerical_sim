@@ -970,7 +970,7 @@ __kernel
 void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
                __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
-            float scale, __global struct intermediate_bssnok_data* temp_in, __global struct lightray* rays, float3 camera_pos, float4 camera_quat,
+            float scale, __global struct intermediate_bssnok_data* temp_in, float3 camera_pos, float4 camera_quat,
             float width, float height, int4 dim, __write_only image2d_t screen)
 {
     int x = get_global_id(0);
@@ -984,33 +984,125 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
 
     ///ray location
 
-    float3 pos = camera_pos - (float3){dim.x, dim.y, dim.z}/2.f;
+    float3 pos = camera_pos;
 
     pos = clamp(pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
     ///temporary while i don't do interpolation
-    float3 fipos = round(pos);
+    float lp0;
+    float lp1;
+    float lp2;
+    float lp3;
 
-    int ix = fipos.x;
-    int iy = fipos.y;
-    int iz = fipos.z;
+    float V0;
+    float V1;
+    float V2;
 
-    struct intermediate_bssnok_data ik = temp_in[IDX(ix, iy, iz)];
-
-    float pv[TEMP_COUNT5] = {TEMPORARIES5};
-
-    float lv0 = lv0_d;
-    float lv1 = lv1_d;
-    float lv2 = lv2_d;
-    float lv3 = lv3_d;
-
-    float lp0 = lp0_d;
-    float lp1 = lp1_d;
-    float lp2 = lp2_d;
-    float lp3 = lp3_d;
-
-    for(int iteration=0; iteration < 4096; iteration++)
     {
+        float3 fipos = round(pos);
+        int ix = fipos.x;
+        int iy = fipos.y;
+        int iz = fipos.z;
 
+        struct intermediate_bssnok_data ik = temp_in[IDX(ix, iy, iz)];
+
+        float pv[TEMP_COUNT5] = {TEMPORARIES5};
+        lp0 = lp0_d;
+        lp1 = lp1_d;
+        lp2 = lp2_d;
+        lp3 = lp3_d;
+
+        V0 = V0_d;
+        V1 = V1_d;
+        V2 = V2_d;
     }
+
+    //printf("PP %f %f %f\n", V0, V1, V2);
+
+    for(int iteration=0; iteration < 16096; iteration++)
+    {
+        //float3 cpos = {V0, V1, V2};
+        float3 cpos = {lp1, lp2, lp3};
+        float3 fdim = {dim.x, dim.y, dim.z};
+
+        cpos = clamp(cpos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+        float3 fipos = round(cpos);
+
+        int ix = fipos.x;
+        int iy = fipos.y;
+        int iz = fipos.z;
+
+        float pv[TEMP_COUNT6] = {TEMPORARIES6};
+
+        float3 offset = cpos - (float3)(dim.x, dim.y, dim.z)/2.f;
+
+        float terminate_length = fast_length(offset);
+
+        //printf("TLEN %f\n", terminate_length);
+
+        if(terminate_length >= universe_size - BORDER_WIDTH * 4)
+        {
+            //printf("It %i\n", iteration);
+
+            //printf("PPos %f %f %f\n", cpos.x, cpos.y, cpos.z);
+
+            /*if(iteration != 0)
+            {
+                printf("Hi\n");
+            }*/
+
+            float fr = fast_length(offset);
+            float theta = acos(offset.z / fr);
+            float phi = atan2(offset.y, offset.x);
+
+            float sxf = (phi + M_PI) / (2 * M_PI);
+            float syf = theta / M_PI;
+
+            float4 val = (float4)(0,0,0,1);
+
+            int x_half = fabs(fmod((sxf + 1) * 10.f, 1.f)) > 0.5 ? 1 : 0;
+            int y_half = fabs(fmod((syf + 1) * 10.f, 1.f)) > 0.5 ? 1 : 0;
+
+            val.x = x_half;
+            val.y = y_half;
+
+            if(syf < 0.1 || syf >= 0.9)
+            {
+                val.x = 0;
+                val.y = 0;
+                val.z = 1;
+            }
+
+            write_imagef(screen, (int2){x, y}, val);
+            return;
+        }
+
+        float next_X0 = X0N_d;
+        float next_X1 = X1N_d;
+        float next_X2 = X2N_d;
+
+        float next_V0 = V0N_d;
+        float next_V1 = V1N_d;
+        float next_V2 = V2N_d;
+
+        V0 = next_V0;
+        V1 = next_V1;
+        V2 = next_V2;
+
+        lp1 = next_X0;
+        lp2 = next_X1;
+        lp3 = next_X2;
+
+        /*if(x == (int)width/2 && y == (int)height/2)
+        {
+            int lx = clamp(ix, 0, (int)width - 1);
+            int ly = clamp(iy, 0, (int)height - 1);
+
+            //printf("Lx Ly %i %i\n", lx, ly);
+
+            write_imagef(screen, (int2)(lx, ly), (float4)(1,0,1,1));
+        }*/
+    }
+
+    write_imagef(screen, (int2){x, y}, (float4)(0,1,0,1));
 }
