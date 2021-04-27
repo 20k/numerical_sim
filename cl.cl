@@ -986,7 +986,7 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
 
     float3 pos = camera_pos - (float3){dim.x, dim.y, dim.z}/2.f;
 
-    pos = clamp(pos, (float3)(0,0,0), (float3)(dim.x, dim.y, dim.z) - 1);
+    pos = clamp(pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
     ///temporary while i don't do interpolation
     float3 fipos = round(pos);
@@ -994,6 +994,8 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
     int ix = fipos.x;
     int iy = fipos.y;
     int iz = fipos.z;
+
+    struct intermediate_bssnok_data ik = temp_in[IDX(ix, iy, iz)];
 
     float pv[TEMP_COUNT5] = {TEMPORARIES5};
 
@@ -1006,4 +1008,9 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
     float lp1 = lp1_d;
     float lp2 = lp2_d;
     float lp3 = lp3_d;
+
+    for(int iteration=0; iteration < 4096; iteration++)
+    {
+
+    }
 }
