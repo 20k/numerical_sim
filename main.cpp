@@ -549,8 +549,11 @@ struct differentiation_context
             vars[i].substitute(substitutions[i]);
         }
 
+        ctx.pin(vars[4]);
         ctx.pin(vars[3]);
+        ctx.pin(vars[2]);
         ctx.pin(vars[1]);
+        ctx.pin(vars[0]);
     }
 };
 
@@ -3590,7 +3593,7 @@ int main()
     std::string argument_string = "-O3 -cl-std=CL2.0 ";
 
     ///the simulation domain is this * 2
-    int current_simulation_boundary = 50;
+    int current_simulation_boundary = 5;
     ///must be a multiple of DIFFERENTIATION_WIDTH
     vec3i size = {350, 350, 350};
     //vec3i size = {250, 250, 250};
