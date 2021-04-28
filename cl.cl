@@ -379,11 +379,23 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
 {
     float edge_half = scale * (dim.x/2);
 
-    float sponge_r0 = scale * ((dim.x/2) - 16);
+    float sponge_r0 = scale * ((dim.x/2) - 128);
     //float sponge_r0 = edge_half/2;
     float sponge_r1 = scale * ((dim.x/2) - 4);
 
+    /*if(time >= 4)
+    {
+        float time_frac = (time - 4) / 4;
+
+        time_frac = clamp(time_frac, 0.f, 1.f);
+
+        sponge_r0 = mix(sponge_r0, scale * ((dim.x/2) - 32), time_frac);
+    }*/
+
     float r = fast_length((float3){x, y, z}) * scale;
+
+    if(r <= sponge_r0)
+        return 0.f;
 
     r = clamp(r, sponge_r0, sponge_r1);
 
@@ -1062,7 +1074,7 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
 
     //printf("PP %f %f %f\n", V0, V1, V2);
 
-    for(int iteration=0; iteration < 1024; iteration++)
+    for(int iteration=0; iteration < 4096; iteration++)
     {
         //float3 cpos = {V0, V1, V2};
         float3 cpos = {lp1, lp2, lp3};
