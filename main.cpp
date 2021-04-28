@@ -4033,7 +4033,7 @@ int main()
         {
             float timestep = 0.01;
 
-            if(steps < 10)
+            if(steps < 5)
                 timestep = 0.001;
 
             steps++;
