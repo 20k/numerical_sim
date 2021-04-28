@@ -574,6 +574,12 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
         value h = "get_distance(ix,iy,iz," + dctx.xs[3] + "," + dctx.ys[3] + "," + dctx.zs[3] + ",dim,scale)";
         value k = "get_distance(ix,iy,iz," + dctx.xs[1] + "," + dctx.ys[1] + "," + dctx.zs[1] + ",dim,scale)";
 
+        if(pin)
+        {
+            ctx.pin(h);
+            ctx.pin(k);
+        }
+
         ///f(x + h) - f(x - k)
         final_command = (vars[3] - vars[1]) / (h + k);
     }
@@ -2028,7 +2034,8 @@ void build_eqs(equation_context& ctx)
 
         for(int i=0; i < 3; i++)
         {
-            sum3 = sum3 + gB.idx(i) * hacky_differentiate(ctx, K, i);
+            //sum3 = sum3 + gB.idx(i) * hacky_differentiate(ctx, K, i);
+            sum3 = sum3 + upwind_differentiate(ctx, gB.idx(i), K, i);
         }
 
         dtK = -sum1 + sum2 + sum3;
