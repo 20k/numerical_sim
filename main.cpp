@@ -3949,8 +3949,6 @@ int main()
             rtex[1].create_from_texture(tex[1].handle);
         }
 
-        glFinish();
-
         rtex[which_buffer].acquire(clctx.cqueue);
 
         bool step = false;
@@ -4152,8 +4150,6 @@ int main()
             current_simulation_boundary = clamp(current_simulation_boundary, 0, size.x()/2);
         }
 
-        clctx.cqueue.flush();
-
         rtex[which_buffer].unacquire(clctx.cqueue);
 
         which_buffer = (which_buffer + 1) % 2;
@@ -4181,7 +4177,5 @@ int main()
         }
 
         win.display();
-
-        sf::sleep(sf::milliseconds(1));
     }
 }
