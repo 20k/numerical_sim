@@ -592,7 +592,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
             __global float* ocY0, __global float* ocY1, __global float* ocY2, __global float* ocY3, __global float* ocY4, __global float* ocY5,
             __global float* ocA0, __global float* ocA1, __global float* ocA2, __global float* ocA3, __global float* ocA4, __global float* ocA5,
             __global float* ocGi0, __global float* ocGi1, __global float* ocGi2, __global float* oK, __global float* oX, __global float* ogA, __global float* ogB0, __global float* ogB1, __global float* ogB2,
-            float scale, int4 dim, __global const struct intermediate_bssnok_data* temp_in, float timestep, float time)
+            float scale, int4 dim, __global const struct intermediate_bssnok_data* temp_in, float timestep, float time, int current_simulation_boundary)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -605,6 +605,49 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2)
         return;
     #endif // SYMMETRY_BOUNDARY
+
+    int index = IDX(ix, iy, iz);
+
+    int3 icentre = dim.xyz/2;
+
+    int3 ioffset = (int3)(ix, iy, iz) - icentre;
+
+    if(any(abs(ioffset) >= current_simulation_boundary))
+    {
+        ocY0[index] = cY0[index];
+        ocY1[index] = cY1[index];
+        ocY2[index] = cY2[index];
+        ocY3[index] = cY3[index];
+        ocY4[index] = cY4[index];
+        ocY5[index] = cY5[index];
+
+        ocA0[index] = cA0[index];
+        ocA1[index] = cA1[index];
+        ocA2[index] = cA2[index];
+        ocA3[index] = cA3[index];
+        ocA4[index] = cA4[index];
+        ocA5[index] = cA5[index];
+
+        ocGi0[index] = cGi0[index];
+        ocGi1[index] = cGi1[index];
+        ocGi2[index] = cGi2[index];
+
+        oK[index] = K[index];
+        oX[index] = X[index];
+
+        ogA[index] = gA[index];
+        ogB0[index] = gB0[index];
+        ogB1[index] = gB1[index];
+        ogB2[index] = gB2[index];
+
+        #ifdef USE_GBB
+        my_out->gBB0 = v.gBB0;
+        my_out->gBB1 = v.gBB1;
+        my_out->gBB2 = v.gBB2;
+        #endif // USE_GBB
+
+        return;
+    }
 
     float3 transform_pos = transform_position(ix, iy, iz, dim, scale);
     float sponge_factor = sponge_damp_coeff(transform_pos.x, transform_pos.y, transform_pos.z, scale, dim, time);
@@ -634,7 +677,6 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         dcGijk[2 * 3 * 6 + i] = INTERMEDIATE_DIFFZ(christoffel[i]);
     }*/
 
-    int index = IDX(ix, iy, iz);
 
     float f_dtcYij0 = dtcYij0;
     float f_dtcYij1 = dtcYij1;

@@ -628,6 +628,8 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
     ctx.pin(vars[3]);
     ctx.pin(vars[1]);
 
+#define DIFFERENTIATION_WIDTH 1
+
     ///this gives second order in space
     //value final_command = (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
     //value final_command = (vars[3] - vars[1]) / (2 * scale);
@@ -3610,6 +3612,9 @@ int main()
 
     std::string argument_string = "-O3 -cl-std=CL2.0 ";
 
+    ///the simulation domain is this * 2
+    int current_simulation_boundary = 50;
+    ///must be a multiple of DIFFERENTIATION_WIDTH
     vec3i size = {350, 350, 350};
     //vec3i size = {250, 250, 250};
     float c_at_max = 45;
@@ -4050,6 +4055,7 @@ int main()
             a1.push_back(intermediate);
             a1.push_back(timestep);
             a1.push_back(time_elapsed_s);
+            a1.push_back(current_simulation_boundary);
 
             clctx.cqueue.exec("evolve", a1, {size.x(), size.y(), size.z()}, {128, 1, 1});
 
@@ -4104,7 +4110,7 @@ int main()
 
             cl_int4 pos = {clsize.x()/2, clsize.y()/2 + r_extract / scale, clsize.z()/2, 0};
 
-            cl::args waveform_args;
+            /*cl::args waveform_args;
 
             for(auto& i : generic_data[which_data])
             {
@@ -4136,9 +4142,12 @@ int main()
 
             //printf("Harm %f\n", harmonic);
 
-            real_decomp.push_back(harmonic);
+            real_decomp.push_back(harmonic);*/
 
             time_elapsed_s += timestep;
+            current_simulation_boundary += DIFFERENTIATION_WIDTH;
+
+            current_simulation_boundary = clamp(current_simulation_boundary, 0, size.x()/2);
         }
 
         clctx.cqueue.flush();
