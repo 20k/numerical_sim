@@ -589,7 +589,7 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
 ///B^i * Di whatever
 value upwind_differentiate(equation_context& ctx, const value& prefix, const value& in, int idx, bool pin = true)
 {
-    differentiation_context dctx(ctx, in, idx);
+    /*differentiation_context dctx(ctx, in, idx);
 
     value scale = "scale";
 
@@ -597,19 +597,22 @@ value upwind_differentiate(equation_context& ctx, const value& prefix, const val
     value a_p = max(prefix, 0);
     value a_n = min(prefix, 0);
 
-    value u_n = (dctx.vars[2] - dctx.vars[1]) / scale;
-    value u_p = (dctx.vars[3] - dctx.vars[2]) / scale;
+    //value u_n = (dctx.vars[2] - dctx.vars[1]) / scale;
+    //value u_p = (dctx.vars[3] - dctx.vars[2]) / scale;
 
-    value final_command = (a_p * u_n + a_n * u_p);
+    value u_n = (3 * dctx.vars[2] - 4 * dctx.vars[1] + dctx.vars[0]) / (2 * scale);
+    value u_p = (-dctx.vars[4] + 4 * dctx.vars[3] - 3 * dctx.vars[2]) / (2 * scale);
+
+    value final_command = -(a_p * u_n + a_n * u_p);
 
     if(pin)
     {
         ctx.pin(final_command);
     }
 
-    return final_command;
+    return final_command;*/
 
-    //return prefix * hacky_differentiate(ctx, in, idx, pin);
+    return prefix * hacky_differentiate(ctx, in, idx, pin);
 }
 
 template<typename T, int N>
