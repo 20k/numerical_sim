@@ -179,7 +179,9 @@ struct equation_context
             }
         }
 
-        std::string name = "pv[" + std::to_string(temporaries.size()) + "]";
+
+        std::string name = "pv" + std::to_string(temporaries.size());
+        //std::string name = "pv[" + std::to_string(temporaries.size()) + "]";
 
         value old = v;
 
@@ -266,20 +268,19 @@ struct equation_context
 
         if(temporaries.size() == 0)
         {
-            argument_string += "-DTEMP_COUNT" + std::to_string(idx) + "=1 -DTEMPORARIES={0} ";
+            argument_string += "-DTEMPORARIES==pv0";
             return;
         }
 
-        argument_string += "-DTEMP_COUNT" + std::to_string(idx) + "=" + std::to_string(temporaries.size()) + " ";
-
         std::string temporary_string;
 
-        for(auto& i : temporaries)
+        for(auto& [current_name, value] : temporaries)
         {
-            temporary_string += type_to_string(i.second) + ",";
+            temporary_string += current_name + "=" + type_to_string(value) + ",";
         }
 
-        if(temporary_string.size() > 0 && temporary_string.back() == ',')
+        ///remove trailing comma
+        if(temporary_string.size() > 0)
             temporary_string.pop_back();
 
         argument_string += "-DTEMPORARIES" + std::to_string(idx) + "=" + temporary_string + " ";
@@ -3453,7 +3454,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     tensor<value, 3> V_upper = {"V0", "V1", "V2"};
     tensor<value, 3> V_lower = lower_index(V_upper, args.Yij);
 
-    ctx.pin(V_lower);
+    //ctx.pin(V_lower);
 
     value WH;
 
@@ -3471,7 +3472,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         WH = sqrt(1 + WH_sum_inner);
     }
 
-    ctx.pin(WH);
+    //ctx.pin(WH);
 
     tensor<value, 3> dx;
 
@@ -3550,23 +3551,6 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.81
 }
 
-/*void render_geodesics(equation_context& ctx)
-{
-    value gA;
-    gA.make_value("gA[IDX(ix,iy,iz)]");
-
-    tensor<value, 3> gB;
-    gB.idx(0).make_value("gB0[IDX(ix,iy,iz)]");
-    gB.idx(1).make_value("gB1[IDX(ix,iy,iz)]");
-    gB.idx(2).make_value("gB2[IDX(ix,iy,iz)]");
-
-    tensor<value, 4> nmU;
-    nmU.idx(0) = 1/gA;
-    nmU.idx(1) = -gB.idx(0);
-    nmU.idx(2) = -gB.idx(1);
-    nmU.idx(3) = -gB.idx(2);
-
-}*/
 
 /*float fisheye(float r)
 {
@@ -3845,50 +3829,95 @@ int main()
     int steps = 0;
 
     bool run = false;
+    bool should_render = true;
 
-    vec3f camera_pos = {175,200,150};
+    vec3f camera_pos = {175,200,175};
     quat camera_quat;
 
     while(!win.should_close())
     {
         win.poll();
 
-        if(ImGui::IsKeyDown(GLFW_KEY_RIGHT))
+        if(!ImGui::GetIO().WantCaptureKeyboard)
         {
-            mat3f m = mat3f().ZRot(M_PI/128);
+            float speed = 0.001;
 
-            quat q;
-            q.load_from_matrix(m);
+            if(ImGui::IsKeyDown(GLFW_KEY_LEFT_SHIFT))
+                speed = 0.1;
 
-            camera_quat = q * camera_quat;
-        }
+            if(ImGui::IsKeyDown(GLFW_KEY_LEFT_CONTROL))
+                speed = 0.00001;
 
-        if(ImGui::IsKeyDown(GLFW_KEY_LEFT))
-        {
-            mat3f m = mat3f().ZRot(-M_PI/128);
+            if(ImGui::IsKeyDown(GLFW_KEY_LEFT_ALT))
+                speed /= 1000;
 
-            quat q;
-            q.load_from_matrix(m);
+            if(ImGui::IsKeyDown(GLFW_KEY_Z))
+                speed *= 100;
 
-            camera_quat = q * camera_quat;
-        }
+            if(ImGui::IsKeyDown(GLFW_KEY_X))
+                speed *= 100;
 
-        vec3f right = rot_quat({1, 0, 0}, camera_quat);
+            if(ImGui::IsKeyPressed(GLFW_KEY_B))
+            {
+                camera_pos = {0, 0, -100};
+            }
 
-        if(ImGui::IsKeyDown(GLFW_KEY_DOWN))
-        {
-            quat q;
-            q.load_from_axis_angle({right.x(), right.y(), right.z(), M_PI/128});
+            if(ImGui::IsKeyPressed(GLFW_KEY_C))
+            {
+                camera_pos = {0, 0, 0};
+            }
 
-            camera_quat = q * camera_quat;
-        }
+            if(ImGui::IsKeyDown(GLFW_KEY_RIGHT))
+            {
+                mat3f m = mat3f().ZRot(M_PI/128);
 
-        if(ImGui::IsKeyDown(GLFW_KEY_UP))
-        {
-            quat q;
-            q.load_from_axis_angle({right.x(), right.y(), right.z(), -M_PI/128});
+                quat q;
+                q.load_from_matrix(m);
 
-            camera_quat = q * camera_quat;
+                camera_quat = q * camera_quat;
+            }
+
+            if(ImGui::IsKeyDown(GLFW_KEY_LEFT))
+            {
+                mat3f m = mat3f().ZRot(-M_PI/128);
+
+                quat q;
+                q.load_from_matrix(m);
+
+                camera_quat = q * camera_quat;
+            }
+
+            vec3f up = {0, 0, -1};
+            vec3f right = rot_quat({1, 0, 0}, camera_quat);
+            vec3f forward_axis = rot_quat({0, 0, 1}, camera_quat);
+
+            if(ImGui::IsKeyDown(GLFW_KEY_DOWN))
+            {
+                quat q;
+                q.load_from_axis_angle({right.x(), right.y(), right.z(), M_PI/128});
+
+                camera_quat = q * camera_quat;
+            }
+
+            if(ImGui::IsKeyDown(GLFW_KEY_UP))
+            {
+                quat q;
+                q.load_from_axis_angle({right.x(), right.y(), right.z(), -M_PI/128});
+
+                camera_quat = q * camera_quat;
+            }
+
+            vec3f offset = {0,0,0};
+
+            offset += forward_axis * ((ImGui::IsKeyDown(GLFW_KEY_W) - ImGui::IsKeyDown(GLFW_KEY_S)) * speed);
+            offset += right * (ImGui::IsKeyDown(GLFW_KEY_D) - ImGui::IsKeyDown(GLFW_KEY_A)) * speed;
+            offset += up * (ImGui::IsKeyDown(GLFW_KEY_E) - ImGui::IsKeyDown(GLFW_KEY_Q)) * speed;
+
+            /*camera.y() += offset.x();
+            camera.z() += offset.y();
+            camera.w() += offset.z();*/
+
+            camera_pos += offset;
         }
 
         std::cout << camera_quat.q << std::endl;
@@ -3924,6 +3953,7 @@ int main()
                 step = true;
 
             ImGui::Checkbox("Run", &run);
+            ImGui::Checkbox("Render", &should_render);
 
             ImGui::Text("Time: %f\n", time_elapsed_s);
 
@@ -3987,12 +4017,13 @@ int main()
 
             assert(render_args.arg_list.size() == 29);
 
-            clctx.cqueue.exec("trace_rays", render_args, {width, height}, {8, 8});
+            if(should_render)
+                clctx.cqueue.exec("trace_rays", render_args, {width, height}, {8, 8});
         }
 
         if(step)
         {
-            float timestep = 0.01;
+            float timestep = 0.001;
 
             if(steps < 10)
                 timestep = 0.001;

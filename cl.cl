@@ -206,7 +206,7 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
     float oy = offset.y;
     float oz = offset.z;
 
-    float pv[TEMP_COUNT0] = {TEMPORARIES0};
+    float TEMPORARIES0;
 
     float conformal_factor = init_conformal_factor;
 
@@ -279,7 +279,7 @@ void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __g
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    float pv[TEMP_COUNT3] = {TEMPORARIES3};
+    float TEMPORARIES3;
 
     int index = IDX(ix, iy, iz);
 
@@ -333,7 +333,7 @@ void calculate_intermediate_data(__global float* cY0, __global float* cY1, __glo
 
     struct intermediate_bssnok_data* my_out = &out[IDX(ix, iy, iz)];
 
-    float pv[TEMP_COUNT1] = {TEMPORARIES1};
+    float TEMPORARIES1;
 
     my_out->dcYij[0] = init_dcYij0;
     my_out->dcYij[1] = init_dcYij1;
@@ -427,7 +427,7 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
         if(sponge_factor <= 0)
             return;
 
-        float pv[TEMP_COUNT0] = {TEMPORARIES0};
+        float TEMPORARIES0;
 
         float bl_conformal = init_bl_conformal;
         float conformal_factor = init_conformal_factor;
@@ -617,7 +617,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
 
     struct intermediate_bssnok_data ik = temp_in[IDX(ix, iy, iz)];
 
-    float pv[TEMP_COUNT2] = {TEMPORARIES2};
+    float TEMPORARIES2;
 
     int index_table[3][3] = {{0, 1, 2},
                              {1, 3, 4},
@@ -837,7 +837,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         struct intermediate_bssnok_data ik = temp_in[IDX(ix, iy, iz)];
 
         ///reuses the evolve parameters
-        float pv[TEMP_COUNT2] = {TEMPORARIES2};
+        float TEMPORARIES2;
 
         int index = IDX(ix, iy, iz);
 
@@ -899,7 +899,7 @@ void extract_waveform(__global float* cY0, __global float* cY1, __global float* 
 
     struct intermediate_bssnok_data ik = temp_in[IDX(ix, iy, iz)];
 
-    float pv[TEMP_COUNT4] = {TEMPORARIES4};
+    float TEMPORARIES4;
 
     /*for(int i=0; i < TEMP_COUNT4; i++)
     {
@@ -1006,7 +1006,8 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
 
         struct intermediate_bssnok_data ik = temp_in[IDX(ix, iy, iz)];
 
-        float pv[TEMP_COUNT5] = {TEMPORARIES5};
+        float TEMPORARIES5;
+
         lp0 = lp0_d;
         lp1 = lp1_d;
         lp2 = lp2_d;
@@ -1019,7 +1020,7 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
 
     //printf("PP %f %f %f\n", V0, V1, V2);
 
-    for(int iteration=0; iteration < 16096; iteration++)
+    for(int iteration=0; iteration < 1024; iteration++)
     {
         //float3 cpos = {V0, V1, V2};
         float3 cpos = {lp1, lp2, lp3};
@@ -1032,7 +1033,7 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
         int iy = fipos.y;
         int iz = fipos.z;
 
-        float pv[TEMP_COUNT6] = {TEMPORARIES6};
+        float TEMPORARIES6;
 
         float3 offset = cpos - (float3)(dim.x, dim.y, dim.z)/2.f;
 
@@ -1104,5 +1105,5 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
         }*/
     }
 
-    write_imagef(screen, (int2){x, y}, (float4)(0,1,0,1));
+    write_imagef(screen, (int2){x, y}, (float4)(0,0,0,1));
 }
