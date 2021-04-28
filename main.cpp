@@ -3441,7 +3441,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         digA.idx(i) = hacky_differentiate(ctx, args.gA, i);
     }
 
-    float step = 0.01;
+    float step = 0.0001;
 
     vec<4, value> ipos = {"(int)round(lpv0)", "(int)round(lpv1)", "(int)round(lpv2)", "(int)round(lpv3)"};
 
@@ -4018,12 +4018,12 @@ int main()
             assert(render_args.arg_list.size() == 29);
 
             if(should_render)
-                clctx.cqueue.exec("trace_rays", render_args, {width, height}, {8, 8});
+                clctx.cqueue.exec("trace_rays", render_args, {width, height}, {16, 16});
         }
 
         if(step)
         {
-            float timestep = 0.001;
+            float timestep = 0.01;
 
             if(steps < 10)
                 timestep = 0.001;
