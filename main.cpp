@@ -3562,8 +3562,8 @@ int main()
         printf("HARM %f\n", harm.real);
     }*/
 
-    int width = 1422;
-    int height = 800;
+    int width = 800;
+    int height = 600;
 
     render_settings sett;
     sett.width = width;
