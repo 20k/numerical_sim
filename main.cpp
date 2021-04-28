@@ -450,185 +450,119 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
     return {buffer, val, uses_extension};
 }
 
-value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true)
+struct differentiation_context
 {
-    std::vector<std::string> variables = in.get_all_variables();
-
-    value cp = in;
-
-    std::string dimx = "dim.x";
-    std::string dimy = "dim.y";
-    std::string dimz = "dim.z";
-
-    std::string x = "ix";
-    std::string y = "iy";
-    std::string z = "iz";
-
-    std::string xp1 = "ix+1";
-    std::string yp1 = "iy+1";
-    std::string zp1 = "iz+1";
-
-    std::string xp2 = "ix+2";
-    std::string yp2 = "iy+2";
-    std::string zp2 = "iz+2";
-
-    std::string xm1 = "ix-1";
-    std::string ym1 = "iy-1";
-    std::string zm1 = "iz-1";
-
-    std::string xm2 = "ix-2";
-    std::string ym2 = "iy-2";
-    std::string zm2 = "iz-2";
-
-    #ifdef SYMMETRY_BOUNDARY
-    xp1 = "(" + xp1 + ")%dim.x";
-    yp1 = "(" + yp1 + ")%dim.y";
-    zp1 = "(" + zp1 + ")%dim.z";
-
-    xp2 = "(" + xp2 + ")%dim.x";
-    yp2 = "(" + yp2 + ")%dim.y";
-    zp2 = "(" + zp2 + ")%dim.z";
-
-    xm1 = "abs(" + xm1 + ")";
-    ym1 = "abs(" + ym1 + ")";
-    zm1 = "abs(" + zm1 + ")";
-
-    xm2 = "abs(" + xm2 + ")";
-    ym2 = "abs(" + ym2 + ")";
-    zm2 = "abs(" + zm2 + ")";
-    #endif // SYMMETRY_BOUNDARY
-
-    auto index_raw = [](const std::string& x, const std::string& y, const std::string& z)
-    {
-        return "IDX(" + x + "," + y + "," + z + ")";
-    };
-
-    auto index_buffer = [](const std::string& variable, const std::string& buffer, const std::string& with_what)
-    {
-        return buffer + "[" + with_what + "]." + variable;
-    };
-
-    auto index_without_extension = [](const std::string& buffer, const std::string& with_what)
-    {
-        return buffer + "[" + with_what + "]";
-    };
-
-    auto index = [&ctx, index_buffer, index_without_extension, index_raw](const std::string& val, const std::string& buffer, bool uses_extension, const std::string& x, const std::string& y, const std::string& z)
-    {
-        value v;
-
-        if(uses_extension)
-            v = value(index_buffer(val, buffer, index_raw(x, y, z)));
-        else
-            v = value(index_without_extension(buffer, index_raw(x, y, z)));
-
-        //ctx.pin(v);
-
-        return v;
-    };
-
-    /*std::string x1 = "x";
-    std::string x2 = "x";
-    std::string y1 = "y";
-    std::string y2 = "y";
-    std::string z1 = "z";
-    std::string z2 = "z";
-
-    if(idx == 0)
-    {
-        x1 = "x-1";
-        x2 = "x+1";
-    }
-
-    if(idx == 1)
-    {
-        y1 = "y-1";
-        y2 = "y+1";
-    }
-
-    if(idx == 2)
-    {
-        z1 = "z-1";
-        z2 = "z+1";
-    }*/
-
-    constexpr int elements = 5;
+    static constexpr int elements = 5;
+    std::array<value, elements> vars;
 
     std::array<std::string, elements> xs;
     std::array<std::string, elements> ys;
     std::array<std::string, elements> zs;
 
-    for(int i=0; i < elements; i++)
+    differentiation_context(equation_context& ctx, const value& in, int idx)
     {
-        xs[i] = "ix";
-        ys[i] = "iy";
-        zs[i] = "iz";
-    }
+        std::vector<std::string> variables = in.get_all_variables();
 
-    for(int i=0; i < elements; i++)
-    {
-        int offset = i - (elements - 1)/2;
+        value cp = in;
 
-        if(idx == 0)
-            xs[i] += "+" + std::to_string(offset);
-        if(idx == 1)
-            ys[i] += "+" + std::to_string(offset);
-        if(idx == 2)
-            zs[i] += "+" + std::to_string(offset);
-    }
-
-    /*std::map<std::string, std::string> substitutions1;
-    std::map<std::string, std::string> substitutions2;
-
-    for(auto& i : variables)
-    {
-        std::tuple<std::string, std::string, bool> decomp = decompose_variable(i);
-
-        value to_sub1 = index(std::get<1>(decomp), std::get<0>(decomp), std::get<2>(decomp), x1, y1, z1);
-        value to_sub2 = index(std::get<1>(decomp), std::get<0>(decomp), std::get<2>(decomp), x2, y2, z2);
-
-        substitutions1[i] = type_to_string(to_sub1);
-        substitutions2[i] = type_to_string(to_sub2);
-    }*/
-
-    std::array<std::map<std::string, std::string>, elements> substitutions;
-
-    for(auto& i : variables)
-    {
-        std::tuple<std::string, std::string, bool> decomp = decompose_variable(i);
-
-        for(int kk=0; kk < elements; kk++)
+        auto index_raw = [](const std::string& x, const std::string& y, const std::string& z)
         {
-            value to_sub = index(std::get<1>(decomp), std::get<0>(decomp), std::get<2>(decomp), xs[kk], ys[kk], zs[kk]);
+            return "IDX(" + x + "," + y + "," + z + ")";
+        };
 
-            substitutions[kk][i] = type_to_string(to_sub);
+        auto index_buffer = [](const std::string& variable, const std::string& buffer, const std::string& with_what)
+        {
+            return buffer + "[" + with_what + "]." + variable;
+        };
+
+        auto index_without_extension = [](const std::string& buffer, const std::string& with_what)
+        {
+            return buffer + "[" + with_what + "]";
+        };
+
+        auto index = [&ctx, index_buffer, index_without_extension, index_raw](const std::string& val, const std::string& buffer, bool uses_extension, const std::string& x, const std::string& y, const std::string& z)
+        {
+            value v;
+
+            if(uses_extension)
+                v = value(index_buffer(val, buffer, index_raw(x, y, z)));
+            else
+                v = value(index_without_extension(buffer, index_raw(x, y, z)));
+
+            //ctx.pin(v);
+
+            return v;
+        };
+
+        constexpr int elements = 5;
+
+        for(int i=0; i < elements; i++)
+        {
+            xs[i] = "ix";
+            ys[i] = "iy";
+            zs[i] = "iz";
         }
+
+        for(int i=0; i < elements; i++)
+        {
+            int offset = i - (elements - 1)/2;
+
+            if(idx == 0)
+                xs[i] += "+" + std::to_string(offset);
+            if(idx == 1)
+                ys[i] += "+" + std::to_string(offset);
+            if(idx == 2)
+                zs[i] += "+" + std::to_string(offset);
+        }
+
+        /*std::map<std::string, std::string> substitutions1;
+        std::map<std::string, std::string> substitutions2;
+
+        for(auto& i : variables)
+        {
+            std::tuple<std::string, std::string, bool> decomp = decompose_variable(i);
+
+            value to_sub1 = index(std::get<1>(decomp), std::get<0>(decomp), std::get<2>(decomp), x1, y1, z1);
+            value to_sub2 = index(std::get<1>(decomp), std::get<0>(decomp), std::get<2>(decomp), x2, y2, z2);
+
+            substitutions1[i] = type_to_string(to_sub1);
+            substitutions2[i] = type_to_string(to_sub2);
+        }*/
+
+        std::array<std::map<std::string, std::string>, elements> substitutions;
+
+        for(auto& i : variables)
+        {
+            std::tuple<std::string, std::string, bool> decomp = decompose_variable(i);
+
+            for(int kk=0; kk < elements; kk++)
+            {
+                value to_sub = index(std::get<1>(decomp), std::get<0>(decomp), std::get<2>(decomp), xs[kk], ys[kk], zs[kk]);
+
+                substitutions[kk][i] = type_to_string(to_sub);
+            }
+        }
+
+        for(int i=0; i < elements; i++)
+        {
+            vars[i] = cp;
+            vars[i].substitute(substitutions[i]);
+        }
+
+        ctx.pin(vars[3]);
+        ctx.pin(vars[1]);
     }
+};
 
-    /*value val1 = cp;
-    val1.substitute(substitutions1);
+#define DIFFERENTIATION_WIDTH 2
 
-    value val2 = cp;
-    val2.substitute(substitutions2);
+value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true)
+{
+    differentiation_context dctx(ctx, in, idx);
+
+    std::array<value, 5> vars = dctx.vars;
 
     value scale = "scale";
-
-    value final_command = (val2 - val1) / (2 * scale);*/
-
-    value scale = "scale";
-
-    std::array<value, elements> vars;
-
-    for(int i=0; i < elements; i++)
-    {
-        vars[i] = cp;
-        vars[i].substitute(substitutions[i]);
-    }
-
-    ctx.pin(vars[3]);
-    ctx.pin(vars[1]);
-
-#define DIFFERENTIATION_WIDTH 1
 
     ///this gives second order in space
     //value final_command = (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
@@ -637,8 +571,8 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
     value final_command;
 
     {
-        value h = "get_distance(ix,iy,iz," + xs[3] + "," + ys[3] + "," + zs[3] + ",dim,scale)";
-        value k = "get_distance(ix,iy,iz," + xs[1] + "," + ys[1] + "," + zs[1] + ",dim,scale)";
+        value h = "get_distance(ix,iy,iz," + dctx.xs[3] + "," + dctx.ys[3] + "," + dctx.zs[3] + ",dim,scale)";
+        value k = "get_distance(ix,iy,iz," + dctx.xs[1] + "," + dctx.ys[1] + "," + dctx.zs[1] + ",dim,scale)";
 
         ///f(x + h) - f(x - k)
         final_command = (vars[3] - vars[1]) / (h + k);
@@ -650,6 +584,32 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
     }
 
     return final_command;
+}
+
+///B^i * Di whatever
+value upwind_differentiate(equation_context& ctx, const value& prefix, const value& in, int idx, bool pin = true)
+{
+    differentiation_context dctx(ctx, in, idx);
+
+    value scale = "scale";
+
+    ///https://en.wikipedia.org/wiki/Upwind_scheme
+    value a_p = max(prefix, 0);
+    value a_n = min(prefix, 0);
+
+    value u_n = (dctx.vars[2] - dctx.vars[1]) / scale;
+    value u_p = (dctx.vars[3] - dctx.vars[2]) / scale;
+
+    value final_command = (a_p * u_n + a_n * u_p);
+
+    if(pin)
+    {
+        ctx.pin(final_command);
+    }
+
+    return final_command;
+
+    //return prefix * hacky_differentiate(ctx, in, idx, pin);
 }
 
 template<typename T, int N>
@@ -666,7 +626,8 @@ tensor<T, N, N> gpu_lie_derivative_weight(equation_context& ctx, const tensor<T,
 
             for(int k=0; k < N; k++)
             {
-                sum = sum + B.idx(k) * hacky_differentiate(ctx, mT.idx(i, j), k);
+                //sum = sum + B.idx(k) * hacky_differentiate(ctx, mT.idx(i, j), k);
+                sum = sum + upwind_differentiate(ctx, B.idx(k), mT.idx(j, j), k);
                 sum = sum + mT.idx(i, k) * hacky_differentiate(ctx, B.idx(k), j);
                 sum = sum + mT.idx(j, k) * hacky_differentiate(ctx, B.idx(k), i);
                 sum = sum - (2.f/3.f) * mT.idx(i, j) * hacky_differentiate(ctx, B.idx(k), k);
@@ -1733,7 +1694,8 @@ void build_eqs(equation_context& ctx)
         for(int i=0; i < 3; i++)
         {
             s1 = s1 + hacky_differentiate(ctx, gB.idx(i), i);
-            s2 = s2 + gB.idx(i) * hacky_differentiate(ctx, X, i);
+            //s2 = s2 + gB.idx(i) * hacky_differentiate(ctx, X, i);
+            s2 = s2 + upwind_differentiate(ctx, gB.idx(i), X, i);
         }
 
         dtX = (2.f/3.f) * X * (gA * K - s1) + s2;
@@ -2120,7 +2082,9 @@ void build_eqs(equation_context& ctx)
                 s2 = s2 + (1.f/3.f) * icY.idx(i, j) * hacky_differentiate(ctx, digB.idx(k, k), j);
             }
 
-            value s3 = gB.idx(j) * hacky_differentiate(ctx, cGi.idx(i), j);
+            //value s3 = gB.idx(j) * hacky_differentiate(ctx, cGi.idx(i), j);
+
+            value s3 = upwind_differentiate(ctx, gB.idx(j), cGi.idx(i), j);
 
             value s4 = -derived_cGi.idx(j) * hacky_differentiate(ctx, gB.idx(i), j);
 
@@ -2173,7 +2137,8 @@ void build_eqs(equation_context& ctx)
 
     for(int i=0; i < 3; i++)
     {
-        dtgA = dtgA + gB.idx(i) * hacky_differentiate(ctx, gA, i);
+        //dtgA = dtgA + gB.idx(i) * hacky_differentiate(ctx, gA, i);
+        dtgA = dtgA + upwind_differentiate(ctx, gB.idx(i), gA, i);
     }
 
     //ctx.add("debug_val", dtgA);
@@ -2200,7 +2165,8 @@ void build_eqs(equation_context& ctx)
 
         for(int j=0; j < 3; j++)
         {
-            sum = gB.idx(j) * hacky_differentiate(ctx, gB.idx(i), j);
+            //sum = sum + gB.idx(j) * hacky_differentiate(ctx, gB.idx(i), j);
+            sum = sum + upwind_differentiate(ctx, gB.idx(j), gB.idx(i), j);
         }
 
         dtgB.idx(i) = (3.f/4.f) * derived_cGi.idx(i) + sum - N * gB.idx(i);
@@ -3842,6 +3808,8 @@ int main()
     vec3f camera_pos = {175,200,175};
     quat camera_quat;
 
+    std::optional<cl::event> last_event;
+
     while(!win.should_close())
     {
         win.poll();
@@ -4150,10 +4118,16 @@ int main()
             current_simulation_boundary = clamp(current_simulation_boundary, 0, size.x()/2);
         }
 
-        rtex[which_buffer].unacquire(clctx.cqueue);
+        cl::event next_event = rtex[which_buffer].unacquire(clctx.cqueue);
+
+        if(last_event.has_value())
+            last_event.value().block();
 
         which_buffer = (which_buffer + 1) % 2;
 
+        last_event = next_event;
+
+        ///todo: get rid of this
         clctx.cqueue.block();
 
         {
