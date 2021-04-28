@@ -987,12 +987,12 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
     auto san_black_hole_pos = [&](vec3f in)
     {
-        return floor(in / scale) + (vec3f){0.5, 0.5, 0.5};
+        return floor(in / scale) + (vec3f){0.25, 0.25, 0.25};
     };
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({0, -1.1515 * 0.5f, 0}), san_black_hole_pos({0, 1.1515 * 0.5f, 0})};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.1515 * 0.5f, 0, 0}), san_black_hole_pos({2.1515 * 0.5f, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, 0, 0}), san_black_hole_pos({1.1515 * 0.5f, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, -0.01, -0.01}), san_black_hole_pos({1.1515 * 0.5f, 0.01, 0.01})};
     std::vector<float> black_hole_m{0.5f, 0.5f};
     std::vector<vec3f> black_hole_velocity{{0, 0.5, 0}, {0, -0.5, 0}}; ///pick better velocities
@@ -3598,7 +3598,7 @@ int main()
     ///must be a multiple of DIFFERENTIATION_WIDTH
     vec3i size = {350, 350, 350};
     //vec3i size = {250, 250, 250};
-    float c_at_max = 30;
+    float c_at_max = 60;
     //float c_at_max = 45;
     float scale = c_at_max / size.largest_elem();
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};

@@ -133,7 +133,7 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
 
     float3 diff = pos - centre;
 
-    return diff;
+    //return diff;
 
     float len = length(diff);
 
@@ -147,7 +147,7 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
 
     float edge = max(max(dim.x, dim.y), dim.z) * scale / 2;
 
-    float r1 = 10.f;
+    float r1 = 20.f;
     float r2 = edge - 64 * scale;
     float r3 = edge;
 
@@ -392,7 +392,9 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
         sponge_r0 = mix(sponge_r0, scale * ((dim.x/2) - 32), time_frac);
     }*/
 
-    float r = fast_length((float3){x, y, z}) * scale;
+    float3 fdim = (float3)(dim.x, dim.y, dim.z)/2.f;
+
+    float r = fast_length((float3){x, y, z} - fdim) * scale;
 
     if(r <= sponge_r0)
         return 0.f;
@@ -434,7 +436,7 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
         float oy = offset.y;
         float oz = offset.z;
 
-        float sponge_factor = sponge_damp_coeff(ox, oy, oz, scale, dim, time);
+        float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, time);
 
         if(sponge_factor <= 0)
             return;
@@ -662,7 +664,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     }
 
     float3 transform_pos = transform_position(ix, iy, iz, dim, scale);
-    float sponge_factor = sponge_damp_coeff(transform_pos.x, transform_pos.y, transform_pos.z, scale, dim, time);
+    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, time);
 
     //if(sponge_factor == 1)
     //    return;
@@ -878,7 +880,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         }*/
 
         float3 transform_pos = transform_position(ix, iy, iz, dim, scale);
-        float sponge_factor = sponge_damp_coeff(transform_pos.x, transform_pos.y, transform_pos.z, scale, dim, time);
+        float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, time);
 
         if(sponge_factor > 0)
         {
