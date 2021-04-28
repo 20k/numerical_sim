@@ -985,9 +985,12 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
    // std::cout << "FR " << r.substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
 
+    value bulge;
+    bulge.make_value("BULGE_AMOUNT");
+
     auto san_black_hole_pos = [&](vec3f in)
     {
-        return floor(in / scale) + (vec3f){0.25, 0.25, 0.25};
+        return floor(in / scale) + (vec3f){0.5f / bulge, 0.5f / bulge, 0.5f / bulge};
     };
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
