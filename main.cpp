@@ -3617,7 +3617,8 @@ int main()
     ///must be a multiple of DIFFERENTIATION_WIDTH
     vec3i size = {350, 350, 350};
     //vec3i size = {250, 250, 250};
-    float c_at_max = 45;
+    float c_at_max = 30;
+    //float c_at_max = 45;
     float scale = c_at_max / size.largest_elem();
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
