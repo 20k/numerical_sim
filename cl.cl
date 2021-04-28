@@ -126,7 +126,7 @@ float polynomial(float x)
     return (1 + (-3 + 6 * (-1 + x)) * (-1 + x)) * x * x * x;
 }
 
-#define BULGE_AMOUNT 2
+#define BULGE_AMOUNT 4
 
 float3 transform_position(int x, int y, int z, int4 dim, float scale)
 {
@@ -149,7 +149,7 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
 
     float edge = max(max(dim.x, dim.y), dim.z) * scale / 2;
 
-    float r1 = 20.f;
+    float r1 = 40.f;
     float r2 = edge - 64 * scale;
     float r3 = edge;
 
