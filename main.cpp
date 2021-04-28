@@ -554,7 +554,7 @@ struct differentiation_context
     }
 };
 
-#define DIFFERENTIATION_WIDTH 2
+#define DIFFERENTIATION_WIDTH 1
 
 value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true)
 {
@@ -630,7 +630,7 @@ tensor<T, N, N> gpu_lie_derivative_weight(equation_context& ctx, const tensor<T,
             for(int k=0; k < N; k++)
             {
                 //sum = sum + B.idx(k) * hacky_differentiate(ctx, mT.idx(i, j), k);
-                sum = sum + upwind_differentiate(ctx, B.idx(k), mT.idx(j, j), k);
+                sum = sum + upwind_differentiate(ctx, B.idx(k), mT.idx(i, j), k);
                 sum = sum + mT.idx(i, k) * hacky_differentiate(ctx, B.idx(k), j);
                 sum = sum + mT.idx(j, k) * hacky_differentiate(ctx, B.idx(k), i);
                 sum = sum - (2.f/3.f) * mT.idx(i, j) * hacky_differentiate(ctx, B.idx(k), k);
