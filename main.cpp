@@ -1013,7 +1013,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({0, -1.1515 * 0.5f, 0}), san_black_hole_pos({0, 1.1515 * 0.5f, 0})};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515, 0, 0}), san_black_hole_pos({1.1515, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5, 0, 0}), san_black_hole_pos({1.1515 * 0.5, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, -0.01, -0.01}), san_black_hole_pos({1.1515 * 0.5f, 0.01, 0.01})};
     std::vector<float> black_hole_m{0.5f, 0.5f};
     std::vector<vec3f> black_hole_velocity{{0, 0.5, 0}, {0, -0.5, 0}}; ///pick better velocities
@@ -3625,7 +3625,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 5;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {350, 350, 350};
+    vec3i size = {324, 324, 324};
     //vec3i size = {250, 250, 250};
     float c_at_max = 120;
     //float c_at_max = 45;

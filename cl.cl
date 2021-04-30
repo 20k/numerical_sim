@@ -149,7 +149,7 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
 
     float edge = max(max(dim.x, dim.y), dim.z) * scale / 2.0f;
 
-    float real_distance_r1 = 7.f;
+    float real_distance_r1 = 12.f;
 
     float r1 = real_distance_r1;
     float r2 = edge - 16 * scale;
@@ -405,7 +405,7 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
 {
     float edge_half = scale * (dim.x/2);
 
-    float sponge_r0 = scale * ((dim.x/2) - 120);
+    float sponge_r0 = scale * ((dim.x/2) - 80);
     //float sponge_r0 = edge_half/2;
     float sponge_r1 = scale * ((dim.x/2) - 4);
 
