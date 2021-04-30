@@ -37,6 +37,8 @@ https://asd.gsfc.nasa.gov/archive/astrogravs/docs/lit/ringdown_date.html - stuff
 https://www.black-holes.org/
 https://aip.scitation.org/doi/am-pdf/10.1063/1.4962723
 https://arxiv.org/pdf/1906.03877.pdf - spherical harmonics
+https://arxiv.org/pdf/1412.4590.pdf - interesting glue of initial conditions to end up with a schwarzschild tail
+http://gravity.psu.edu/numrel/jclub/jc/Cook___LivRev_2000-5.pdf - seems to be a good reference on initial conditions
 */
 
 //#define USE_GBB
@@ -955,7 +957,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     pos[2].make_value("125");
     #endif // DEBUG
 
-    std::array<std::string, 3> variables = {"ox", "oy", "oz"};
+    //std::array<std::string, 3> variables = {"ox", "oy", "oz"};
 
     tensor<value, 3, 3> kronecker;
 
@@ -977,29 +979,41 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
     //value r = (pos - vcentre).length() * scale;
 
-    value r = pos.length() * scale;
+    //value r = pos.length();
 
     //std::cout << "REQ " << type_to_string(r) << std::endl;
 
-    r = max(r, 0.01f);
+    //r = max(r, 0.01f);
 
    // std::cout << "FR " << r.substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
 
-    value bulge;
-    bulge.make_value("BULGE_AMOUNT");
+    //value bulge;
+    //bulge.make_value("BULGE_AMOUNT");
+
+    float bulge = 4;
 
     auto san_black_hole_pos = [&](vec3f in)
     {
-        vec3f scaled =  floor(in / scale);
+        float s1 = in.x();
+        float s2 = in.y();
+        float s3 = in.z();
 
-        vec<3, value> vscaled = {scaled.x(), scaled.y(), scaled.z()};
+        vec3f scaled = round((in / scale) * bulge);
 
-        return vscaled + (vec<3, value>){0.5f / bulge, 0.5f / bulge, 0.5f / bulge};
+        vec3f offsets = {0.5f, 0.5f, 0.5f};
+
+        offsets.x() *= signum(s1);
+        offsets.y() *= signum(s2);
+        offsets.z() *= signum(s3);
+
+        return scaled * scale / bulge + offsets * scale / bulge;
+
+        //return vscaled + (vec<3, value>){offsets.x() / bulge, offsets.y() / bulge, offsets.z() / bulge};
     };
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({0, -1.1515 * 0.5f, 0}), san_black_hole_pos({0, 1.1515 * 0.5f, 0})};
-    std::vector<vec<3, value>> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, 0, 0}), san_black_hole_pos({1.1515 * 0.5f, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515, 0, 0}), san_black_hole_pos({1.1515, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, -0.01, -0.01}), san_black_hole_pos({1.1515 * 0.5f, 0.01, 0.01})};
     std::vector<float> black_hole_m{0.5f, 0.5f};
     std::vector<vec3f> black_hole_velocity{{0, 0.5, 0}, {0, -0.5, 0}}; ///pick better velocities
@@ -1016,23 +1030,31 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     for(int i=0; i < (int)black_hole_m.size(); i++)
     {
         float Mi = black_hole_m[i];
-        vec<3, value> vri = black_hole_pos[i];
+        vec3f ri = black_hole_pos[i];
 
-        value dist = (pos - vri).length() * scale;
+        std::cout << "RI " << ri << std::endl;
 
-        dist = max(dist, 0.001f);
+        vec<3, value> vri = {ri.x(), ri.y(), ri.z()};
+
+        value dist = (pos - vri).length();
+
+        //dist = dist + 0.01;
+
+        //dist = max(dist, 0.001f);
 
         BL_conformal = BL_conformal + Mi / (2 * dist);
     }
 
     ///ok so: I'm pretty sure this is correct
+
+    ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 69. I think this may be wrong
     metric<value, 3, 3> yij;
 
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
-            float u = 0.0;
+            float u = 1;
 
             ///https://arxiv.org/pdf/gr-qc/0511048.pdf
             yij.idx(i, j) = pow(BL_conformal + u, 4) * kronecker.idx(i, j);
@@ -2717,6 +2739,7 @@ void extract_waveforms(equation_context& ctx)
         derived_cGi.idx(i) = sum;
     }
 
+    ///NEEDS SCALING???
     vec<3, value> pos;
     pos.x() = "offset.x";
     pos.y() = "offset.y";
@@ -3603,9 +3626,9 @@ int main()
     ///must be a multiple of DIFFERENTIATION_WIDTH
     vec3i size = {350, 350, 350};
     //vec3i size = {250, 250, 250};
-    float c_at_max = 120;
+    float c_at_max = 100;
     //float c_at_max = 45;
-    float scale = c_at_max / size.largest_elem();
+    float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
     equation_context ctx1;

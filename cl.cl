@@ -142,26 +142,28 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
     if(len == 0)
         return diff;
 
-    if(len <= 0.0001)
-        len = 0.0001;
+    //if(len <= 0.0001)
+    //    len = 0.0001;
 
     float real_len = len * scale;
 
-    float edge = max(max(dim.x, dim.y), dim.z) * scale / 2;
+    float edge = max(max(dim.x, dim.y), dim.z) * scale / 2.5f;
 
-    float r1 = 40.f;
-    float r2 = edge - 64 * scale;
+    float real_distance_r1 = 10.f;
+
+    float r1 = real_distance_r1;
+    float r2 = edge - 16 * scale;
     float r3 = edge;
 
     float bulge_amount = BULGE_AMOUNT;
 
-    float r1b = r1 / bulge_amount;
+    float r1b = r1 * bulge_amount;
     float r2b = r2;
     float r3b = r3;
 
     float rad = 0;
 
-    if(real_len < r1)
+    /*if(real_len < r1)
     {
         rad = (real_len * r1b / r1) / scale;
     }
@@ -178,13 +180,35 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
         rad = real_len / scale;
     }
 
-    return diff * rad / len;
+    return diff * rad / len;*/
+
+    float3 norm = normalize(diff);
+
+    if(real_len < r1b)
+    {
+        return norm * (real_len * r1 / r1b);
+    }
+
+    else if(real_len < r2b)
+    {
+        float frac = (real_len - r1b) / (r2b - r1b);
+
+        float polynomial_frac = polynomial(clamp(frac, 0.f, 1.f));
+
+        float next_len = r1 + polynomial_frac * (r2 - r1);
+
+        return norm * next_len;
+    }
+    else
+    {
+        return norm * real_len;
+    }
 }
 
 float get_distance(int x1, int y1, int z1, int x2, int y2, int z2, int4 dim, float scale)
 {
-    float3 d1 = transform_position(x1, y1, z1, dim, scale) * scale;
-    float3 d2 = transform_position(x2, y2, z2, dim, scale) * scale;
+    float3 d1 = transform_position(x1, y1, z1, dim, scale);
+    float3 d2 = transform_position(x2, y2, z2, dim, scale);
 
     return fast_length(d2 - d1);
 }
@@ -665,8 +689,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         return;
     }
 
-    float3 transform_pos = transform_position(ix, iy, iz, dim, scale);
-    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, time);
+    //float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, time);
 
     //if(sponge_factor == 1)
     //    return;
@@ -881,7 +904,6 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
             dcGijk[2 * 3 * 6 + i] = INTERMEDIATE_DIFFZ(christoffel[i]);
         }*/
 
-        float3 transform_pos = transform_position(ix, iy, iz, dim, scale);
         float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, time);
 
         if(sponge_factor > 0)
@@ -921,7 +943,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         printf("scalar %f\n", max_scalar);
     }*/
 
-    max_scalar = max_scalar * 10;
+    //max_scalar = max_scalar * 10;
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 
