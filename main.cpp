@@ -1002,9 +1002,14 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
         vec3f offsets = {0.5f, 0.5f, 0.5f};
 
-        offsets.x() *= signum(s1);
-        offsets.y() *= signum(s2);
-        offsets.z() *= signum(s3);
+        auto get_sign = [](float in)
+        {
+            return in >= 0 ? 1 : -1;
+        };
+
+        offsets.x() *= get_sign(s1);
+        offsets.y() *= get_sign(s2);
+        offsets.z() *= get_sign(s3);
 
         return scaled * scale / bulge + offsets * scale / bulge;
 
@@ -1013,9 +1018,11 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({0, -1.1515 * 0.5f, 0}), san_black_hole_pos({0, 1.1515 * 0.5f, 0})};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5, 0, 0}), san_black_hole_pos({1.1515 * 0.5, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5, 0, 0})};
+    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5, 0, 0}), san_black_hole_pos({1.1515 * 0.5, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, -0.01, -0.01}), san_black_hole_pos({1.1515 * 0.5f, 0.01, 0.01})};
-    std::vector<float> black_hole_m{0.5f, 0.5f};
+    std::vector<float> black_hole_m{0.5f};
+    //std::vector<float> black_hole_m{0.5f, 0.5f};
     std::vector<vec3f> black_hole_velocity{{0, 0.5, 0}, {0, -0.5, 0}}; ///pick better velocities
     //std::vector<float> black_hole_m{0.1f, 0.1f};
     //std::vector<float> black_hole_m{1, 1};
@@ -3627,7 +3634,7 @@ int main()
     ///must be a multiple of DIFFERENTIATION_WIDTH
     vec3i size = {324, 324, 324};
     //vec3i size = {250, 250, 250};
-    float c_at_max = 120;
+    float c_at_max = 100;
     //float c_at_max = 45;
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
