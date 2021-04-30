@@ -147,9 +147,9 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
 
     float real_len = len * scale;
 
-    float edge = max(max(dim.x, dim.y), dim.z) * scale / 2.5f;
+    float edge = max(max(dim.x, dim.y), dim.z) * scale / 2.0f;
 
-    float real_distance_r1 = 10.f;
+    float real_distance_r1 = 7.f;
 
     float r1 = real_distance_r1;
     float r2 = edge - 16 * scale;

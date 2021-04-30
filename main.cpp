@@ -1054,7 +1054,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     {
         for(int j=0; j < 3; j++)
         {
-            float u = 1;
+            //float u = 1;
+            float u = 0;
 
             ///https://arxiv.org/pdf/gr-qc/0511048.pdf
             yij.idx(i, j) = pow(BL_conformal + u, 4) * kronecker.idx(i, j);
@@ -3626,7 +3627,7 @@ int main()
     ///must be a multiple of DIFFERENTIATION_WIDTH
     vec3i size = {350, 350, 350};
     //vec3i size = {250, 250, 250};
-    float c_at_max = 100;
+    float c_at_max = 120;
     //float c_at_max = 45;
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
@@ -4008,35 +4009,6 @@ int main()
 
         clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
 
-        {
-            cl::args render_args;
-
-            for(auto& i : generic_data[which_data])
-            {
-                render_args.push_back(i);
-            }
-
-            float fwidth = width;
-            float fheight = height;
-
-            cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
-            cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
-
-            render_args.push_back(scale);
-            render_args.push_back(intermediate);
-            render_args.push_back(ccamera_pos);
-            render_args.push_back(ccamera_quat);
-            render_args.push_back(fwidth);
-            render_args.push_back(fheight);
-            render_args.push_back(clsize);
-            render_args.push_back(rtex[which_buffer]);
-
-            assert(render_args.arg_list.size() == 29);
-
-            if(should_render)
-                clctx.cqueue.exec("trace_rays", render_args, {width, height}, {16, 16});
-        }
-
         if(step)
         {
             float timestep = 0.01;
@@ -4158,6 +4130,35 @@ int main()
             current_simulation_boundary += DIFFERENTIATION_WIDTH;
 
             current_simulation_boundary = clamp(current_simulation_boundary, 0, size.x()/2);
+        }
+
+        {
+            cl::args render_args;
+
+            for(auto& i : generic_data[which_data])
+            {
+                render_args.push_back(i);
+            }
+
+            float fwidth = width;
+            float fheight = height;
+
+            cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
+            cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
+
+            render_args.push_back(scale);
+            render_args.push_back(intermediate);
+            render_args.push_back(ccamera_pos);
+            render_args.push_back(ccamera_quat);
+            render_args.push_back(fwidth);
+            render_args.push_back(fheight);
+            render_args.push_back(clsize);
+            render_args.push_back(rtex[which_buffer]);
+
+            assert(render_args.arg_list.size() == 29);
+
+            if(should_render)
+                clctx.cqueue.exec("trace_rays", render_args, {width, height}, {16, 16});
         }
 
         cl::event next_event = rtex[which_buffer].unacquire(clctx.cqueue);
