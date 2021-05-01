@@ -126,7 +126,7 @@ float polynomial(float x)
     return (1 + (-3 + 6 * (-1 + x)) * (-1 + x)) * x * x * x;
 }
 
-#define BULGE_AMOUNT 4
+#define BULGE_AMOUNT 1
 
 float3 transform_position(int x, int y, int z, int4 dim, float scale)
 {
@@ -135,7 +135,7 @@ float3 transform_position(int x, int y, int z, int4 dim, float scale)
 
     float3 diff = pos - centre;
 
-    //return diff;
+    return diff * scale;
 
     float len = length(diff);
 

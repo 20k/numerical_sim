@@ -39,6 +39,11 @@ https://aip.scitation.org/doi/am-pdf/10.1063/1.4962723
 https://arxiv.org/pdf/1906.03877.pdf - spherical harmonics
 https://arxiv.org/pdf/1412.4590.pdf - interesting glue of initial conditions to end up with a schwarzschild tail
 http://gravity.psu.edu/numrel/jclub/jc/Cook___LivRev_2000-5.pdf - seems to be a good reference on initial conditions
+
+https://arxiv.org/pdf/0812.3752.pdf - numerical methods, this paper seems very useful for finite differencing etc. Has 2nd order finite difference non uniform
+https://arxiv.org/pdf/0706.0740.pdf - contains explicit upwind stencils, as well as material on numerical dissipation
+https://physics.princeton.edu//~fpretori/AST523_NR_b.pdf - has an explicit expansion for kreiss-oliger
+https://hal.archives-ouvertes.fr/hal-00569776/document - contains the D+- operators
 */
 
 //#define USE_GBB
@@ -561,6 +566,35 @@ struct differentiation_context
 
 #define DIFFERENTIATION_WIDTH 1
 
+///https://hal.archives-ouvertes.fr/hal-00569776/document this paper implies you simply sum the directions
+value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int idx)
+{
+    differentiation_context dctx(ctx, in, idx);
+
+    int d = 2;
+
+    float dissipate = 0.1f;
+
+    value scale = "scale";
+
+    value stencil = (dissipate / 16.f) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
+
+    return stencil;
+}
+
+value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
+{
+    value fin = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        fin = fin + kreiss_oliger_dissipate_dir(ctx, in, i);
+    }
+
+    return fin;
+}
+
+
 value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true)
 {
     differentiation_context dctx(ctx, in, idx);
@@ -990,7 +1024,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     //value bulge;
     //bulge.make_value("BULGE_AMOUNT");
 
-    float bulge = 4;
+    float bulge = 1;
 
     auto san_black_hole_pos = [&](vec3f in)
     {
@@ -3588,6 +3622,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     return r_phys;
 }*/
 
+///it seems like basically i need numerical dissipation of some form
 int main()
 {
     //return 0;
@@ -3634,7 +3669,7 @@ int main()
     ///must be a multiple of DIFFERENTIATION_WIDTH
     vec3i size = {324, 324, 324};
     //vec3i size = {250, 250, 250};
-    float c_at_max = 100;
+    float c_at_max = 30;
     //float c_at_max = 45;
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
