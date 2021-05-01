@@ -3455,10 +3455,15 @@ void process_geodesics(equation_context& ctx)
 {
     standard_arguments args(true);
 
-    vec<3, value> camera;
+    /*vec<3, value> camera;
     camera.x().make_value("camera_pos.x");
     camera.y().make_value("camera_pos.y");
-    camera.z().make_value("camera_pos.z");
+    camera.z().make_value("camera_pos.z");*/
+
+    vec<3, value> world_position;
+    world_position.x().make_value("world_pos.x");
+    world_position.y().make_value("world_pos.y");
+    world_position.z().make_value("world_pos.z");
 
     quaternion_base<value> camera_quat;
     camera_quat.q.x().make_value("camera_quat.x");
@@ -3503,7 +3508,7 @@ void process_geodesics(equation_context& ctx)
     vec<4, value> pixel_t = -basis.v1;
 
     vec<4, value> lightray_velocity = pixel_x + pixel_y + pixel_z + pixel_t;
-    vec<4, value> lightray_position = {0, camera.x(), camera.y(), camera.z()};
+    vec<4, value> lightray_position = {0, world_position.x(), world_position.y(), world_position.z()};
 
     ctx.add("lv0_d", lightray_velocity.x());
     ctx.add("lv1_d", lightray_velocity.y());
@@ -3543,6 +3548,12 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 {
     standard_arguments args(true);
 
+    /*ctx.pin(args.gA);
+    ctx.pin(args.gB);
+    ctx.pin(args.cY);
+    ctx.pin(args.X);
+    ctx.pin(args.Yij);*/
+
     //ctx.pin(args.Yij);
 
     ///upper index, aka contravariant
@@ -3568,13 +3579,15 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         digA.idx(i) = hacky_differentiate(ctx, args.gA, i, true, true);
     }
 
-    float step = 0.0001;
+    float step = 0.1;
 
     //vec<4, value> ipos = {"(int)round(lpv0)", "(int)round(lpv1)", "(int)round(lpv2)", "(int)round(lpv3)"};
 
     float universe_length = (dim/2.f).max_elem();
 
-    ctx.add("universe_size", universe_length);
+    value scale = "scale";
+
+    ctx.add("universe_size", universe_length * scale);
 
     tensor<value, 3> X_upper = {"lp1", "lp2", "lp3"};
 
@@ -3599,7 +3612,9 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         WH = sqrt(1 + WH_sum_inner);
     }
 
-    //ctx.pin(WH);
+    ctx.pin(WH);
+
+    ctx.add("debug_wh", WH);
 
     tensor<value, 3> dx;
 
@@ -3654,7 +3669,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     for(int i=0; i < 3; i++)
     {
-        X_next.idx(i) = X_upper.idx(i) + dx.idx(i);
+        X_next.idx(i) = X_upper.idx(i) + dx.idx(i) * step;
     }
 
     //ctx.add("DTN", )
@@ -3970,7 +3985,8 @@ int main()
     bool run = false;
     bool should_render = true;
 
-    vec3f camera_pos = {175,200,175};
+    vec3f camera_pos = {0, c_at_max/2.f - 1, 0};
+    //vec3f camera_pos = {175,200,175};
     quat camera_quat;
 
     std::optional<cl::event> last_event;
@@ -4062,6 +4078,7 @@ int main()
         }
 
         std::cout << camera_quat.q << std::endl;
+        std::cout << "POS " << camera_pos << std::endl;
 
         auto buffer_size = rtex[which_buffer].size<2>();
 
