@@ -10,6 +10,13 @@ float buffer_read_nearest(__global const float* const buffer, int3 position, int
     return buffer[position.z * dim.x * dim.y + position.y * dim.x + position.x];
 }
 
+float buffer_read_linear(__global const float* const buffer, float3 position, int4 dim)
+{
+    int3 ipos = (int3)(position.x, position.y, position.z);
+
+    return buffer[ipos.z * dim.x * dim.y + ipos.y * dim.x + ipos.x];
+}
+
 void buffer_write(__global float* buffer, int3 position, int4 dim, float value)
 {
     buffer[position.z * dim.x * dim.y + position.y * dim.x + position.x] = value;

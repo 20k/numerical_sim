@@ -471,7 +471,7 @@ struct differentiation_context
     std::array<std::string, elements> ys;
     std::array<std::string, elements> zs;
 
-    differentiation_context(equation_context& ctx, const value& in, int idx, bool should_pin = true)
+    differentiation_context(equation_context& ctx, const value& in, int idx, bool should_pin = true, bool linear_interpolation = false)
     {
         std::vector<std::string> variables = in.get_all_variables();
 
@@ -480,6 +480,11 @@ struct differentiation_context
         auto index_raw = [](const std::string& x, const std::string& y, const std::string& z)
         {
             return "IDX(" + x + "," + y + "," + z + ")";
+        };
+
+        auto fetch_linear = [](const std::string& buffer, const std::string& x, const std::string& y, const std::string& z)
+        {
+            return "buffer_read_linear(" + buffer + ",(float3)(" + x + "," + y + "," + z + "),dim)";
         };
 
         auto index_buffer = [](const std::string& variable, const std::string& buffer, const std::string& with_what)
@@ -492,14 +497,24 @@ struct differentiation_context
             return buffer + "[" + with_what + "]";
         };
 
-        auto index = [&ctx, index_buffer, index_without_extension, index_raw](const std::string& val, const std::string& buffer, bool uses_extension, const std::string& x, const std::string& y, const std::string& z)
+        auto index = [&ctx, index_buffer, index_without_extension, index_raw, fetch_linear, linear_interpolation](const std::string& val, const std::string& buffer, bool uses_extension, const std::string& x, const std::string& y, const std::string& z)
         {
             value v;
 
-            if(uses_extension)
-                v = value(index_buffer(val, buffer, index_raw(x, y, z)));
+            if(linear_interpolation)
+            {
+                assert(!uses_extension);
+
+                v = value(fetch_linear(buffer, x, y, z));
+            }
+
             else
-                v = value(index_without_extension(buffer, index_raw(x, y, z)));
+            {
+                if(uses_extension)
+                    v = value(index_buffer(val, buffer, index_raw(x, y, z)));
+                else
+                    v = value(index_without_extension(buffer, index_raw(x, y, z)));
+            }
 
             //ctx.pin(v);
 
@@ -628,9 +643,9 @@ void build_kreiss_oliger_dissipate(equation_context& ctx)
     ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
 }
 
-value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true)
+value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true, bool linear = false)
 {
-    differentiation_context dctx(ctx, in, idx);
+    differentiation_context dctx(ctx, in, idx, true, linear);
 
     std::array<value, 5> vars = dctx.vars;
 
@@ -3518,7 +3533,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         ///index
         for(int j=0; j < 3; j++)
         {
-            digB.idx(i, j) = hacky_differentiate(ctx, args.gB.idx(j), i);
+            digB.idx(i, j) = hacky_differentiate(ctx, args.gB.idx(j), i, true, true);
         }
     }
 
@@ -3526,7 +3541,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     for(int i=0; i < 3; i++)
     {
-        digA.idx(i) = hacky_differentiate(ctx, args.gA, i);
+        digA.idx(i) = hacky_differentiate(ctx, args.gA, i, true, true);
     }
 
     float step = 0.0001;
@@ -3590,7 +3605,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         {
             for(int k=0; k < 3; k++)
             {
-                p3 += 0.5f * V_upper.idx(j) * V_upper.idx(k) * hacky_differentiate(ctx, args.Yij.idx(j, k), i);
+                p3 += 0.5f * V_upper.idx(j) * V_upper.idx(k) * hacky_differentiate(ctx, args.Yij.idx(j, k), i, true, true);
             }
         }
 
