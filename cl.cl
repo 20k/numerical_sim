@@ -126,6 +126,11 @@ float polynomial(float x)
     return (1 + (-3 + 6 * (-1 + x)) * (-1 + x)) * x * x * x;
 }
 
+float get_dissipation(int ix, int iy, int iz, int4 dim, float scale, __global float* buffer)
+{
+    return KREISS_OLIGER_DISSIPATE;
+}
+
 #define BULGE_AMOUNT 1
 
 float3 transform_position(int x, int y, int z, int4 dim, float scale)

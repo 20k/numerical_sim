@@ -275,7 +275,7 @@ struct equation_context
 
         if(temporaries.size() == 0)
         {
-            argument_string += "-DTEMPORARIES==pv0";
+            argument_string += "-DTEMPORARIES" + std::to_string(idx) + "==pv0 ";
             return;
         }
 
@@ -341,6 +341,11 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
         uses_extension = true;
     }
 
+    else if(str == "buffer")
+    {
+        buffer = "buffer";
+        val = "buffer";
+    }
     else if(str.starts_with("cY0"))
     {
         buffer = "cY0";
@@ -466,7 +471,7 @@ struct differentiation_context
     std::array<std::string, elements> ys;
     std::array<std::string, elements> zs;
 
-    differentiation_context(equation_context& ctx, const value& in, int idx)
+    differentiation_context(equation_context& ctx, const value& in, int idx, bool should_pin = true)
     {
         std::vector<std::string> variables = in.get_all_variables();
 
@@ -556,11 +561,14 @@ struct differentiation_context
             vars[i].substitute(substitutions[i]);
         }
 
-        ctx.pin(vars[4]);
-        ctx.pin(vars[3]);
-        ctx.pin(vars[2]);
-        ctx.pin(vars[1]);
-        ctx.pin(vars[0]);
+        if(should_pin)
+        {
+            ctx.pin(vars[4]);
+            ctx.pin(vars[3]);
+            ctx.pin(vars[2]);
+            ctx.pin(vars[1]);
+            ctx.pin(vars[0]);
+        }
     }
 };
 
@@ -569,7 +577,7 @@ struct differentiation_context
 ///https://hal.archives-ouvertes.fr/hal-00569776/document this paper implies you simply sum the directions
 value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int idx)
 {
-    differentiation_context dctx(ctx, in, idx);
+    differentiation_context dctx(ctx, in, idx, false);
 
     int d = 2;
 
@@ -577,7 +585,7 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
 
     value scale = "scale";
 
-    value stencil = (dissipate / 16.f) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
+    value stencil = (dissipate / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
 
     return stencil;
 }
@@ -594,6 +602,12 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
     return fin;
 }
 
+void build_kreiss_oliger_dissipate(equation_context& ctx)
+{
+    value v = "buffer";
+
+    ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
+}
 
 value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true)
 {
@@ -3695,6 +3709,10 @@ int main()
     equation_context ctx7;
     loop_geodesics(ctx7, {size.x(), size.y(), size.z()});
 
+    equation_context ctx8;
+    build_kreiss_oliger_dissipate(ctx8);
+
+
     /*for(auto& i : ctx.values)
     {
         std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
@@ -3720,6 +3738,7 @@ int main()
     ctx5.build(argument_string, 4);
     ctx6.build(argument_string, 5);
     ctx7.build(argument_string, 6);
+    ctx8.build(argument_string, 7);
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 
