@@ -629,6 +629,28 @@ float3 srgb_to_lin(float3 C_srgb)
             0.305306011f * C_srgb * C_srgb * C_srgb;
 }
 
+/*__kernel
+void dissipate(__global float* buffer_in, __global float* buffer_out, float scale, int4 dim, float timestep)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    #ifndef SYMMETRY_BOUNDARY
+    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2)
+        return;
+    #endif // SYMMETRY_BOUNDARY
+
+    float dissipation = get_dissipation(ix, iy, iz, dim, scale, buffer);
+
+    int idx = IDX(ix, iy, iz);
+
+    buffer_out[idx] = buffer_in[idx] +
+}*/
+
 #define NANCHECK(w) if(isnan(w[index])){printf("NAN " #w " %i %i %i\n", ix, iy, iz); debug = true;}
 
 ///todo: need to correctly evolve boundaries
