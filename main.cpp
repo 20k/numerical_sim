@@ -1071,7 +1071,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({0, -1.1515 * 0.5f, 0}), san_black_hole_pos({0, 1.1515 * 0.5f, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5, 0, 0})};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5, 0, 0}), san_black_hole_pos({1.1515 * 0.5, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.1515 * 0.5, 0, 0}), san_black_hole_pos({2.1515 * 0.5, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, -0.01, -0.01}), san_black_hole_pos({1.1515 * 0.5f, 0.01, 0.01})};
     //std::vector<float> black_hole_m{0.5f};
     std::vector<float> black_hole_m{0.5f, 0.5f};
