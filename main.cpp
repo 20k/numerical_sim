@@ -1084,7 +1084,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     //std::vector<vec3f> black_hole_velocity{{0, 0.4, 0}};
 
     ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
-    ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is
+    ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is - it was not. Now its correct
     ///todo pt 2: Try sponging to schwarzschild
     for(int i=0; i < (int)black_hole_m.size(); i++)
     {
