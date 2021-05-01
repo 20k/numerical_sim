@@ -580,7 +580,7 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
     int d = 2;
 
     ///todo: test lower value again
-    float dissipate = 0.5f;
+    float dissipate = 0.25f;
 
     value scale = "scale";
 
@@ -1507,6 +1507,7 @@ void build_intermediate(equation_context& ctx)
 ///todo: if I use a mirror boundary condition, it'd simulate an infinite grid of black hole pairs colliding
 ///they would however all be relatively far away from each other, so this may turn out fairly acceptably
 ///todo: I think I can cut down on the memory consumption by precalculating the necessary derivatives
+///todo: Removing phi was never the issue with the numerical stability
 inline
 void build_eqs(equation_context& ctx)
 {

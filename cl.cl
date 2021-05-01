@@ -984,7 +984,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         printf("scalar %f\n", max_scalar);
     }*/
 
-    max_scalar = max_scalar * 10;
+    //max_scalar = max_scalar * 10;
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 
