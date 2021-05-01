@@ -751,32 +751,65 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     float f_dtgB1 = dtgB1;
     float f_dtgB2 = dtgB2;
 
+    float diss_cYij0 = get_dissipation(ix, iy, iz, dim, scale, cY0);
+    float diss_cYij1 = get_dissipation(ix, iy, iz, dim, scale, cY1);
+    float diss_cYij2 = get_dissipation(ix, iy, iz, dim, scale, cY2);
+    float diss_cYij3 = get_dissipation(ix, iy, iz, dim, scale, cY3);
+    float diss_cYij4 = get_dissipation(ix, iy, iz, dim, scale, cY4);
+    float diss_cYij5 = get_dissipation(ix, iy, iz, dim, scale, cY5);
 
-    ocY0[index] = cY0[index] + f_dtcYij0 * timestep;
-    ocY1[index] = cY1[index] + f_dtcYij1 * timestep;
-    ocY2[index] = cY2[index] + f_dtcYij2 * timestep;
-    ocY3[index] = cY3[index] + f_dtcYij3 * timestep;
-    ocY4[index] = cY4[index] + f_dtcYij4 * timestep;
-    ocY5[index] = cY5[index] + f_dtcYij5 * timestep;
+    float diss_cAij0 = get_dissipation(ix, iy, iz, dim, scale, cA0);
+    float diss_cAij1 = get_dissipation(ix, iy, iz, dim, scale, cA1);
+    float diss_cAij2 = get_dissipation(ix, iy, iz, dim, scale, cA2);
+    float diss_cAij3 = get_dissipation(ix, iy, iz, dim, scale, cA3);
+    float diss_cAij4 = get_dissipation(ix, iy, iz, dim, scale, cA4);
+    float diss_cAij5 = get_dissipation(ix, iy, iz, dim, scale, cA5);
 
-    ocA0[index] = cA0[index] + f_dtcAij0 * timestep;
-    ocA1[index] = cA1[index] + f_dtcAij1 * timestep;
-    ocA2[index] = cA2[index] + f_dtcAij2 * timestep;
-    ocA3[index] = cA3[index] + f_dtcAij3 * timestep;
-    ocA4[index] = cA4[index] + f_dtcAij4 * timestep;
-    ocA5[index] = cA5[index] + f_dtcAij5 * timestep;
+    float diss_cGi0 = get_dissipation(ix, iy, iz, dim, scale, cGi0);
+    float diss_cGi1 = get_dissipation(ix, iy, iz, dim, scale, cGi1);
+    float diss_cGi2 = get_dissipation(ix, iy, iz, dim, scale, cGi2);
 
-    ocGi0[index] = cGi0[index] + f_dtcGi0 * timestep;
-    ocGi1[index] = cGi1[index] + f_dtcGi1 * timestep;
-    ocGi2[index] = cGi2[index] + f_dtcGi2 * timestep;
+    float diss_K = get_dissipation(ix, iy, iz, dim, scale, K);
+    float diss_X = get_dissipation(ix, iy, iz, dim, scale, X);
 
-    oK[index] = K[index] + f_dtK * timestep;
-    oX[index] = X[index] + f_dtX * timestep;
+    float diss_gA = get_dissipation(ix, iy, iz, dim, scale, gA);
+    float diss_gB0 = get_dissipation(ix, iy, iz, dim, scale, gB0);
+    float diss_gB1 = get_dissipation(ix, iy, iz, dim, scale, gB1);
+    float diss_gB2 = get_dissipation(ix, iy, iz, dim, scale, gB2);
 
-    ogA[index] = gA[index] + f_dtgA * timestep;
-    ogB0[index] = gB0[index] + f_dtgB0 * timestep;
-    ogB1[index] = gB1[index] + f_dtgB1 * timestep;
-    ogB2[index] = gB2[index] + f_dtgB2 * timestep;
+    /*if(ix == 20 && iy == 20 && iz == 20)
+    {
+        printf("DISS %f %f %f %f %f %f\n", diss_cYij0, diss_cYij1, diss_cYij2, diss_cYij3, diss_cYij4, diss_cYij5);
+    }*/
+
+    //if(ix == 150 && iy == 150 && iz == 150)
+    //printf("DISS %f\n", diss_cYij0);
+
+    ocY0[index] = cY0[index] + (f_dtcYij0 + diss_cYij0) * timestep;
+    ocY1[index] = cY1[index] + (f_dtcYij1 + diss_cYij1) * timestep;
+    ocY2[index] = cY2[index] + (f_dtcYij2 + diss_cYij2) * timestep;
+    ocY3[index] = cY3[index] + (f_dtcYij3 + diss_cYij3) * timestep;
+    ocY4[index] = cY4[index] + (f_dtcYij4 + diss_cYij4) * timestep;
+    ocY5[index] = cY5[index] + (f_dtcYij5 + diss_cYij5) * timestep;
+
+    ocA0[index] = cA0[index] + (f_dtcAij0 + diss_cAij0) * timestep;
+    ocA1[index] = cA1[index] + (f_dtcAij1 + diss_cAij1) * timestep;
+    ocA2[index] = cA2[index] + (f_dtcAij2 + diss_cAij2) * timestep;
+    ocA3[index] = cA3[index] + (f_dtcAij3 + diss_cAij3) * timestep;
+    ocA4[index] = cA4[index] + (f_dtcAij4 + diss_cAij4) * timestep;
+    ocA5[index] = cA5[index] + (f_dtcAij5 + diss_cAij5) * timestep;
+
+    ocGi0[index] = cGi0[index] + (f_dtcGi0 + diss_cGi0) * timestep;
+    ocGi1[index] = cGi1[index] + (f_dtcGi1 + diss_cGi1) * timestep;
+    ocGi2[index] = cGi2[index] + (f_dtcGi2 + diss_cGi2) * timestep;
+
+    oK[index] = K[index] + (f_dtK + diss_K) * timestep;
+    oX[index] = X[index] + (f_dtX + diss_X) * timestep;
+
+    ogA[index] = gA[index] + (f_dtgA + diss_gA) * timestep;
+    ogB0[index] = gB0[index] + (f_dtgB0 + diss_gB0) * timestep;
+    ogB1[index] = gB1[index] + (f_dtgB1 + diss_gB1) * timestep;
+    ogB2[index] = gB2[index] + (f_dtgB2 + diss_gB2) * timestep;
 
     #ifdef USE_GBB
     my_out->gBB0 = v.gBB0 + dtgBB0 * timestep;

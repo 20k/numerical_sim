@@ -295,7 +295,7 @@ struct equation_context
 };
 
 //#define SYMMETRY_BOUNDARY
-#define BORDER_WIDTH 2
+#define BORDER_WIDTH 3
 
 inline
 std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
@@ -462,9 +462,9 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
     return {buffer, val, uses_extension};
 }
 
+template<int elements = 5>
 struct differentiation_context
 {
-    static constexpr int elements = 5;
     std::array<value, elements> vars;
 
     std::array<std::string, elements> xs;
@@ -505,8 +505,6 @@ struct differentiation_context
 
             return v;
         };
-
-        constexpr int elements = 5;
 
         for(int i=0; i < elements; i++)
         {
@@ -572,20 +570,24 @@ struct differentiation_context
     }
 };
 
-#define DIFFERENTIATION_WIDTH 1
+#define DIFFERENTIATION_WIDTH 2
 
 ///https://hal.archives-ouvertes.fr/hal-00569776/document this paper implies you simply sum the directions
 value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int idx)
 {
-    differentiation_context dctx(ctx, in, idx, false);
+    differentiation_context<5> dctx(ctx, in, idx, false);
 
     int d = 2;
 
-    float dissipate = 0.1f;
+    ///todo: test lower value again
+    float dissipate = 0.5f;
 
     value scale = "scale";
 
-    value stencil = (dissipate / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
+    value stencil = -(dissipate / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
+    //value stencil = (dissipate / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
+
+    //value stencil = (dissipate / (64 * scale)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
 
     return stencil;
 }
@@ -605,6 +607,8 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
 void build_kreiss_oliger_dissipate(equation_context& ctx)
 {
     value v = "buffer";
+
+    //ctx.add("KREISS_OLIGER_DISSIPATE", z);
 
     ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
 }
@@ -3773,7 +3777,7 @@ int main()
 
     std::array<std::vector<cl::buffer>, 2> generic_data;
 
-    std::array<bool, 21> redundant_buffers
+    /*std::array<bool, 21> redundant_buffers
     {
         true, true, true, true, true, true, //dtcYij makes differentiating this unnecessary
         false, false, false, false, false, false, ///cA
@@ -3781,7 +3785,9 @@ int main()
         false, ///K
         false, ///X
         true, true, true, true, ///gA, gB0, gB1, gB2,
-    };
+    };*/
+
+    std::array<bool, 21> redundant_buffers;
 
     for(int idx=0; idx < 2; idx++)
     {
