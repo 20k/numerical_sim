@@ -346,6 +346,19 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
         buffer = "buffer";
         val = "buffer";
     }
+
+    else if(str.starts_with("buffer_read_linear"))
+    {
+        std::string_view sview = str;
+        sview.remove_prefix(strlen("buffer_read_linear("));
+
+        int len = sview.find_first_of(',');
+
+        assert(len != std::string_view::npos);
+
+        buffer = std::string(sview.begin(), sview.begin() + len);
+        val = buffer;
+    }
     else if(str.starts_with("cY0"))
     {
         buffer = "cY0";
@@ -503,6 +516,11 @@ struct differentiation_context
 
             if(linear_interpolation)
             {
+                if(uses_extension)
+                {
+                    std::cout << "Uses extension " << buffer << std::endl;
+                }
+
                 assert(!uses_extension);
 
                 v = value(fetch_linear(buffer, x, y, z));
@@ -523,9 +541,19 @@ struct differentiation_context
 
         for(int i=0; i < elements; i++)
         {
-            xs[i] = "ix";
-            ys[i] = "iy";
-            zs[i] = "iz";
+            if(linear_interpolation)
+            {
+                xs[i] = "fx";
+                ys[i] = "fy";
+                zs[i] = "fz";
+
+            }
+            else
+            {
+                xs[i] = "ix";
+                ys[i] = "iy";
+                zs[i] = "iz";
+            }
         }
 
         for(int i=0; i < elements; i++)
@@ -653,9 +681,9 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
 
     ///this gives second order in space
     //value final_command = (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
-    //value final_command = (vars[3] - vars[1]) / (2 * scale);
+    value final_command = (vars[3] - vars[1]) / (2 * scale);
 
-    value final_command;
+    /*value final_command;
 
     {
         value h = "get_distance(ix,iy,iz," + dctx.xs[3] + "," + dctx.ys[3] + "," + dctx.zs[3] + ",dim,scale)";
@@ -669,7 +697,7 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
 
         ///f(x + h) - f(x - k)
         final_command = (vars[3] - vars[1]) / (h + k);
-    }
+    }*/
 
     if(pin)
     {
@@ -3363,6 +3391,14 @@ frame_basis calculate_frame_basis(equation_context& ctx, const metric<value, 4, 
     return ret;
 }
 
+std::string bidx(const std::string& buf, bool interpolate)
+{
+    if(interpolate)
+        return "buffer_read_linear(" + buf + ",(float3)(fx,fy,fz),dim)";
+    else
+        return buf + "[IDX(ix,iy,iz)]";
+}
+
 struct standard_arguments
 {
     value gA;
@@ -3373,19 +3409,32 @@ struct standard_arguments
 
     metric<value, 3, 3> Yij;
 
-    standard_arguments()
+    standard_arguments(bool interpolate)
     {
-        gA.make_value("gA[IDX(ix,iy,iz)]");
+        gA.make_value(bidx("gA", interpolate));
 
-        gB.idx(0).make_value("gB0[IDX(ix,iy,iz)]");
-        gB.idx(1).make_value("gB1[IDX(ix,iy,iz)]");
-        gB.idx(2).make_value("gB2[IDX(ix,iy,iz)]");
+        gB.idx(0).make_value(bidx("gB0", interpolate));
+        gB.idx(1).make_value(bidx("gB1", interpolate));
+        gB.idx(2).make_value(bidx("gB2", interpolate));
 
-        cY.idx(0, 0).make_value("cY0[IDX(ix,iy,iz)]"); cY.idx(0, 1).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(0, 2).make_value("cY2[IDX(ix,iy,iz)]");
-        cY.idx(1, 0).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(1, 1).make_value("cY3[IDX(ix,iy,iz)]"); cY.idx(1, 2).make_value("cY4[IDX(ix,iy,iz)]");
-        cY.idx(2, 0).make_value("cY2[IDX(ix,iy,iz)]"); cY.idx(2, 1).make_value("cY4[IDX(ix,iy,iz)]"); cY.idx(2, 2).make_value("cY5[IDX(ix,iy,iz)]");
+        std::array<int, 9> arg_table
+        {
+            0, 1, 2,
+            1, 3, 4,
+            2, 4, 5,
+        };
 
-        X.make_value("X[IDX(ix,iy,iz)]");
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                int index = arg_table[i * 3 + j];
+
+                cY.idx(i, j) = bidx("cY" + std::to_string(index), interpolate);
+            }
+        }
+
+        X.make_value(bidx("X", true));
 
         for(int i=0; i < 3; i++)
         {
@@ -3404,32 +3453,7 @@ tensor<value, 4> get_adm_hypersurface_normal(const value& gA, const tensor<value
 
 void process_geodesics(equation_context& ctx)
 {
-    value gA;
-    gA.make_value("gA[IDX(ix,iy,iz)]");
-
-    tensor<value, 3> gB;
-    gB.idx(0).make_value("gB0[IDX(ix,iy,iz)]");
-    gB.idx(1).make_value("gB1[IDX(ix,iy,iz)]");
-    gB.idx(2).make_value("gB2[IDX(ix,iy,iz)]");
-
-    unit_metric<value, 3, 3> cY;
-
-    cY.idx(0, 0).make_value("cY0[IDX(ix,iy,iz)]"); cY.idx(0, 1).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(0, 2).make_value("cY2[IDX(ix,iy,iz)]");
-    cY.idx(1, 0).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(1, 1).make_value("cY3[IDX(ix,iy,iz)]"); cY.idx(1, 2).make_value("cY4[IDX(ix,iy,iz)]");
-    cY.idx(2, 0).make_value("cY2[IDX(ix,iy,iz)]"); cY.idx(2, 1).make_value("cY4[IDX(ix,iy,iz)]"); cY.idx(2, 2).make_value("cY5[IDX(ix,iy,iz)]");
-
-    value X;
-    X.make_value("X[IDX(ix,iy,iz)]");
-
-    metric<value, 3, 3> Yij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            Yij.idx(i, j) = cY.idx(i, j) / X;
-        }
-    }
+    standard_arguments args(true);
 
     vec<3, value> camera;
     camera.x().make_value("camera_pos.x");
@@ -3461,7 +3485,7 @@ void process_geodesics(equation_context& ctx)
 
     pixel_direction = rot_quat(pixel_direction, camera_quat);
 
-    metric<value, 4, 4> real_metric = calculate_real_metric(Yij, gA, gB);
+    metric<value, 4, 4> real_metric = calculate_real_metric(args.Yij, args.gA, args.gB);
 
     ctx.pin(real_metric);
 
@@ -3497,7 +3521,7 @@ void process_geodesics(equation_context& ctx)
 
     tensor<value, 3> adm_V_lower = {velocity_lower.idx(1), velocity_lower.idx(2), velocity_lower.idx(3)};
 
-    tensor<value, 3> adm_V_higher = raise_index(adm_V_lower, Yij, Yij.invert());
+    tensor<value, 3> adm_V_higher = raise_index(adm_V_lower, args.Yij, args.Yij.invert());
 
     ctx.add("V0_d", adm_V_higher.idx(0));
     ctx.add("V1_d", adm_V_higher.idx(1));
@@ -3517,7 +3541,7 @@ void process_geodesics(equation_context& ctx)
 
 void loop_geodesics(equation_context& ctx, vec3f dim)
 {
-    standard_arguments args;
+    standard_arguments args(true);
 
     //ctx.pin(args.Yij);
 
@@ -3546,7 +3570,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     float step = 0.0001;
 
-    vec<4, value> ipos = {"(int)round(lpv0)", "(int)round(lpv1)", "(int)round(lpv2)", "(int)round(lpv3)"};
+    //vec<4, value> ipos = {"(int)round(lpv0)", "(int)round(lpv1)", "(int)round(lpv2)", "(int)round(lpv3)"};
 
     float universe_length = (dim/2.f).max_elem();
 

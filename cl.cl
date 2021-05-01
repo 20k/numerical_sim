@@ -12,6 +12,8 @@ float buffer_read_nearest(__global const float* const buffer, int3 position, int
 
 float buffer_read_linear(__global const float* const buffer, float3 position, int4 dim)
 {
+    position = round(position);
+
     int3 ipos = (int3)(position.x, position.y, position.z);
 
     return buffer[ipos.z * dim.x * dim.y + ipos.y * dim.x + ipos.x];
@@ -1098,12 +1100,16 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
     float V2;
 
     {
-        float3 fipos = round(pos);
+        /*float3 fipos = round(pos);
         int ix = fipos.x;
         int iy = fipos.y;
-        int iz = fipos.z;
+        int iz = fipos.z;*/
 
-        struct intermediate_bssnok_data ik = temp_in[IDX(ix, iy, iz)];
+        //struct intermediate_bssnok_data ik = temp_in[IDX(ix, iy, iz)];
+
+        float fx = pos.x;
+        float fy = pos.y;
+        float fz = pos.z;
 
         float TEMPORARIES5;
 
@@ -1126,11 +1132,15 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
         float3 fdim = {dim.x, dim.y, dim.z};
 
         cpos = clamp(cpos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
-        float3 fipos = round(cpos);
+        /*float3 fipos = round(cpos);
 
         int ix = fipos.x;
         int iy = fipos.y;
-        int iz = fipos.z;
+        int iz = fipos.z;*/
+
+        float fx = cpos.x;
+        float fy = cpos.y;
+        float fz = cpos.z;
 
         float TEMPORARIES6;
 
