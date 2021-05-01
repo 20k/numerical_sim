@@ -410,7 +410,7 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
 {
     float edge_half = scale * (dim.x/2);
 
-    float sponge_r0 = scale * ((dim.x/2) - 120);
+    float sponge_r0 = scale * ((dim.x/2) - 64);
     //float sponge_r0 = edge_half/2;
     float sponge_r1 = scale * ((dim.x/2) - 4);
 
@@ -984,7 +984,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         printf("scalar %f\n", max_scalar);
     }*/
 
-    //max_scalar = max_scalar * 10;
+    max_scalar = max_scalar * 10;
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 
