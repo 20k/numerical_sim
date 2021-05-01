@@ -5,67 +5,6 @@
 
 //#define USE_GBB
 
-#define DIDX(x, y) data[x * 3 + y]
-
-float determinant(float data[9])
-{
-    float a11 = DIDX(0, 0);
-    float a12 = DIDX(0, 1);
-    float a13 = DIDX(0, 2);
-
-    float a21 = DIDX(1, 0);
-    float a22 = DIDX(1, 1);
-    float a23 = DIDX(1, 2);
-
-    float a31 = DIDX(2, 0);
-    float a32 = DIDX(2, 1);
-    float a33 = DIDX(2, 2);
-
-    return a11*a22*a33 + a21*a32*a13 + a31*a12*a23 - a11*a32*a23 - a31*a22*a13 - a21*a12*a33;
-}
-
-///for matrix with a unity determininant, which is ONLY cYij
-void matrix_3x3_invert(float data[9], float out[9])
-{
-    float d = 1/determinant(data);
-
-    float a11 = data[0 * 3 + 0];
-    float a12 = data[0 * 3 + 1];
-    float a13 = data[0 * 3 + 2];
-
-    float a21 = data[1 * 3 + 0];
-    float a22 = data[1 * 3 + 1];
-    float a23 = data[1 * 3 + 2];
-
-    float a31 = data[2 * 3 + 0];
-    float a32 = data[2 * 3 + 1];
-    float a33 = data[2 * 3 + 2];
-
-    float x0 = (a22 * a33 - a23 * a32) * d;
-    float y0 = (a13 * a32 - a12 * a33) * d;
-    float z0 = (a12 * a23 - a13 * a22) * d;
-
-    float x1 = (a23 * a31 - a21 * a33) * d;
-    float y1 = (a11 * a33 - a13 * a31) * d;
-    float z1 = (a13 * a21 - a11 * a23) * d;
-
-    float x2 = (a21 * a32 - a22 * a31) * d;
-    float y2 = (a12 * a31 - a11 * a32) * d;
-    float z2 = (a11 * a22 - a12 * a21) * d;
-
-    out[0 * 3 + 0] = x0;
-    out[0 * 3 + 1] = y0;
-    out[0 * 3 + 2] = z0;
-
-    out[1 * 3 + 0] = x1;
-    out[1 * 3 + 1] = y1;
-    out[1 * 3 + 2] = z1;
-
-    out[2 * 3 + 0] = x2;
-    out[2 * 3 + 1] = y2;
-    out[2 * 3 + 2] = z2;
-}
-
 ///todo: This can be eliminated by use of local memory and using different approximations to the derivatives at the boundary
 ///need to work out why precaching the differentials of these didn't make much difference compared to bssnok_data
 ///it might be because they're arrays
