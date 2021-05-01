@@ -5,6 +5,16 @@
 
 //#define USE_GBB
 
+float buffer_read_nearest(__global const float* const buffer, int3 position, int4 dim)
+{
+    return buffer[position.z * dim.x * dim.y + position.y * dim.x + position.x];
+}
+
+void buffer_write(__global float* buffer, int3 position, int4 dim, float value)
+{
+    buffer[position.z * dim.x * dim.y + position.y * dim.x + position.x] = value;
+}
+
 ///todo: This can be eliminated by use of local memory and using different approximations to the derivatives at the boundary
 ///need to work out why precaching the differentials of these didn't make much difference compared to bssnok_data
 ///it might be because they're arrays
@@ -65,7 +75,7 @@ float polynomial(float x)
     return (1 + (-3 + 6 * (-1 + x)) * (-1 + x)) * x * x * x;
 }
 
-float get_dissipation(int ix, int iy, int iz, int4 dim, float scale, __global float* buffer)
+float get_dissipation(int ix, int iy, int iz, int4 dim, float scale, __global const float* buffer)
 {
     return KREISS_OLIGER_DISSIPATE;
 }
