@@ -517,12 +517,27 @@ struct differentiation_context
         {
             int offset = i - (elements - 1)/2;
 
-            if(idx == 0)
-                xs[i] += "+" + std::to_string(offset);
-            if(idx == 1)
-                ys[i] += "+" + std::to_string(offset);
-            if(idx == 2)
-                zs[i] += "+" + std::to_string(offset);
+            if(offset == 0)
+                continue;
+
+            if(offset > 0)
+            {
+                if(idx == 0)
+                    xs[i] += "+" + std::to_string(offset);
+                if(idx == 1)
+                    ys[i] += "+" + std::to_string(offset);
+                if(idx == 2)
+                    zs[i] += "+" + std::to_string(offset);
+            }
+            else
+            {
+                if(idx == 0)
+                    xs[i] += std::to_string(offset);
+                if(idx == 1)
+                    ys[i] += std::to_string(offset);
+                if(idx == 2)
+                    zs[i] += std::to_string(offset);
+            }
         }
 
         /*std::map<std::string, std::string> substitutions1;
