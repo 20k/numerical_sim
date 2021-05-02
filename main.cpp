@@ -295,7 +295,7 @@ struct equation_context
 };
 
 //#define SYMMETRY_BOUNDARY
-#define BORDER_WIDTH 3
+#define BORDER_WIDTH 6
 
 inline
 std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
@@ -1133,8 +1133,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.3, 0, 0}), san_black_hole_pos({1.3, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, 0, 0}), san_black_hole_pos({1.1515 * 0.5f, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, -0.01, -0.01}), san_black_hole_pos({1.1515 * 0.5f, 0.01, 0.01})};
-    //std::vector<float> black_hole_m{0.5f};
-    std::vector<float> black_hole_m{0.5f, 0.5f};
+    std::vector<float> black_hole_m{0.5f};
+    //std::vector<float> black_hole_m{0.5f, 0.5f};
     std::vector<vec3f> black_hole_velocity{{0, 0.5, 0}, {0, -0.5, 0}}; ///pick better velocities
     //std::vector<float> black_hole_m{0.1f, 0.1f};
     //std::vector<float> black_hole_m{1, 1};
@@ -1150,8 +1150,6 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     {
         float Mi = black_hole_m[i];
         vec3f ri = black_hole_pos[i];
-
-        std::cout << "RI " << ri << std::endl;
 
         vec<3, value> vri = {ri.x(), ri.y(), ri.z()};
 
@@ -2089,7 +2087,7 @@ void build_eqs(equation_context& ctx)
 
             for(int k=0; k < 3; k++)
             {
-                sum = cA.idx(i, k) * mixed_cAij.idx(k, j);
+                sum = sum + cA.idx(i, k) * mixed_cAij.idx(k, j);
             }
 
             ///so
