@@ -639,7 +639,7 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
     int d = 2;
 
     ///todo: test lower value again
-    float dissipate = 0.5f;
+    float dissipate = 0.25f;
 
     value scale = "scale";
 
@@ -1130,11 +1130,11 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({0, -1.1515 * 0.5f, 0}), san_black_hole_pos({0, 1.1515 * 0.5f, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.1515, 0, 0}), san_black_hole_pos({2.1515, 0, 0})};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.3, 0, 0}), san_black_hole_pos({1.3, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.25, 0, 0}), san_black_hole_pos({1.25, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, 0, 0}), san_black_hole_pos({1.1515 * 0.5f, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, -0.01, -0.01}), san_black_hole_pos({1.1515 * 0.5f, 0.01, 0.01})};
-    std::vector<float> black_hole_m{0.5f};
-    //std::vector<float> black_hole_m{0.5f, 0.5f};
+    //std::vector<float> black_hole_m{0.5f};
+    std::vector<float> black_hole_m{0.5f, 0.5f};
     std::vector<vec3f> black_hole_velocity{{0, 0.5, 0}, {0, -0.5, 0}}; ///pick better velocities
     //std::vector<float> black_hole_m{0.1f, 0.1f};
     //std::vector<float> black_hole_m{1, 1};
@@ -1173,7 +1173,6 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         {
             ///based on geodesics, u=1 is correct
             float u = 1;
-            //float u = 0;
 
             ///https://arxiv.org/pdf/gr-qc/0511048.pdf
             yij.idx(i, j) = pow(BL_conformal + u, 4) * kronecker.idx(i, j);
@@ -1259,15 +1258,20 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     value gB1 = 1/BL_conformal;
     value gB2 = 1/BL_conformal;*/
 
-    value gA = 1/(BL_conformal * BL_conformal);
+    /*value gA = 1/(BL_conformal * BL_conformal);
+    value gB0 = 0;
+    value gB1 = 0;
+    value gB2 = 0;*/
+
+    value gA = 1;
     value gB0 = 0;
     value gB1 = 0;
     value gB2 = 0;
 
-    /*value gA = 1;
-    value gB0 = 0;
-    value gB1 = 0;
-    value gB2 = 0;*/
+    /*value gA = 1/(BL_conformal * BL_conformal);
+    value gB0 = sqrt((1 - gA*gA) / 3);
+    value gB1 = sqrt((1 - gA*gA) / 3);
+    value gB2 = sqrt((1 - gA*gA) / 3);*/
 
     #if 0
     tensor<value, 3> norm;
@@ -2033,8 +2037,6 @@ void build_eqs(equation_context& ctx)
 
     tensor<value, 3, 3> dtcAij;
 
-    tensor<value, 3, 3> with_trace;
-
     tensor<value, 3, 3, 3> xcChristoff;
 
     for(int i=0; i < 3; i++)
@@ -2059,7 +2061,7 @@ void build_eqs(equation_context& ctx)
 
 
     ///todo: Investigate this, there's a good chance dtcAij is whats broken
-    for(int i=0; i < 3; i++)
+    /*for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
@@ -2081,6 +2083,20 @@ void build_eqs(equation_context& ctx)
 
             with_trace.idx(i, j) = -trace_free_interior_1 + trace_free_interior_2;
         }
+    }*/
+
+    tensor<value, 3, 3> with_trace;
+
+    ///todo: Investigate this, there's a good chance dtcAij is whats broken
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value trace_free_interior_1 = -gpu_covariant_derivative_low_vec(ctx, digA, Yij, iYij).idx(j, i);
+            value trace_free_interior_2 = gA * Rij.idx(i, j);
+
+            with_trace.idx(i, j) = trace_free_interior_1 + trace_free_interior_2;
+        }
     }
 
     for(int i=0; i < 3; i++)
@@ -2094,22 +2110,9 @@ void build_eqs(equation_context& ctx)
                 sum = sum + cA.idx(i, k) * mixed_cAij.idx(k, j);
             }
 
-            ///so
-            ///the trace is calculated as iYij Vij, where Vij is whatever
-            ///if Yij = cYij / X
-            ///https://en.wikipedia.org/wiki/Invertible_matrix#Other_properties
-            ///then iYij = = X * icYij
-            ///the trace is the sum X * icYij * Vij
-            ///making something trace free is denoted as Vij - (1/3) metij * V, where V = trace
-            ///= Vij - (1/3) Yij * V
-            ///= Vij - (1/3) (cYij / X) * V
-            ///but the trace is the sum of something multiplied by X
-            ///= Vij - (1/3) cYij (icYkl Vkl)
-            ///therefore I think constant factor multiplications to the metric make no difference to the trace calculation, so we can use
-            ///cY here instead of Yij
-            value trace_free_part = gpu_trace_free(with_trace, cY, icY).idx(i, j);
+            value trace_free_part = gpu_trace_free(with_trace, Yij, iYij).idx(i, j);
 
-            value p1 = trace_free_part;
+            value p1 = X * trace_free_part;
 
             value p2 = gA * (K * cA.idx(i, j) - 2 * sum);
 
@@ -2141,17 +2144,18 @@ void build_eqs(equation_context& ctx)
     value dtK = 0;
 
     {
-        value sum1 = 0;
+        /*value sum1 = 0;
+
+        value christoffel_sum = 0;
+
+        ///FIXME
+        for(int k=0; k < 3; k++)
+        {
+            christoffel_sum = christoffel_sum + X * derived_cGi.idx(k) * digA.idx(k);
+        }
 
         for(int i=0; i < 3; i++)
         {
-            value christoffel_sum = 0;
-
-            for(int k=0; k < 3; k++)
-            {
-                christoffel_sum = christoffel_sum - X * derived_cGi.idx(k) * digA.idx(k);
-            }
-
             value s1 = 0;
 
             for(int j=0; j < 3; j++)
@@ -2164,13 +2168,24 @@ void build_eqs(equation_context& ctx)
 
             for(int j=0; j < 3; j++)
             {
-                s3 = s3 + 2 * (-1.f/4.f) * icY.idx(i, j) * hacky_differentiate(ctx, X, i) * digA.idx(j);
+                s3 = s3 + X * 2 * icY.idx(i, j) * dphi.idx(i) * digA.idx(j);
+
+                //s3 = s3 + 2 * (-1.f/4.f) * icY.idx(i, j) * hacky_differentiate(ctx, X, i) * digA.idx(j);
             }
 
 
-            sum1 = sum1 + s1 + christoffel_sum + s3;
+            sum1 = sum1 + s1 + s3;
 
             //sum1 = sum1 + gpu_high_covariant_derivative_vec(ctx, digA, Yij, iYij).idx(i, i);
+        }
+
+        sum1 = sum1 - christoffel_sum;*/
+
+        value sum1 = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            sum1 = sum1 + gpu_high_covariant_derivative_vec(ctx, digA, Yij, iYij).idx(i, i);
         }
 
         value sum2 = 0;
@@ -2194,6 +2209,8 @@ void build_eqs(equation_context& ctx)
         }
 
         dtK = -sum1 + sum2 + sum3;
+
+        //dtK = 0;
     }
 
     ///a / X
@@ -2278,7 +2295,9 @@ void build_eqs(equation_context& ctx)
                     return 0;
                 });*/
 
-                value s9 = (-1/4.f) * gA_X * 6 * icAij.idx(i, j) * hacky_differentiate(ctx, X, j);
+                //value s9 = (-1/4.f) * gA_X * 6 * icAij.idx(i, j) * hacky_differentiate(ctx, X, j);
+
+                value s9 = gA * 6 * icAij.idx(i, j) * dphi.idx(j);
 
                 value s10 = -(2.f/3.f) * icY.idx(i, j) * hacky_differentiate(ctx, K, j);
 
@@ -3758,11 +3777,11 @@ int main()
     std::string argument_string = "-O3 -cl-std=CL2.0 ";
 
     ///the simulation domain is this * 2
-    int current_simulation_boundary = 5;
+    int current_simulation_boundary = 2;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {324, 324, 324};
+    vec3i size = {310, 310, 310};
     //vec3i size = {250, 250, 250};
-    float c_at_max = 20;
+    float c_at_max = 40;
     //float c_at_max = 45;
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
