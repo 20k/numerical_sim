@@ -639,7 +639,7 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
     int d = 2;
 
     ///todo: test lower value again
-    float dissipate = 0.1f;
+    float dissipate = 0.5f;
 
     value scale = "scale";
 
@@ -1501,16 +1501,20 @@ void build_intermediate(equation_context& ctx)
 
     value phi = X_to_phi(X);
 
-    ctx.pin(phi);
+    //ctx.pin(phi);
 
     tensor<value, 3> dphi;
 
     for(int i=0; i < 3; i++)
     {
-        value dX = hacky_differentiate(ctx, X, i);
+        /*value dX = hacky_differentiate(ctx, X, i);
 
-        dphi.idx(i) = -dX / (4 * X);
+        dphi.idx(i) = -dX / (4 * X);*/
+
+        dphi.idx(i) = hacky_differentiate(ctx, phi, i);
     }
+
+    ctx.pin(phi);
 
     /*for(int k=0; k < 3; k++)
     {
