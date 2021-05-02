@@ -44,6 +44,10 @@ https://arxiv.org/pdf/0812.3752.pdf - numerical methods, this paper seems very u
 https://arxiv.org/pdf/0706.0740.pdf - contains explicit upwind stencils, as well as material on numerical dissipation
 https://physics.princeton.edu//~fpretori/AST523_NR_b.pdf - has an explicit expansion for kreiss-oliger
 https://hal.archives-ouvertes.fr/hal-00569776/document - contains the D+- operators, and a higher order kreiss-oliger expansion
+
+https://link.springer.com/article/10.12942/lrr-2007-3 - event horizon finding
+https://arxiv.org/pdf/gr-qc/9412071.pdf - misc numerical relativity, old
+https://arxiv.org/pdf/gr-qc/0703035.pdf - lots of hyper useful information on the adm formalism
 */
 
 //#define USE_GBB
@@ -3458,6 +3462,34 @@ tensor<value, 4> get_adm_hypersurface_normal(const value& gA, const tensor<value
     return {1/gA, -gB.idx(0)/gA, -gB.idx(1)/gA, -gB.idx(2)/gA};
 }
 
+vec<3, value> rotate_vector(const vec<3, value>& bx, const vec<3, value>& by, const vec<3, value>& bz, const vec<3, value>& v)
+{
+    /*
+    [nxx, nyx, nzx,   [vx]
+     nxy, nyy, nzy,   [vy]
+     nxz, nyz, nzz]   [vz] =
+
+     nxx * vx + nxy * vy + nzx * vz
+     nxy * vx + nyy * vy + nzy * vz
+     nxz * vx + nzy * vy + nzz * vz*/
+
+     return {
+        bx.x() * v.x() + by.x() * v.y() + bz.x() * v.z(),
+        bx.y() * v.x() + by.y() * v.y() + bz.y() * v.z(),
+        bx.z() * v.x() + by.z() * v.y() + bz.z() * v.z()
+    };
+}
+
+vec<3, value> unrotate_vector(const vec<3, value>& bx, const vec<3, value>& by, const vec<3, value>& bz, const vec<3, value>& v)
+{
+    /*
+    nxx, nxy, nxz,   vx,
+    nyx, nyy, nyz,   vy,
+    nzx, nzy, nzz    vz*/
+
+    return rotate_vector({bx.x(), by.x(), bz.x()}, {bx.y(), by.y(), bz.y()}, {bx.z(), by.z(), bz.z()}, v);
+}
+
 void process_geodesics(equation_context& ctx)
 {
     standard_arguments args(true);
@@ -3508,6 +3540,12 @@ void process_geodesics(equation_context& ctx)
     vec<4, value> basis_z = basis.v2;
 
     pixel_direction = pixel_direction.norm();
+
+    vec<3, value> basis3_x = {basis_x.y(), basis_x.z(), basis_x.w()};
+    vec<3, value> basis3_y = {basis_y.y(), basis_y.z(), basis_y.w()};
+    vec<3, value> basis3_z = {basis_z.y(), basis_z.z(), basis_z.w()};
+
+    pixel_direction = unrotate_vector(basis3_x.norm(), basis3_y.norm(), basis3_z.norm(),  pixel_direction);
 
     vec<4, value> pixel_x = pixel_direction.x() * basis_x;
     vec<4, value> pixel_y = pixel_direction.y() * basis_y;
@@ -4159,8 +4197,8 @@ int main()
         {
             float timestep = 0.01;
 
-            if(steps < 5)
-                timestep = 0.001;
+            if(steps < 10)
+                timestep = 0.0001;
 
             steps++;
 
