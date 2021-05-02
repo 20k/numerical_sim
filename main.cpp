@@ -4033,6 +4033,7 @@ int main()
     vec3f camera_pos = {0, c_at_max/2.f - 1, 0};
     //vec3f camera_pos = {175,200,175};
     quat camera_quat;
+    camera_quat.load_from_axis_angle({1, 0, 0, M_PI/2});
 
     std::optional<cl::event> last_event;
 
