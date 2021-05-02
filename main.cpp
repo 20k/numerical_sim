@@ -639,7 +639,7 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
     int d = 2;
 
     ///todo: test lower value again
-    float dissipate = 0.5f;
+    float dissipate = 0.25f;
 
     value scale = "scale";
 
@@ -1133,7 +1133,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.3, 0, 0}), san_black_hole_pos({1.3, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, 0, 0}), san_black_hole_pos({1.1515 * 0.5f, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, -0.01, -0.01}), san_black_hole_pos({1.1515 * 0.5f, 0.01, 0.01})};
-    std::vector<float> black_hole_m{0.5f};
+    std::vector<float> black_hole_m{0.5f, 0.5f};
     //std::vector<float> black_hole_m{0.5f, 0.5f};
     std::vector<vec3f> black_hole_velocity{{0, 0.5, 0}, {0, -0.5, 0}}; ///pick better velocities
     //std::vector<float> black_hole_m{0.1f, 0.1f};
@@ -1259,15 +1259,15 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     value gB1 = 1/BL_conformal;
     value gB2 = 1/BL_conformal;*/
 
-    value gA = 1/(BL_conformal * BL_conformal);
-    value gB0 = 0;
-    value gB1 = 0;
-    value gB2 = 0;
-
-    /*value gA = 1;
+    /*value gA = 1/(BL_conformal * BL_conformal);
     value gB0 = 0;
     value gB1 = 0;
     value gB2 = 0;*/
+
+    value gA = 1;
+    value gB0 = 0;
+    value gB1 = 0;
+    value gB2 = 0;
 
     #if 0
     tensor<value, 3> norm;
@@ -2143,15 +2143,15 @@ void build_eqs(equation_context& ctx)
     {
         value sum1 = 0;
 
+        value christoffel_sum = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            christoffel_sum = christoffel_sum - X * derived_cGi.idx(k) * digA.idx(k);
+        }
+
         for(int i=0; i < 3; i++)
         {
-            value christoffel_sum = 0;
-
-            for(int k=0; k < 3; k++)
-            {
-                christoffel_sum = christoffel_sum - X * derived_cGi.idx(k) * digA.idx(k);
-            }
-
             value s1 = 0;
 
             for(int j=0; j < 3; j++)
@@ -2168,10 +2168,12 @@ void build_eqs(equation_context& ctx)
             }
 
 
-            sum1 = sum1 + s1 + christoffel_sum + s3;
+            sum1 = sum1 + s1 + s3;
 
             //sum1 = sum1 + gpu_high_covariant_derivative_vec(ctx, digA, Yij, iYij).idx(i, i);
         }
+
+        sum1 = sum1 + christoffel_sum;
 
         value sum2 = 0;
 
@@ -3584,7 +3586,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         digA.idx(i) = hacky_differentiate(ctx, args.gA, i, true, true);
     }
 
-    float step = 2;
+    float step = 0.25f;
 
     //vec<4, value> ipos = {"(int)round(lpv0)", "(int)round(lpv1)", "(int)round(lpv2)", "(int)round(lpv3)"};
 
@@ -3762,7 +3764,7 @@ int main()
     ///must be a multiple of DIFFERENTIATION_WIDTH
     vec3i size = {324, 324, 324};
     //vec3i size = {250, 250, 250};
-    float c_at_max = 20;
+    float c_at_max = 45;
     //float c_at_max = 45;
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
