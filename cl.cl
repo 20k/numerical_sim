@@ -1274,7 +1274,7 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
 
         float len = fast_length((float3)(dv0, dv1, dv2));
 
-        if(len >= 0.01)
+        if(len >= 0.1)
             break;
 
         //if(isnan(lp1) || isnan(lp2) || isnan(lp3))
