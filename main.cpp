@@ -639,7 +639,7 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
     int d = 2;
 
     ///todo: test lower value again
-    float dissipate = 0.25f;
+    float dissipate = 0.25f/16.f;
 
     value scale = "scale";
 
