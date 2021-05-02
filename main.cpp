@@ -633,17 +633,17 @@ struct differentiation_context
 ///https://hal.archives-ouvertes.fr/hal-00569776/document this paper implies you simply sum the directions
 value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int idx)
 {
+    //differentiation_context<7> dctx(ctx, in, idx, false);
     differentiation_context<5> dctx(ctx, in, idx, false);
 
     int d = 2;
 
     ///todo: test lower value again
-    float dissipate = 0.25f;
+    float dissipate = 0.1f;
 
     value scale = "scale";
 
     value stencil = -(dissipate / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
-    //value stencil = (dissipate / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
 
     //value stencil = (dissipate / (64 * scale)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
 
@@ -665,10 +665,10 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
 void build_kreiss_oliger_dissipate(equation_context& ctx)
 {
     value v = "buffer";
-
-    //ctx.add("KREISS_OLIGER_DISSIPATE", z);
-
     ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
+
+    //value z = 0;
+    //ctx.add("KREISS_OLIGER_DISSIPATE", z);
 }
 
 value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true, bool linear = false)
@@ -1129,8 +1129,9 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({0, -1.1515 * 0.5f, 0}), san_black_hole_pos({0, 1.1515 * 0.5f, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5, 0, 0})};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.1515, 0, 0}), san_black_hole_pos({2.1515, 0, 0})};
-    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515, 0, 0}), san_black_hole_pos({1.1515, 0, 0})};
+    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.1515, 0, 0}), san_black_hole_pos({2.1515, 0, 0})};
+    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.3, 0, 0}), san_black_hole_pos({1.3, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, 0, 0}), san_black_hole_pos({1.1515 * 0.5f, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, -0.01, -0.01}), san_black_hole_pos({1.1515 * 0.5f, 0.01, 0.01})};
     //std::vector<float> black_hole_m{0.5f};
     std::vector<float> black_hole_m{0.5f, 0.5f};
@@ -3581,7 +3582,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         digA.idx(i) = hacky_differentiate(ctx, args.gA, i, true, true);
     }
 
-    float step = 0.75;
+    float step = 2;
 
     //vec<4, value> ipos = {"(int)round(lpv0)", "(int)round(lpv1)", "(int)round(lpv2)", "(int)round(lpv3)"};
 
@@ -3759,7 +3760,7 @@ int main()
     ///must be a multiple of DIFFERENTIATION_WIDTH
     vec3i size = {324, 324, 324};
     //vec3i size = {250, 250, 250};
-    float c_at_max = 30;
+    float c_at_max = 20;
     //float c_at_max = 45;
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
