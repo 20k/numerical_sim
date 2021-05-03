@@ -1101,21 +1101,6 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
     value BL_conformal = 1;
 
-    //vec<3, value> vcentre = {centre.x(), centre.y(), centre.z()};
-
-    //value r = (pos - vcentre).length() * scale;
-
-    //value r = pos.length();
-
-    //std::cout << "REQ " << type_to_string(r) << std::endl;
-
-    //r = max(r, 0.01f);
-
-   // std::cout << "FR " << r.substitute("x", 20).substitute("y", 125).substitute("z", 125).get_constant() << std::endl;
-
-    //value bulge;
-    //bulge.make_value("BULGE_AMOUNT");
-
     float bulge = 1;
 
     auto san_black_hole_pos = [&](vec3f in)
