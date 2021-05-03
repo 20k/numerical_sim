@@ -1390,8 +1390,8 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
 
     if(deliberate_termination)
     {
-        col = (float4){1,1,1,1};
+        col = (float4){0,0,0,1};
     }
 
-    write_imagef(screen, (int2){x, y}, (float4)(0,0,0,1));
+    write_imagef(screen, (int2){x, y}, col);
 }
