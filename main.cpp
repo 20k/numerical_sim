@@ -675,6 +675,7 @@ void build_kreiss_oliger_dissipate(equation_context& ctx)
     //ctx.add("KREISS_OLIGER_DISSIPATE", z);
 }
 
+template<int order = 1>
 value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true, bool linear = false)
 {
     differentiation_context dctx(ctx, in, idx, true, linear);
@@ -683,9 +684,18 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
 
     value scale = "scale";
 
-    ///this gives second order in space
-    //value final_command = (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
-    value final_command = (vars[3] - vars[1]) / (2 * scale);
+    value final_command;
+
+    if(order == 1)
+    {
+        final_command = (vars[3] - vars[1]) / (2 * scale);
+    }
+    else if(order == 2)
+    {
+        final_command = (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
+    }
+
+    static_assert(order == 1 || order == 2);
 
     /*value final_command;
 
@@ -3605,6 +3615,8 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
     vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
 
+    constexpr int order = 2;
+
     tensor<value, 3, 3> digB;
 
     ///derivative
@@ -3613,7 +3625,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         ///index
         for(int j=0; j < 3; j++)
         {
-            digB.idx(i, j) = hacky_differentiate(ctx, args.gB.idx(j), i, true, true);
+            digB.idx(i, j) = hacky_differentiate<order>(ctx, args.gB.idx(j), i, true, true);
         }
     }
 
@@ -3621,7 +3633,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     for(int i=0; i < 3; i++)
     {
-        digA.idx(i) = hacky_differentiate(ctx, args.gA, i, true, true);
+        digA.idx(i) = hacky_differentiate<order>(ctx, args.gA, i, true, true);
     }
 
     float universe_length = (dim/2.f).max_elem();
@@ -3685,7 +3697,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         {
             for(int k=0; k < 3; k++)
             {
-                p3 += 0.5f * V_upper.idx(j) * V_upper.idx(k) * hacky_differentiate(ctx, args.Yij.idx(j, k), i, true, true);
+                p3 += 0.5f * V_upper.idx(j) * V_upper.idx(k) * hacky_differentiate<order>(ctx, args.Yij.idx(j, k), i, true, true);
             }
         }
 
