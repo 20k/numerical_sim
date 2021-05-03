@@ -22,26 +22,26 @@ float buffer_read_linear(__global const float* const buffer, float3 position, in
 
     int3 ipos = (int3)(floored.x, floored.y, floored.z);
 
-    float i1 = buffer_read_nearest(buffer, ipos + (int3)(0,0,0), dim);
-    float i2 = buffer_read_nearest(buffer, ipos + (int3)(1,0,0), dim);
+    float c000 = buffer_read_nearest(buffer, ipos + (int3)(0,0,0), dim);
+    float c100 = buffer_read_nearest(buffer, ipos + (int3)(1,0,0), dim);
 
-    float i3 = buffer_read_nearest(buffer, ipos + (int3)(0,1,0), dim);
-    float i4 = buffer_read_nearest(buffer, ipos + (int3)(1,1,0), dim);
+    float c010 = buffer_read_nearest(buffer, ipos + (int3)(0,1,0), dim);
+    float c110 = buffer_read_nearest(buffer, ipos + (int3)(1,1,0), dim);
 
 
-    float i5 = buffer_read_nearest(buffer, ipos + (int3)(0,0,1), dim);
-    float i6 = buffer_read_nearest(buffer, ipos + (int3)(1,0,1), dim);
+    float c001 = buffer_read_nearest(buffer, ipos + (int3)(0,0,1), dim);
+    float c101 = buffer_read_nearest(buffer, ipos + (int3)(1,0,1), dim);
 
-    float i7 = buffer_read_nearest(buffer, ipos + (int3)(0,1,1), dim);
-    float i8 = buffer_read_nearest(buffer, ipos + (int3)(1,1,1), dim);
+    float c011 = buffer_read_nearest(buffer, ipos + (int3)(0,1,1), dim);
+    float c111 = buffer_read_nearest(buffer, ipos + (int3)(1,1,1), dim);
 
     float3 frac = position - floored;
 
-    float c00 = i1 * (1 - frac.x) + i2 * frac.x;
-    float c01 = i5 * (1 - frac.x) + i5 * frac.x;
+    float c00 = c000 * (1 - frac.x) + c100 * frac.x;
+    float c01 = c001 * (1 - frac.x) + c101 * frac.x;
 
-    float c10 = i3 * (1 - frac.x) + i4 * frac.x;
-    float c11 = i7 * (1 - frac.x) + i8 * frac.x;
+    float c10 = c010 * (1 - frac.x) + c110 * frac.x;
+    float c11 = c011 * (1 - frac.x) + c111 * frac.x;
 
     float c0 = c00 * (1 - frac.y) + c10 * frac.y;
     float c1 = c01 * (1 - frac.y) + c11 * frac.y;
