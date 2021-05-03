@@ -1347,7 +1347,7 @@ void trace_metric(__global float* cY0, __global float* cY1, __global float* cY2,
 
     float3 pixel_direction = {x - width/2, y - height/2, nonphysical_f_stop};
 
-    pixel_direction = rot_quat(normalize(pixel_direction) * 0.5f, camera_quat);
+    pixel_direction = rot_quat(normalize(pixel_direction), camera_quat);
 
     float max_scalar = 0;
 
