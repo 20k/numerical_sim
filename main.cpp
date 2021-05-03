@@ -92,8 +92,7 @@ struct intermediate_bssnok_data
     cl_float dcYij[3 * 6];
     cl_float digA[6];
     cl_float digB[3*3];
-    //cl_float phi;
-    cl_float dphi[3];
+    cl_float dX[3];
 };
 
 template<typename T, typename U, int N, size_t M>
@@ -1500,29 +1499,6 @@ void build_intermediate(equation_context& ctx)
         }
     }
 
-    ///or 0.25f * log(1.f/v.X);
-    auto X_to_phi = [](value X)
-    {
-        return -0.25f * log(X);
-    };
-
-    value phi = X_to_phi(X);
-
-    //ctx.pin(phi);
-
-    tensor<value, 3> dphi;
-
-    for(int i=0; i < 3; i++)
-    {
-        value dX = hacky_differentiate(ctx, X, i);
-
-        dphi.idx(i) = -dX / (4 * X);
-
-        //dphi.idx(i) = hacky_differentiate(ctx, phi, i);
-    }
-
-    ctx.pin(phi);
-
     /*for(int k=0; k < 3; k++)
     {
         for(int i=0; i < 6; i++)
@@ -1562,11 +1538,10 @@ void build_intermediate(equation_context& ctx)
         }
     }
 
-    //ctx.add("init_phi", phi);
-
-    ctx.add("init_dphi0", dphi.idx(0));
-    ctx.add("init_dphi1", dphi.idx(1));
-    ctx.add("init_dphi2", dphi.idx(2));
+    for(int i=0; i < 3; i++)
+    {
+        ctx.add("init_dX" + std::to_string(i), hacky_differentiate(ctx, X, i));
+    }
 }
 
 ///https://arxiv.org/pdf/gr-qc/0206072.pdf on stability, they recompute cGi where it does nto hae a derivative
@@ -1632,10 +1607,10 @@ void build_eqs(equation_context& ctx)
     digA.idx(1).make_value("ik.digA[1]");
     digA.idx(2).make_value("ik.digA[2]");
 
-    tensor<value, 3> dphi;
-    dphi.idx(0).make_value("ik.dphi[0]");
-    dphi.idx(1).make_value("ik.dphi[1]");
-    dphi.idx(2).make_value("ik.dphi[2]");
+    tensor<value, 3> dX;
+    dX.idx(0).make_value("ik.dX[0]");
+    dX.idx(1).make_value("ik.dX[1]");
+    dX.idx(2).make_value("ik.dX[2]");
 
     tensor<value, 3, 3> digB;
 
@@ -1766,7 +1741,7 @@ void build_eqs(equation_context& ctx)
 
         for(int i=0; i < 3; i++)
         {
-            hacky_differentiate(ctx, "ik.dphi[" + std::to_string(i) + "]", k);
+            hacky_differentiate(ctx, "ik.dX[" + std::to_string(i) + "]", k);
         }
     }
 
@@ -1964,85 +1939,27 @@ void build_eqs(equation_context& ctx)
         }
     }
 
-    tensor<value, 3, 3> Rphiij;
+    ///a / X
+    value gA_X = 0;
 
-    for(int i=0; i < 3; i++)
     {
-        for(int j=0; j < 3; j++)
+        float min_X = 0.00001;
+
+        gA_X = dual_if(X <= min_X,
+        [&]()
         {
-            value s1 = -2 * gpu_covariant_derivative_low_vec(ctx, dphi, cY, icY).idx(j, i);
+            ///linearly interpolate to 0
+            value value_at_min = gA / min_X;
 
-            value s2 = 0;
-
-            for(int l=0; l < 3; l++)
-            {
-                s2 = s2 + gpu_high_covariant_derivative_vec(ctx, dphi, cY, icY).idx(l, l);
-            }
-
-            s2 = -2 * cY.idx(i, j) * s2;
-
-            value s3 = 4 * (dphi.idx(i)) * (dphi.idx(j));
-
-            value s4 = 0;
-
-            for(int l=0; l < 3; l++)
-            {
-                s4 = s4 + raise_index(dphi, cY, icY).idx(l) * dphi.idx(l);
-            }
-
-            s4 = -4 * cY.idx(i, j) * s4;
-
-            Rphiij.idx(i, j) = s1 + s2 + s3 + s4;
-        }
+            return value_at_min * (X / min_X);
+        },
+        [&]()
+        {
+            return gA / X;
+        });
     }
 
-    //ctx.add("debug_val", Rphiij.idx(i, j));
-
-    //ctx.add("debug_val", gpu_trace(cA, cY, icY));
-
-    tensor<value, 3, 3> Rij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            Rij.idx(i, j) = Rphiij.idx(i, j) + cRij.idx(i, j);
-
-            ctx.pin(Rij.idx(i, j));
-        }
-    }
-
-    ///recover Yij from X and cYij
-    ///https://arxiv.org/pdf/gr-qc/0511048.pdf
-    ///https://arxiv.org/pdf/gr-qc/9810065.pdf
-    ///X = exp(-4 phi)
-    ///consider trying to eliminate via https://arxiv.org/pdf/gr-qc/0206072.pdf (27). I think this is what you're meant to do
-    ///to eliminate the dependency on the non conformal metric entirely. This would improve stability quite significantly
-    ///near the puncture
-    metric<value, 3, 3> Yij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            Yij.idx(i, j) = cY.idx(i, j) / X;
-        }
-    }
-
-    //ctx.add("debug_val", derived_cGi.idx(0));
-
-    //ctx.add("debug_val", Yij.idx(0, 1));
-
-    inverse_metric<value, 3, 3> iYij = Yij.invert();
-
-    ///Aki G^kj
-    tensor<value, 3, 3> mixed_cAij = raise_index(cA, cY, icY);
-
-    ///not sure dtcaij is correct, need to investigate
-    tensor<value, 3, 3> dtcAij;
-
-    tensor<value, 3, 3> with_trace;
-
+    ///X * christoffel symbols of the conformal metric
     tensor<value, 3, 3, 3> xcChristoff;
 
     for(int i=0; i < 3; i++)
@@ -2065,6 +1982,97 @@ void build_eqs(equation_context& ctx)
         }
     }
 
+    tensor<value, 3, 3> xgADiDjphi;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value p1 = -gA * hacky_differentiate(ctx, dX.idx(j), i);
+
+            value p2 = gA_X * dX.idx(i) * dX.idx(j);
+
+            value p3s = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                p3s = p3s + christoff2.idx(k, i, j) * -dX.idx(k);
+            }
+
+            xgADiDjphi.idx(i, j) = 0.25f * (p1 + p2 - gA * p3s);
+        }
+    }
+
+    tensor<value, 3, 3> xgARphiij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value s1XgA = -2 * xgADiDjphi.idx(i, j);
+
+            value s2XgA = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                for(int s=0; s < 3; s++)
+                {
+                    s2XgA = s2XgA + icY.idx(k, s) * xgADiDjphi.idx(s, k);
+                }
+            }
+
+            s2XgA = -2 * cY.idx(i, j) * s2XgA;
+
+            value s3XgA = 4 * (1.f/16.f) * gA_X * dX.idx(i) * dX.idx(j);
+
+            value s4XgA = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                for(int s=0; s < 3; s++)
+                {
+                    s4XgA = s4XgA + icY.idx(k, s) * (1/16.f) * gA_X * dX.idx(s) * dX.idx(k);
+                }
+            }
+
+            s4XgA = -4 * cY.idx(i, j) * s4XgA;
+
+            xgARphiij.idx(i, j) = s1XgA + s2XgA + s3XgA + s4XgA;
+        }
+    }
+
+    //ctx.add("debug_val", Rphiij.idx(i, j));
+
+    //ctx.add("debug_val", gpu_trace(cA, cY, icY));
+
+    tensor<value, 3, 3> xgARij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            xgARij.idx(i, j) = xgARphiij.idx(i, j) + X * gA * cRij.idx(i, j);
+
+            ctx.pin(xgARij.idx(i, j));
+        }
+    }
+
+    ///recover Yij from X and cYij
+    ///https://arxiv.org/pdf/gr-qc/0511048.pdf
+    ///https://arxiv.org/pdf/gr-qc/9810065.pdf
+    ///X = exp(-4 phi)
+    ///consider trying to eliminate via https://arxiv.org/pdf/gr-qc/0206072.pdf (27). I think this is what you're meant to do
+    ///to eliminate the dependency on the non conformal metric entirely. This would improve stability quite significantly
+    ///near the puncture
+
+    ///Aki G^kj
+    tensor<value, 3, 3> mixed_cAij = raise_index(cA, cY, icY);
+
+    ///not sure dtcaij is correct, need to investigate
+    tensor<value, 3, 3> dtcAij;
+
+    tensor<value, 3, 3> with_trace;
+
     ///todo: Investigate this, there's a good chance dtcAij is whats broken
     for(int i=0; i < 3; i++)
     {
@@ -2084,7 +2092,7 @@ void build_eqs(equation_context& ctx)
 
             trace_free_interior_1 = trace_free_interior_1 - reduced;
 
-            value trace_free_interior_2 = X * gA * Rij.idx(i, j);
+            value trace_free_interior_2 = xgARij.idx(i, j);
 
             with_trace.idx(i, j) = -trace_free_interior_1 + trace_free_interior_2;
         }
@@ -2212,26 +2220,6 @@ void build_eqs(equation_context& ctx)
         }
 
         dtK = -sum1 + sum2 + sum3;
-    }
-
-    ///a / X
-    value gA_X = 0;
-
-    {
-        float min_X = 0.00001;
-
-        gA_X = dual_if(X <= min_X,
-        [&]()
-        {
-            ///linearly interpolate to 0
-            value value_at_min = gA / min_X;
-
-            return value_at_min * (X / min_X);
-        },
-        [&]()
-        {
-            return gA / X;
-        });
     }
 
     ///these seem to suffer from oscillations
@@ -2380,7 +2368,7 @@ void build_eqs(equation_context& ctx)
 
     #endif // USE_GBB
 
-    value scalar_curvature = 0;
+    /*value scalar_curvature = 0;
 
     for(int i=0; i < 3; i++)
     {
@@ -2388,7 +2376,7 @@ void build_eqs(equation_context& ctx)
         {
             scalar_curvature = scalar_curvature + iYij.idx(i, j) * Rij.idx(i, j);
         }
-    }
+    }*/
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
@@ -2437,7 +2425,7 @@ void build_eqs(equation_context& ctx)
         ctx.add(name, dtgBB.idx(i));
     }
 
-    ctx.add("scalar_curvature", scalar_curvature);
+    //ctx.add("scalar_curvature", scalar_curvature);
 }
 
 template<typename T, int N>
@@ -2673,6 +2661,7 @@ dual_types::complex<float> get_harmonic(const dual_types::complex<float>& value,
 ///https://scc.ustc.edu.cn/zlsc/sugon/intel/ipp/ipp_manual/IPPM/ippm_ch9/ch9_SHT.htm this states you can approximate
 ///a spherical harmonic transform integral with simple summation
 ///assumes unigrid
+#if 0
 inline
 void extract_waveforms(equation_context& ctx)
 {
@@ -2721,10 +2710,10 @@ void extract_waveforms(equation_context& ctx)
     digA.idx(1).make_value("ik.digA[1]");
     digA.idx(2).make_value("ik.digA[2]");
 
-    tensor<value, 3> dphi;
-    dphi.idx(0).make_value("ik.dphi[0]");
-    dphi.idx(1).make_value("ik.dphi[1]");
-    dphi.idx(2).make_value("ik.dphi[2]");
+    tensor<value, 3> dX;
+    dX.idx(0).make_value("ik.dX[0]");
+    dX.idx(1).make_value("ik.dX[1]");
+    dX.idx(2).make_value("ik.dX[2]");
 
     tensor<value, 3, 3> digB;
 
@@ -2855,7 +2844,7 @@ void extract_waveforms(equation_context& ctx)
 
         for(int i=0; i < 3; i++)
         {
-            hacky_differentiate(ctx, "ik.dphi[" + std::to_string(i) + "]", k);
+            hacky_differentiate(ctx, "ik.dX[" + std::to_string(i) + "]", k);
         }
     }
 
@@ -3282,6 +3271,7 @@ void extract_waveforms(equation_context& ctx)
 
     //vec<4, dual_types::complex<value>> mu = (1.f/sqrt(2)) * (thetau + i * phiu);
 }
+#endif // 0
 
 metric<value, 4, 4> calculate_real_metric(const metric<value, 3, 3>& adm, const value& gA, const tensor<value, 3>& gB)
 {
@@ -3844,8 +3834,8 @@ int main()
     equation_context ctx4;
     build_constraints(ctx4);
 
-    equation_context ctx5;
-    extract_waveforms(ctx5);
+    //equation_context ctx5;
+    //extract_waveforms(ctx5);
 
     equation_context ctx6;
     process_geodesics(ctx6);
@@ -3879,7 +3869,7 @@ int main()
     ctx2.build(argument_string, 1);
     ctx3.build(argument_string, 2);
     ctx4.build(argument_string, 3);
-    ctx5.build(argument_string, 4);
+    //ctx5.build(argument_string, 4);
     ctx6.build(argument_string, 5);
     ctx7.build(argument_string, 6);
     ctx8.build(argument_string, 7);

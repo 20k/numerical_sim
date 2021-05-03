@@ -65,7 +65,7 @@ struct intermediate_bssnok_data
     float digA[3];
     float digB[3*3];
     //float phi;
-    float dphi[3];
+    float dX[3];
 };
 
 float r_to_phys(float r)
@@ -410,9 +410,9 @@ void calculate_intermediate_data(__global float* cY0, __global float* cY1, __glo
 
     //my_out->phi = init_phi;
 
-    my_out->dphi[0] = init_dphi0;
-    my_out->dphi[1] = init_dphi1;
-    my_out->dphi[2] = init_dphi2;
+    my_out->dX[0] = init_dX0;
+    my_out->dX[1] = init_dX1;
+    my_out->dX[2] = init_dX2;
 }
 
 float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float time)
@@ -827,7 +827,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     float debug1 = debug_p1;
     float debug2 = debug_p2;
     float debug3 = debug_p3;
-    float dbgdphi = ik.dphi[0];
+    //float dbgdphi = ik.dphi[0];
 
     #ifdef USE_GBB
     float diss_gBB0 = get_dissipation(ix, iy, iz, dim, scale, gBB0);
@@ -933,7 +933,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     //if(ix == 171 && iy == 137 && iz == 142)
     if(ix == 171 && iy == 140 && iz == 140)
     {
-        float scalar = scalar_curvature;
+        //float scalar = scalar_curvature;
 
         printf("DtY0 %f\n", dtcYij0);
         printf("DtA0 %f\n", dtcAij0);
@@ -958,12 +958,12 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         printf("gB0 %f\n", gB0[index]);
         printf("gB1 %f\n", gB1[index]);
         printf("gB2 %f\n", gB2[index]);
-        printf("Scalar %f\n", scalar);
+        //printf("Scalar %f\n", scalar);
 
         printf("Debugp1 %f", debug_p1);
         printf("Debugp2 %f", debug_p2);
         printf("Debugp3 %f", debug_p3);
-        printf("dphi %f", dbgdphi);
+        //printf("dphi %f", dbgdphi);
 
         /*#ifdef debug_val
         float dbg = debug_val;
@@ -1078,6 +1078,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     //write_imagef(screen, (int2){ix, iy}, (float4){max_scalar, max_scalar, max_scalar, 1});
 }
 
+#if 0
 __kernel
 void extract_waveform(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
                       __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
@@ -1134,6 +1135,7 @@ void extract_waveform(__global float* cY0, __global float* cY1, __global float* 
     printf("Debugw4i %f\n", w4_debugi);
     #endif // w4_debug
 }
+#endif // 0
 
 /*struct lightray
 {
