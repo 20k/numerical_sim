@@ -749,7 +749,7 @@ value upwind_differentiate(equation_context& ctx, const value& prefix, const val
 
     return final_command;*/
 
-    //return prefix * hacky_differentiate(ctx, in, idx, pin);
+    return prefix * hacky_differentiate(ctx, in, idx, pin);
 }
 
 template<typename T, int N>
@@ -1146,7 +1146,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({0, -1.1515 * 0.5f, 0}), san_black_hole_pos({0, 1.1515 * 0.5f, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.1515, 0, 0}), san_black_hole_pos({2.1515, 0, 0})};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.3, 0, 0}), san_black_hole_pos({1.3, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-5, 0, 0}), san_black_hole_pos({5, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, 0, 0}), san_black_hole_pos({1.1515 * 0.5f, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, -0.01, -0.01}), san_black_hole_pos({1.1515 * 0.5f, 0.01, 0.01})};
     std::vector<float> black_hole_m{0.5f, 0.5f};
@@ -1188,7 +1188,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         for(int j=0; j < 3; j++)
         {
             ///based on geodesics, u=1 is correct
-            float u = 1;
+            ///something is wrong though. Initial lapse?
+            float u = 0;
             //float u = 0;
 
             ///https://arxiv.org/pdf/gr-qc/0511048.pdf
@@ -1280,7 +1281,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     value gB1 = 0;
     value gB2 = 0;*/
 
-    value gA = 1;
+    //value gA = 1;
+    value gA = 1/(BL_conformal * BL_conformal);
     value gB0 = 0;
     value gB1 = 0;
     value gB2 = 0;
@@ -1399,6 +1401,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ctx.add("init_gB0", gB0);
     ctx.add("init_gB1", gB1);
     ctx.add("init_gB2", gB2);
+
+    #define USE_GBB
 
     #ifdef USE_GBB
     value gBB0 = 0;
@@ -1672,9 +1676,9 @@ void build_eqs(equation_context& ctx)
 
     #ifdef USE_GBB
     tensor<value, 3> gBB;
-    gBB.idx(0).make_value("v.gBB0");
-    gBB.idx(1).make_value("v.gBB1");
-    gBB.idx(2).make_value("v.gBB2");
+    gBB.idx(0).make_value("gBB0[IDX(ix,iy,iz)]");
+    gBB.idx(1).make_value("gBB1[IDX(ix,iy,iz)]");
+    gBB.idx(2).make_value("gBB2[IDX(ix,iy,iz)]");
     #endif // USE_GBB
 
     value X;
@@ -3927,14 +3931,16 @@ int main()
         true, true, true, true, ///gA, gB0, gB1, gB2,
     };*/
 
-    std::array<bool, 21> redundant_buffers;
+    #ifndef USE_GBB
+    constexpr int buffer_count = 12+9;
+    #else
+    constexpr int buffer_count = 12 + 9 + 3;
+    #endif
+
+    std::array<bool, buffer_count> redundant_buffers;
 
     for(int idx=0; idx < 2; idx++)
     {
-        constexpr int buffer_count = 12+9;
-
-        static_assert(sizeof(redundant_buffers) == buffer_count);
-
         for(int kk=0; kk < buffer_count; kk++)
         {
             if(redundant_buffers[kk] && idx == 1)
@@ -4229,6 +4235,9 @@ int main()
         {
             float timestep = 0.01;
 
+            //if(steps < 1000)
+            //   timestep = 0.001;
+
             if(steps < 10)
                 timestep = 0.0001;
 
@@ -4371,7 +4380,7 @@ int main()
             render_args.push_back(clsize);
             render_args.push_back(rtex[which_texture]);
 
-            assert(render_args.arg_list.size() == 29);
+            //assert(render_args.arg_list.size() == 29);
 
             if(should_render || snap)
             {
