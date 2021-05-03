@@ -738,6 +738,7 @@ value upwind_differentiate(equation_context& ctx, const value& prefix, const val
     value u_n = (3 * dctx.vars[2] - 4 * dctx.vars[1] + dctx.vars[0]) / (2 * scale);
     value u_p = (-dctx.vars[4] + 4 * dctx.vars[3] - 3 * dctx.vars[2]) / (2 * scale);
 
+    ///- here probably isn't right
     value final_command = -(a_p * u_n + a_n * u_p);
 
     if(pin)
