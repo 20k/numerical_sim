@@ -1329,14 +1329,14 @@ void trace_metric(__global float* cY0, __global float* cY1, __global float* cY2,
         return;
 
     ///ray location
-    float3 pos = camera_pos;
+    float3 pos = world_to_voxel(camera_pos, dim, scale);
 
     pos = clamp(pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
     ///temporary while i don't do interpolation
-    float p0 = camera_pos.x;
-    float p1 = camera_pos.y;
-    float p2 = camera_pos.z;
+    float p0 = pos.x;
+    float p1 = pos.y;
+    float p2 = pos.z;
 
     float FOV = 90;
 
@@ -1347,7 +1347,7 @@ void trace_metric(__global float* cY0, __global float* cY1, __global float* cY2,
 
     float3 pixel_direction = {x - width/2, y - height/2, nonphysical_f_stop};
 
-    pixel_direction = rot_quat(normalize(pixel_direction), camera_quat);
+    pixel_direction = rot_quat(normalize(pixel_direction) * 0.5f, camera_quat);
 
     float max_scalar = 0;
 

@@ -4048,6 +4048,8 @@ int main()
 
     std::optional<cl::event> last_event;
 
+    int rendering_method = 0;
+
     while(!win.should_close())
     {
         win.poll();
@@ -4171,6 +4173,8 @@ int main()
             ImGui::Text("Time: %f\n", time_elapsed_s);
 
             bool snap = ImGui::Button("Snapshot");
+
+            ImGui::InputInt("Render Method", &rendering_method, 1);
 
             if(real_graph.size() > 0)
             {
@@ -4356,7 +4360,12 @@ int main()
             assert(render_args.arg_list.size() == 29);
 
             if(should_render || snap)
-                clctx.cqueue.exec("trace_rays", render_args, {width, height}, {16, 16});
+            {
+                if(rendering_method == 0)
+                    clctx.cqueue.exec("trace_metric", render_args, {width, height}, {16, 16});
+                else
+                    clctx.cqueue.exec("trace_rays", render_args, {width, height}, {16, 16});
+            }
         }
 
         cl::event next_event = rtex[which_texture].unacquire(clctx.cqueue);
