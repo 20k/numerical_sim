@@ -4170,6 +4170,8 @@ int main()
 
             ImGui::Text("Time: %f\n", time_elapsed_s);
 
+            bool snap = ImGui::Button("Snapshot");
+
             if(real_graph.size() > 0)
             {
                 ImGui::PushItemWidth(400);
@@ -4353,7 +4355,7 @@ int main()
 
             assert(render_args.arg_list.size() == 29);
 
-            if(should_render)
+            if(should_render || snap)
                 clctx.cqueue.exec("trace_rays", render_args, {width, height}, {16, 16});
         }
 
