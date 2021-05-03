@@ -1159,7 +1159,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
         //dist = dist + 0.01;
 
-        //dist = max(dist, 0.001f);
+        dist = max(dist, 0.001f);
 
         BL_conformal = BL_conformal + Mi / (2 * dist);
     }
@@ -1943,7 +1943,7 @@ void build_eqs(equation_context& ctx)
     value gA_X = 0;
 
     {
-        float min_X = 0.00001;
+        float min_X = 0.001;
 
         gA_X = dual_if(X <= min_X,
         [&]()
@@ -2139,7 +2139,7 @@ void build_eqs(equation_context& ctx)
                 ctx.add("debug_p3", p3);
             }
 
-            value sanitised = dual_types::dual_if(X <= 0.000001, []()
+            /*value sanitised = dual_types::dual_if(X <= 0.000001, []()
             {
                 return 0;
             },
@@ -2154,9 +2154,9 @@ void build_eqs(equation_context& ctx)
                 {
                     return 0;
                 });
-            });
+            });*/
 
-            dtcAij.idx(i, j) = sanitised + p2 + p3;
+            dtcAij.idx(i, j) = p1 + p2 + p3;
         }
     }
 
@@ -4225,8 +4225,8 @@ int main()
         {
             float timestep = 0.01;
 
-            //if(steps < 1000)
-            //   timestep = 0.001;
+            if(steps < 100)
+               timestep = 0.001;
 
             if(steps < 10)
                 timestep = 0.0001;
