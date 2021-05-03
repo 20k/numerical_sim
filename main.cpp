@@ -739,7 +739,8 @@ value upwind_differentiate(equation_context& ctx, const value& prefix, const val
     value u_p = (-dctx.vars[4] + 4 * dctx.vars[3] - 3 * dctx.vars[2]) / (2 * scale);
 
     ///- here probably isn't right
-    value final_command = -(a_p * u_n + a_n * u_p);
+    ///neither is correct, this is fundamentally wrong somewhere
+    value final_command = (a_p * u_n + a_n * u_p);
 
     if(pin)
     {
@@ -748,7 +749,7 @@ value upwind_differentiate(equation_context& ctx, const value& prefix, const val
 
     return final_command;*/
 
-    return prefix * hacky_differentiate(ctx, in, idx, pin);
+    //return prefix * hacky_differentiate(ctx, in, idx, pin);
 }
 
 template<typename T, int N>
