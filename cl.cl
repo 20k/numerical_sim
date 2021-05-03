@@ -1302,3 +1302,85 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
 
     write_imagef(screen, (int2){x, y}, col);
 }
+
+float3 rot_quat(const float3 point, float4 quat)
+{
+    quat = fast_normalize(quat);
+
+    float3 t = 2.f * cross(quat.xyz, point);
+
+    return point + quat.w * t + cross(quat.xyz, t);
+}
+
+__kernel
+void trace_metric(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+               __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
+               __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
+            float scale, __global struct intermediate_bssnok_data* temp_in, float3 camera_pos, float4 camera_quat,
+            float width, float height, int4 dim, __write_only image2d_t screen)
+{
+    int x = get_global_id(0);
+    int y = get_global_id(1);
+
+    if(x >= width)
+        return;
+
+    if(y >= height)
+        return;
+
+    ///ray location
+    float3 pos = camera_pos;
+
+    pos = clamp(pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    ///temporary while i don't do interpolation
+    float p0 = camera_pos.x;
+    float p1 = camera_pos.y;
+    float p2 = camera_pos.z;
+
+    float FOV = 90;
+
+    float fov_rad = (FOV / 360.f) * 2 * M_PI;
+
+    float nonphysical_plane_half_width = width/2;
+    float nonphysical_f_stop = nonphysical_plane_half_width / tan(fov_rad/2);
+
+    float3 pixel_direction = {x - width/2, y - height/2, nonphysical_f_stop};
+
+    pixel_direction = rot_quat(normalize(pixel_direction), camera_quat);
+
+    float max_scalar = 0;
+
+    for(int iteration=0; iteration < 8000; iteration++)
+    {
+        if(p0 < BORDER_WIDTH || p0 >= dim.x - BORDER_WIDTH - 1 || p1 < BORDER_WIDTH || p1 >= dim.y - BORDER_WIDTH - 1 || p2 < BORDER_WIDTH || p2 >= dim.z - BORDER_WIDTH - 1)
+            break;
+
+        float ccY0 = buffer_read_linear(cY0, (float3)(p0,p1,p2), dim);
+        float ccY1 = buffer_read_linear(cY1, (float3)(p0,p1,p2), dim);
+        float ccY2 = buffer_read_linear(cY2, (float3)(p0,p1,p2), dim);
+        float ccY3 = buffer_read_linear(cY3, (float3)(p0,p1,p2), dim);
+        float ccY4 = buffer_read_linear(cY4, (float3)(p0,p1,p2), dim);
+        float ccY5 = buffer_read_linear(cY5, (float3)(p0,p1,p2), dim);
+        float cX = buffer_read_linear(X, (float3)(p0,p1,p2), dim);
+
+        float curvature = fabs(ccY0 / cX) +
+                          fabs(ccY1 / cX) +
+                          fabs(ccY2 / cX) +
+                          fabs(ccY3 / cX) +
+                          fabs(ccY4 / cX) +
+                          fabs(ccY5 / cX);
+
+        float ascalar = curvature / 1000.f;
+
+        max_scalar = max(ascalar, max_scalar);
+
+        p0 += pixel_direction.x;
+        p1 += pixel_direction.y;
+        p2 += pixel_direction.z;
+    }
+
+    max_scalar = clamp(max_scalar, 0.f, 1.f);
+
+    write_imagef(screen, (int2)(x, y), (float4)(max_scalar, max_scalar, max_scalar, 1));
+}
