@@ -1266,8 +1266,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     value gB1 = 0;
     value gB2 = 0;*/
 
-    //value gA = 1;
-    value gA = 1/(BL_conformal * BL_conformal);
+    value gA = 1;
+    //value gA = 1/(BL_conformal * BL_conformal);
     value gB0 = 0;
     value gB1 = 0;
     value gB2 = 0;
@@ -2036,6 +2036,7 @@ void build_eqs(equation_context& ctx)
     ///Aki G^kj
     tensor<value, 3, 3> mixed_cAij = raise_index(cA, cY, icY);
 
+    ///not sure dtcaij is correct, need to investigate
     tensor<value, 3, 3> dtcAij;
 
     tensor<value, 3, 3> with_trace;
@@ -2061,7 +2062,6 @@ void build_eqs(equation_context& ctx)
             }
         }
     }
-
 
     ///todo: Investigate this, there's a good chance dtcAij is whats broken
     for(int i=0; i < 3; i++)
@@ -2112,6 +2112,8 @@ void build_eqs(equation_context& ctx)
             ///= Vij - (1/3) cYij (icYkl Vkl)
             ///therefore I think constant factor multiplications to the metric make no difference to the trace calculation, so we can use
             ///cY here instead of Yij
+
+            ///not convinced its correct to push x inside of trace free?
             value trace_free_part = gpu_trace_free(with_trace, cY, icY).idx(i, j);
 
             value p1 = trace_free_part;
@@ -2242,10 +2244,10 @@ void build_eqs(equation_context& ctx)
                 s1 = s1 + icY.idx(j, k) * hacky_differentiate(ctx, digB.idx(k, i), j);
             }
 
-            if(i == 0 && j == 0)
+            /*if(i == 0 && j == 0)
             {
                 ctx.add("debug_val", hacky_differentiate(ctx, digB.idx(0, 0), 0));
-            }
+            }*/
 
             value s2 = 0;
 
@@ -4145,8 +4147,8 @@ int main()
             camera_pos += offset;
         }
 
-        std::cout << camera_quat.q << std::endl;
-        std::cout << "POS " << camera_pos << std::endl;
+        //std::cout << camera_quat.q << std::endl;
+        //std::cout << "POS " << camera_pos << std::endl;
 
         auto buffer_size = rtex[which_texture].size<2>();
 
@@ -4302,7 +4304,7 @@ int main()
 
             float r_extract = c_at_max/4;
 
-            printf("OFF %f\n", r_extract/scale);
+            //printf("OFF %f\n", r_extract/scale);
 
             cl_int4 pos = {clsize.x()/2, clsize.y()/2 + r_extract / scale, clsize.z()/2, 0};
 

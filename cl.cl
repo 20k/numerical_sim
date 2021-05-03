@@ -872,7 +872,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
 
     bool debug = false;
 
-    NANCHECK(cY0);
+    /*NANCHECK(cY0);
     NANCHECK(cY1);
     NANCHECK(cY2);
     NANCHECK(cY3);
@@ -895,7 +895,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     NANCHECK(gA);
     NANCHECK(gB0);
     NANCHECK(gB1);
-    NANCHECK(gB2);
+    NANCHECK(gB2);*/
 
     #ifdef USE_GBB
     NANCHECK(gBB0);
@@ -924,9 +924,10 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     //if(x == 125 && y == 125 && z == 125)
     ///NAN cA0 111 188 111
     ///the issue is the cGi term, again
-    if(ix == 111 && iy == 188 && iz == 111)
+    if(ix == 171 && iy == 138 && iz == 141)
+    //if(ix == 171 && iy == 137 && iz == 142)
     {
-        /*float scalar = scalar_curvature;
+        float scalar = scalar_curvature;
 
         printf("DtY0 %f\n", dtcYij0);
         printf("DtA0 %f\n", dtcAij0);
@@ -951,7 +952,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         printf("gB0 %f\n", gB0[index]);
         printf("gB1 %f\n", gB1[index]);
         printf("gB2 %f\n", gB2[index]);
-        printf("Scalar %f\n", scalar);*/
+        printf("Scalar %f\n", scalar);
 
         /*#ifdef debug_val
         float dbg = debug_val;
