@@ -1109,6 +1109,57 @@ void init_rays(__global float* cY0, __global float* cY1, __global float* cY2, __
     int iz = fipos.z;
 }*/
 
+enum ds_result
+{
+    DS_NONE,
+    DS_SKIP,
+    DS_RETURN,
+};
+
+int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_ds_out)
+{
+    float current_acceleration_err = fast_length(next_acceleration) * 0.01f;
+
+    float experienced_acceleration_change = current_acceleration_err;
+
+    #define MAX_ACCELERATION_CHANGE 0.0001
+
+    float err = MAX_ACCELERATION_CHANGE;
+    float i_hate_computers = 256*256;
+
+    //#define MIN_STEP 0.00001f
+    //#define MIN_STEP 0.000001f
+    #define MIN_STEP 0.01f
+
+    float max_timestep = 100000;
+
+    float diff = experienced_acceleration_change * i_hate_computers;
+
+    if(diff < err * i_hate_computers / pow(max_timestep, 2))
+        diff = err * i_hate_computers / pow(max_timestep, 2);
+
+    ///of course, as is tradition, whatever works for kerr does not work for alcubierre
+    ///the sqrt error calculation is significantly better for alcubierre, largely in terms of having no visual artifacts at all
+    ///whereas the pow version is nearly 2x faster for kerr
+    float next_ds = native_sqrt(((err * i_hate_computers) / diff));
+
+    ///produces strictly worse results for kerr
+    next_ds = 0.99f * current_ds * clamp(next_ds / current_ds, 0.3f, 2.f);
+
+    next_ds = max(next_ds, MIN_STEP);
+
+    *next_ds_out = next_ds;
+
+    if(next_ds == MIN_STEP && (diff/i_hate_computers) > err * 10000)
+        return DS_RETURN;
+
+    if(next_ds < current_ds/1.95f)
+        return DS_SKIP;
+
+    return DS_NONE;
+}
+
+
 __kernel
 void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
                __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
@@ -1172,6 +1223,8 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
         V1 = V1_d;
         V2 = V2_d;
     }
+
+    float next_ds = 0.00001f;
 
     //printf("PP %f %f %f\n", V0, V1, V2);
 
@@ -1248,7 +1301,7 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
             return;
         }
 
-        float next_X0 = X0N_d;
+        /*float next_X0 = X0N_d;
         float next_X1 = X1N_d;
         float next_X2 = X2N_d;
 
@@ -1275,7 +1328,35 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
         float len = fast_length((float3)(dv0, dv1, dv2));
 
         if(len >= 0.1)
+            break;*/
+
+        float ds = next_ds;
+
+        float dX0 = X0Diff;
+        float dX1 = X1Diff;
+        float dX2 = X2Diff;
+
+        float dV0 = V0Diff;
+        float dV1 = V1Diff;
+        float dV2 = V2Diff;
+
+        float3 next_acceleration = {dV0, dV1, dV2};
+
+        int res = calculate_ds_error(ds, next_acceleration, &next_ds);
+
+        if(res == DS_RETURN)
             break;
+
+        if(res == DS_SKIP)
+            continue;
+
+        V0 += dV0 * ds;
+        V1 += dV1 * ds;
+        V2 += dV2 * ds;
+
+        lp1 += dX0 * ds;
+        lp2 += dX1 * ds;
+        lp3 += dX2 * ds;
 
         //if(isnan(lp1) || isnan(lp2) || isnan(lp3))
         //    break;

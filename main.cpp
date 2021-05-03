@@ -3624,10 +3624,6 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         digA.idx(i) = hacky_differentiate(ctx, args.gA, i, true, true);
     }
 
-    float step = 0.25f;
-
-    //vec<4, value> ipos = {"(int)round(lpv0)", "(int)round(lpv1)", "(int)round(lpv2)", "(int)round(lpv3)"};
-
     float universe_length = (dim/2.f).max_elem();
 
     value scale = "scale";
@@ -3701,12 +3697,27 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     for(int i=0; i < 3; i++)
     {
-        V_lower_next.idx(i) = V_lower.idx(i) + dVi_l.idx(i) * step;
+        V_lower_next.idx(i) = V_lower.idx(i) + dVi_l.idx(i);
     }
 
     tensor<value, 3> V_upper_next = raise_index(V_lower_next, args.Yij, args.Yij.invert());
 
-    ctx.add("V0N_d", V_upper_next.idx(0));
+    tensor<value, 3> V_upper_diff;
+
+    for(int i=0; i <3; i++)
+    {
+        V_upper_diff.idx(i) = V_upper_next.idx(i) - V_upper.idx(i);
+    }
+
+    ctx.add("V0Diff", V_upper_diff.idx(0));
+    ctx.add("V1Diff", V_upper_diff.idx(1));
+    ctx.add("V2Diff", V_upper_diff.idx(2));
+
+    ctx.add("X0Diff", dx.idx(0));
+    ctx.add("X1Diff", dx.idx(1));
+    ctx.add("X2Diff", dx.idx(2));
+
+    /*ctx.add("V0N_d", V_upper_next.idx(0));
     ctx.add("V1N_d", V_upper_next.idx(1));
     ctx.add("V2N_d", V_upper_next.idx(2));
 
@@ -3714,14 +3725,14 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     for(int i=0; i < 3; i++)
     {
-        X_next.idx(i) = X_upper.idx(i) + dx.idx(i) * step;
+        X_next.idx(i) = X_upper.idx(i) + dx.idx(i);
     }
 
     //ctx.add("DTN", )
 
     ctx.add("X0N_d", X_next.idx(0));
     ctx.add("X1N_d", X_next.idx(1));
-    ctx.add("X2N_d", X_next.idx(2));
+    ctx.add("X2N_d", X_next.idx(2));*/
 
     /**
     [tt, tx, ty, tz,
@@ -4072,7 +4083,7 @@ int main()
 
             if(ImGui::IsKeyDown(GLFW_KEY_RIGHT))
             {
-                mat3f m = mat3f().ZRot(M_PI/128);
+                mat3f m = mat3f().ZRot(-M_PI/128);
 
                 quat q;
                 q.load_from_matrix(m);
@@ -4082,7 +4093,7 @@ int main()
 
             if(ImGui::IsKeyDown(GLFW_KEY_LEFT))
             {
-                mat3f m = mat3f().ZRot(-M_PI/128);
+                mat3f m = mat3f().ZRot(M_PI/128);
 
                 quat q;
                 q.load_from_matrix(m);
