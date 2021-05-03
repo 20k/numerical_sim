@@ -3615,7 +3615,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
     vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
 
-    constexpr int order = 2;
+    constexpr int order = 1;
 
     tensor<value, 3, 3> digB;
 
