@@ -1193,17 +1193,6 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
     float V2;
 
     {
-        /*float3 fipos = round(pos);
-        int ix = fipos.x;
-        int iy = fipos.y;
-        int iz = fipos.z;*/
-
-        //struct intermediate_bssnok_data ik = temp_in[IDX(ix, iy, iz)];
-
-        /*float fx = pos.x;
-        float fy = pos.y;
-        float fz = pos.z;*/
-
         float3 world_pos = camera_pos;
 
         float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
@@ -1226,26 +1215,11 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
 
     float next_ds = 0.00001f;
 
-    //printf("PP %f %f %f\n", V0, V1, V2);
-
     bool deliberate_termination = false;
 
     for(int iteration=0; iteration < 8000; iteration++)
     {
-        //float3 cpos = {V0, V1, V2};
         float3 cpos = {lp1, lp2, lp3};
-        //float3 fdim = {dim.x, dim.y, dim.z};
-
-        //cpos = clamp(cpos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
-        /*float3 fipos = round(cpos);
-
-        int ix = fipos.x;
-        int iy = fipos.y;
-        int iz = fipos.z;*/
-
-        /*float fx = cpos.x;
-        float fy = cpos.y;
-        float fz = cpos.z;*/
 
         float3 voxel_pos = world_to_voxel(cpos, dim, scale);
 
@@ -1257,26 +1231,10 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
 
         float TEMPORARIES6;
 
-        /*float3 offset = cpos - (float3)(dim.x, dim.y, dim.z)/2.f;
-
-        float terminate_length = fast_length(offset);*/
-
         float terminate_length = fast_length(cpos);
-
-        //printf("TLEN %f\n", terminate_length);
 
         if(terminate_length >= universe_size / 1.01f)
         {
-            //printf("It %i\n", iteration);
-
-            //if(x == width/2 && y == height/2)
-            //printf("PPos %f %f %f\n", cpos.x, cpos.y, cpos.z);
-
-            /*if(iteration != 0)
-            {
-                printf("Hi\n");
-            }*/
-
             float fr = fast_length(cpos);
             float theta = acos(cpos.z / fr);
             float phi = atan2(cpos.y, cpos.x);
@@ -1302,35 +1260,6 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
             write_imagef(screen, (int2){x, y}, val);
             return;
         }
-
-        /*float next_X0 = X0N_d;
-        float next_X1 = X1N_d;
-        float next_X2 = X2N_d;
-
-        float next_V0 = V0N_d;
-        float next_V1 = V1N_d;
-        float next_V2 = V2N_d;
-
-        float last_V0 = V0;
-        float last_V1 = V1;
-        float last_V2 = V2;
-
-        V0 = next_V0;
-        V1 = next_V1;
-        V2 = next_V2;
-
-        lp1 = next_X0;
-        lp2 = next_X1;
-        lp3 = next_X2;
-
-        float dv0 = last_V0 - V0;
-        float dv1 = last_V1 - V1;
-        float dv2 = last_V2 - V2;
-
-        float len = fast_length((float3)(dv0, dv1, dv2));
-
-        if(len >= 0.1)
-            break;*/
 
         float ds = next_ds;
 
@@ -1362,28 +1291,6 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
         lp1 += dX0 * ds;
         lp2 += dX1 * ds;
         lp3 += dX2 * ds;
-
-        //if(isnan(lp1) || isnan(lp2) || isnan(lp3))
-        //    break;
-
-        if(x == width/2 && y == height/2)
-        {
-            //printf("pos %f %f %f\n", cpos.x, cpos.y, cpos.z);
-
-            //printf("%f", lp1);
-            //printf("dwh %f\n", debug_wh);
-        }
-
-
-        /*if(x == (int)width/2 && y == (int)height/2)
-        {
-            int lx = clamp(ix, 0, (int)width - 1);
-            int ly = clamp(iy, 0, (int)height - 1);
-
-            //printf("Lx Ly %i %i\n", lx, ly);
-
-            write_imagef(screen, (int2)(lx, ly), (float4)(1,0,1,1));
-        }*/
     }
 
     float4 col = {1,0,1,1};

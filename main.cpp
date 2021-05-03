@@ -4035,7 +4035,7 @@ int main()
 
     //clctx.cqueue.exec("clean_data", initial_clean, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
-    int which_buffer = 0;
+    int which_texture = 0;
     int steps = 0;
 
     bool run = false;
@@ -4137,7 +4137,7 @@ int main()
         std::cout << camera_quat.q << std::endl;
         std::cout << "POS " << camera_pos << std::endl;
 
-        auto buffer_size = rtex[which_buffer].size<2>();
+        auto buffer_size = rtex[which_texture].size<2>();
 
         if((vec2i){buffer_size.x(), buffer_size.y()} != win.get_window_size())
         {
@@ -4156,7 +4156,7 @@ int main()
             rtex[1].create_from_texture(tex[1].handle);
         }
 
-        rtex[which_buffer].acquire(clctx.cqueue);
+        rtex[which_texture].acquire(clctx.cqueue);
 
         bool step = false;
 
@@ -4202,7 +4202,7 @@ int main()
         render.push_back(scale);
         render.push_back(clsize);
         render.push_back(intermediate);
-        render.push_back(rtex[which_buffer]);
+        render.push_back(rtex[which_texture]);
         render.push_back(time_elapsed_s);
 
         clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
@@ -4351,7 +4351,7 @@ int main()
             render_args.push_back(fwidth);
             render_args.push_back(fheight);
             render_args.push_back(clsize);
-            render_args.push_back(rtex[which_buffer]);
+            render_args.push_back(rtex[which_texture]);
 
             assert(render_args.arg_list.size() == 29);
 
@@ -4359,12 +4359,10 @@ int main()
                 clctx.cqueue.exec("trace_rays", render_args, {width, height}, {16, 16});
         }
 
-        cl::event next_event = rtex[which_buffer].unacquire(clctx.cqueue);
+        cl::event next_event = rtex[which_texture].unacquire(clctx.cqueue);
 
         if(last_event.has_value())
             last_event.value().block();
-
-        which_buffer = (which_buffer + 1) % 2;
 
         last_event = next_event;
 
@@ -4388,7 +4386,7 @@ int main()
                 br.y += screen_pos.y;
             }
 
-            lst->AddImage((void*)rtex[which_buffer].texture_id, tl, br, ImVec2(0, 0), ImVec2(1.f, 1.f));
+            lst->AddImage((void*)rtex[which_texture].texture_id, tl, br, ImVec2(0, 0), ImVec2(1.f, 1.f));
         }
 
         win.display();
