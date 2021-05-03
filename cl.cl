@@ -1228,6 +1228,8 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
 
     //printf("PP %f %f %f\n", V0, V1, V2);
 
+    bool deliberate_termination = false;
+
     for(int iteration=0; iteration < 4096; iteration++)
     {
         //float3 cpos = {V0, V1, V2};
@@ -1345,7 +1347,10 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
         int res = calculate_ds_error(ds, next_acceleration, &next_ds);
 
         if(res == DS_RETURN)
+        {
+            deliberate_termination = true;
             break;
+        }
 
         if(res == DS_SKIP)
             continue;
@@ -1379,6 +1384,13 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
 
             write_imagef(screen, (int2)(lx, ly), (float4)(1,0,1,1));
         }*/
+    }
+
+    float4 col = {1,0,1,1};
+
+    if(deliberate_termination)
+    {
+        col = (float4){1,1,1,1};
     }
 
     write_imagef(screen, (int2){x, y}, (float4)(0,0,0,1));
