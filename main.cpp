@@ -1122,6 +1122,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         offsets.y() *= get_sign(s2);
         offsets.z() *= get_sign(s3);
 
+        std::cout << "Black hole at voxel " << scaled + centre + offsets << std::endl;
+
         return scaled * scale / bulge + offsets * scale / bulge;
 
         //return vscaled + (vec<3, value>){offsets.x() / bulge, offsets.y() / bulge, offsets.z() / bulge};
@@ -2121,6 +2123,13 @@ void build_eqs(equation_context& ctx)
             value p2 = gA * (K * cA.idx(i, j) - 2 * sum);
 
             value p3 = gpu_lie_derivative_weight(ctx, gB, cA).idx(i, j);
+
+            if(i == 0 && j == 0)
+            {
+                ctx.add("debug_p1", p1);
+                ctx.add("debug_p2", p2);
+                ctx.add("debug_p3", p3);
+            }
 
             value sanitised = dual_types::dual_if(X <= 0.000001, []()
             {

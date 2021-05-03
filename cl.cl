@@ -824,6 +824,11 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     float diss_gB1 = get_dissipation(ix, iy, iz, dim, scale, gB1);
     float diss_gB2 = get_dissipation(ix, iy, iz, dim, scale, gB2);
 
+    float debug1 = debug_p1;
+    float debug2 = debug_p2;
+    float debug3 = debug_p3;
+    float dbgdphi = ik.dphi[0];
+
     #ifdef USE_GBB
     float diss_gBB0 = get_dissipation(ix, iy, iz, dim, scale, gBB0);
     float diss_gBB1 = get_dissipation(ix, iy, iz, dim, scale, gBB1);
@@ -924,8 +929,9 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     //if(x == 125 && y == 125 && z == 125)
     ///NAN cA0 111 188 111
     ///the issue is the cGi term, again
-    if(ix == 171 && iy == 138 && iz == 141)
+    //if(ix == 171 && iy == 138 && iz == 141)
     //if(ix == 171 && iy == 137 && iz == 142)
+    if(ix == 171 && iy == 140 && iz == 140)
     {
         float scalar = scalar_curvature;
 
@@ -953,6 +959,11 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         printf("gB1 %f\n", gB1[index]);
         printf("gB2 %f\n", gB2[index]);
         printf("Scalar %f\n", scalar);
+
+        printf("Debugp1 %f", debug_p1);
+        printf("Debugp2 %f", debug_p2);
+        printf("Debugp3 %f", debug_p3);
+        printf("dphi %f", dbgdphi);
 
         /*#ifdef debug_val
         float dbg = debug_val;
