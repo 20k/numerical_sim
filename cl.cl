@@ -3,7 +3,7 @@
 
 //#define SYMMETRY_BOUNDARY
 
-#define USE_GBB
+//#define USE_GBB
 
 float buffer_read_nearest(__global const float* const buffer, int3 position, int4 dim)
 {
@@ -222,7 +222,9 @@ __kernel
 void calculate_initial_conditions(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
                                   __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                                   __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
+                                  #ifdef USE_gBB0
                                   __global float* gBB0, __global float* gBB1, __global float* gBB2,
+                                  #endif // USE_gBB0
                                   float scale, int4 dim)
 {
     int ix = get_global_id(0);
@@ -302,7 +304,9 @@ __kernel
 void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
                                    __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                                    __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
+                                   #ifdef USE_gBB0
                                    __global float* gBB0, __global float* gBB1, __global float* gBB2,
+                                   #endif // USE_gBB0
                                    float scale, int4 dim)
 {
     int ix = get_global_id(0);
@@ -350,7 +354,9 @@ __kernel
 void calculate_intermediate_data(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
                                  __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                                  __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
+                                 #ifdef USE_gBB0
                                  __global float* gBB0, __global float* gBB1, __global float* gBB2,
+                                 #endif // USE_gBB0
                                  float scale, int4 dim, __global struct intermediate_bssnok_data* out)
 {
     int ix = get_global_id(0);
@@ -452,7 +458,9 @@ __kernel
 void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
                 __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                 __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
+                #ifdef USE_gBB0
                 __global float* gBB0, __global float* gBB1, __global float* gBB2,
+                #endif // USE_gBB0
                 __global struct intermediate_bssnok_data* iin, float scale, int4 dim, float time)
 {
     int ix = get_global_id(0);
@@ -590,8 +598,8 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
 
         #ifdef USE_GBB
         gBB0[index] = mix(gBB0[index], init_gBB0, sponge_factor);
-        gBB1[index] = mix(gBB0[index], init_gBB1, sponge_factor);
-        gBB2[index] = mix(gBB0[index], init_gBB2, sponge_factor);
+        gBB1[index] = mix(gBB1[index], init_gBB1, sponge_factor);
+        gBB2[index] = mix(gBB2[index], init_gBB2, sponge_factor);
         #endif // USE_GBB
 
         /*v.gA = 1;
@@ -663,11 +671,15 @@ __kernel
 void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
             __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
             __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
+            #ifdef USE_gBB0
             __global float* gBB0, __global float* gBB1, __global float* gBB2,
+            #endif // USE_gBB0
             __global float* ocY0, __global float* ocY1, __global float* ocY2, __global float* ocY3, __global float* ocY4, __global float* ocY5,
             __global float* ocA0, __global float* ocA1, __global float* ocA2, __global float* ocA3, __global float* ocA4, __global float* ocA5,
             __global float* ocGi0, __global float* ocGi1, __global float* ocGi2, __global float* oK, __global float* oX, __global float* ogA, __global float* ogB0, __global float* ogB1, __global float* ogB2,
+            #ifdef USE_gBB0
             __global float* ogBB0, __global float* ogBB1, __global float* ogBB2,
+            #endif // USE_gBB0
             float scale, int4 dim, __global const struct intermediate_bssnok_data* temp_in, float timestep, float time, int current_simulation_boundary)
 {
     int ix = get_global_id(0);
@@ -860,7 +872,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
 
     bool debug = false;
 
-    /*NANCHECK(cY0);
+    NANCHECK(cY0);
     NANCHECK(cY1);
     NANCHECK(cY2);
     NANCHECK(cY3);
@@ -883,13 +895,27 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     NANCHECK(gA);
     NANCHECK(gB0);
     NANCHECK(gB1);
-    NANCHECK(gB2);*/
+    NANCHECK(gB2);
 
-    /*#ifdef USE_GBB
+    #ifdef USE_GBB
     NANCHECK(gBB0);
     NANCHECK(gBB1);
     NANCHECK(gBB2);
-    #endif // USE_GBB*/
+    #endif // USE_GBB
+
+    /*NAN cA3 171 138 141
+    NAN cA4 171 138 141
+    NAN cA5 171 138 141
+    NAN cGi0 171 137 142
+    NAN cGi0 171 139 142
+    NAN cA3 171 138 142
+    NAN cA4 171 138 142
+    NAN cA5 171 138 142
+    NAN cGi0 171 137 143
+    NAN cA2 171 138 143
+    NAN cGi0 171 139 143
+    NAN cA3 171 138 143
+    NAN cGi0 109 138 143*/
 
     #if 1
     //if(debug)
@@ -952,7 +978,9 @@ __kernel
 void render(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
             __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
             __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
-            __global float* gBB0, __global float* gBB1, __global float* gBB2,
+            #ifdef USE_gBB0
+            __global float* ogBB0, __global float* ogBB1, __global float* ogBB2,
+            #endif // USE_gBB0
             float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, __write_only image2d_t screen, float time)
 {
     int ix = get_global_id(0);
@@ -1042,8 +1070,10 @@ __kernel
 void extract_waveform(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
                       __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                       __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
+                      #ifdef USE_gBB0
                       __global float* gBB0, __global float* gBB1, __global float* gBB2,
-                     float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, int4 pos, __global float2* waveform_out)
+                      #endif // USE_gBB0
+                      float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, int4 pos, __global float2* waveform_out)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -1185,7 +1215,9 @@ __kernel
 void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
                 __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                 __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
+                #ifdef USE_gBB0
                 __global float* gBB0, __global float* gBB1, __global float* gBB2,
+                #endif // USE_gBB0
             float scale, __global struct intermediate_bssnok_data* temp_in, float3 camera_pos, float4 camera_quat,
             float width, float height, int4 dim, __write_only image2d_t screen)
 {
@@ -1338,7 +1370,9 @@ __kernel
 void trace_metric(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
                   __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                   __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
+                  #ifdef USE_gBB0
                   __global float* gBB0, __global float* gBB1, __global float* gBB2,
+                  #endif // USE_gBB0
                   float scale, __global struct intermediate_bssnok_data* temp_in, float3 camera_pos, float4 camera_quat,
                   float width, float height, int4 dim, __write_only image2d_t screen)
 {

@@ -1402,7 +1402,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ctx.add("init_gB1", gB1);
     ctx.add("init_gB2", gB2);
 
-    #define USE_GBB
+    //#define USE_GBB
 
     #ifdef USE_GBB
     value gBB0 = 0;
@@ -1527,11 +1527,11 @@ void build_intermediate(equation_context& ctx)
 
     for(int i=0; i < 3; i++)
     {
-        /*value dX = hacky_differentiate(ctx, X, i);
+        value dX = hacky_differentiate(ctx, X, i);
 
-        dphi.idx(i) = -dX / (4 * X);*/
+        dphi.idx(i) = -dX / (4 * X);
 
-        dphi.idx(i) = hacky_differentiate(ctx, phi, i);
+        //dphi.idx(i) = hacky_differentiate(ctx, phi, i);
     }
 
     ctx.pin(phi);
@@ -3889,6 +3889,10 @@ int main()
     ctx8.build(argument_string, 7);
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
+
+    #ifdef USE_GBB
+    argument_string += "-DUSE_GBB ";
+    #endif // USE_GBB
 
     std::cout << "ARGS " << argument_string << std::endl;
 
