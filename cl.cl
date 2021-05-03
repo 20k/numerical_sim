@@ -1122,14 +1122,14 @@ int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_d
 
     float experienced_acceleration_change = current_acceleration_err;
 
-    #define MAX_ACCELERATION_CHANGE 0.0001
+    #define MAX_ACCELERATION_CHANGE 0.00001
 
     float err = MAX_ACCELERATION_CHANGE;
     float i_hate_computers = 256*256;
 
     //#define MIN_STEP 0.00001f
     //#define MIN_STEP 0.000001f
-    #define MIN_STEP 0.01f
+    #define MIN_STEP 0.000001f
 
     float max_timestep = 100000;
 
