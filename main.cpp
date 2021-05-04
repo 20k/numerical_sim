@@ -12,6 +12,7 @@
 #include "legendre_nodes.h"
 #include <fstream>
 #include <imgui/misc/freetype/imgui_freetype.h>
+#include <vec/tensor.hpp>
 
 /**
 current paper set
