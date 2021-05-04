@@ -781,17 +781,18 @@ tensor<T, N, N> gpu_lie_derivative_weight(equation_context& ctx, const tensor<T,
 }
 
 ///mT symmetric?
-tensor<value, 3, 3> raise_index(const tensor<value, 3, 3>& mT, const metric<value, 3, 3>& met, const inverse_metric<value, 3, 3>& inverse)
+template<typename T, int N>
+tensor<T, N, N> raise_index(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
 {
-    tensor<value, 3, 3> ret;
+    tensor<T, N, N> ret;
 
-    for(int i=0; i < 3; i++)
+    for(int i=0; i < N; i++)
     {
-        for(int j=0; j < 3; j++)
+        for(int j=0; j < N; j++)
         {
-            value sum = 0;
+            T sum = 0;
 
-            for(int k=0; k < 3; k++)
+            for(int k=0; k < N; k++)
             {
                 sum = sum + inverse.idx(i, k) * mT.idx(k, j);
                 //sum = sum + mT.idx(i, k) * inverse.idx(k, j);
@@ -804,14 +805,14 @@ tensor<value, 3, 3> raise_index(const tensor<value, 3, 3>& mT, const metric<valu
     return ret;
 }
 
-template<int N>
-tensor<value, N> raise_index(const tensor<value, N>& mT, const metric<value, N, N>& met, const inverse_metric<value, N, N>& inverse)
+template<typename T, int N>
+tensor<T, N> raise_index(const tensor<T, N>& mT, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
 {
-    tensor<value, N> ret;
+    tensor<T, N> ret;
 
     for(int i=0; i < N; i++)
     {
-        value sum = 0;
+        T sum = 0;
 
         for(int j=0; j < N; j++)
         {
@@ -1754,7 +1755,7 @@ void build_eqs(equation_context& ctx)
 
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf page 4
     ///or https://arxiv.org/pdf/gr-qc/0511048.pdf after 7 actually
-    for(int i=0; i < 3; i++)
+    /*for(int i=0; i < 3; i++)
     {
         value sum = 0;
 
@@ -1764,8 +1765,22 @@ void build_eqs(equation_context& ctx)
         }
 
         derived_cGi.idx(i) = sum;
-    }
+    }*/
 
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                sum += icY.idx(j, k) * christoff2.idx(i, j, k);
+            }
+        }
+
+        derived_cGi.idx(i) = sum;
+    }
 
     /*tensor<value, 3, 3, 3> cGijk;
 
