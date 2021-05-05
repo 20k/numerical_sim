@@ -81,15 +81,16 @@ https://arxiv.org/pdf/gr-qc/0007085.pdf - initial conditions, explanations and i
 
 */
 
-///https://www.wolframalpha.com/input/?i=k+%3D+r+%281+%2B+M%2F2r%29%5E2+solve+for+r
+//https://www.wolframalpha.com/input/?i=k+%3D+r+%281+%2B+M%2F%282r%29%29%5E2+solve+for+r
 template<typename T>
 T schwarzs_to_isotropic(const T& schwarzs_r, float M)
 {
     T k = schwarzs_r;
 
-    ///r = 1/3 ((2 2^(2/3))/(3 sqrt(3) sqrt(27 k^2 M^8 + 8 k M^7) + 27 k M^4 + 4 M^3)^(1/3) + (2^(1/3) (3 sqrt(3) sqrt(27 k^2 M^8 + 8 k M^7) + 27 k M^4 + 4 M^3)^(1/3))/M^2 - 4/M) and M!=0
+    ///r = 1/2 (-sqrt(k (k - 2 M)) + k - M) and sqrt(k (k - 2 M)) + M!=k
 
-    return 1.f/3.f * ((2 * pow(2, 2.f/3.f))/pow(3 * sqrt(3.f) * sqrt(27 * k * k * pow(M, 8) + 8 * k * pow(M, 7)) + 27 * k * pow(M, 4) + 4 * pow(M, 3), 1.f/3.f) + (pow(2.f, 1.f/3.f) * pow(3 * sqrt(3.f) * sqrt(27 * k * k * pow(M, 8) + 8 * k * pow(M, 7)) + 27 * k * pow(M, 4) + 4 * pow(M, 3), 1.f/3.f)) / pow(M, 2) - 4/M);
+    return 0.5f * (sqrt(k * (k - 2 * M)) + k - M);
+    //return 0.5f * (-sqrt(k * (k - 2 * M)) + k - M);
 }
 
 ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
@@ -1173,7 +1174,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
         value dist = (pos - vri).length();
 
-        //dist = schwarzs_to_isotropic(dist, Mi);
+        dist = schwarzs_to_isotropic(dist, Mi);
 
         //dist = dist + 0.01;
 
