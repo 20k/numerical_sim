@@ -49,6 +49,8 @@ https://hal.archives-ouvertes.fr/hal-00569776/document - contains the D+- operat
 https://link.springer.com/article/10.12942/lrr-2007-3 - event horizon finding
 https://arxiv.org/pdf/gr-qc/9412071.pdf - misc numerical relativity, old
 https://arxiv.org/pdf/gr-qc/0703035.pdf - lots of hyper useful information on the adm formalism
+
+https://arxiv.org/pdf/gr-qc/0007085.pdf - initial conditions, explanations and isotropic radial coordinates
 */
 
 //#define USE_GBB
@@ -78,6 +80,17 @@ https://arxiv.org/pdf/gr-qc/0703035.pdf - lots of hyper useful information on th
 ///total size = 21
 
 */
+
+///https://www.wolframalpha.com/input/?i=k+%3D+r+%281+%2B+M%2F2r%29%5E2+solve+for+r
+template<typename T>
+T schwarzs_to_isotropic(const T& schwarzs_r, float M)
+{
+    T k = schwarzs_r;
+
+    ///r = 1/3 ((2 2^(2/3))/(3 sqrt(3) sqrt(27 k^2 M^8 + 8 k M^7) + 27 k M^4 + 4 M^3)^(1/3) + (2^(1/3) (3 sqrt(3) sqrt(27 k^2 M^8 + 8 k M^7) + 27 k M^4 + 4 M^3)^(1/3))/M^2 - 4/M) and M!=0
+
+    return 1.f/3.f * ((2 * pow(2, 2.f/3.f))/pow(3 * sqrt(3.f) * sqrt(27 * k * k * pow(M, 8) + 8 * k * pow(M, 7)) + 27 * k * pow(M, 4) + 4 * pow(M, 3), 1.f/3.f) + (pow(2.f, 1.f/3.f) * pow(3 * sqrt(3.f) * sqrt(27 * k * k * pow(M, 8) + 8 * k * pow(M, 7)) + 27 * k * pow(M, 4) + 4 * pow(M, 3), 1.f/3.f)) / pow(M, 2) - 4/M);
+}
 
 ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
 ///38.2
@@ -1160,9 +1173,11 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
         value dist = (pos - vri).length();
 
+        //dist = schwarzs_to_isotropic(dist, Mi);
+
         //dist = dist + 0.01;
 
-        dist = max(dist, 0.001f);
+        //dist = max(dist, 0.001f);
 
         BL_conformal = BL_conformal + Mi / (2 * dist);
     }
