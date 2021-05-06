@@ -81,18 +81,6 @@ https://arxiv.org/pdf/gr-qc/0007085.pdf - initial conditions, explanations and i
 
 */
 
-//https://www.wolframalpha.com/input/?i=k+%3D+r+%281+%2B+M%2F%282r%29%29%5E2+solve+for+r
-template<typename T>
-T schwarzs_to_isotropic(const T& schwarzs_r, float M)
-{
-    T k = schwarzs_r;
-
-    ///r = 1/2 (-sqrt(k (k - 2 M)) + k - M) and sqrt(k (k - 2 M)) + M!=k
-
-    return 0.5f * (sqrt(k * (k - 2 * M)) + k - M);
-    //return 0.5f * (-sqrt(k * (k - 2 * M)) + k - M);
-}
-
 ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
 ///38.2
 struct lightray
@@ -1173,12 +1161,6 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         vec<3, value> vri = {ri.x(), ri.y(), ri.z()};
 
         value dist = (pos - vri).length();
-
-        dist = schwarzs_to_isotropic(dist, Mi);
-
-        //dist = dist + 0.01;
-
-        //dist = max(dist, 0.001f);
 
         BL_conformal = BL_conformal + Mi / (2 * dist);
     }
