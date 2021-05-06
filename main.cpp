@@ -51,6 +51,7 @@ https://arxiv.org/pdf/gr-qc/9412071.pdf - misc numerical relativity, old
 https://arxiv.org/pdf/gr-qc/0703035.pdf - lots of hyper useful information on the adm formalism
 
 https://arxiv.org/pdf/gr-qc/0007085.pdf - initial conditions, explanations and isotropic radial coordinates
+https://arxiv.org/pdf/gr-qc/9805023.pdf - initial data, seems workable and explained
 */
 
 //#define USE_GBB
@@ -1114,7 +1115,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     }
 
 
-    value BL_conformal = 1;
+    //value BL_conformal = 1;
 
     float bulge = 1;
 
@@ -1162,25 +1163,42 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     //std::vector<float> black_hole_m{1};
     //std::vector<vec3f> black_hole_velocity{{0, 0.4, 0}};
 
+    assert(black_hole_m.size() == 1);
+
+    float a = 0;
+
+    float Mi = black_hole_m[0];
+    vec3f ri = black_hole_pos[0];
+
+    vec<3, value> vri = {ri.x(), ri.y(), ri.z()};
+
+    vec<3, value> offset = pos - vri;
+
+    value r = (pos - vri).length();
+
+    /*tensor<value, 4> lu = {1, ((r * offset.x() + a * offset.y()) / (r*r + a*a)), (r * offset.y() - a * offset.x()) / (r*r + a*a), offset.z()/r};
+
+    value lt2 = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        lt2 += lu.idx(i + 1) * lu.idx(i + 1);
+    }
+
+    value lt = -sqrt(lt2);
+
+    value H = Mi * r / (r * r);*/
+
+    value H = Mi / r;
+
     ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
     ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is - it was not. Now its correct
     ///todo pt 2: Try sponging to schwarzschild
     for(int i=0; i < (int)black_hole_m.size(); i++)
     {
-        float Mi = black_hole_m[i];
-        vec3f ri = black_hole_pos[i];
 
-        vec<3, value> vri = {ri.x(), ri.y(), ri.z()};
 
-        value dist = (pos - vri).length();
-
-        dist = schwarzs_to_isotropic(dist, Mi);
-
-        //dist = dist + 0.01;
-
-        //dist = max(dist, 0.001f);
-
-        BL_conformal = BL_conformal + Mi / (2 * dist);
+        //BL_conformal = BL_conformal + Mi / (2 * dist);
     }
 
     ///ok so: I'm pretty sure this is correct
@@ -1198,7 +1216,19 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
             //float u = 0;
 
             ///https://arxiv.org/pdf/gr-qc/0511048.pdf
-            yij.idx(i, j) = pow(BL_conformal + u, 4) * kronecker.idx(i, j);
+            //yij.idx(i, j) = pow(BL_conformal + u, 4) * kronecker.idx(i, j);
+
+            /*value sum = 0;
+
+            for(int kk=0; kk < 3; kk++)
+            {
+                for(int jj=0; jj < 3; jj++)
+                {
+                    sum += lu.idx(kk) * lu.idx(jj);
+                }
+            }*/
+
+            yij.idx(i, j) = kronecker.idx(i, j) + 2 * H * lu.idx(i + 1) * lu.idx(j + 1);
 
             /*if(i == j)
             {
@@ -1287,10 +1317,15 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     value gB2 = 0;*/
 
     //value gA = 1;
-    value gA = 1/(BL_conformal * BL_conformal);
+    /*value gA = 1/(BL_conformal * BL_conformal);
     value gB0 = 0;
     value gB1 = 0;
-    value gB2 = 0;
+    value gB2 = 0;*/
+
+    value gA = 1 / sqrt(1 + 2 * H * lt * lt);
+    value gB0 = 2 * H * lt * lu.idx(1);
+    value gB1 = 2 * H * lt * lu.idx(2);
+    value gB2 = 2 * H * lt * lu.idx(3);
 
     #if 0
     tensor<value, 3> norm;
@@ -1399,7 +1434,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ctx.add("init_K", K);
     ctx.add("init_X", X);
 
-    ctx.add("init_bl_conformal", BL_conformal);
+    //ctx.add("init_bl_conformal", BL_conformal);
     ctx.add("init_conformal_factor", conformal_factor);
 
     ctx.add("init_gA", gA);
@@ -4256,10 +4291,10 @@ int main()
 
         if(step)
         {
-            float timestep = 0.01;
+            float timestep = 0.0001;
 
             if(steps < 100)
-               timestep = 0.001;
+               timestep = 0.0001;
 
             if(steps < 10)
                 timestep = 0.0001;

@@ -267,7 +267,7 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
     K[index] = init_K;
     X[index] = init_X;
 
-    float bl_conformal = init_bl_conformal;
+    //float bl_conformal = init_bl_conformal;
 
     /*f->gA = 1/bl_conformal;
     f->gB0 = 1/bl_conformal;
@@ -489,7 +489,7 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
 
         float TEMPORARIES0;
 
-        float bl_conformal = init_bl_conformal;
+        //float bl_conformal = init_bl_conformal;
         float conformal_factor = init_conformal_factor;
 
         /*float schwarzs_cY0 = schwarzs_init_cY0;
@@ -1187,14 +1187,15 @@ int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_d
 
     float experienced_acceleration_change = current_acceleration_err;
 
-    #define MAX_ACCELERATION_CHANGE 0.000001
+    #define MAX_ACCELERATION_CHANGE 0.001
+    //#define MAX_ACCELERATION_CHANGE 0.000001
 
     float err = MAX_ACCELERATION_CHANGE;
     float i_hate_computers = 256*256;
 
     //#define MIN_STEP 0.00001f
     //#define MIN_STEP 0.000001f
-    #define MIN_STEP 0.00000001f
+    #define MIN_STEP 0.000001f
 
     float max_timestep = 100000;
 
