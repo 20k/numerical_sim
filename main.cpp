@@ -98,33 +98,6 @@ struct intermediate_bssnok_data
     cl_float dX[3];
 };
 
-template<typename T, typename U, int N, size_t M>
-inline
-tensor<T, N, N> gpu_lie_derivative_weight_arbitrary(const tensor<T, N>& B, const tensor<T, N, N>& mT, float weight, const std::array<U, M>& variables)
-{
-    tensor<T, N, N> lie;
-
-    for(int i=0; i < N; i++)
-    {
-        for(int j=0; j < N; j++)
-        {
-            T sum = 0;
-
-            for(int k=0; k < N; k++)
-            {
-                sum = sum + B.idx(k) * mT.idx(i, j).differentiate(variables[k]);
-                sum = sum + mT.idx(i, k) * B.idx(k).differentiate(variables[j]);
-                sum = sum + mT.idx(k, j) * B.idx(k).differentiate(variables[i]);
-                sum = sum + weight * mT.idx(i, j) * B.idx(k).differentiate(variables[k]);
-            }
-
-            lie.idx(i, j) = sum;
-        }
-    }
-
-    return lie;
-}
-
 ///https://arxiv.org/pdf/gr-qc/9810065.pdf
 template<typename T, int N>
 inline
@@ -141,26 +114,6 @@ T gpu_trace(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse
     }
 
     return ret;
-}
-
-value f_r(value r)
-{
-    auto interpolating_polynomial = [](value x)
-    {
-        ///https://www.wolframalpha.com/input/?i=InterpolatingPolynomial%5B%7B%7B%7B0%7D%2C+0%2C+0%2C+0%7D%2C+%7B%7B1%7D%2C+1%2C+0%2C+0%7D%7D%2C+%7Bx%7D%5D
-        ///(1 + (-3 + 6 (-1 + x)) (-1 + x)) x^3
-
-        return (1 + (-3 + 6 * (-1 + x)) * (-1 + x)) * x * x * x;
-    };
-
-    value r_max = 0.8;
-    value r_min = 0.2;
-
-    r = max(min(r, r_max), r_min);
-
-    value scaled = (r - r_min) / (r_max - r_min);
-
-    return interpolating_polynomial(scaled);
 }
 
 struct equation_context
