@@ -1109,20 +1109,12 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
     ///phi
     //value conformal_factor = (1/12.f) * log(Y);
+    ///setting this to just bl_conformal makes it stable, even though its wrong
     value conformal_factor = log(BL_conformal);
 
     ctx.pin(conformal_factor);
 
-    metric<value, 3, 3> cyij;
-
-    ///checked, cyij is correct
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            cyij.idx(i, j) = kronecker.idx(i, j);
-        }
-    }
+    metric<value, 3, 3> cyij = kronecker;
 
     //value gA = 1;
     value gA = 1/(BL_conformal * BL_conformal);
