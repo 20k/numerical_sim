@@ -688,6 +688,21 @@ tensor<value, 3> tensor_derivative(equation_context& ctx, const value& in)
     return ret;
 }
 
+tensor<value, 3, 3> tensor_derivative(equation_context& ctx, const tensor<value, 3>& in)
+{
+    tensor<value, 3, 3> ret;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            ret.idx(i, j) = hacky_differentiate(ctx, in.idx(j), i);
+        }
+    }
+
+    return ret;
+}
+
 ///B^i * Di whatever
 value upwind_differentiate(equation_context& ctx, const value& prefix, const value& in, int idx, bool pin = true)
 {
@@ -730,6 +745,29 @@ tensor<value, 3> tensor_upwind(equation_context& ctx, const tensor<value, 3>& pr
 
     return ret;
 }
+
+template<typename T, int N>
+inline
+T lie_derivative(equation_context& ctx, const tensor<T, N>& gB, const T& variable)
+{
+    ///https://en.wikipedia.org/wiki/Lie_derivative#Coordinate_expressions
+    return sum_multiply(gB, tensor_derivative(ctx, variable));
+}
+
+/*tensor<value, 3, 3> tensor_upwind(equation_context& ctx, const tensor<value, 3>& prefix, const tensor<value, 3>& in)
+{
+    tensor<value, 3, 3> ret;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            ret.idx(j, i) = upwind_differentiate(ctx, prefix.idx(i), in.idx(i), i);
+        }
+    }
+
+    return ret;
+}*/
 
 template<typename T, int N>
 inline
@@ -2095,50 +2133,28 @@ void build_eqs(equation_context& ctx)
         dtcGi.idx(i) = sum;
     }
 
-    ///DAMP?
-    for(int i=0; i < 3; i++)
-    {
-        //dtcGi.idx(i) = dtcGi.idx(i) + (derived_cGi.idx(i) - cGi.idx(i)) * 10;
-    }
-
-    value dtgA = -2 * gA * K;
-
-    for(int i=0; i < 3; i++)
-    {
-        //dtgA = dtgA + gB.idx(i) * hacky_differentiate(ctx, gA, i);
-        dtgA = dtgA + upwind_differentiate(ctx, gB.idx(i), gA, i);
-    }
-
-    //ctx.add("debug_val", dtgA);
+    value dtgA = -2 * gA * K + lie_derivative(ctx, gB, gA);
 
     #ifndef USE_GBB
-    tensor<value, 3> dtgB;
-
-    /*
-    ///https://arxiv.org/pdf/1404.6523.pdf (4)
-    for(int i=0; i < 3; i++)
-    {
-        float N = 1.375;
-
-        dtgB.idx(i) = (3.f/4.f) * derived_cGi.idx(i) - N * gB.idx(i);
-    }*/
-
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
+    ///todo: remove this
+    tensor<value, 3> bjdjbi;
 
     for(int i=0; i < 3; i++)
     {
-        float N = 2;
-
-        value sum = 0;
+        value v = 0;
 
         for(int j=0; j < 3; j++)
         {
-            //sum = sum + gB.idx(j) * hacky_differentiate(ctx, gB.idx(i), j);
-            sum = sum + upwind_differentiate(ctx, gB.idx(j), gB.idx(i), j);
+           v += upwind_differentiate(ctx, gB.idx(j), gB.idx(i), j);
         }
 
-        dtgB.idx(i) = (3.f/4.f) * derived_cGi.idx(i) + sum - N * gB.idx(i);
+        bjdjbi.idx(i) = v;
     }
+
+    float N = 2;
+
+    tensor<value, 3> dtgB = (3.f/4.f) * derived_cGi + bjdjbi - N * gB;
 
     tensor<value, 3> dtgBB;
     dtgBB.idx(0) = 0;
