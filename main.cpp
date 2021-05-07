@@ -1104,29 +1104,12 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         BL_conformal = BL_conformal + Mi / (2 * dist);
     }
 
-    ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 69. I think this may be wrong
-    metric<value, 3, 3> yij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            ///based on geodesics, u=1 is correct
-            ///something is wrong though. Initial lapse?
-            float u = 0;
-
-            ///https://arxiv.org/pdf/gr-qc/0511048.pdf
-            yij.idx(i, j) = pow(BL_conformal + u, 4) * kronecker.idx(i, j);
-        }
-    }
+    ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 69
 
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
-    value Y = yij.det();
-
-    inverse_metric<value, 3, 3> iyij = yij.invert();
-
     ///phi
-    value conformal_factor = (1/12.f) * log(Y);
+    //value conformal_factor = (1/12.f) * log(Y);
+    value conformal_factor = log(BL_conformal);
 
     ctx.pin(conformal_factor);
 
@@ -1138,7 +1121,6 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         for(int j=0; j < 3; j++)
         {
             cyij.idx(i, j) = kronecker.idx(i, j);
-            //cyij.idx(i, j) = exp(-4 * conformal_factor) * yij.idx(i, j);
         }
     }
 
