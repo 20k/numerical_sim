@@ -676,6 +676,18 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
     return final_command;
 }
 
+tensor<value, 3> tensor_derivative(equation_context& ctx, const value& in)
+{
+    tensor<value, 3> ret;
+
+    for(int i=0; i < 3; i++)
+    {
+        ret.idx(i) = hacky_differentiate(ctx, in, i);
+    }
+
+    return ret;
+}
+
 ///B^i * Di whatever
 value upwind_differentiate(equation_context& ctx, const value& prefix, const value& in, int idx, bool pin = true)
 {
@@ -705,6 +717,18 @@ value upwind_differentiate(equation_context& ctx, const value& prefix, const val
     return final_command;*/
 
     return prefix * hacky_differentiate(ctx, in, idx, pin);
+}
+
+tensor<value, 3> tensor_upwind(equation_context& ctx, const tensor<value, 3>& prefix, const value& in)
+{
+    tensor<value, 3> ret;
+
+    for(int i=0; i < 3; i++)
+    {
+        ret.idx(i) = upwind_differentiate(ctx, prefix.idx(i), in, i);
+    }
+
+    return ret;
 }
 
 template<typename T, int N>
@@ -1371,13 +1395,7 @@ void build_eqs(equation_context& ctx)
     inverse_metric<value, 3, 3> icY = cY.invert();
     inverse_metric<value, 3, 3> unpinned_icY = cY.invert();
 
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            ctx.pin(icY.idx(i, j));
-        }
-    }
+    ctx.pin(icY);
 
     tensor<value, 3, 3> cA;
 
@@ -1611,44 +1629,20 @@ void build_eqs(equation_context& ctx)
         }
     }*/
 
-    tensor<value, 3, 3> lie_cYij = gpu_lie_derivative_weight(ctx, gB, cY);
-
-    tensor<value, 3, 3> dtcYij;
+    tensor<value, 3> linear_dB;
 
     for(int i=0; i < 3; i++)
     {
-        for(int j=0; j < 3; j++)
-        {
-            ///https://arxiv.org/pdf/gr-qc/0511048.pdf (1)
-            dtcYij.idx(i, j) = -2 * gA * cA.idx(i, j) + lie_cYij.idx(i, j);
-
-            ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.66
-            //dtcYij.idx(i, j) = -2 * gA + lie_cYij.idx(i, j);
-
-            /*if(i == 0 && j == 0)
-            {
-                ctx.add("debug_val", lie_cYij.idx(i, j));
-            }*/
-        }
+        linear_dB.idx(i) = hacky_differentiate(ctx, gB.idx(i), i);
     }
 
-    //ctx.add("debug_val", cY.det());
+    tensor<value, 3, 3> lie_cYij = gpu_lie_derivative_weight(ctx, gB, cY);
 
-    value dtX = 0;
+    ///https://arxiv.org/pdf/gr-qc/0511048.pdf (1)
+    ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.66
+    tensor<value, 3, 3> dtcYij = -2 * gA * cA + lie_cYij;
 
-    {
-        value s1 = 0;
-        value s2 = 0;
-
-        for(int i=0; i < 3; i++)
-        {
-            s1 = s1 + hacky_differentiate(ctx, gB.idx(i), i);
-            //s2 = s2 + gB.idx(i) * hacky_differentiate(ctx, X, i);
-            s2 = s2 + upwind_differentiate(ctx, gB.idx(i), X, i);
-        }
-
-        dtX = (2.f/3.f) * X * (gA * K - s1) + s2;
-    }
+    value dtX = (2.f/3.f) * X * (gA * K - sum(linear_dB)) + sum(tensor_upwind(ctx, gB, X));
 
     ///ok use the proper form
     tensor<value, 3, 3> cRij;
