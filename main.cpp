@@ -53,6 +53,10 @@ https://arxiv.org/pdf/gr-qc/0703035.pdf - lots of hyper useful information on th
 https://arxiv.org/pdf/gr-qc/0007085.pdf - initial conditions, explanations and isotropic radial coordinates
 */
 
+///notes:
+///off centre black hole results in distortion, probably due to boundary conditions contaminating things
+///this is odd. Maybe don't boundary condition shift and lapse?
+
 //#define USE_GBB
 
 ///all conformal variables are explicitly labelled
