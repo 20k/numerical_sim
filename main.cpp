@@ -1114,7 +1114,15 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
     ctx.pin(conformal_factor);
 
-    metric<value, 3, 3> cyij = kronecker;
+    metric<value, 3, 3> cyij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            cyij.idx(i, j) = kronecker.idx(i, j);
+        }
+    }
 
     //value gA = 1;
     value gA = 1/(BL_conformal * BL_conformal);
