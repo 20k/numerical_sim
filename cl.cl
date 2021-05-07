@@ -242,8 +242,6 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
 
     float TEMPORARIES0;
 
-    float conformal_factor = init_conformal_factor;
-
     int index = IDX(ix, iy, iz);
 
     cY0[index] = init_cY0;
@@ -266,13 +264,6 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
 
     K[index] = init_K;
     X[index] = init_X;
-
-    float bl_conformal = init_bl_conformal;
-
-    /*f->gA = 1/bl_conformal;
-    f->gB0 = 1/bl_conformal;
-    f->gB1 = 1/bl_conformal;
-    f->gB2 = 1/bl_conformal;*/
 
     gA[index] = init_gA;
     gB0[index] = init_gB0;
@@ -489,18 +480,6 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
 
         float TEMPORARIES0;
 
-        float bl_conformal = init_bl_conformal;
-        float conformal_factor = init_conformal_factor;
-
-        /*float schwarzs_cY0 = schwarzs_init_cY0;
-        float schwarzs_cY1 = schwarzs_init_cY1;
-        float schwarzs_cY2 = schwarzs_init_cY2;
-        float schwarzs_cY3 = schwarzs_init_cY3;
-        float schwarzs_cY4 = schwarzs_init_cY4;
-        float schwarzs_cY5 = schwarzs_init_cY5;
-
-        float schwarzs_X = schwarzs_init_X;*/
-
         float initial_cY0 = init_cY0;
         float initial_cY1 = init_cY1;
         float initial_cY2 = init_cY2;
@@ -525,48 +504,6 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
         float fin_cY5 = initial_cY5;
 
         float fin_X = initial_X;
-
-        float initial_error = 0;
-        float schwarzs_error = 0;
-
-        /*initial_error += fabs(initial_cY0 - v.cY0);
-        initial_error += fabs(initial_cY1 - v.cY1);
-        initial_error += fabs(initial_cY2 - v.cY2);
-        initial_error += fabs(initial_cY3 - v.cY3);
-        initial_error += fabs(initial_cY4 - v.cY4);
-        initial_error += fabs(initial_cY5 - v.cY5);
-        initial_error += fabs(initial_X - v.X);
-
-        schwarzs_error += fabs(schwarzs_cY0 - v.cY0);
-        schwarzs_error += fabs(schwarzs_cY1 - v.cY1);
-        schwarzs_error += fabs(schwarzs_cY2 - v.cY2);
-        schwarzs_error += fabs(schwarzs_cY3 - v.cY3);
-        schwarzs_error += fabs(schwarzs_cY4 - v.cY4);
-        schwarzs_error += fabs(schwarzs_cY5 - v.cY5);
-        schwarzs_error += fabs(schwarzs_X - v.X);
-
-        if(schwarzs_error < initial_error)
-        {
-            fin_cY0 = schwarzs_cY0;
-            fin_cY1 = schwarzs_cY1;
-            fin_cY2 = schwarzs_cY2;
-            fin_cY3 = schwarzs_cY3;
-            fin_cY4 = schwarzs_cY4;
-            fin_cY5 = schwarzs_cY5;
-            fin_X = schwarzs_X;
-        }*/
-
-        /*float time_frac = time / 6.f;
-
-        time_frac = clamp(time_frac, 0.f, 1.f);
-
-        fin_cY0 = mix(fin_cY0, schwarzs_cY0, time_frac);
-        fin_cY1 = mix(fin_cY1, schwarzs_cY1, time_frac);
-        fin_cY2 = mix(fin_cY2, schwarzs_cY2, time_frac);
-        fin_cY3 = mix(fin_cY3, schwarzs_cY3, time_frac);
-        fin_cY4 = mix(fin_cY4, schwarzs_cY4, time_frac);
-        fin_cY5 = mix(fin_cY5, schwarzs_cY5, time_frac);
-        fin_X = mix(fin_X, schwarzs_X, time_frac);*/
 
         int index = IDX(ix, iy, iz);
 

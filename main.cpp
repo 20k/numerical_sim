@@ -1039,8 +1039,6 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     pos[2].make_value("125");
     #endif // DEBUG
 
-    //std::array<std::string, 3> variables = {"ox", "oy", "oz"};
-
     tensor<value, 3, 3> kronecker;
 
     for(int i=0; i < 3; i++)
@@ -1081,27 +1079,15 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         std::cout << "Black hole at voxel " << scaled + centre + offsets << std::endl;
 
         return scaled * scale / bulge + offsets * scale / bulge;
-
-        //return vscaled + (vec<3, value>){offsets.x() / bulge, offsets.y() / bulge, offsets.z() / bulge};
     };
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({0, -1.1515 * 0.5f, 0}), san_black_hole_pos({0, 1.1515 * 0.5f, 0})};
-    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.1515, 0, 0}), san_black_hole_pos({2.1515, 0, 0})};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({5, 0, 0})};
-    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-5, 0, 0}), san_black_hole_pos({5, 0, 0})};
-    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, 0, 0}), san_black_hole_pos({1.1515 * 0.5f, 0, 0})};
-    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, -0.01, -0.01}), san_black_hole_pos({1.1515 * 0.5f, 0.01, 0.01})};
     std::vector<float> black_hole_m{0.5f};
     //std::vector<float> black_hole_m{0.5f, 0.5f};
     std::vector<vec3f> black_hole_velocity{{0, 0.5, 0}, {0, -0.5, 0}}; ///pick better velocities
-    //std::vector<float> black_hole_m{0.1f, 0.1f};
-    //std::vector<float> black_hole_m{1, 1};
-
-    //std::vector<vec3f> black_hole_pos{{0,0,0}};
-    //std::vector<float> black_hole_m{1};
-    //std::vector<vec3f> black_hole_velocity{{0, 0.4, 0}};
 
     ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
     ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is - it was not. Now its correct
@@ -1118,8 +1104,6 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         BL_conformal = BL_conformal + Mi / (2 * dist);
     }
 
-    ///ok so: I'm pretty sure this is correct
-
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 69. I think this may be wrong
     metric<value, 3, 3> yij;
 
@@ -1130,19 +1114,9 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
             ///based on geodesics, u=1 is correct
             ///something is wrong though. Initial lapse?
             float u = 0;
-            //float u = 0;
 
             ///https://arxiv.org/pdf/gr-qc/0511048.pdf
             yij.idx(i, j) = pow(BL_conformal + u, 4) * kronecker.idx(i, j);
-
-            /*if(i == j)
-            {
-                yij.idx(i, j) = f_r(r) * yij.idx(i, j) + (1 - f_r(r)) * 9999;
-            }
-            else
-            {
-                yij.idx(i, j) = f_r(r) * yij.idx(i, j);
-            }*/
         }
     }
 
@@ -1163,63 +1137,10 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     {
         for(int j=0; j < 3; j++)
         {
-            cyij.idx(i, j) = exp(-4 * conformal_factor) * yij.idx(i, j);
+            cyij.idx(i, j) = kronecker.idx(i, j);
+            //cyij.idx(i, j) = exp(-4 * conformal_factor) * yij.idx(i, j);
         }
     }
-
-    inverse_metric<value, 3, 3> icY = cyij.invert();
-
-    ///calculate icAij from https://arxiv.org/pdf/gr-qc/0206072.pdf (58)
-    tensor<value, 3, 3> icAij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            value bh_sum = 0;
-
-            /*for(int bh_idx = 0; bh_idx < (int)black_hole_pos.size(); bh_idx++)
-            {
-                float Mi = black_hole_m[bh_idx];
-                vec3f ri = black_hole_pos[bh_idx];
-
-                vec<3, value> vri = {ri.x(), ri.y(), ri.z()};
-
-                value dist = (pos - vri).length() * scale;
-
-                dist = max(dist, 0.1f);
-
-                {
-                    vec3f P = black_hole_velocity[bh_idx] * black_hole_m[bh_idx];
-                    vec<3, value> normal = (vec<3, value>){0, 0, -1} / dist;
-
-                    value lsum = 0;
-
-                    for(int k=0; k < 3; k++)
-                    {
-                        for(int l=0; l < 3; l++)
-                        {
-                            lsum = lsum + yij.idx(k, l) * normal[k] * P[l];
-                        }
-                    }
-
-                    bh_sum = bh_sum + (3.f / (2.f * dist * dist)) * (normal[i] * P[j] + normal[j] * P[i] - (iyij.idx(i, j) - normal[i] * normal[j]) * lsum);
-                }
-            }*/
-
-            icAij.idx(i, j) = bh_sum;
-        }
-    }
-
-    /*value gA = 1/BL_conformal;
-    value gB0 = 1/BL_conformal;
-    value gB1 = 1/BL_conformal;
-    value gB2 = 1/BL_conformal;*/
-
-    /*value gA = 1/(BL_conformal * BL_conformal);
-    value gB0 = 0;
-    value gB1 = 0;
-    value gB2 = 0;*/
 
     //value gA = 1;
     value gA = 1/(BL_conformal * BL_conformal);
@@ -1227,71 +1148,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     value gB1 = 0;
     value gB2 = 0;
 
-    #if 0
-    tensor<value, 3> norm;
-    norm.idx(0) = -gB0 / gA;
-    norm.idx(1) = -gB1 / gA;
-    norm.idx(2) = -gB2 / gA;
-
-    tensor<value, 3, 3> nearly_Kij = gpu_lie_derivative_weight_arbitrary(norm, yij, 0, variables);
-
-    tensor<value, 3, 3> Kij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            Kij.idx(i, j) = nearly_Kij.idx(i, j) / -2.f;
-
-            //Kij.idx(i, j) = f_r(r) * Kij.idx(i, j);
-        }
-    }
-
-    value K = gpu_trace(Kij, yij, yij.invert());
-
-    tensor<value, 3, 3> Aij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            Aij.idx(i, j) = Kij.idx(i, j) - (1.f/3.f) * yij.idx(i, j) * K;
-        }
-    }
-
     tensor<value, 3, 3> cAij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            cAij.idx(i, j) = exp(-4 * conformal_factor) * Aij.idx(i, j);
-        }
-    }
-
-
-    ///https://arxiv.org/pdf/gr-qc/9810065.pdf (21)
-
-    inverse_metric<value, 3, 3> inverse_cyij = cyij.invert();
-
-    tensor<value, 3> cGi;
-
-    for(int i=0; i < 3; i++)
-    {
-        value sum = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            sum = sum + inverse_cyij.idx(i, j).differentiate(variables[j]);
-        }
-
-        cGi.idx(i) = -sum;
-    }
-    #endif // 0
-
-    //tensor<value, 3, 3> iYij = yij.invert();
-
-    tensor<value, 3, 3> cAij = lower_both(icAij, cyij);
     tensor<value, 3> cGi;
     value K = 0;
 
@@ -1334,16 +1191,12 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ctx.add("init_K", K);
     ctx.add("init_X", X);
 
-    ctx.add("init_bl_conformal", BL_conformal);
-    ctx.add("init_conformal_factor", conformal_factor);
-
     ctx.add("init_gA", gA);
     ctx.add("init_gB0", gB0);
     ctx.add("init_gB1", gB1);
     ctx.add("init_gB2", gB2);
 
     //#define USE_GBB
-
     #ifdef USE_GBB
     value gBB0 = 0;
     value gBB1 = 0;
