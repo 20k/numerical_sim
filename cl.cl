@@ -859,7 +859,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     NAN cA3 171 138 143
     NAN cGi0 109 138 143*/
 
-    #if 1
+    #if 0
     //if(debug)
     //if(x == 5 && y == 6 && z == 4)
     //if(ix == 125 && y == 100 && z == 125)
@@ -1004,7 +1004,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         printf("scalar %f\n", max_scalar);
     }*/
 
-    //max_scalar = max_scalar * 10;
+    max_scalar = max_scalar * 40;
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 
@@ -1125,14 +1125,14 @@ int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_d
 
     float experienced_acceleration_change = current_acceleration_err;
 
-    #define MAX_ACCELERATION_CHANGE 0.000001
+    #define MAX_ACCELERATION_CHANGE 0.001
 
     float err = MAX_ACCELERATION_CHANGE;
     float i_hate_computers = 256*256;
 
     //#define MIN_STEP 0.00001f
     //#define MIN_STEP 0.000001f
-    #define MIN_STEP 0.00000001f
+    #define MIN_STEP 0.0001f
 
     float max_timestep = 100000;
 

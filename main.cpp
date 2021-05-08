@@ -51,6 +51,10 @@ https://arxiv.org/pdf/gr-qc/9412071.pdf - misc numerical relativity, old
 https://arxiv.org/pdf/gr-qc/0703035.pdf - lots of hyper useful information on the adm formalism
 
 https://arxiv.org/pdf/gr-qc/0007085.pdf - initial conditions, explanations and isotropic radial coordinates
+https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf - contains bssn in terms of X
+https://arxiv.org/pdf/gr-qc/0612001.pdf - double kerr initial data, should be solvable via an elliptic solver
+https://arxiv.org/pdf/gr-qc/0610128.pdf - this paper uses psi0 as the initial guess for lapse, not psibl
+https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan2008/Workbook33/33_2_elliptic_pde.pdf five point stencil
 */
 
 ///notes:
@@ -604,7 +608,7 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
     ///todo: test lower value again
     //float dissipate = 0.25f/16.f;
 
-    float dissipate = 0.25f;
+    float dissipate = 0.25f/1.5f;
 
     value scale = "scale";
 
@@ -1151,9 +1155,9 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({0, -1.1515 * 0.5f, 0}), san_black_hole_pos({0, 1.1515 * 0.5f, 0})};
-    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.1515, 0, 0}), san_black_hole_pos({2.1515, 0, 0})};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({5, 0, 0})};
-    std::vector<float> black_hole_m{0.5f};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.1515, 0, 0}), san_black_hole_pos({3.1515, 0, 0})};
+    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({5, 0, 0})};
+    std::vector<float> black_hole_m{0.5f, 0.5f};
     //std::vector<float> black_hole_m{0.5f, 0.5f};
     std::vector<vec3f> black_hole_velocity{{0, 0.5, 0}, {0, -0.5, 0}}; ///pick better velocities
 
@@ -1192,8 +1196,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         }
     }
 
-    //value gA = 1;
-    value gA = 1/(BL_conformal * BL_conformal);
+    value gA = 1;
+    //value gA = 1/(BL_conformal * BL_conformal);
     value gB0 = 0;
     value gB1 = 0;
     value gB2 = 0;
@@ -3632,9 +3636,9 @@ int main()
     std::string argument_string = "-O3 -cl-std=CL2.0 ";
 
     ///the simulation domain is this * 2
-    int current_simulation_boundary = 5;
+    int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {280, 280, 280};
+    vec3i size = {300, 300, 300};
     //vec3i size = {250, 250, 250};
     float c_at_max = 90;
     //float c_at_max = 45;
@@ -4044,7 +4048,7 @@ int main()
         {
             float timestep = 0.01;
 
-            if(steps < 100)
+            if(steps < 200)
                timestep = 0.001;
 
             if(steps < 10)
