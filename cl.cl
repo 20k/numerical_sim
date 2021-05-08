@@ -868,6 +868,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     ///the issue is the cGi term, again
     //if(ix == 171 && iy == 138 && iz == 141)
     //if(ix == 171 && iy == 137 && iz == 142)
+    //if(ix == 140 && iy == 140 && iz == 140)
     if(ix == 171 && iy == 140 && iz == 140)
     {
         //float scalar = scalar_curvature;
