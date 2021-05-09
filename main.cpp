@@ -1174,7 +1174,9 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({5, 0, 0})};
     std::vector<float> black_hole_m{0.5f, 0.5f};
     //std::vector<float> black_hole_m{0.5f, 0.5f};
-    std::vector<vec3f> black_hole_velocity{{0, 0, 0.25}, {0, 0, -0.25}}; ///pick better velocities
+    //std::vector<vec3f> black_hole_velocity{{0, 0, 0.25}, {0, 0, -0.25}}; ///pick better velocities
+
+    std::vector<vec3f> black_hole_velocity{{0,0,0}, {0,0,0}};
 
     metric<value, 3, 3> flat_metric;
 
@@ -1191,7 +1193,9 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     tensor<value, 3, 3> cAij = lower_both(icAij, flat_metric);
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
-    value BL_a = 0;
+    //value BL_a = 0;
+
+    value BL_c;
 
     for(int i=0; i < (int)black_hole_m.size(); i++)
     {
@@ -1202,10 +1206,12 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         value dist = (pos - vri).length();
 
-        value la = 2 * dist / Mi;
+        value iva = Mi / (2 * dist);
 
-        BL_a += la;
+        BL_c += iva;
     }
+
+    value BL_a = 1/BL_c;
 
     ctx.add("init_BL_a", BL_a);
 
