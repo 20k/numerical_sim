@@ -272,7 +272,7 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     float uzp1 = u_offset_in[IDX(ix, iy, iz+1)];
 
     ///-6u0 + the rest of the terms = h^2 f0
-    float u0n1 = 0.25f * (uxm1 + uxp1 + uym1 + uyp1 + uzm1 + uzp1 - h2f0);
+    float u0n1 = (1/6.f) * (uxm1 + uxp1 + uym1 + uyp1 + uzm1 + uzp1 - h2f0);
 
     u_offset_out[IDX(ix, iy, iz)] = u0n1;
 }
@@ -352,6 +352,7 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
 }
 #endif // 0
 
+#if 0
 __kernel
 void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
                                    __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
@@ -1454,3 +1455,4 @@ void trace_metric(__global float* cY0, __global float* cY1, __global float* cY2,
 
     write_imagef(screen, (int2)(x, y), (float4)(max_scalar, max_scalar, max_scalar, 1));
 }
+#endif

@@ -4066,7 +4066,13 @@ int main()
 
     clctx.cqueue.exec("setup_u_offset", initial_u_args, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
-    for(int i=0; i < 1024; i++)
+    cl::args initial_u_args2;
+    initial_u_args2.push_back(u_2);
+    initial_u_args2.push_back(clsize);
+
+    clctx.cqueue.exec("setup_u_offset", initial_u_args2, {size.x(), size.y(), size.z()}, {8, 8, 1});
+
+    for(int i=0; i < 10000; i++)
     {
         cl::args interate_u_args;
         interate_u_args.push_back(u_1);
