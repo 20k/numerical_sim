@@ -277,7 +277,6 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     u_offset_out[IDX(ix, iy, iz)] = u0n1;
 }
 
-#if 0
 __kernel
 void calculate_initial_conditions(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
                                   __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
@@ -285,6 +284,7 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
                                   #ifdef USE_gBB0
                                   __global float* gBB0, __global float* gBB1, __global float* gBB2,
                                   #endif // USE_gBB0
+                                  __global float* u_value,
                                   float scale, int4 dim)
 {
     int ix = get_global_id(0);
@@ -299,6 +299,8 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
     float ox = offset.x;
     float oy = offset.y;
     float oz = offset.z;
+
+    float bl_conformal = 1/init_BL_a;
 
     float TEMPORARIES0;
 
@@ -350,9 +352,7 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
         printf("TESTK %f\n", f->K);
     }*/
 }
-#endif // 0
 
-#if 0
 __kernel
 void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
                                    __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
@@ -514,6 +514,7 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
                 #ifdef USE_gBB0
                 __global float* gBB0, __global float* gBB1, __global float* gBB2,
                 #endif // USE_gBB0
+                __global float* u_value,
                 __global struct intermediate_bssnok_data* iin, float scale, int4 dim, float time)
 {
     int ix = get_global_id(0);
@@ -539,6 +540,8 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
 
         if(sponge_factor <= 0)
             return;
+
+        float bl_conformal = 1/init_BL_a;
 
         float TEMPORARIES0;
 
@@ -1455,4 +1458,3 @@ void trace_metric(__global float* cY0, __global float* cY1, __global float* cY2,
 
     write_imagef(screen, (int2)(x, y), (float4)(max_scalar, max_scalar, max_scalar, 1));
 }
-#endif

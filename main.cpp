@@ -1221,113 +1221,16 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
     ctx.add("init_aij_aIJ", aij_aIJ);
 
+    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
+
+    for(int i=0; i < 6; i++)
+    {
+        ctx.add("init_cA" + std::to_string(i), cAij.idx(linear_indices[i].x(), linear_indices[i].y()));
+    }
+
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 69
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
     ///phi
-}
-
-#if 0
-inline
-void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
-{
-    vec<3, value> pos;
-
-    pos[0].make_value("ox");
-    pos[1].make_value("oy");
-    pos[2].make_value("oz");
-
-    tensor<value, 3, 3> kronecker;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            if(i == j)
-                kronecker.idx(i, j) = 1;
-            else
-                kronecker.idx(i, j) = 0;
-        }
-    }
-
-    value BL_conformal = 1;
-
-    float bulge = 1;
-
-    auto san_black_hole_pos = [&](vec3f in)
-    {
-        float s1 = in.x();
-        float s2 = in.y();
-        float s3 = in.z();
-
-        vec3f scaled = round((in / scale) * bulge);
-
-        vec3f offsets = {0.5f, 0.5f, 0.5f};
-
-        auto get_sign = [](float in)
-        {
-            return in >= 0 ? 1 : -1;
-        };
-
-        offsets.x() *= get_sign(s1);
-        offsets.y() *= get_sign(s2);
-        offsets.z() *= get_sign(s3);
-
-        std::cout << "Black hole at voxel " << scaled + centre + offsets << std::endl;
-
-        return scaled * scale / bulge + offsets * scale / bulge;
-    };
-
-    ///https://arxiv.org/pdf/gr-qc/0505055.pdf
-    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({0, -1.1515 * 0.5f, 0}), san_black_hole_pos({0, 1.1515 * 0.5f, 0})};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.1515, 0, 0}), san_black_hole_pos({3.1515, 0, 0})};
-    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({5, 0, 0})};
-    std::vector<float> black_hole_m{0.5f, 0.5f};
-    //std::vector<float> black_hole_m{0.5f, 0.5f};
-    std::vector<vec3f> black_hole_velocity{{0, 0.5, 0}, {0, -0.5, 0}}; ///pick better velocities
-
-    ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
-    ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is - it was not. Now its correct
-    ///todo pt 2: Try sponging to schwarzschild
-    for(int i=0; i < (int)black_hole_m.size(); i++)
-    {
-        float Mi = black_hole_m[i];
-        vec3f ri = black_hole_pos[i];
-
-        vec<3, value> vri = {ri.x(), ri.y(), ri.z()};
-
-        value dist = (pos - vri).length();
-
-        BL_conformal = BL_conformal + Mi / (2 * dist);
-    }
-
-    /*tensor<value, 3, 3> Yij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            Yij.idx(i, j) = pow(kronecker.idx(i, j);
-        }
-    }*/
-
-    ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 69
-
-    ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
-    ///phi
-    value conformal_factor = (1/12.f) * log(Y);
-    ctx.pin(conformal_factor);
-
-    /*metric<value, 3, 3> cyij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            cyij.idx(i, j) = kronecker.idx(i, j);
-        }
-    }*/
-
-    ctx.add("init_conformal_factor", conformal_factor);
 }
 
 ///https://arxiv.org/pdf/gr-qc/0206072.pdf alternative initial conditions
@@ -1341,103 +1244,29 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 inline
 void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale)
 {
-    vec<3, value> pos;
+    value bl_conformal = "bl_conformal";
+    value u = "u_value[IDX(ix,iy,iz)]";
 
-    pos[0].make_value("ox");
-    pos[1].make_value("oy");
-    pos[2].make_value("oz");
-
-    //#define DEBUG
-    #ifdef DEBUG
-    pos[0].make_value("20");
-    pos[1].make_value("125");
-    pos[2].make_value("125");
-    #endif // DEBUG
-
-    tensor<value, 3, 3> kronecker;
+    metric<value, 3, 3> Yij;
 
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
-            if(i == j)
-                kronecker.idx(i, j) = 1;
-            else
-                kronecker.idx(i, j) = 0;
+            float kronecker = (i == j) ? 1 : 0;
+
+            Yij.idx(i, j) = pow(bl_conformal + u, 4) * kronecker;
         }
     }
 
+    value Y = Yij.det();
 
-    value BL_conformal = 1;
-
-    float bulge = 1;
-
-    auto san_black_hole_pos = [&](vec3f in)
-    {
-        float s1 = in.x();
-        float s2 = in.y();
-        float s3 = in.z();
-
-        vec3f scaled = round((in / scale) * bulge);
-
-        vec3f offsets = {0.5f, 0.5f, 0.5f};
-
-        auto get_sign = [](float in)
-        {
-            return in >= 0 ? 1 : -1;
-        };
-
-        offsets.x() *= get_sign(s1);
-        offsets.y() *= get_sign(s2);
-        offsets.z() *= get_sign(s3);
-
-        std::cout << "Black hole at voxel " << scaled + centre + offsets << std::endl;
-
-        return scaled * scale / bulge + offsets * scale / bulge;
-    };
-
-    ///https://arxiv.org/pdf/gr-qc/0505055.pdf
-    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({0, -1.1515 * 0.5f, 0}), san_black_hole_pos({0, 1.1515 * 0.5f, 0})};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.1515, 0, 0}), san_black_hole_pos({3.1515, 0, 0})};
-    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({5, 0, 0})};
-    std::vector<float> black_hole_m{0.5f, 0.5f};
-    //std::vector<float> black_hole_m{0.5f, 0.5f};
-    std::vector<vec3f> black_hole_velocity{{0, 0.5, 0}, {0, -0.5, 0}}; ///pick better velocities
-
-    ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
-    ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is - it was not. Now its correct
-    ///todo pt 2: Try sponging to schwarzschild
-    for(int i=0; i < (int)black_hole_m.size(); i++)
-    {
-        float Mi = black_hole_m[i];
-        vec3f ri = black_hole_pos[i];
-
-        vec<3, value> vri = {ri.x(), ri.y(), ri.z()};
-
-        value dist = (pos - vri).length();
-
-        BL_conformal = BL_conformal + Mi / (2 * dist);
-    }
-
-    ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 69
-
+    ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 10
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
     ///phi
-    //value conformal_factor = (1/12.f) * log(Y);
-    ///setting this to just bl_conformal makes it stable, even though its wrong
-    value conformal_factor = log(BL_conformal);
+    value conformal_factor = (1/12.f) * log(Y);
 
     ctx.pin(conformal_factor);
-
-    metric<value, 3, 3> cyij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            cyij.idx(i, j) = kronecker.idx(i, j);
-        }
-    }
 
     value gA = 1;
     //value gA = 1/(BL_conformal * BL_conformal);
@@ -1445,7 +1274,6 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     value gB1 = 0;
     value gB2 = 0;
 
-    tensor<value, 3, 3> cAij;
     tensor<value, 3> cGi;
     value K = 0;
 
@@ -1460,25 +1288,28 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     for(int i=0; i < 3; i++)
     {
         cGi.idx(i) = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            cAij.idx(i, j) = 0;
-        }
     }
 
     K = 0;
     #endif // OLDFLAT
+
+    tensor<value, 3, 3> cYij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            cYij.idx(i, j) = (i == j) ? 1 : 0;
+        }
+    }
 
     for(int i=0; i < 6; i++)
     {
         vec2i index = linear_indices[i];
 
         std::string y_name = "init_cY" + std::to_string(i);
-        std::string a_name = "init_cA" + std::to_string(i);
 
-        ctx.add(y_name, cyij.idx(index.x(), index.y()));
-        ctx.add(a_name, cAij.idx(index.x(), index.y()));
+        ctx.add(y_name, cYij.idx(index.x(), index.y()));
     }
 
     ctx.add("init_cGi0", cGi.idx(0));
@@ -1504,7 +1335,6 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ctx.add("init_gBB2", gBB2);
     #endif // USE_GBB
 }
-#endif // 0
 
 inline
 void build_constraints(equation_context& ctx)
@@ -3892,8 +3722,8 @@ int main()
     equation_context setup_initial;
     setup_initial_conditions(setup_initial, centre, scale);
 
-    /*equation_context ctx1;
-    get_initial_conditions_eqs(ctx1, centre, scale);*/
+    equation_context ctx1;
+    get_initial_conditions_eqs(ctx1, centre, scale);
 
     equation_context ctx2;
     build_intermediate(ctx2);
@@ -3935,7 +3765,7 @@ int main()
 
     argument_string += "-DTEMPORARIES=" + temporary_string + " ";*/
 
-    //ctx1.build(argument_string, 0);
+    ctx1.build(argument_string, 0);
     ctx2.build(argument_string, 1);
     ctx3.build(argument_string, 2);
     ctx4.build(argument_string, 3);
@@ -4085,18 +3915,35 @@ int main()
         std::swap(u_1, u_2);
     }
 
-    cl::args init;
-
-    for(auto& i : generic_data[0])
     {
-        init.push_back(i);
+        cl::args init;
+
+        for(auto& i : generic_data[0])
+        {
+            init.push_back(i);
+        }
+
+        init.push_back(u_2);
+        init.push_back(scale);
+        init.push_back(clsize);
+
+        clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
     }
 
-    //init.push_back(bssnok_datas[0]);
-    init.push_back(scale);
-    init.push_back(clsize);
+    {
+        cl::args init;
 
-    clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
+        for(auto& i : generic_data[1])
+        {
+            init.push_back(i);
+        }
+
+        init.push_back(u_2);
+        init.push_back(scale);
+        init.push_back(clsize);
+
+        clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
+    }
 
     cl::args initial_clean;
 
@@ -4106,6 +3953,7 @@ int main()
     }
 
     //initial_clean.push_back(bssnok_datas[0]);
+    initial_clean.push_back(u_2);
     initial_clean.push_back(intermediate);
     initial_clean.push_back(scale);
     initial_clean.push_back(clsize);
@@ -4369,6 +4217,7 @@ int main()
                 }
 
                 //cleaner.push_back(bssnok_datas[which_data]);
+                cleaner.push_back(u_2);
                 cleaner.push_back(intermediate);
                 cleaner.push_back(scale);
                 cleaner.push_back(clsize);
