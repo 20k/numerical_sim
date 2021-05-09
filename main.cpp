@@ -609,8 +609,8 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
     ///todo: test lower value again
     //float dissipate = 0.25f/16.f;
 
-    float dissipate = 0.25f;
-    //float dissipate = 0.25f/1.5f;
+    //float dissipate = 0.25f;
+    float dissipate = 0.25f/1.5f;
 
     value scale = "scale";
 
@@ -1909,7 +1909,7 @@ void build_eqs(equation_context& ctx)
         }
     }
 
-    tensor<value, 3, 3> xgADiDjphi;
+    /*tensor<value, 3, 3> xgADiDjphi;
 
     for(int i=0; i < 3; i++)
     {
@@ -1966,7 +1966,32 @@ void build_eqs(equation_context& ctx)
 
             xgARphiij.idx(i, j) = s1XgA + s2XgA + s3XgA + s4XgA;
         }
+    }*/
+
+    ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf
+    tensor<value, 3, 3> xgARphiij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value sum = 0;
+
+            for(int m=0; m < 3; m++)
+            {
+                for(int n=0; n < 3; n++)
+                {
+                    sum += gA * (cY.idx(i, j) / 2.f) * icY.idx(m, n) * gpu_covariant_derivative_low_vec(ctx, dX, cY, icY).idx(n, m);
+                    sum += (cY.idx(i, j) / 2.f) * gA_X * -(3.f/2.f) * icY.idx(m, n) * dX.idx(m) * dX.idx(n);
+                }
+            }
+
+            value p2 = (1/2.f) * (gA * gpu_covariant_derivative_low_vec(ctx, dX, cY, icY).idx(j, i) - gA_X * (1/2.f) * dX.idx(i) * dX.idx(j));
+
+            xgARphiij.idx(i, j) = sum + p2;
+        }
     }
+
 
     //ctx.add("debug_val", Rphiij.idx(i, j));
 
