@@ -584,9 +584,12 @@ struct differentiation_context
             vars[i].substitute(substitutions[i]);
         }
 
-        for(auto& i : vars)
+        if(should_pin)
         {
-            ctx.pin(i);
+            for(auto& i : vars)
+            {
+                ctx.pin(i);
+            }
         }
     }
 };
@@ -3744,7 +3747,7 @@ int main()
     ///must be a multiple of DIFFERENTIATION_WIDTH
     vec3i size = {300, 300, 300};
     //vec3i size = {250, 250, 250};
-    float c_at_max = 90;
+    float c_at_max = 160;
     //float c_at_max = 45;
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
