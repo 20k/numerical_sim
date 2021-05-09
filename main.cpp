@@ -584,13 +584,9 @@ struct differentiation_context
             vars[i].substitute(substitutions[i]);
         }
 
-        if(should_pin)
+        for(auto& i : vars)
         {
-            ctx.pin(vars[4]);
-            ctx.pin(vars[3]);
-            ctx.pin(vars[2]);
-            ctx.pin(vars[1]);
-            ctx.pin(vars[0]);
+            ctx.pin(i);
         }
     }
 };
