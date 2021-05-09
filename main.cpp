@@ -1887,7 +1887,7 @@ void build_eqs(equation_context& ctx)
     }
 
     ///X * christoffel symbols of the conformal metric
-    /*tensor<value, 3, 3, 3> xcChristoff;
+    tensor<value, 3, 3, 3> xcChristoff;
 
     for(int i=0; i < 3; i++)
     {
@@ -1907,7 +1907,7 @@ void build_eqs(equation_context& ctx)
                 ctx.pin(xcChristoff.idx(k, i, j));
             }
         }
-    }*/
+    }
 
     tensor<value, 3, 3> xgADiDjphi;
 
@@ -1969,7 +1969,7 @@ void build_eqs(equation_context& ctx)
     }
 
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf
-    tensor<value, 3, 3> xgARphiij;
+    /*tensor<value, 3, 3> xgARphiij;
 
     for(int i=0; i < 3; i++)
     {
@@ -1990,7 +1990,7 @@ void build_eqs(equation_context& ctx)
 
             xgARphiij.idx(i, j) = sum + p2;
         }
-    }
+    }*/
 
 
     //ctx.add("debug_val", Rphiij.idx(i, j));
