@@ -1176,7 +1176,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     //std::vector<float> black_hole_m{0.5f, 0.5f};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.25}, {0, 0, -0.25}}; ///pick better velocities
 
-    std::vector<vec3f> black_hole_velocity{{0,0,0}, {0,0,0}};
+    std::vector<vec3f> black_hole_velocity{{0,0,0.0025}, {0,0,-0.0025}};
 
     metric<value, 3, 3> flat_metric;
 
