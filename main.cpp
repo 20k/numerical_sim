@@ -4016,6 +4016,12 @@ int main()
         }
     }
 
+    cl::buffer u_1(clctx.ctx);
+    cl::buffer u_2(clctx.ctx);
+
+    u_1.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+    u_2.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+
     cl::buffer intermediate(clctx.ctx);
     intermediate.alloc(size.x() * size.y() * size.z() * sizeof(intermediate_bssnok_data));
 
@@ -4053,6 +4059,25 @@ int main()
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
     cl_float time_elapsed_s = 0;
+
+    cl::args initial_u_args;
+    initial_u_args.push_back(u_1);
+    initial_u_args.push_back(clsize);
+
+    clctx.cqueue.exec("setup_u_offset", initial_u_args, {size.x(), size.y(), size.z()}, {8, 8, 1});
+
+    for(int i=0; i < 1024; i++)
+    {
+        cl::args interate_u_args;
+        interate_u_args.push_back(u_1);
+        interate_u_args.push_back(u_2);
+        interate_u_args.push_back(scale);
+        interate_u_args.push_back(clsize);
+
+        clctx.cqueue.exec("iterative_u_solve", interate_u_args, {size.x(), size.y(), size.z()}, {8, 8, 1});
+
+        std::swap(u_1, u_2);
+    }
 
     cl::args init;
 
