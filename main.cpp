@@ -1087,6 +1087,227 @@ tensor<T, N, N> lower_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met
     return ret;
 }
 
+tensor<value, 3, 3> calculate_icAij(const vec<3, value>& pos, const std::vector<float>& black_hole_m, const std::vector<vec3f>& black_hole_pos, const std::vector<vec3f>& black_hole_velocity)
+{
+    metric<value, 3, 3> cYij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            cYij.idx(i, j) = (i == j) ? 1 : 0;
+        }
+    }
+
+    tensor<value, 3, 3> icAij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            icAij.idx(i, j) = 0;
+        }
+    }
+
+    ///https://arxiv.org/pdf/1610.03805.pdf 126
+    for(int bh_idx = 0; bh_idx < (int)black_hole_pos.size(); bh_idx++)
+    {
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                vec3f bhpos = black_hole_pos[bh_idx];
+                vec3f momentum = black_hole_velocity[bh_idx] * black_hole_m[bh_idx];
+
+                vec<3, value> vri = {bhpos.x(), bhpos.y(), bhpos.z()};
+
+                value ra = (pos - vri).length();
+                vec<3, value> nia = (pos - vri) / ra;
+                tensor<value, 3> nia_lower = lower_index({nia.x(), nia.y(), nia.z()}, cYij);
+
+                icAij.idx(i, j) += (3 / (2.f * ra * ra)) * (momentum[i] * nia[j] + momentum[j] * nia[i] - (cYij.invert().idx(i, j) - nia[i] * nia[j]) * sum_multiply({momentum.x(), momentum.y(), momentum.z()}, nia_lower));
+            }
+        }
+    }
+
+    return icAij;
+}
+
+inline
+void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
+{
+    vec<3, value> pos;
+
+    pos[0].make_value("ox");
+    pos[1].make_value("oy");
+    pos[2].make_value("oz");
+
+    value BL_conformal = 1;
+
+    float bulge = 1;
+
+    auto san_black_hole_pos = [&](vec3f in)
+    {
+        float s1 = in.x();
+        float s2 = in.y();
+        float s3 = in.z();
+
+        vec3f scaled = round((in / scale) * bulge);
+
+        vec3f offsets = {0.5f, 0.5f, 0.5f};
+
+        auto get_sign = [](float in)
+        {
+            return in >= 0 ? 1 : -1;
+        };
+
+        offsets.x() *= get_sign(s1);
+        offsets.y() *= get_sign(s2);
+        offsets.z() *= get_sign(s3);
+
+        std::cout << "Black hole at voxel " << scaled + centre + offsets << std::endl;
+
+        return scaled * scale / bulge + offsets * scale / bulge;
+    };
+
+    ///https://arxiv.org/pdf/gr-qc/0505055.pdf
+    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({0, -1.1515 * 0.5f, 0}), san_black_hole_pos({0, 1.1515 * 0.5f, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.1515, 0, 0}), san_black_hole_pos({3.1515, 0, 0})};
+    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({5, 0, 0})};
+    std::vector<float> black_hole_m{0.5f, 0.5f};
+    //std::vector<float> black_hole_m{0.5f, 0.5f};
+    std::vector<vec3f> black_hole_velocity{{0, 0.5, 0}, {0, -0.5, 0}}; ///pick better velocities
+
+    ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
+    ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is - it was not. Now its correct
+    ///todo pt 2: Try sponging to schwarzschild
+    for(int i=0; i < (int)black_hole_m.size(); i++)
+    {
+        float Mi = black_hole_m[i];
+        vec3f ri = black_hole_pos[i];
+
+        vec<3, value> vri = {ri.x(), ri.y(), ri.z()};
+
+        value dist = (pos - vri).length();
+
+        BL_conformal = BL_conformal + Mi / (2 * dist);
+    }
+
+    ctx.add("init_BL_conformal", BL_conformal);
+
+    ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 69
+    ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
+    ///phi
+    /*value conformal_factor = log(BL_conformal);
+    ctx.pin(conformal_factor);
+
+    ctx.add("init_conformal_factor", conformal_factor);*/
+}
+
+#if 0
+inline
+void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
+{
+    vec<3, value> pos;
+
+    pos[0].make_value("ox");
+    pos[1].make_value("oy");
+    pos[2].make_value("oz");
+
+    tensor<value, 3, 3> kronecker;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            if(i == j)
+                kronecker.idx(i, j) = 1;
+            else
+                kronecker.idx(i, j) = 0;
+        }
+    }
+
+    value BL_conformal = 1;
+
+    float bulge = 1;
+
+    auto san_black_hole_pos = [&](vec3f in)
+    {
+        float s1 = in.x();
+        float s2 = in.y();
+        float s3 = in.z();
+
+        vec3f scaled = round((in / scale) * bulge);
+
+        vec3f offsets = {0.5f, 0.5f, 0.5f};
+
+        auto get_sign = [](float in)
+        {
+            return in >= 0 ? 1 : -1;
+        };
+
+        offsets.x() *= get_sign(s1);
+        offsets.y() *= get_sign(s2);
+        offsets.z() *= get_sign(s3);
+
+        std::cout << "Black hole at voxel " << scaled + centre + offsets << std::endl;
+
+        return scaled * scale / bulge + offsets * scale / bulge;
+    };
+
+    ///https://arxiv.org/pdf/gr-qc/0505055.pdf
+    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({0, -1.1515 * 0.5f, 0}), san_black_hole_pos({0, 1.1515 * 0.5f, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.1515, 0, 0}), san_black_hole_pos({3.1515, 0, 0})};
+    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({5, 0, 0})};
+    std::vector<float> black_hole_m{0.5f, 0.5f};
+    //std::vector<float> black_hole_m{0.5f, 0.5f};
+    std::vector<vec3f> black_hole_velocity{{0, 0.5, 0}, {0, -0.5, 0}}; ///pick better velocities
+
+    ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
+    ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is - it was not. Now its correct
+    ///todo pt 2: Try sponging to schwarzschild
+    for(int i=0; i < (int)black_hole_m.size(); i++)
+    {
+        float Mi = black_hole_m[i];
+        vec3f ri = black_hole_pos[i];
+
+        vec<3, value> vri = {ri.x(), ri.y(), ri.z()};
+
+        value dist = (pos - vri).length();
+
+        BL_conformal = BL_conformal + Mi / (2 * dist);
+    }
+
+    /*tensor<value, 3, 3> Yij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            Yij.idx(i, j) = pow(kronecker.idx(i, j);
+        }
+    }*/
+
+    ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 69
+
+    ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
+    ///phi
+    value conformal_factor = (1/12.f) * log(Y);
+    ctx.pin(conformal_factor);
+
+    /*metric<value, 3, 3> cyij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            cyij.idx(i, j) = kronecker.idx(i, j);
+        }
+    }*/
+
+    ctx.add("init_conformal_factor", conformal_factor);
+}
+
 ///https://arxiv.org/pdf/gr-qc/0206072.pdf alternative initial conditions
 ///https://cds.cern.ch/record/337814/files/9711015.pdf
 ///https://cds.cern.ch/record/517706/files/0106072.pdf this paper has a lot of good info on soaking up boundary conditions
@@ -1261,6 +1482,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ctx.add("init_gBB2", gBB2);
     #endif // USE_GBB
 }
+#endif // 0
 
 inline
 void build_constraints(equation_context& ctx)
@@ -3645,8 +3867,8 @@ int main()
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
-    equation_context ctx1;
-    get_initial_conditions_eqs(ctx1, centre, scale);
+    /*equation_context ctx1;
+    get_initial_conditions_eqs(ctx1, centre, scale);*/
 
     equation_context ctx2;
     build_intermediate(ctx2);
@@ -3688,7 +3910,7 @@ int main()
 
     argument_string += "-DTEMPORARIES=" + temporary_string + " ";*/
 
-    ctx1.build(argument_string, 0);
+    //ctx1.build(argument_string, 0);
     ctx2.build(argument_string, 1);
     ctx3.build(argument_string, 2);
     ctx4.build(argument_string, 3);

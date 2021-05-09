@@ -219,6 +219,33 @@ float get_distance(int x1, int y1, int z1, int x2, int y2, int z2, int4 dim, flo
 }
 
 __kernel
+void setup_u_offset(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+                                  __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
+                                  __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
+                                  #ifdef USE_gBB0
+                                  __global float* gBB0, __global float* gBB1, __global float* gBB2,
+                                  #endif // USE_gBB0
+                                  float scale, int4 dim)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
+
+    float ox = offset.x;
+    float oy = offset.y;
+    float oz = offset.z;
+
+    float conformal_factor = init_BL_conformal;
+}
+
+
+#if 0
+__kernel
 void calculate_initial_conditions(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
                                   __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                                   __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
@@ -290,6 +317,7 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
         printf("TESTK %f\n", f->K);
     }*/
 }
+#endif // 0
 
 __kernel
 void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
