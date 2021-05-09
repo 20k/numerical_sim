@@ -877,32 +877,118 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     ogBB2[index] = gBB2[index] + (dtgBB2 + diss_gBB2) * timestep;
     #endif // USE_GBB
 
-    bool debug = false;
+    ///current problem seems to be a dissipation one again?
+    /*NAN cY0 162 146 211
+    NAN cY3 161 151 211
+    NAN X 161 149 211
+    NAN cY3 162 151 211
+    NAN cY0 161 148 211
+    NAN cY3 161 153 211
+    NAN cY3 162 153 211
+    NAN cY4 161 151 211
+    NAN cY0 162 148 211
+    NAN cY4 161 153 211
+    NAN cY0 161 155 211
+    NAN cY0 162 155 211
+    NAN cY4 162 153 211
+    NAN cY1 161 155 211
+    NAN cY1 162 155 211
+    NAN cY4 162 151 211
+    NAN cY2 161 155 211
+    NAN cY2 162 155 211
+    NAN cY5 161 151 211
+    NAN cY5 162 151 211
+    NAN cY3 161 155 211
+    NAN cY5 161 153 211
+    NAN cY5 162 153 211
+    NAN cY3 162 155 211
+    NAN cY0 161 150 211
+    NAN cY4 161 155 211
+    NAN cY4 162 155 211
+    NAN cY0 161 157 211
+    NAN cY0 162 157 211
+    NAN cY5 161 155 211
+    NAN cY5 162 155 211
+    NAN cY0 162 150 211
+    NAN cY0 161 152 211
+    NAN cY0 162 152 211
+    NAN cY1 161 150 211
+    NAN cY1 162 150 211
+    NAN X 161 153 211
+    NAN X 162 153 211
+    NAN cY1 161 152 211
+    NAN X 161 151 211
+    NAN X 162 151 211
+    NAN cY0 161 154 211
+    NAN cY0 162 154 211
+    NAN X 161 155 211
+    NAN cY2 161 150 211
+    NAN cY2 162 150 211
+    NAN cY0 161 159 211
+    NAN X 162 155 211
+    NAN cY0 161 161 211
+    NAN cY0 162 159 211
+    NAN gA 161 151 211
+    NAN gA 162 151 211
+    NAN cY3 161 150 211
+    NAN cY3 162 150 211
+    NAN cY0 162 161 211
+    NAN cY1 162 152 211
+    NAN cY1 161 154 211
+    NAN cY1 162 154 211
+    NAN cY4 161 150 211*/
 
-    /*NANCHECK(cY0);
-    NANCHECK(cY1);
-    NANCHECK(cY2);
-    NANCHECK(cY3);
-    NANCHECK(cY4);
-    NANCHECK(cY5);
+    /*NAN ocA0 161 150 150
+    NAN ocA1 161 150 150
+    NAN ocA2 161 150 150
+    NAN ocA3 161 150 150
+    NAN ocA4 161 150 150
+    NAN ocA5 161 150 150
+    NAN ocA0 161 151 150
+    NAN ocA1 161 151 150
+    NAN ocA2 161 151 150
+    NAN ocA3 161 151 150
+    NAN ocA4 161 151 150
+    NAN ocA5 161 151 150
+    NAN ocA0 161 150 151
+    NAN ocA1 161 150 151
+    NAN ocA2 161 150 151
+    NAN ocA3 161 150 151
+    NAN ocA4 161 150 151
+    NAN ocA5 161 150 151
+    NAN ocA0 161 151 151
+    NAN ocA1 161 151 151
+    NAN ocA2 161 151 151
+    NAN ocA3 161 151 151
+    NAN ocA4 161 151 151
+    NAN ocA5 161 151 151*/
 
-    NANCHECK(cA0);
-    NANCHECK(cA1);
-    NANCHECK(cA2);
-    NANCHECK(cA3);
-    NANCHECK(cA4);
-    NANCHECK(cA5);
+    /*bool debug = false;
 
-    NANCHECK(cGi0);
-    NANCHECK(cGi1);
-    NANCHECK(cGi2);
+    NANCHECK(ocY0);
+    NANCHECK(ocY1);
+    NANCHECK(ocY2);
+    NANCHECK(ocY3);
+    NANCHECK(ocY4);
+    NANCHECK(ocY5);
 
-    NANCHECK(K);
-    NANCHECK(X);
-    NANCHECK(gA);
-    NANCHECK(gB0);
-    NANCHECK(gB1);
-    NANCHECK(gB2);*/
+    NANCHECK(ocA0);
+    NANCHECK(ocA1);
+    NANCHECK(ocA2);
+    NANCHECK(ocA3);
+    NANCHECK(ocA4);
+    NANCHECK(ocA5);
+
+    NANCHECK(ocGi0);
+    NANCHECK(ocGi1);
+    NANCHECK(ocGi2);
+
+    NANCHECK(oK);
+    NANCHECK(oX);
+    NANCHECK(ogA);
+    NANCHECK(ogB0);
+    NANCHECK(ogB1);
+    NANCHECK(ogB2);*/
 
     #ifdef USE_GBB
     NANCHECK(gBB0);
@@ -924,7 +1010,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     NAN cA3 171 138 143
     NAN cGi0 109 138 143*/
 
-    #if 0
+    #if 1
     //if(debug)
     //if(x == 5 && y == 6 && z == 4)
     //if(ix == 125 && y == 100 && z == 125)
@@ -934,7 +1020,12 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     //if(ix == 171 && iy == 138 && iz == 141)
     //if(ix == 171 && iy == 137 && iz == 142)
     //if(ix == 140 && iy == 140 && iz == 140)
-    if(ix == 171 && iy == 140 && iz == 140)
+    //if(ix == 171 && iy == 140 && iz == 140)
+    //if(ix == 162 && iy == 155 && iz == 211)
+    ///161 148 211
+    //if(ix == 161 && iy == 148 && iz == 211)
+    //if(ix == 161 && iy == 151 && iz == 211)
+    if(ix == 161 && iy == 150 && iz == 150)
     {
         //float scalar = scalar_curvature;
 

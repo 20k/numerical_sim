@@ -598,6 +598,7 @@ struct differentiation_context
 #define DIFFERENTIATION_WIDTH 2
 
 ///https://hal.archives-ouvertes.fr/hal-00569776/document this paper implies you simply sum the directions
+///dissipation is fixing some stuff, todo: investigate why so much dissipation is required
 value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int idx)
 {
     //differentiation_context<7> dctx(ctx, in, idx, false);
@@ -608,7 +609,8 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
     ///todo: test lower value again
     //float dissipate = 0.25f/16.f;
 
-    float dissipate = 0.25f/1.5f;
+    float dissipate = 0.25f;
+    //float dissipate = 0.25f/1.5f;
 
     value scale = "scale";
 
