@@ -1025,7 +1025,10 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     ///161 148 211
     //if(ix == 161 && iy == 148 && iz == 211)
     //if(ix == 161 && iy == 151 && iz == 211)
-    if(ix == 161 && iy == 150 && iz == 150)
+    //if(ix == 161 && iy == 150 && iz == 150)
+
+    //138.500000 150.500000 150.500000
+    if(ix == 139 && iy == 151 && iz == 150)
     {
         //float scalar = scalar_curvature;
 

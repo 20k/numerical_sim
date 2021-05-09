@@ -610,7 +610,7 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
 
     //float dissipate = 0.25f;
     //float dissipate = 0.25f/5.5f;
-    float dissipate = 0.25f;
+    float dissipate = 0.25f / 8.f;
 
     value scale = "scale";
 
@@ -1197,7 +1197,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     //value BL_a = 0;
 
-    value BL_c;
+    value BL_c = 0;
 
     for(int i=0; i < (int)black_hole_m.size(); i++)
     {
@@ -3747,8 +3747,8 @@ int main()
     ///must be a multiple of DIFFERENTIATION_WIDTH
     vec3i size = {300, 300, 300};
     //vec3i size = {250, 250, 250};
-    float c_at_max = 160;
-    //float c_at_max = 45;
+    //float c_at_max = 160;
+    float c_at_max = 90;
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
