@@ -1176,7 +1176,21 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({5, 0, 0})};
     std::vector<float> black_hole_m{0.5f, 0.5f};
     //std::vector<float> black_hole_m{0.5f, 0.5f};
-    std::vector<vec3f> black_hole_velocity{{0, 0.5, 0}, {0, -0.5, 0}}; ///pick better velocities
+    std::vector<vec3f> black_hole_velocity{{0, 0, 0.25}, {0, 0, -0.25}}; ///pick better velocities
+
+    metric<value, 3, 3> flat_metric;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            flat_metric.idx(i, j) = (i == j) ? 1 : 0;
+        }
+    }
+
+    tensor<value, 3, 3> icAij = calculate_icAij(pos, black_hole_m, black_hole_pos, black_hole_velocity);
+
+    tensor<value, 3, 3> cAij = lower_both(icAij, flat_metric);
 
     ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
     ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is - it was not. Now its correct
