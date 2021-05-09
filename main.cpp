@@ -1142,8 +1142,6 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     pos[1].make_value("oy");
     pos[2].make_value("oz");
 
-    value BL_conformal = 1;
-
     float bulge = 1;
 
     auto san_black_hole_pos = [&](vec3f in)
@@ -1192,9 +1190,9 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
     tensor<value, 3, 3> cAij = lower_both(icAij, flat_metric);
 
-    ///3.57 https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
-    ///todo: not sure this is correctly done, check r - ri, and what coordinate r really is - it was not. Now its correct
-    ///todo pt 2: Try sponging to schwarzschild
+    //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
+    value BL_a = 0;
+
     for(int i=0; i < (int)black_hole_m.size(); i++)
     {
         float Mi = black_hole_m[i];
@@ -1204,18 +1202,28 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         value dist = (pos - vri).length();
 
-        BL_conformal = BL_conformal + Mi / (2 * dist);
+        value la = 2 * dist / Mi;
+
+        BL_a += la;
     }
 
-    ctx.add("init_BL_conformal", BL_conformal);
+    ctx.add("init_BL_a", BL_a);
+
+    value aij_aIJ = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            aij_aIJ += icAij.idx(i, j) * cAij.idx(i, j);
+        }
+    }
+
+    ctx.add("init_aij_aIJ", aij_aIJ);
 
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 69
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
     ///phi
-    /*value conformal_factor = log(BL_conformal);
-    ctx.pin(conformal_factor);
-
-    ctx.add("init_conformal_factor", conformal_factor);*/
 }
 
 #if 0
@@ -3881,6 +3889,9 @@ int main()
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
+    equation_context setup_initial;
+    setup_initial_conditions(setup_initial, centre, scale);
+
     /*equation_context ctx1;
     get_initial_conditions_eqs(ctx1, centre, scale);*/
 
@@ -3932,6 +3943,7 @@ int main()
     ctx6.build(argument_string, 5);
     ctx7.build(argument_string, 6);
     ctx8.build(argument_string, 7);
+    setup_initial.build(argument_string, 8);
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 

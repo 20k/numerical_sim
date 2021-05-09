@@ -219,13 +219,8 @@ float get_distance(int x1, int y1, int z1, int x2, int y2, int z2, int4 dim, flo
 }
 
 __kernel
-void setup_u_offset(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
-                                  __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
-                                  __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
-                                  #ifdef USE_gBB0
-                                  __global float* gBB0, __global float* gBB1, __global float* gBB2,
-                                  #endif // USE_gBB0
-                                  float scale, int4 dim)
+void setup_u_offset(__global float* u_offset,
+                    int4 dim)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -234,15 +229,53 @@ void setup_u_offset(__global float* cY0, __global float* cY1, __global float* cY
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
+    u_offset[IDX(ix, iy, iz)] = 1;
+}
+
+__kernel
+void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out,
+                       float scale, int4 dim)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    if(ix < 1 || iy < 1 || iz < 1 || ix >= dim.x - 1 || iy >= dim.y - 1 || iz >= dim.z - 1)
+        return;
+
     float3 offset = transform_position(ix, iy, iz, dim, scale);
 
     float ox = offset.x;
     float oy = offset.y;
     float oz = offset.z;
 
-    float conformal_factor = init_BL_conformal;
-}
+    float a = init_BL_a;
 
+    float aij_aIJ = init_aij_aIJ;
+
+    float B = (1.f/8.f) * pow(a, 7.f) * aij_aIJ;
+
+    float u = u_offset_in[IDX(ix, iy, iz)];
+
+    float RHS = -B * pow(1 + a * u, -7);
+
+    float h2f0 = scale * scale * RHS;
+
+    float uxm1 = u_offset_in[IDX(ix-1, iy, iz)];
+    float uxp1 = u_offset_in[IDX(ix+1, iy, iz)];
+    float uym1 = u_offset_in[IDX(ix, iy-1, iz)];
+    float uyp1 = u_offset_in[IDX(ix, iy+1, iz)];
+    float uzm1 = u_offset_in[IDX(ix, iy, iz-1)];
+    float uzp1 = u_offset_in[IDX(ix, iy, iz+1)];
+
+    ///-6u0 + the rest of the terms = h^2 f0
+    float u0n1 = 0.25f * (uxm1 + uxp1 + uym1 + uyp1 + uzm1 + uzp1 - h2f0);
+
+    u_offset_out[IDX(ix, iy, iz)] = u0n1;
+}
 
 #if 0
 __kernel
