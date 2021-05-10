@@ -1546,7 +1546,7 @@ void trace_metric(__global float* cY0, __global float* cY1, __global float* cY2,
         p0 += pixel_direction.x;
         p1 += pixel_direction.y;
         p2 += pixel_direction.z;
-
+    }
 
     max_scalar = max_scalar * 40;
 
