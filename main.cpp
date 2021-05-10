@@ -55,6 +55,7 @@ https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/20
 https://arxiv.org/pdf/gr-qc/0612001.pdf - double kerr initial data, should be solvable via an elliptic solver
 https://arxiv.org/pdf/gr-qc/0610128.pdf - this paper uses psi0 as the initial guess for lapse, not psibl
 https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan2008/Workbook33/33_2_elliptic_pde.pdf five point stencil
+https://arxiv.org/pdf/2008.12931.pdf - this contains a good set of equations to try for a more stable bssn
 */
 
 ///notes:
@@ -1181,7 +1182,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     //std::vector<float> black_hole_m{0.5f, 0.5f};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.25}, {0, 0, -0.25}}; ///pick better velocities
 
-    std::vector<vec3f> black_hole_velocity{{0,0,0.00025}, {0,0,-0.00025}};
+    std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
 
     metric<value, 3, 3> flat_metric;
 
