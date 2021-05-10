@@ -1890,29 +1890,6 @@ void build_eqs(equation_context& ctx)
         });
     }
 
-    ///X * christoffel symbols of the conformal metric
-    tensor<value, 3, 3, 3> xcChristoff;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            for(int k=0; k < 3; k++)
-            {
-                value lsum = 0;
-
-                for(int l=0; l < 3; l++)
-                {
-                    lsum = lsum - cY.idx(i, j) * icY.idx(k, l) * hacky_differentiate(ctx, X, l);
-                }
-
-                xcChristoff.idx(k, i, j) = X * christoff2.idx(k, i, j) - 0.5f * (kronecker.idx(k,i) * hacky_differentiate(ctx, X, j) + kronecker.idx(k, j) * hacky_differentiate(ctx, X, i) + lsum);
-
-                ctx.pin(xcChristoff.idx(k, i, j));
-            }
-        }
-    }
-
     tensor<value, 3, 3> xgADiDjphi;
 
     for(int i=0; i < 3; i++)
@@ -2013,6 +1990,32 @@ void build_eqs(equation_context& ctx)
         }
     }
 
+    tensor<value, 3, 3> Xdidja;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, digA, cY, icY).idx(j, i);
+
+            value s2 = 0.5f * (hacky_differentiate(ctx, X, i) * hacky_differentiate(ctx, gA, j) + hacky_differentiate(ctx, X, j) * hacky_differentiate(ctx, gA, i));
+
+            value s3 = 0;
+
+            for(int m=0; m < 3; m++)
+            {
+                for(int n=0; n < 3; n++)
+                {
+                    value v = -0.5f * cY.idx(i, j) * icY.idx(m, n) * hacky_differentiate(ctx, X, m) * hacky_differentiate(ctx, gA, n);
+
+                    s3 += v;
+                }
+            }
+
+            Xdidja.idx(i, j) = Xderiv + s2 + s3;
+        }
+    }
+
     ///recover Yij from X and cYij
     ///https://arxiv.org/pdf/gr-qc/0511048.pdf
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf
@@ -2037,16 +2040,9 @@ void build_eqs(equation_context& ctx)
             ///Moved X inside the trace free bracket and expanded it
             //value trace_free_interior_old = -X * gpu_covariant_derivative_low_vec(ctx, digA, Yij, iYij).idx(j, i);
 
-            value trace_free_interior_1 = X * hacky_differentiate(ctx, digA.idx(j), i);
+            value trace_free_interior_1 = Xdidja.idx(i, j);
 
-            value reduced = 0;
-
-            for(int b=0; b < 3; b++)
-            {
-                reduced = reduced + xcChristoff.idx(b, i, j) * digA.idx(b);
-            }
-
-            trace_free_interior_1 = trace_free_interior_1 - reduced;
+            ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf replaced with definition under bssn aux
 
             value trace_free_interior_2 = xgARij.idx(i, j);
 
@@ -2117,32 +2113,6 @@ void build_eqs(equation_context& ctx)
     }
 
     tensor<value, 3, 3> icAij = raise_both(cA, cY, icY);
-
-    tensor<value, 3, 3> Xdidja;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, digA, cY, icY).idx(j, i);
-
-            value s2 = 0.5f * (hacky_differentiate(ctx, X, i) * hacky_differentiate(ctx, gA, j) + hacky_differentiate(ctx, X, j) * hacky_differentiate(ctx, gA, i));
-
-            value s3 = 0;
-
-            for(int m=0; m < 3; m++)
-            {
-                for(int n=0; n < 3; n++)
-                {
-                    value v = -0.5f * cY.idx(i, j) * icY.idx(m, n) * hacky_differentiate(ctx, X, m) * hacky_differentiate(ctx, gA, n);
-
-                    s3 += v;
-                }
-            }
-
-            Xdidja.idx(i, j) = Xderiv + s2 + s3;
-        }
-    }
 
     value dtK = 0;
 
