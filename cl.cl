@@ -800,31 +800,31 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     float f_dtgBB2 = dtgBB2;
     #endif // USE_GBB
 
-    float diss_cYij0 = get_dissipation(ix, iy, iz, dim, scale, cY0);
-    float diss_cYij1 = get_dissipation(ix, iy, iz, dim, scale, cY1);
-    float diss_cYij2 = get_dissipation(ix, iy, iz, dim, scale, cY2);
-    float diss_cYij3 = get_dissipation(ix, iy, iz, dim, scale, cY3);
-    float diss_cYij4 = get_dissipation(ix, iy, iz, dim, scale, cY4);
-    float diss_cYij5 = get_dissipation(ix, iy, iz, dim, scale, cY5);
+    float diss_cYij0 = dissipate_low * get_dissipation(ix, iy, iz, dim, scale, cY0);
+    float diss_cYij1 = dissipate_low * get_dissipation(ix, iy, iz, dim, scale, cY1);
+    float diss_cYij2 = dissipate_low * get_dissipation(ix, iy, iz, dim, scale, cY2);
+    float diss_cYij3 = dissipate_low * get_dissipation(ix, iy, iz, dim, scale, cY3);
+    float diss_cYij4 = dissipate_low * get_dissipation(ix, iy, iz, dim, scale, cY4);
+    float diss_cYij5 = dissipate_low * get_dissipation(ix, iy, iz, dim, scale, cY5);
 
-    float diss_cAij0 = get_dissipation(ix, iy, iz, dim, scale, cA0);
-    float diss_cAij1 = get_dissipation(ix, iy, iz, dim, scale, cA1);
-    float diss_cAij2 = get_dissipation(ix, iy, iz, dim, scale, cA2);
-    float diss_cAij3 = get_dissipation(ix, iy, iz, dim, scale, cA3);
-    float diss_cAij4 = get_dissipation(ix, iy, iz, dim, scale, cA4);
-    float diss_cAij5 = get_dissipation(ix, iy, iz, dim, scale, cA5);
+    float diss_cAij0 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, cA0);
+    float diss_cAij1 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, cA1);
+    float diss_cAij2 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, cA2);
+    float diss_cAij3 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, cA3);
+    float diss_cAij4 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, cA4);
+    float diss_cAij5 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, cA5);
 
-    float diss_cGi0 = get_dissipation(ix, iy, iz, dim, scale, cGi0);
-    float diss_cGi1 = get_dissipation(ix, iy, iz, dim, scale, cGi1);
-    float diss_cGi2 = get_dissipation(ix, iy, iz, dim, scale, cGi2);
+    float diss_cGi0 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, cGi0);
+    float diss_cGi1 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, cGi1);
+    float diss_cGi2 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, cGi2);
 
-    float diss_K = get_dissipation(ix, iy, iz, dim, scale, K);
-    float diss_X = get_dissipation(ix, iy, iz, dim, scale, X);
+    float diss_K = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, K);
+    float diss_X = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, X);
 
-    float diss_gA = get_dissipation(ix, iy, iz, dim, scale, gA);
-    float diss_gB0 = get_dissipation(ix, iy, iz, dim, scale, gB0);
-    float diss_gB1 = get_dissipation(ix, iy, iz, dim, scale, gB1);
-    float diss_gB2 = get_dissipation(ix, iy, iz, dim, scale, gB2);
+    float diss_gA = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, gA);
+    float diss_gB0 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, gB0);
+    float diss_gB1 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, gB1);
+    float diss_gB2 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, gB2);
 
     float debug1 = debug_p1;
     float debug2 = debug_p2;
@@ -1546,7 +1546,9 @@ void trace_metric(__global float* cY0, __global float* cY1, __global float* cY2,
         p0 += pixel_direction.x;
         p1 += pixel_direction.y;
         p2 += pixel_direction.z;
-    }
+
+
+    max_scalar = max_scalar * 40;
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 

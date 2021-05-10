@@ -610,13 +610,13 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
 
     //float dissipate = 0.25f;
     //float dissipate = 0.25f/5.5f;
-    float dissipate = 0.25f / 8.f;
+    //float dissipate = 0.25f/1.1f;
 
     value scale = "scale";
 
     //value stencil = -(dissipate / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
 
-    value stencil = (dissipate / (64 * scale)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
+    value stencil = (1 / (64 * scale)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
 
     return stencil;
 }
@@ -637,6 +637,9 @@ void build_kreiss_oliger_dissipate(equation_context& ctx)
 {
     value v = "buffer";
     ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
+
+    ctx.add("dissipate_low", 0.1f);
+    ctx.add("dissipate_high", 0.25f);
 
     //value z = 0;
     //ctx.add("KREISS_OLIGER_DISSIPATE", z);
@@ -1178,7 +1181,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     //std::vector<float> black_hole_m{0.5f, 0.5f};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.25}, {0, 0, -0.25}}; ///pick better velocities
 
-    std::vector<vec3f> black_hole_velocity{{0,0,0.0025}, {0,0,-0.0025}};
+    std::vector<vec3f> black_hole_velocity{{0,0,0.00025}, {0,0,-0.00025}};
 
     metric<value, 3, 3> flat_metric;
 
@@ -2114,64 +2117,54 @@ void build_eqs(equation_context& ctx)
 
     tensor<value, 3, 3> icAij = raise_both(cA, cY, icY);
 
-    value dtK = 0;
+    tensor<value, 3, 3> Xdidja;
 
+    for(int i=0; i < 3; i++)
     {
-        value sum1 = 0;
-
-        value christoffel_sum = 0;
-
-        for(int k=0; k < 3; k++)
+        for(int j=0; j < 3; j++)
         {
-            christoffel_sum = christoffel_sum - X * derived_cGi.idx(k) * digA.idx(k);
-        }
+            value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, digA, cY, icY).idx(j, i);
 
-        for(int i=0; i < 3; i++)
-        {
-            value s1 = 0;
-
-            for(int j=0; j < 3; j++)
-            {
-                ///pull X out
-                s1 = s1 + X * icY.idx(i, j) * hacky_differentiate(ctx, digA.idx(j), i);
-            }
+            value s2 = 0.5f * (hacky_differentiate(ctx, X, i) * hacky_differentiate(ctx, gA, j) + hacky_differentiate(ctx, X, j) * hacky_differentiate(ctx, gA, i));
 
             value s3 = 0;
 
-            for(int j=0; j < 3; j++)
+            for(int m=0; m < 3; m++)
             {
-                s3 = s3 + 2 * (-1.f/4.f) * icY.idx(i, j) * hacky_differentiate(ctx, X, i) * digA.idx(j);
+                for(int n=0; n < 3; n++)
+                {
+                    value v = -0.5f * cY.idx(i, j) * icY.idx(m, n) * hacky_differentiate(ctx, X, m) * hacky_differentiate(ctx, gA, n);
+
+                    s3 += v;
+                }
             }
 
-
-            sum1 = sum1 + s1 + s3;
-
-            //sum1 = sum1 + gpu_high_covariant_derivative_vec(ctx, digA, Yij, iYij).idx(i, i);
+            Xdidja.idx(i, j) = Xderiv + s2 + s3;
         }
+    }
 
-        sum1 = sum1 + christoffel_sum;
+    value dtK = 0;
 
-        value sum2 = 0;
+    {
+        value p1 = sum_multiply(gB, tensor_derivative(ctx, K));
 
-        for(int i=0; i < 3; i++)
+        value p2 = 0;
+
+        value p3 = 0;
+
+        for(int m=0; m < 3; m++)
         {
-            for(int j=0; j < 3; j++)
+            for(int n=0; n < 3; n++)
             {
-                sum2 = sum2 + cA.idx(i, j) * icAij.idx(i, j);
+                p2 += icY.idx(m, n) * Xdidja.idx(m, n);
+
+                p3 += gA * icAij.idx(m, n) * cA.idx(m, n);
             }
         }
 
-        sum2 = gA * (sum2 + (1.f/3.f) * K * K);
+        value p4 = (1/3.f) * gA * K * K;
 
-        value sum3 = 0;
-
-        for(int i=0; i < 3; i++)
-        {
-            //sum3 = sum3 + gB.idx(i) * hacky_differentiate(ctx, K, i);
-            sum3 = sum3 + upwind_differentiate(ctx, gB.idx(i), K, i);
-        }
-
-        dtK = -sum1 + sum2 + sum3;
+        dtK = p1 - p2 + p3 + p4;
     }
 
     ///these seem to suffer from oscillations
