@@ -56,6 +56,7 @@ https://arxiv.org/pdf/gr-qc/0612001.pdf - double kerr initial data, should be so
 https://arxiv.org/pdf/gr-qc/0610128.pdf - this paper uses psi0 as the initial guess for lapse, not psibl
 https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan2008/Workbook33/33_2_elliptic_pde.pdf five point stencil
 https://arxiv.org/pdf/2008.12931.pdf - this contains a good set of equations to try for a more stable bssn
+https://arxiv.org/pdf/gr-qc/0004050.pdf - ISCO explanation
 */
 
 ///notes:
@@ -640,7 +641,7 @@ void build_kreiss_oliger_dissipate(equation_context& ctx)
     ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
 
     ctx.add("dissipate_low", 0.15f);
-    ctx.add("dissipate_high", 0.3f);
+    ctx.add("dissipate_high", 0.25f);
 
     //value z = 0;
     //ctx.add("KREISS_OLIGER_DISSIPATE", z);
