@@ -57,6 +57,9 @@ https://arxiv.org/pdf/gr-qc/0610128.pdf - this paper uses psi0 as the initial gu
 https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan2008/Workbook33/33_2_elliptic_pde.pdf five point stencil
 https://arxiv.org/pdf/2008.12931.pdf - this contains a good set of equations to try for a more stable bssn
 https://arxiv.org/pdf/gr-qc/0004050.pdf - ISCO explanation
+https://core.ac.uk/download/pdf/144448463.pdf - 7.9 states you can split up trace free variables
+
+https://github.com/GRChombo/GRChombo useful info
 */
 
 ///notes:
@@ -616,9 +619,11 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
 
     value scale = "scale";
 
-    value stencil = -(1 / (16.f)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
+    value stencil = -(1 / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
 
     //value stencil = (1 / (64.f)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
+
+    //value stencil = (-dctx.vars[4] + 8 * dctx.vars[3] - 8 * dctx.vars[1] + dctx.vars[0]) / 12;
 
     return stencil;
 }
@@ -632,7 +637,7 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
         fin = fin + kreiss_oliger_dissipate_dir(ctx, in, i);
     }
 
-    return fin * in;
+    return fin;
 }
 
 void build_kreiss_oliger_dissipate(equation_context& ctx)
@@ -640,8 +645,8 @@ void build_kreiss_oliger_dissipate(equation_context& ctx)
     value v = "buffer[IDX(ix,iy,iz)]";
     ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
 
-    ctx.add("dissipate_low", 0.15f);
-    ctx.add("dissipate_high", 0.15f);
+    ctx.add("dissipate_low", 0.145f);
+    ctx.add("dissipate_high", 0.145f);
 
     //value z = 0;
     //ctx.add("KREISS_OLIGER_DISSIPATE", z);
@@ -986,6 +991,37 @@ tensor<T, N, N> gpu_trace_free(const tensor<T, N, N>& mT, const metric<T, N, N>&
 
     return TF;
 }
+
+//https://arxiv.org/pdf/0709.3559.pdf b.48??
+template<typename T, int N>
+inline
+tensor<T, N, N> gpu_trace_free_cAij(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
+{
+    return mT;
+
+    tensor<T, N, N> TF;
+
+    for(int i=0; i < N; i++)
+    {
+        for(int j=0; j < N; j++)
+        {
+            value sum = 0;
+
+            for(int l=0; l < 3; l++)
+            {
+                for(int m=0; m < 3; m++)
+                {
+                    sum += mT.idx(l, m) * inverse.idx(i, l) * inverse.idx(j, m);
+                }
+            }
+
+            TF.idx(i, j) = mT.idx(i, j) - (1.f/3.f) * sum;
+        }
+    }
+
+    return TF;
+}
+
 
 template<typename T, int N>
 inline
@@ -1401,7 +1437,10 @@ void build_constraints(equation_context& ctx)
     cA.idx(1, 0).make_value("cA1[IDX(ix,iy,iz)]"); cA.idx(1, 1).make_value("cA3[IDX(ix,iy,iz)]"); cA.idx(1, 2).make_value("cA4[IDX(ix,iy,iz)]");
     cA.idx(2, 0).make_value("cA2[IDX(ix,iy,iz)]"); cA.idx(2, 1).make_value("cA4[IDX(ix,iy,iz)]"); cA.idx(2, 2).make_value("cA5[IDX(ix,iy,iz)]");
 
-    tensor<value, 3, 3> fixed_cA = gpu_trace_free(cA, fixed_cY, fixed_cY.invert());
+    tensor<value, 3, 3> fixed_cA = gpu_trace_free_cAij(cA, fixed_cY, fixed_cY.invert());
+
+    ///https://arxiv.org/pdf/0709.3559.pdf b.49
+    fixed_cA = fixed_cA / det_cY_pow;
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
