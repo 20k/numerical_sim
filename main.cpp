@@ -645,8 +645,8 @@ void build_kreiss_oliger_dissipate(equation_context& ctx)
     value v = "buffer[IDX(ix,iy,iz)]";
     ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
 
-    ctx.add("dissipate_low", 0.145f);
-    ctx.add("dissipate_high", 0.145f);
+    ctx.add("dissipate_low", 0.15f);
+    ctx.add("dissipate_high", 0.15f);
 
     //value z = 0;
     //ctx.add("KREISS_OLIGER_DISSIPATE", z);
@@ -993,6 +993,7 @@ tensor<T, N, N> gpu_trace_free(const tensor<T, N, N>& mT, const metric<T, N, N>&
 }
 
 //https://arxiv.org/pdf/0709.3559.pdf b.48??
+///the algebraic constraints are an extremely good candidate for simulation instability
 template<typename T, int N>
 inline
 tensor<T, N, N> gpu_trace_free_cAij(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
