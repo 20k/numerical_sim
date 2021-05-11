@@ -310,12 +310,6 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
         uses_extension = true;
     }
 
-    else if(str == "buffer")
-    {
-        buffer = "buffer";
-        val = "buffer";
-    }
-
     else if(str.starts_with("buffer_read_linear"))
     {
         std::string_view sview = str;
@@ -327,6 +321,12 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
 
         buffer = std::string(sview.begin(), sview.begin() + len);
         val = buffer;
+    }
+
+    else if(str.starts_with("buffer"))
+    {
+        buffer = "buffer";
+        val = "buffer";
     }
     else if(str.starts_with("cY0"))
     {
@@ -602,8 +602,8 @@ struct differentiation_context
 ///dissipation is fixing some stuff, todo: investigate why so much dissipation is required
 value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int idx)
 {
-    differentiation_context<7> dctx(ctx, in, idx, false);
-    //differentiation_context<5> dctx(ctx, in, idx, false);
+    //differentiation_context<7> dctx(ctx, in, idx, false);
+    differentiation_context<5> dctx(ctx, in, idx, false);
 
     int d = 2;
 
@@ -616,9 +616,9 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
 
     value scale = "scale";
 
-    //value stencil = -(dissipate / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
+    value stencil = -(1 / (16.f)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
 
-    value stencil = (1 / (64 * scale)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
+    //value stencil = (1 / (64.f)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
 
     return stencil;
 }
@@ -632,16 +632,16 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
         fin = fin + kreiss_oliger_dissipate_dir(ctx, in, i);
     }
 
-    return fin;
+    return fin * in;
 }
 
 void build_kreiss_oliger_dissipate(equation_context& ctx)
 {
-    value v = "buffer";
+    value v = "buffer[IDX(ix,iy,iz)]";
     ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
 
     ctx.add("dissipate_low", 0.15f);
-    ctx.add("dissipate_high", 0.25f);
+    ctx.add("dissipate_high", 0.15f);
 
     //value z = 0;
     //ctx.add("KREISS_OLIGER_DISSIPATE", z);
@@ -1936,6 +1936,8 @@ void build_eqs(equation_context& ctx)
         }
     }
 
+    ctx.pin(xgADiDjphi);
+
     tensor<value, 3, 3> xgARphiij;
 
     for(int i=0; i < 3; i++)
@@ -2040,6 +2042,8 @@ void build_eqs(equation_context& ctx)
             Xdidja.idx(i, j) = Xderiv + s2 + s3;
         }
     }
+
+    ctx.pin(Xdidja);
 
     ///recover Yij from X and cYij
     ///https://arxiv.org/pdf/gr-qc/0511048.pdf

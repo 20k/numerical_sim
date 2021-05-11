@@ -1028,7 +1028,9 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     //if(ix == 161 && iy == 150 && iz == 150)
 
     //138.500000 150.500000 150.500000
-    if(ix == 139 && iy == 151 && iz == 150)
+    //if(ix == 139 && iy == 151 && iz == 150)
+    //145.500000 150.500000 150.500000
+    if(ix == 146 && iy == 151 && iz == 151)
     {
         //float scalar = scalar_curvature;
 
@@ -1057,9 +1059,9 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         printf("gB2 %f\n", gB2[index]);
         //printf("Scalar %f\n", scalar);
 
-        printf("Debugp1 %f", debug_p1);
-        printf("Debugp2 %f", debug_p2);
-        printf("Debugp3 %f", debug_p3);
+        printf("Debugp1 %f", debug1);
+        printf("Debugp2 %f", debug2);
+        printf("Debugp3 %f", debug3);
         //printf("dphi %f", dbgdphi);
 
         /*#ifdef debug_val
