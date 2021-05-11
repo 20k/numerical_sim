@@ -639,8 +639,8 @@ void build_kreiss_oliger_dissipate(equation_context& ctx)
     value v = "buffer";
     ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
 
-    ctx.add("dissipate_low", 0.1f);
-    ctx.add("dissipate_high", 0.25f);
+    ctx.add("dissipate_low", 0.21f);
+    ctx.add("dissipate_high", 0.35f);
 
     //value z = 0;
     //ctx.add("KREISS_OLIGER_DISSIPATE", z);
@@ -1176,13 +1176,17 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({0, -1.1515 * 0.5f, 0}), san_black_hole_pos({0, 1.1515 * 0.5f, 0})};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.1515, 0, 0}), san_black_hole_pos({3.1515, 0, 0})};
+    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.1515, 0, 0}), san_black_hole_pos({3.1515, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({5, 0, 0})};
     std::vector<float> black_hole_m{0.5f, 0.5f};
     //std::vector<float> black_hole_m{0.5f, 0.5f};
-    //std::vector<vec3f> black_hole_velocity{{0, 0, 0.25}, {0, 0, -0.25}}; ///pick better velocities
+    //std::vector<vec3f> black_hole_velocity{{0, 0, 0.025}, {0, 0, -0.025}}; ///pick better velocities
 
-    std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.15f - 0, 0, 0}), san_black_hole_pos({1.15f + 0, 0, 0})};
+    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.5f - 0, 0, 0}), san_black_hole_pos({2.5f + 0, 0, 0})};
+    std::vector<vec3f> black_hole_velocity{{0, 0, 0.335/16}, {0, 0, -0.335/16}};
+
+    //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
 
     metric<value, 3, 3> flat_metric;
 
@@ -3843,11 +3847,11 @@ int main()
         }
     }
 
-    cl::buffer u_1(clctx.ctx);
-    cl::buffer u_2(clctx.ctx);
+    std::array<cl::buffer, 2> u_args{clctx.ctx, clctx.ctx};
+    u_args[0].alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+    u_args[1].alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
 
-    u_1.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
-    u_2.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+    int which_u_args = 0;
 
     cl::buffer intermediate(clctx.ctx);
     intermediate.alloc(size.x() * size.y() * size.z() * sizeof(intermediate_bssnok_data));
@@ -3888,13 +3892,13 @@ int main()
     cl_float time_elapsed_s = 0;
 
     cl::args initial_u_args;
-    initial_u_args.push_back(u_1);
+    initial_u_args.push_back(u_args[0]);
     initial_u_args.push_back(clsize);
 
     clctx.cqueue.exec("setup_u_offset", initial_u_args, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
     cl::args initial_u_args2;
-    initial_u_args2.push_back(u_2);
+    initial_u_args2.push_back(u_args[1]);
     initial_u_args2.push_back(clsize);
 
     clctx.cqueue.exec("setup_u_offset", initial_u_args2, {size.x(), size.y(), size.z()}, {8, 8, 1});
@@ -3902,15 +3906,19 @@ int main()
     for(int i=0; i < 10000; i++)
     {
         cl::args interate_u_args;
-        interate_u_args.push_back(u_1);
-        interate_u_args.push_back(u_2);
+        interate_u_args.push_back(u_args[which_u_args]);
+        interate_u_args.push_back(u_args[(which_u_args + 1) % 2]);
         interate_u_args.push_back(scale);
         interate_u_args.push_back(clsize);
 
         clctx.cqueue.exec("iterative_u_solve", interate_u_args, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
-        std::swap(u_1, u_2);
+        which_u_args = (which_u_args + 1) % 2;
     }
+
+    u_args[(which_u_args + 1) % 2].native_mem_object.release();
+
+    clctx.cqueue.block();
 
     {
         cl::args init;
@@ -3920,7 +3928,7 @@ int main()
             init.push_back(i);
         }
 
-        init.push_back(u_2);
+        init.push_back(u_args[which_u_args]);
         init.push_back(scale);
         init.push_back(clsize);
 
@@ -3935,7 +3943,7 @@ int main()
             init.push_back(i);
         }
 
-        init.push_back(u_2);
+        init.push_back(u_args[which_u_args]);
         init.push_back(scale);
         init.push_back(clsize);
 
@@ -3950,7 +3958,7 @@ int main()
     }
 
     //initial_clean.push_back(bssnok_datas[0]);
-    initial_clean.push_back(u_2);
+    initial_clean.push_back(u_args[which_u_args]);
     initial_clean.push_back(intermediate);
     initial_clean.push_back(scale);
     initial_clean.push_back(clsize);
@@ -4214,7 +4222,7 @@ int main()
                 }
 
                 //cleaner.push_back(bssnok_datas[which_data]);
-                cleaner.push_back(u_2);
+                cleaner.push_back(u_args[which_u_args]);
                 cleaner.push_back(intermediate);
                 cleaner.push_back(scale);
                 cleaner.push_back(clsize);
