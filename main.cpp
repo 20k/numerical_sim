@@ -639,8 +639,8 @@ void build_kreiss_oliger_dissipate(equation_context& ctx)
     value v = "buffer";
     ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
 
-    ctx.add("dissipate_low", 0.21f);
-    ctx.add("dissipate_high", 0.35f);
+    ctx.add("dissipate_low", 0.11f);
+    ctx.add("dissipate_high", 0.25f);
 
     //value z = 0;
     //ctx.add("KREISS_OLIGER_DISSIPATE", z);
@@ -1093,29 +1093,21 @@ tensor<T, N, N> lower_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met
     return ret;
 }
 
-tensor<value, 3, 3> calculate_icAij(const vec<3, value>& pos, const std::vector<float>& black_hole_m, const std::vector<vec3f>& black_hole_pos, const std::vector<vec3f>& black_hole_velocity)
+///this does not return the same kind of conformal cAij as bssn uses, need to reconstruct Kij!
+tensor<value, 3, 3> calculate_bcAij(const vec<3, value>& pos, const std::vector<float>& black_hole_m, const std::vector<vec3f>& black_hole_pos, const std::vector<vec3f>& black_hole_velocity)
 {
-    metric<value, 3, 3> cYij;
+    tensor<value, 3, 3> bcAij;
+
+    metric<value, 3, 3> flat;
 
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
-            cYij.idx(i, j) = (i == j) ? 1 : 0;
+            flat.idx(i, j) = (i == j) ? 1 : 0;
         }
     }
 
-    tensor<value, 3, 3> icAij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            icAij.idx(i, j) = 0;
-        }
-    }
-
-    ///https://arxiv.org/pdf/1610.03805.pdf 126
     for(int bh_idx = 0; bh_idx < (int)black_hole_pos.size(); bh_idx++)
     {
         for(int i=0; i < 3; i++)
@@ -1124,19 +1116,22 @@ tensor<value, 3, 3> calculate_icAij(const vec<3, value>& pos, const std::vector<
             {
                 vec3f bhpos = black_hole_pos[bh_idx];
                 vec3f momentum = black_hole_velocity[bh_idx] * black_hole_m[bh_idx];
+                tensor<value, 3> momentum_tensor = {momentum.x(), momentum.y(), momentum.z()};
 
                 vec<3, value> vri = {bhpos.x(), bhpos.y(), bhpos.z()};
 
                 value ra = (pos - vri).length();
                 vec<3, value> nia = (pos - vri) / ra;
-                tensor<value, 3> nia_lower = lower_index({nia.x(), nia.y(), nia.z()}, cYij);
 
-                icAij.idx(i, j) += (3 / (2.f * ra * ra)) * (momentum[i] * nia[j] + momentum[j] * nia[i] - (cYij.invert().idx(i, j) - nia[i] * nia[j]) * sum_multiply({momentum.x(), momentum.y(), momentum.z()}, nia_lower));
+                tensor<value, 3> momentum_lower = lower_index(momentum_tensor, flat);
+                tensor<value, 3> nia_lower = lower_index(tensor<value, 3>{nia.x(), nia.y(), nia.z()}, flat);
+
+                bcAij.idx(i, j) += (3 / (2.f * ra * ra)) * (momentum_lower.idx(i) * nia_lower.idx(j) + momentum_lower.idx(j) * nia_lower.idx(i) - (flat.idx(i, j) - nia_lower.idx(i) * nia_lower.idx(j)) * sum_multiply(momentum_tensor, nia_lower));
             }
         }
     }
 
-    return icAij;
+    return bcAij;
 }
 
 inline
@@ -1198,9 +1193,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
         }
     }
 
-    tensor<value, 3, 3> icAij = calculate_icAij(pos, black_hole_m, black_hole_pos, black_hole_velocity);
-
-    tensor<value, 3, 3> cAij = lower_both(icAij, flat_metric);
+    tensor<value, 3, 3> bcAij = calculate_bcAij(pos, black_hole_m, black_hole_pos, black_hole_velocity);
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     //value BL_a = 0;
@@ -1227,11 +1220,13 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
     value aij_aIJ = 0;
 
+    tensor<value, 3, 3> ibcAij = raise_both(bcAij, flat_metric, flat_metric.invert());
+
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
-            aij_aIJ += icAij.idx(i, j) * cAij.idx(i, j);
+            aij_aIJ += ibcAij.idx(i, j) * bcAij.idx(i, j);
         }
     }
 
@@ -1241,8 +1236,9 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
     for(int i=0; i < 6; i++)
     {
-        ctx.add("init_cA" + std::to_string(i), cAij.idx(linear_indices[i].x(), linear_indices[i].y()));
+        ctx.add("init_bcA" + std::to_string(i), bcAij.idx(linear_indices[i].x(), linear_indices[i].y()));
     }
+
 
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 69
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
@@ -1262,6 +1258,12 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 {
     value bl_conformal = "bl_conformal";
     value u = "u_value[IDX(ix,iy,iz)]";
+
+    tensor<value, 3, 3> bcAij;
+
+    bcAij.idx(0, 0) = "init_bcA0"; bcAij.idx(0, 1) = "init_bcA1"; bcAij.idx(0, 2) = "init_bcA2";
+    bcAij.idx(1, 0) = "init_bcA1"; bcAij.idx(1, 1) = "init_bcA3"; bcAij.idx(1, 2) = "init_bcA4";
+    bcAij.idx(2, 0) = "init_bcA2"; bcAij.idx(2, 1) = "init_bcA4"; bcAij.idx(2, 2) = "init_bcA5";
 
     metric<value, 3, 3> Yij;
 
@@ -1284,6 +1286,17 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
     ctx.pin(conformal_factor);
 
+    ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf the york-lichnerowicz split
+    tensor<value, 3, 3> Aij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            Aij.idx(i, j) = pow(bl_conformal + u, -2) * bcAij.idx(i, j);
+        }
+    }
+
     value gA = 1;
     //value gA = 1/(BL_conformal * BL_conformal);
     value gB0 = 0;
@@ -1296,6 +1309,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf (58)
 
     value X = exp(-4 * conformal_factor);
+
+    tensor<value, 3, 3> cAij = X * Aij;
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
@@ -1326,6 +1341,11 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         std::string y_name = "init_cY" + std::to_string(i);
 
         ctx.add(y_name, cYij.idx(index.x(), index.y()));
+    }
+
+    for(int i=0; i < 6; i++)
+    {
+        ctx.add("init_cA" + std::to_string(i), cAij.idx(linear_indices[i].x(), linear_indices[i].y()));
     }
 
     ctx.add("init_cGi0", cGi.idx(0));
