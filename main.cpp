@@ -1882,7 +1882,7 @@ void build_eqs(equation_context& ctx)
             ///linearly interpolate to 0
             value value_at_min = gA / min_X;
 
-            return value_at_min * (X / min_X);
+            return value_at_min / min_X;
         },
         [&]()
         {
