@@ -639,8 +639,8 @@ void build_kreiss_oliger_dissipate(equation_context& ctx)
     value v = "buffer";
     ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
 
-    ctx.add("dissipate_low", 0.11f);
-    ctx.add("dissipate_high", 0.25f);
+    ctx.add("dissipate_low", 0.15f);
+    ctx.add("dissipate_high", 0.3f);
 
     //value z = 0;
     //ctx.add("KREISS_OLIGER_DISSIPATE", z);
@@ -1173,13 +1173,13 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({0, -1.1515 * 0.5f, 0}), san_black_hole_pos({0, 1.1515 * 0.5f, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.1515, 0, 0}), san_black_hole_pos({3.1515, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({5, 0, 0})};
-    std::vector<float> black_hole_m{0.5f, 0.5f};
+    std::vector<float> black_hole_m{0.45f, 0.45f};
     //std::vector<float> black_hole_m{0.5f, 0.5f};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.025}, {0, 0, -0.025}}; ///pick better velocities
 
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.15f - 0, 0, 0}), san_black_hole_pos({1.15f + 0, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.5f - 0, 0, 0}), san_black_hole_pos({2.5f + 0, 0, 0})};
-    std::vector<vec3f> black_hole_velocity{{0, 0, 0.335/16}, {0, 0, -0.335/16}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, 0.335/0.45f}, {0, 0, -0.335/0.45f}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
 
