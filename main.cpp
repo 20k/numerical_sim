@@ -804,7 +804,7 @@ inline
 T lie_derivative(equation_context& ctx, const tensor<T, N>& gB, const T& variable)
 {
     ///https://en.wikipedia.org/wiki/Lie_derivative#Coordinate_expressions
-    return sum_multiply(gB, tensor_derivative(ctx, variable));
+    return sum(tensor_upwind(ctx, gB, variable));
 }
 
 /*tensor<value, 3, 3> tensor_upwind(equation_context& ctx, const tensor<value, 3>& prefix, const tensor<value, 3>& in)
@@ -2217,7 +2217,7 @@ void build_eqs(equation_context& ctx)
     value dtK = 0;
 
     {
-        value p1 = sum_multiply(gB, tensor_derivative(ctx, K));
+        value p1 = sum(tensor_upwind(ctx, gB, K));
 
         value p2 = 0;
 
