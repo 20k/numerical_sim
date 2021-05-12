@@ -677,8 +677,8 @@ void build_kreiss_oliger_dissipate(equation_context& ctx)
     value v = "buffer[IDX(ix,iy,iz)]";
     ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
 
-    ctx.add("dissipate_low", 0.05f);
-    ctx.add("dissipate_high", 0.25f);
+    ctx.add("dissipate_low", 0.15f);
+    ctx.add("dissipate_high", 0.35f);
 
     //value z = 0;
     //ctx.add("KREISS_OLIGER_DISSIPATE", z);
@@ -4022,7 +4022,7 @@ int main()
 
     clctx.cqueue.exec("setup_u_offset", initial_u_args2, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
-    for(int i=0; i < 1000; i++)
+    for(int i=0; i < 5000; i++)
     {
         cl::args interate_u_args;
         interate_u_args.push_back(u_args[which_u_args]);

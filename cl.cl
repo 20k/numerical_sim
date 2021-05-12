@@ -573,7 +573,36 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
 
         float fin_X = initial_X;
 
+        float fin_gA = init_gA;
+        float fin_gB0 = init_gB0;
+        float fin_gB1 = init_gB1;
+        float fin_gB2 = init_gB2;
+
         int index = IDX(ix, iy, iz);
+
+        #define RADIATIVE
+        #ifdef RADIATIVE
+        fin_gA = 1;
+        fin_gB0 = 0;
+        fin_gB1 = 0;
+        fin_gB2 = 0;
+
+        fin_cY0 = 1;
+        fin_cY1 = 0;
+        fin_cY2 = 0;
+        fin_cY3 = 1;
+        fin_cY4 = 0;
+        fin_cY5 = 1;
+
+        initial_cA0 = 0;
+        initial_cA1 = 0;
+        initial_cA2 = 0;
+        initial_cA3 = 0;
+        initial_cA4 = 0;
+        initial_cA5 = 0;
+
+        fin_X = 1;
+        #endif // RADIATIVE
 
         cY0[index] = mix(cY0[index],fin_cY0, sponge_factor);
         cY1[index] = mix(cY1[index],fin_cY1, sponge_factor);
@@ -596,46 +625,16 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
         K[index] = mix(K[index],init_K, sponge_factor);
         X[index] = mix(X[index],fin_X, sponge_factor);
 
-        gA[index] = mix(gA[index],init_gA, sponge_factor);
-        gB0[index] = mix(gB0[index],init_gB0, sponge_factor);
-        gB1[index] = mix(gB1[index],init_gB1, sponge_factor);
-        gB2[index] = mix(gB2[index],init_gB2, sponge_factor);
+        gA[index] = mix(gA[index],fin_gA, sponge_factor);
+        gB0[index] = mix(gB0[index],fin_gB0, sponge_factor);
+        gB1[index] = mix(gB1[index],fin_gB1, sponge_factor);
+        gB2[index] = mix(gB2[index],fin_gB2, sponge_factor);
 
         #ifdef USE_GBB
         gBB0[index] = mix(gBB0[index], init_gBB0, sponge_factor);
         gBB1[index] = mix(gBB1[index], init_gBB1, sponge_factor);
         gBB2[index] = mix(gBB2[index], init_gBB2, sponge_factor);
         #endif // USE_GBB
-
-        /*v.gA = 1;
-        v.gB0 = 0;
-        v.gB1 = 0;
-        v.gB2 = 0;*/
-
-        /*v.cY0 = 1;
-        v.cY1 = 0;
-        v.cY2 = 0;
-        v.cY3 = 1;
-        v.cY4 = 0;
-        v.cY5 = 1;
-
-        v.cA0 = 0;
-        v.cA1 = 0;
-        v.cA2 = 0;
-        v.cA3 = 0;
-        v.cA4 = 0;
-        v.cA5 = 0;
-
-        v.cGi0 = 0;
-        v.cGi1 = 0;
-        v.cGi2 = 0;
-
-        v.X = 1;
-        v.K = 0;
-        v.gA = 0;
-        v.gB0 = 0;
-        v.gB1 = 0;
-        v.gB2 = 0;*/
     }
 }
 
