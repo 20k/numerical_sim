@@ -420,7 +420,7 @@ void calculate_intermediate_data(__global float* cY0, __global float* cY1, __glo
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(ix < BORDER_WIDTH || ix >= dim.x - BORDER_WIDTH || iy < BORDER_WIDTH || iy >= dim.y - BORDER_WIDTH || iz < BORDER_WIDTH || iz >= dim.z - BORDER_WIDTH)
+    if(ix < BORDER_WIDTH || ix >= dim.x - BORDER_WIDTH - 1 || iy < BORDER_WIDTH || iy >= dim.y - BORDER_WIDTH - 1 || iz < BORDER_WIDTH || iz >= dim.z - BORDER_WIDTH - 1)
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -692,7 +692,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2)
+    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
         return;
     #endif // SYMMETRY_BOUNDARY
 

@@ -298,7 +298,7 @@ struct equation_context
 };
 
 //#define SYMMETRY_BOUNDARY
-#define BORDER_WIDTH 6
+#define BORDER_WIDTH 4
 
 inline
 std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
@@ -630,7 +630,7 @@ struct differentiation_context
     }
 };
 
-#define DIFFERENTIATION_WIDTH 2
+#define DIFFERENTIATION_WIDTH 3
 
 ///https://hal.archives-ouvertes.fr/hal-00569776/document this paper implies you simply sum the directions
 ///dissipation is fixing some stuff, todo: investigate why so much dissipation is required
@@ -676,14 +676,14 @@ void build_kreiss_oliger_dissipate(equation_context& ctx)
     value v = "buffer[IDX(ix,iy,iz)]";
     ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
 
-    ctx.add("dissipate_low", 0.15f);
-    ctx.add("dissipate_high", 0.15f);
+    ctx.add("dissipate_low", 0.005f);
+    ctx.add("dissipate_high", 0.005f);
 
     //value z = 0;
     //ctx.add("KREISS_OLIGER_DISSIPATE", z);
 }
 
-template<int order = 1>
+template<int order = 2>
 value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true, bool linear = false)
 {
     differentiation_context dctx(ctx, in, idx, true, linear);
@@ -784,7 +784,25 @@ value upwind_differentiate(equation_context& ctx, const value& prefix, const val
 
     return final_command;*/
 
-    return prefix * hacky_differentiate(ctx, in, idx, pin);
+    //return prefix * hacky_differentiate(ctx, in, idx, pin);
+
+    differentiation_context<7> dctx(ctx, in, idx);
+
+    value scale = "scale";
+
+    auto vars = dctx.vars;
+
+    ///https://arxiv.org/pdf/gr-qc/0505055.pdf 2.5
+    value stencil_negative = (-vars[0] + 6 * vars[1] - 18 * vars[2] + 10 * vars[3] + 3 * vars[4]) / (12.f * scale);
+    value stencil_positive = (vars[6] - 6 * vars[5] + 18 * vars[4] - 10 * vars[3] - 3 * vars[2]) / (12.f * scale);
+
+    return dual_if(prefix >= 0, [&]()
+    {
+        return prefix * stencil_positive;
+    },
+    [&](){
+        return prefix * stencil_negative;
+    });
 }
 
 tensor<value, 3> tensor_upwind(equation_context& ctx, const tensor<value, 3>& prefix, const value& in)
