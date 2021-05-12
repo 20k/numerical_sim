@@ -676,7 +676,7 @@ void build_kreiss_oliger_dissipate(equation_context& ctx)
     ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
 
     ctx.add("dissipate_low", 0.05f);
-    ctx.add("dissipate_high", 0.15f);
+    ctx.add("dissipate_high", 0.05f);
 
     //value z = 0;
     //ctx.add("KREISS_OLIGER_DISSIPATE", z);
@@ -1463,10 +1463,14 @@ void build_constraints(equation_context& ctx)
     cA.idx(1, 0).make_value("cA1[IDX(ix,iy,iz)]"); cA.idx(1, 1).make_value("cA3[IDX(ix,iy,iz)]"); cA.idx(1, 2).make_value("cA4[IDX(ix,iy,iz)]");
     cA.idx(2, 0).make_value("cA2[IDX(ix,iy,iz)]"); cA.idx(2, 1).make_value("cA4[IDX(ix,iy,iz)]"); cA.idx(2, 2).make_value("cA5[IDX(ix,iy,iz)]");
 
-    tensor<value, 3, 3> fixed_cA = gpu_trace_free_cAij(cA, fixed_cY, fixed_cY.invert());
+    //tensor<value, 3, 3> fixed_cA = gpu_trace_free_cAij(cA, fixed_cY, fixed_cY.invert());
+
+    tensor<value, 3, 3> fixed_cA = cA;
 
     ///https://arxiv.org/pdf/0709.3559.pdf b.49
     fixed_cA = fixed_cA / det_cY_pow;
+
+    fixed_cA = gpu_trace_free(fixed_cA, fixed_cY, fixed_cY.invert());
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
@@ -3993,7 +3997,7 @@ int main()
 
     clctx.cqueue.exec("setup_u_offset", initial_u_args2, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
-    for(int i=0; i < 10000; i++)
+    for(int i=0; i < 1000; i++)
     {
         cl::args interate_u_args;
         interate_u_args.push_back(u_args[which_u_args]);
@@ -4270,7 +4274,7 @@ int main()
         {
             float timestep = 0.01;
 
-            if(steps < 200)
+            if(steps < 20)
                timestep = 0.001;
 
             if(steps < 10)
