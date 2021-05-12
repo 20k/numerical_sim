@@ -678,7 +678,7 @@ void build_kreiss_oliger_dissipate(equation_context& ctx)
     ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
 
     ctx.add("dissipate_low", 0.05f);
-    ctx.add("dissipate_high", 0.05f);
+    ctx.add("dissipate_high", 0.25f);
 
     //value z = 0;
     //ctx.add("KREISS_OLIGER_DISSIPATE", z);
