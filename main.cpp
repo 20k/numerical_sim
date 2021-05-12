@@ -1365,8 +1365,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         }
     }
 
-    value gA = 1;
-    //value gA = 1/(BL_conformal * BL_conformal);
+    //value gA = 1;
+    value gA = 1/(pow(bl_conformal + u, 2));
     value gB0 = 0;
     value gB1 = 0;
     value gB2 = 0;
@@ -3805,7 +3805,7 @@ int main()
     std::string argument_string = "-O3 -cl-std=CL2.0 ";
 
     ///the simulation domain is this * 2
-    int current_simulation_boundary = 1024;
+    int current_simulation_boundary = 5;
     ///must be a multiple of DIFFERENTIATION_WIDTH
     vec3i size = {300, 300, 300};
     //vec3i size = {250, 250, 250};
