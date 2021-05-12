@@ -217,6 +217,36 @@ struct equation_context
         }
     }
 
+    template<typename T, int N>
+    void pin(inverse_metric<T, N, N>& mT)
+    {
+        for(int i=0; i < N; i++)
+        {
+            for(int j=0; j < N; j++)
+            {
+                pin(mT.idx(i, j));
+            }
+        }
+    }
+
+    template<typename T, int N>
+    void pin(metric<T, N, N>& mT)
+    {
+        for(int i=0; i < N; i++)
+        {
+            for(int j=0; j < N; j++)
+            {
+                pin(mT.idx(i, j));
+            }
+        }
+    }
+
+    /*template<typename T>
+    void pin(T& mT)
+    {
+        pin(mT.to_concrete());
+    }*/
+
     void alias(value& concrete, value& alias)
     {
         for(auto& i : aliases)
@@ -791,9 +821,9 @@ T lie_derivative(equation_context& ctx, const tensor<T, N>& gB, const T& variabl
     return ret;
 }*/
 
-template<typename T, int N>
+template<typename T, int N, SizedTensor<T, N, N> S>
 inline
-tensor<T, N, N> gpu_lie_derivative_weight(equation_context& ctx, const tensor<T, N>& B, const tensor<T, N, N>& mT)
+tensor<T, N, N> gpu_lie_derivative_weight(equation_context& ctx, const tensor<T, N>& B, const S& mT)
 {
     tensor<T, N, N> lie;
 
@@ -1410,10 +1440,10 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     #endif // USE_GBB
 }
 
+///algebraic_constraints
 inline
 void build_constraints(equation_context& ctx)
 {
-    unit_metric<value, 3, 3> fixed_cY;
     unit_metric<value, 3, 3> cY;
 
     cY.idx(0, 0).make_value("cY0[IDX(ix,iy,iz)]"); cY.idx(0, 1).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(0, 2).make_value("cY2[IDX(ix,iy,iz)]");
@@ -1424,13 +1454,8 @@ void build_constraints(equation_context& ctx)
 
     ctx.pin(det_cY_pow);
 
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            fixed_cY.idx(i, j) = cY.idx(i, j) / det_cY_pow;
-        }
-    }
+    /// / det_cY_pow
+    metric<value, 3, 3> fixed_cY = cY / det_cY_pow;
 
     tensor<value, 3, 3> cA;
 
