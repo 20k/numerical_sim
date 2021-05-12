@@ -1010,7 +1010,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     NAN cA3 171 138 143
     NAN cGi0 109 138 143*/
 
-    #if 1
+    #if 0
     //if(debug)
     //if(x == 5 && y == 6 && z == 4)
     //if(ix == 125 && y == 100 && z == 125)
