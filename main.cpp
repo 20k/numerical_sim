@@ -676,14 +676,14 @@ void build_kreiss_oliger_dissipate(equation_context& ctx)
     value v = "buffer[IDX(ix,iy,iz)]";
     ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
 
-    ctx.add("dissipate_low", 0.005f * 0);
-    ctx.add("dissipate_high", 0.005f * 0);
+    ctx.add("dissipate_low", 0.05f);
+    ctx.add("dissipate_high", 0.25f);
 
     //value z = 0;
     //ctx.add("KREISS_OLIGER_DISSIPATE", z);
 }
 
-template<int order = 2>
+template<int order = 1>
 value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true, bool linear = false)
 {
     differentiation_context dctx(ctx, in, idx, true, linear);
@@ -767,11 +767,11 @@ value upwind_differentiate(equation_context& ctx, const value& prefix, const val
     value a_p = max(prefix, 0);
     value a_n = min(prefix, 0);
 
-    //value u_n = (dctx.vars[2] - dctx.vars[1]) / scale;
-    //value u_p = (dctx.vars[3] - dctx.vars[2]) / scale;
+    //value u_n = (dctx.vars[2] - dctx.vars[1]) / (2 * scale);
+    //value u_p = (dctx.vars[3] - dctx.vars[2]) / (2 * scale);
 
-    value u_n = (3 * dctx.vars[2] - 4 * dctx.vars[1] + dctx.vars[0]) / (2 * scale);
-    value u_p = (-dctx.vars[4] + 4 * dctx.vars[3] - 3 * dctx.vars[2]) / (2 * scale);
+    value u_n = (3 * dctx.vars[2] - 4 * dctx.vars[1] + dctx.vars[0]) / (6 * scale);
+    value u_p = (-dctx.vars[4] + 4 * dctx.vars[3] - 3 * dctx.vars[2]) / (6 * scale);
 
     ///- here probably isn't right
     ///neither is correct, this is fundamentally wrong somewhere
@@ -784,9 +784,9 @@ value upwind_differentiate(equation_context& ctx, const value& prefix, const val
 
     return final_command;*/
 
-    //return prefix * hacky_differentiate(ctx, in, idx, pin);
+    return prefix * hacky_differentiate(ctx, in, idx, pin);
 
-    differentiation_context<7> dctx(ctx, in, idx);
+    /*differentiation_context<7> dctx(ctx, in, idx);
 
     value scale = "scale";
 
@@ -802,7 +802,7 @@ value upwind_differentiate(equation_context& ctx, const value& prefix, const val
     },
     [&](){
         return prefix * stencil_negative;
-    });
+    });*/
 }
 
 tensor<value, 3> tensor_upwind(equation_context& ctx, const tensor<value, 3>& prefix, const value& in)
@@ -1518,16 +1518,6 @@ void build_intermediate(equation_context& ctx)
     cY.idx(1, 0).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(1, 1).make_value("cY3[IDX(ix,iy,iz)]"); cY.idx(1, 2).make_value("cY4[IDX(ix,iy,iz)]");
     cY.idx(2, 0).make_value("cY2[IDX(ix,iy,iz)]"); cY.idx(2, 1).make_value("cY4[IDX(ix,iy,iz)]"); cY.idx(2, 2).make_value("cY5[IDX(ix,iy,iz)]");
 
-    inverse_metric<value, 3, 3> icY = cY.invert();
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            ctx.pin(icY.idx(i, j));
-        }
-    }
-
     value gA;
     gA.make_value("gA[IDX(ix,iy,iz)]");
 
@@ -1539,13 +1529,11 @@ void build_intermediate(equation_context& ctx)
     gB.idx(1).make_value("gB1[IDX(ix,iy,iz)]");
     gB.idx(2).make_value("gB2[IDX(ix,iy,iz)]");
 
-    //tensor<value, 3, 3, 3> christoff = gpu_christoffel_symbols_2(ctx, cY, icY);
-
     tensor<value, 3> digA;
 
     for(int i=0; i < 3; i++)
     {
-        digA.idx(i) = hacky_differentiate(ctx, gA, i);
+        digA.idx(i) = hacky_differentiate(ctx, gA, i, false);
     }
 
     tensor<value, 3, 3> digB;
@@ -1556,7 +1544,7 @@ void build_intermediate(equation_context& ctx)
         ///index
         for(int j=0; j < 3; j++)
         {
-            digB.idx(i, j) = hacky_differentiate(ctx, gB.idx(j), i);
+            digB.idx(i, j) = hacky_differentiate(ctx, gB.idx(j), i, false);
         }
     }
 
@@ -1576,7 +1564,7 @@ void build_intermediate(equation_context& ctx)
     {
         for(int i=0; i < 6; i++)
         {
-            value diff = hacky_differentiate(ctx, "cY" + std::to_string(i) + "[IDX(ix,iy,iz)]", k);
+            value diff = hacky_differentiate(ctx, "cY" + std::to_string(i) + "[IDX(ix,iy,iz)]", k, false);
 
             int linear_idx = k * 6 + i;
 
@@ -1601,7 +1589,7 @@ void build_intermediate(equation_context& ctx)
 
     for(int i=0; i < 3; i++)
     {
-        ctx.add("init_dX" + std::to_string(i), hacky_differentiate(ctx, X, i));
+        ctx.add("init_dX" + std::to_string(i), hacky_differentiate(ctx, X, i, false));
     }
 }
 
