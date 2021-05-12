@@ -1248,7 +1248,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.1515f, 0, 0}), san_black_hole_pos({2.1515f, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.5f - 0, 0, 0}), san_black_hole_pos({2.5f + 0, 0, 0})};
-    std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.05}, {0, 0, 0.05}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.335/0.45f}, {0, 0, -0.335/0.45f}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -1367,8 +1367,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         }
     }
 
-    value gA = 1;
-    //value gA = 1/(pow(bl_conformal + u, 2));
+    //value gA = 1;
+    value gA = 1/(pow(bl_conformal + u, 2));
     value gB0 = 0;
     value gB1 = 0;
     value gB2 = 0;
