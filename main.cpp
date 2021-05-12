@@ -676,8 +676,8 @@ void build_kreiss_oliger_dissipate(equation_context& ctx)
     value v = "buffer[IDX(ix,iy,iz)]";
     ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
 
-    ctx.add("dissipate_low", 0.005f);
-    ctx.add("dissipate_high", 0.005f);
+    ctx.add("dissipate_low", 0.005f * 0);
+    ctx.add("dissipate_high", 0.005f * 0);
 
     //value z = 0;
     //ctx.add("KREISS_OLIGER_DISSIPATE", z);
@@ -1264,7 +1264,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     //std::vector<float> black_hole_m{0.5f, 0.5f};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.025}, {0, 0, -0.025}}; ///pick better velocities
 
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515f, 0, 0}), san_black_hole_pos({1.1515f, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.5515f, 0, 0}), san_black_hole_pos({2.5515f, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.5f - 0, 0, 0}), san_black_hole_pos({2.5f + 0, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, -0.05}, {0, 0, 0.05}};
     std::vector<vec3f> black_hole_velocity{{0, 0, 0.335/0.45f}, {0, 0, -0.335/0.45f}};
@@ -3367,10 +3367,19 @@ frame_basis calculate_frame_basis(equation_context& ctx, const metric<value, 4, 
     tensor<value, 4> ti3 = {met.idx(0, 2), met.idx(1, 2), met.idx(2, 2), met.idx(2, 3)};
     tensor<value, 4> ti4 = {met.idx(0, 3), met.idx(1, 3), met.idx(2, 3), met.idx(3, 3)};
 
-    ti1 = raise_index(ti1, met, met.invert());
-    ti2 = raise_index(ti2, met, met.invert());
-    ti3 = raise_index(ti3, met, met.invert());
-    ti4 = raise_index(ti4, met, met.invert());
+    auto metric_inverse = met.invert();
+
+    ctx.pin(metric_inverse);
+
+    ti1 = raise_index(ti1, met, metric_inverse);
+    ti2 = raise_index(ti2, met, metric_inverse);
+    ti3 = raise_index(ti3, met, metric_inverse);
+    ti4 = raise_index(ti4, met, metric_inverse);
+
+    ctx.pin(ti1);
+    ctx.pin(ti2);
+    ctx.pin(ti3);
+    ctx.pin(ti4);
 
     vec<4, value> i1 = {ti1.idx(0), ti1.idx(1), ti1.idx(2), ti1.idx(3)};
     vec<4, value> i2 = {ti2.idx(0), ti2.idx(1), ti2.idx(2), ti2.idx(3)};
@@ -3401,6 +3410,11 @@ frame_basis calculate_frame_basis(equation_context& ctx, const metric<value, 4, 
     u2 = u2.norm();
     u3 = u3.norm();
     u4 = u4.norm();
+
+    ctx.pin(u1);
+    ctx.pin(u2);
+    ctx.pin(u3);
+    ctx.pin(u4);
 
     u1 = normalize_big_metric(u1, met);
     u2 = normalize_big_metric(u2, met);
@@ -3543,6 +3557,8 @@ void process_geodesics(equation_context& ctx)
 
     pixel_direction = rot_quat(pixel_direction, camera_quat);
 
+    ctx.pin(pixel_direction);
+
     metric<value, 4, 4> real_metric = calculate_real_metric(args.Yij, args.gA, args.gB);
 
     ctx.pin(real_metric);
@@ -3615,6 +3631,8 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     //ctx.pin(args.Yij);
 
+    auto unpinned_Yij = args.Yij;
+
     ///upper index, aka contravariant
     vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
     vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
@@ -3651,7 +3669,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     tensor<value, 3> V_upper = {"V0", "V1", "V2"};
     tensor<value, 3> V_lower = lower_index(V_upper, args.Yij);
 
-    //ctx.pin(V_lower);
+    ctx.pin(V_lower);
 
     value WH;
 
@@ -3701,7 +3719,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         {
             for(int k=0; k < 3; k++)
             {
-                p3 += 0.5f * V_upper.idx(j) * V_upper.idx(k) * hacky_differentiate<order>(ctx, args.Yij.idx(j, k), i, true, true);
+                p3 += 0.5f * V_upper.idx(j) * V_upper.idx(k) * hacky_differentiate<order>(ctx, unpinned_Yij.idx(j, k), i, true, true);
             }
         }
 
@@ -3715,6 +3733,8 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     {
         V_lower_next.idx(i) = V_lower.idx(i) + dVi_l.idx(i);
     }
+
+    ctx.pin(V_lower_next);
 
     tensor<value, 3> V_upper_next = raise_index(V_lower_next, args.Yij, args.Yij.invert());
 
