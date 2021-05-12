@@ -605,8 +605,8 @@ struct differentiation_context
 ///dissipation is fixing some stuff, todo: investigate why so much dissipation is required
 value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int idx)
 {
-    //differentiation_context<7> dctx(ctx, in, idx, false);
-    differentiation_context<5> dctx(ctx, in, idx, false);
+    differentiation_context<7> dctx(ctx, in, idx, false);
+    //differentiation_context<5> dctx(ctx, in, idx, false);
 
     int d = 2;
 
@@ -619,9 +619,9 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
 
     value scale = "scale";
 
-    value stencil = -(1 / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
+    //value stencil = -(1 / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
 
-    //value stencil = (1 / (64.f)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
+    value stencil = (1 / (64.f * scale)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
 
     //value stencil = (-dctx.vars[4] + 8 * dctx.vars[3] - 8 * dctx.vars[1] + dctx.vars[0]) / 12;
 
