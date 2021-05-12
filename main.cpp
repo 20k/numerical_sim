@@ -1265,10 +1265,10 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     //std::vector<float> black_hole_m{0.5f, 0.5f};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.025}, {0, 0, -0.025}}; ///pick better velocities
 
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.5515f, 0, 0}), san_black_hole_pos({2.5515f, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.1515f, 0, 0}), san_black_hole_pos({3.1515f, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.5f - 0, 0, 0}), san_black_hole_pos({2.5f + 0, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, -0.05}, {0, 0, 0.05}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, 0.335/0.45f}, {0, 0, -0.335/0.45f}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, 0.335}, {0, 0, -0.335}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
 

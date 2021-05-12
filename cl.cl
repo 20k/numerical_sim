@@ -580,7 +580,7 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
 
         int index = IDX(ix, iy, iz);
 
-        #define RADIATIVE
+        //#define RADIATIVE
         #ifdef RADIATIVE
         fin_gA = 1;
         fin_gB0 = 0;
