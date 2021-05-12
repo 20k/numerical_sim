@@ -60,6 +60,7 @@ https://arxiv.org/pdf/gr-qc/0004050.pdf - ISCO explanation
 https://core.ac.uk/download/pdf/144448463.pdf - 7.9 states you can split up trace free variables
 
 https://github.com/GRChombo/GRChombo useful info
+https://arxiv.org/pdf/gr-qc/0505055.pdf - explicit upwind stencils
 */
 
 ///notes:
@@ -675,8 +676,8 @@ void build_kreiss_oliger_dissipate(equation_context& ctx)
     value v = "buffer[IDX(ix,iy,iz)]";
     ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
 
-    ctx.add("dissipate_low", 0.05f);
-    ctx.add("dissipate_high", 0.05f);
+    ctx.add("dissipate_low", 0.15f);
+    ctx.add("dissipate_high", 0.25f);
 
     //value z = 0;
     //ctx.add("KREISS_OLIGER_DISSIPATE", z);
@@ -1245,9 +1246,10 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     //std::vector<float> black_hole_m{0.5f, 0.5f};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.025}, {0, 0, -0.025}}; ///pick better velocities
 
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515f, 0, 0}), san_black_hole_pos({1.1515f, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.1515f, 0, 0}), san_black_hole_pos({2.1515f, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.5f - 0, 0, 0}), san_black_hole_pos({2.5f + 0, 0, 0})};
-    std::vector<vec3f> black_hole_velocity{{0, 0, 0.335/0.45f}, {0, 0, -0.335/0.45f}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
+    //std::vector<vec3f> black_hole_velocity{{0, 0, 0.335/0.45f}, {0, 0, -0.335/0.45f}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
 
@@ -1365,8 +1367,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         }
     }
 
-    //value gA = 1;
-    value gA = 1/(pow(bl_conformal + u, 2));
+    value gA = 1;
+    //value gA = 1/(pow(bl_conformal + u, 2));
     value gB0 = 0;
     value gB1 = 0;
     value gB2 = 0;
@@ -1468,9 +1470,9 @@ void build_constraints(equation_context& ctx)
     tensor<value, 3, 3> fixed_cA = cA;
 
     ///https://arxiv.org/pdf/0709.3559.pdf b.49
-    fixed_cA = fixed_cA / det_cY_pow;
+    //fixed_cA = fixed_cA / det_cY_pow;
 
-    fixed_cA = gpu_trace_free(fixed_cA, fixed_cY, fixed_cY.invert());
+    fixed_cA = gpu_trace_free(cA, fixed_cY, fixed_cY.invert());
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
@@ -1976,7 +1978,7 @@ void build_eqs(equation_context& ctx)
             ///linearly interpolate to 0
             value value_at_min = gA / min_X;
 
-            return value_at_min / min_X;
+            return value_at_min * X / min_X;
         },
         [&]()
         {
