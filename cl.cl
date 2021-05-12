@@ -229,9 +229,11 @@ void setup_u_offset(__global float* u_offset,
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    u_offset[IDX(ix, iy, iz)] = 1;
+    u_offset[IDX(ix, iy, iz)] = 0;
 }
 
+///https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan2008/Workbook33/33_2_elliptic_pde.pdf
+///https://arxiv.org/pdf/1205.5111v1.pdf 78
 __kernel
 void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out,
                        float scale, int4 dim)
@@ -252,15 +254,16 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     float oy = offset.y;
     float oz = offset.z;
 
-    float a = init_BL_a;
+    float bl_s = init_BL_val;
 
     float aij_aIJ = init_aij_aIJ;
 
-    float B = (1.f/8.f) * pow(a, 7.f) * aij_aIJ;
-
     float u = u_offset_in[IDX(ix, iy, iz)];
 
-    float RHS = -B * pow(1 + a * u, -7);
+    /*float B = (1.f/8.f) * pow(a, 7.f) * aij_aIJ;
+    float RHS = -B * pow(1 + a * u, -7);*/
+
+    float RHS = -(1/8.f) * aij_aIJ * pow(bl_s + u, -7);
 
     float h2f0 = scale * scale * RHS;
 
@@ -300,7 +303,7 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
     float oy = offset.y;
     float oz = offset.z;
 
-    float bl_conformal = 1/init_BL_a;
+    float bl_conformal = init_BL_val;
 
     float TEMPORARIES0;
 
@@ -541,7 +544,7 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
         if(sponge_factor <= 0)
             return;
 
-        float bl_conformal = 1/init_BL_a;
+        float bl_conformal = init_BL_val;
 
         float TEMPORARIES0;
 

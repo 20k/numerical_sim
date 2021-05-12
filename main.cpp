@@ -61,6 +61,7 @@ https://core.ac.uk/download/pdf/144448463.pdf - 7.9 states you can split up trac
 
 https://github.com/GRChombo/GRChombo useful info
 https://arxiv.org/pdf/gr-qc/0505055.pdf - explicit upwind stencils
+https://arxiv.org/pdf/1205.5111v1.pdf - paper on numerical stability
 */
 
 ///notes:
@@ -677,7 +678,7 @@ void build_kreiss_oliger_dissipate(equation_context& ctx)
     ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
 
     ctx.add("dissipate_low", 0.05f);
-    ctx.add("dissipate_high", 0.25f);
+    ctx.add("dissipate_high", 0.05f);
 
     //value z = 0;
     //ctx.add("KREISS_OLIGER_DISSIPATE", z);
@@ -1286,7 +1287,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     //value BL_a = 0;
 
-    value BL_c = 0;
+    value BL_s = 1;
 
     for(int i=0; i < (int)black_hole_m.size(); i++)
     {
@@ -1297,14 +1298,10 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         value dist = (pos - vri).length();
 
-        value iva = Mi / (2 * dist);
-
-        BL_c += iva;
+        BL_s += Mi / (2 * dist);
     }
 
-    value BL_a = 1/BL_c;
-
-    ctx.add("init_BL_a", BL_a);
+    ctx.add("init_BL_val", BL_s);
 
     value aij_aIJ = 0;
 
@@ -4025,7 +4022,7 @@ int main()
 
     clctx.cqueue.exec("setup_u_offset", initial_u_args2, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
-    for(int i=0; i < 10000; i++)
+    for(int i=0; i < 1000; i++)
     {
         cl::args interate_u_args;
         interate_u_args.push_back(u_args[which_u_args]);
