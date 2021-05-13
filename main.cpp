@@ -2218,29 +2218,7 @@ void build_eqs(equation_context& ctx)
 
     tensor<value, 3, 3> icAij = raise_both(cA, cY, icY);
 
-    value dtK = 0;
-
-    {
-        value p1 = sum(tensor_upwind(ctx, gB, K));
-
-        value p2 = 0;
-
-        value p3 = 0;
-
-        for(int m=0; m < 3; m++)
-        {
-            for(int n=0; n < 3; n++)
-            {
-                p2 += icY.idx(m, n) * Xdidja.idx(m, n);
-
-                p3 += gA * icAij.idx(m, n) * cA.idx(m, n);
-            }
-        }
-
-        value p4 = (1/3.f) * gA * K * K;
-
-        dtK = p1 - p2 + p3 + p4;
-    }
+    value dtK = sum(tensor_upwind(ctx, gB, K)) - sum_multiply(icY.to_tensor(), Xdidja) + gA * (sum_multiply(icAij, cA) + (1/3.f) * K * K);
 
     ///these seem to suffer from oscillations
     tensor<value, 3> dtcGi;
