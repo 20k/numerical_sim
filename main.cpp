@@ -2347,19 +2347,6 @@ void build_eqs(equation_context& ctx)
     float dissipate_low = 0.15;
     float dissipate_high = 0.35;
 
-    /*dtcYij += dissipate_low  * tensor_for_each_unary(cY.to_tensor(),[&](const value& v1){return kreiss_oliger_dissipate(ctx, v1);});
-    dtcAij += dissipate_high * tensor_for_each_unary(unpinned_cA,   [&](const value& v1){return kreiss_oliger_dissipate(ctx, v1);});
-    dtcGi  += dissipate_high * tensor_for_each_unary(cGi        ,   [&](const value& v1){return kreiss_oliger_dissipate(ctx, v1);});
-    dtgB   += dissipate_high * tensor_for_each_unary(gB,            [&](const value& v1){return kreiss_oliger_dissipate(ctx, v1);});
-
-    #ifdef USE_GBB
-    dtgBB  += tensor_for_each_unary(gBB,         [&](const value& v1){return dissipate_high * kreiss_oliger_dissipate(ctx, v1);});
-    #endif // USE_GBB
-
-    dtX  += dissipate_high * kreiss_oliger_dissipate(ctx, X);
-    dtK  += dissipate_high * kreiss_oliger_dissipate(ctx, K);
-    dtgA += dissipate_high * kreiss_oliger_dissipate(ctx, gA);*/
-
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
     for(int i=0; i < 6; i++)
