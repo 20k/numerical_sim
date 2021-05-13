@@ -3645,7 +3645,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
         for(int j=0; j < 3; j++)
         {
-            p2 += V_lower.idx(j) * digB.idx(i, j);
+            p2 += -V_lower.idx(j) * digB.idx(i, j);
         }
 
         value p3 = 0;
