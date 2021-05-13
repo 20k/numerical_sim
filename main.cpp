@@ -392,6 +392,7 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
     {
         buffer = "cY5";
         val = buffer;
+        assert(false);
     }
 
     else if(str.starts_with("cA0"))
@@ -1260,6 +1261,8 @@ struct standard_arguments
             }
         }
 
+        cY.idx(2, 2) = (1 + cY.idx(1, 1) * cY.idx(0, 2) * cY.idx(0, 2) - 2 * cY.idx(0, 1) * cY.idx(1, 2) * cY.idx(1, 3) + cY.idx(0, 0) * cY.idx(2, 3) * cY.idx(2, 3)) / (cY.idx(0, 0) * cY.idx(1, 1) - cY.idx(1, 2) * cY.idx(1, 2));
+
         for(int i=0; i < 3; i++)
         {
             for(int j=0; j < 3; j++)
@@ -1533,7 +1536,9 @@ void build_constraints(equation_context& ctx)
 
     value det_cY_pow = pow(cY.det(), 1.f/3.f);
 
+    det_cY_pow = 1;
     ctx.pin(det_cY_pow);
+
 
     /// / det_cY_pow
     metric<value, 3, 3> fixed_cY = cY / det_cY_pow;
@@ -1599,7 +1604,9 @@ void build_intermediate(equation_context& ctx)
     {
         for(int i=0; i < 6; i++)
         {
-            value diff = hacky_differentiate(ctx, "cY" + std::to_string(i) + "[IDX(ix,iy,iz)]", k, false);
+            vec2i idx = linear_indices[i];
+
+            value diff = hacky_differentiate(ctx, cY.idx(idx.x(), idx.y()), k, false);
 
             int linear_idx = k * 6 + i;
 
@@ -1645,6 +1652,8 @@ void build_eqs(equation_context& ctx)
     int index_table[3][3] = {{0, 1, 2},
                              {1, 3, 4},
                              {2, 4, 5}};
+
+    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
     tensor<value, 3, 3> kronecker;
 
@@ -1770,7 +1779,9 @@ void build_eqs(equation_context& ctx)
     {
         for(int i=0; i < 6; i++)
         {
-            hacky_differentiate(ctx, "cY" + std::to_string(i), k);
+            vec2i idx = linear_indices[i];
+
+            hacky_differentiate(ctx, cY.idx(idx.x(), idx.y()), k);
         }
 
         for(int i=0; i < 6; i++)
@@ -2346,8 +2357,6 @@ void build_eqs(equation_context& ctx)
 
     float dissipate_low = 0.15;
     float dissipate_high = 0.35;
-
-    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
     for(int i=0; i < 6; i++)
     {
@@ -3864,7 +3873,7 @@ int main()
     };*/
 
     #ifndef USE_GBB
-    constexpr int buffer_count = 12+9;
+    constexpr int buffer_count = 11+9;
     #else
     constexpr int buffer_count = 12 + 9 + 3;
     #endif

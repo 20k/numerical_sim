@@ -276,7 +276,7 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 }
 
 __kernel
-void calculate_initial_conditions(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+void calculate_initial_conditions(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
                                   __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                                   __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
                                   #ifdef USE_gBB0
@@ -309,7 +309,6 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
     cY2[index] = init_cY2;
     cY3[index] = init_cY3;
     cY4[index] = init_cY4;
-    cY5[index] = init_cY5;
 
     cA0[index] = init_cA0;
     cA1[index] = init_cA1;
@@ -352,7 +351,7 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
 }
 
 __kernel
-void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
                                    __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                                    __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
                                    #ifdef USE_gBB0
@@ -376,7 +375,6 @@ void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __g
     float fixed_cY2 = fix_cY2;
     float fixed_cY3 = fix_cY3;
     float fixed_cY4 = fix_cY4;
-    float fixed_cY5 = fix_cY5;
 
     float fixed_cA0 = fix_cA0;
     float fixed_cA1 = fix_cA1;
@@ -390,7 +388,6 @@ void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __g
     cY2[index] = fixed_cY2;
     cY3[index] = fixed_cY3;
     cY4[index] = fixed_cY4;
-    cY5[index] = fixed_cY5;
 
     cA0[index] = fixed_cA0;
     cA1[index] = fixed_cA1;
@@ -402,7 +399,7 @@ void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __g
 
 ///https://en.wikipedia.org/wiki/Ricci_curvature#Definition_via_local_coordinates_on_a_smooth_manifold
 __kernel
-void calculate_intermediate_data(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+void calculate_intermediate_data(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
                                  __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                                  __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
                                  #ifdef USE_gBB0
@@ -506,7 +503,7 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
 ///boundary conditions
 ///todo: damp to schwarzschild, not initial conditions?
 __kernel
-void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
                 __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                 __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
                 #ifdef USE_gBB0
@@ -548,7 +545,6 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
         float initial_cY2 = init_cY2;
         float initial_cY3 = init_cY3;
         float initial_cY4 = init_cY4;
-        float initial_cY5 = init_cY5;
 
         float initial_cA0 = init_cA0;
         float initial_cA1 = init_cA1;
@@ -564,7 +560,6 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
         float fin_cY2 = initial_cY2;
         float fin_cY3 = initial_cY3;
         float fin_cY4 = initial_cY4;
-        float fin_cY5 = initial_cY5;
 
         float fin_X = initial_X;
 
@@ -604,7 +599,6 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
         cY2[index] = mix(cY2[index],fin_cY2, sponge_factor);
         cY3[index] = mix(cY3[index],fin_cY3, sponge_factor);
         cY4[index] = mix(cY4[index],fin_cY4, sponge_factor);
-        cY5[index] = mix(cY5[index],fin_cY5, sponge_factor);
 
         cA0[index] = mix(cA0[index],initial_cA0, sponge_factor);
         cA1[index] = mix(cA1[index],initial_cA1, sponge_factor);
@@ -667,13 +661,13 @@ void dissipate(__global float* buffer_in, __global float* buffer_out, float scal
 ///todo: need to correctly evolve boundaries
 ///todo: need to factor out the differentials
 __kernel
-void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
             __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
             __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
             #ifdef USE_gBB0
             __global float* gBB0, __global float* gBB1, __global float* gBB2,
             #endif // USE_gBB0
-            __global float* ocY0, __global float* ocY1, __global float* ocY2, __global float* ocY3, __global float* ocY4, __global float* ocY5,
+            __global float* ocY0, __global float* ocY1, __global float* ocY2, __global float* ocY3, __global float* ocY4,
             __global float* ocA0, __global float* ocA1, __global float* ocA2, __global float* ocA3, __global float* ocA4, __global float* ocA5,
             __global float* ocGi0, __global float* ocGi1, __global float* ocGi2, __global float* oK, __global float* oX, __global float* ogA, __global float* ogB0, __global float* ogB1, __global float* ogB2,
             #ifdef USE_gBB0
@@ -787,14 +781,12 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     float I_cY2 = cY2[index];
     float I_cY3 = cY3[index];
     float I_cY4 = cY4[index];
-    float I_cY5 = cY5[index];
 
     ocY0[index] = I_cY0 + (f_dtcYij0 + diss_cYij0) * timestep;
     ocY1[index] = I_cY1 + (f_dtcYij1 + diss_cYij1) * timestep;
     ocY2[index] = I_cY2 + (f_dtcYij2 + diss_cYij2) * timestep;
     ocY3[index] = I_cY3 + (f_dtcYij3 + diss_cYij3) * timestep;
     ocY4[index] = I_cY4 + (f_dtcYij4 + diss_cYij4) * timestep;
-    ocY5[index] = I_cY5 + (f_dtcYij5 + diss_cYij5) * timestep;
 
     ocA0[index] = cA0[index] + (f_dtcAij0 + diss_cAij0) * timestep;
     ocA1[index] = cA1[index] + (f_dtcAij1 + diss_cAij1) * timestep;
@@ -1030,7 +1022,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
 }
 
 __kernel
-void render(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+void render(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
             __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
             __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
             #ifdef USE_gBB0
@@ -1094,7 +1086,8 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
             printf("Ik %f\n", ik.Yij[0]);
         }*/
 
-        float curvature = (fabs(cY0[index]/X[index]) + fabs(cY1[index]/X[index]) + fabs(cY2[index]/X[index]) + fabs(cY3[index]/X[index]) + fabs(cY4[index]/X[index]) + fabs(cY5[index]/X[index])) / 1000.f;
+        float curvature = (fabs(cY0[index]/X[index]) + fabs(cY1[index]/X[index]) + fabs(cY2[index]/X[index]) + fabs(cY3[index]/X[index]) + fabs(cY4[index]/X[index])) / 1000.f;
+        //float curvature = (fabs(cY0[index]/X[index]) + fabs(cY1[index]/X[index]) + fabs(cY2[index]/X[index]) + fabs(cY3[index]/X[index]) + fabs(cY4[index]/X[index]) + fabs(cY5[index]/X[index])) / 1000.f;
 
         //float curvature = (fabs(v.Yij[0]) + fabs(ik.Yij[1]) + fabs(ik.Yij[2]) + fabs(ik.Yij[3]) + fabs(ik.Yij[4]) + fabs(ik.Yij[5])) / 1000.;
         //float curvature = v.cY0 + v.cY1 + v.cY2 + v.cY3 + v.cY4 + v.cY5;
@@ -1269,7 +1262,7 @@ int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_d
 
 
 __kernel
-void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
                 __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                 __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
                 #ifdef USE_gBB0
@@ -1424,7 +1417,7 @@ float3 rot_quat(const float3 point, float4 quat)
 }
 
 __kernel
-void trace_metric(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+void trace_metric(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
                   __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                   __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
                   #ifdef USE_gBB0
@@ -1475,15 +1468,13 @@ void trace_metric(__global float* cY0, __global float* cY1, __global float* cY2,
         float ccY2 = buffer_read_linear(cY2, (float3)(p0,p1,p2), dim);
         float ccY3 = buffer_read_linear(cY3, (float3)(p0,p1,p2), dim);
         float ccY4 = buffer_read_linear(cY4, (float3)(p0,p1,p2), dim);
-        float ccY5 = buffer_read_linear(cY5, (float3)(p0,p1,p2), dim);
         float cX = buffer_read_linear(X, (float3)(p0,p1,p2), dim);
 
         float curvature = fabs(ccY0 / cX) +
                           fabs(ccY1 / cX) +
                           fabs(ccY2 / cX) +
                           fabs(ccY3 / cX) +
-                          fabs(ccY4 / cX) +
-                          fabs(ccY5 / cX);
+                          fabs(ccY4 / cX);
 
         float ascalar = curvature / 1000.f;
 
