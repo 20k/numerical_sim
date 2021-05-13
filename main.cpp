@@ -1261,7 +1261,7 @@ struct standard_arguments
             }
         }
 
-        cY.idx(2, 2) = (1 + cY.idx(1, 1) * cY.idx(0, 2) * cY.idx(0, 2) - 2 * cY.idx(0, 1) * cY.idx(1, 2) * cY.idx(1, 3) + cY.idx(0, 0) * cY.idx(2, 3) * cY.idx(2, 3)) / (cY.idx(0, 0) * cY.idx(1, 1) - cY.idx(1, 2) * cY.idx(1, 2));
+        cY.idx(2, 2) = (1 + cY.idx(1, 1) * cY.idx(0, 2) * cY.idx(0, 2) - 2 * cY.idx(0, 1) * cY.idx(1, 2) * cY.idx(0, 2) + cY.idx(0, 0) * cY.idx(1, 2) * cY.idx(1, 2)) / (cY.idx(0, 0) * cY.idx(1, 1) - cY.idx(1, 2) * cY.idx(1, 2));
 
         for(int i=0; i < 3; i++)
         {
@@ -1272,6 +1272,12 @@ struct standard_arguments
                 cA.idx(i, j) = bidx("cA" + std::to_string(index), interpolate);
             }
         }
+
+        inverse_metric<value, 3, 3> icY = cY.invert();
+
+        //tensor<value, 3, 3> raised_cAij = raise_index(cA, cY, icY);
+
+        //cA.idx(1, 1) = -(raised_cAij.idx(0, 0) + raised_cAij.idx(2, 2) + cA.idx(0, 1) * icY.idx(0, 1) + cA.idx(1, 2) * icY.idx(1, 2)) / (icY.idx(1, 1));
 
         X.make_value(bidx("X", interpolate));
         K.make_value(bidx("K", interpolate));
@@ -1538,7 +1544,6 @@ void build_constraints(equation_context& ctx)
 
     det_cY_pow = 1;
     ctx.pin(det_cY_pow);
-
 
     /// / det_cY_pow
     metric<value, 3, 3> fixed_cY = cY / det_cY_pow;
