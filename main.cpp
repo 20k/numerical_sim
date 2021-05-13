@@ -2135,25 +2135,8 @@ void build_eqs(equation_context& ctx)
     ///not sure dtcaij is correct, need to investigate
     tensor<value, 3, 3> dtcAij;
 
-    tensor<value, 3, 3> with_trace;
-
-    ///todo: Investigate this, there's a good chance dtcAij is whats broken
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            ///Moved X inside the trace free bracket and expanded it
-            //value trace_free_interior_old = -X * gpu_covariant_derivative_low_vec(ctx, digA, Yij, iYij).idx(j, i);
-
-            value trace_free_interior_1 = Xdidja.idx(i, j);
-
-            ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf replaced with definition under bssn aux
-
-            value trace_free_interior_2 = xgARij.idx(i, j);
-
-            with_trace.idx(i, j) = -trace_free_interior_1 + trace_free_interior_2;
-        }
-    }
+    ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf replaced with definition under bssn aux
+    tensor<value, 3, 3> with_trace = -Xdidja + xgARij;
 
     for(int i=0; i < 3; i++)
     {
@@ -2195,23 +2178,6 @@ void build_eqs(equation_context& ctx)
                 ctx.add("debug_p2", p2);
                 ctx.add("debug_p3", p3);
             }
-
-            /*value sanitised = dual_types::dual_if(X <= 0.000001, []()
-            {
-                return 0;
-            },
-            [&]()
-            {
-                return dual_types::dual_if(isfinite(p1),
-                [&]()
-                {
-                    return p1;
-                },
-                []()
-                {
-                    return 0;
-                });
-            });*/
 
             dtcAij.idx(i, j) = p1 + p2 + p3;
         }
