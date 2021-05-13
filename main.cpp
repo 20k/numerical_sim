@@ -1627,6 +1627,7 @@ void build_eqs(equation_context& ctx)
     cY.idx(1, 0).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(1, 1).make_value("cY3[IDX(ix,iy,iz)]"); cY.idx(1, 2).make_value("cY4[IDX(ix,iy,iz)]");
     cY.idx(2, 0).make_value("cY2[IDX(ix,iy,iz)]"); cY.idx(2, 1).make_value("cY4[IDX(ix,iy,iz)]"); cY.idx(2, 2).make_value("cY5[IDX(ix,iy,iz)]");
 
+
     inverse_metric<value, 3, 3> icY = cY.invert();
     inverse_metric<value, 3, 3> unpinned_icY = cY.invert();
 
@@ -1637,6 +1638,9 @@ void build_eqs(equation_context& ctx)
     cA.idx(0, 0).make_value("cA0[IDX(ix,iy,iz)]"); cA.idx(0, 1).make_value("cA1[IDX(ix,iy,iz)]"); cA.idx(0, 2).make_value("cA2[IDX(ix,iy,iz)]");
     cA.idx(1, 0).make_value("cA1[IDX(ix,iy,iz)]"); cA.idx(1, 1).make_value("cA3[IDX(ix,iy,iz)]"); cA.idx(1, 2).make_value("cA4[IDX(ix,iy,iz)]");
     cA.idx(2, 0).make_value("cA2[IDX(ix,iy,iz)]"); cA.idx(2, 1).make_value("cA4[IDX(ix,iy,iz)]"); cA.idx(2, 2).make_value("cA5[IDX(ix,iy,iz)]");
+
+    auto unpinned_cA = cA;
+    //ctx.pin(cA);
 
     ///the christoffel symbol
     tensor<value, 3> cGi;
@@ -2170,7 +2174,7 @@ void build_eqs(equation_context& ctx)
 
             value p2 = gA * (K * cA.idx(i, j) - 2 * sum);
 
-            value p3 = gpu_lie_derivative_weight(ctx, gB, cA).idx(i, j);
+            value p3 = gpu_lie_derivative_weight(ctx, gB, unpinned_cA).idx(i, j);
 
             if(i == 0 && j == 0)
             {
