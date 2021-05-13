@@ -973,6 +973,7 @@ tensor<T, N> gpu_high_covariant_derivative_scalar(equation_context& ctx, const T
 }*/
 
 ///https://en.wikipedia.org/wiki/Covariant_derivative#Covariant_derivative_by_field_type
+///for the tensor DcDa, this returns idx(a, c)
 template<typename T, int N>
 inline
 tensor<T, N, N> gpu_covariant_derivative_low_vec(equation_context& ctx, const tensor<T, N>& v_in, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
@@ -1990,7 +1991,7 @@ void build_eqs(equation_context& ctx)
         });
     }
 
-    tensor<value, 3, 3> xgADiDjphi;
+    /*tensor<value, 3, 3> xgADiDjphi;
 
     for(int i=0; i < 3; i++)
     {
@@ -2049,10 +2050,10 @@ void build_eqs(equation_context& ctx)
 
             xgARphiij.idx(i, j) = s1XgA + s2XgA + s3XgA + s4XgA;
         }
-    }
+    }*/
 
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf
-    /*tensor<value, 3, 3> xgARphiij;
+    tensor<value, 3, 3> xgARphiij;
 
     for(int i=0; i < 3; i++)
     {
@@ -2073,7 +2074,7 @@ void build_eqs(equation_context& ctx)
 
             xgARphiij.idx(i, j) = sum + p2;
         }
-    }*/
+    }
 
 
     //ctx.add("debug_val", Rphiij.idx(i, j));
