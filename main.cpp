@@ -673,6 +673,7 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
     return fin;
 }
 
+///todo: remove this. Just use it directly
 void build_kreiss_oliger_dissipate(equation_context& ctx)
 {
     value v = "buffer[IDX(ix,iy,iz)]";
@@ -1224,6 +1225,81 @@ tensor<value, 3, 3> calculate_bcAij(const vec<3, value>& pos, const std::vector<
     return bcAij;
 }
 
+std::string bidx(const std::string& buf, bool interpolate)
+{
+    if(interpolate)
+        return "buffer_read_linear(" + buf + ",(float3)(fx,fy,fz),dim)";
+    else
+        return buf + "[IDX(ix,iy,iz)]";
+}
+
+struct standard_arguments
+{
+    value gA;
+    tensor<value, 3> gB;
+
+    unit_metric<value, 3, 3> cY;
+    tensor<value, 3, 3> cA;
+
+    value X;
+    value K;
+
+    tensor<value, 3> cGi;
+
+    metric<value, 3, 3> Yij;
+
+    standard_arguments(bool interpolate)
+    {
+        gA.make_value(bidx("gA", interpolate));
+
+        gB.idx(0).make_value(bidx("gB0", interpolate));
+        gB.idx(1).make_value(bidx("gB1", interpolate));
+        gB.idx(2).make_value(bidx("gB2", interpolate));
+
+        std::array<int, 9> arg_table
+        {
+            0, 1, 2,
+            1, 3, 4,
+            2, 4, 5,
+        };
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                int index = arg_table[i * 3 + j];
+
+                cY.idx(i, j) = bidx("cY" + std::to_string(index), interpolate);
+            }
+        }
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                int index = arg_table[i * 3 + j];
+
+                cA.idx(i, j) = bidx("cA" + std::to_string(index), interpolate);
+            }
+        }
+
+        X.make_value(bidx("X", interpolate));
+        K.make_value(bidx("K", interpolate));
+
+        cGi.idx(0).make_value(bidx("cGi0", interpolate));
+        cGi.idx(1).make_value(bidx("cGi1", interpolate));
+        cGi.idx(2).make_value(bidx("cGi2", interpolate));
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                Yij.idx(i, j) = cY.idx(i, j) / X;
+            }
+        }
+    }
+};
+
 inline
 void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 {
@@ -1463,11 +1539,10 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 inline
 void build_constraints(equation_context& ctx)
 {
-    unit_metric<value, 3, 3> cY;
+    standard_arguments args(false);
 
-    cY.idx(0, 0).make_value("cY0[IDX(ix,iy,iz)]"); cY.idx(0, 1).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(0, 2).make_value("cY2[IDX(ix,iy,iz)]");
-    cY.idx(1, 0).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(1, 1).make_value("cY3[IDX(ix,iy,iz)]"); cY.idx(1, 2).make_value("cY4[IDX(ix,iy,iz)]");
-    cY.idx(2, 0).make_value("cY2[IDX(ix,iy,iz)]"); cY.idx(2, 1).make_value("cY4[IDX(ix,iy,iz)]"); cY.idx(2, 2).make_value("cY5[IDX(ix,iy,iz)]");
+    unit_metric<value, 3, 3> cY = args.cY;
+    tensor<value, 3, 3> cA = args.cA;
 
     value det_cY_pow = pow(cY.det(), 1.f/3.f);
 
@@ -1475,12 +1550,6 @@ void build_constraints(equation_context& ctx)
 
     /// / det_cY_pow
     metric<value, 3, 3> fixed_cY = cY / det_cY_pow;
-
-    tensor<value, 3, 3> cA;
-
-    cA.idx(0, 0).make_value("cA0[IDX(ix,iy,iz)]"); cA.idx(0, 1).make_value("cA1[IDX(ix,iy,iz)]"); cA.idx(0, 2).make_value("cA2[IDX(ix,iy,iz)]");
-    cA.idx(1, 0).make_value("cA1[IDX(ix,iy,iz)]"); cA.idx(1, 1).make_value("cA3[IDX(ix,iy,iz)]"); cA.idx(1, 2).make_value("cA4[IDX(ix,iy,iz)]");
-    cA.idx(2, 0).make_value("cA2[IDX(ix,iy,iz)]"); cA.idx(2, 1).make_value("cA4[IDX(ix,iy,iz)]"); cA.idx(2, 2).make_value("cA5[IDX(ix,iy,iz)]");
 
     //tensor<value, 3, 3> fixed_cA = gpu_trace_free_cAij(cA, fixed_cY, fixed_cY.invert());
 
@@ -1505,28 +1574,20 @@ void build_constraints(equation_context& ctx)
 inline
 void build_intermediate(equation_context& ctx)
 {
+    standard_arguments args(false);
+
     int index_table[3][3] = {{0, 1, 2},
                              {1, 3, 4},
                              {2, 4, 5}};
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
-    unit_metric<value, 3, 3> cY;
+    unit_metric<value, 3, 3> cY = args.cY;
 
-    cY.idx(0, 0).make_value("cY0[IDX(ix,iy,iz)]"); cY.idx(0, 1).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(0, 2).make_value("cY2[IDX(ix,iy,iz)]");
-    cY.idx(1, 0).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(1, 1).make_value("cY3[IDX(ix,iy,iz)]"); cY.idx(1, 2).make_value("cY4[IDX(ix,iy,iz)]");
-    cY.idx(2, 0).make_value("cY2[IDX(ix,iy,iz)]"); cY.idx(2, 1).make_value("cY4[IDX(ix,iy,iz)]"); cY.idx(2, 2).make_value("cY5[IDX(ix,iy,iz)]");
+    value X = args.X;
 
-    value gA;
-    gA.make_value("gA[IDX(ix,iy,iz)]");
-
-    value X;
-    X.make_value("X[IDX(ix,iy,iz)]");
-
-    tensor<value, 3> gB;
-    gB.idx(0).make_value("gB0[IDX(ix,iy,iz)]");
-    gB.idx(1).make_value("gB1[IDX(ix,iy,iz)]");
-    gB.idx(2).make_value("gB2[IDX(ix,iy,iz)]");
+    value gA = args.gA;
+    tensor<value, 3> gB = args.gB;
 
     tensor<value, 3> digA;
 
@@ -1546,18 +1607,6 @@ void build_intermediate(equation_context& ctx)
             digB.idx(i, j) = hacky_differentiate(ctx, gB.idx(j), i, false);
         }
     }
-
-    /*for(int k=0; k < 3; k++)
-    {
-        for(int i=0; i < 6; i++)
-        {
-            vec2i idx = linear_indices[i];
-
-            int linear_idx = k * 6 + i;
-
-            ctx.add("init_christoffel" + std::to_string(linear_idx), christoff.idx(k, idx.x(), idx.y()));
-        }
-    }*/
 
     for(int k=0; k < 3; k++)
     {
@@ -1604,6 +1653,8 @@ void build_intermediate(equation_context& ctx)
 inline
 void build_eqs(equation_context& ctx)
 {
+    standard_arguments args(false);
+
     int index_table[3][3] = {{0, 1, 2},
                              {1, 3, 4},
                              {2, 4, 5}};
@@ -1621,32 +1672,20 @@ void build_eqs(equation_context& ctx)
         }
     }
 
-    unit_metric<value, 3, 3> cY;
-
-    cY.idx(0, 0).make_value("cY0[IDX(ix,iy,iz)]"); cY.idx(0, 1).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(0, 2).make_value("cY2[IDX(ix,iy,iz)]");
-    cY.idx(1, 0).make_value("cY1[IDX(ix,iy,iz)]"); cY.idx(1, 1).make_value("cY3[IDX(ix,iy,iz)]"); cY.idx(1, 2).make_value("cY4[IDX(ix,iy,iz)]");
-    cY.idx(2, 0).make_value("cY2[IDX(ix,iy,iz)]"); cY.idx(2, 1).make_value("cY4[IDX(ix,iy,iz)]"); cY.idx(2, 2).make_value("cY5[IDX(ix,iy,iz)]");
-
+    unit_metric<value, 3, 3> cY = args.cY;
 
     inverse_metric<value, 3, 3> icY = cY.invert();
     inverse_metric<value, 3, 3> unpinned_icY = cY.invert();
 
     ctx.pin(icY);
 
-    tensor<value, 3, 3> cA;
-
-    cA.idx(0, 0).make_value("cA0[IDX(ix,iy,iz)]"); cA.idx(0, 1).make_value("cA1[IDX(ix,iy,iz)]"); cA.idx(0, 2).make_value("cA2[IDX(ix,iy,iz)]");
-    cA.idx(1, 0).make_value("cA1[IDX(ix,iy,iz)]"); cA.idx(1, 1).make_value("cA3[IDX(ix,iy,iz)]"); cA.idx(1, 2).make_value("cA4[IDX(ix,iy,iz)]");
-    cA.idx(2, 0).make_value("cA2[IDX(ix,iy,iz)]"); cA.idx(2, 1).make_value("cA4[IDX(ix,iy,iz)]"); cA.idx(2, 2).make_value("cA5[IDX(ix,iy,iz)]");
+    tensor<value, 3, 3> cA = args.cA;
 
     auto unpinned_cA = cA;
     //ctx.pin(cA);
 
     ///the christoffel symbol
-    tensor<value, 3> cGi;
-    cGi.idx(0).make_value("cGi0[IDX(ix,iy,iz)]");
-    cGi.idx(1).make_value("cGi1[IDX(ix,iy,iz)]");
-    cGi.idx(2).make_value("cGi2[IDX(ix,iy,iz)]");
+    tensor<value, 3> cGi = args.cGi;
 
     tensor<value, 3> digA;
     digA.idx(0).make_value("ik.digA[0]");
@@ -1674,13 +1713,9 @@ void build_eqs(equation_context& ctx)
         }
     }
 
-    value gA;
-    gA.make_value("gA[IDX(ix,iy,iz)]");
+    value gA = args.gA;
 
-    tensor<value, 3> gB;
-    gB.idx(0).make_value("gB0[IDX(ix,iy,iz)]");
-    gB.idx(1).make_value("gB1[IDX(ix,iy,iz)]");
-    gB.idx(2).make_value("gB2[IDX(ix,iy,iz)]");
+    tensor<value, 3> gB = args.gB;
 
     #ifdef USE_GBB
     tensor<value, 3> gBB;
@@ -1689,11 +1724,8 @@ void build_eqs(equation_context& ctx)
     gBB.idx(2).make_value("gBB2[IDX(ix,iy,iz)]");
     #endif // USE_GBB
 
-    value X;
-    X.make_value("X[IDX(ix,iy,iz)]");
-
-    value K;
-    K.make_value("K[IDX(ix,iy,iz)]");
+    value X = args.X;
+    value K = args.K;
 
     tensor<value, 3, 3, 3> dcYij;
 
@@ -3364,61 +3396,6 @@ frame_basis calculate_frame_basis(equation_context& ctx, const metric<value, 4, 
 
     return ret;
 }
-
-std::string bidx(const std::string& buf, bool interpolate)
-{
-    if(interpolate)
-        return "buffer_read_linear(" + buf + ",(float3)(fx,fy,fz),dim)";
-    else
-        return buf + "[IDX(ix,iy,iz)]";
-}
-
-struct standard_arguments
-{
-    value gA;
-    tensor<value, 3> gB;
-
-    unit_metric<value, 3, 3> cY;
-    value X;
-
-    metric<value, 3, 3> Yij;
-
-    standard_arguments(bool interpolate)
-    {
-        gA.make_value(bidx("gA", interpolate));
-
-        gB.idx(0).make_value(bidx("gB0", interpolate));
-        gB.idx(1).make_value(bidx("gB1", interpolate));
-        gB.idx(2).make_value(bidx("gB2", interpolate));
-
-        std::array<int, 9> arg_table
-        {
-            0, 1, 2,
-            1, 3, 4,
-            2, 4, 5,
-        };
-
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                int index = arg_table[i * 3 + j];
-
-                cY.idx(i, j) = bidx("cY" + std::to_string(index), interpolate);
-            }
-        }
-
-        X.make_value(bidx("X", true));
-
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                Yij.idx(i, j) = cY.idx(i, j) / X;
-            }
-        }
-    }
-};
 
 tensor<value, 4> get_adm_hypersurface_normal(const value& gA, const tensor<value, 3>& gB)
 {
