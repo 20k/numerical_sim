@@ -1269,7 +1269,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.1515f, 0, 0}), san_black_hole_pos({2.1515f, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.5f - 0, 0, 0}), san_black_hole_pos({2.5f + 0, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, -0.05}, {0, 0, 0.05}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, 0.335/4}, {0, 0, -0.335/4}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, 0.335/16}, {0, 0, -0.335/16}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
 
@@ -3836,7 +3836,7 @@ int main()
     vec3i size = {300, 300, 300};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
-    float c_at_max = 45;
+    float c_at_max = 65;
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
