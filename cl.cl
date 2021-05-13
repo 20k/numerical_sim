@@ -847,12 +847,19 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     //if(ix == 150 && iy == 150 && iz == 150)
     //printf("DISS %f\n", diss_cYij0);
 
-    ocY0[index] = cY0[index] + (f_dtcYij0 + diss_cYij0) * timestep;
-    ocY1[index] = cY1[index] + (f_dtcYij1 + diss_cYij1) * timestep;
-    ocY2[index] = cY2[index] + (f_dtcYij2 + diss_cYij2) * timestep;
-    ocY3[index] = cY3[index] + (f_dtcYij3 + diss_cYij3) * timestep;
-    ocY4[index] = cY4[index] + (f_dtcYij4 + diss_cYij4) * timestep;
-    ocY5[index] = cY5[index] + (f_dtcYij5 + diss_cYij5) * timestep;
+    float I_cY0 = cY0[index];
+    float I_cY1 = cY1[index];
+    float I_cY2 = cY2[index];
+    float I_cY3 = cY3[index];
+    float I_cY4 = cY4[index];
+    float I_cY5 = cY5[index];
+
+    ocY0[index] = I_cY0 + (f_dtcYij0 + diss_cYij0) * timestep;
+    ocY1[index] = I_cY1 + (f_dtcYij1 + diss_cYij1) * timestep;
+    ocY2[index] = I_cY2 + (f_dtcYij2 + diss_cYij2) * timestep;
+    ocY3[index] = I_cY3 + (f_dtcYij3 + diss_cYij3) * timestep;
+    ocY4[index] = I_cY4 + (f_dtcYij4 + diss_cYij4) * timestep;
+    ocY5[index] = I_cY5 + (f_dtcYij5 + diss_cYij5) * timestep;
 
     ocA0[index] = cA0[index] + (f_dtcAij0 + diss_cAij0) * timestep;
     ocA1[index] = cA1[index] + (f_dtcAij1 + diss_cAij1) * timestep;
