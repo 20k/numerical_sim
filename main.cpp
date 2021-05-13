@@ -653,6 +653,7 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
 
     //value stencil = -(1 / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
 
+    ///https://en.wikipedia.org/wiki/Finite_difference_coefficient according to wikipedia, this is the 6th derivative with 2nd order accuracy. I am confused, but at least I know where it came from
     value stencil = (1 / (64.f * scale)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
 
     //value stencil = (-dctx.vars[4] + 8 * dctx.vars[3] - 8 * dctx.vars[1] + dctx.vars[0]) / 12;
