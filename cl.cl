@@ -114,11 +114,6 @@ float polynomial(float x)
     return (1 + (-3 + 6 * (-1 + x)) * (-1 + x)) * x * x * x;
 }
 
-float get_dissipation(int ix, int iy, int iz, int4 dim, float scale, __global const float* buffer)
-{
-    return KREISS_OLIGER_DISSIPATE;
-}
-
 #define BULGE_AMOUNT 1
 
 float3 transform_position(int x, int y, int z, int4 dim, float scale)
@@ -748,42 +743,10 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     float f_dtgBB2 = dtgBB2;
     #endif // USE_GBB
 
-    float diss_cYij0 = dissipate_low * get_dissipation(ix, iy, iz, dim, scale, cY0);
-    float diss_cYij1 = dissipate_low * get_dissipation(ix, iy, iz, dim, scale, cY1);
-    float diss_cYij2 = dissipate_low * get_dissipation(ix, iy, iz, dim, scale, cY2);
-    float diss_cYij3 = dissipate_low * get_dissipation(ix, iy, iz, dim, scale, cY3);
-    float diss_cYij4 = dissipate_low * get_dissipation(ix, iy, iz, dim, scale, cY4);
-    float diss_cYij5 = dissipate_low * get_dissipation(ix, iy, iz, dim, scale, cY5);
-
-    float diss_cAij0 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, cA0);
-    float diss_cAij1 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, cA1);
-    float diss_cAij2 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, cA2);
-    float diss_cAij3 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, cA3);
-    float diss_cAij4 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, cA4);
-    float diss_cAij5 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, cA5);
-
-    float diss_cGi0 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, cGi0);
-    float diss_cGi1 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, cGi1);
-    float diss_cGi2 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, cGi2);
-
-    float diss_K = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, K);
-    float diss_X = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, X);
-
-    float diss_gA = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, gA);
-    float diss_gB0 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, gB0);
-    float diss_gB1 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, gB1);
-    float diss_gB2 = dissipate_high * get_dissipation(ix, iy, iz, dim, scale, gB2);
-
     float debug1 = debug_p1;
     float debug2 = debug_p2;
     float debug3 = debug_p3;
     //float dbgdphi = ik.dphi[0];
-
-    #ifdef USE_GBB
-    float diss_gBB0 = get_dissipation(ix, iy, iz, dim, scale, gBB0);
-    float diss_gBB1 = get_dissipation(ix, iy, iz, dim, scale, gBB1);
-    float diss_gBB2 = get_dissipation(ix, iy, iz, dim, scale, gBB2);
-    #endif // USE_GBB
 
     /*if(ix == 20 && iy == 20 && iz == 20)
     {
@@ -792,6 +755,32 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
 
     //if(ix == 150 && iy == 150 && iz == 150)
     //printf("DISS %f\n", diss_cYij0);
+
+    float diss_cYij0 = k_cYij0;
+    float diss_cYij1 = k_cYij1;
+    float diss_cYij2 = k_cYij2;
+    float diss_cYij3 = k_cYij3;
+    float diss_cYij4 = k_cYij4;
+    float diss_cYij5 = k_cYij5;
+
+    float diss_cAij0 = k_cAij0;
+    float diss_cAij1 = k_cAij1;
+    float diss_cAij2 = k_cAij2;
+    float diss_cAij3 = k_cAij3;
+    float diss_cAij4 = k_cAij4;
+    float diss_cAij5 = k_cAij5;
+
+    float diss_cGi0 = k_cGi0;
+    float diss_cGi1 = k_cGi1;
+    float diss_cGi2 = k_cGi2;
+
+    float diss_K = k_K;
+    float diss_X = k_X;
+
+    float diss_gA = k_gA;
+    float diss_gB0 = k_gB0;
+    float diss_gB1 = k_gB1;
+    float diss_gB2 = k_gB2;
 
     float I_cY0 = cY0[index];
     float I_cY1 = cY1[index];

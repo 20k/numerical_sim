@@ -673,19 +673,6 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
     return fin;
 }
 
-///todo: remove this. Just use it directly
-void build_kreiss_oliger_dissipate(equation_context& ctx)
-{
-    value v = "buffer[IDX(ix,iy,iz)]";
-    ctx.add("KREISS_OLIGER_DISSIPATE", kreiss_oliger_dissipate(ctx, v));
-
-    ctx.add("dissipate_low", 0.15f);
-    ctx.add("dissipate_high", 0.35f);
-
-    //value z = 0;
-    //ctx.add("KREISS_OLIGER_DISSIPATE", z);
-}
-
 template<int order = 1>
 value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true, bool linear = false)
 {
@@ -2357,6 +2344,22 @@ void build_eqs(equation_context& ctx)
         }
     }*/
 
+    float dissipate_low = 0.15;
+    float dissipate_high = 0.35;
+
+    /*dtcYij += dissipate_low  * tensor_for_each_unary(cY.to_tensor(),[&](const value& v1){return kreiss_oliger_dissipate(ctx, v1);});
+    dtcAij += dissipate_high * tensor_for_each_unary(unpinned_cA,   [&](const value& v1){return kreiss_oliger_dissipate(ctx, v1);});
+    dtcGi  += dissipate_high * tensor_for_each_unary(cGi        ,   [&](const value& v1){return kreiss_oliger_dissipate(ctx, v1);});
+    dtgB   += dissipate_high * tensor_for_each_unary(gB,            [&](const value& v1){return kreiss_oliger_dissipate(ctx, v1);});
+
+    #ifdef USE_GBB
+    dtgBB  += tensor_for_each_unary(gBB,         [&](const value& v1){return dissipate_high * kreiss_oliger_dissipate(ctx, v1);});
+    #endif // USE_GBB
+
+    dtX  += dissipate_high * kreiss_oliger_dissipate(ctx, X);
+    dtK  += dissipate_high * kreiss_oliger_dissipate(ctx, K);
+    dtgA += dissipate_high * kreiss_oliger_dissipate(ctx, gA);*/
+
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
     for(int i=0; i < 6; i++)
@@ -2366,9 +2369,12 @@ void build_eqs(equation_context& ctx)
         vec2i idx = linear_indices[i];
 
         ctx.add(name, dtcYij.idx(idx.x(), idx.y()));
+
+        ctx.add("k_cYij" + std::to_string(i), dissipate_low * kreiss_oliger_dissipate(ctx, cY.idx(idx.x(), idx.y())));
     }
 
     ctx.add("dtX", dtX);
+    ctx.add("k_X", dissipate_high * kreiss_oliger_dissipate(ctx, X));
 
     for(int i=0; i < 6; i++)
     {
@@ -2377,24 +2383,30 @@ void build_eqs(equation_context& ctx)
         vec2i idx = linear_indices[i];
 
         ctx.add(name, dtcAij.idx(idx.x(), idx.y()));
+
+        ctx.add("k_cAij" + std::to_string(i), dissipate_high * kreiss_oliger_dissipate(ctx, unpinned_cA.idx(idx.x(), idx.y())));
     }
 
     ctx.add("dtK", dtK);
+    ctx.add("k_K", dissipate_high * kreiss_oliger_dissipate(ctx, K));
 
     for(int i=0; i < 3; i++)
     {
         std::string name = "dtcGi" + std::to_string(i);
 
         ctx.add(name, dtcGi.idx(i));
+        ctx.add("k_cGi" + std::to_string(i), kreiss_oliger_dissipate(ctx, cGi.idx(i)));
     }
 
     ctx.add("dtgA", dtgA);
+    ctx.add("k_gA", kreiss_oliger_dissipate(ctx, gA));
 
     for(int i=0; i < 3; i++)
     {
         std::string name = "dtgB" + std::to_string(i);
 
         ctx.add(name, dtgB.idx(i));
+        ctx.add("k_gB" + std::to_string(i), kreiss_oliger_dissipate(ctx, gB.idx(i)));
     }
 
     for(int i=0; i < 3; i++)
@@ -3790,10 +3802,6 @@ int main()
     equation_context ctx7;
     loop_geodesics(ctx7, {size.x(), size.y(), size.z()});
 
-    equation_context ctx8;
-    build_kreiss_oliger_dissipate(ctx8);
-
-
     /*for(auto& i : ctx.values)
     {
         std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
@@ -3819,7 +3827,6 @@ int main()
     //ctx5.build(argument_string, 4);
     ctx6.build(argument_string, 5);
     ctx7.build(argument_string, 6);
-    ctx8.build(argument_string, 7);
     setup_initial.build(argument_string, 8);
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
