@@ -704,44 +704,6 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
 
     int3 ioffset = (int3)(ix, iy, iz) - icentre;
 
-    ///could remove this with a double init
-    if(any(abs(ioffset) >= current_simulation_boundary))
-    {
-        ocY0[index] = cY0[index];
-        ocY1[index] = cY1[index];
-        ocY2[index] = cY2[index];
-        ocY3[index] = cY3[index];
-        ocY4[index] = cY4[index];
-        ocY5[index] = cY5[index];
-
-        ocA0[index] = cA0[index];
-        ocA1[index] = cA1[index];
-        ocA2[index] = cA2[index];
-        ocA3[index] = cA3[index];
-        ocA4[index] = cA4[index];
-        ocA5[index] = cA5[index];
-
-        ocGi0[index] = cGi0[index];
-        ocGi1[index] = cGi1[index];
-        ocGi2[index] = cGi2[index];
-
-        oK[index] = K[index];
-        oX[index] = X[index];
-
-        ogA[index] = gA[index];
-        ogB0[index] = gB0[index];
-        ogB1[index] = gB1[index];
-        ogB2[index] = gB2[index];
-
-        #ifdef USE_GBB
-        ogBB0[index] = gBB0[index];
-        ogBB1[index] = gBB1[index];
-        ogBB2[index] = gBB2[index];
-        #endif // USE_GBB
-
-        return;
-    }
-
     //float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, time);
 
     //if(sponge_factor == 1)
@@ -753,22 +715,6 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     struct intermediate_bssnok_data ik = temp_in[IDX(ix, iy, iz)];
 
     float TEMPORARIES2;
-
-    int index_table[3][3] = {{0, 1, 2},
-                             {1, 3, 4},
-                             {2, 4, 5}};
-
-    ///conformal christoffel derivatives
-    /*float dcGijk[3 * 3 * 6];
-
-    #pragma unroll
-    for(int i=0; i < 3 * 6; i++)
-    {
-        dcGijk[0 * 3 * 6 + i] = INTERMEDIATE_DIFFX(christoffel[i]);
-        dcGijk[1 * 3 * 6 + i] = INTERMEDIATE_DIFFY(christoffel[i]);
-        dcGijk[2 * 3 * 6 + i] = INTERMEDIATE_DIFFZ(christoffel[i]);
-    }*/
-
 
     float f_dtcYij0 = dtcYij0;
     float f_dtcYij1 = dtcYij1;
