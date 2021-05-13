@@ -4249,7 +4249,7 @@ int main()
             a1.push_back(time_elapsed_s);
             a1.push_back(current_simulation_boundary);
 
-            clctx.cqueue.exec("evolve", a1, {size.x(), size.y(), size.z()}, {128, 1, 1});
+            clctx.cqueue.exec("evolve", a1, {size.x(), size.y(), size.z()}, {64, 1, 1});
 
             which_data = (which_data + 1) % 2;
 
