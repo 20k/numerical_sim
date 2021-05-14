@@ -277,7 +277,7 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
 __kernel
 void calculate_initial_conditions(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
-                                  __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
+                                  __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA4, __global float* cA5,
                                   __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
                                   #ifdef USE_gBB0
                                   __global float* gBB0, __global float* gBB1, __global float* gBB2,
@@ -313,7 +313,6 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
     cA0[index] = init_cA0;
     cA1[index] = init_cA1;
     cA2[index] = init_cA2;
-    cA3[index] = init_cA3;
     cA4[index] = init_cA4;
     cA5[index] = init_cA5;
 
@@ -352,7 +351,7 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
 
 __kernel
 void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
-                                   __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
+                                   __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA4, __global float* cA5,
                                    __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
                                    #ifdef USE_gBB0
                                    __global float* gBB0, __global float* gBB1, __global float* gBB2,
@@ -379,7 +378,6 @@ void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __g
     float fixed_cA0 = fix_cA0;
     float fixed_cA1 = fix_cA1;
     float fixed_cA2 = fix_cA2;
-    float fixed_cA3 = fix_cA3;
     float fixed_cA4 = fix_cA4;
     float fixed_cA5 = fix_cA5;
 
@@ -392,7 +390,6 @@ void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __g
     cA0[index] = fixed_cA0;
     cA1[index] = fixed_cA1;
     cA2[index] = fixed_cA2;
-    cA3[index] = fixed_cA3;
     cA4[index] = fixed_cA4;
     cA5[index] = fixed_cA5;
 }
@@ -400,7 +397,7 @@ void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __g
 ///https://en.wikipedia.org/wiki/Ricci_curvature#Definition_via_local_coordinates_on_a_smooth_manifold
 __kernel
 void calculate_intermediate_data(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
-                                 __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
+                                 __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA4, __global float* cA5,
                                  __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
                                  #ifdef USE_gBB0
                                  __global float* gBB0, __global float* gBB1, __global float* gBB2,
@@ -504,7 +501,7 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
 ///todo: damp to schwarzschild, not initial conditions?
 __kernel
 void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
-                __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
+                __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA4, __global float* cA5,
                 __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
                 #ifdef USE_gBB0
                 __global float* gBB0, __global float* gBB1, __global float* gBB2,
@@ -549,7 +546,6 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
         float initial_cA0 = init_cA0;
         float initial_cA1 = init_cA1;
         float initial_cA2 = init_cA2;
-        float initial_cA3 = init_cA3;
         float initial_cA4 = init_cA4;
         float initial_cA5 = init_cA5;
 
@@ -582,12 +578,10 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
         fin_cY2 = 0;
         fin_cY3 = 1;
         fin_cY4 = 0;
-        fin_cY5 = 1;
 
         initial_cA0 = 0;
         initial_cA1 = 0;
         initial_cA2 = 0;
-        initial_cA3 = 0;
         initial_cA4 = 0;
         initial_cA5 = 0;
 
@@ -603,7 +597,6 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
         cA0[index] = mix(cA0[index],initial_cA0, sponge_factor);
         cA1[index] = mix(cA1[index],initial_cA1, sponge_factor);
         cA2[index] = mix(cA2[index],initial_cA2, sponge_factor);
-        cA3[index] = mix(cA3[index],initial_cA3, sponge_factor);
         cA4[index] = mix(cA4[index],initial_cA4, sponge_factor);
         cA5[index] = mix(cA5[index],initial_cA5, sponge_factor);
 
@@ -662,13 +655,13 @@ void dissipate(__global float* buffer_in, __global float* buffer_out, float scal
 ///todo: need to factor out the differentials
 __kernel
 void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
-            __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
+            __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA4, __global float* cA5,
             __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
             #ifdef USE_gBB0
             __global float* gBB0, __global float* gBB1, __global float* gBB2,
             #endif // USE_gBB0
             __global float* ocY0, __global float* ocY1, __global float* ocY2, __global float* ocY3, __global float* ocY4,
-            __global float* ocA0, __global float* ocA1, __global float* ocA2, __global float* ocA3, __global float* ocA4, __global float* ocA5,
+            __global float* ocA0, __global float* ocA1, __global float* ocA2, __global float* ocA4, __global float* ocA5,
             __global float* ocGi0, __global float* ocGi1, __global float* ocGi2, __global float* oK, __global float* oX, __global float* ogA, __global float* ogB0, __global float* ogB1, __global float* ogB2,
             #ifdef USE_gBB0
             __global float* ogBB0, __global float* ogBB1, __global float* ogBB2,
@@ -791,7 +784,6 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     ocA0[index] = cA0[index] + (f_dtcAij0 + diss_cAij0) * timestep;
     ocA1[index] = cA1[index] + (f_dtcAij1 + diss_cAij1) * timestep;
     ocA2[index] = cA2[index] + (f_dtcAij2 + diss_cAij2) * timestep;
-    ocA3[index] = cA3[index] + (f_dtcAij3 + diss_cAij3) * timestep;
     ocA4[index] = cA4[index] + (f_dtcAij4 + diss_cAij4) * timestep;
     ocA5[index] = cA5[index] + (f_dtcAij5 + diss_cAij5) * timestep;
 
@@ -1023,7 +1015,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
 
 __kernel
 void render(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
-            __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
+            __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA4, __global float* cA5,
             __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
             #ifdef USE_gBB0
             __global float* ogBB0, __global float* ogBB1, __global float* ogBB2,
@@ -1263,7 +1255,7 @@ int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_d
 
 __kernel
 void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
-                __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
+                __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA4, __global float* cA5,
                 __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
                 #ifdef USE_gBB0
                 __global float* gBB0, __global float* gBB1, __global float* gBB2,
@@ -1418,7 +1410,7 @@ float3 rot_quat(const float3 point, float4 quat)
 
 __kernel
 void trace_metric(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
-                  __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
+                  __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA4, __global float* cA5,
                   __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
                   #ifdef USE_gBB0
                   __global float* gBB0, __global float* gBB1, __global float* gBB2,

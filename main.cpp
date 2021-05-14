@@ -1275,9 +1275,9 @@ struct standard_arguments
 
         inverse_metric<value, 3, 3> icY = cY.invert();
 
-        //tensor<value, 3, 3> raised_cAij = raise_index(cA, cY, icY);
+        tensor<value, 3, 3> raised_cAij = raise_index(cA, cY, icY);
 
-        //cA.idx(1, 1) = -(raised_cAij.idx(0, 0) + raised_cAij.idx(2, 2) + cA.idx(0, 1) * icY.idx(0, 1) + cA.idx(1, 2) * icY.idx(1, 2)) / (icY.idx(1, 1));
+        cA.idx(1, 1) = -(raised_cAij.idx(0, 0) + raised_cAij.idx(2, 2) + cA.idx(0, 1) * icY.idx(0, 1) + cA.idx(1, 2) * icY.idx(1, 2)) / (icY.idx(1, 1));
 
         X.make_value(bidx("X", interpolate));
         K.make_value(bidx("K", interpolate));
@@ -1683,7 +1683,7 @@ void build_eqs(equation_context& ctx)
     tensor<value, 3, 3> cA = args.cA;
 
     auto unpinned_cA = cA;
-    //ctx.pin(cA);
+    ctx.pin(cA);
 
     ///the christoffel symbol
     tensor<value, 3> cGi = args.cGi;
@@ -1791,7 +1791,9 @@ void build_eqs(equation_context& ctx)
 
         for(int i=0; i < 6; i++)
         {
-            hacky_differentiate(ctx, "cA" + std::to_string(i), k);
+            vec2i idx = linear_indices[i];
+
+            hacky_differentiate(ctx, unpinned_cA.idx(idx.x(), idx.y()), k);
         }
 
         for(int i=0; i < 3; i++)
@@ -3878,7 +3880,7 @@ int main()
     };*/
 
     #ifndef USE_GBB
-    constexpr int buffer_count = 11+9;
+    constexpr int buffer_count = 10+9;
     #else
     constexpr int buffer_count = 12 + 9 + 3;
     #endif
