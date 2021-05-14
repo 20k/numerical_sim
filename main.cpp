@@ -279,7 +279,7 @@ struct equation_context
 
         if(temporaries.size() == 0)
         {
-            argument_string += "-DTEMPORARIES" + std::to_string(idx) + "==pv0 ";
+            argument_string += "-DTEMPORARIES" + std::to_string(idx) + "=DUMMY ";
             return;
         }
 
@@ -672,6 +672,129 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
     }
 
     return fin;
+}
+
+std::string bidx(const std::string& buf, bool interpolate)
+{
+    if(interpolate)
+        return "buffer_read_linear(" + buf + ",(float3)(fx,fy,fz),dim)";
+    else
+        return buf + "[IDX(ix,iy,iz)]";
+}
+
+struct standard_arguments
+{
+    value gA;
+    tensor<value, 3> gB;
+
+    unit_metric<value, 3, 3> cY;
+    tensor<value, 3, 3> cA;
+
+    value X;
+    value K;
+
+    tensor<value, 3> cGi;
+
+    metric<value, 3, 3> Yij;
+
+    standard_arguments(bool interpolate)
+    {
+        gA.make_value(bidx("gA", interpolate));
+
+        gB.idx(0).make_value(bidx("gB0", interpolate));
+        gB.idx(1).make_value(bidx("gB1", interpolate));
+        gB.idx(2).make_value(bidx("gB2", interpolate));
+
+        std::array<int, 9> arg_table
+        {
+            0, 1, 2,
+            1, 3, 4,
+            2, 4, 5,
+        };
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                int index = arg_table[i * 3 + j];
+
+                cY.idx(i, j) = bidx("cY" + std::to_string(index), interpolate);
+            }
+        }
+
+        cY.idx(2, 2) = (1 + cY.idx(1, 1) * cY.idx(0, 2) * cY.idx(0, 2) - 2 * cY.idx(0, 1) * cY.idx(1, 2) * cY.idx(0, 2) + cY.idx(0, 0) * cY.idx(1, 2) * cY.idx(1, 2)) / (cY.idx(0, 0) * cY.idx(1, 1) - cY.idx(1, 2) * cY.idx(1, 2));
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                int index = arg_table[i * 3 + j];
+
+                cA.idx(i, j) = bidx("cA" + std::to_string(index), interpolate);
+            }
+        }
+
+        inverse_metric<value, 3, 3> icY = cY.invert();
+
+        //tensor<value, 3, 3> raised_cAij = raise_index(cA, cY, icY);
+
+        //cA.idx(1, 1) = -(raised_cAij.idx(0, 0) + raised_cAij.idx(2, 2) + cA.idx(0, 1) * icY.idx(0, 1) + cA.idx(1, 2) * icY.idx(1, 2)) / (icY.idx(1, 1));
+
+        X.make_value(bidx("X", interpolate));
+        K.make_value(bidx("K", interpolate));
+
+        cGi.idx(0).make_value(bidx("cGi0", interpolate));
+        cGi.idx(1).make_value(bidx("cGi1", interpolate));
+        cGi.idx(2).make_value(bidx("cGi2", interpolate));
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                Yij.idx(i, j) = cY.idx(i, j) / X;
+            }
+        }
+    }
+};
+
+void build_kreiss_oliger_dissipate(equation_context& ctx)
+{
+    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
+
+    standard_arguments args(false);
+
+    float dissipate_low = 0.15;
+    float dissipate_high = 0.35;
+
+    for(int i=0; i < 6; i++)
+    {
+        vec2i idx = linear_indices[i];
+
+        ctx.add("k_cYij" + std::to_string(i), dissipate_low * kreiss_oliger_dissipate(ctx, args.cY.idx(idx.x(), idx.y())));
+    }
+
+    ctx.add("k_X", dissipate_high * kreiss_oliger_dissipate(ctx, args.X));
+
+    for(int i=0; i < 6; i++)
+    {
+        vec2i idx = linear_indices[i];
+
+        ctx.add("k_cAij" + std::to_string(i), dissipate_high * kreiss_oliger_dissipate(ctx, args.cA.idx(idx.x(), idx.y())));
+    }
+
+    ctx.add("k_K", dissipate_high * kreiss_oliger_dissipate(ctx, args.K));
+
+    for(int i=0; i < 3; i++)
+    {
+        ctx.add("k_cGi" + std::to_string(i), dissipate_high * kreiss_oliger_dissipate(ctx, args.cGi.idx(i)));
+    }
+
+    ctx.add("k_gA", dissipate_high * kreiss_oliger_dissipate(ctx, args.gA));
+
+    for(int i=0; i < 3; i++)
+    {
+        ctx.add("k_gB" + std::to_string(i), dissipate_high * kreiss_oliger_dissipate(ctx, args.gB.idx(i)));
+    }
 }
 
 template<int order = 1>
@@ -1212,89 +1335,6 @@ tensor<value, 3, 3> calculate_bcAij(const vec<3, value>& pos, const std::vector<
 
     return bcAij;
 }
-
-std::string bidx(const std::string& buf, bool interpolate)
-{
-    if(interpolate)
-        return "buffer_read_linear(" + buf + ",(float3)(fx,fy,fz),dim)";
-    else
-        return buf + "[IDX(ix,iy,iz)]";
-}
-
-struct standard_arguments
-{
-    value gA;
-    tensor<value, 3> gB;
-
-    unit_metric<value, 3, 3> cY;
-    tensor<value, 3, 3> cA;
-
-    value X;
-    value K;
-
-    tensor<value, 3> cGi;
-
-    metric<value, 3, 3> Yij;
-
-    standard_arguments(bool interpolate)
-    {
-        gA.make_value(bidx("gA", interpolate));
-
-        gB.idx(0).make_value(bidx("gB0", interpolate));
-        gB.idx(1).make_value(bidx("gB1", interpolate));
-        gB.idx(2).make_value(bidx("gB2", interpolate));
-
-        std::array<int, 9> arg_table
-        {
-            0, 1, 2,
-            1, 3, 4,
-            2, 4, 5,
-        };
-
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                int index = arg_table[i * 3 + j];
-
-                cY.idx(i, j) = bidx("cY" + std::to_string(index), interpolate);
-            }
-        }
-
-        cY.idx(2, 2) = (1 + cY.idx(1, 1) * cY.idx(0, 2) * cY.idx(0, 2) - 2 * cY.idx(0, 1) * cY.idx(1, 2) * cY.idx(0, 2) + cY.idx(0, 0) * cY.idx(1, 2) * cY.idx(1, 2)) / (cY.idx(0, 0) * cY.idx(1, 1) - cY.idx(1, 2) * cY.idx(1, 2));
-
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                int index = arg_table[i * 3 + j];
-
-                cA.idx(i, j) = bidx("cA" + std::to_string(index), interpolate);
-            }
-        }
-
-        inverse_metric<value, 3, 3> icY = cY.invert();
-
-        //tensor<value, 3, 3> raised_cAij = raise_index(cA, cY, icY);
-
-        //cA.idx(1, 1) = -(raised_cAij.idx(0, 0) + raised_cAij.idx(2, 2) + cA.idx(0, 1) * icY.idx(0, 1) + cA.idx(1, 2) * icY.idx(1, 2)) / (icY.idx(1, 1));
-
-        X.make_value(bidx("X", interpolate));
-        K.make_value(bidx("K", interpolate));
-
-        cGi.idx(0).make_value(bidx("cGi0", interpolate));
-        cGi.idx(1).make_value(bidx("cGi1", interpolate));
-        cGi.idx(2).make_value(bidx("cGi2", interpolate));
-
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                Yij.idx(i, j) = cY.idx(i, j) / X;
-            }
-        }
-    }
-};
 
 inline
 void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
@@ -2359,9 +2399,6 @@ void build_eqs(equation_context& ctx)
         }
     }*/
 
-    float dissipate_low = 0.15;
-    float dissipate_high = 0.35;
-
     for(int i=0; i < 6; i++)
     {
         std::string name = "dtcYij" + std::to_string(i);
@@ -2369,12 +2406,9 @@ void build_eqs(equation_context& ctx)
         vec2i idx = linear_indices[i];
 
         ctx.add(name, dtcYij.idx(idx.x(), idx.y()));
-
-        ctx.add("k_cYij" + std::to_string(i), dissipate_low * kreiss_oliger_dissipate(ctx, cY.idx(idx.x(), idx.y())));
     }
 
     ctx.add("dtX", dtX);
-    ctx.add("k_X", dissipate_high * kreiss_oliger_dissipate(ctx, X));
 
     for(int i=0; i < 6; i++)
     {
@@ -2383,30 +2417,24 @@ void build_eqs(equation_context& ctx)
         vec2i idx = linear_indices[i];
 
         ctx.add(name, dtcAij.idx(idx.x(), idx.y()));
-
-        ctx.add("k_cAij" + std::to_string(i), dissipate_high * kreiss_oliger_dissipate(ctx, unpinned_cA.idx(idx.x(), idx.y())));
     }
 
     ctx.add("dtK", dtK);
-    ctx.add("k_K", dissipate_high * kreiss_oliger_dissipate(ctx, K));
 
     for(int i=0; i < 3; i++)
     {
         std::string name = "dtcGi" + std::to_string(i);
 
         ctx.add(name, dtcGi.idx(i));
-        ctx.add("k_cGi" + std::to_string(i), dissipate_high * kreiss_oliger_dissipate(ctx, cGi.idx(i)));
     }
 
     ctx.add("dtgA", dtgA);
-    ctx.add("k_gA", dissipate_high * kreiss_oliger_dissipate(ctx, gA));
 
     for(int i=0; i < 3; i++)
     {
         std::string name = "dtgB" + std::to_string(i);
 
         ctx.add(name, dtgB.idx(i));
-        ctx.add("k_gB" + std::to_string(i), dissipate_high * kreiss_oliger_dissipate(ctx, gB.idx(i)));
     }
 
     for(int i=0; i < 3; i++)
@@ -3802,6 +3830,9 @@ int main()
     equation_context ctx7;
     loop_geodesics(ctx7, {size.x(), size.y(), size.z()});
 
+    equation_context ctx8;
+    build_kreiss_oliger_dissipate(ctx8);
+
     /*for(auto& i : ctx.values)
     {
         std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
@@ -3827,6 +3858,7 @@ int main()
     //ctx5.build(argument_string, 4);
     ctx6.build(argument_string, 5);
     ctx7.build(argument_string, 6);
+    ctx8.build(argument_string, 7);
     setup_initial.build(argument_string, 8);
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
@@ -4263,6 +4295,28 @@ int main()
             a1.push_back(current_simulation_boundary);
 
             clctx.cqueue.exec("evolve", a1, {size.x(), size.y(), size.z()}, {64, 1, 1});
+
+            {
+                cl::args diss;
+
+                ///the input here is the same input to evolve
+                for(auto& i : generic_data[which_data])
+                {
+                    diss.push_back(i);
+                }
+
+                for(auto& i : generic_data[(which_data + 1) % 2])
+                {
+                    diss.push_back(i);
+                }
+
+                diss.push_back(scale);
+                diss.push_back(clsize);
+                diss.push_back(timestep);
+
+                clctx.cqueue.exec("numerical_dissipate", diss, {size.x(), size.y(), size.z()}, {128, 1, 1});
+
+            }
 
             which_data = (which_data + 1) % 2;
 

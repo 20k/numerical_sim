@@ -750,62 +750,36 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     //if(ix == 150 && iy == 150 && iz == 150)
     //printf("DISS %f\n", diss_cYij0);
 
-    float diss_cYij0 = k_cYij0;
-    float diss_cYij1 = k_cYij1;
-    float diss_cYij2 = k_cYij2;
-    float diss_cYij3 = k_cYij3;
-    float diss_cYij4 = k_cYij4;
-    float diss_cYij5 = k_cYij5;
-
-    float diss_cAij0 = k_cAij0;
-    float diss_cAij1 = k_cAij1;
-    float diss_cAij2 = k_cAij2;
-    float diss_cAij3 = k_cAij3;
-    float diss_cAij4 = k_cAij4;
-    float diss_cAij5 = k_cAij5;
-
-    float diss_cGi0 = k_cGi0;
-    float diss_cGi1 = k_cGi1;
-    float diss_cGi2 = k_cGi2;
-
-    float diss_K = k_K;
-    float diss_X = k_X;
-
-    float diss_gA = k_gA;
-    float diss_gB0 = k_gB0;
-    float diss_gB1 = k_gB1;
-    float diss_gB2 = k_gB2;
-
     float I_cY0 = cY0[index];
     float I_cY1 = cY1[index];
     float I_cY2 = cY2[index];
     float I_cY3 = cY3[index];
     float I_cY4 = cY4[index];
 
-    ocY0[index] = I_cY0 + (f_dtcYij0 + diss_cYij0) * timestep;
-    ocY1[index] = I_cY1 + (f_dtcYij1 + diss_cYij1) * timestep;
-    ocY2[index] = I_cY2 + (f_dtcYij2 + diss_cYij2) * timestep;
-    ocY3[index] = I_cY3 + (f_dtcYij3 + diss_cYij3) * timestep;
-    ocY4[index] = I_cY4 + (f_dtcYij4 + diss_cYij4) * timestep;
+    ocY0[index] = I_cY0 + (f_dtcYij0) * timestep;
+    ocY1[index] = I_cY1 + (f_dtcYij1) * timestep;
+    ocY2[index] = I_cY2 + (f_dtcYij2) * timestep;
+    ocY3[index] = I_cY3 + (f_dtcYij3) * timestep;
+    ocY4[index] = I_cY4 + (f_dtcYij4) * timestep;
 
-    ocA0[index] = cA0[index] + (f_dtcAij0 + diss_cAij0) * timestep;
-    ocA1[index] = cA1[index] + (f_dtcAij1 + diss_cAij1) * timestep;
-    ocA2[index] = cA2[index] + (f_dtcAij2 + diss_cAij2) * timestep;
-    ocA3[index] = cA3[index] + (f_dtcAij3 + diss_cAij3) * timestep;
-    ocA4[index] = cA4[index] + (f_dtcAij4 + diss_cAij4) * timestep;
-    ocA5[index] = cA5[index] + (f_dtcAij5 + diss_cAij5) * timestep;
+    ocA0[index] = cA0[index] + (f_dtcAij0) * timestep;
+    ocA1[index] = cA1[index] + (f_dtcAij1) * timestep;
+    ocA2[index] = cA2[index] + (f_dtcAij2) * timestep;
+    ocA3[index] = cA3[index] + (f_dtcAij3) * timestep;
+    ocA4[index] = cA4[index] + (f_dtcAij4) * timestep;
+    ocA5[index] = cA5[index] + (f_dtcAij5) * timestep;
 
-    ocGi0[index] = cGi0[index] + (f_dtcGi0 + diss_cGi0) * timestep;
-    ocGi1[index] = cGi1[index] + (f_dtcGi1 + diss_cGi1) * timestep;
-    ocGi2[index] = cGi2[index] + (f_dtcGi2 + diss_cGi2) * timestep;
+    ocGi0[index] = cGi0[index] + (f_dtcGi0) * timestep;
+    ocGi1[index] = cGi1[index] + (f_dtcGi1) * timestep;
+    ocGi2[index] = cGi2[index] + (f_dtcGi2) * timestep;
 
-    oK[index] = K[index] + (f_dtK + diss_K) * timestep;
-    oX[index] = X[index] + (f_dtX + diss_X) * timestep;
+    oK[index] = K[index] + (f_dtK) * timestep;
+    oX[index] = X[index] + (f_dtX) * timestep;
 
-    ogA[index] = gA[index] + (f_dtgA + diss_gA) * timestep;
-    ogB0[index] = gB0[index] + (f_dtgB0 + diss_gB0) * timestep;
-    ogB1[index] = gB1[index] + (f_dtgB1 + diss_gB1) * timestep;
-    ogB2[index] = gB2[index] + (f_dtgB2 + diss_gB2) * timestep;
+    ogA[index] = gA[index] + (f_dtgA) * timestep;
+    ogB0[index] = gB0[index] + (f_dtgB0) * timestep;
+    ogB1[index] = gB1[index] + (f_dtgB1) * timestep;
+    ogB2[index] = gB2[index] + (f_dtgB2) * timestep;
 
     #ifdef USE_GBB
     ogBB0[index] = gBB0[index] + (dtgBB0 + diss_gBB0) * timestep;
@@ -1019,6 +993,90 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         printf("Vals: %f %f %f %f %f %f %f %f %f\n", d0, d1, d2, d3, d4, d5, d6, d7, d8);*/
     }
     #endif // 0
+}
+
+///kreiss
+__kernel
+void numerical_dissipate(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
+                        __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
+                        __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
+                        #ifdef USE_gBB0
+                        __global float* gBB0, __global float* gBB1, __global float* gBB2,
+                        #endif // USE_gBB0
+                        __global float* ocY0, __global float* ocY1, __global float* ocY2, __global float* ocY3, __global float* ocY4,
+                        __global float* ocA0, __global float* ocA1, __global float* ocA2, __global float* ocA3, __global float* ocA4, __global float* ocA5,
+                        __global float* ocGi0, __global float* ocGi1, __global float* ocGi2, __global float* oK, __global float* oX, __global float* ogA, __global float* ogB0, __global float* ogB1, __global float* ogB2,
+                        #ifdef USE_gBB0
+                        __global float* ogBB0, __global float* ogBB1, __global float* ogBB2,
+                        #endif // USE_gBB0
+                        float scale, int4 dim, float timestep)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    #ifndef SYMMETRY_BOUNDARY
+    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
+        return;
+    #endif // SYMMETRY_BOUNDARY
+
+    int index = IDX(ix, iy, iz);
+
+    float TEMPORARIES7;
+
+    float diss_cYij0 = k_cYij0;
+    float diss_cYij1 = k_cYij1;
+    float diss_cYij2 = k_cYij2;
+    float diss_cYij3 = k_cYij3;
+    float diss_cYij4 = k_cYij4;
+
+    float diss_cAij0 = k_cAij0;
+    float diss_cAij1 = k_cAij1;
+    float diss_cAij2 = k_cAij2;
+    float diss_cAij3 = k_cAij3;
+    float diss_cAij4 = k_cAij4;
+    float diss_cAij5 = k_cAij5;
+
+    float diss_cGi0 = k_cGi0;
+    float diss_cGi1 = k_cGi1;
+    float diss_cGi2 = k_cGi2;
+
+    float diss_K = k_K;
+    float diss_X = k_X;
+
+    float diss_gA = k_gA;
+    float diss_gB0 = k_gB0;
+    float diss_gB1 = k_gB1;
+    float diss_gB2 = k_gB2;
+
+    ocY0[index] += (diss_cYij0) * timestep;
+    ocY1[index] += (diss_cYij1) * timestep;
+    ocY2[index] += (diss_cYij2) * timestep;
+    ocY3[index] += (diss_cYij3) * timestep;
+    ocY4[index] += (diss_cYij4) * timestep;
+
+    ocA0[index] += (diss_cAij0) * timestep;
+    ocA1[index] += (diss_cAij1) * timestep;
+    ocA2[index] += (diss_cAij2) * timestep;
+    ocA3[index] += (diss_cAij3) * timestep;
+    ocA4[index] += (diss_cAij4) * timestep;
+    ocA5[index] += (diss_cAij5) * timestep;
+
+    ocGi0[index] += (diss_cGi0) * timestep;
+    ocGi1[index] += (diss_cGi1) * timestep;
+    ocGi2[index] += (diss_cGi2) * timestep;
+
+    oK[index] += (diss_K) * timestep;
+    oX[index] += (diss_X) * timestep;
+
+    ogA[index] += (diss_gA) * timestep;
+    ogB0[index] += (diss_gB0) * timestep;
+    ogB1[index] += (diss_gB1) * timestep;
+    ogB2[index] += (diss_gB2) * timestep;
+
 }
 
 __kernel
