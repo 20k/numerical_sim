@@ -1540,22 +1540,22 @@ void build_constraints(equation_context& ctx)
     unit_metric<value, 3, 3> cY = args.cY;
     tensor<value, 3, 3> cA = args.cA;
 
-    value det_cY_pow = pow(cY.det(), 1.f/3.f);
+    /*value det_cY_pow = pow(cY.det(), 1.f/3.f);
 
     det_cY_pow = 1;
     ctx.pin(det_cY_pow);
 
     /// / det_cY_pow
-    metric<value, 3, 3> fixed_cY = cY / det_cY_pow;
+    metric<value, 3, 3> fixed_cY = cY / det_cY_pow;*/
 
     //tensor<value, 3, 3> fixed_cA = gpu_trace_free_cAij(cA, fixed_cY, fixed_cY.invert());
 
-    tensor<value, 3, 3> fixed_cA = cA;
+    /*tensor<value, 3, 3> fixed_cA = cA;
 
     ///https://arxiv.org/pdf/0709.3559.pdf b.49
-    fixed_cA = fixed_cA / det_cY_pow;
+    fixed_cA = fixed_cA / det_cY_pow;*/
 
-    //fixed_cA = gpu_trace_free_cAij(cA, fixed_cY, fixed_cY.invert());
+    tensor<value, 3, 3> fixed_cA = gpu_trace_free_cAij(cA, cY, cY.invert());
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
@@ -1563,7 +1563,7 @@ void build_constraints(equation_context& ctx)
     {
         vec2i idx = linear_indices[i];
 
-        ctx.add("fix_cY" + std::to_string(i), fixed_cY.idx(idx.x(), idx.y()));
+        //ctx.add("fix_cY" + std::to_string(i), fixed_cY.idx(idx.x(), idx.y()));
         ctx.add("fix_cA" + std::to_string(i), fixed_cA.idx(idx.x(), idx.y()));
     }
 }
