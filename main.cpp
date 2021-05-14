@@ -1590,7 +1590,7 @@ void build_intermediate(equation_context& ctx)
 
     for(int i=0; i < 3; i++)
     {
-        digA.idx(i) = hacky_differentiate(ctx, gA, i, false);
+        digA.idx(i) = hacky_differentiate(ctx, gA, i);
     }
 
     tensor<value, 3, 3> digB;
@@ -1601,7 +1601,7 @@ void build_intermediate(equation_context& ctx)
         ///index
         for(int j=0; j < 3; j++)
         {
-            digB.idx(i, j) = hacky_differentiate(ctx, gB.idx(j), i, false);
+            digB.idx(i, j) = hacky_differentiate(ctx, gB.idx(j), i);
         }
     }
 
@@ -1611,7 +1611,7 @@ void build_intermediate(equation_context& ctx)
         {
             vec2i idx = linear_indices[i];
 
-            value diff = hacky_differentiate(ctx, cY.idx(idx.x(), idx.y()), k, false);
+            value diff = hacky_differentiate(ctx, cY.idx(idx.x(), idx.y()), k);
 
             int linear_idx = k * 6 + i;
 
@@ -1636,7 +1636,7 @@ void build_intermediate(equation_context& ctx)
 
     for(int i=0; i < 3; i++)
     {
-        ctx.add("init_dX" + std::to_string(i), hacky_differentiate(ctx, X, i, false));
+        ctx.add("init_dX" + std::to_string(i), hacky_differentiate(ctx, X, i));
     }
 }
 
@@ -3956,7 +3956,7 @@ int main()
 
     clctx.cqueue.exec("setup_u_offset", initial_u_args2, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
-    for(int i=0; i < 5000; i++)
+    for(int i=0; i < 1000; i++)
     {
         cl::args interate_u_args;
         interate_u_args.push_back(u_args[which_u_args]);
