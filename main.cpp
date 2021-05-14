@@ -1689,6 +1689,7 @@ void build_intermediate(equation_context& ctx)
 ///they would however all be relatively far away from each other, so this may turn out fairly acceptably
 ///todo: I think I can cut down on the memory consumption by precalculating the necessary derivatives
 ///todo: Removing phi was never the issue with the numerical stability
+///todo: With the current full double buffering scheme, all equations could have their own kernel
 inline
 void build_eqs(equation_context& ctx)
 {
