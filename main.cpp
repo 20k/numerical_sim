@@ -107,7 +107,7 @@ struct lightray
 
 struct intermediate_bssnok_data
 {
-    cl_float dcYij[3 * 6];
+    cl_float dcYij[3 * 5];
     cl_float digA[6];
     cl_float digB[3*3];
     cl_float dX[3];
@@ -1662,17 +1662,14 @@ void build_intermediate(equation_context& ctx)
 
     for(int k=0; k < 3; k++)
     {
-        for(int i=0; i < 6; i++)
+        ///no cY5
+        for(int i=0; i < 5; i++)
         {
-            ///cY5, don't process it
-            if(i == 5)
-                continue;
-
             vec2i idx = linear_indices[i];
 
             value diff = hacky_differentiate(ctx, cY.idx(idx.x(), idx.y()), k);
 
-            int linear_idx = k * 6 + i;
+            int linear_idx = k * 5 + i;
 
             ctx.add("init_dcYij" + std::to_string(linear_idx), diff);
         }
@@ -1800,11 +1797,17 @@ void build_eqs(equation_context& ctx)
                 ///cY5
                 if(symmetric_index == 5)
                 {
-                    dcYij.idx(k, i, j) = hacky_differentiate(ctx, cY.idx(i, j), k, false);
+                    /*dcYij.idx(k, i, j) = hacky_differentiate(ctx, cY.idx(i, j), k, false);
+
+                    std::cout << "Expression " << type_to_string(cY.idx(i, j)) << std::endl;
+                    std::cout << "type to string " << type_to_string(dcYij.idx(k, i, j)) << std::endl;*/
+
+                    ///This isn't right. I'm constructing the derivatives by differentiating the underlying variables, and the differentiator can't handle that
+                    ///which means i end up with a function of adjacent memory cells. I need it in terms of ik.dcYij
                 }
                 else
                 {
-                    int final_index = k * 6 + symmetric_index;
+                    int final_index = k * 5 + symmetric_index;
 
                     std::string name = "ik.dcYij[" + std::to_string(final_index) + "]";
 
@@ -1872,7 +1875,7 @@ void build_eqs(equation_context& ctx)
 
     for(int k=0; k < 3; k++)
     {
-        for(int i=0; i < 3 * 6; i++)
+        for(int i=0; i < 3 * 5; i++)
         {
             hacky_differentiate(ctx, "ik.dcYij[" + std::to_string(i) + "]", k);
         }

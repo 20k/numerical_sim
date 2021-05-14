@@ -61,7 +61,7 @@ struct intermediate_bssnok_data
 {
     ///christoffel symbols are symmetric in the lower 2 indices
     //float christoffel[3 * 6];
-    float dcYij[3 * 6];
+    float dcYij[3 * 5];
     float digA[3];
     float digB[3*3];
     //float phi;
@@ -438,9 +438,6 @@ void calculate_intermediate_data(__global float* cY0, __global float* cY1, __glo
     my_out->dcYij[12] = init_dcYij12;
     my_out->dcYij[13] = init_dcYij13;
     my_out->dcYij[14] = init_dcYij14;
-    my_out->dcYij[15] = init_dcYij15;
-    my_out->dcYij[16] = init_dcYij16;
-    my_out->dcYij[17] = init_dcYij17;
 
     my_out->digA[0] = init_digA0;
     my_out->digA[1] = init_digA1;
