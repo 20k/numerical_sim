@@ -301,48 +301,53 @@ struct equation_context
 //#define SYMMETRY_BOUNDARY
 #define BORDER_WIDTH 4
 
-inline
-std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
+struct variable_decomp
 {
     std::string buffer;
     std::string val;
-
     bool uses_extension = false;
+    bool normal_variable = false;
+};
+
+inline
+variable_decomp decompose_variable(std::string str)
+{
+    variable_decomp r;
 
     if(str.starts_with("v->"))
     {
-        buffer = "in";
+        r.buffer = "in";
 
-        val = str;
+        r.val = str;
 
-        val.erase(val.begin());
-        val.erase(val.begin());
-        val.erase(val.begin());
+        r.val.erase(r.val.begin());
+        r.val.erase(r.val.begin());
+        r.val.erase(r.val.begin());
 
-        uses_extension = true;
+        r.uses_extension = true;
     }
     else if(str.starts_with("v."))
     {
-        buffer = "in";
+        r.buffer = "in";
 
-        val = str;
+        r.val = str;
 
-        val.erase(val.begin());
-        val.erase(val.begin());
+        r.val.erase(r.val.begin());
+        r.val.erase(r.val.begin());
 
-        uses_extension = true;
+        r.uses_extension = true;
     }
     else if(str.starts_with("ik."))
     {
-        buffer = "temp_in";
+        r.buffer = "temp_in";
 
-        val = str;
+        r.val = str;
 
-        val.erase(val.begin());
-        val.erase(val.begin());
-        val.erase(val.begin());
+        r.val.erase(r.val.begin());
+        r.val.erase(r.val.begin());
+        r.val.erase(r.val.begin());
 
-        uses_extension = true;
+        r.uses_extension = true;
     }
 
     else if(str.starts_with("buffer_read_linear"))
@@ -354,121 +359,127 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
 
         assert(len != std::string_view::npos);
 
-        buffer = std::string(sview.begin(), sview.begin() + len);
-        val = buffer;
+        r.buffer = std::string(sview.begin(), sview.begin() + len);
+        r.val = r.buffer;
     }
 
     else if(str.starts_with("buffer"))
     {
-        buffer = "buffer";
-        val = "buffer";
+        r.buffer = "buffer";
+        r.val = "buffer";
     }
     else if(str.starts_with("cY0"))
     {
-        buffer = "cY0";
-        val = buffer;
+        r.buffer = "cY0";
+        r.val = r.buffer;
     }
     else if(str.starts_with("cY1"))
     {
-        buffer = "cY1";
-        val = buffer;
+        r.buffer = "cY1";
+        r.val = r.buffer;
     }
     else if(str.starts_with("cY2"))
     {
-        buffer = "cY2";
-        val = buffer;
+        r.buffer = "cY2";
+        r.val = r.buffer;
     }
     else if(str.starts_with("cY3"))
     {
-        buffer = "cY3";
-        val = buffer;
+        r.buffer = "cY3";
+        r.val = r.buffer;
     }
     else if(str.starts_with("cY4"))
     {
-        buffer = "cY4";
-        val = buffer;
+        r.buffer = "cY4";
+        r.val = r.buffer;
     }
     else if(str.starts_with("cY5"))
     {
-        buffer = "cY5";
-        val = buffer;
+        r.buffer = "cY5";
+        r.val = r.buffer;
         assert(false);
     }
 
     else if(str.starts_with("cA0"))
     {
-        buffer = "cA0";
-        val = buffer;
+        r.buffer = "cA0";
+        r.val = r.buffer;
     }
     else if(str.starts_with("cA1"))
     {
-        buffer = "cA1";
-        val = buffer;
+        r.buffer = "cA1";
+        r.val = r.buffer;
     }
     else if(str.starts_with("cA2"))
     {
-        buffer = "cA2";
-        val = buffer;
+        r.buffer = "cA2";
+        r.val = r.buffer;
     }
     else if(str.starts_with("cA3"))
     {
-        buffer = "cA3";
-        val = buffer;
+        r.buffer = "cA3";
+        r.val = r.buffer;
     }
     else if(str.starts_with("cA4"))
     {
-        buffer = "cA4";
-        val = buffer;
+        r.buffer = "cA4";
+        r.val = r.buffer;
     }
     else if(str.starts_with("cA5"))
     {
-        buffer = "cA5";
-        val = buffer;
+        r.buffer = "cA5";
+        r.val = r.buffer;
     }
     else if(str.starts_with("cGi0"))
     {
-        buffer = "cGi0";
-        val = buffer;
+        r.buffer = "cGi0";
+        r.val = r.buffer;
     }
     else if(str.starts_with("cGi1"))
     {
-        buffer = "cGi1";
-        val = buffer;
+        r.buffer = "cGi1";
+        r.val = r.buffer;
     }
     else if(str.starts_with("cGi2"))
     {
-        buffer = "cGi2";
-        val = buffer;
+        r.buffer = "cGi2";
+        r.val = r.buffer;
     }
     else if(str.starts_with("X"))
     {
-        buffer = "X";
-        val = buffer;
+        r.buffer = "X";
+        r.val = r.buffer;
     }
     else if(str.starts_with("K"))
     {
-        buffer = "K";
-        val = buffer;
+        r.buffer = "K";
+        r.val = r.buffer;
     }
     else if(str.starts_with("gA"))
     {
-        buffer = "gA";
-        val = buffer;
+        r.buffer = "gA";
+        r.val = r.buffer;
     }
     else if(str.starts_with("gB0"))
     {
-        buffer = "gB0";
-        val = buffer;
+        r.buffer = "gB0";
+        r.val = r.buffer;
     }
     else if(str.starts_with("gB1"))
     {
-        buffer = "gB1";
-        val = buffer;
+        r.buffer = "gB1";
+        r.val = r.buffer;
     }
     else if(str.starts_with("gB2"))
     {
-        buffer = "gB2";
-        val = buffer;
+        r.buffer = "gB2";
+        r.val = r.buffer;
+    }
+    else if(str == "scale")
+    {
+        r.buffer = "scale";
+        r.val = r.buffer;
+        r.normal_variable = true;
     }
     else
     {
@@ -477,7 +488,7 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
         assert(false);
     }
 
-    return {buffer, val, uses_extension};
+    return r;
 }
 
 template<int elements = 5>
@@ -606,11 +617,14 @@ struct differentiation_context
 
         for(auto& i : variables)
         {
-            std::tuple<std::string, std::string, bool> decomp = decompose_variable(i);
+            variable_decomp result = decompose_variable(i);
+
+            if(result.normal_variable)
+                continue;
 
             for(int kk=0; kk < elements; kk++)
             {
-                value to_sub = index(std::get<1>(decomp), std::get<0>(decomp), std::get<2>(decomp), xs[kk], ys[kk], zs[kk]);
+                value to_sub = index(result.val, result.buffer, result.uses_extension, xs[kk], ys[kk], zs[kk]);
 
                 substitutions[kk][i] = type_to_string(to_sub);
             }
@@ -800,7 +814,7 @@ void build_kreiss_oliger_dissipate(equation_context& ctx)
 template<int order = 1>
 value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true, bool linear = false)
 {
-    differentiation_context dctx(ctx, in, idx, true, linear);
+    differentiation_context dctx(ctx, in, idx, pin, linear);
 
     std::array<value, 5> vars = dctx.vars;
 
@@ -1608,6 +1622,7 @@ void build_constraints(equation_context& ctx)
     }
 }
 
+///todo: don't build derivatives for cY5
 inline
 void build_intermediate(equation_context& ctx)
 {
@@ -1649,6 +1664,10 @@ void build_intermediate(equation_context& ctx)
     {
         for(int i=0; i < 6; i++)
         {
+            ///cY5, don't process it
+            if(i == 5)
+                continue;
+
             vec2i idx = linear_indices[i];
 
             value diff = hacky_differentiate(ctx, cY.idx(idx.x(), idx.y()), k);
@@ -1778,11 +1797,19 @@ void build_eqs(equation_context& ctx)
             {
                 int symmetric_index = index_table[i][j];
 
-                int final_index = k * 6 + symmetric_index;
+                ///cY5
+                if(symmetric_index == 5)
+                {
+                    dcYij.idx(k, i, j) = hacky_differentiate(ctx, cY.idx(i, j), k, false);
+                }
+                else
+                {
+                    int final_index = k * 6 + symmetric_index;
 
-                std::string name = "ik.dcYij[" + std::to_string(final_index) + "]";
+                    std::string name = "ik.dcYij[" + std::to_string(final_index) + "]";
 
-                dcYij.idx(k, i, j) = name;
+                    dcYij.idx(k, i, j) = name;
+                }
             }
         }
     }
