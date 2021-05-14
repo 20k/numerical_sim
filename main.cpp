@@ -4336,7 +4336,7 @@ int main()
                 cleaner.push_back(scale);
                 cleaner.push_back(clsize);
 
-                clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {128, 1, 1});
+                clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {16, 16, 1});
             }
 
             cl::args fl3;

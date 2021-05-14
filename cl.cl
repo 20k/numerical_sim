@@ -523,108 +523,96 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    //if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2)
-    {
-        float3 offset = transform_position(ix, iy, iz, dim, scale);
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
 
-        float ox = offset.x;
-        float oy = offset.y;
-        float oz = offset.z;
+    float ox = offset.x;
+    float oy = offset.y;
+    float oz = offset.z;
 
-        float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, time);
+    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, time);
 
-        if(sponge_factor <= 0)
-            return;
+    if(sponge_factor <= 0)
+        return;
 
-        float bl_conformal = init_BL_val;
+    float bl_conformal = init_BL_val;
 
-        float TEMPORARIES0;
+    float TEMPORARIES0;
 
-        float initial_cY0 = init_cY0;
-        float initial_cY1 = init_cY1;
-        float initial_cY2 = init_cY2;
-        float initial_cY3 = init_cY3;
-        float initial_cY4 = init_cY4;
+    float initial_cY0 = init_cY0;
+    float initial_cY1 = init_cY1;
+    float initial_cY2 = init_cY2;
+    float initial_cY3 = init_cY3;
+    float initial_cY4 = init_cY4;
 
-        float initial_cA0 = init_cA0;
-        float initial_cA1 = init_cA1;
-        float initial_cA2 = init_cA2;
-        float initial_cA3 = init_cA3;
-        float initial_cA4 = init_cA4;
-        float initial_cA5 = init_cA5;
+    float initial_cA0 = init_cA0;
+    float initial_cA1 = init_cA1;
+    float initial_cA2 = init_cA2;
+    float initial_cA3 = init_cA3;
+    float initial_cA4 = init_cA4;
+    float initial_cA5 = init_cA5;
 
-        float initial_X = init_X;
+    float initial_X = init_X;
 
-        float fin_cY0 = initial_cY0;
-        float fin_cY1 = initial_cY1;
-        float fin_cY2 = initial_cY2;
-        float fin_cY3 = initial_cY3;
-        float fin_cY4 = initial_cY4;
+    float fin_gA = init_gA;
+    float fin_gB0 = init_gB0;
+    float fin_gB1 = init_gB1;
+    float fin_gB2 = init_gB2;
 
-        float fin_X = initial_X;
+    int index = IDX(ix, iy, iz);
 
-        float fin_gA = init_gA;
-        float fin_gB0 = init_gB0;
-        float fin_gB1 = init_gB1;
-        float fin_gB2 = init_gB2;
+    //#define RADIATIVE
+    #ifdef RADIATIVE
+    fin_gA = 1;
+    fin_gB0 = 0;
+    fin_gB1 = 0;
+    fin_gB2 = 0;
 
-        int index = IDX(ix, iy, iz);
+    initial_cY0 = 1;
+    initial_cY1 = 0;
+    initial_cY2 = 0;
+    initial_cY3 = 1;
+    initial_cY4 = 0;
 
-        //#define RADIATIVE
-        #ifdef RADIATIVE
-        fin_gA = 1;
-        fin_gB0 = 0;
-        fin_gB1 = 0;
-        fin_gB2 = 0;
+    initial_cA0 = 0;
+    initial_cA1 = 0;
+    initial_cA2 = 0;
+    initial_cA3 = 0;
+    initial_cA4 = 0;
+    initial_cA5 = 0;
 
-        fin_cY0 = 1;
-        fin_cY1 = 0;
-        fin_cY2 = 0;
-        fin_cY3 = 1;
-        fin_cY4 = 0;
-        fin_cY5 = 1;
+    initial_X = 1;
+    #endif // RADIATIVE
 
-        initial_cA0 = 0;
-        initial_cA1 = 0;
-        initial_cA2 = 0;
-        initial_cA3 = 0;
-        initial_cA4 = 0;
-        initial_cA5 = 0;
+    cY0[index] = mix(cY0[index],initial_cY0, sponge_factor);
+    cY1[index] = mix(cY1[index],initial_cY1, sponge_factor);
+    cY2[index] = mix(cY2[index],initial_cY2, sponge_factor);
+    cY3[index] = mix(cY3[index],initial_cY3, sponge_factor);
+    cY4[index] = mix(cY4[index],initial_cY4, sponge_factor);
 
-        fin_X = 1;
-        #endif // RADIATIVE
+    cA0[index] = mix(cA0[index],initial_cA0, sponge_factor);
+    cA1[index] = mix(cA1[index],initial_cA1, sponge_factor);
+    cA2[index] = mix(cA2[index],initial_cA2, sponge_factor);
+    cA3[index] = mix(cA3[index],initial_cA3, sponge_factor);
+    cA4[index] = mix(cA4[index],initial_cA4, sponge_factor);
+    cA5[index] = mix(cA5[index],initial_cA5, sponge_factor);
 
-        cY0[index] = mix(cY0[index],fin_cY0, sponge_factor);
-        cY1[index] = mix(cY1[index],fin_cY1, sponge_factor);
-        cY2[index] = mix(cY2[index],fin_cY2, sponge_factor);
-        cY3[index] = mix(cY3[index],fin_cY3, sponge_factor);
-        cY4[index] = mix(cY4[index],fin_cY4, sponge_factor);
+    cGi0[index] = mix(cGi0[index],init_cGi0, sponge_factor);
+    cGi1[index] = mix(cGi1[index],init_cGi1, sponge_factor);
+    cGi2[index] = mix(cGi2[index],init_cGi2, sponge_factor);
 
-        cA0[index] = mix(cA0[index],initial_cA0, sponge_factor);
-        cA1[index] = mix(cA1[index],initial_cA1, sponge_factor);
-        cA2[index] = mix(cA2[index],initial_cA2, sponge_factor);
-        cA3[index] = mix(cA3[index],initial_cA3, sponge_factor);
-        cA4[index] = mix(cA4[index],initial_cA4, sponge_factor);
-        cA5[index] = mix(cA5[index],initial_cA5, sponge_factor);
+    K[index] = mix(K[index],init_K, sponge_factor);
+    X[index] = mix(X[index],initial_X, sponge_factor);
 
-        cGi0[index] = mix(cGi0[index],init_cGi0, sponge_factor);
-        cGi1[index] = mix(cGi1[index],init_cGi1, sponge_factor);
-        cGi2[index] = mix(cGi2[index],init_cGi2, sponge_factor);
+    gA[index] = mix(gA[index],fin_gA, sponge_factor);
+    gB0[index] = mix(gB0[index],fin_gB0, sponge_factor);
+    gB1[index] = mix(gB1[index],fin_gB1, sponge_factor);
+    gB2[index] = mix(gB2[index],fin_gB2, sponge_factor);
 
-        K[index] = mix(K[index],init_K, sponge_factor);
-        X[index] = mix(X[index],fin_X, sponge_factor);
-
-        gA[index] = mix(gA[index],fin_gA, sponge_factor);
-        gB0[index] = mix(gB0[index],fin_gB0, sponge_factor);
-        gB1[index] = mix(gB1[index],fin_gB1, sponge_factor);
-        gB2[index] = mix(gB2[index],fin_gB2, sponge_factor);
-
-        #ifdef USE_GBB
-        gBB0[index] = mix(gBB0[index], init_gBB0, sponge_factor);
-        gBB1[index] = mix(gBB1[index], init_gBB1, sponge_factor);
-        gBB2[index] = mix(gBB2[index], init_gBB2, sponge_factor);
-        #endif // USE_GBB
-    }
+    #ifdef USE_GBB
+    gBB0[index] = mix(gBB0[index], init_gBB0, sponge_factor);
+    gBB1[index] = mix(gBB1[index], init_gBB1, sponge_factor);
+    gBB2[index] = mix(gBB2[index], init_gBB2, sponge_factor);
+    #endif // USE_GBB
 }
 
 float3 srgb_to_lin(float3 C_srgb)
