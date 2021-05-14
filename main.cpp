@@ -2395,18 +2395,18 @@ void build_eqs(equation_context& ctx)
         std::string name = "dtcGi" + std::to_string(i);
 
         ctx.add(name, dtcGi.idx(i));
-        ctx.add("k_cGi" + std::to_string(i), kreiss_oliger_dissipate(ctx, cGi.idx(i)));
+        ctx.add("k_cGi" + std::to_string(i), dissipate_high * kreiss_oliger_dissipate(ctx, cGi.idx(i)));
     }
 
     ctx.add("dtgA", dtgA);
-    ctx.add("k_gA", kreiss_oliger_dissipate(ctx, gA));
+    ctx.add("k_gA", dissipate_high * kreiss_oliger_dissipate(ctx, gA));
 
     for(int i=0; i < 3; i++)
     {
         std::string name = "dtgB" + std::to_string(i);
 
         ctx.add(name, dtgB.idx(i));
-        ctx.add("k_gB" + std::to_string(i), kreiss_oliger_dissipate(ctx, gB.idx(i)));
+        ctx.add("k_gB" + std::to_string(i), dissipate_high * kreiss_oliger_dissipate(ctx, gB.idx(i)));
     }
 
     for(int i=0; i < 3; i++)
