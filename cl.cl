@@ -1144,7 +1144,9 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
             printf("Ik %f\n", ik.Yij[0]);
         }*/
 
-        float curvature = (fabs(cY0[index]/X[index]) + fabs(cY1[index]/X[index]) + fabs(cY2[index]/X[index]) + fabs(cY3[index]/X[index]) + fabs(cY4[index]/X[index])) / 1000.f;
+        float ccY5 = cY5_derived;
+
+        float curvature = (fabs(cY0[index]/X[index]) + fabs(cY1[index]/X[index]) + fabs(cY2[index]/X[index]) + fabs(cY3[index]/X[index]) + fabs(ccY5/X[index])) / 1000.f;
         //float curvature = (fabs(cY0[index]/X[index]) + fabs(cY1[index]/X[index]) + fabs(cY2[index]/X[index]) + fabs(cY3[index]/X[index]) + fabs(cY4[index]/X[index]) + fabs(cY5[index]/X[index])) / 1000.f;
 
         //float curvature = (fabs(v.Yij[0]) + fabs(ik.Yij[1]) + fabs(ik.Yij[2]) + fabs(ik.Yij[3]) + fabs(ik.Yij[4]) + fabs(ik.Yij[5])) / 1000.;
@@ -1521,18 +1523,21 @@ void trace_metric(__global float* cY0, __global float* cY1, __global float* cY2,
         if(p0 < BORDER_WIDTH || p0 >= dim.x - BORDER_WIDTH - 1 || p1 < BORDER_WIDTH || p1 >= dim.y - BORDER_WIDTH - 1 || p2 < BORDER_WIDTH || p2 >= dim.z - BORDER_WIDTH - 1)
             break;
 
-        float ccY0 = buffer_read_linear(cY0, (float3)(p0,p1,p2), dim);
-        float ccY1 = buffer_read_linear(cY1, (float3)(p0,p1,p2), dim);
-        float ccY2 = buffer_read_linear(cY2, (float3)(p0,p1,p2), dim);
-        float ccY3 = buffer_read_linear(cY3, (float3)(p0,p1,p2), dim);
-        float ccY4 = buffer_read_linear(cY4, (float3)(p0,p1,p2), dim);
+        float Yxx = buffer_read_linear(cY0, (float3)(p0,p1,p2), dim);
+        float Yxy = buffer_read_linear(cY1, (float3)(p0,p1,p2), dim);
+        float Yxz = buffer_read_linear(cY2, (float3)(p0,p1,p2), dim);
+        float Yyy = buffer_read_linear(cY3, (float3)(p0,p1,p2), dim);
+        float Yyz = buffer_read_linear(cY4, (float3)(p0,p1,p2), dim);
         float cX = buffer_read_linear(X, (float3)(p0,p1,p2), dim);
 
-        float curvature = fabs(ccY0 / cX) +
-                          fabs(ccY1 / cX) +
-                          fabs(ccY2 / cX) +
-                          fabs(ccY3 / cX) +
-                          fabs(ccY4 / cX);
+        float Yzz = (1 + Yyy * Yxz * Yxz - 2 * Yxy * Yyz * Yxz + Yxx * Yyz * Yyz) / (Yxx * Yyy - Yxy * Yxy);
+
+        float curvature = fabs(Yxx / cX) +
+                          fabs(Yxy / cX) +
+                          fabs(Yxz / cX) +
+                          fabs(Yyy / cX) +
+                          fabs(Yyz / cX) +
+                          fabs(Yzz / cX);
 
         float ascalar = curvature / 1000.f;
 
