@@ -757,6 +757,7 @@ struct standard_arguments
     }
 };
 
+#if 0
 void build_kreiss_oliger_dissipate(equation_context& ctx)
 {
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
@@ -795,6 +796,16 @@ void build_kreiss_oliger_dissipate(equation_context& ctx)
     {
         ctx.add("k_gB" + std::to_string(i), dissipate_high * kreiss_oliger_dissipate(ctx, args.gB.idx(i)));
     }
+}
+#endif // 0
+
+void build_kreiss_oliger_dissipate_singular(equation_context& ctx)
+{
+    value buf = "buffer[IDX(ix,iy,iz)]";
+
+    value coeff = "coefficient";
+
+    ctx.add("KREISS_DISSIPATE_SINGULAR", coeff * kreiss_oliger_dissipate(ctx, buf));
 }
 
 template<int order = 1>
@@ -3833,8 +3844,11 @@ int main()
     equation_context ctx7;
     loop_geodesics(ctx7, {size.x(), size.y(), size.z()});
 
-    equation_context ctx8;
-    build_kreiss_oliger_dissipate(ctx8);
+    /*equation_context ctx8;
+    build_kreiss_oliger_dissipate(ctx8);*/
+
+    equation_context ctx10;
+    build_kreiss_oliger_dissipate_singular(ctx10);
 
     /*for(auto& i : ctx.values)
     {
@@ -3861,8 +3875,9 @@ int main()
     //ctx5.build(argument_string, 4);
     ctx6.build(argument_string, 5);
     ctx7.build(argument_string, 6);
-    ctx8.build(argument_string, 7);
+    //ctx8.build(argument_string, 7);
     setup_initial.build(argument_string, 8);
+    ctx10.build(argument_string, 9);
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 
@@ -3934,6 +3949,20 @@ int main()
             }
         }
     }
+
+    float dissipate_low = 0.15;
+    float dissipate_high = 0.35;
+
+    std::array<float, buffer_count> dissipation_coefficients
+    {
+        dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, //cY
+        dissipate_high, dissipate_high, dissipate_high, dissipate_high, dissipate_high, dissipate_high, //cA
+        dissipate_high, dissipate_high, dissipate_high, //cGi
+        dissipate_high, //K
+        dissipate_high, //X
+        dissipate_high, //gA
+        dissipate_high, dissipate_high, dissipate_high //gB
+    };
 
     std::array<cl::buffer, 2> u_args{clctx.ctx, clctx.ctx};
     u_args[0].alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
@@ -4299,7 +4328,7 @@ int main()
 
             clctx.cqueue.exec("evolve", a1, {size.x(), size.y(), size.z()}, {64, 1, 1});
 
-            {
+            /*{
                 cl::args diss;
 
                 ///the input here is the same input to evolve
@@ -4319,6 +4348,25 @@ int main()
 
                 clctx.cqueue.exec("numerical_dissipate", diss, {size.x(), size.y(), size.z()}, {128, 1, 1});
 
+            }*/
+
+            {
+                for(int i=0; i < buffer_count; i++)
+                {
+                    cl::args diss;
+
+                    diss.push_back(generic_data[which_data][i]);
+                    diss.push_back(generic_data[(which_data + 1) % 2][i]);
+
+                    float coeff = dissipation_coefficients[i];
+
+                    diss.push_back(coeff);
+                    diss.push_back(scale);
+                    diss.push_back(clsize);
+                    diss.push_back(timestep);
+
+                    clctx.cqueue.exec("dissipate_single", diss, {size.x(), size.y(), size.z()}, {128, 1, 1});
+                }
             }
 
             which_data = (which_data + 1) % 2;

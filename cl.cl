@@ -983,6 +983,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     #endif // 0
 }
 
+#if 0
 ///kreiss
 __kernel
 void numerical_dissipate(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
@@ -1064,7 +1065,33 @@ void numerical_dissipate(__global float* cY0, __global float* cY1, __global floa
     ogB0[index] += (diss_gB0) * timestep;
     ogB1[index] += (diss_gB1) * timestep;
     ogB2[index] += (diss_gB2) * timestep;
+}
+#endif // 0
 
+__kernel
+void dissipate_single(__global float* buffer, __global float* obuffer,
+                      float coefficient,
+                      float scale, int4 dim, float timestep)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    #ifndef SYMMETRY_BOUNDARY
+    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
+        return;
+    #endif // SYMMETRY_BOUNDARY
+
+    int index = IDX(ix, iy, iz);
+
+    float TEMPORARIES9;
+
+    float dissipate_single = KREISS_DISSIPATE_SINGULAR;
+
+    obuffer[index] += dissipate_single * timestep;
 }
 
 __kernel
