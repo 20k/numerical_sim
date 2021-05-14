@@ -1977,10 +1977,9 @@ void build_eqs(equation_context& ctx)
 
             value s3 = 0;
 
-            ///could factor out cGi
             for(int k=0; k < 3; k++)
             {
-                s3 = s3 + 0.5f * (derived_cGi.idx(k) * christoff1.idx(i, j, k) + derived_cGi.idx(k) * christoff1.idx(j, i, k));
+                s3 = s3 + 0.5f * derived_cGi.idx(k) * (christoff1.idx(i, j, k) + christoff1.idx(j, i, k));
             }
 
             value s4 = 0;
