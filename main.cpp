@@ -2521,6 +2521,32 @@ void build_eqs(equation_context& ctx)
         value s10 = (2.f/3.f) * -2 * gA * K * derived_cGi.idx(i);
 
         dtcGi.idx(i) = s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8 + s9 + s10;
+
+        ///https://arxiv.org/pdf/1205.5111v1.pdf 50
+        #define EQ_50
+        #ifdef EQ_50
+        auto step = [](const value& in)
+        {
+            return dual_if(in >= 0,
+            [](){return 1;},
+            [](){return 0;});
+        };
+
+        value bkk = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            bkk += hacky_differentiate(ctx, gB.idx(k), k);
+        }
+
+        float E = 1;
+
+        value lambdai = (2.f/3.f) * (bkk - 2 * gA * K)
+                        - hacky_differentiate(ctx, gB.idx(i), i)
+                        - (2.f/5.f) * gA * raise_second_index(cA, cY, icY).idx(i, i);
+
+        dtcGi.idx(i) += -(1 + E) * step(lambdai) * lambdai * bigGi.idx(i);
+        #endif // EQ_50
     }
     #endif // CHRISTOFFEL_49
 
