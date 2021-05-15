@@ -2383,6 +2383,7 @@ void build_eqs(equation_context& ctx)
     ///https://arxiv.org/pdf/gr-qc/0511048.pdf
     ///could likely eliminate the dphi term
 
+    #ifdef SIMPLE_CHRISTOFFEL
     for(int i=0; i < 3; i++)
     {
         value sum = 0;
@@ -2434,6 +2435,93 @@ void build_eqs(equation_context& ctx)
 
         dtcGi.idx(i) = sum;
     }
+    #endif // SIMPLE_CHRISTOFFEL
+
+    ///https://arxiv.org/pdf/1205.5111v1.pdf 49
+    #define CHRISTOFFEL_49
+    #ifdef CHRISTOFFEL_49
+    tensor<value, 3, 3> littlekij = icY.to_tensor() * K;
+
+    for(int i=0; i < 3; i++)
+    {
+        value s1 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                s1 += 2 * gA * christoff2.idx(i, j, k) * icAij.idx(j, k);
+            }
+        }
+
+        value s2 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s2 += 2 * gA * -(2.f/3.f) * hacky_differentiate(ctx, littlekij.idx(i, j), j);
+        }
+
+        value s3 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s3 += 2 * (-1.f/4.f) * gA_X * 6 * icAij.idx(i, j) * hacky_differentiate(ctx, X, j);
+        }
+
+        value s4 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s4 += -2 * icAij.idx(i, j) * hacky_differentiate(ctx, gA, j);
+        }
+
+        value s5 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s5 += upwind_differentiate(ctx, gB.idx(j), cGi.idx(i), j);
+        }
+
+        value s6 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s6 += -derived_cGi.idx(j) * hacky_differentiate(ctx, gB.idx(i), j);
+        }
+
+        value s7 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                s7 += icY.idx(j, k) * hacky_differentiate(ctx, digB.idx(j, i), k);
+            }
+        }
+
+        value s8 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                s8 += (1.f/3.f) * icY.idx(i, j) * hacky_differentiate(ctx, digB.idx(j, k), k);
+            }
+        }
+
+        value s9 = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            s9 += (2.f/3.f) * hacky_differentiate(ctx, gB.idx(k), k) * derived_cGi.idx(i);
+        }
+
+        ///this is the only instanced of derived_cGi that might want to be regular cGi
+        value s10 = (2.f/3.f) * -2 * gA * K * derived_cGi.idx(i);
+
+        dtcGi.idx(i) = s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8 + s9 + s10;
+    }
+    #endif // CHRISTOFFEL_49
 
     value dtgA = -2 * gA * K + lie_derivative(ctx, gB, gA);
 
