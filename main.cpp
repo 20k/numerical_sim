@@ -2396,19 +2396,12 @@ void build_eqs(equation_context& ctx)
                 s1 = s1 + icY.idx(j, k) * hacky_differentiate(ctx, digB.idx(k, i), j);
             }
 
-            /*if(i == 0 && j == 0)
-            {
-                ctx.add("debug_val", hacky_differentiate(ctx, digB.idx(0, 0), 0));
-            }*/
-
             value s2 = 0;
 
             for(int k=0; k < 3; k++)
             {
                 s2 = s2 + (1.f/3.f) * icY.idx(i, j) * hacky_differentiate(ctx, digB.idx(k, k), j);
             }
-
-            //value s3 = gB.idx(j) * hacky_differentiate(ctx, cGi.idx(i), j);
 
             value s3 = upwind_differentiate(ctx, gB.idx(j), cGi.idx(i), j);
 
@@ -2427,17 +2420,6 @@ void build_eqs(equation_context& ctx)
                 {
                     s8 = s8 + christoff2.idx(i, j, k) * icAij.idx(j, k);
                 }
-
-                /*value s9 = 6 * icAij.idx(i, j) * dphi.idx(j);
-
-                s9 = dual_if(isfinite(s9), [&]()
-                {
-                    return s9;
-                },
-                []()
-                {
-                    return 0;
-                });*/
 
                 value s9 = (-1/4.f) * gA_X * 6 * icAij.idx(i, j) * hacky_differentiate(ctx, X, j);
 
