@@ -2438,6 +2438,7 @@ void build_eqs(equation_context& ctx)
     #endif // SIMPLE_CHRISTOFFEL
 
     ///https://arxiv.org/pdf/1205.5111v1.pdf 49
+    ///made it to 58 with this
     #define CHRISTOFFEL_49
     #ifdef CHRISTOFFEL_49
     tensor<value, 3, 3> littlekij = unpinned_icY.to_tensor() * K;
