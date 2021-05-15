@@ -1928,6 +1928,33 @@ void build_eqs(equation_context& ctx)
     tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, cY);
     tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, cY, icY);
 
+    ///https://arxiv.org/pdf/1205.5111v1.pdf just after 34
+    ///this is currently the same as derived_cGi, but they're used differently
+    tensor<value, 3> cGi_G;
+
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                sum += icY.idx(j, k) * christoff2.idx(i, j, k);
+            }
+        }
+
+        cGi_G.idx(i) = sum;
+    }
+
+    ///https://arxiv.org/pdf/1205.5111v1.pdf 34
+    tensor<value, 3> bigGi;
+
+    for(int i=0; i < 3; i++)
+    {
+        bigGi.idx(i) = cGi.idx(i) - cGi_G.idx(i);
+    }
+
     tensor<value, 3> derived_cGi;
 
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf page 4
