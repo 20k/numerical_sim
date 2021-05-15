@@ -1185,8 +1185,6 @@ template<typename T, int N>
 inline
 tensor<T, N, N> gpu_trace_free_cAij(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
 {
-    return mT;
-
     tensor<T, N, N> TF;
 
     for(int i=0; i < N; i++)
@@ -1195,9 +1193,9 @@ tensor<T, N, N> gpu_trace_free_cAij(const tensor<T, N, N>& mT, const metric<T, N
         {
             value sum = 0;
 
-            for(int l=0; l < 3; l++)
+            for(int l=0; l < N; l++)
             {
-                for(int m=0; m < 3; m++)
+                for(int m=0; m < N; m++)
                 {
                     sum += mT.idx(l, m) * inverse.idx(i, l) * inverse.idx(j, m);
                 }
@@ -1619,7 +1617,9 @@ void build_constraints(equation_context& ctx)
     ///https://arxiv.org/pdf/0709.3559.pdf b.49
     fixed_cA = fixed_cA / det_cY_pow;*/
 
-    tensor<value, 3, 3> fixed_cA = gpu_trace_free_cAij(cA, cY, cY.invert());
+    //tensor<value, 3, 3> fixed_cA = gpu_trace_free(cA, cY, cY.invert());
+
+    tensor<value, 3, 3> fixed_cA = gpu_trace_free(cA, cY, cY.invert());
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
