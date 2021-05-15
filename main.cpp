@@ -672,7 +672,7 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
 
 value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
 {
-    #define NO_KREISS
+    //#define NO_KREISS
     #ifndef NO_KREISS
     value fin = 0;
 
