@@ -753,7 +753,9 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     ocA0[index] = cA0[index] + (f_dtcAij0) * timestep;
     ocA1[index] = cA1[index] + (f_dtcAij1) * timestep;
     ocA2[index] = cA2[index] + (f_dtcAij2) * timestep;
+    #ifndef NO_CAIJYY
     ocA3[index] = cA3[index] + (f_dtcAij3) * timestep;
+    #endif // NO_CAIJYY
     ocA4[index] = cA4[index] + (f_dtcAij4) * timestep;
     ocA5[index] = cA5[index] + (f_dtcAij5) * timestep;
 

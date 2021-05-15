@@ -654,12 +654,13 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
 
     value scale = "scale";
 
-    #define FOURTH
+    //#define FOURTH
     #ifdef FOURTH
     differentiation_context<5> dctx(ctx, in, idx, false);
     value stencil = -(1 / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
     #endif // FOURTH
 
+    #define SIXTH
     #ifdef SIXTH
     differentiation_context<7> dctx(ctx, in, idx, false);
     value stencil = (1 / (64.f * scale)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
@@ -1020,6 +1021,30 @@ tensor<T, N, N> raise_index(const tensor<T, N, N>& mT, const metric<T, N, N>& me
             for(int k=0; k < N; k++)
             {
                 sum = sum + inverse.idx(i, k) * mT.idx(k, j);
+                //sum = sum + mT.idx(i, k) * inverse.idx(k, j);
+            }
+
+            ret.idx(i, j) = sum;
+        }
+    }
+
+    return ret;
+}
+
+template<typename T, int N>
+tensor<T, N, N> raise_second_index(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
+{
+    tensor<T, N, N> ret;
+
+    for(int i=0; i < N; i++)
+    {
+        for(int j=0; j < N; j++)
+        {
+            T sum = 0;
+
+            for(int k=0; k < N; k++)
+            {
+                sum = sum + inverse.idx(k, j) * mT.idx(i, k);
                 //sum = sum + mT.idx(i, k) * inverse.idx(k, j);
             }
 
@@ -1610,6 +1635,7 @@ void build_constraints(equation_context& ctx)
     /// / det_cY_pow
     metric<value, 3, 3> fixed_cY = cY / det_cY_pow;*/
 
+    ///sucks
     //tensor<value, 3, 3> fixed_cA = gpu_trace_free_cAij(cA, fixed_cY, fixed_cY.invert());
 
     /*tensor<value, 3, 3> fixed_cA = cA;
@@ -1619,7 +1645,13 @@ void build_constraints(equation_context& ctx)
 
     //tensor<value, 3, 3> fixed_cA = gpu_trace_free(cA, cY, cY.invert());
 
-    tensor<value, 3, 3> fixed_cA = gpu_trace_free(cA, cY, cY.invert());
+    inverse_metric<value, 3, 3> icY = cY.invert();
+
+    tensor<value, 3, 3> raised_cA = raise_second_index(cA, cY, icY);
+
+    tensor<value, 3, 3> fixed_cA = cA;
+
+    fixed_cA.idx(1, 1) = -(raised_cA.idx(0, 0) + raised_cA.idx(2, 2) + cA.idx(0, 1) * icY.idx(0, 1) + cA.idx(1, 2) * icY.idx(1, 2)) / icY.idx(1, 1);
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
@@ -1630,6 +1662,8 @@ void build_constraints(equation_context& ctx)
         //ctx.add("fix_cY" + std::to_string(i), fixed_cY.idx(idx.x(), idx.y()));
         ctx.add("fix_cA" + std::to_string(i), fixed_cA.idx(idx.x(), idx.y()));
     }
+
+    ctx.add("NO_CAIJYY", 1);
 }
 
 inline
@@ -4341,6 +4375,21 @@ int main()
 
             clctx.cqueue.exec("evolve", a1, {size.x(), size.y(), size.z()}, {64, 1, 1});
 
+            {
+                cl::args constraints;
+
+                for(auto& i : generic_data[(which_data + 1) % 2])
+                {
+                    constraints.push_back(i);
+                }
+
+                //constraints.push_back(bssnok_datas[which_data]);
+                constraints.push_back(scale);
+                constraints.push_back(clsize);
+
+                clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {size.x(), size.y(), size.z()}, {128, 1, 1});
+            }
+
             /*{
                 cl::args diss;
 
@@ -4414,19 +4463,6 @@ int main()
             fl3.push_back(intermediate);
 
             clctx.cqueue.exec("calculate_intermediate_data", fl3, {size.x(), size.y(), size.z()}, {128, 1, 1});
-
-            cl::args constraints;
-
-            for(auto& i : generic_data[which_data])
-            {
-                constraints.push_back(i);
-            }
-
-            //constraints.push_back(bssnok_datas[which_data]);
-            constraints.push_back(scale);
-            constraints.push_back(clsize);
-
-            clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {size.x(), size.y(), size.z()}, {128, 1, 1});
 
             float r_extract = c_at_max/4;
 
