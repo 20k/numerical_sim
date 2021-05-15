@@ -307,6 +307,15 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
     std::string buffer;
     std::string val;
 
+    if(str.ends_with(")]"))
+    {
+        if(!str.ends_with("[IDX(ix,iy,iz)]"))
+        {
+            std::cout << "Got bad string " << str << std::endl;
+            assert(false);
+        }
+    }
+
     bool uses_extension = false;
 
     if(str.starts_with("v->"))
@@ -1390,7 +1399,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     //std::vector<float> black_hole_m{0.5f, 0.5f};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.025}, {0, 0, -0.025}}; ///pick better velocities
 
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.1515f, 0, 0}), san_black_hole_pos({2.1515f, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.1515f, 0, 0}), san_black_hole_pos({3.1515f, 0, 0})};
+    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.1515f, 0, 0}), san_black_hole_pos({2.1515f, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.5f - 0, 0, 0}), san_black_hole_pos({2.5f + 0, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, -0.05}, {0, 0, 0.05}};
     std::vector<vec3f> black_hole_velocity{{0, 0, 0.335/16}, {0, 0, -0.335/16}};
@@ -3951,7 +3961,7 @@ int main()
     }
 
     float dissipate_low = 0.15;
-    float dissipate_high = 0.35;
+    float dissipate_high = 0.25;
 
     std::array<float, buffer_count> dissipation_coefficients
     {
@@ -4295,7 +4305,7 @@ int main()
 
         if(step)
         {
-            float timestep = 0.01;
+            float timestep = 0.01/2;
 
             if(steps < 20)
                timestep = 0.001;
