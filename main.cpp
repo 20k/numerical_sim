@@ -647,32 +647,32 @@ struct differentiation_context
 ///dissipation is fixing some stuff, todo: investigate why so much dissipation is required
 value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int idx)
 {
-    differentiation_context<7> dctx(ctx, in, idx, false);
-    //differentiation_context<5> dctx(ctx, in, idx, false);
 
     int d = 2;
 
-    ///todo: test lower value again
-    //float dissipate = 0.25f/16.f;
-
-    //float dissipate = 0.25f;
-    //float dissipate = 0.25f/5.5f;
-    //float dissipate = 0.25f/1.1f;
+    ///https://en.wikipedia.org/wiki/Finite_difference_coefficient according to wikipedia, this is the 6th derivative with 2nd order accuracy. I am confused, but at least I know where it came from
 
     value scale = "scale";
 
-    //value stencil = -(1 / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
+    #define FOURTH
+    #ifdef FOURTH
+    differentiation_context<5> dctx(ctx, in, idx, false);
+    value stencil = -(1 / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
+    #endif // FOURTH
 
-    ///https://en.wikipedia.org/wiki/Finite_difference_coefficient according to wikipedia, this is the 6th derivative with 2nd order accuracy. I am confused, but at least I know where it came from
+    #ifdef SIXTH
+    differentiation_context<7> dctx(ctx, in, idx, false);
     value stencil = (1 / (64.f * scale)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
+    #endif // SIXTH
 
-    //value stencil = (-dctx.vars[4] + 8 * dctx.vars[3] - 8 * dctx.vars[1] + dctx.vars[0]) / 12;
 
     return stencil;
 }
 
 value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
 {
+    #define NO_KREISS
+    #ifndef NO_KREISS
     value fin = 0;
 
     for(int i=0; i < 3; i++)
@@ -681,6 +681,9 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
     }
 
     return fin;
+    #else
+    return in;
+    #endif
 }
 
 std::string bidx(const std::string& buf, bool interpolate)
