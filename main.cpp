@@ -682,7 +682,7 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
 
     return fin;
     #else
-    return in;
+    return 0;
     #endif
 }
 
