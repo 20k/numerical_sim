@@ -1955,6 +1955,8 @@ void build_eqs(equation_context& ctx)
         bigGi.idx(i) = cGi.idx(i) - cGi_G.idx(i);
     }
 
+    tensor<value, 3> bigGi_lower = lower_index(bigGi, cY);
+
     tensor<value, 3> derived_cGi;
 
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf page 4
@@ -1971,6 +1973,8 @@ void build_eqs(equation_context& ctx)
         derived_cGi.idx(i) = sum;
     }*/
 
+    #define USE_DERIVED_CGI
+    #ifdef USE_DERIVED_CGI
     for(int i=0; i < 3; i++)
     {
         value sum = 0;
@@ -1985,6 +1989,9 @@ void build_eqs(equation_context& ctx)
 
         derived_cGi.idx(i) = sum;
     }
+    #else
+    derived_cGi = cGi;
+    #endif
 
     /*tensor<value, 3, 3, 3> cGijk;
 
@@ -2029,6 +2036,8 @@ void build_eqs(equation_context& ctx)
         }
     }*/
 
+    tensor<value, 3> gB_lower = lower_index(gB, cY);
+
     tensor<value, 3> linear_dB;
 
     for(int i=0; i < 3; i++)
@@ -2041,6 +2050,22 @@ void build_eqs(equation_context& ctx)
     ///https://arxiv.org/pdf/gr-qc/0511048.pdf (1)
     ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.66
     tensor<value, 3, 3> dtcYij = -2 * gA * cA + lie_cYij;
+
+    #define USE_DTCYIJ_MODIFICATION
+    #ifdef USE_DTCYIJ_MODIFICATION
+    ///https://arxiv.org/pdf/1205.5111v1.pdf 46
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            float sigma = 2/5.f;
+
+            dtcYij.idx(i, j) += sigma * 0.5f * (gB_lower.idx(i) * bigGi_lower.idx(j) + gB_lower.idx(j) * bigGi_lower.idx(i));
+
+            dtcYij.idx(i, j) += -(1.f/5.f) * cY.idx(i, j) * sum_multiply(gB, bigGi_lower);
+        }
+    }
+    #endif // USE_DTCYIJ_MODIFICATION
 
     value dtX = (2.f/3.f) * X * (gA * K - sum(linear_dB)) + sum(tensor_upwind(ctx, gB, X));
 
