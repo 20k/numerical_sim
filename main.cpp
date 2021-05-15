@@ -2051,6 +2051,7 @@ void build_eqs(equation_context& ctx)
     ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.66
     tensor<value, 3, 3> dtcYij = -2 * gA * cA + lie_cYij;
 
+    ///makes it to 50 with this enabled
     #define USE_DTCYIJ_MODIFICATION
     #ifdef USE_DTCYIJ_MODIFICATION
     ///https://arxiv.org/pdf/1205.5111v1.pdf 46
