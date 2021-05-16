@@ -1106,14 +1106,17 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
             float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, __write_only image2d_t screen, float time)
 {
     int ix = get_global_id(0);
-    int iy = get_global_id(1);
+    //int iy = get_global_id(1);
+    //int iz = dim.z/2;
+    int iy = dim.y/2;
+    int iz = get_global_id(1);
 
-    if(ix >= dim.x || iy >= dim.y)
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    if(ix <= 4 || ix >= dim.x - 5 || iy <= 4 || iy >= dim.y - 5)
+    if(ix <= 4 || ix >= dim.x - 5 || iy <= 4 || iy >= dim.y - 5 || iz <= 4 || iz >= dim.z - 5)
         return;
-
 
 
     int index_table[3][3] = {{0, 1, 2},
@@ -1124,7 +1127,6 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
 
     //for(int z = 20; z < dim.z-20; z++)
 
-    int iz = dim.z/2;
     {
         ///conformal christoffel derivatives
         /*float dcGijk[3 * 3 * 6];
@@ -1143,7 +1145,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         {
             float3 sponge_col = {sponge_factor, 0, 0};
 
-            write_imagef(screen, (int2){ix, iy}, (float4)(srgb_to_lin(sponge_col), 1));
+            write_imagef(screen, (int2){get_global_id(0), get_global_id(1)}, (float4)(srgb_to_lin(sponge_col), 1));
             return;
         }
 
@@ -1187,7 +1189,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
 
     float3 lin_col = srgb_to_lin(col);
 
-    write_imagef(screen, (int2){ix, iy}, (float4)(lin_col.xyz, 1));
+    write_imagef(screen, (int2){get_global_id(0), get_global_id(1)}, (float4)(lin_col.xyz, 1));
     //write_imagef(screen, (int2){ix, iy}, (float4){max_scalar, max_scalar, max_scalar, 1});
 }
 
