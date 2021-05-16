@@ -3840,89 +3840,17 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     ctx.add("universe_size", universe_length * scale);
 
     tensor<value, 3> X_upper = {"lp1", "lp2", "lp3"};
-
     tensor<value, 3> V_upper = {"V0", "V1", "V2"};
-    /*tensor<value, 3> V_lower = lower_index(V_upper, args.Yij);
-
-    ctx.pin(V_lower);
-
-    value WH;
-
-    {
-        value WH_sum_inner = 0;
-
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                WH_sum_inner += V_upper.idx(i) * V_upper.idx(j) * args.Yij.idx(i, j);
-            }
-        }
-
-        WH = sqrt(1 + WH_sum_inner);
-    }
-
-    ctx.pin(WH);
-
-    ctx.add("debug_wh", WH);*/
-
-    /*tensor<value, 3> dx;
-
-    for(int i=0; i < 3; i++)
-    {
-        dx.idx(i) = -args.gB.idx(i) + (args.gA / WH) * V_upper.idx(i);
-    }*/
 
     tensor<value, 3> dx = args.gA * V_upper - args.gB;
 
-    //value dTdt = args.gA / WH;
+    inverse_metric<value, 3, 3> iYij = args.Yij.invert();
 
-    /*tensor<value, 3> dVi_l;
-
-    for(int i=0; i < 3; i++)
-    {
-        value p1 = -WH * digA.idx(i);
-
-        value p2 = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            p2 += -V_lower.idx(j) * digB.idx(i, j);
-        }
-
-        value p3 = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            for(int k=0; k < 3; k++)
-            {
-                p3 += 0.5f * V_upper.idx(j) * V_upper.idx(k) * hacky_differentiate<order>(ctx, unpinned_Yij.idx(j, k), i, true, true);
-            }
-        }
-
-        dVi_l.idx(i) = p1 + p2 + p3;
-    }
-
-    tensor<value, 3> V_lower_next;
-    //tensor<value, 3> V_lower_next = V_lower + dVi_l * step;
-
-    for(int i=0; i < 3; i++)
-    {
-        V_lower_next.idx(i) = V_lower.idx(i) + dVi_l.idx(i);
-    }
-
-    ctx.pin(V_lower_next);
-
-    tensor<value, 3> V_upper_next = raise_index(V_lower_next, args.Yij, args.Yij.invert());
-
-    tensor<value, 3> V_upper_diff;
-
-    for(int i=0; i <3; i++)
-    {
-        V_upper_diff.idx(i) = V_upper_next.idx(i) - V_upper.idx(i);
-    }*/
+    ctx.pin(iYij);
 
     tensor<value, 3, 3, 3> full_christoffel2 = gpu_christoffel_symbols_2(ctx, args.Yij, args.Yij.invert(), true);
+
+    ctx.pin(full_christoffel2);
 
     tensor<value, 3> V_upper_diff;
 
@@ -3946,8 +3874,8 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
                 christoffel_sum += full_christoffel2.idx(i, j, k) * V_upper.idx(k);
             }
 
-            V_upper_diff.idx(i) += args.gA * V_upper.idx(j) * (V_upper.idx(i) * (hacky_differentiate(ctx, log(args.gA), j, true, true) - kjvk) + 2 * raise_index(args.Kij, args.Yij, args.Yij.invert()).idx(i, j) - christoffel_sum)
-                                   - args.Yij.invert().idx(i, j) * hacky_differentiate(ctx, args.gA, j, true, true) - V_upper.idx(j) * hacky_differentiate(ctx, args.gB.idx(i), j, true, true);
+            V_upper_diff.idx(i) += args.gA * V_upper.idx(j) * (V_upper.idx(i) * (hacky_differentiate(ctx, log(args.gA), j, true, true) - kjvk) + 2 * raise_index(args.Kij, args.Yij, iYij).idx(i, j) - christoffel_sum)
+                                   - iYij.idx(i, j) * hacky_differentiate(ctx, args.gA, j, true, true) - V_upper.idx(j) * hacky_differentiate(ctx, args.gB.idx(i), j, true, true);
 
 
         }
@@ -3960,23 +3888,6 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     ctx.add("X0Diff", dx.idx(0));
     ctx.add("X1Diff", dx.idx(1));
     ctx.add("X2Diff", dx.idx(2));
-
-    /*ctx.add("V0N_d", V_upper_next.idx(0));
-    ctx.add("V1N_d", V_upper_next.idx(1));
-    ctx.add("V2N_d", V_upper_next.idx(2));
-
-    tensor<value, 3> X_next;
-
-    for(int i=0; i < 3; i++)
-    {
-        X_next.idx(i) = X_upper.idx(i) + dx.idx(i);
-    }
-
-    //ctx.add("DTN", )
-
-    ctx.add("X0N_d", X_next.idx(0));
-    ctx.add("X1N_d", X_next.idx(1));
-    ctx.add("X2N_d", X_next.idx(2));*/
 
     /**
     [tt, tx, ty, tz,
