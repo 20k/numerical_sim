@@ -4224,6 +4224,7 @@ int main()
 
     clctx.cqueue.exec("setup_u_offset", initial_u_args2, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
+    ///I need to do this properly, where it keeps iterating until it converges
     for(int i=0; i < 10000; i++)
     {
         cl::args interate_u_args;
