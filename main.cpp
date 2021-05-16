@@ -4224,7 +4224,7 @@ int main()
 
     clctx.cqueue.exec("setup_u_offset", initial_u_args2, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
-    for(int i=0; i < 1000; i++)
+    for(int i=0; i < 10000; i++)
     {
         cl::args interate_u_args;
         interate_u_args.push_back(u_args[which_u_args]);
