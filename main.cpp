@@ -1421,15 +1421,21 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({0, -1.1515 * 0.5f, 0}), san_black_hole_pos({0, 1.1515 * 0.5f, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.1515, 0, 0}), san_black_hole_pos({3.1515, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({5, 0, 0})};
-    std::vector<float> black_hole_m{0.45f, 0.45f};
     //std::vector<float> black_hole_m{0.5f, 0.5f};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.025}, {0, 0, -0.025}}; ///pick better velocities
 
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.1515f, 0, 0}), san_black_hole_pos({3.1515f, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.1515f, 0, 0}), san_black_hole_pos({2.1515f, 0, 0})};
     //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.5f - 0, 0, 0}), san_black_hole_pos({2.5f + 0, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, -0.05}, {0, 0, 0.05}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, 0.335/16}, {0, 0, -0.335/16}};
+
+    /*std::vector<float> black_hole_m{0.45f, 0.45f};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.1515f, 0, 0}), san_black_hole_pos({3.1515f, 0, 0})};
+    std::vector<vec3f> black_hole_velocity{{0, 0, 0.335/8}, {0, 0, -0.335/8}};*/
+
+    ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
+    std::vector<float> black_hole_m{0.463, 0.47};
+    std::vector<vec3f> black_hole_pos{{-1.516, 0, 0}, {1.516, 0, 0}};
+    std::vector<vec3f> black_hole_velocity{{-0.258, 0, 0}, {0.258, 0, 0}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
 
