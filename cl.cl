@@ -1471,7 +1471,7 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
             continue;
         }
 
-        last_skipped = true;
+        last_skipped = false;
 
         V0 += dV0 * ds;
         V1 += dV1 * ds;
