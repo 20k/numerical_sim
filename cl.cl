@@ -1431,7 +1431,7 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
     bool deliberate_termination = false;
     bool last_skipped = false;
 
-    for(int iteration=0; iteration < 8000; iteration++)
+    for(int iteration=0; iteration < 16000; iteration++)
     {
         float3 cpos = {lp1, lp2, lp3};
 
