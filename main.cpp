@@ -623,7 +623,7 @@ struct differentiation_context
 
                 if(should_pin)
                 {
-                    ctx.pin(to_sub);
+                    //ctx.pin(to_sub);
                 }
 
                 substitutions[kk][i] = type_to_string(to_sub);
@@ -641,7 +641,7 @@ struct differentiation_context
         {
             for(auto& i : vars)
             {
-                ctx.pin(i);
+                //ctx.pin(i);
             }
         }
     }
@@ -1707,7 +1707,10 @@ void build_intermediate(equation_context& ctx)
         digA.idx(i) = hacky_differentiate(ctx, gA, i);
     }
 
+    ctx.pin(digA);
+
     tensor<value, 3, 3> digB;
+
 
     ///derivative
     for(int i=0; i < 3; i++)
@@ -1719,6 +1722,8 @@ void build_intermediate(equation_context& ctx)
         }
     }
 
+    ctx.pin(digB);
+
     for(int k=0; k < 3; k++)
     {
         for(int i=0; i < 6; i++)
@@ -1726,6 +1731,8 @@ void build_intermediate(equation_context& ctx)
             vec2i idx = linear_indices[i];
 
             value diff = hacky_differentiate(ctx, cY.idx(idx.x(), idx.y()), k);
+
+            ctx.pin(diff);
 
             int linear_idx = k * 6 + i;
 
@@ -1750,7 +1757,11 @@ void build_intermediate(equation_context& ctx)
 
     for(int i=0; i < 3; i++)
     {
-        ctx.add("init_dX" + std::to_string(i), hacky_differentiate(ctx, X, i));
+        value dX = hacky_differentiate(ctx, X, i);
+
+        ctx.pin(dX);
+
+        ctx.add("init_dX" + std::to_string(i), dX);
     }
 }
 
