@@ -1309,7 +1309,7 @@ int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_d
 
     //#define MIN_STEP 0.00001f
     //#define MIN_STEP 0.000001f
-    #define MIN_STEP 0.1f
+    #define MIN_STEP 0.001f
 
     float max_timestep = 100000;
 
@@ -1330,7 +1330,7 @@ int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_d
 
     *next_ds_out = next_ds;
 
-    if(next_ds == MIN_STEP && (diff/i_hate_computers) > err)
+    if(next_ds == MIN_STEP && (diff/i_hate_computers) > err * 10000)
         return DS_RETURN;
 
     if(next_ds < current_ds/1.95f)
@@ -1399,6 +1399,7 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
     float next_ds = 0.00001f;
 
     bool deliberate_termination = false;
+    bool last_skipped = false;
 
     for(int iteration=0; iteration < 8000; iteration++)
     {
@@ -1465,7 +1466,12 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
         }
 
         if(res == DS_SKIP)
+        {
+            last_skipped = true;
             continue;
+        }
+
+        last_skipped = true;
 
         V0 += dV0 * ds;
         V1 += dV1 * ds;
@@ -1478,7 +1484,7 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
 
     float4 col = {1,0,1,1};
 
-    if(deliberate_termination)
+    if(deliberate_termination || last_skipped)
     {
         col = (float4){0,0,0,1};
     }
