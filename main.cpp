@@ -709,6 +709,7 @@ struct standard_arguments
     tensor<value, 3> cGi;
 
     metric<value, 3, 3> Yij;
+    tensor<value, 3, 3> Kij;
 
     standard_arguments(bool interpolate)
     {
@@ -767,6 +768,10 @@ struct standard_arguments
                 Yij.idx(i, j) = cY.idx(i, j) / X;
             }
         }
+
+        tensor<value, 3, 3> Aij = cA / X;
+
+        Kij = Aij + Yij.to_tensor() * (K / 3.f);
     }
 };
 
@@ -1236,7 +1241,7 @@ tensor<T, N, N> gpu_trace_free_cAij(const tensor<T, N, N>& mT, const metric<T, N
 
 template<typename T, int N>
 inline
-tensor<T, N, N, N> gpu_christoffel_symbols_2(equation_context& ctx, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
+tensor<T, N, N, N> gpu_christoffel_symbols_2(equation_context& ctx, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse, bool linear = false)
 {
     tensor<T, N, N, N> christoff;
 
@@ -1252,9 +1257,9 @@ tensor<T, N, N, N> gpu_christoffel_symbols_2(equation_context& ctx, const metric
                 {
                     value local = 0;
 
-                    local = local + hacky_differentiate(ctx, met.idx(m, k), l);
-                    local = local + hacky_differentiate(ctx, met.idx(m, l), k);
-                    local = local - hacky_differentiate(ctx, met.idx(k, l), m);
+                    local = local + hacky_differentiate(ctx, met.idx(m, k), l, true, linear);
+                    local = local + hacky_differentiate(ctx, met.idx(m, l), k, true, linear);
+                    local = local - hacky_differentiate(ctx, met.idx(k, l), m, true, linear);
 
                     sum = sum + local * inverse.idx(i, m);
                 }
@@ -3837,7 +3842,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     tensor<value, 3> X_upper = {"lp1", "lp2", "lp3"};
 
     tensor<value, 3> V_upper = {"V0", "V1", "V2"};
-    tensor<value, 3> V_lower = lower_index(V_upper, args.Yij);
+    /*tensor<value, 3> V_lower = lower_index(V_upper, args.Yij);
 
     ctx.pin(V_lower);
 
@@ -3859,18 +3864,20 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     ctx.pin(WH);
 
-    ctx.add("debug_wh", WH);
+    ctx.add("debug_wh", WH);*/
 
-    tensor<value, 3> dx;
+    /*tensor<value, 3> dx;
 
     for(int i=0; i < 3; i++)
     {
         dx.idx(i) = -args.gB.idx(i) + (args.gA / WH) * V_upper.idx(i);
-    }
+    }*/
 
-    value dTdt = args.gA / WH;
+    tensor<value, 3> dx = args.gA * V_upper - args.gB;
 
-    tensor<value, 3> dVi_l;
+    //value dTdt = args.gA / WH;
+
+    /*tensor<value, 3> dVi_l;
 
     for(int i=0; i < 3; i++)
     {
@@ -3913,6 +3920,37 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     for(int i=0; i <3; i++)
     {
         V_upper_diff.idx(i) = V_upper_next.idx(i) - V_upper.idx(i);
+    }*/
+
+    tensor<value, 3, 3, 3> full_christoffel2 = gpu_christoffel_symbols_2(ctx, args.Yij, args.Yij.invert(), true);
+
+    tensor<value, 3> V_upper_diff;
+
+    for(int i=0; i < 3; i++)
+    {
+        V_upper_diff.idx(i) = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            value kjvk = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                kjvk += args.Kij.idx(j, k) * V_upper.idx(k);
+            }
+
+            value christoffel_sum = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                christoffel_sum += full_christoffel2.idx(i, j, k) * V_upper.idx(k);
+            }
+
+            V_upper_diff.idx(i) += args.gA * V_upper.idx(j) * (V_upper.idx(i) * (hacky_differentiate(ctx, log(args.gA), j, true, true) - kjvk) + 2 * raise_index(args.Kij, args.Yij, args.Yij.invert()).idx(i, j) - christoffel_sum)
+                                   - args.Yij.invert().idx(i, j) * hacky_differentiate(ctx, args.gA, j, true, true) - V_upper.idx(j) * hacky_differentiate(ctx, args.gB.idx(i), j, true, true);
+
+
+        }
     }
 
     ctx.add("V0Diff", V_upper_diff.idx(0));
