@@ -4145,6 +4145,23 @@ int main()
     cl::buffer waveform(clctx.ctx);
     waveform.alloc(sizeof(cl_float2));
 
+    cl::buffer sponge_points(clctx.ctx);
+    cl::buffer sponge_count(clctx.ctx);
+
+    sponge_points.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
+    sponge_count.alloc(sizeof(cl_int));
+    sponge_count.set_to_zero(clctx.cqueue);
+
+    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
+
+    cl::args sponge_args;
+    sponge_args.push_back(sponge_points);
+    sponge_args.push_back(sponge_count);
+    sponge_args.push_back(scale);
+    sponge_args.push_back(clsize);
+
+    clctx.cqueue.exec("generate_sponge_points", sponge_args, {size.x() * size.y() * size.z()}, {128});
+
     /*std::vector<bssnok_data> cpu_data;
 
     for(int z=0; z < size.z(); z++)
@@ -4174,7 +4191,6 @@ int main()
     std::cout << "TESTX " << test_init.X << std::endl;
     std::cout << "TESTgA " << test_init.gA << std::endl;*/
 
-    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
     cl_float time_elapsed_s = 0;
 
     cl::args initial_u_args;
@@ -4242,6 +4258,8 @@ int main()
     }
 
     cl::args initial_clean;
+    initial_clean.push_back(sponge_points);
+    initial_clean.push_back(sponge_count);
 
     for(auto& i : generic_data[0])
     {
@@ -4562,6 +4580,8 @@ int main()
 
             {
                 cl::args cleaner;
+                cleaner.push_back(sponge_points);
+                cleaner.push_back(sponge_count);
 
                 for(auto& i : generic_data[which_data])
                 {

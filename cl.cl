@@ -499,11 +499,36 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
     //return r_frac * pow(r_frac, fabs(sin(time / (2 * M_PI))));
 }
 
+__kernel
+void generate_sponge_points(__global ushort4* points, __global int* point_count, float scale, int4 dim)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    #ifdef SYMMETRY_BOUNDARY
+    return;
+    #endif // SYMMETRY_BOUNDARY
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, 0);
+
+    if(sponge_factor <= 0)
+        return;
+
+    int idx = atomic_inc(point_count);
+
+    points[idx].xyz = (ushort3)(ix, iy, iz);
+}
+
 ///https://cds.cern.ch/record/517706/files/0106072.pdf
 ///boundary conditions
 ///todo: damp to schwarzschild, not initial conditions?
 __kernel
-void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
+void clean_data(__global ushort4* points, __global int* points_count,
+                __global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
                 __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                 __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
                 #ifdef USE_gBB0
@@ -512,9 +537,14 @@ void clean_data(__global float* cY0, __global float* cY1, __global float* cY2, _
                 __global float* u_value,
                 __global struct intermediate_bssnok_data* iin, float scale, int4 dim, float time)
 {
-    int ix = get_global_id(0);
-    int iy = get_global_id(1);
-    int iz = get_global_id(2);
+    int idx = get_global_id(0);
+
+    if(idx >= *points_count)
+        return;
+
+    int ix = points[idx].x;
+    int iy = points[idx].y;
+    int iz = points[idx].z;
 
     #ifdef SYMMETRY_BOUNDARY
     return;
