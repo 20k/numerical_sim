@@ -621,6 +621,11 @@ struct differentiation_context
             {
                 value to_sub = index(std::get<1>(decomp), std::get<0>(decomp), std::get<2>(decomp), xs[kk], ys[kk], zs[kk]);
 
+                if(should_pin)
+                {
+                    ctx.pin(to_sub);
+                }
+
                 substitutions[kk][i] = type_to_string(to_sub);
             }
         }
@@ -631,6 +636,7 @@ struct differentiation_context
             vars[i].substitute(substitutions[i]);
         }
 
+        ///todo: pin the individual variables?
         if(should_pin)
         {
             for(auto& i : vars)
@@ -647,7 +653,6 @@ struct differentiation_context
 ///dissipation is fixing some stuff, todo: investigate why so much dissipation is required
 value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int idx)
 {
-
     int d = 2;
 
     ///https://en.wikipedia.org/wiki/Finite_difference_coefficient according to wikipedia, this is the 6th derivative with 2nd order accuracy. I am confused, but at least I know where it came from
@@ -866,7 +871,7 @@ value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool 
 
     if(pin)
     {
-        ctx.pin(final_command);
+        //ctx.pin(final_command);
     }
 
     return final_command;
@@ -2498,7 +2503,7 @@ void build_eqs(equation_context& ctx)
 
         for(int j=0; j < 3; j++)
         {
-            s6 += -derived_cGi.idx(j) * hacky_differentiate(ctx, gB.idx(i), j);
+            s6 += -derived_cGi.idx(j) * digB.idx(j, i);
         }
 
         value s7 = 0;
@@ -2507,7 +2512,7 @@ void build_eqs(equation_context& ctx)
         {
             for(int k=0; k < 3; k++)
             {
-                s7 += icY.idx(j, k) * hacky_differentiate(ctx, digB.idx(j, i), k);
+                s7 += icY.idx(j, k) * hacky_differentiate(ctx, digB.idx(k, i), j);
             }
         }
 
@@ -2517,7 +2522,7 @@ void build_eqs(equation_context& ctx)
         {
             for(int k=0; k < 3; k++)
             {
-                s8 += (1.f/3.f) * icY.idx(i, j) * hacky_differentiate(ctx, digB.idx(j, k), k);
+                s8 += (1.f/3.f) * icY.idx(i, j) * hacky_differentiate(ctx, digB.idx(k, k), j);
             }
         }
 
@@ -2548,7 +2553,7 @@ void build_eqs(equation_context& ctx)
 
         for(int k=0; k < 3; k++)
         {
-            bkk += hacky_differentiate(ctx, gB.idx(k), k);
+            bkk += digB.idx(k, k);
         }
 
         float E = 1;
