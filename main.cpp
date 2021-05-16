@@ -3920,6 +3920,61 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.81
 }
 
+void loop_geodesics4(equation_context& ctx, vec3f dim)
+{
+    standard_arguments args(true);
+
+    auto unpinned_Yij = args.Yij;
+
+    ///upper index, aka contravariant
+    vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
+    vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
+
+    constexpr int order = 1;
+
+    tensor<value, 3, 3> digB;
+
+    ///derivative
+    for(int i=0; i < 3; i++)
+    {
+        ///index
+        for(int j=0; j < 3; j++)
+        {
+            digB.idx(i, j) = hacky_differentiate<order>(ctx, args.gB.idx(j), i, true, true);
+        }
+    }
+
+    tensor<value, 3> digA;
+
+    for(int i=0; i < 3; i++)
+    {
+        digA.idx(i) = hacky_differentiate<order>(ctx, args.gA, i, true, true);
+    }
+
+    tensor<value, 4> position = {"lp0", "lp1", "lp2", "lp3"};
+    tensor<value, 4> velocity = {"V0", "V1", "V2", "V3"};
+
+    inverse_metric<value, 3, 3> iYij = args.Yij.invert();
+
+    ctx.pin(iYij);
+
+    tensor<value, 3, 3, 3> full_christoffel2 = gpu_christoffel_symbols_2(ctx, args.Yij, args.Yij.invert(), true);
+
+    ctx.pin(full_christoffel2);
+
+    metric<value, 4, 4> real_metric = calculate_real_metric(Yij, gA, gB);
+
+    ctx.add("V0Diff4", acceleration.idx(0));
+    ctx.add("V1Diff4", acceleration.idx(1));
+    ctx.add("V2Diff4", acceleration.idx(2));
+    ctx.add("V3Diff4", acceleration.idx(3));
+
+    ctx.add("P0Diff", velocity.idx(0));
+    ctx.add("P1Diff", velocity.idx(1));
+    ctx.add("P2Diff", velocity.idx(2));
+    ctx.add("P3Diff", velocity.idx(3));
+}
+
 
 /*float fisheye(float r)
 {
@@ -4019,6 +4074,9 @@ int main()
     equation_context ctx10;
     build_kreiss_oliger_dissipate_singular(ctx10);
 
+    equation_context ctx11;
+    loop_geodesics4(ctx11);
+
     /*for(auto& i : ctx.values)
     {
         std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
@@ -4047,6 +4105,7 @@ int main()
     //ctx8.build(argument_string, 7);
     setup_initial.build(argument_string, 8);
     ctx10.build(argument_string, 9);
+    ctx11.build(argument_string, 10);
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 

@@ -1296,7 +1296,7 @@ enum ds_result
     DS_RETURN,
 };
 
-int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_ds_out)
+int calculate_ds_error(float current_ds, float4 next_acceleration, float* next_ds_out)
 {
     float current_acceleration_err = fast_length(next_acceleration) * 0.01f;
 
@@ -1457,7 +1457,7 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
 
         float3 next_acceleration = {dV0, dV1, dV2};
 
-        int res = calculate_ds_error(ds, next_acceleration, &next_ds);
+        int res = calculate_ds_error(ds, (float4)(0, next_acceleration), &next_ds);
 
         if(res == DS_RETURN)
         {
@@ -1480,6 +1480,164 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
         lp1 += dX0 * ds;
         lp2 += dX1 * ds;
         lp3 += dX2 * ds;
+    }
+
+    float4 col = {1,0,1,1};
+
+    if(deliberate_termination || last_skipped)
+    {
+        col = (float4){0,0,0,1};
+    }
+
+    write_imagef(screen, (int2){x, y}, col);
+}
+
+__kernel
+void trace_rays4(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
+                __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
+                __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
+                #ifdef USE_gBB0
+                __global float* gBB0, __global float* gBB1, __global float* gBB2,
+                #endif // USE_gBB0
+            float scale, __global struct intermediate_bssnok_data* temp_in, float3 camera_pos, float4 camera_quat,
+            float width, float height, int4 dim, __write_only image2d_t screen)
+{
+    int x = get_global_id(0);
+    int y = get_global_id(1);
+
+    if(x >= width)
+        return;
+
+    if(y >= height)
+        return;
+
+    ///ray location
+
+    float3 pos = camera_pos;
+
+    pos = clamp(pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    ///temporary while i don't do interpolation
+    float lp0;
+    float lp1;
+    float lp2;
+    float lp3;
+
+    float lv0;
+    float lv1;
+    float lv2;
+    float lv3;
+
+    {
+        float3 world_pos = camera_pos;
+
+        float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
+
+        float fx = voxel_pos.x;
+        float fy = voxel_pos.y;
+        float fz = voxel_pos.z;
+
+        float TEMPORARIES5;
+
+        lp0 = lp0_d;
+        lp1 = lp1_d;
+        lp2 = lp2_d;
+        lp3 = lp3_d;
+
+        lv0 = lv0_d;
+        lv1 = lv1_d;
+        lv2 = lv2_d;
+        lv3 = lv3_d;
+    }
+
+    float next_ds = 0.00001f;
+
+    bool deliberate_termination = false;
+    bool last_skipped = false;
+
+    for(int iteration=0; iteration < 8000; iteration++)
+    {
+        float3 cpos = {lp1, lp2, lp3};
+
+        float3 voxel_pos = world_to_voxel(cpos, dim, scale);
+
+        voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+        float fx = voxel_pos.x;
+        float fy = voxel_pos.y;
+        float fz = voxel_pos.z;
+
+        float TEMPORARIES6;
+
+        float terminate_length = fast_length(cpos);
+
+        if(terminate_length >= universe_size / 1.01f)
+        {
+            float fr = fast_length(cpos);
+            float theta = acos(cpos.z / fr);
+            float phi = atan2(cpos.y, cpos.x);
+
+            float sxf = (phi + M_PI) / (2 * M_PI);
+            float syf = theta / M_PI;
+
+            float4 val = (float4)(0,0,0,1);
+
+            int x_half = fabs(fmod((sxf + 1) * 10.f, 1.f)) > 0.5 ? 1 : 0;
+            int y_half = fabs(fmod((syf + 1) * 10.f, 1.f)) > 0.5 ? 1 : 0;
+
+            val.x = x_half;
+            val.y = y_half;
+
+            if(syf < 0.1 || syf >= 0.9)
+            {
+                val.x = 0;
+                val.y = 0;
+                val.z = 1;
+            }
+
+            write_imagef(screen, (int2){x, y}, val);
+            return;
+        }
+
+        float ds = next_ds;
+
+        float dP0 = P0Diff4;
+        float dP1 = P1Diff4;
+        float dP2 = P2Diff4;
+        float dP3 = P3Diff4;
+
+        float dV0 = V0Diff4;
+        float dV1 = V1Diff4;
+        float dV2 = V2Diff4;
+        float dV3 = V3Diff4;
+
+        float4 next_acceleration = {dV0, dV1, dV2, dV3};
+
+        int res = calculate_ds_error(ds, next_acceleration, &next_ds);
+
+        if(res == DS_RETURN)
+        {
+            deliberate_termination = true;
+            break;
+        }
+
+        if(res == DS_SKIP)
+        {
+            last_skipped = true;
+            continue;
+        }
+
+        last_skipped = false;
+
+        V0 += dV0 * ds;
+        V1 += dV1 * ds;
+        V2 += dV2 * ds;
+        V3 += dV3 * ds;
+
+        lp0 += dX0 * ds;
+        lp1 += dX1 * ds;
+        lp2 += dX2 * ds;
+        lp3 += dX3 * ds;
     }
 
     float4 col = {1,0,1,1};
