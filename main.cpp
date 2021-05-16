@@ -2523,6 +2523,7 @@ void build_eqs(equation_context& ctx)
         dtcGi.idx(i) = s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8 + s9 + s10;
 
         ///https://arxiv.org/pdf/1205.5111v1.pdf 50
+        ///made it to 70+ and then i got bored, but the simulation was meaningfully different
         #define EQ_50
         #ifdef EQ_50
         auto step = [](const value& in)
