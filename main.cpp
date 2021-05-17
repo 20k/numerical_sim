@@ -1413,8 +1413,9 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
     ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
     std::vector<float> black_hole_m{0.463, 0.47};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.516, 0, 0}), san_black_hole_pos({1.516, 0, 0})};
-    std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258}, {0, 0, 0.258}};
+    //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
 
@@ -3975,7 +3976,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 5;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {350, 350, 350};
+    vec3i size = {300, 300, 300};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = 65;
@@ -4055,6 +4056,7 @@ int main()
     argument_string += "-DUSE_GBB ";
     #endif // USE_GBB
 
+    ///seems to make 0 difference to instability time
     #define USE_HALF_INTERMEDIATE
     #ifdef USE_HALF_INTERMEDIATE
     int intermediate_data_size = sizeof(cl_half);
