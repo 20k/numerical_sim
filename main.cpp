@@ -1744,10 +1744,6 @@ void build_intermediate_thin(equation_context& ctx)
     value v2 = hacky_differentiate(ctx, buffer, 1);
     value v3 = hacky_differentiate(ctx, buffer, 2);
 
-    ctx.pin(v1);
-    ctx.pin(v2);
-    ctx.pin(v3);
-
     ctx.add("init_buffer_intermediate0", v1);
     ctx.add("init_buffer_intermediate1", v2);
     ctx.add("init_buffer_intermediate2", v3);
