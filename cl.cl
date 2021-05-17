@@ -5,6 +5,11 @@
 
 //#define USE_GBB
 
+#define DERIV_PRECISION half
+
+#pragma OPENCL EXTENSION cl_khr_fp16 : enable
+
+
 float buffer_read_nearest(__global const float* const buffer, int3 position, int4 dim)
 {
     return buffer[position.z * dim.x * dim.y + position.y * dim.x + position.x];
@@ -464,7 +469,7 @@ void calculate_intermediate_data(__global float* cY0, __global float* cY1, __glo
 }
 
 __kernel
-void calculate_intermediate_data_thin(__global float* buffer, __global float* buffer_out_1, __global float* buffer_out_2, __global float* buffer_out_3,
+void calculate_intermediate_data_thin(__global float* buffer, __global DERIV_PRECISION* buffer_out_1, __global DERIV_PRECISION* buffer_out_2, __global DERIV_PRECISION* buffer_out_3,
                                       float scale, int4 dim)
 {
     int ix = get_global_id(0);
@@ -488,7 +493,7 @@ void calculate_intermediate_data_thin(__global float* buffer, __global float* bu
 
 __kernel
 void calculate_intermediate_data_thin_cY5(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
-                                          __global float* buffer_out_1, __global float* buffer_out_2, __global float* buffer_out_3,
+                                          __global DERIV_PRECISION* buffer_out_1, __global DERIV_PRECISION* buffer_out_2, __global DERIV_PRECISION* buffer_out_3,
                                          float scale, int4 dim)
 {
     int ix = get_global_id(0);
@@ -742,10 +747,10 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
             #ifdef USE_gBB0
             __global float* ogBB0, __global float* ogBB1, __global float* ogBB2,
             #endif // USE_gBB0
-            __global float* dcYij0, __global float* dcYij1, __global float* dcYij2, __global float* dcYij3, __global float* dcYij4, __global float* dcYij5, __global float* dcYij6, __global float* dcYij7, __global float* dcYij8, __global float* dcYij9, __global float* dcYij10, __global float* dcYij11, __global float* dcYij12, __global float* dcYij13, __global float* dcYij14, __global float* dcYij15, __global float* dcYij16, __global float* dcYij17,
-            __global float* digA0, __global float* digA1, __global float* digA2,
-            __global float* digB0, __global float* digB1, __global float* digB2, __global float* digB3, __global float* digB4, __global float* digB5, __global float* digB6, __global float* digB7, __global float* digB8,
-            __global float* dX0, __global float* dX1, __global float* dX2,
+            __global DERIV_PRECISION* dcYij0, __global DERIV_PRECISION* dcYij1, __global DERIV_PRECISION* dcYij2, __global DERIV_PRECISION* dcYij3, __global DERIV_PRECISION* dcYij4, __global DERIV_PRECISION* dcYij5, __global DERIV_PRECISION* dcYij6, __global DERIV_PRECISION* dcYij7, __global DERIV_PRECISION* dcYij8, __global DERIV_PRECISION* dcYij9, __global DERIV_PRECISION* dcYij10, __global DERIV_PRECISION* dcYij11, __global DERIV_PRECISION* dcYij12, __global DERIV_PRECISION* dcYij13, __global DERIV_PRECISION* dcYij14, __global DERIV_PRECISION* dcYij15, __global DERIV_PRECISION* dcYij16, __global DERIV_PRECISION* dcYij17,
+            __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
+            __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
+            __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
             float scale, int4 dim, float timestep, float time, int current_simulation_boundary)
 {
     int ix = get_global_id(0);
