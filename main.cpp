@@ -316,6 +316,67 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
         }
     }
 
+    std::array variables
+    {
+        "cY0",
+        "cY1",
+        "cY2",
+        "cY3",
+        "cY4",
+        "cA0",
+        "cA1",
+        "cA2",
+        "cA3",
+        "cA4",
+        "cA5",
+        "cGi0",
+        "cGi1",
+        "cGi2",
+        "X",
+        "K",
+        "gA",
+        "gB0",
+        "gB1",
+        "gB2",
+
+        "dcYij0",
+        "dcYij1",
+        "dcYij2",
+        "dcYij3",
+        "dcYij4",
+        "dcYij5",
+        "dcYij6",
+        "dcYij7",
+        "dcYij8",
+        "dcYij9",
+        "dcYij10",
+        "dcYij11",
+        "dcYij12",
+        "dcYij13",
+        "dcYij14",
+        "dcYij15",
+        "dcYij16",
+        "dcYij17",
+
+        "digA0",
+        "digA1",
+        "digA2",
+
+        "digB0",
+        "digB1",
+        "digB2",
+        "digB3",
+        "digB4",
+        "digB5",
+        "digB6",
+        "digB7",
+        "digB8",
+
+        "dX0",
+        "dX1",
+        "dX2"
+    };
+
     bool uses_extension = false;
 
     if(str.starts_with("v->"))
@@ -372,118 +433,26 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
         buffer = "buffer";
         val = "buffer";
     }
-    else if(str.starts_with("cY0"))
-    {
-        buffer = "cY0";
-        val = buffer;
-    }
-    else if(str.starts_with("cY1"))
-    {
-        buffer = "cY1";
-        val = buffer;
-    }
-    else if(str.starts_with("cY2"))
-    {
-        buffer = "cY2";
-        val = buffer;
-    }
-    else if(str.starts_with("cY3"))
-    {
-        buffer = "cY3";
-        val = buffer;
-    }
-    else if(str.starts_with("cY4"))
-    {
-        buffer = "cY4";
-        val = buffer;
-    }
-    else if(str.starts_with("cY5"))
-    {
-        buffer = "cY5";
-        val = buffer;
-        assert(false);
-    }
-
-    else if(str.starts_with("cA0"))
-    {
-        buffer = "cA0";
-        val = buffer;
-    }
-    else if(str.starts_with("cA1"))
-    {
-        buffer = "cA1";
-        val = buffer;
-    }
-    else if(str.starts_with("cA2"))
-    {
-        buffer = "cA2";
-        val = buffer;
-    }
-    else if(str.starts_with("cA3"))
-    {
-        buffer = "cA3";
-        val = buffer;
-    }
-    else if(str.starts_with("cA4"))
-    {
-        buffer = "cA4";
-        val = buffer;
-    }
-    else if(str.starts_with("cA5"))
-    {
-        buffer = "cA5";
-        val = buffer;
-    }
-    else if(str.starts_with("cGi0"))
-    {
-        buffer = "cGi0";
-        val = buffer;
-    }
-    else if(str.starts_with("cGi1"))
-    {
-        buffer = "cGi1";
-        val = buffer;
-    }
-    else if(str.starts_with("cGi2"))
-    {
-        buffer = "cGi2";
-        val = buffer;
-    }
-    else if(str.starts_with("X"))
-    {
-        buffer = "X";
-        val = buffer;
-    }
-    else if(str.starts_with("K"))
-    {
-        buffer = "K";
-        val = buffer;
-    }
-    else if(str.starts_with("gA"))
-    {
-        buffer = "gA";
-        val = buffer;
-    }
-    else if(str.starts_with("gB0"))
-    {
-        buffer = "gB0";
-        val = buffer;
-    }
-    else if(str.starts_with("gB1"))
-    {
-        buffer = "gB1";
-        val = buffer;
-    }
-    else if(str.starts_with("gB2"))
-    {
-        buffer = "gB2";
-        val = buffer;
-    }
     else
     {
-        std::cout << "input " << str << std::endl;
+        bool any_found = false;
 
-        assert(false);
+        for(auto& i : variables)
+        {
+            if(str.starts_with(i))
+            {
+                buffer = i;
+                val = buffer;
+                any_found = true;
+            }
+        }
+
+        if(!any_found)
+        {
+            std::cout << "input " << str << std::endl;
+
+            assert(false);
+        }
     }
 
     return {buffer, val, uses_extension};
@@ -1784,6 +1753,16 @@ void build_intermediate_thin(equation_context& ctx)
     ctx.add("init_buffer_intermediate2", v3);
 }
 
+void build_intermediate_thin_cY5(equation_context& ctx)
+{
+    standard_arguments args(false);
+
+    for(int k=0; k < 3; k++)
+    {
+        ctx.add("init_cY5_intermediate" + std::to_string(k), hacky_differentiate(ctx, args.cY.idx(2, 2), k, false));
+    }
+}
+
 ///https://arxiv.org/pdf/gr-qc/0206072.pdf on stability, they recompute cGi where it does nto hae a derivative
 ///todo: X: This is think is why we're getting nans. Half done
 ///todo: fisheye - half done
@@ -1834,14 +1813,14 @@ void build_eqs(equation_context& ctx)
     tensor<value, 3> cGi = args.cGi;
 
     tensor<value, 3> digA;
-    digA.idx(0).make_value("ik.digA[0]");
-    digA.idx(1).make_value("ik.digA[1]");
-    digA.idx(2).make_value("ik.digA[2]");
+    digA.idx(0).make_value("digA0");
+    digA.idx(1).make_value("digA1");
+    digA.idx(2).make_value("digA2");
 
     tensor<value, 3> dX;
-    dX.idx(0).make_value("ik.dX[0]");
-    dX.idx(1).make_value("ik.dX[1]");
-    dX.idx(2).make_value("ik.dX[2]");
+    dX.idx(0).make_value("dX0");
+    dX.idx(1).make_value("dX1");
+    dX.idx(2).make_value("dX2");
 
     tensor<value, 3, 3> digB;
 
@@ -1851,9 +1830,9 @@ void build_eqs(equation_context& ctx)
         ///value
         for(int j=0; j < 3; j++)
         {
-            int idx = i * 3 + j;
+            int idx = i + j * 3;
 
-            std::string name = "ik.digB[" + std::to_string(idx) + "]";
+            std::string name = "digB" + std::to_string(idx);
 
             digB.idx(i, j).make_value(name);
         }
@@ -1883,9 +1862,9 @@ void build_eqs(equation_context& ctx)
             {
                 int symmetric_index = index_table[i][j];
 
-                int final_index = k * 6 + symmetric_index;
+                int final_index = k + symmetric_index * 3;
 
-                std::string name = "ik.dcYij[" + std::to_string(final_index) + "]";
+                std::string name = "dcYij" + std::to_string(final_index);
 
                 dcYij.idx(k, i, j) = name;
             }
@@ -1948,7 +1927,7 @@ void build_eqs(equation_context& ctx)
         hacky_differentiate(ctx, "X", k);
     }
 
-    for(int k=0; k < 3; k++)
+    /*for(int k=0; k < 3; k++)
     {
         for(int i=0; i < 3 * 6; i++)
         {
@@ -1969,7 +1948,7 @@ void build_eqs(equation_context& ctx)
         {
             hacky_differentiate(ctx, "ik.dX[" + std::to_string(i) + "]", k);
         }
-    }
+    }*/
 
     tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, cY);
     tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, cY, icY);
@@ -4039,6 +4018,9 @@ int main()
     equation_context ctx11;
     build_intermediate_thin(ctx11);
 
+    equation_context ctx12;
+    build_intermediate_thin_cY5(ctx12);
+
     /*for(auto& i : ctx.values)
     {
         std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
@@ -4068,6 +4050,7 @@ int main()
     setup_initial.build(argument_string, 8);
     ctx10.build(argument_string, 9);
     ctx11.build(argument_string, 10);
+    ctx12.build(argument_string, 11);
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 
@@ -4122,6 +4105,25 @@ int main()
     constexpr int buffer_count = 12 + 9 + 3;
     #endif
 
+    std::array<std::string, buffer_count> buffer_names
+    {
+        "cY0", "cY1", "cY2", "cY3", "cY4",
+        "cA0", "cA1", "cA2", "cA3", "cA4", "cA5",
+        "cGi0", "cGi1", "cGi2",
+        "K", "X", "gA", "gB0", "gB1", "gB2"
+    };
+
+    auto buffer_to_index = [&](const std::string& name)
+    {
+        for(int idx = 0; idx < buffer_count; idx++)
+        {
+            if(buffer_names[idx] == name)
+                return idx;
+        }
+
+        assert(false);
+    };
+
     std::array<bool, buffer_count> redundant_buffers;
 
     for(int idx=0; idx < 2; idx++)
@@ -4160,8 +4162,15 @@ int main()
 
     int which_u_args = 0;
 
-    cl::buffer intermediate(clctx.ctx);
-    intermediate.alloc(size.x() * size.y() * size.z() * sizeof(intermediate_bssnok_data));
+    std::vector<cl::buffer> thin_intermediates;
+
+    constexpr int thin_intermediate_buffer_count = 18 + 3 + 9 + 3;
+
+    for(int i = 0; i < thin_intermediate_buffer_count; i++)
+    {
+        thin_intermediates.emplace_back(clctx.ctx);
+        thin_intermediates.back().alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+    }
 
     cl::buffer waveform(clctx.ctx);
     waveform.alloc(sizeof(cl_float2));
@@ -4308,7 +4317,7 @@ int main()
 
     clctx.cqueue.exec("enforce_algebraic_constraints", initial_constraints, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
-    cl::args fl2;
+    /*cl::args fl2;
 
     for(auto& i : generic_data[0])
     {
@@ -4320,7 +4329,7 @@ int main()
     fl2.push_back(clsize);
     fl2.push_back(intermediate);
 
-    clctx.cqueue.exec("calculate_intermediate_data", fl2, {size.x(), size.y(), size.z()}, {8, 8, 1});
+    clctx.cqueue.exec("calculate_intermediate_data", fl2, {size.x(), size.y(), size.z()}, {8, 8, 1});*/
 
     std::vector<cl::read_info<cl_float2>> read_data;
 
@@ -4516,6 +4525,61 @@ int main()
 
             steps++;
 
+            {
+                auto differentiate = [&](const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
+                {
+                    if(name != "cY5")
+                    {
+                        int idx = buffer_to_index(name);
+
+                        cl::args thin;
+                        thin.push_back(generic_data[which_data][idx]);
+                        thin.push_back(out1);
+                        thin.push_back(out2);
+                        thin.push_back(out3);
+                        thin.push_back(scale);
+                        thin.push_back(clsize);
+
+                        clctx.cqueue.exec("calculate_intermediate_data_thin", thin, {size.x(), size.y(), size.z()}, {128, 1, 1});
+                    }
+                    else
+                    {
+                        int idx0 = buffer_to_index("cY0");
+                        int idx1 = buffer_to_index("cY1");
+                        int idx2 = buffer_to_index("cY2");
+                        int idx3 = buffer_to_index("cY3");
+                        int idx4 = buffer_to_index("cY4");
+
+                        cl::args thin;
+                        thin.push_back(generic_data[which_data][idx0]);
+                        thin.push_back(generic_data[which_data][idx1]);
+                        thin.push_back(generic_data[which_data][idx2]);
+                        thin.push_back(generic_data[which_data][idx3]);
+                        thin.push_back(generic_data[which_data][idx4]);
+
+                        thin.push_back(out1);
+                        thin.push_back(out2);
+                        thin.push_back(out3);
+                        thin.push_back(scale);
+                        thin.push_back(clsize);
+
+                        clctx.cqueue.exec("calculate_intermediate_data_thin_cY5", thin, {size.x(), size.y(), size.z()}, {128, 1, 1});
+                    }
+                };
+
+                std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
+                                      "gA", "gB0", "gB1", "gB2", "X"};
+
+                for(int idx = 0; idx < buffers.size(); idx++)
+                {
+                    int i1 = idx * 3 + 0;
+                    int i2 = idx * 3 + 1;
+                    int i3 = idx * 3 + 2;
+
+                    differentiate(buffers[idx], thin_intermediates[i1], thin_intermediates[i2], thin_intermediates[i3]);
+                }
+            }
+
             cl::args a1;
 
             for(auto& i : generic_data[which_data])
@@ -4528,11 +4592,15 @@ int main()
                 a1.push_back(i);
             }
 
+            for(auto& i : thin_intermediates)
+            {
+                a1.push_back(i);
+            }
+
             //a1.push_back(bssnok_datas[which_data]);
             //a1.push_back(bssnok_datas[(which_data + 1) % 2]);
             a1.push_back(scale);
             a1.push_back(clsize);
-            a1.push_back(intermediate);
             a1.push_back(timestep);
             a1.push_back(time_elapsed_s);
             a1.push_back(current_simulation_boundary);
@@ -4615,7 +4683,7 @@ int main()
                 clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {16, 16, 1});
             }
 
-            cl::args fl3;
+            /*cl::args fl3;
 
             for(auto& i : generic_data[which_data])
             {
@@ -4627,7 +4695,7 @@ int main()
             fl3.push_back(clsize);
             fl3.push_back(intermediate);
 
-            clctx.cqueue.exec("calculate_intermediate_data", fl3, {size.x(), size.y(), size.z()}, {128, 1, 1});
+            clctx.cqueue.exec("calculate_intermediate_data", fl3, {size.x(), size.y(), size.z()}, {128, 1, 1});*/
 
             float r_extract = c_at_max/4;
 

@@ -486,6 +486,34 @@ void calculate_intermediate_data_thin(__global float* buffer, __global float* bu
     buffer_out_3[IDX(ix,iy,iz)] = init_buffer_intermediate2;
 }
 
+__kernel
+void calculate_intermediate_data_thin_cY5(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
+                                          __global float* buffer_out_1, __global float* buffer_out_2, __global float* buffer_out_3,
+                                         float scale, int4 dim)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    #ifndef SYMMETRY_BOUNDARY
+    if(ix < BORDER_WIDTH || ix >= dim.x - BORDER_WIDTH - 1 || iy < BORDER_WIDTH || iy >= dim.y - BORDER_WIDTH - 1 || iz < BORDER_WIDTH || iz >= dim.z - BORDER_WIDTH - 1)
+        return;
+    #endif // SYMMETRY_BOUNDARY
+
+    float TEMPORARIES11;
+
+    float i1 = init_cY5_intermediate0;
+    float i2 = init_cY5_intermediate1;
+    float i3 = init_cY5_intermediate2;
+
+    buffer_out_1[IDX(ix,iy,iz)] = i1;
+    buffer_out_2[IDX(ix,iy,iz)] = i2;
+    buffer_out_3[IDX(ix,iy,iz)] = i3;
+}
+
 float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float time)
 {
     float edge_half = scale * (dim.x/2);
@@ -714,7 +742,11 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
             #ifdef USE_gBB0
             __global float* ogBB0, __global float* ogBB1, __global float* ogBB2,
             #endif // USE_gBB0
-            float scale, int4 dim, __global const struct intermediate_bssnok_data* temp_in, float timestep, float time, int current_simulation_boundary)
+            __global float* dcYij0, __global float* dcYij1, __global float* dcYij2, __global float* dcYij3, __global float* dcYij4, __global float* dcYij5, __global float* dcYij6, __global float* dcYij7, __global float* dcYij8, __global float* dcYij9, __global float* dcYij10, __global float* dcYij11, __global float* dcYij12, __global float* dcYij13, __global float* dcYij14, __global float* dcYij15, __global float* dcYij16, __global float* dcYij17,
+            __global float* digA0, __global float* digA1, __global float* digA2,
+            __global float* digB0, __global float* digB1, __global float* digB2, __global float* digB3, __global float* digB4, __global float* digB5, __global float* digB6, __global float* digB7, __global float* digB8,
+            __global float* dX0, __global float* dX1, __global float* dX2,
+            float scale, int4 dim, float timestep, float time, int current_simulation_boundary)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -742,7 +774,6 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     float3 centre = {dim.x/2, dim.y/2, dim.z/2};
     float r = fast_length((float3){ix, iy, iz} - centre);
 
-    struct intermediate_bssnok_data ik = temp_in[IDX(ix, iy, iz)];
 
     float TEMPORARIES2;
 
