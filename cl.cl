@@ -5,10 +5,7 @@
 
 //#define USE_GBB
 
-#define DERIV_PRECISION half
-
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
-
 
 float buffer_read_nearest(__global const float* const buffer, int3 position, int4 dim)
 {

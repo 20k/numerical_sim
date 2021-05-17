@@ -4054,13 +4054,21 @@ int main()
     argument_string += "-DUSE_GBB ";
     #endif // USE_GBB
 
+    #define USE_HALF_INTERMEDIATE
+    #ifdef USE_HALF_INTERMEDIATE
+    int intermediate_data_size = sizeof(cl_half);
+    argument_string += "-DDERIV_PRECISION=half ";
+    #else
+    int intermediate_data_size = sizeof(cl_float);
+    argument_string += "-DDERIV_PRECISION=float ";
+    #endif
+
     std::cout << "ARGS " << argument_string << std::endl;
 
     {
         std::ofstream out("args.txt");
         out << argument_string;
     }
-
 
     cl::program prog(clctx.ctx, "cl.cl");
     prog.build(clctx.ctx, argument_string);
@@ -4165,7 +4173,7 @@ int main()
     for(int i = 0; i < thin_intermediate_buffer_count; i++)
     {
         thin_intermediates.emplace_back(clctx.ctx);
-        thin_intermediates.back().alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+        thin_intermediates.back().alloc(size.x() * size.y() * size.z() * intermediate_data_size);
     }
 
     cl::buffer waveform(clctx.ctx);
