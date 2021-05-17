@@ -558,7 +558,7 @@ void clean_data(__global ushort4* points, __global int* points_count,
                 __global float* gBB0, __global float* gBB1, __global float* gBB2,
                 #endif // USE_gBB0
                 __global float* u_value,
-                __global struct intermediate_bssnok_data* iin, float scale, int4 dim, float time)
+                float scale, int4 dim, float time)
 {
     int idx = get_global_id(0);
 
@@ -1400,7 +1400,7 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
                 #ifdef USE_gBB0
                 __global float* gBB0, __global float* gBB1, __global float* gBB2,
                 #endif // USE_gBB0
-            float scale, __global struct intermediate_bssnok_data* temp_in, float3 camera_pos, float4 camera_quat,
+            float scale, float3 camera_pos, float4 camera_quat,
             float width, float height, int4 dim, __write_only image2d_t screen)
 {
     int x = get_global_id(0);
@@ -1561,7 +1561,7 @@ void trace_metric(__global float* cY0, __global float* cY1, __global float* cY2,
                   #ifdef USE_gBB0
                   __global float* gBB0, __global float* gBB1, __global float* gBB2,
                   #endif // USE_gBB0
-                  float scale, __global struct intermediate_bssnok_data* temp_in, float3 camera_pos, float4 camera_quat,
+                  float scale, float3 camera_pos, float4 camera_quat,
                   float width, float height, int4 dim, __write_only image2d_t screen)
 {
     int x = get_global_id(0);

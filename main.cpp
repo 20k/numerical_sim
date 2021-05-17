@@ -4291,7 +4291,6 @@ int main()
 
     //initial_clean.push_back(bssnok_datas[0]);
     initial_clean.push_back(u_args[which_u_args]);
-    initial_clean.push_back(intermediate);
     initial_clean.push_back(scale);
     initial_clean.push_back(clsize);
     initial_clean.push_back(time_elapsed_s);
@@ -4613,7 +4612,6 @@ int main()
 
                 //cleaner.push_back(bssnok_datas[which_data]);
                 cleaner.push_back(u_args[which_u_args]);
-                cleaner.push_back(intermediate);
                 cleaner.push_back(scale);
                 cleaner.push_back(clsize);
 
@@ -4695,7 +4693,6 @@ int main()
             cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
 
             render_args.push_back(scale);
-            render_args.push_back(intermediate);
             render_args.push_back(ccamera_pos);
             render_args.push_back(ccamera_quat);
             render_args.push_back(fwidth);
