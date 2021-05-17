@@ -3930,6 +3930,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 }*/
 
 ///it seems like basically i need numerical dissipation of some form
+///if i didn't evolve where sponge = 1, would be massively faster
 int main()
 {
     //return 0;
@@ -3974,7 +3975,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 5;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {300, 300, 300};
+    vec3i size = {350, 350, 350};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = 65;
