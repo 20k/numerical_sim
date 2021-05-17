@@ -1765,6 +1765,25 @@ void build_intermediate(equation_context& ctx)
     }
 }
 
+void build_intermediate_thin(equation_context& ctx)
+{
+    standard_arguments args(false);
+
+    value buffer = "buffer[IDX(ix,iy,iz)]";
+
+    value v1 = hacky_differentiate(ctx, buffer, 0);
+    value v2 = hacky_differentiate(ctx, buffer, 1);
+    value v3 = hacky_differentiate(ctx, buffer, 2);
+
+    ctx.pin(v1);
+    ctx.pin(v2);
+    ctx.pin(v3);
+
+    ctx.add("init_buffer_intermediate0", v1);
+    ctx.add("init_buffer_intermediate1", v2);
+    ctx.add("init_buffer_intermediate2", v3);
+}
+
 ///https://arxiv.org/pdf/gr-qc/0206072.pdf on stability, they recompute cGi where it does nto hae a derivative
 ///todo: X: This is think is why we're getting nans. Half done
 ///todo: fisheye - half done
@@ -4019,6 +4038,9 @@ int main()
     equation_context ctx10;
     build_kreiss_oliger_dissipate_singular(ctx10);
 
+    equation_context ctx11;
+    build_intermediate_thin(ctx11);
+
     /*for(auto& i : ctx.values)
     {
         std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
@@ -4047,6 +4069,7 @@ int main()
     //ctx8.build(argument_string, 7);
     setup_initial.build(argument_string, 8);
     ctx10.build(argument_string, 9);
+    ctx11.build(argument_string, 10);
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 

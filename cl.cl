@@ -463,6 +463,29 @@ void calculate_intermediate_data(__global float* cY0, __global float* cY1, __glo
     my_out->dX[2] = init_dX2;
 }
 
+__kernel
+void calculate_intermediate_data_thin(__global float* buffer, __global float* buffer_out_1, __global float* buffer_out_2, __global float* buffer_out_3,
+                                      float scale, int4 dim)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    #ifndef SYMMETRY_BOUNDARY
+    if(ix < BORDER_WIDTH || ix >= dim.x - BORDER_WIDTH - 1 || iy < BORDER_WIDTH || iy >= dim.y - BORDER_WIDTH - 1 || iz < BORDER_WIDTH || iz >= dim.z - BORDER_WIDTH - 1)
+        return;
+    #endif // SYMMETRY_BOUNDARY
+
+    float TEMPORARIES10;
+
+    buffer_out_1[IDX(ix,iy,iz)] = init_buffer_intermediate0;
+    buffer_out_2[IDX(ix,iy,iz)] = init_buffer_intermediate1;
+    buffer_out_3[IDX(ix,iy,iz)] = init_buffer_intermediate2;
+}
+
 float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float time)
 {
     float edge_half = scale * (dim.x/2);
