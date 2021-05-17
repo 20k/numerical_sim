@@ -4138,8 +4138,8 @@ int main()
         }
     }
 
-    float dissipate_low = 0.15;
-    float dissipate_high = 0.15;
+    float dissipate_low = 0.25;
+    float dissipate_high = 0.25;
 
     std::array<float, buffer_count> dissipation_coefficients
     {
