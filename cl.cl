@@ -1156,7 +1156,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
             #ifdef USE_gBB0
             __global float* ogBB0, __global float* ogBB1, __global float* ogBB2,
             #endif // USE_gBB0
-            float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, __write_only image2d_t screen, float time)
+            float scale, int4 dim, __write_only image2d_t screen, float time)
 {
     int ix = get_global_id(0);
     //int iy = get_global_id(1);
@@ -1181,17 +1181,6 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     //for(int z = 20; z < dim.z-20; z++)
 
     {
-        ///conformal christoffel derivatives
-        /*float dcGijk[3 * 3 * 6];
-
-        #pragma unroll
-        for(int i=0; i < 3 * 6; i++)
-        {
-            dcGijk[0 * 3 * 6 + i] = INTERMEDIATE_DIFFX(christoffel[i]);
-            dcGijk[1 * 3 * 6 + i] = INTERMEDIATE_DIFFY(christoffel[i]);
-            dcGijk[2 * 3 * 6 + i] = INTERMEDIATE_DIFFZ(christoffel[i]);
-        }*/
-
         float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, time);
 
         if(sponge_factor > 0)
@@ -1202,29 +1191,25 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
             return;
         }
 
-        struct intermediate_bssnok_data ik = temp_in[IDX(ix, iy, iz)];
-
-        ///reuses the evolve parameters
-        float TEMPORARIES2;
-
         int index = IDX(ix, iy, iz);
 
-        //float curvature = scalar_curvature;
+        float Yxx = cY0[index];
+        float Yxy = cY1[index];
+        float Yxz = cY2[index];
+        float Yyy = cY3[index];
+        float Yyz = cY4[index];
+        float cX = X[index];
 
-        /*if(x == 3 && y == 125)
-        {
-            printf("Ik %f\n", ik.Yij[0]);
-        }*/
+        float Yzz = (1 + Yyy * Yxz * Yxz - 2 * Yxy * Yyz * Yxz + Yxx * Yyz * Yyz) / (Yxx * Yyy - Yxy * Yxy);
 
-        float ccY5 = cY5_derived;
+        float curvature = fabs(Yxx / cX) +
+                          fabs(Yxy / cX) +
+                          fabs(Yxz / cX) +
+                          fabs(Yyy / cX) +
+                          fabs(Yyz / cX) +
+                          fabs(Yzz / cX);
 
-        float curvature = (fabs(cY0[index]/X[index]) + fabs(cY1[index]/X[index]) + fabs(cY2[index]/X[index]) + fabs(cY3[index]/X[index]) + fabs(ccY5/X[index])) / 1000.f;
-        //float curvature = (fabs(cY0[index]/X[index]) + fabs(cY1[index]/X[index]) + fabs(cY2[index]/X[index]) + fabs(cY3[index]/X[index]) + fabs(cY4[index]/X[index]) + fabs(cY5[index]/X[index])) / 1000.f;
-
-        //float curvature = (fabs(v.Yij[0]) + fabs(ik.Yij[1]) + fabs(ik.Yij[2]) + fabs(ik.Yij[3]) + fabs(ik.Yij[4]) + fabs(ik.Yij[5])) / 1000.;
-        //float curvature = v.cY0 + v.cY1 + v.cY2 + v.cY3 + v.cY4 + v.cY5;
-
-        float ascalar = fabs(curvature);
+        float ascalar = fabs(curvature / 1000.f);
 
         max_scalar = max(ascalar, max_scalar);
     }

@@ -2700,8 +2700,6 @@ void build_eqs(equation_context& ctx)
         ctx.add(name, dtgBB.idx(i));
     }
 
-    ctx.add("cY5_derived", cY.idx(2, 2));
-
     //ctx.add("scalar_curvature", scalar_curvature);
 }
 
@@ -4501,7 +4499,6 @@ int main()
         //render.push_back(bssnok_datas[which_data]);
         render.push_back(scale);
         render.push_back(clsize);
-        render.push_back(intermediate);
         render.push_back(rtex[which_texture]);
         render.push_back(time_elapsed_s);
 
