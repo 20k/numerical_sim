@@ -1813,14 +1813,14 @@ void build_eqs(equation_context& ctx)
     tensor<value, 3> cGi = args.cGi;
 
     tensor<value, 3> digA;
-    digA.idx(0).make_value("digA0");
-    digA.idx(1).make_value("digA1");
-    digA.idx(2).make_value("digA2");
+    digA.idx(0).make_value("digA0[IDX(ix,iy,iz)]");
+    digA.idx(1).make_value("digA1[IDX(ix,iy,iz)]");
+    digA.idx(2).make_value("digA2[IDX(ix,iy,iz)]");
 
     tensor<value, 3> dX;
-    dX.idx(0).make_value("dX0");
-    dX.idx(1).make_value("dX1");
-    dX.idx(2).make_value("dX2");
+    dX.idx(0).make_value("dX0[IDX(ix,iy,iz)]");
+    dX.idx(1).make_value("dX1[IDX(ix,iy,iz)]");
+    dX.idx(2).make_value("dX2[IDX(ix,iy,iz)]");
 
     tensor<value, 3, 3> digB;
 
@@ -1832,7 +1832,7 @@ void build_eqs(equation_context& ctx)
         {
             int idx = i + j * 3;
 
-            std::string name = "digB" + std::to_string(idx);
+            std::string name = "digB" + std::to_string(idx) + "[IDX(ix,iy,iz)]";
 
             digB.idx(i, j).make_value(name);
         }
@@ -1864,7 +1864,7 @@ void build_eqs(equation_context& ctx)
 
                 int final_index = k + symmetric_index * 3;
 
-                std::string name = "dcYij" + std::to_string(final_index);
+                std::string name = "dcYij" + std::to_string(final_index) + "[IDX(ix,iy,iz)]";
 
                 dcYij.idx(k, i, j) = name;
             }
