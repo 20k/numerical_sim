@@ -1418,17 +1418,20 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
                 #ifdef USE_gBB0
                 __global float* gBB0, __global float* gBB1, __global float* gBB2,
                 #endif // USE_gBB0
-            float scale, float3 camera_pos, float4 camera_quat,
-            float width, float height, int4 dim, __write_only image2d_t screen)
+                float scale, float3 camera_pos, float4 camera_quat,
+                int4 dim, __write_only image2d_t screen)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
 
-    if(x >= width)
+    if(x >= get_image_width(screen))
         return;
 
-    if(y >= height)
+    if(y >= get_image_height(screen))
         return;
+
+    float width = get_image_width(screen);
+    float height = get_image_height(screen);
 
     ///ray location
 
@@ -1580,16 +1583,19 @@ void trace_metric(__global float* cY0, __global float* cY1, __global float* cY2,
                   __global float* gBB0, __global float* gBB1, __global float* gBB2,
                   #endif // USE_gBB0
                   float scale, float3 camera_pos, float4 camera_quat,
-                  float width, float height, int4 dim, __write_only image2d_t screen)
+                  int4 dim, __write_only image2d_t screen)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
 
-    if(x >= width)
+    if(x >= get_image_width(screen))
         return;
 
-    if(y >= height)
+    if(y >= get_image_height(screen))
         return;
+
+    float width = get_image_width(screen);
+    float height = get_image_height(screen);
 
     ///ray location
     float3 pos = world_to_voxel(camera_pos, dim, scale);

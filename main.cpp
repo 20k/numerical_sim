@@ -1414,7 +1414,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258}, {0, 0, 0.258}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258/2.25f}, {0, 0, 0.258/2.25f}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -3976,10 +3976,10 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 5;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {300, 300, 300};
+    vec3i size = {350, 350, 350};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
-    float c_at_max = 65;
+    float c_at_max = 76;
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
@@ -4150,7 +4150,7 @@ int main()
     }
 
     float dissipate_low = 0.25;
-    float dissipate_high = 0.25;
+    float dissipate_high = 0.45;
 
     std::array<float, buffer_count> dissipation_coefficients
     {
@@ -4453,13 +4453,14 @@ int main()
 
         if((vec2i){buffer_size.x(), buffer_size.y()} != win.get_window_size())
         {
-            width = buffer_size.x();
-            height = buffer_size.y();
+            width = win.get_window_size().x();
+            height = win.get_window_size().y();
 
             texture_settings new_sett;
             new_sett.width = width;
             new_sett.height = height;
             new_sett.is_srgb = false;
+            new_sett.generate_mipmaps = false;
 
             tex[0].load_from_memory(new_sett, nullptr);
             tex[1].load_from_memory(new_sett, nullptr);
@@ -4758,17 +4759,12 @@ int main()
                 render_args.push_back(i);
             }
 
-            float fwidth = width;
-            float fheight = height;
-
             cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
             cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
 
             render_args.push_back(scale);
             render_args.push_back(ccamera_pos);
             render_args.push_back(ccamera_quat);
-            render_args.push_back(fwidth);
-            render_args.push_back(fheight);
             render_args.push_back(clsize);
             render_args.push_back(rtex[which_texture]);
 
@@ -4799,7 +4795,7 @@ int main()
             ImVec2 screen_pos = ImGui::GetMainViewport()->Pos;
 
             ImVec2 tl = {0,0};
-            ImVec2 br = {win.get_window_size().x(),win.get_window_size().y()};
+            ImVec2 br = {rtex[which_texture].size<2>().x(), rtex[which_texture].size<2>().y()};
 
             if(win.get_render_settings().viewports)
             {
