@@ -863,105 +863,19 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     ogBB2[index] = gBB2[index] + (dtgBB2 + diss_gBB2) * timestep;
     #endif // USE_GBB
 
-    ///current problem seems to be a dissipation one again?
-    /*NAN cY0 162 146 211
-    NAN cY3 161 151 211
-    NAN X 161 149 211
-    NAN cY3 162 151 211
-    NAN cY0 161 148 211
-    NAN cY3 161 153 211
-    NAN cY3 162 153 211
-    NAN cY4 161 151 211
-    NAN cY0 162 148 211
-    NAN cY4 161 153 211
-    NAN cY0 161 155 211
-    NAN cY0 162 155 211
-    NAN cY4 162 153 211
-    NAN cY1 161 155 211
-    NAN cY1 162 155 211
-    NAN cY4 162 151 211
-    NAN cY2 161 155 211
-    NAN cY2 162 155 211
-    NAN cY5 161 151 211
-    NAN cY5 162 151 211
-    NAN cY3 161 155 211
-    NAN cY5 161 153 211
-    NAN cY5 162 153 211
-    NAN cY3 162 155 211
-    NAN cY0 161 150 211
-    NAN cY4 161 155 211
-    NAN cY4 162 155 211
-    NAN cY0 161 157 211
-    NAN cY0 162 157 211
-    NAN cY5 161 155 211
-    NAN cY5 162 155 211
-    NAN cY0 162 150 211
-    NAN cY0 161 152 211
-    NAN cY0 162 152 211
-    NAN cY1 161 150 211
-    NAN cY1 162 150 211
-    NAN X 161 153 211
-    NAN X 162 153 211
-    NAN cY1 161 152 211
-    NAN X 161 151 211
-    NAN X 162 151 211
-    NAN cY0 161 154 211
-    NAN cY0 162 154 211
-    NAN X 161 155 211
-    NAN cY2 161 150 211
-    NAN cY2 162 150 211
-    NAN cY0 161 159 211
-    NAN X 162 155 211
-    NAN cY0 161 161 211
-    NAN cY0 162 159 211
-    NAN gA 161 151 211
-    NAN gA 162 151 211
-    NAN cY3 161 150 211
-    NAN cY3 162 150 211
-    NAN cY0 162 161 211
-    NAN cY1 162 152 211
-    NAN cY1 161 154 211
-    NAN cY1 162 154 211
-    NAN cY4 161 150 211*/
-
-    /*NAN ocA0 161 150 150
-    NAN ocA1 161 150 150
-    NAN ocA2 161 150 150
-    NAN ocA3 161 150 150
-    NAN ocA4 161 150 150
-    NAN ocA5 161 150 150
-    NAN ocA0 161 151 150
-    NAN ocA1 161 151 150
-    NAN ocA2 161 151 150
-    NAN ocA3 161 151 150
-    NAN ocA4 161 151 150
-    NAN ocA5 161 151 150
-    NAN ocA0 161 150 151
-    NAN ocA1 161 150 151
-    NAN ocA2 161 150 151
-    NAN ocA3 161 150 151
-    NAN ocA4 161 150 151
-    NAN ocA5 161 150 151
-    NAN ocA0 161 151 151
-    NAN ocA1 161 151 151
-    NAN ocA2 161 151 151
-    NAN ocA3 161 151 151
-    NAN ocA4 161 151 151
-    NAN ocA5 161 151 151*/
-
-    /*bool debug = false;
+    bool debug = false;
 
     NANCHECK(ocY0);
     NANCHECK(ocY1);
     NANCHECK(ocY2);
     NANCHECK(ocY3);
     NANCHECK(ocY4);
-    NANCHECK(ocY5);
+    //NANCHECK(ocY5);
 
     NANCHECK(ocA0);
     NANCHECK(ocA1);
     NANCHECK(ocA2);
-    NANCHECK(ocA3);
+    //NANCHECK(ocA3);
     NANCHECK(ocA4);
     NANCHECK(ocA5);
 
@@ -974,7 +888,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     NANCHECK(ogA);
     NANCHECK(ogB0);
     NANCHECK(ogB1);
-    NANCHECK(ogB2);*/
+    NANCHECK(ogB2);
 
     #ifdef USE_GBB
     NANCHECK(gBB0);
@@ -982,21 +896,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     NANCHECK(gBB2);
     #endif // USE_GBB
 
-    /*NAN cA3 171 138 141
-    NAN cA4 171 138 141
-    NAN cA5 171 138 141
-    NAN cGi0 171 137 142
-    NAN cGi0 171 139 142
-    NAN cA3 171 138 142
-    NAN cA4 171 138 142
-    NAN cA5 171 138 142
-    NAN cGi0 171 137 143
-    NAN cA2 171 138 143
-    NAN cGi0 171 139 143
-    NAN cA3 171 138 143
-    NAN cGi0 109 138 143*/
-
-    #if 0
+    #if 1
     //if(debug)
     //if(x == 5 && y == 6 && z == 4)
     //if(ix == 125 && y == 100 && z == 125)
@@ -1016,7 +916,8 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     //138.500000 150.500000 150.500000
     //if(ix == 139 && iy == 151 && iz == 150)
     //145.500000 150.500000 150.500000
-    if(ix == 146 && iy == 151 && iz == 151)
+    //if(ix == 146 && iy == 151 && iz == 151)
+    if(ix == 134 && iy == 150 && iz == 152)
     {
         //float scalar = scalar_curvature;
 
@@ -1033,7 +934,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         printf("Yij2 %f\n", cY2[index]);
         printf("Yij3 %f\n", cY3[index]);
         printf("Yij4 %f\n", cY4[index]);
-        printf("Yij5 %f\n", cY5[index]);
+        //printf("Yij5 %f\n", cY5[index]);
         printf("cGi0 %f\n", cGi0[index]);
         printf("cGi1 %f\n", cGi1[index]);
         printf("cGi2 %f\n", cGi2[index]);

@@ -2376,6 +2376,7 @@ void build_eqs(equation_context& ctx)
             ///cY here instead of Yij
 
             ///not convinced its correct to push x inside of trace free?
+            ///what if the riemann quantity is made trace free by cY instead of Yij like I assumed?
             value trace_free_part = gpu_trace_free(with_trace, cY, icY).idx(i, j);
 
             value p1 = trace_free_part;
