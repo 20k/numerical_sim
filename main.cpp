@@ -606,13 +606,13 @@ struct differentiation_context
         }
 
         ///todo: pin the individual variables?
-        if(should_pin)
+        /*if(should_pin)
         {
             for(auto& i : vars)
             {
-                //ctx.pin(i);
+                ctx.pin(i);
             }
-        }
+        }*/
     }
 };
 
@@ -4578,7 +4578,7 @@ int main()
                 std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
                                       "gA", "gB0", "gB1", "gB2", "X"};
 
-                for(int idx = 0; idx < buffers.size(); idx++)
+                for(int idx = 0; idx < (int)buffers.size(); idx++)
                 {
                     int i1 = idx * 3 + 0;
                     int i2 = idx * 3 + 1;
@@ -4709,9 +4709,9 @@ int main()
 
             //printf("OFF %f\n", r_extract/scale);
 
-            cl_int4 pos = {clsize.x()/2, clsize.y()/2 + r_extract / scale, clsize.z()/2, 0};
+            /*cl_int4 pos = {clsize.x()/2, clsize.y()/2 + r_extract / scale, clsize.z()/2, 0};
 
-            /*cl::args waveform_args;
+            cl::args waveform_args;
 
             for(auto& i : generic_data[which_data])
             {
