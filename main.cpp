@@ -3976,10 +3976,10 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 5;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {350, 350, 350};
+    vec3i size = {300, 300, 300};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
-    float c_at_max = 76;
+    float c_at_max = 65;
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
@@ -4149,8 +4149,8 @@ int main()
         }
     }
 
-    float dissipate_low = 0.25;
-    float dissipate_high = 0.45;
+    float dissipate_low = 0;
+    float dissipate_high = 0;
 
     std::array<float, buffer_count> dissipation_coefficients
     {
