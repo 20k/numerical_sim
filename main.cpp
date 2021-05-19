@@ -375,7 +375,11 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
 
         "dX0",
         "dX1",
-        "dX2"
+        "dX2",
+
+        "momentum0",
+        "momentum1",
+        "momentum2",
     };
 
     bool uses_extension = false;
@@ -683,6 +687,8 @@ struct standard_arguments
     metric<value, 3, 3> Yij;
     tensor<value, 3, 3> Kij;
 
+    tensor<value, 3> momentum_constraint;
+
     standard_arguments(bool interpolate)
     {
         gA.make_value(bidx("gA", interpolate));
@@ -744,6 +750,10 @@ struct standard_arguments
         tensor<value, 3, 3> Aij = cA / X;
 
         Kij = Aij + Yij.to_tensor() * (K / 3.f);
+
+        momentum_constraint.idx(0).make_value(bidx("momentum0", interpolate));
+        momentum_constraint.idx(1).make_value(bidx("momentum1", interpolate));
+        momentum_constraint.idx(2).make_value(bidx("momentum2", interpolate));
     }
 };
 
@@ -1791,15 +1801,10 @@ void build_momentum_constraint(equation_context& ctx)
     standard_arguments args(false);
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
+    auto unpinned_icY = icY;
     ctx.pin(icY);
 
-    tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
-
-    tensor<value, 3, 3> mixed_cAij = raise_index(args.cA, args.cY, icY);
-
-    tensor<value, 3> Mi;
-
-    value X_recip = 0;
+    value X_recip = 0.f;
 
     {
         float min_X = 0.001;
@@ -1814,6 +1819,13 @@ void build_momentum_constraint(equation_context& ctx)
             return 1.f / args.X;
         });
     }
+
+    #if 1
+    tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
+
+    tensor<value, 3, 3> mixed_cAij = raise_index(args.cA, args.cY, icY);
+
+    tensor<value, 3> Mi;
 
     for(int i=0; i < 3; i++)
     {
@@ -1836,8 +1848,52 @@ void build_momentum_constraint(equation_context& ctx)
             s3 += -(3.f/2.f) * mixed_cAij.idx(m, i) * hacky_differentiate(ctx, args.X, m) * X_recip;
         }
 
-        Mi.idx(i) = s1 + s2 + s3;
+        Mi.idx(i) = dual_if(args.X <= 0.001f,
+        []()
+        {
+            return 0.f;
+        },
+        [&]()
+        {
+            return s1 + s2 + s3;
+        });
     }
+    #endif // 0
+
+    /*tensor<value, 3> Mi;
+
+    tensor<value, 3, 3> second_cAij = raise_second_index(args.cA, args.cY, unpinned_icY);
+
+    for(int i=0; i < 3; i++)
+    {
+        value s1 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s1 += hacky_differentiate(ctx, second_cAij.idx(i, j), j);
+        }
+
+        value s2 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                s2 += -0.5f * icY.idx(j, k) * hacky_differentiate(ctx, args.cA.idx(j, k), i);
+            }
+        }
+
+        value s3 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s3 += -0.25f * 6 * X_recip * hacky_differentiate(ctx, args.X, j) * second_cAij.idx(i, j);
+        }
+
+        value s4 = -(2.f/3.f) * hacky_differentiate(ctx, args.K, i);
+
+        Mi.idx(i) = s1 + s2 + s3 + s4;
+    }*/
 
     for(int i=0; i < 3; i++)
     {
@@ -2473,6 +2529,15 @@ void build_eqs(equation_context& ctx)
             }
 
             dtcAij.idx(i, j) = p1 + p2 + p3;
+
+            #define DAMP_DTCAIJ
+            #ifdef DAMP_DTCAIJ
+            float Ka = 0.005f;
+
+            dtcAij.idx(i, j) += Ka * gA * 0.5f *
+                                                (gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)
+                                                 + gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(j, i));
+            #endif // DAMP_DTCAIJ
         }
     }
 
@@ -4235,7 +4300,7 @@ int main()
     }
 
     float dissipate_low = 0.05;
-    float dissipate_high = 0.25;
+    float dissipate_high = 0.15;
 
     /*std::array<float, buffer_count> dissipation_coefficients
     {
@@ -4694,7 +4759,7 @@ int main()
             {
                 cl::args momentum_args;
 
-                for(auto& i : generic_data[which_data)])
+                for(auto& i : generic_data[which_data])
                 {
                     momentum_args.push_back(i);
                 }
@@ -4708,7 +4773,7 @@ int main()
                 momentum_args.push_back(clsize);
                 momentum_args.push_back(time_elapsed_s);
 
-                clctx.cqueue.exec("calculate_momentum_constraint", a1, {size.x(), size.y(), size.z()}, {64, 1, 1});
+                clctx.cqueue.exec("calculate_momentum_constraint", momentum_args, {size.x(), size.y(), size.z()}, {64, 1, 1});
             }
 
             cl::args a1;
