@@ -1423,7 +1423,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258/2.25f}, {0, 0, 0.258/2.25f}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258/2.f}, {0, 0, 0.258/2.f}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -4412,7 +4412,7 @@ int main()
 
     ///I need to do this properly, where it keeps iterating until it converges
     #ifndef GPU_PROFILE
-    for(int i=0; i < 10000; i++)
+    for(int i=0; i < 5000; i++)
     #else
     for(int i=0; i < 1000; i++)
     #endif
@@ -4981,6 +4981,7 @@ int main()
 
         ///todo: get rid of this
         clctx.cqueue.block();
+        glFinish();
 
         {
             ImDrawList* lst = ImGui::GetBackgroundDrawList();
@@ -5003,5 +5004,6 @@ int main()
         }
 
         win.display();
+        glFinish();
     }
 }
