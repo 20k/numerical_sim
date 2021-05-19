@@ -4146,10 +4146,10 @@ int main()
         }
     }
 
-    float dissipate_low = 0;
-    float dissipate_high = 0;
+    float dissipate_low = 0.05;
+    float dissipate_high = 0.25;
 
-    std::array<float, buffer_count> dissipation_coefficients
+    /*std::array<float, buffer_count> dissipation_coefficients
     {
         dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, //cY
         dissipate_high, dissipate_high, dissipate_high, dissipate_high, dissipate_high, dissipate_high, //cA
@@ -4158,6 +4158,17 @@ int main()
         dissipate_high, //X
         dissipate_high, //gA
         dissipate_high, dissipate_high, dissipate_high //gB
+    };*/
+
+    std::array<float, buffer_count> dissipation_coefficients
+    {
+        dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, //cY
+        dissipate_high, dissipate_high, dissipate_high, dissipate_high, dissipate_high, dissipate_high, //cA
+        dissipate_low, dissipate_low, dissipate_low, //cGi
+        dissipate_high, //K
+        dissipate_low, //X
+        dissipate_low, //gA
+        dissipate_low, dissipate_low, dissipate_low //gB
     };
 
     std::array<cl::buffer, 2> u_args{clctx.ctx, clctx.ctx};

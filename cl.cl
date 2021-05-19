@@ -863,7 +863,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     ogBB2[index] = gBB2[index] + (dtgBB2 + diss_gBB2) * timestep;
     #endif // USE_GBB
 
-    bool debug = false;
+    /*bool debug = false;
 
     NANCHECK(ocY0);
     NANCHECK(ocY1);
@@ -888,7 +888,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     NANCHECK(ogA);
     NANCHECK(ogB0);
     NANCHECK(ogB1);
-    NANCHECK(ogB2);
+    NANCHECK(ogB2);*/
 
     #ifdef USE_GBB
     NANCHECK(gBB0);
@@ -896,7 +896,7 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     NANCHECK(gBB2);
     #endif // USE_GBB
 
-    #if 1
+    #if 0
     //if(debug)
     //if(x == 5 && y == 6 && z == 4)
     //if(ix == 125 && y == 100 && z == 125)
@@ -1526,6 +1526,8 @@ void trace_metric(__global float* cY0, __global float* cY1, __global float* cY2,
         if(p0 < BORDER_WIDTH || p0 >= dim.x - BORDER_WIDTH - 1 || p1 < BORDER_WIDTH || p1 >= dim.y - BORDER_WIDTH - 1 || p2 < BORDER_WIDTH || p2 >= dim.z - BORDER_WIDTH - 1)
             break;
 
+        #define TRACE_CONFORMAL
+        #ifdef TRACE_CONFORMAL
         float Yxx = buffer_read_linear(cY0, (float3)(p0,p1,p2), dim);
         float Yxy = buffer_read_linear(cY1, (float3)(p0,p1,p2), dim);
         float Yxz = buffer_read_linear(cY2, (float3)(p0,p1,p2), dim);
@@ -1543,6 +1545,33 @@ void trace_metric(__global float* cY0, __global float* cY1, __global float* cY2,
                           fabs(Yzz / cX);
 
         float ascalar = curvature / 1000.f;
+        #endif // TRACE_CONFORMAL
+
+        //#define TRACE_EXTRINSIC
+        #ifdef TRACE_EXTRINSIC
+        float cAxx = buffer_read_linear(cA0, (float3)(p0,p1,p2), dim);
+        float cAxy = buffer_read_linear(cA1, (float3)(p0,p1,p2), dim);
+        float cAxz = buffer_read_linear(cA2, (float3)(p0,p1,p2), dim);
+        float cAyy = buffer_read_linear(cA3, (float3)(p0,p1,p2), dim);
+        float cAyz = buffer_read_linear(cA4, (float3)(p0,p1,p2), dim);
+        float cAzz = buffer_read_linear(cA5, (float3)(p0,p1,p2), dim);
+
+        float curvature = fabs(cAxx) +
+                          fabs(cAxy) +
+                          fabs(cAxz) +
+                          fabs(cAyy) +
+                          fabs(cAyz) +
+                          fabs(cAzz);
+
+        float ascalar = curvature / 100.f;
+        #endif // TRACE_EXTRINSIC
+
+        //#define TRACE_K
+        #ifdef TRACE_K
+        float lK = buffer_read_linear(K,  (float3)(p0,p1,p2), dim);
+
+        float ascalar = fabs(lK / 2.f);
+        #endif // TRACE_K
 
         max_scalar = max(ascalar, max_scalar);
 
