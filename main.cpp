@@ -62,6 +62,7 @@ https://core.ac.uk/download/pdf/144448463.pdf - 7.9 states you can split up trac
 https://github.com/GRChombo/GRChombo useful info
 https://arxiv.org/pdf/gr-qc/0505055.pdf - explicit upwind stencils
 https://arxiv.org/pdf/1205.5111v1.pdf - paper on numerical stability
+https://arxiv.org/pdf/1208.3927.pdf - adm geodesics
 */
 
 ///notes:
@@ -622,10 +623,7 @@ struct differentiation_context
 ///dissipation is fixing some stuff, todo: investigate why so much dissipation is required
 value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int idx)
 {
-    int d = 2;
-
     ///https://en.wikipedia.org/wiki/Finite_difference_coefficient according to wikipedia, this is the 6th derivative with 2nd order accuracy. I am confused, but at least I know where it came from
-
     value scale = "scale";
 
     //#define FOURTH
@@ -1758,6 +1756,92 @@ void build_intermediate_thin_cY5(equation_context& ctx)
     for(int k=0; k < 3; k++)
     {
         ctx.add("init_cY5_intermediate" + std::to_string(k), hacky_differentiate(ctx, args.cY.idx(2, 2), k, false));
+    }
+}
+
+tensor<value, 3, 3, 3> gpu_covariant_derivative_low_tensor(equation_context& ctx, const tensor<value, 3, 3>& mT, const metric<value, 3, 3>& met, const inverse_metric<value, 3, 3>& inverse)
+{
+    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, met, inverse);
+
+    tensor<value, 3, 3, 3> ret;
+
+    for(int a=0; a < 3; a++)
+    {
+        for(int b=0; b < 3; b++)
+        {
+            for(int c=0; c < 3; c++)
+            {
+                value sum = 0;
+
+                for(int d=0; d < 3; d++)
+                {
+                    sum += -christoff2.idx(d, c, a) * mT.idx(d, b) - christoff2.idx(d, c, b) * mT.idx(a, d);
+                }
+
+                ret.idx(c, a, b) = hacky_differentiate(ctx, mT.idx(a, b), c) + sum;
+            }
+        }
+    }
+
+    return ret;
+}
+
+void build_momentum_constraint(equation_context& ctx)
+{
+    standard_arguments args(false);
+
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
+    ctx.pin(icY);
+
+    tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
+
+    tensor<value, 3, 3> mixed_cAij = raise_index(args.cA, args.cY, icY);
+
+    tensor<value, 3> Mi;
+
+    value X_recip = 0;
+
+    {
+        float min_X = 0.001;
+
+        X_recip = dual_if(args.X <= min_X,
+        [&]()
+        {
+            return 1.f / min_X;
+        },
+        [&]()
+        {
+            return 1.f / args.X;
+        });
+    }
+
+    for(int i=0; i < 3; i++)
+    {
+        value s1 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            for(int n=0; n < 3; n++)
+            {
+                s1 += icY.idx(m, n) * dmni.idx(m, n, i);
+            }
+        }
+
+        value s2 = -(2.f/3.f) * hacky_differentiate(ctx, args.K, i);
+
+        value s3 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            s3 += -(3.f/2.f) * mixed_cAij.idx(m, i) * hacky_differentiate(ctx, args.X, m) * X_recip;
+        }
+
+        Mi.idx(i) = s1 + s2 + s3;
+    }
+
+    for(int i=0; i < 3; i++)
+    {
+        ctx.add("init_momentum" + std::to_string(i), Mi.idx(i));
     }
 }
 
@@ -4185,6 +4269,13 @@ int main()
     {
         thin_intermediates.emplace_back(clctx.ctx);
         thin_intermediates.back().alloc(size.x() * size.y() * size.z() * intermediate_data_size);
+    }
+
+    std::array<cl::buffer, 3> momentum_constraint{clctx.ctx, clctx.ctx, clctx.ctx};
+
+    for(auto& i : momentum_constraint)
+    {
+        i.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
     }
 
     cl::buffer waveform(clctx.ctx);
