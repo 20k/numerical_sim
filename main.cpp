@@ -2187,6 +2187,9 @@ void build_eqs(equation_context& ctx)
     ///a / X
     value gA_X = 0;
 
+    ///1/X
+    value X_recip = 0;
+
     {
         float min_X = 0.001;
 
@@ -2196,11 +2199,22 @@ void build_eqs(equation_context& ctx)
             ///linearly interpolate to 0
             value value_at_min = gA / min_X;
 
-            return value_at_min / min_X;
+            return value_at_min * X / min_X;
         },
         [&]()
         {
             return gA / X;
+        });
+
+        X_recip = dual_if(X <= min_X,
+        [&]()
+        {
+            ///linearly interpolate to 0
+            return 1 / min_X;
+        },
+        [&]()
+        {
+            return 1 / X;
         });
     }
 
@@ -2266,6 +2280,7 @@ void build_eqs(equation_context& ctx)
     }*/
 
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf
+    #if 0
     tensor<value, 3, 3> xgARphiij;
 
     for(int i=0; i < 3; i++)
@@ -2300,6 +2315,62 @@ void build_eqs(equation_context& ctx)
             ctx.pin(xgARij.idx(i, j));
         }
     }
+    #endif // 0
+
+    tensor<value, 3, 3> RX;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value sum = 0;
+
+            for(int m=0; m < 3; m++)
+            {
+                for(int n=0; n < 3; n++)
+                {
+                    sum += 0.5f * cY.idx(i, j) * X_recip * icY.idx(m, n) * gpu_covariant_derivative_low_vec(ctx, dX, cY, icY).idx(n, m);
+                    sum += X_recip * (cY.idx(i, j) / 2.f) * gA_X * -(3.f/2.f) * icY.idx(m, n) * dX.idx(m) * dX.idx(n);
+                }
+            }
+
+            value p2 = X_recip * 0.5f * (gpu_covariant_derivative_low_vec(ctx, dX, cY, icY).idx(j, i) - X_recip * 0.5f * dX.idx(i) * dX.idx(j));
+
+            RX.idx(i, j) = sum + p2;
+        }
+    }
+
+    ctx.pin(RX);
+
+    tensor<value, 3, 3> Rij = cRij + RX;
+
+    tensor<value, 3, 3> didja;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value deriv = gpu_covariant_derivative_low_vec(ctx, digA, cY, icY).idx(j, i);
+
+            value s2 = X_recip * 0.5f * (hacky_differentiate(ctx, X, i) * hacky_differentiate(ctx, gA, j) + hacky_differentiate(ctx, X, j) * hacky_differentiate(ctx, gA, i));
+
+            value s3 = 0;
+
+            for(int m=0; m < 3; m++)
+            {
+                for(int n=0; n < 3; n++)
+                {
+                    value v = X_recip * -0.5f * cY.idx(i, j) * icY.idx(m, n) * hacky_differentiate(ctx, X, m) * hacky_differentiate(ctx, gA, n);
+
+                    s3 += v;
+                }
+            }
+
+            didja.idx(i, j) = deriv + s2 + s3;
+        }
+    }
+
+    ctx.pin(didja);
 
     tensor<value, 3, 3> Xdidja;
 
@@ -2344,7 +2415,7 @@ void build_eqs(equation_context& ctx)
     tensor<value, 3, 3> dtcAij;
 
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf replaced with definition under bssn aux
-    tensor<value, 3, 3> with_trace = -Xdidja + xgARij;
+    //tensor<value, 3, 3> with_trace = -Xdidja + xgARij;
 
     for(int i=0; i < 3; i++)
     {
@@ -2373,7 +2444,9 @@ void build_eqs(equation_context& ctx)
 
             ///not convinced its correct to push x inside of trace free?
             ///what if the riemann quantity is made trace free by cY instead of Yij like I assumed?
-            value trace_free_part = gpu_trace_free(with_trace, cY, icY).idx(i, j);
+            //value trace_free_part = gpu_trace_free(with_trace, cY, icY).idx(i, j);
+
+            value trace_free_part = X * gpu_trace_free(gA * Rij - didja, cY, icY).idx(i, j);
 
             value p1 = trace_free_part;
 
