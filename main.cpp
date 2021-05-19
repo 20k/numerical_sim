@@ -1529,8 +1529,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         }
     }
 
-    value gA = 1;
-    //value gA = 1/(pow(bl_conformal + u, 2));
+    //value gA = 1;
+    value gA = 1/(pow(bl_conformal + u, 2));
     value gB0 = 0;
     value gB1 = 0;
     value gB2 = 0;
@@ -2287,11 +2287,6 @@ void build_eqs(equation_context& ctx)
             xgARphiij.idx(i, j) = sum + p2;
         }
     }
-
-
-    //ctx.add("debug_val", Rphiij.idx(i, j));
-
-    //ctx.add("debug_val", gpu_trace(cA, cY, icY));
 
     tensor<value, 3, 3> xgARij;
 
