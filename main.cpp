@@ -4100,6 +4100,9 @@ int main()
     equation_context ctx12;
     build_intermediate_thin_cY5(ctx12);
 
+    equation_context ctx13;
+    build_momentum_constraint(ctx13);
+
     /*for(auto& i : ctx.values)
     {
         std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
@@ -4130,6 +4133,7 @@ int main()
     ctx10.build(argument_string, 9);
     ctx11.build(argument_string, 10);
     ctx12.build(argument_string, 11);
+    ctx13.build(argument_string, 12);
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 
@@ -4687,6 +4691,26 @@ int main()
                 }
             }
 
+            {
+                cl::args momentum_args;
+
+                for(auto& i : generic_data[which_data)])
+                {
+                    momentum_args.push_back(i);
+                }
+
+                for(auto& i : momentum_constraint)
+                {
+                    momentum_args.push_back(i);
+                }
+
+                momentum_args.push_back(scale);
+                momentum_args.push_back(clsize);
+                momentum_args.push_back(time_elapsed_s);
+
+                clctx.cqueue.exec("calculate_momentum_constraint", a1, {size.x(), size.y(), size.z()}, {64, 1, 1});
+            }
+
             cl::args a1;
 
             for(auto& i : generic_data[which_data])
@@ -4695,6 +4719,11 @@ int main()
             }
 
             for(auto& i : generic_data[(which_data + 1) % 2])
+            {
+                a1.push_back(i);
+            }
+
+            for(auto& i : momentum_constraint)
             {
                 a1.push_back(i);
             }
