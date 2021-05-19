@@ -4163,7 +4163,7 @@ int main()
     std::array<float, buffer_count> dissipation_coefficients
     {
         dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, //cY
-        dissipate_high, dissipate_high, dissipate_high, dissipate_high, dissipate_high, dissipate_high, //cA
+        dissipate_high, dissipate_high, dissipate_high, 0, dissipate_high, dissipate_high, //cA
         dissipate_low, dissipate_low, dissipate_low, //cGi
         dissipate_high, //K
         dissipate_low, //X
