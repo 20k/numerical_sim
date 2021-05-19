@@ -2530,7 +2530,7 @@ void build_eqs(equation_context& ctx)
 
             dtcAij.idx(i, j) = p1 + p2 + p3;
 
-            #define DAMP_DTCAIJ
+            //#define DAMP_DTCAIJ
             #ifdef DAMP_DTCAIJ
             float Ka = 0.005f;
 
