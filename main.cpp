@@ -1538,8 +1538,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         }
     }
 
-    //value gA = 1;
-    value gA = 1/(pow(bl_conformal + u, 2));
+    value gA = 1;
+    //value gA = 1/(pow(bl_conformal + u, 2));
     value gB0 = 0;
     value gB1 = 0;
     value gB2 = 0;
