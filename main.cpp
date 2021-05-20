@@ -1423,7 +1423,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258/4.f}, {0, 0, 0.258/4.f}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258/2.f}, {0, 0, 0.258/2.f}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -4299,8 +4299,8 @@ int main()
         }
     }
 
-    float dissipate_low = 0.3;
-    float dissipate_high = 0.3;
+    float dissipate_low = 0.4;
+    float dissipate_high = 0.4;
 
     /*std::array<float, buffer_count> dissipation_coefficients
     {
@@ -4859,6 +4859,9 @@ int main()
                     diss.push_back(scale);
                     diss.push_back(clsize);
                     diss.push_back(timestep);
+
+                    if(coeff == 0)
+                        continue;
 
                     clctx.cqueue.exec("dissipate_single", diss, {size.x(), size.y(), size.z()}, {128, 1, 1});
                 }
