@@ -229,10 +229,49 @@ void setup_u_offset(__global float* u_offset,
     u_offset[IDX(ix, iy, iz)] = 0;
 }
 
+float laplace(__global float* in, int ix, int iy, int iz, float scale, int4 dim)
+{
+    float xm1 = in[IDX(ix-1, iy, iz)];
+    float xp1 = in[IDX(ix+1, iy, iz)];
+    float ym1 = in[IDX(ix, iy-1, iz)];
+    float yp1 = in[IDX(ix, iy+1, iz)];
+    float zm1 = in[IDX(ix, iy, iz-1)];
+    float zp1 = in[IDX(ix, iy, iz+1)];
+    float centre = in[IDX(ix, iy, iz)];
+
+    float xderiv = (xm1 - 2 * centre + xp1) / (scale * scale);
+    float yderiv = (ym1 - 2 * centre + yp1) / (scale * scale);
+    float zderiv = (zm1 - 2 * centre + zp1) / (scale * scale);
+
+    return xderiv + yderiv + zderiv;
+}
+
+__kernel
+void generate_psi(__global float* psi_out, float scale, int4 dim)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
+
+    float ox = offset.x;
+    float oy = offset.y;
+    float oz = offset.z;
+
+    psi_out[IDX(ix, iy, iz)] = init_BL_val;
+
+    //printf("U %f\n", psi_out[IDX(ix, iy, iz)]);
+}
+
 ///https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan2008/Workbook33/33_2_elliptic_pde.pdf
 ///https://arxiv.org/pdf/1205.5111v1.pdf 78
 __kernel
 void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out,
+                       __global float* psi_in,
                        float scale, int4 dim)
 {
     int ix = get_global_id(0);
@@ -253,6 +292,9 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
     float bl_s = init_BL_val;
 
+    //if(fabs(bl_s - 1) > 0.01)
+    //printf("Bls %f %f\n", bl_s, psi_in[IDX(ix,iy,iz)]);
+
     float aij_aIJ = init_aij_aIJ;
 
     float u = u_offset_in[IDX(ix, iy, iz)];
@@ -261,6 +303,10 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     float RHS = -B * pow(1 + a * u, -7);*/
 
     float RHS = -(1/8.f) * aij_aIJ * pow(bl_s + u, -7);
+
+    #ifdef USE_EXTENDED_HAM
+    RHS += -laplace(psi_in, ix, iy, iz, scale, dim);
+    #endif // EXTENDED_HAM
 
     float h2f0 = scale * scale * RHS;
 
@@ -275,6 +321,16 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     float u0n1 = (1/6.f) * (uxm1 + uxp1 + uym1 + uyp1 + uzm1 + uzp1 - h2f0);
 
     u_offset_out[IDX(ix, iy, iz)] = u0n1;
+
+    ///133.500000 150.500000 150.500000
+
+    /*if(ix == 133 && iy == 150 && iz == 150)
+    {
+        printf("%f %f %f %f %f\n", u0n1, h2f0, aij_aIJ, bl_s, u);
+    }*/
+
+    //Black hole at voxel 133.500000 150.500000 150.500000
+    //Black hole at voxel 166.500000 150.500000 150.500000
 }
 
 __kernel

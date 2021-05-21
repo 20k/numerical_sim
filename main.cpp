@@ -63,6 +63,9 @@ https://github.com/GRChombo/GRChombo useful info
 https://arxiv.org/pdf/gr-qc/0505055.pdf - explicit upwind stencils
 https://arxiv.org/pdf/1205.5111v1.pdf - paper on numerical stability
 https://arxiv.org/pdf/1208.3927.pdf - adm geodesics
+
+https://arxiv.org/pdf/gr-qc/0404056.pdf - seems to suggest an analytic solution to bowen-york
+0908.1063.pdf - analytic solution to initial data
 */
 
 ///notes:
@@ -1328,6 +1331,146 @@ tensor<T, N, N> lower_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met
     return ret;
 }
 
+///0908.1063
+namespace bowen_york_trumpet
+{
+    template<typename T>
+    tensor<value, 3, 3> ASij(float M, const vec3f& black_hole_pos, const vec<3, T>& sample)
+    {
+        vec<3, T> black_hole_pos_t = {black_hole_pos.x(), black_hole_pos.y(), black_hole_pos.z()};
+
+        T r = (sample - black_hole_pos_t).length();
+        vec<3, T> diff = sample - black_hole_pos_t;
+
+        tensor<T, 3> Ni = {diff.x(), diff.y(), diff.z()};
+        Ni = Ni / r;
+
+        float C = sqrt(27.f/16.f) * M * M;
+
+        tensor<value, 3, 3> ret;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                T kronecker = (i == j) ? 1 : 0;
+
+                ret.idx(i, j) = (C / (r*r*r)) * (3 * Ni.idx(i) * Ni.idx(j) - kronecker);
+            }
+        }
+
+        return ret;
+    }
+
+    template<typename T>
+    tensor<value, 3, 3> ABYij(float M, const vec3f& black_hole_pos, const vec<3, T>& sample, const vec3f& velocity)
+    {
+        vec3f momentum = M * velocity;
+        tensor<T, 3> tensor_momentum = {momentum.x(), momentum.y(), momentum.z()};
+
+        metric<value, 3, 3> kronecker;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                kronecker.idx(i, j) = (i == j) ? 1 : 0;
+            }
+        }
+
+        vec<3, T> black_hole_pos_t = {black_hole_pos.x(), black_hole_pos.y(), black_hole_pos.z()};
+
+        T r = (sample - black_hole_pos_t).length();
+        vec<3, T> diff = sample - black_hole_pos_t;
+
+        tensor<T, 3> Ni = {diff.x(), diff.y(), diff.z()};
+        Ni = Ni / r;
+
+        tensor<value, 3, 3> ret;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                ret.idx(i, j) = (3.f / (2.f * r * r)) * (tensor_momentum.idx(i) * Ni.idx(j) + tensor_momentum.idx(j) * Ni.idx(i) - (kronecker.idx(i, j) - Ni.idx(i) * Ni.idx(j)) * sum_multiply(raise_index(tensor_momentum, kronecker, kronecker.invert()), Ni));
+            }
+        }
+
+        return ret;
+    }
+
+    ///conformal
+    template<typename T>
+    tensor<value, 3, 3> cAij(const std::vector<float>& black_hole_mass, const std::vector<vec3f>& black_hole_pos, const std::vector<vec3f>& black_hole_velocity, const vec<3, T>& sample)
+    {
+        assert(black_hole_mass.size() == black_hole_pos.size());
+        assert(black_hole_mass.size() == black_hole_velocity.size());
+
+        tensor<value, 3, 3> ret;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                ret.idx(i, j) = 0;
+            }
+        }
+
+        for(int idx = 0; idx < black_hole_mass.size(); idx++)
+        {
+            ret += ASij(black_hole_mass[idx], black_hole_pos[idx], sample);
+            ret += ABYij(black_hole_mass[idx], black_hole_pos[idx], sample, black_hole_velocity[idx]);
+        }
+
+        return ret;
+    }
+
+    template<typename T>
+    T w1(const T& r)
+    {
+        return 1 / (1 + r*r*r*r);
+    }
+
+    template<typename T>
+    T w2(const T& r)
+    {
+        return (r*r*r*r) / (1 + r*r*r*r);
+    }
+
+    template<typename T>
+    std::pair<T, T> psi_s(const T& r, float M)
+    {
+        return {w1(r) * sqrt(3 * M / (2 * r)), w2(r)};
+    }
+
+    ///(28)
+    template<typename T>
+    T psi_full(const std::vector<float>& black_hole_mass, const std::vector<vec3f>& black_hole_pos, const vec<3, T>& sample)
+    {
+        T s1 = 1;
+        T s2 = 1;
+
+        assert(black_hole_mass.size() == black_hole_pos.size());
+
+        for(int idx = 0; idx < black_hole_mass.size(); idx++)
+        {
+            float M = black_hole_mass[idx];
+            vec3f pos = black_hole_pos[idx];
+
+            vec<3, T> value_pos = {pos.x(), pos.y(), pos.z()};
+
+            vec<3, T> diff = sample - value_pos;
+
+            auto [v1, v2] = psi_s(diff.length(), M);
+
+            s1 = s1 * v1;
+            s2 = s2 * v2;
+        }
+
+        return s1 + s2;
+    }
+}
+
 ///this does not return the same kind of conformal cAij as bssn uses, need to reconstruct Kij!
 tensor<value, 3, 3> calculate_bcAij(const vec<3, value>& pos, const std::vector<float>& black_hole_m, const std::vector<vec3f>& black_hole_pos, const std::vector<vec3f>& black_hole_velocity)
 {
@@ -1369,8 +1512,13 @@ tensor<value, 3, 3> calculate_bcAij(const vec<3, value>& pos, const std::vector<
     return bcAij;
 }
 
+struct initial_conditions_result
+{
+    bool use_extended_hamiltonian = false;
+};
+
 inline
-void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
+initial_conditions_result setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 {
     vec<3, value> pos;
 
@@ -1423,7 +1571,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258/2.f}, {0, 0, 0.258/2.f}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258/4.f}, {0, 0, 0.258/4.f}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -1438,11 +1586,12 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
         }
     }
 
-    tensor<value, 3, 3> bcAij = calculate_bcAij(pos, black_hole_m, black_hole_pos, black_hole_velocity);
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
-    //value BL_a = 0;
 
+    #define TEST_ALTERNATE_INITIAL_CONDITIONS
+    #ifndef TEST_ALTERNATE_INITIAL_CONDITIONS
+    tensor<value, 3, 3> bcAij = calculate_bcAij(pos, black_hole_m, black_hole_pos, black_hole_velocity);
     value BL_s = 1;
 
     for(int i=0; i < (int)black_hole_m.size(); i++)
@@ -1456,6 +1605,10 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         BL_s += Mi / (2 * dist);
     }
+    #else
+    tensor<value, 3, 3> bcAij = bowen_york_trumpet::cAij(black_hole_m, black_hole_pos, black_hole_velocity, pos);
+    value BL_s = bowen_york_trumpet::psi_full(black_hole_m, black_hole_pos, pos);
+    #endif
 
     ctx.add("init_BL_val", BL_s);
 
@@ -1480,6 +1633,14 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
         ctx.add("init_bcA" + std::to_string(i), bcAij.idx(linear_indices[i].x(), linear_indices[i].y()));
     }
 
+    initial_conditions_result res;
+    res.use_extended_hamiltonian = false;
+
+    #ifdef TEST_ALTERNATE_INITIAL_CONDITIONS
+    res.use_extended_hamiltonian = true;
+    #endif // TEST_ALTERNATE_INITIAL_CONDITIONS
+
+    return res;
 
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 69
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
@@ -4136,7 +4297,7 @@ int main()
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
     equation_context setup_initial;
-    setup_initial_conditions(setup_initial, centre, scale);
+    initial_conditions_result initial_result = setup_initial_conditions(setup_initial, centre, scale);
 
     equation_context ctx1;
     get_initial_conditions_eqs(ctx1, centre, scale);
@@ -4205,6 +4366,11 @@ int main()
     ctx11.build(argument_string, 10);
     ctx12.build(argument_string, 11);
     ctx13.build(argument_string, 12);
+
+    if(initial_result.use_extended_hamiltonian)
+    {
+        argument_string += "-DUSE_EXTENDED_HAM ";
+    }
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 
@@ -4402,6 +4568,20 @@ int main()
     std::cout << "TESTX " << test_init.X << std::endl;
     std::cout << "TESTgA " << test_init.gA << std::endl;*/
 
+    cl::buffer psi_temporary(clctx.ctx);
+
+    if(initial_result.use_extended_hamiltonian)
+    {
+        psi_temporary.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+
+        cl::args args;
+        args.push_back(psi_temporary);
+        args.push_back(scale);
+        args.push_back(clsize);
+
+        clctx.cqueue.exec("generate_psi", args, {size.x(), size.y(), size.z()}, {8, 8, 1});
+    }
+
     cl_float time_elapsed_s = 0;
 
     cl::args initial_u_args;
@@ -4426,6 +4606,7 @@ int main()
         cl::args interate_u_args;
         interate_u_args.push_back(u_args[which_u_args]);
         interate_u_args.push_back(u_args[(which_u_args + 1) % 2]);
+        interate_u_args.push_back(psi_temporary);
         interate_u_args.push_back(scale);
         interate_u_args.push_back(clsize);
 
@@ -4435,6 +4616,7 @@ int main()
     }
 
     u_args[(which_u_args + 1) % 2].native_mem_object.release();
+    psi_temporary.native_mem_object.release();
 
     clctx.cqueue.block();
 
