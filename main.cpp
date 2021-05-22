@@ -63,6 +63,9 @@ https://github.com/GRChombo/GRChombo useful info
 https://arxiv.org/pdf/gr-qc/0505055.pdf - explicit upwind stencils
 https://arxiv.org/pdf/1205.5111v1.pdf - paper on numerical stability
 https://arxiv.org/pdf/1208.3927.pdf - adm geodesics
+
+https://arxiv.org/pdf/gr-qc/0404056.pdf - seems to suggest an analytic solution to bowen-york
+0908.1063.pdf - analytic solution to initial data
 */
 
 ///notes:
