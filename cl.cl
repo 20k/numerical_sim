@@ -546,12 +546,11 @@ void calculate_momentum_constraint(__global float* cY0, __global float* cY1, __g
     momentum2[IDX(ix,iy,iz)] = m3;
 }
 
-
 float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float time)
 {
     float edge_half = scale * (dim.x/2);
 
-    float sponge_r0 = scale * ((dim.x/2) - 80);
+    float sponge_r0 = scale * ((dim.x/2) - 64);
     //float sponge_r0 = edge_half/2;
     float sponge_r1 = scale * ((dim.x/2) - 8);
 
