@@ -4027,7 +4027,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     ctx.pin(iYij);
 
-    tensor<value, 3, 3, 3> full_christoffel2 = gpu_christoffel_symbols_2(ctx, args.Yij, args.Yij.invert(), true);
+    tensor<value, 3, 3, 3> full_christoffel2 = gpu_christoffel_symbols_2(ctx, args.Yij, iYij, true);
 
     ctx.pin(full_christoffel2);
 
