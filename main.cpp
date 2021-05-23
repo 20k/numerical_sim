@@ -1427,7 +1427,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258/2.f}, {0, 0, 0.258/2.f}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258/4.f}, {0, 0, 0.258/4.f}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -3971,6 +3971,8 @@ void process_geodesics(equation_context& ctx)
     ctx.pin("universe_size", universe_length);*/
 }
 
+
+///https://arxiv.org/pdf/1208.3927.pdf (28a)
 void loop_geodesics(equation_context& ctx, vec3f dim)
 {
     standard_arguments args(true);

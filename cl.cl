@@ -1313,7 +1313,7 @@ int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_d
 
     //#define MIN_STEP 0.00001f
     //#define MIN_STEP 0.000001f
-    #define MIN_STEP 0.01f
+    #define MIN_STEP 0.1f
 
     float max_timestep = 100000;
 
@@ -1487,6 +1487,12 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
         lp1 += dX0 * ds;
         lp2 += dX1 * ds;
         lp3 += dX2 * ds;
+
+        if(fast_length((float3){dX0, dX1, dX2}) < 0.01f)
+        {
+            deliberate_termination = true;
+            break;
+        }
     }
 
     float4 col = {1,0,1,1};
