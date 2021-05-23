@@ -2730,10 +2730,18 @@ void build_eqs(equation_context& ctx)
     #endif // CHRISTOFFEL_49
 
     ///https://arxiv.org/pdf/1410.8607.pdf
+    ///https://arxiv.org/pdf/gr-qc/0210050.pdf (88)
+    /*
     //auto f_a = 8 / (3 * gA * (3 - gA));
     auto f_a = 2 / gA;
 
-    value dtgA = -gA * gA * f_a * K + lie_derivative(ctx, gB, gA);
+    value dtgA = -gA * gA * f_a * K + lie_derivative(ctx, gB, gA);*/
+
+    ///so -gA * gA * f_a * K with f_a = 8 / (3 * gA * (3 - gA))
+    ///-gA * f_a * K with f_a = 8 / (3 * (3 - gA)) = 8/(9 - 3 * gA)
+    auto f_a_reduced = 8 / (3 * (3 - gA));
+
+    value dtgA = -gA * f_a_reduced * K + lie_derivative(ctx, gB, gA);
 
     #ifndef USE_GBB
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
