@@ -2729,7 +2729,11 @@ void build_eqs(equation_context& ctx)
     }
     #endif // CHRISTOFFEL_49
 
-    value dtgA = -2 * gA * K + lie_derivative(ctx, gB, gA);
+    ///https://arxiv.org/pdf/1410.8607.pdf
+    //auto f_a = 8 / (3 * gA * (3 - gA));
+    auto f_a = 2 / gA;
+
+    value dtgA = -gA * gA * f_a * K + lie_derivative(ctx, gB, gA);
 
     #ifndef USE_GBB
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
