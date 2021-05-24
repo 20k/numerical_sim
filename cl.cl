@@ -231,6 +231,7 @@ void setup_u_offset(__global float* u_offset,
 
 ///https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan2008/Workbook33/33_2_elliptic_pde.pdf
 ///https://arxiv.org/pdf/1205.5111v1.pdf 78
+///https://www3.nd.edu/~zxu2/acms60212-40212-S12/Lec-10-02.pdf could red-black for faster convergence
 __kernel
 void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out,
                        float scale, int4 dim)
@@ -275,6 +276,32 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     float u0n1 = (1/6.f) * (uxm1 + uxp1 + uym1 + uyp1 + uzm1 + uzp1 - h2f0);
 
     u_offset_out[IDX(ix, iy, iz)] = u0n1;
+}
+
+__kernel
+void copy_u_values(__global float* big_u_in, __global float* little_u_out, int4 big_dim, int4 little_dim)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= little_dim.x || iy >= little_dim.y || iz >= little_dim.z)
+        return;
+
+    int4 difference = big_dim - little_dim;
+
+    int4 half_diff = difference/2;
+
+    int3 upper_pos = (int3)(ix, iy, iz) + half_diff.xyz;
+
+    float value = big_u_in[upper_pos.z * big_dim.x * big_dim.y + upper_pos.y * big_dim.x + upper_pos.x];
+
+    little_u_out[iz * little_dim.x * little_dim.y + iy * little_dim.x + ix] = value;
+
+    if(ix == 125 && iy == 125 && iz == 125)
+    {
+        printf("Val %f\n", value);
+    }
 }
 
 __kernel

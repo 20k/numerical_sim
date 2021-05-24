@@ -4348,12 +4348,6 @@ int main()
         dissipate_low, dissipate_low, dissipate_low //gB
     };
 
-    std::array<cl::buffer, 2> u_args{clctx.ctx, clctx.ctx};
-    u_args[0].alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
-    u_args[1].alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
-
-    int which_u_args = 0;
-
     std::vector<cl::buffer> thin_intermediates;
 
     constexpr int thin_intermediate_buffer_count = 18 + 3 + 9 + 3;
@@ -4422,37 +4416,58 @@ int main()
 
     cl_float time_elapsed_s = 0;
 
-    cl::args initial_u_args;
-    initial_u_args.push_back(u_args[0]);
-    initial_u_args.push_back(clsize);
+    cl::buffer hamiltonian_u(clctx.ctx);
+    hamiltonian_u.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
 
-    clctx.cqueue.exec("setup_u_offset", initial_u_args, {size.x(), size.y(), size.z()}, {8, 8, 1});
-
-    cl::args initial_u_args2;
-    initial_u_args2.push_back(u_args[1]);
-    initial_u_args2.push_back(clsize);
-
-    clctx.cqueue.exec("setup_u_offset", initial_u_args2, {size.x(), size.y(), size.z()}, {8, 8, 1});
-
-    ///I need to do this properly, where it keeps iterating until it converges
-    #ifndef GPU_PROFILE
-    for(int i=0; i < 5000; i++)
-    #else
-    for(int i=0; i < 1000; i++)
-    #endif
     {
-        cl::args interate_u_args;
-        interate_u_args.push_back(u_args[which_u_args]);
-        interate_u_args.push_back(u_args[(which_u_args + 1) % 2]);
-        interate_u_args.push_back(scale);
-        interate_u_args.push_back(clsize);
+        vec<4, cl_uint> big_size = {300, 300, 300, 0};
 
-        clctx.cqueue.exec("iterative_u_solve", interate_u_args, {size.x(), size.y(), size.z()}, {8, 8, 1});
+        std::array<cl::buffer, 2> u_args{clctx.ctx, clctx.ctx};
+        u_args[0].alloc(big_size.x() * big_size.y() * big_size.z() * sizeof(cl_float));
+        u_args[1].alloc(big_size.x() * big_size.y() * big_size.z() * sizeof(cl_float));
 
-        which_u_args = (which_u_args + 1) % 2;
+        int which_u_args = 0;
+
+        cl::args initial_u_args;
+        initial_u_args.push_back(u_args[0]);
+        initial_u_args.push_back(big_size);
+
+        clctx.cqueue.exec("setup_u_offset", initial_u_args, {big_size.x(), big_size.y(), big_size.z()}, {8, 8, 1});
+
+        cl::args initial_u_args2;
+        initial_u_args2.push_back(u_args[1]);
+        initial_u_args2.push_back(big_size);
+
+        clctx.cqueue.exec("setup_u_offset", initial_u_args2, {big_size.x(), big_size.y(), big_size.z()}, {8, 8, 1});
+
+        int max_iteration = 5000;
+
+        #ifdef GPU_PROFILE
+        max_iteration = 1000;
+        #endif // GPU_PROFILE
+
+        ///I need to do this properly, where it keeps iterating until it converges
+        for(int i=0; i < max_iteration; i++)
+        {
+            cl::args interate_u_args;
+            interate_u_args.push_back(u_args[which_u_args]);
+            interate_u_args.push_back(u_args[(which_u_args + 1) % 2]);
+            interate_u_args.push_back(scale);
+            interate_u_args.push_back(big_size);
+
+            clctx.cqueue.exec("iterative_u_solve", interate_u_args, {big_size.x(), big_size.y(), big_size.z()}, {8, 8, 1});
+
+            which_u_args = (which_u_args + 1) % 2;
+        }
+
+        cl::args copy_args;
+        copy_args.push_back(u_args[which_u_args]);
+        copy_args.push_back(hamiltonian_u);
+        copy_args.push_back(big_size);
+        copy_args.push_back(clsize);
+
+        clctx.cqueue.exec("copy_u_values", copy_args, {size.x(), size.y(), size.z()}, {8, 8, 1});
     }
-
-    u_args[(which_u_args + 1) % 2].native_mem_object.release();
 
     clctx.cqueue.block();
 
@@ -4464,7 +4479,7 @@ int main()
             init.push_back(i);
         }
 
-        init.push_back(u_args[which_u_args]);
+        init.push_back(hamiltonian_u);
         init.push_back(scale);
         init.push_back(clsize);
 
@@ -4479,7 +4494,7 @@ int main()
             init.push_back(i);
         }
 
-        init.push_back(u_args[which_u_args]);
+        init.push_back(hamiltonian_u);
         init.push_back(scale);
         init.push_back(clsize);
 
@@ -4496,7 +4511,7 @@ int main()
     }
 
     //initial_clean.push_back(bssnok_datas[0]);
-    initial_clean.push_back(u_args[which_u_args]);
+    initial_clean.push_back(hamiltonian_u);
     initial_clean.push_back(scale);
     initial_clean.push_back(clsize);
     initial_clean.push_back(time_elapsed_s);
@@ -4904,7 +4919,7 @@ int main()
                 }
 
                 //cleaner.push_back(bssnok_datas[which_data]);
-                cleaner.push_back(u_args[which_u_args]);
+                cleaner.push_back(hamiltonian_u);
                 cleaner.push_back(scale);
                 cleaner.push_back(clsize);
 
