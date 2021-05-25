@@ -680,6 +680,28 @@ value second_derivative(equation_context& ctx, const value& in, const vec<3, val
     return (right - left) / (h + k);
 }
 
+value third_derivative(equation_context& ctx, const value& in, const vec<3, value>& offset, int idx)
+{
+    value h = get_scale_distance(ctx, in, offset, idx, 0);
+    value k = get_scale_distance(ctx, in, offset, idx, 1);
+
+    value right = second_derivative(ctx, in, get_idx_offset(idx), idx);
+    value left = second_derivative(ctx, in, -get_idx_offset(idx), idx);
+
+    return (right - left) / (h + k);
+}
+
+value fourth_derivative(equation_context& ctx, const value& in, const vec<3, value>& offset, int idx)
+{
+    value h = get_scale_distance(ctx, in, offset, idx, 0);
+    value k = get_scale_distance(ctx, in, offset, idx, 1);
+
+    value right = third_derivative(ctx, in, get_idx_offset(idx), idx);
+    value left = third_derivative(ctx, in, -get_idx_offset(idx), idx);
+
+    return (right - left) / (h + k);
+}
+
 ///https://hal.archives-ouvertes.fr/hal-00569776/document this paper implies you simply sum the directions
 ///dissipation is fixing some stuff, todo: investigate why so much dissipation is required
 value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int idx)
