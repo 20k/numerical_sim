@@ -472,24 +472,24 @@ struct differentiation_context
 {
     std::array<value, elements> vars;
 
-    std::array<std::string, elements> xs;
-    std::array<std::string, elements> ys;
-    std::array<std::string, elements> zs;
+    std::array<value, elements> xs;
+    std::array<value, elements> ys;
+    std::array<value, elements> zs;
 
-    differentiation_context(equation_context& ctx, const value& in, int idx, bool should_pin = true, bool linear_interpolation = false)
+    differentiation_context(equation_context& ctx, const value& in, int idx, const vec<3, value>& idx_offset, bool should_pin = true, bool linear_interpolation = false)
     {
         std::vector<std::string> variables = in.get_all_variables();
 
         value cp = in;
 
-        auto index_raw = [](const std::string& x, const std::string& y, const std::string& z)
+        auto index_raw = [](const value& x, const value& y, const value& z)
         {
-            return "IDX(" + x + "," + y + "," + z + ")";
+            return "IDX(" + type_to_string(x, true) + "," + type_to_string(y, true) + "," + type_to_string(z, true) + ")";
         };
 
-        auto fetch_linear = [](const std::string& buffer, const std::string& x, const std::string& y, const std::string& z)
+        auto fetch_linear = [](const std::string& buffer, const value& x, const value& y, const value& z)
         {
-            return "buffer_read_linear(" + buffer + ",(float3)(" + x + "," + y + "," + z + "),dim)";
+            return "buffer_read_linear(" + buffer + ",(float3)(" + type_to_string(x, false) + "," + type_to_string(y, false) + "," + type_to_string(z, false) + "),dim)";
         };
 
         auto index_buffer = [](const std::string& variable, const std::string& buffer, const std::string& with_what)
@@ -502,7 +502,7 @@ struct differentiation_context
             return buffer + "[" + with_what + "]";
         };
 
-        auto index = [&ctx, index_buffer, index_without_extension, index_raw, fetch_linear, linear_interpolation](const std::string& val, const std::string& buffer, bool uses_extension, const std::string& x, const std::string& y, const std::string& z)
+        auto index = [&ctx, index_buffer, index_without_extension, index_raw, fetch_linear, linear_interpolation](const std::string& val, const std::string& buffer, bool uses_extension, const value& x, const value& y, const value& z)
         {
             value v;
 
@@ -538,7 +538,6 @@ struct differentiation_context
                 xs[i] = "fx";
                 ys[i] = "fy";
                 zs[i] = "fz";
-
             }
             else
             {
@@ -555,24 +554,12 @@ struct differentiation_context
             if(offset == 0)
                 continue;
 
-            if(offset > 0)
-            {
-                if(idx == 0)
-                    xs[i] += "+" + std::to_string(offset);
-                if(idx == 1)
-                    ys[i] += "+" + std::to_string(offset);
-                if(idx == 2)
-                    zs[i] += "+" + std::to_string(offset);
-            }
-            else
-            {
-                if(idx == 0)
-                    xs[i] += std::to_string(offset);
-                if(idx == 1)
-                    ys[i] += std::to_string(offset);
-                if(idx == 2)
-                    zs[i] += std::to_string(offset);
-            }
+            if(idx == 0)
+                xs[i] += offset;
+            if(idx == 1)
+                ys[i] += offset;
+            if(idx == 2)
+                zs[i] += offset;
         }
 
         /*std::map<std::string, std::string> substitutions1;
@@ -597,7 +584,7 @@ struct differentiation_context
 
             for(int kk=0; kk < elements; kk++)
             {
-                value to_sub = index(std::get<1>(decomp), std::get<0>(decomp), std::get<2>(decomp), xs[kk], ys[kk], zs[kk]);
+                value to_sub = index(std::get<1>(decomp), std::get<0>(decomp), std::get<2>(decomp), xs[kk] + idx_offset.x(), ys[kk] + idx_offset.y(), zs[kk] + idx_offset.z());
 
                 if(should_pin)
                 {
@@ -627,6 +614,11 @@ struct differentiation_context
 
 #define DIFFERENTIATION_WIDTH 3
 
+/*value first_derivative(equation_context& ctx, const value& in, int idx)
+{
+    differentiation_context<3> dctx(ctx, in, idx, {"0", "0", "0"}, false);
+}*/
+
 ///https://hal.archives-ouvertes.fr/hal-00569776/document this paper implies you simply sum the directions
 ///dissipation is fixing some stuff, todo: investigate why so much dissipation is required
 value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int idx)
@@ -636,13 +628,13 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
 
     #define FOURTH
     #ifdef FOURTH
-    differentiation_context<5> dctx(ctx, in, idx, false);
+    differentiation_context<5> dctx(ctx, in, idx, {"0", "0", "0"}, false);
     value stencil = -(1 / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
     #endif // FOURTH
 
     //#define SIXTH
     #ifdef SIXTH
-    differentiation_context<7> dctx(ctx, in, idx, false);
+    differentiation_context<7> dctx(ctx, in, idx, {"0", "0", "0"}, false);
     value stencil = (1 / (64.f * scale)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
     #endif // SIXTH
 
@@ -815,7 +807,7 @@ void build_kreiss_oliger_dissipate_singular(equation_context& ctx)
 template<int order = 1>
 value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true, bool linear = false)
 {
-    differentiation_context dctx(ctx, in, idx, true, linear);
+    differentiation_context dctx(ctx, in, idx, {"0", "0", "0"}, true, linear);
 
     std::array<value, 5> vars = dctx.vars;
 
