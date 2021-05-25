@@ -612,9 +612,7 @@ struct differentiation_context
     }
 };
 
-#define DIFFERENTIATION_WIDTH 3
-
-value first_derivative(equation_context& ctx, const value& in, const vec<3, value>& offset, int idx)
+value get_scale_distance(equation_context& ctx, const value& in, const vec<3, value>& offset, int idx, int which)
 {
     differentiation_context<3> dctx(ctx, in, idx, offset, false);
 
@@ -632,15 +630,54 @@ value first_derivative(equation_context& ctx, const value& in, const vec<3, valu
     std::string iy0 = type_to_string(iy, true);
     std::string iz0 = type_to_string(iz, true);
 
-    {
-        value h = "get_distance(" + ix0 + "," + iy0 + "," + iz0 + "," + dctx.xs[2] + "," + dctx.ys[2] + "," + dctx.zs[2] + ",dim,scale)";
-        value k = "get_distance(" + ix0 + "," + iy0 + "," + iz0 + "," + dctx.xs[0] + "," + dctx.ys[0] + "," + dctx.zs[0] + ",dim,scale)";
+    value h = "get_distance(" + ix0 + "," + iy0 + "," + iz0 + "," + dctx.xs[2] + "," + dctx.ys[2] + "," + dctx.zs[2] + ",dim,scale)";
+    value k = "get_distance(" + ix0 + "," + iy0 + "," + iz0 + "," + dctx.xs[0] + "," + dctx.ys[0] + "," + dctx.zs[0] + ",dim,scale)";
 
-        ///f(x + h) - f(x - k)
-        final_command = (dctx.vars[2] - dctx.vars[0]) / (h + k);
-    }
+    if(which == 0)
+        return h;
+
+    if(which == 1)
+        return k;
+
+    return "error";
+}
+
+vec<3, value> get_idx_offset(int idx)
+{
+    if(idx == 0)
+        return vec<3, value>{"1", "0", "0"};
+    if(idx == 1)
+        return vec<3, value>{"0", "1", "0"};
+    if(idx == 2)
+        return vec<3, value>{"0", "0", "1"};
+
+    return {"error0", "error1", "error2"};
+}
+
+#define DIFFERENTIATION_WIDTH 3
+
+value first_derivative(equation_context& ctx, const value& in, const vec<3, value>& offset, int idx)
+{
+    differentiation_context<3> dctx(ctx, in, idx, offset, false);
+
+    value h = get_scale_distance(ctx, in, offset, idx, 0);
+    value k = get_scale_distance(ctx, in, offset, idx, 1);
+
+    ///f(x + h) - f(x - k)
+    value final_command = (dctx.vars[2] - dctx.vars[0]) / (h + k);
 
     return final_command;
+}
+
+value second_derivative(equation_context& ctx, const value& in, const vec<3, value>& offset, int idx)
+{
+    value h = get_scale_distance(ctx, in, offset, idx, 0);
+    value k = get_scale_distance(ctx, in, offset, idx, 1);
+
+    value right = first_derivative(ctx, in, get_idx_offset(idx), idx);
+    value left = first_derivative(ctx, in, -get_idx_offset(idx), idx);
+
+    return (right - left) / (h + k);
 }
 
 ///https://hal.archives-ouvertes.fr/hal-00569776/document this paper implies you simply sum the directions
