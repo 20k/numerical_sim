@@ -551,9 +551,6 @@ struct differentiation_context
         {
             int offset = i - (elements - 1)/2;
 
-            if(offset == 0)
-                continue;
-
             if(idx == 0)
                 xs[i] += offset + idx_offset.x();
             if(idx == 1)
@@ -612,6 +609,11 @@ struct differentiation_context
     }
 };
 
+value get_distance(const vec<3, value>& p1, const vec<3, value>& p2)
+{
+    return "get_distance(" + type_to_string(p1.x(), true) + "," + type_to_string(p1.y(), true) + "," + type_to_string(p1.z(), true) + "," + type_to_string(p2.x(), true) + "," + type_to_string(p2.y(), true) + "," + type_to_string(p2.z(), true) + ",dim,scale)";
+}
+
 value get_scale_distance(equation_context& ctx, const value& in, const vec<3, value>& offset, int idx, int which)
 {
     differentiation_context<3> dctx(ctx, in, idx, offset, false);
@@ -640,6 +642,8 @@ value get_scale_distance(equation_context& ctx, const value& in, const vec<3, va
         return k;
 
     return "error";
+
+    //return "scale";
 }
 
 vec<3, value> get_idx_offset(int idx)
@@ -671,46 +675,75 @@ value first_derivative(equation_context& ctx, const value& in, const vec<3, valu
 
 value second_derivative(equation_context& ctx, const value& in, const vec<3, value>& offset, int idx)
 {
-    value h = get_scale_distance(ctx, in, offset, idx, 0);
-    value k = get_scale_distance(ctx, in, offset, idx, 1);
+    differentiation_context<5> dctx(ctx, in, idx, offset, false);
 
-    value right = first_derivative(ctx, in, get_idx_offset(idx), idx);
-    value left = first_derivative(ctx, in, -get_idx_offset(idx), idx);
+    vec<3, value> pos = {"ix", "iy", "iz"};
 
-    return (right - left) / (h + k);
+    vec<3, value> local_offset = get_idx_offset(idx);
+
+    value tdxm2 = get_distance(pos, pos - local_offset * 2);
+    value tdxm1 = get_distance(pos, pos - local_offset);
+    value tdxp1 = get_distance(pos, pos + local_offset);
+    value tdxp2 = get_distance(pos, pos + local_offset * 2);
+
+    value um2 = dctx.vars[0];
+    value um1 = dctx.vars[1];
+    value u0  = dctx.vars[2];
+    value up1 = dctx.vars[3];
+    value up2 = dctx.vars[4];
+
+    return (um1 + up1 - 2 * u0) / (0.5 * (tdxp1 * tdxp1 + tdxm1 * tdxm1));
 }
 
-value third_derivative(equation_context& ctx, const value& in, const vec<3, value>& offset, int idx)
+/*value third_derivative(equation_context& ctx, const value& in, const vec<3, value>& offset, int idx)
 {
     value h = get_scale_distance(ctx, in, offset, idx, 0);
     value k = get_scale_distance(ctx, in, offset, idx, 1);
 
-    value right = second_derivative(ctx, in, get_idx_offset(idx), idx);
-    value left = second_derivative(ctx, in, -get_idx_offset(idx), idx);
+    value right = second_derivative(ctx, in, get_idx_offset(idx) + offset, idx);
+    value left = second_derivative(ctx, in, -get_idx_offset(idx) + offset, idx);
 
     return (right - left) / (h + k);
-}
+}*/
 
 value fourth_derivative(equation_context& ctx, const value& in, const vec<3, value>& offset, int idx)
 {
-    value h = get_scale_distance(ctx, in, offset, idx, 0);
-    value k = get_scale_distance(ctx, in, offset, idx, 1);
+    differentiation_context<5> dctx(ctx, in, idx, offset, false);
 
-    value right = third_derivative(ctx, in, get_idx_offset(idx), idx);
-    value left = third_derivative(ctx, in, -get_idx_offset(idx), idx);
+    vec<3, value> pos = {"ix", "iy", "iz"};
 
-    return (right - left) / (h + k);
+    vec<3, value> local_offset = get_idx_offset(idx);
+
+    value tdxm2 = get_distance(pos, pos - local_offset * 2);
+    value tdxm1 = get_distance(pos, pos - local_offset);
+    value tdxp1 = get_distance(pos, pos + local_offset);
+    value tdxp2 = get_distance(pos, pos + local_offset * 2);
+
+    value um2 = dctx.vars[0];
+    value um1 = dctx.vars[1];
+    value u0  = dctx.vars[2];
+    value up1 = dctx.vars[3];
+    value up2 = dctx.vars[4];
+
+    value lhs = um2 - 4 * um1 + 6 * u0 - 4 * up1 + up2;
+
+    float coeff = 1.f/24.f;
+
+    return lhs / (coeff * pow(tdxm2, 4) - 4 * coeff * pow(tdxm1, 4) - 4 * coeff * pow(tdxp1, 4) + coeff * pow(tdxp2, 4));
 }
 
 ///https://hal.archives-ouvertes.fr/hal-00569776/document this paper implies you simply sum the directions
 ///dissipation is fixing some stuff, todo: investigate why so much dissipation is required
 value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int idx)
 {
+    //std::cout << "TEST " << type_to_string(second_derivative(ctx, in, {"0", "0", "0"}, idx)) << std::endl;
+
     vec<3, value> offset = {"0", "0", "0"};
 
     value h = get_scale_distance(ctx, in, offset, idx, 0);
     value k = get_scale_distance(ctx, in, offset, idx, 1);
 
+    ///todo: fix this
     value effective_scale = (h + k) / 2.f;
 
     ///https://en.wikipedia.org/wiki/Finite_difference_coefficient according to wikipedia, this is the 6th derivative with 2nd order accuracy. I am confused, but at least I know where it came from
@@ -718,8 +751,8 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
 
     #define FOURTH
     #ifdef FOURTH
-    /*differentiation_context<5> dctx(ctx, in, idx, {"0", "0", "0"}, false);
-    value stencil = -(1 / (16.f * effective_scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);*/
+    differentiation_context<5> dctx(ctx, in, idx, {"0", "0", "0"}, false);
+    //value stencil = -(1 / (16.f * effective_scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
 
     value stencil = (-1 / 16.f) * pow(effective_scale, 3.f) * fourth_derivative(ctx, in, offset, idx);
 
