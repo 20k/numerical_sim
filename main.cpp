@@ -614,10 +614,34 @@ struct differentiation_context
 
 #define DIFFERENTIATION_WIDTH 3
 
-/*value first_derivative(equation_context& ctx, const value& in, int idx)
+value first_derivative(equation_context& ctx, const value& in, const vec<3, value>& offset, int idx)
 {
-    differentiation_context<3> dctx(ctx, in, idx, {"0", "0", "0"}, false);
-}*/
+    differentiation_context<3> dctx(ctx, in, idx, offset, false);
+
+    value final_command;
+
+    value ix = "ix";
+    value iy = "iy";
+    value iz = "iz";
+
+    ix += offset.x();
+    iy += offset.y();
+    iz += offset.z();
+
+    std::string ix0 = type_to_string(ix, true);
+    std::string iy0 = type_to_string(iy, true);
+    std::string iz0 = type_to_string(iz, true);
+
+    {
+        value h = "get_distance(" + ix0 + "," + iy0 + "," + iz0 + "," + dctx.xs[2] + "," + dctx.ys[2] + "," + dctx.zs[2] + ",dim,scale)";
+        value k = "get_distance(" + ix0 + "," + iy0 + "," + iz0 + "," + dctx.xs[0] + "," + dctx.ys[0] + "," + dctx.zs[0] + ",dim,scale)";
+
+        ///f(x + h) - f(x - k)
+        final_command = (dctx.vars[2] - dctx.vars[0]) / (h + k);
+    }
+
+    return final_command;
+}
 
 ///https://hal.archives-ouvertes.fr/hal-00569776/document this paper implies you simply sum the directions
 ///dissipation is fixing some stuff, todo: investigate why so much dissipation is required
