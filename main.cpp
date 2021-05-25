@@ -555,11 +555,11 @@ struct differentiation_context
                 continue;
 
             if(idx == 0)
-                xs[i] += offset;
+                xs[i] += offset + idx_offset.x();
             if(idx == 1)
-                ys[i] += offset;
+                ys[i] += offset + idx_offset.y();
             if(idx == 2)
-                zs[i] += offset;
+                zs[i] += offset + idx_offset.z();
         }
 
         /*std::map<std::string, std::string> substitutions1;
@@ -584,7 +584,7 @@ struct differentiation_context
 
             for(int kk=0; kk < elements; kk++)
             {
-                value to_sub = index(std::get<1>(decomp), std::get<0>(decomp), std::get<2>(decomp), xs[kk] + idx_offset.x(), ys[kk] + idx_offset.y(), zs[kk] + idx_offset.z());
+                value to_sub = index(std::get<1>(decomp), std::get<0>(decomp), std::get<2>(decomp), xs[kk], ys[kk], zs[kk]);
 
                 if(should_pin)
                 {
