@@ -630,8 +630,8 @@ value get_scale_distance(equation_context& ctx, const value& in, const vec<3, va
     std::string iy0 = type_to_string(iy, true);
     std::string iz0 = type_to_string(iz, true);
 
-    value h = "get_distance(" + ix0 + "," + iy0 + "," + iz0 + "," + dctx.xs[2] + "," + dctx.ys[2] + "," + dctx.zs[2] + ",dim,scale)";
-    value k = "get_distance(" + ix0 + "," + iy0 + "," + iz0 + "," + dctx.xs[0] + "," + dctx.ys[0] + "," + dctx.zs[0] + ",dim,scale)";
+    value h = "get_distance(" + ix0 + "," + iy0 + "," + iz0 + "," + type_to_string(dctx.xs[2]) + "," + type_to_string(dctx.ys[2]) + "," + type_to_string(dctx.zs[2]) + ",dim,scale)";
+    value k = "get_distance(" + ix0 + "," + iy0 + "," + iz0 + "," + type_to_string(dctx.xs[0]) + "," + type_to_string(dctx.ys[0]) + "," + type_to_string(dctx.zs[0]) + ",dim,scale)";
 
     if(which == 0)
         return h;
@@ -706,13 +706,23 @@ value fourth_derivative(equation_context& ctx, const value& in, const vec<3, val
 ///dissipation is fixing some stuff, todo: investigate why so much dissipation is required
 value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int idx)
 {
+    vec<3, value> offset = {"0", "0", "0"};
+
+    value h = get_scale_distance(ctx, in, offset, idx, 0);
+    value k = get_scale_distance(ctx, in, offset, idx, 1);
+
+    value effective_scale = (h + k) / 2.f;
+
     ///https://en.wikipedia.org/wiki/Finite_difference_coefficient according to wikipedia, this is the 6th derivative with 2nd order accuracy. I am confused, but at least I know where it came from
-    value scale = "scale";
+    //value scale = "scale";
 
     #define FOURTH
     #ifdef FOURTH
-    differentiation_context<5> dctx(ctx, in, idx, {"0", "0", "0"}, false);
-    value stencil = -(1 / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
+    /*differentiation_context<5> dctx(ctx, in, idx, {"0", "0", "0"}, false);
+    value stencil = -(1 / (16.f * effective_scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);*/
+
+    value stencil = (-1 / 16.f) * pow(effective_scale, 3.f) * fourth_derivative(ctx, in, offset, idx);
+
     #endif // FOURTH
 
     //#define SIXTH
