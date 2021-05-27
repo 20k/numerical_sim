@@ -1463,6 +1463,11 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
 
         float3 next_acceleration = {dV0, dV1, dV2};
 
+        if(isnan(dV0) || isnan(dV1) || isnan(dV2))
+        {
+            break;
+        }
+
         int res = calculate_ds_error(ds, next_acceleration, &next_ds);
 
         if(res == DS_RETURN)
