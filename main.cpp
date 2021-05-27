@@ -4164,16 +4164,14 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
                 for(int m=0; m < 3; m++)
                 {
-                    sm += args.cY.idx(j, k) * icY.idx(i, m) * hacky_differentiate(ctx, args.X, m, true, true);
+                    sm += icY.idx(i, m) * hacky_differentiate(ctx, args.X, m, true, true);
                 }
 
                 full_christoffel2.idx(i, j, k) = conformal_christoff2.idx(i, j, k) -
-                                                 (1.f/(2.f * args.X)) * (kronecker_ik * hacky_differentiate(ctx, args.X, j, true, true) + kronecker_ij * hacky_differentiate(ctx, args.X, k, true, true) - sm);
+                                                 (1.f/(2.f * max(args.X, 0.001f))) * (kronecker_ik * hacky_differentiate(ctx, args.X, j, true, true) + kronecker_ij * hacky_differentiate(ctx, args.X, k, true, true) - args.cY.idx(j, k) * sm);
             }
         }
     }
-
-    ctx.pin(full_christoffel2);
 
     tensor<value, 3> V_upper_diff;
 
