@@ -865,11 +865,11 @@ struct standard_arguments
         {
             for(int j=0; j < 3; j++)
             {
-                Yij.idx(i, j) = cY.idx(i, j) / X;
+                Yij.idx(i, j) = cY.idx(i, j) / max(X, 0.01f);
             }
         }
 
-        tensor<value, 3, 3> Aij = cA / X;
+        tensor<value, 3, 3> Aij = cA / max(X, 0.01f);
 
         Kij = Aij + Yij.to_tensor() * (K / 3.f);
 
@@ -4145,7 +4145,33 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     ctx.pin(iYij);
 
-    tensor<value, 3, 3, 3> full_christoffel2 = gpu_christoffel_symbols_2(ctx, args.Yij, iYij, true);
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+    tensor<value, 3, 3, 3> conformal_christoff2 = gpu_christoffel_symbols_2(ctx, args.cY, icY, true);
+
+    tensor<value, 3, 3, 3> full_christoffel2;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                float kronecker_ik = (i == k) ? 1 : 0;
+                float kronecker_ij = (i == j) ? 1 : 0;
+
+                value sm = 0;
+
+                for(int m=0; m < 3; m++)
+                {
+                    sm += args.cY.idx(j, k) * icY.idx(i, m) * hacky_differentiate(ctx, args.X, m, true, true);
+                }
+
+                full_christoffel2.idx(i, j, k) = conformal_christoff2.idx(i, j, k) -
+                                                 (1.f/(2.f * args.X)) * (kronecker_ik * hacky_differentiate(ctx, args.X, j, true, true) + kronecker_ij * hacky_differentiate(ctx, args.X, k, true, true) - sm);
+            }
+        }
+    }
 
     ctx.pin(full_christoffel2);
 
@@ -4833,7 +4859,7 @@ int main()
 
         if(step)
         {
-            float timestep = 0.01/2;
+            float timestep = 0.01;
 
             if(steps < 20)
                timestep = 0.001;
