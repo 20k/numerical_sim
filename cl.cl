@@ -1299,7 +1299,7 @@ enum ds_result
     DS_RETURN,
 };
 
-int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_ds_out)
+int calculate_ds_error(float current_ds, float4 next_acceleration, float* next_ds_out)
 {
     float current_acceleration_err = fast_length(next_acceleration) * 0.01f;
 
@@ -1380,6 +1380,7 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
     float V0;
     float V1;
     float V2;
+    float V3 = 0;
 
     {
         float3 world_pos = camera_pos;
@@ -1397,9 +1398,16 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
         lp2 = lp2_d;
         lp3 = lp3_d;
 
+        #ifdef ADM
         V0 = V0_d;
         V1 = V1_d;
         V2 = V2_d;
+        #else
+        V0 = lv0_d;
+        V1 = lv1_d;
+        V2 = lv2_d;
+        V3 = lv3_d;
+        #endif
     }
 
     float next_ds = 0.00001f;
@@ -1453,6 +1461,7 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
 
         float ds = next_ds;
 
+        #ifdef ADM
         float dX0 = X0Diff;
         float dX1 = X1Diff;
         float dX2 = X2Diff;
@@ -1468,7 +1477,7 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
             break;
         }
 
-        int res = calculate_ds_error(ds, next_acceleration, &next_ds);
+        int res = calculate_ds_error(ds, (float4)(0.f, next_acceleration), &next_ds);
 
         if(res == DS_RETURN)
         {
@@ -1491,6 +1500,45 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
         lp1 += dX0 * ds;
         lp2 += dX1 * ds;
         lp3 += dX2 * ds;
+        #else
+        float A0 = A0diff0;
+        float A1 = A0diff1;
+        float A2 = A0diff2;
+        float A3 = A0diff3;
+
+        float4 next_acceleration = {A0, A1, A2, A3};
+
+        if(isnan(A0) || isnan(A1) || isnan(A2) || isnan(A3))
+        {
+            break;
+        }
+
+        int res = calculate_ds_error(ds, next_acceleration, &next_ds);
+
+        if(res == DS_RETURN)
+        {
+            deliberate_termination = true;
+            break;
+        }
+
+        if(res == DS_SKIP)
+        {
+            last_skipped = true;
+            continue;
+        }
+
+        last_skipped = false;
+
+        V0 += A0 * ds;
+        V1 += A1 * ds;
+        V2 += A2 * ds;
+        V3 += A3 * ds;
+
+        lp0 += V0 * ds;
+        lp1 += V1 * ds;
+        lp2 += V2 * ds;
+        lp3 += V3 * ds;
+        #endif
 
         /*if(fast_length((float3){dX0, dX1, dX2}) < 0.01f)
         {
@@ -1518,6 +1566,7 @@ struct lightray
 
 ///todo: unify this with the above
 ///the memory overhead is extremely minimal for a huge performance boost
+#ifdef ADM
 __kernel
 void init_accurate_rays(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
                         __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
@@ -1686,6 +1735,7 @@ void step_accurate_rays(__global float* cY0, __global float* cY1, __global float
         write_imagef(screen, (int2){x, y}, (float4)(0, 0, 0, 1));
     }
 }
+#endif // ADM
 
 float3 rot_quat(const float3 point, float4 quat)
 {

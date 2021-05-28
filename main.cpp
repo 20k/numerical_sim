@@ -4136,14 +4136,17 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     ctx.add("universe_size", universe_length * scale);
 
-    tensor<value, 3> X_upper = {"lp1", "lp2", "lp3"};
-    tensor<value, 3> V_upper = {"V0", "V1", "V2"};
+    /*tensor<value, 3> X_upper = {"lp1", "lp2", "lp3"};
+    tensor<value, 3> V_upper = {"V0", "V1", "V2"};*/
+
+    //tensor<value, 4> pos_upper = {"lp0", "lp1", "lp2", "lp3"};
+    tensor<value, 4> vel_upper = {"V0", "V1", "V2", "V3"};
 
     /*inverse_metric<value, 3, 3> iYij = args.Yij.invert();
 
     ctx.pin(iYij);*/
 
-    inverse_metric<value, 3, 3> iYij = args.X * args.cY.invert();
+    /*inverse_metric<value, 3, 3> iYij = args.X * args.cY.invert();
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
@@ -4171,10 +4174,65 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
                                                  (1.f/(2.f * max(args.X, 0.001f))) * (kronecker_ik * hacky_differentiate(ctx, args.X, j, true, true) + kronecker_ij * hacky_differentiate(ctx, args.X, k, true, true) - args.cY.idx(j, k) * sm);
             }
         }
+    }*/
+
+    metric<value, 4, 4> real_metric = calculate_real_metric(args.Yij, args.gA, args.gB);
+
+    inverse_metric<value, 4, 4> ivreal = real_metric.invert();
+    ctx.pin(ivreal);
+
+    tensor<value, 4, 4, 4> christoffel2;
+
+    for(int i=0; i < 4; i++)
+    {
+        for(int k=0; k < 4; k++)
+        {
+            for(int l=0; l < 4; l++)
+            {
+                value sum = 0;
+
+                for(int m=0; m < 4; m++)
+                {
+                    value l_diff = l == 0 ? 0 : hacky_differentiate(ctx, real_metric.idx(m, k), l - 1, true, true);
+                    value k_diff = k == 0 ? 0 : hacky_differentiate(ctx, real_metric.idx(m, l), k - 1, true, true);
+                    value m_diff = m == 0 ? 0 : hacky_differentiate(ctx, real_metric.idx(k, l), m - 1, true, true);
+
+                    value inner = l_diff + k_diff - m_diff;
+
+                    sum += 0.5f * ivreal.idx(i, m) * inner;
+                }
+
+                christoffel2.idx(i, k, l) = sum;
+            }
+        }
     }
 
+    ctx.pin(christoffel2);
+
+    tensor<value, 4> acceleration;
+
+    for(int a=0; a < 4; a++)
+    {
+        value sum = 0;
+
+        for(int u=0; u < 4; u++)
+        {
+            for(int v=0; v < 4; v++)
+            {
+                sum += christoffel2.idx(a, u, v) * vel_upper.idx(u) * vel_upper.idx(v);
+            }
+        }
+
+        acceleration.idx(a) = -sum;
+    }
+
+    ctx.add("A0diff0", acceleration.idx(0));
+    ctx.add("A0diff1", acceleration.idx(1));
+    ctx.add("A0diff2", acceleration.idx(2));
+    ctx.add("A0diff3", acceleration.idx(3));
+
     ///https://arxiv.org/pdf/1208.3927.pdf (28a)
-    #define PAPER_1
+    //#define PAPER_1
     #ifdef PAPER_1
     tensor<value, 3> dx = args.gA * V_upper - args.gB;
 
@@ -4264,13 +4322,13 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     #endif // PAPER_2
 
-    ctx.add("V0Diff", V_upper_diff.idx(0));
+    /*ctx.add("V0Diff", V_upper_diff.idx(0));
     ctx.add("V1Diff", V_upper_diff.idx(1));
     ctx.add("V2Diff", V_upper_diff.idx(2));
 
     ctx.add("X0Diff", dx.idx(0));
     ctx.add("X1Diff", dx.idx(1));
-    ctx.add("X2Diff", dx.idx(2));
+    ctx.add("X2Diff", dx.idx(2));*/
 
     /**
     [tt, tx, ty, tz,
