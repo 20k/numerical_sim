@@ -1627,7 +1627,7 @@ void step_accurate_rays(__global float* cY0, __global float* cY1, __global float
 
     float terminate_length = fast_length(cpos);
 
-    if(terminate_length >= universe_size / 1.01f)
+    if(terminate_length >= universe_size / 5.01f)
     {
         float fr = fast_length(cpos);
         float theta = acos(cpos.z / fr);
@@ -1675,10 +1675,13 @@ void step_accurate_rays(__global float* cY0, __global float* cY1, __global float
     lp2 += dX1 * timestep;
     lp3 += dX2 * timestep;
 
+    if(x == (int)width/2 && y == (int)height/2)
+    printf("Pos %f %f %f\n", lp1, lp2, lp3);
+
     ray[ray_idx].vel.xyz = (float3)(V0, V1, V2);
     ray[ray_idx].pos.yzw = (float3)(lp1, lp2, lp3);
 
-    if(fast_length((float3){dX0, dX1, dX2}) < 0.01f)
+    //if(fast_length((float3){dX0, dX1, dX2}) < 0.01f)
     {
         write_imagef(screen, (int2){x, y}, (float4)(0, 0, 0, 1));
     }

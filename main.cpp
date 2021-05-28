@@ -103,12 +103,7 @@ https://arxiv.org/pdf/1410.8607.pdf - haven't read it yet but this promises ever
 
 ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
 ///38.2
-struct lightray
-{
-    cl_float3 x; ///position?
-    cl_float3 V; ///lower i, this is some sort of spatial component
-    cl_float T; ///proper time
-};
+
 
 struct intermediate_bssnok_data
 {
@@ -4052,6 +4047,11 @@ void process_geodesics(equation_context& ctx)
     vec<4, value> pixel_z = pixel_direction.z() * basis_z;
     vec<4, value> pixel_t = -basis.v1;
 
+    #define INVERT_TIME
+    #ifdef INVERT_TIME
+    pixel_t = -pixel_t;
+    #endif // INVERT_TIME
+
     vec<4, value> lightray_velocity = pixel_x + pixel_y + pixel_z + pixel_t;
     vec<4, value> lightray_position = {0, world_position.x(), world_position.y(), world_position.z()};
 
@@ -4242,6 +4242,13 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     return r_phys;
 }*/
 
+struct lightray
+{
+    cl_float4 pos;
+    cl_float4 vel;
+    cl_int x, y;
+};
+
 ///it seems like basically i need numerical dissipation of some form
 ///if i didn't evolve where sponge = 1, would be massively faster
 int main()
@@ -4407,6 +4414,9 @@ int main()
     std::array<cl::gl_rendertexture, 2> rtex{clctx.ctx, clctx.ctx};
     rtex[0].create_from_texture(tex[0].handle);
     rtex[1].create_from_texture(tex[1].handle);
+
+    cl::buffer ray_buffer(clctx.ctx);
+    ray_buffer.alloc(sizeof(lightray) * width * height);
 
     int which_data = 0;
 
@@ -4801,6 +4811,8 @@ int main()
 
             rtex[0].create_from_texture(tex[0].handle);
             rtex[1].create_from_texture(tex[1].handle);
+
+            ray_buffer.alloc(4 * 10 * width * height);
         }
 
         rtex[which_texture].acquire(clctx.cqueue);
@@ -4855,16 +4867,16 @@ int main()
 
         clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
 
+        float timestep = 0.01;
+
+        if(steps < 20)
+           timestep = 0.001;
+
+        if(steps < 10)
+            timestep = 0.0001;
+
         if(step)
         {
-            float timestep = 0.01;
-
-            if(steps < 20)
-               timestep = 0.001;
-
-            if(steps < 10)
-                timestep = 0.0001;
-
             steps++;
 
             {
@@ -5113,6 +5125,7 @@ int main()
             current_simulation_boundary = clamp(current_simulation_boundary, 0, size.x()/2);
         }
 
+        if(rendering_method == 0 || rendering_method == 1)
         {
             cl::args render_args;
 
@@ -5139,6 +5152,53 @@ int main()
                 else
                     clctx.cqueue.exec("trace_rays", render_args, {width, height}, {16, 16});
             }
+        }
+
+        if(rendering_method == 2 && snap)
+        {
+            cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
+            cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
+
+            cl::args init_args;
+
+            for(auto& i : generic_data[which_data])
+            {
+                init_args.push_back(i);
+            }
+
+            init_args.push_back(scale);
+            init_args.push_back(ccamera_pos);
+            init_args.push_back(ccamera_quat);
+            init_args.push_back(clsize);
+            init_args.push_back(rtex[which_texture]);
+            init_args.push_back(ray_buffer);
+
+            clctx.cqueue.exec("init_accurate_rays", init_args, {width, height}, {8, 8});
+
+            printf("Init\n");
+        }
+
+        if(rendering_method == 2 && step)
+        {
+            cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
+            cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
+
+            cl::args step_args;
+
+            for(auto& i : generic_data[which_data])
+            {
+                step_args.push_back(i);
+            }
+
+            step_args.push_back(scale);
+            step_args.push_back(ccamera_pos);
+            step_args.push_back(ccamera_quat);
+            step_args.push_back(clsize);
+            step_args.push_back(rtex[which_texture]);
+            step_args.push_back(ray_buffer);
+            step_args.push_back(timestep);
+
+            clctx.cqueue.exec("step_accurate_rays", step_args, {width * height}, {128});
         }
 
         cl::event next_event = rtex[which_texture].unacquire(clctx.cqueue);
