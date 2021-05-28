@@ -4141,9 +4141,11 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     tensor<value, 3> dx = args.gA * V_upper - args.gB;
 
-    inverse_metric<value, 3, 3> iYij = args.Yij.invert();
+    /*inverse_metric<value, 3, 3> iYij = args.Yij.invert();
 
-    ctx.pin(iYij);
+    ctx.pin(iYij);*/
+
+    inverse_metric<value, 3, 3> iYij = args.X * args.cY.invert();
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
@@ -4195,7 +4197,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
                 christoffel_sum += full_christoffel2.idx(i, j, k) * V_upper.idx(k);
             }
 
-            V_upper_diff.idx(i) += args.gA * V_upper.idx(j) * (V_upper.idx(i) * (hacky_differentiate(ctx, log(args.gA), j, true, true) - kjvk) + 2 * raise_index(args.Kij, args.Yij, iYij).idx(i, j) - christoffel_sum)
+            V_upper_diff.idx(i) += args.gA * V_upper.idx(j) * (V_upper.idx(i) * (hacky_differentiate(ctx, log(max(args.gA, 0.0001f)), j, true, true) - kjvk) + 2 * raise_index(args.Kij, args.Yij, iYij).idx(i, j) - christoffel_sum)
                                    - iYij.idx(i, j) * hacky_differentiate(ctx, args.gA, j, true, true) - V_upper.idx(j) * hacky_differentiate(ctx, args.gB.idx(i), j, true, true);
 
 
