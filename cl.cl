@@ -1675,8 +1675,8 @@ void step_accurate_rays(__global float* cY0, __global float* cY1, __global float
     lp2 += dX1 * timestep;
     lp3 += dX2 * timestep;
 
-    if(x == (int)width/2 && y == (int)height/2)
-    printf("Pos %f %f %f\n", lp1, lp2, lp3);
+    //if(x == (int)width/2 && y == (int)height/2)
+    //printf("Pos %f %f %f\n", lp1, lp2, lp3);
 
     ray[ray_idx].vel.xyz = (float3)(V0, V1, V2);
     ray[ray_idx].pos.yzw = (float3)(lp1, lp2, lp3);

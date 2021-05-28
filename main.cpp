@@ -5183,6 +5183,8 @@ int main()
             cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
             cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
 
+            std::cout << camera_pos << std::endl;
+
             cl::args step_args;
 
             for(auto& i : generic_data[which_data])
