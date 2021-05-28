@@ -4173,6 +4173,9 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         }
     }
 
+    ///https://arxiv.org/pdf/1208.3927.pdf (28a)
+    #define PAPER_1
+    #ifdef PAPER_1
     tensor<value, 3> dx = args.gA * V_upper - args.gB;
 
     tensor<value, 3> V_upper_diff;
@@ -4200,9 +4203,66 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
             V_upper_diff.idx(i) += args.gA * V_upper.idx(j) * (V_upper.idx(i) * (hacky_differentiate(ctx, log(max(args.gA, 0.0001f)), j, true, true) - kjvk) + 2 * raise_index(args.Kij, args.Yij, iYij).idx(i, j) - christoffel_sum)
                                    - iYij.idx(i, j) * hacky_differentiate(ctx, args.gA, j, true, true) - V_upper.idx(j) * hacky_differentiate(ctx, args.gB.idx(i), j, true, true);
 
-
         }
     }
+    #endif // PAPER_1
+
+    ///https://authors.library.caltech.edu/88020/1/PhysRevD.49.4004.pdf
+    //#define PAPER_2
+    #ifdef PAPER_2
+    tensor<value, 3> p_lower = lower_index(V_upper, args.Yij);
+
+    value p0 = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            p0 += (1/args.gA) * sqrt(iYij.idx(i, j) * p_lower.idx(i) * p_lower.idx(j));
+        }
+    }
+
+    tensor<value, 3> dx = {0, 0, 0};
+
+    for(int j=0; j < 3; j++)
+    {
+        for(int i=0; i < 3; i++)
+        {
+            dx.idx(j) += iYij.idx(i, j) * p_lower.idx(i);
+        }
+
+        dx.idx(j) += -args.gB.idx(j) * p0;
+    }
+
+    tensor<value, 3> V_lower_diff = {0, 0, 0};
+
+    for(int i=0; i < 3; i++)
+    {
+        value s1 = -args.gA * hacky_differentiate(ctx, args.gA, i, true, true) * p0 * p0;
+
+        value s2 = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            s2 += hacky_differentiate(ctx, args.gB.idx(k), i, true, true) * p_lower.idx(k) * p0;
+        }
+
+        value s3 = 0;
+
+        for(int l=0; l < 3; l++)
+        {
+            for(int m=0; m < 3; m++)
+            {
+                s3 += -0.5f * hacky_differentiate(ctx, iYij.idx(l, m), i, true, true) * p_lower.idx(l) * p_lower.idx(m);
+            }
+        }
+
+        V_lower_diff.idx(i) = s1 + s2 + s3;
+    }
+
+    tensor<value, 3> V_upper_diff = raise_index(V_lower_diff, args.Yij, iYij);
+
+    #endif // PAPER_2
 
     ctx.add("V0Diff", V_upper_diff.idx(0));
     ctx.add("V1Diff", V_upper_diff.idx(1));

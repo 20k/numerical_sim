@@ -1492,11 +1492,11 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
         lp2 += dX1 * ds;
         lp3 += dX2 * ds;
 
-        if(fast_length((float3){dX0, dX1, dX2}) < 0.01f)
+        /*if(fast_length((float3){dX0, dX1, dX2}) < 0.01f)
         {
             deliberate_termination = true;
             break;
-        }
+        }*/
     }
 
     float4 col = {1,0,1,1};
