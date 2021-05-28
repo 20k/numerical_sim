@@ -1305,14 +1305,14 @@ int calculate_ds_error(float current_ds, float4 next_acceleration, float* next_d
 
     float experienced_acceleration_change = current_acceleration_err;
 
-    #define MAX_ACCELERATION_CHANGE 0.0001
+    #define MAX_ACCELERATION_CHANGE 0.000001f
 
     float err = MAX_ACCELERATION_CHANGE;
     float i_hate_computers = 256*256;
 
     //#define MIN_STEP 0.00001f
     //#define MIN_STEP 0.000001f
-    #define MIN_STEP 0.1f
+    #define MIN_STEP 0.00001f
 
     float max_timestep = 100000;
 
@@ -1459,7 +1459,7 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
             return;
         }
 
-        float ds = next_ds;
+        //float ds = next_ds;
 
         #ifdef ADM
         float dX0 = X0Diff;
@@ -1508,12 +1508,12 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
 
         float4 next_acceleration = {A0, A1, A2, A3};
 
-        if(isnan(A0) || isnan(A1) || isnan(A2) || isnan(A3))
+        /*if(isnan(A0) || isnan(A1) || isnan(A2) || isnan(A3))
         {
             break;
-        }
+        }*/
 
-        int res = calculate_ds_error(ds, next_acceleration, &next_ds);
+        /*int res = calculate_ds_error(ds, next_acceleration, &next_ds);
 
         if(res == DS_RETURN)
         {
@@ -1525,7 +1525,9 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
         {
             last_skipped = true;
             continue;
-        }
+        }*/
+
+        float ds = 0.01f;
 
         last_skipped = false;
 
