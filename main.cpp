@@ -4164,11 +4164,11 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
                 for(int m=0; m < 3; m++)
                 {
-                    sm += icY.idx(i, m) * hacky_differentiate(ctx, args.X, m, true, true);
+                    sm += icY.idx(i, m) * hacky_differentiate<order>(ctx, args.X, m, true, true);
                 }
 
                 full_christoffel2.idx(i, j, k) = conformal_christoff2.idx(i, j, k) -
-                                                 (1.f/(2.f * max(args.X, 0.001f))) * (kronecker_ik * hacky_differentiate(ctx, args.X, j, true, true) + kronecker_ij * hacky_differentiate(ctx, args.X, k, true, true) - args.cY.idx(j, k) * sm);
+                                                 (1.f/(2.f * max(args.X, 0.001f))) * (kronecker_ik * hacky_differentiate<order>(ctx, args.X, j, true, true) + kronecker_ij * hacky_differentiate<order>(ctx, args.X, k, true, true) - args.cY.idx(j, k) * sm);
             }
         }
     }
@@ -4200,8 +4200,8 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
                 christoffel_sum += full_christoffel2.idx(i, j, k) * V_upper.idx(k);
             }
 
-            V_upper_diff.idx(i) += args.gA * V_upper.idx(j) * (V_upper.idx(i) * (hacky_differentiate(ctx, log(max(args.gA, 0.0001f)), j, true, true) - kjvk) + 2 * raise_index(args.Kij, args.Yij, iYij).idx(i, j) - christoffel_sum)
-                                   - iYij.idx(i, j) * hacky_differentiate(ctx, args.gA, j, true, true) - V_upper.idx(j) * hacky_differentiate(ctx, args.gB.idx(i), j, true, true);
+            V_upper_diff.idx(i) += args.gA * V_upper.idx(j) * (V_upper.idx(i) * (hacky_differentiate<order>(ctx, log(max(args.gA, 0.0001f)), j, true, true) - kjvk) + 2 * raise_index(args.Kij, args.Yij, iYij).idx(i, j) - christoffel_sum)
+                                   - iYij.idx(i, j) * hacky_differentiate<order>(ctx, args.gA, j, true, true) - V_upper.idx(j) * hacky_differentiate<order>(ctx, args.gB.idx(i), j, true, true);
 
         }
     }
@@ -4929,7 +4929,7 @@ int main()
 
         clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
 
-        float timestep = 0.01;
+        float timestep = 0.02;
 
         if(steps < 20)
            timestep = 0.001;

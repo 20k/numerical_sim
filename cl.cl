@@ -1492,11 +1492,16 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
         lp2 += dX1 * ds;
         lp3 += dX2 * ds;
 
-        /*if(fast_length((float3){dX0, dX1, dX2}) < 0.01f)
+        /*if(x == (int)width/2 && y == (int)height/2)
+        {
+            printf("%f %f %f  %f %f %f\n", V0, V1, V2, lp1, lp2, lp3);
+        }*/
+
+        if(fast_length((float3){dX0, dX1, dX2}) < 0.01f)
         {
             deliberate_termination = true;
             break;
-        }*/
+        }
     }
 
     float4 col = {1,0,1,1};
