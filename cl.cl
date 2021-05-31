@@ -608,6 +608,26 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
     points[idx].xyz = (ushort3)(ix, iy, iz);
 }
 
+__kernel
+void generate_evolution_points(__global ushort4* points, __global int* point_count, float scale, int4 dim)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, 0);
+
+    if(sponge_factor >= 1)
+        return;
+
+    int idx = atomic_inc(point_count);
+
+    points[idx].xyz = (ushort3)(ix, iy, iz);
+}
+
 ///https://cds.cern.ch/record/517706/files/0106072.pdf
 ///boundary conditions
 ///todo: damp to schwarzschild, not initial conditions?

@@ -4343,45 +4343,88 @@ struct lightray
 
 std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
 {
-    cl::buffer sponge_points(ctx);
-    cl::buffer sponge_count(ctx);
+    cl::buffer points(ctx);
+    cl::buffer real_count(ctx);
 
-    sponge_points.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
-    sponge_count.alloc(sizeof(cl_int));
-    sponge_count.set_to_zero(cqueue);
+    points.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
+    real_count.alloc(sizeof(cl_int));
+    real_count.set_to_zero(cqueue);
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
-    cl::args sponge_args;
-    sponge_args.push_back(sponge_points);
-    sponge_args.push_back(sponge_count);
-    sponge_args.push_back(scale);
-    sponge_args.push_back(clsize);
+    cl::args args;
+    args.push_back(points);
+    args.push_back(real_count);
+    args.push_back(scale);
+    args.push_back(clsize);
 
-    cqueue.exec("generate_sponge_points", sponge_args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
+    cqueue.exec("generate_sponge_points", args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
 
-    std::vector<cl_ushort4> points = sponge_points.read<cl_ushort4>(cqueue);
+    std::vector<cl_ushort4> cpu_points = points.read<cl_ushort4>(cqueue);
 
-    printf("Original points %i\n", points.size());
+    printf("Original sponge points %i\n", cpu_points.size());
 
-    cl_int count = sponge_count.read<cl_int>(cqueue).at(0);
+    cl_int count = real_count.read<cl_int>(cqueue).at(0);
 
     assert(count > 0);
 
-    points.resize(count);
+    cpu_points.resize(count);
 
-    std::sort(points.begin(), points.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
+    std::sort(cpu_points.begin(), cpu_points.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
     {
         return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
     });
 
-    cl::buffer sponge_real(ctx);
-    sponge_real.alloc(points.size() * sizeof(cl_ushort4));
-    sponge_real.write(cqueue, points);
+    cl::buffer real(ctx);
+    real.alloc(cpu_points.size() * sizeof(cl_ushort4));
+    real.write(cqueue, cpu_points);
 
-    printf("Point reduction %i\n", count);
+    printf("Sponge point reduction %i\n", count);
 
-    return {sponge_real, count};
+    return {real, count};
+}
+
+std::pair<cl::buffer, int> generate_evolution_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
+{
+    cl::buffer points(ctx);
+    cl::buffer real_count(ctx);
+
+    points.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
+    real_count.alloc(sizeof(cl_int));
+    real_count.set_to_zero(cqueue);
+
+    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
+
+    cl::args args;
+    args.push_back(points);
+    args.push_back(real_count);
+    args.push_back(scale);
+    args.push_back(clsize);
+
+    cqueue.exec("generate_evolution_points", args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
+
+    std::vector<cl_ushort4> cpu_points = points.read<cl_ushort4>(cqueue);
+
+    printf("Original evolve points %i\n", cpu_points.size());
+
+    cl_int count = real_count.read<cl_int>(cqueue).at(0);
+
+    assert(count > 0);
+
+    cpu_points.resize(count);
+
+    std::sort(cpu_points.begin(), cpu_points.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
+    {
+        return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
+    });
+
+    cl::buffer real(ctx);
+    real.alloc(cpu_points.size() * sizeof(cl_ushort4));
+    real.write(cqueue, cpu_points);
+
+    printf("Evolve point reduction %i\n", count);
+
+    return {real, count};
 }
 
 ///it seems like basically i need numerical dissipation of some form
