@@ -589,10 +589,6 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
     int iy = get_global_id(1);
     int iz = get_global_id(2);
 
-    #ifdef SYMMETRY_BOUNDARY
-    return;
-    #endif // SYMMETRY_BOUNDARY
-
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
@@ -610,7 +606,7 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
 ///boundary conditions
 ///todo: damp to schwarzschild, not initial conditions?
 __kernel
-void clean_data(__global ushort4* points, __global int* points_count,
+void clean_data(__global ushort4* points, int points_count,
                 __global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
                 __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                 __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
@@ -622,7 +618,7 @@ void clean_data(__global ushort4* points, __global int* points_count,
 {
     int idx = get_global_id(0);
 
-    if(idx >= *points_count)
+    if(idx >= points_count)
         return;
 
     int ix = points[idx].x;

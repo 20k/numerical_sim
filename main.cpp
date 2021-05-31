@@ -4341,6 +4341,44 @@ struct lightray
     cl_int x, y;
 };
 
+std::pair<cl::buffer, int> generate_write_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
+{
+    cl::buffer sponge_points(ctx);
+    cl::buffer sponge_count(ctx);
+
+    sponge_points.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
+    sponge_count.alloc(sizeof(cl_int));
+    sponge_count.set_to_zero(cqueue);
+
+    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
+
+    cl::args sponge_args;
+    sponge_args.push_back(sponge_points);
+    sponge_args.push_back(sponge_count);
+    sponge_args.push_back(scale);
+    sponge_args.push_back(clsize);
+
+    cqueue.exec("generate_sponge_points", sponge_args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
+
+    std::vector<cl_ushort4> points = sponge_points.read<cl_ushort4>(cqueue);
+    cl_int count = sponge_count.read<cl_int>(cqueue).at(0);
+
+    assert(count > 0);
+
+    points.resize(count);
+
+    std::sort(points.begin(), points.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
+    {
+        return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
+    });
+
+    cl::buffer sponge_real(ctx);
+    sponge_real.alloc(points.size() * sizeof(cl_ushort4));
+    sponge_real.write(cqueue, points);
+
+    return {sponge_real, count};
+}
+
 ///it seems like basically i need numerical dissipation of some form
 ///if i didn't evolve where sponge = 1, would be massively faster
 int main()
@@ -4598,71 +4636,7 @@ int main()
 
     int which_u_args = 0;
 
-    std::vector<cl::buffer> thin_intermediates;
-
-    constexpr int thin_intermediate_buffer_count = 18 + 3 + 9 + 3;
-
-    for(int i = 0; i < thin_intermediate_buffer_count; i++)
-    {
-        thin_intermediates.emplace_back(clctx.ctx);
-        thin_intermediates.back().alloc(size.x() * size.y() * size.z() * intermediate_data_size);
-    }
-
-    std::array<cl::buffer, 3> momentum_constraint{clctx.ctx, clctx.ctx, clctx.ctx};
-
-    for(auto& i : momentum_constraint)
-    {
-        i.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
-    }
-
-    cl::buffer waveform(clctx.ctx);
-    waveform.alloc(sizeof(cl_float2));
-
-    cl::buffer sponge_points(clctx.ctx);
-    cl::buffer sponge_count(clctx.ctx);
-
-    sponge_points.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
-    sponge_count.alloc(sizeof(cl_int));
-    sponge_count.set_to_zero(clctx.cqueue);
-
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
-
-    cl::args sponge_args;
-    sponge_args.push_back(sponge_points);
-    sponge_args.push_back(sponge_count);
-    sponge_args.push_back(scale);
-    sponge_args.push_back(clsize);
-
-    clctx.cqueue.exec("generate_sponge_points", sponge_args, {size.x() * size.y() * size.z()}, {128});
-
-    /*std::vector<bssnok_data> cpu_data;
-
-    for(int z=0; z < size.z(); z++)
-    {
-        for(int y=0; y < size.y(); y++)
-        {
-            for(int x=0; x < size.x(); x++)
-            {
-                vec3f pos = {x, y, z};
-
-                cpu_data.push_back(get_conditions(pos, centre, scale));
-            }
-        }
-    }
-
-    bssnok_datas[0].write(clctx.cqueue, cpu_data);*/
-
-    /*bssnok_data test_init = get_conditions({50, 50, 50}, centre, scale);
-
-    std::cout << "TEST0 " << test_init.cY0 << std::endl;
-    std::cout << "TEST1 " << test_init.cY1 << std::endl;
-    std::cout << "TEST2 " << test_init.cY2 << std::endl;
-    std::cout << "TEST3 " << test_init.cY3 << std::endl;
-    std::cout << "TEST4 " << test_init.cY4 << std::endl;
-    std::cout << "TEST5 " << test_init.cY5 << std::endl;
-    std::cout << "TESTb0 " << test_init.gB0 << std::endl;
-    std::cout << "TESTX " << test_init.X << std::endl;
-    std::cout << "TESTgA " << test_init.gA << std::endl;*/
 
     cl_float time_elapsed_s = 0;
 
@@ -4698,7 +4672,29 @@ int main()
 
     u_args[(which_u_args + 1) % 2].native_mem_object.release();
 
+    auto [valid_positions, valid_positions_count] = generate_write_points(clctx.ctx, clctx.cqueue, scale, size);
+
     clctx.cqueue.block();
+
+    std::vector<cl::buffer> thin_intermediates;
+
+    constexpr int thin_intermediate_buffer_count = 18 + 3 + 9 + 3;
+
+    for(int i = 0; i < thin_intermediate_buffer_count; i++)
+    {
+        thin_intermediates.emplace_back(clctx.ctx);
+        thin_intermediates.back().alloc(size.x() * size.y() * size.z() * intermediate_data_size);
+    }
+
+    std::array<cl::buffer, 3> momentum_constraint{clctx.ctx, clctx.ctx, clctx.ctx};
+
+    for(auto& i : momentum_constraint)
+    {
+        i.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+    }
+
+    cl::buffer waveform(clctx.ctx);
+    waveform.alloc(sizeof(cl_float2));
 
     {
         cl::args init;
@@ -4730,9 +4726,9 @@ int main()
         clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
     }
 
-    cl::args initial_clean;
-    initial_clean.push_back(sponge_points);
-    initial_clean.push_back(sponge_count);
+    /*cl::args initial_clean;
+    initial_clean.push_back(valid_positions);
+    initial_clean.push_back(valid_positions_count);
 
     for(auto& i : generic_data[0])
     {
@@ -4745,7 +4741,7 @@ int main()
     initial_clean.push_back(clsize);
     initial_clean.push_back(time_elapsed_s);
 
-    clctx.cqueue.exec("clean_data", initial_clean, {size.x(), size.y(), size.z()}, {8, 8, 1});
+    clctx.cqueue.exec("clean_data", initial_clean, {valid_positions_count}, {256});*/
 
     cl::args initial_constraints;
 
@@ -5141,8 +5137,8 @@ int main()
 
             {
                 cl::args cleaner;
-                cleaner.push_back(sponge_points);
-                cleaner.push_back(sponge_count);
+                cleaner.push_back(valid_positions);
+                cleaner.push_back(valid_positions_count);
 
                 for(auto& i : generic_data[which_data])
                 {
@@ -5153,8 +5149,9 @@ int main()
                 cleaner.push_back(u_args[which_u_args]);
                 cleaner.push_back(scale);
                 cleaner.push_back(clsize);
+                cleaner.push_back(time_elapsed_s);
 
-                clctx.cqueue.exec("clean_data", cleaner, {size.x(), size.y(), size.z()}, {16, 16, 1});
+                clctx.cqueue.exec("clean_data", cleaner, {valid_positions_count}, {256});
             }
 
             /*cl::args fl3;
