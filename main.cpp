@@ -4384,36 +4384,54 @@ std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_
     return {real, count};
 }
 
-std::pair<cl::buffer, int> generate_evolution_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
+std::tuple<cl::buffer, int, cl::buffer, int> generate_evolution_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
 {
-    cl::buffer points(ctx);
-    cl::buffer real_count(ctx);
+    cl::buffer evolved_points(ctx);
+    cl::buffer evolved_count(ctx);
 
-    points.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
-    real_count.alloc(sizeof(cl_int));
-    real_count.set_to_zero(cqueue);
+    cl::buffer non_evolved_points(ctx);
+    cl::buffer non_evolved_count(ctx);
+
+    evolved_points.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
+    non_evolved_points.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
+
+    evolved_count.alloc(sizeof(cl_int));
+    non_evolved_count.alloc(sizeof(cl_int));
+
+    evolved_count.set_to_zero(cqueue);
+    non_evolved_count.set_to_zero(cqueue);
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
     cl::args args;
-    args.push_back(points);
-    args.push_back(real_count);
+    args.push_back(evolved_points);
+    args.push_back(evolved_count);
+    args.push_back(non_evolved_points);
+    args.push_back(non_evolved_count);
     args.push_back(scale);
     args.push_back(clsize);
 
     cqueue.exec("generate_evolution_points", args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
 
-    std::vector<cl_ushort4> cpu_points = points.read<cl_ushort4>(cqueue);
+    std::vector<cl_ushort4> cpu_points = evolved_points.read<cl_ushort4>(cqueue);
+    std::vector<cl_ushort4> cpu_non_points = non_evolved_points.read<cl_ushort4>(cqueue);
 
     printf("Original evolve points %i\n", cpu_points.size());
 
-    cl_int count = real_count.read<cl_int>(cqueue).at(0);
+    cl_int count = evolved_count.read<cl_int>(cqueue).at(0);
+    cl_int non_count = non_evolved_count.read<cl_int>(cqueue).at(0);
 
     assert(count > 0);
 
     cpu_points.resize(count);
+    cpu_non_points.resize(non_count);
 
     std::sort(cpu_points.begin(), cpu_points.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
+    {
+        return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
+    });
+
+    std::sort(cpu_non_points.begin(), cpu_non_points.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
     {
         return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
     });
@@ -4422,9 +4440,13 @@ std::pair<cl::buffer, int> generate_evolution_points(cl::context& ctx, cl::comma
     real.alloc(cpu_points.size() * sizeof(cl_ushort4));
     real.write(cqueue, cpu_points);
 
+    cl::buffer non(ctx);
+    non.alloc(cpu_non_points.size() * sizeof(cl_ushort4));
+    non.write(cqueue, cpu_non_points);
+
     printf("Evolve point reduction %i\n", count);
 
-    return {real, count};
+    return {real, count, non, non_count};
 }
 
 ///it seems like basically i need numerical dissipation of some form
@@ -4721,6 +4743,7 @@ int main()
     u_args[(which_u_args + 1) % 2].native_mem_object.release();
 
     auto [sponge_positions, sponge_positions_count] = generate_sponge_points(clctx.ctx, clctx.cqueue, scale, size);
+    auto [evolution_positions, evolution_positions_count, non_evolution_positions, non_evolution_positions_count] = generate_evolution_points(clctx.ctx, clctx.cqueue, scale, size);
 
     clctx.cqueue.block();
 
@@ -5092,6 +5115,9 @@ int main()
 
             cl::args a1;
 
+            a1.push_back(evolution_positions);
+            a1.push_back(evolution_positions_count);
+
             for(auto& i : generic_data[which_data])
             {
                 a1.push_back(i);
@@ -5120,7 +5146,19 @@ int main()
             a1.push_back(time_elapsed_s);
             a1.push_back(current_simulation_boundary);
 
-            clctx.cqueue.exec("evolve", a1, {size.x(), size.y(), size.z()}, {64, 1, 1});
+            clctx.cqueue.exec("evolve", a1, {evolution_positions_count}, {128});
+
+            for(int i=0; i < (int)generic_data[which_data].size(); i++)
+            {
+                cl::args indirect;
+                indirect.push_back(non_evolution_positions);
+                indirect.push_back(non_evolution_positions_count);
+                indirect.push_back(generic_data[which_data][i]);
+                indirect.push_back(generic_data[(which_data + 1) % 2][i]);
+                indirect.push_back(clsize);
+
+                clctx.cqueue.exec("indirect_copy_float", indirect, {non_evolution_positions_count}, {128});
+            }
 
             {
                 cl::args constraints;

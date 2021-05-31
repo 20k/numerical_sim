@@ -600,7 +600,23 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
     if(sponge_factor <= 0)
         return;
 
-    if(sponge_factor >= 1)
+    bool all_high = true;
+
+    for(int i=-1; i <= 1; i++)
+    {
+        for(int j=-1; j <= 1; j++)
+        {
+            for(int k=-1; k <= 1; k++)
+            {
+                if(sponge_damp_coeff(ix + i, iy + j, iz + k, scale, dim, 0) < 1)
+                {
+                    all_high = false;
+                }
+            }
+        }
+    }
+
+    if(all_high)
         return;
 
     int idx = atomic_inc(point_count);
@@ -609,7 +625,7 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
 }
 
 __kernel
-void generate_evolution_points(__global ushort4* points, __global int* point_count, float scale, int4 dim)
+void generate_evolution_points(__global ushort4* points, __global int* point_count, __global ushort4* non_evolved_points, __global int* non_evolved_points_count, float scale, int4 dim)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -621,11 +637,32 @@ void generate_evolution_points(__global ushort4* points, __global int* point_cou
     float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, 0);
 
     if(sponge_factor >= 1)
+    {
+        int idx = atomic_inc(non_evolved_points_count);
+
+        non_evolved_points[idx].xyz = (ushort3)(ix, iy, iz);
+    }
+    else
+    {
+        int idx = atomic_inc(point_count);
+
+        points[idx].xyz = (ushort3)(ix, iy, iz);
+    }
+}
+
+__kernel
+void indirect_copy_float(__global ushort4* points, int point_count, __global float* source, __global float* dest, int4 dim)
+{
+    int idx = get_global_id(0);
+
+    if(idx >= point_count)
         return;
 
-    int idx = atomic_inc(point_count);
+    int ix = points[idx].x;
+    int iy = points[idx].y;
+    int iz = points[idx].z;
 
-    points[idx].xyz = (ushort3)(ix, iy, iz);
+    dest[IDX(ix,iy,iz)] = source[IDX(ix,iy,iz)];
 }
 
 ///https://cds.cern.ch/record/517706/files/0106072.pdf
@@ -784,7 +821,8 @@ void dissipate(__global float* buffer_in, __global float* buffer_out, float scal
 ///todo: need to correctly evolve boundaries
 ///todo: need to factor out the differentials
 __kernel
-void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
+void evolve(__global ushort4* points, int points_count,
+            __global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
             __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
             __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
             #ifdef USE_gBB0
@@ -803,9 +841,14 @@ void evolve(__global float* cY0, __global float* cY1, __global float* cY2, __glo
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
             float scale, int4 dim, float timestep, float time, int current_simulation_boundary)
 {
-    int ix = get_global_id(0);
-    int iy = get_global_id(1);
-    int iz = get_global_id(2);
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= points_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
