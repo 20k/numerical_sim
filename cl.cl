@@ -353,7 +353,8 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
 }
 
 __kernel
-void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
+void enforce_algebraic_constraints(__global ushort4* points, int point_count,
+                                   __global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
                                    __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                                    __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
                                    #ifdef USE_gBB0
@@ -361,9 +362,14 @@ void enforce_algebraic_constraints(__global float* cY0, __global float* cY1, __g
                                    #endif // USE_gBB0
                                    float scale, int4 dim)
 {
-    int ix = get_global_id(0);
-    int iy = get_global_id(1);
-    int iz = get_global_id(2);
+    int idx = get_global_id(0);
+
+    if(idx >= point_count)
+        return;
+
+    int ix = points[idx].x;
+    int iy = points[idx].y;
+    int iz = points[idx].z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -466,12 +472,18 @@ void calculate_intermediate_data(__global float* cY0, __global float* cY1, __glo
 }
 
 __kernel
-void calculate_intermediate_data_thin(__global float* buffer, __global DERIV_PRECISION* buffer_out_1, __global DERIV_PRECISION* buffer_out_2, __global DERIV_PRECISION* buffer_out_3,
+void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
+                                      __global float* buffer, __global DERIV_PRECISION* buffer_out_1, __global DERIV_PRECISION* buffer_out_2, __global DERIV_PRECISION* buffer_out_3,
                                       float scale, int4 dim)
 {
-    int ix = get_global_id(0);
-    int iy = get_global_id(1);
-    int iz = get_global_id(2);
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -489,13 +501,19 @@ void calculate_intermediate_data_thin(__global float* buffer, __global DERIV_PRE
 }
 
 __kernel
-void calculate_intermediate_data_thin_cY5(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
+void calculate_intermediate_data_thin_cY5(__global ushort4* points, int point_count,
+                                          __global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
                                           __global DERIV_PRECISION* buffer_out_1, __global DERIV_PRECISION* buffer_out_2, __global DERIV_PRECISION* buffer_out_3,
                                          float scale, int4 dim)
 {
-    int ix = get_global_id(0);
-    int iy = get_global_id(1);
-    int iz = get_global_id(2);
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -669,7 +687,7 @@ void indirect_copy_float(__global ushort4* points, int point_count, __global flo
 ///boundary conditions
 ///todo: damp to schwarzschild, not initial conditions?
 __kernel
-void clean_data(__global ushort4* points, int points_count,
+void clean_data(__global ushort4* points, int point_count,
                 __global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
                 __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                 __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
@@ -681,7 +699,7 @@ void clean_data(__global ushort4* points, int points_count,
 {
     int idx = get_global_id(0);
 
-    if(idx >= points_count)
+    if(idx >= point_count)
         return;
 
     int ix = points[idx].x;
@@ -821,7 +839,7 @@ void dissipate(__global float* buffer_in, __global float* buffer_out, float scal
 ///todo: need to correctly evolve boundaries
 ///todo: need to factor out the differentials
 __kernel
-void evolve(__global ushort4* points, int points_count,
+void evolve(__global ushort4* points, int point_count,
             __global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
             __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
             __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
@@ -843,7 +861,7 @@ void evolve(__global ushort4* points, int points_count,
 {
     int local_idx = get_global_id(0);
 
-    if(local_idx >= points_count)
+    if(local_idx >= point_count)
         return;
 
     int ix = points[local_idx].x;

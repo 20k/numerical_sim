@@ -5046,6 +5046,8 @@ int main()
                         int idx = buffer_to_index(name);
 
                         cl::args thin;
+                        thin.push_back(evolution_positions);
+                        thin.push_back(evolution_positions_count);
                         thin.push_back(generic_data[which_data][idx]);
                         thin.push_back(out1);
                         thin.push_back(out2);
@@ -5053,7 +5055,7 @@ int main()
                         thin.push_back(scale);
                         thin.push_back(clsize);
 
-                        clctx.cqueue.exec("calculate_intermediate_data_thin", thin, {size.x(), size.y(), size.z()}, {128, 1, 1});
+                        clctx.cqueue.exec("calculate_intermediate_data_thin", thin, {evolution_positions_count}, {128});
                     }
                     else
                     {
@@ -5064,6 +5066,8 @@ int main()
                         int idx4 = buffer_to_index("cY4");
 
                         cl::args thin;
+                        thin.push_back(evolution_positions);
+                        thin.push_back(evolution_positions_count);
                         thin.push_back(generic_data[which_data][idx0]);
                         thin.push_back(generic_data[which_data][idx1]);
                         thin.push_back(generic_data[which_data][idx2]);
@@ -5076,7 +5080,7 @@ int main()
                         thin.push_back(scale);
                         thin.push_back(clsize);
 
-                        clctx.cqueue.exec("calculate_intermediate_data_thin_cY5", thin, {size.x(), size.y(), size.z()}, {128, 1, 1});
+                        clctx.cqueue.exec("calculate_intermediate_data_thin_cY5", thin, {evolution_positions_count}, {128});
                     }
                 };
 
@@ -5163,6 +5167,9 @@ int main()
             {
                 cl::args constraints;
 
+                constraints.push_back(evolution_positions);
+                constraints.push_back(evolution_positions_count);
+
                 for(auto& i : generic_data[(which_data + 1) % 2])
                 {
                     constraints.push_back(i);
@@ -5172,7 +5179,7 @@ int main()
                 constraints.push_back(scale);
                 constraints.push_back(clsize);
 
-                clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {size.x(), size.y(), size.z()}, {128, 1, 1});
+                clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {evolution_positions_count}, {128});
             }
 
             /*{
