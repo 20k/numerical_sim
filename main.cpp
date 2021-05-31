@@ -4089,6 +4089,24 @@ void process_geodesics(equation_context& ctx)
     ctx.pin("universe_size", universe_length);*/
 }
 
+template<typename T, int N>
+T dot(const tensor<T, N>& v1, const tensor<T, N>& v2)
+{
+    T ret = 0;
+
+    for(int i=0; i < N; i++)
+    {
+        ret += v1.idx(i) * v2.idx(i);
+    }
+
+    return ret;
+}
+
+template<int N>
+value dot_metric(const tensor<value, N>& v1_upper, const tensor<value, N>& v2_upper, const metric<value, N, N>& met)
+{
+    return dot(v1_upper, lower_index(v2_upper, met));
+}
 
 ///https://arxiv.org/pdf/1208.3927.pdf (28a)
 void loop_geodesics(equation_context& ctx, vec3f dim)
@@ -4173,6 +4191,12 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         }
     }
 
+    value length_sq = dot_metric(V_upper, V_upper, args.Yij);
+
+    value length = sqrt(fabs(length_sq));
+
+    V_upper = (V_upper * 1 / length);
+
     ///https://arxiv.org/pdf/1208.3927.pdf (28a)
     #define PAPER_1
     #ifdef PAPER_1
@@ -4206,6 +4230,12 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         }
     }
     #endif // PAPER_1
+
+    /*value length_sq = dot_metric(V_upper, V_upper, args.Yij);
+
+    value length = sqrt(fabs(length_sq));
+
+    V_upper_diff += (V_upper * 1 / length) - V_upper;*/
 
     ///https://authors.library.caltech.edu/88020/1/PhysRevD.49.4004.pdf
     //#define PAPER_2

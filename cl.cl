@@ -1497,7 +1497,7 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
             printf("%f %f %f  %f %f %f\n", V0, V1, V2, lp1, lp2, lp3);
         }*/
 
-        if(fast_length((float3){dX0, dX1, dX2}) < 0.01f)
+        if(fast_length((float3){dX0, dX1, dX2}) < 0.2f)
         {
             deliberate_termination = true;
             break;
