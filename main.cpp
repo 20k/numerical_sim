@@ -4341,7 +4341,7 @@ struct lightray
     cl_int x, y;
 };
 
-std::pair<cl::buffer, int> generate_write_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
+std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
 {
     cl::buffer sponge_points(ctx);
     cl::buffer sponge_count(ctx);
@@ -4361,6 +4361,9 @@ std::pair<cl::buffer, int> generate_write_points(cl::context& ctx, cl::command_q
     cqueue.exec("generate_sponge_points", sponge_args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
 
     std::vector<cl_ushort4> points = sponge_points.read<cl_ushort4>(cqueue);
+
+    printf("Original points %i\n", points.size());
+
     cl_int count = sponge_count.read<cl_int>(cqueue).at(0);
 
     assert(count > 0);
@@ -4375,6 +4378,8 @@ std::pair<cl::buffer, int> generate_write_points(cl::context& ctx, cl::command_q
     cl::buffer sponge_real(ctx);
     sponge_real.alloc(points.size() * sizeof(cl_ushort4));
     sponge_real.write(cqueue, points);
+
+    printf("Point reduction %i\n", count);
 
     return {sponge_real, count};
 }
@@ -4672,7 +4677,7 @@ int main()
 
     u_args[(which_u_args + 1) % 2].native_mem_object.release();
 
-    auto [valid_positions, valid_positions_count] = generate_write_points(clctx.ctx, clctx.cqueue, scale, size);
+    auto [sponge_positions, sponge_positions_count] = generate_sponge_points(clctx.ctx, clctx.cqueue, scale, size);
 
     clctx.cqueue.block();
 
@@ -5137,8 +5142,8 @@ int main()
 
             {
                 cl::args cleaner;
-                cleaner.push_back(valid_positions);
-                cleaner.push_back(valid_positions_count);
+                cleaner.push_back(sponge_positions);
+                cleaner.push_back(sponge_positions_count);
 
                 for(auto& i : generic_data[which_data])
                 {
@@ -5151,7 +5156,7 @@ int main()
                 cleaner.push_back(clsize);
                 cleaner.push_back(time_elapsed_s);
 
-                clctx.cqueue.exec("clean_data", cleaner, {valid_positions_count}, {256});
+                clctx.cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
             }
 
             /*cl::args fl3;

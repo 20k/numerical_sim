@@ -570,6 +570,9 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
     if(r <= sponge_r0)
         return 0.f;
 
+    if(r >= sponge_r1)
+        return 1.f;
+
     r = clamp(r, sponge_r0, sponge_r1);
 
     float r_frac = (r - sponge_r0) / (sponge_r1 - sponge_r0);
@@ -595,6 +598,9 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
     float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, 0);
 
     if(sponge_factor <= 0)
+        return;
+
+    if(sponge_factor >= 1)
         return;
 
     int idx = atomic_inc(point_count);
