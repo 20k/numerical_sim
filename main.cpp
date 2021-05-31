@@ -3983,6 +3983,25 @@ vec<3, value> unrotate_vector(const vec<3, value>& bx, const vec<3, value>& by, 
     return rotate_vector({bx.x(), by.x(), bz.x()}, {bx.y(), by.y(), bz.y()}, {bx.z(), by.z(), bz.z()}, v);
 }
 
+template<typename T, int N>
+T dot(const tensor<T, N>& v1, const tensor<T, N>& v2)
+{
+    T ret = 0;
+
+    for(int i=0; i < N; i++)
+    {
+        ret += v1.idx(i) * v2.idx(i);
+    }
+
+    return ret;
+}
+
+template<int N>
+value dot_metric(const tensor<value, N>& v1_upper, const tensor<value, N>& v2_upper, const metric<value, N, N>& met)
+{
+    return dot(v1_upper, lower_index(v2_upper, met));
+}
+
 void process_geodesics(equation_context& ctx)
 {
     standard_arguments args(true);
@@ -4077,6 +4096,8 @@ void process_geodesics(equation_context& ctx)
     ctx.add("V1_d", adm_V_higher.idx(1));
     ctx.add("V2_d", adm_V_higher.idx(2));
 
+    ctx.add("debug_ray", dot_metric(lightray_velocity_t, lightray_velocity_t, real_metric));
+
     /*vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
     vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
 
@@ -4106,8 +4127,8 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     auto unpinned_Yij = args.Yij;
 
     ///upper index, aka contravariant
-    vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
-    vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
+    //vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
+    //vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
 
     constexpr int order = 1;
 
@@ -4184,6 +4205,36 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     {
         V_upper_diff.idx(i) = 0;
 
+        value bkp1 = 0;
+        value bkp2 = 0;
+
+        value bkp3 = 0;
+
+        value christoff = 0;
+
+        value out_p1 = 0;
+        value out_p2 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            bkp1 += V_upper.idx(j) * hacky_differentiate(ctx, log(args.gA), j, true, true);
+
+            for(int k=0; k < 3; k++)
+            {
+                bkp2 += -args.Kij.idx(j, k) * V_upper.idx(j) * V_upper.idx(k);
+
+                christoff += -full_christoffel2.idx(i, j, k) * V_upper.idx(j) * V_upper.idx(k);
+            }
+
+            bkp3 += 2 * raise_index(args.Kij, args.Yij, iYij).idx(i, j) * V_upper.idx(j);
+
+            out_p1 += -iYij.idx(i, j) * hacky_differentiate(ctx, args.gA, j, true, true);
+            out_p2 += -V_upper.idx(j) * hacky_differentiate(ctx, args.gB.idx(i), j, true, true);
+        }
+
+        V_upper_diff.idx(i) = args.gA * (V_upper.idx(i) * (bkp1 + bkp2) + bkp3 + christoff) + out_p1 + out_p2;
+
+        #if 0
         for(int j=0; j < 3; j++)
         {
             value kjvk = 0;
@@ -4204,8 +4255,17 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
                                    - iYij.idx(i, j) * hacky_differentiate<order>(ctx, args.gA, j, true, true) - V_upper.idx(j) * hacky_differentiate<order>(ctx, args.gB.idx(i), j, true, true);
 
         }
+        #endif // 0
     }
     #endif // PAPER_1
+
+    value length_sq = dot_metric(V_upper, V_upper, args.Yij);
+
+    value length = sqrt(fabs(length_sq));
+
+    ctx.add("loop_ray_debug", length);
+
+    V_upper_diff += (V_upper * 1 / length) - V_upper;
 
     ///https://authors.library.caltech.edu/88020/1/PhysRevD.49.4004.pdf
     //#define PAPER_2
