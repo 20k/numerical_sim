@@ -1154,13 +1154,19 @@ void numerical_dissipate(__global float* cY0, __global float* cY1, __global floa
 #endif // 0
 
 __kernel
-void dissipate_single(__global float* buffer, __global float* obuffer,
+void dissipate_single(__global ushort4* points, int point_count,
+                      __global float* buffer, __global float* obuffer,
                       float coefficient,
                       float scale, int4 dim, float timestep)
 {
-    int ix = get_global_id(0);
-    int iy = get_global_id(1);
-    int iz = get_global_id(2);
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;

@@ -4814,7 +4814,7 @@ int main()
 
     clctx.cqueue.exec("clean_data", initial_clean, {valid_positions_count}, {256});*/
 
-    cl::args initial_constraints;
+    /*cl::args initial_constraints;
 
     for(auto& i : generic_data[0])
     {
@@ -4825,7 +4825,7 @@ int main()
     initial_constraints.push_back(scale);
     initial_constraints.push_back(clsize);
 
-    clctx.cqueue.exec("enforce_algebraic_constraints", initial_constraints, {size.x(), size.y(), size.z()}, {8, 8, 1});
+    clctx.cqueue.exec("enforce_algebraic_constraints", initial_constraints, {size.x(), size.y(), size.z()}, {8, 8, 1});*/
 
     /*cl::args fl2;
 
@@ -5148,7 +5148,7 @@ int main()
 
             clctx.cqueue.exec("evolve", a1, {evolution_positions_count}, {128});
 
-            for(int i=0; i < (int)generic_data[which_data].size(); i++)
+            /*for(int i=0; i < (int)generic_data[which_data].size(); i++)
             {
                 cl::args indirect;
                 indirect.push_back(non_evolution_positions);
@@ -5158,7 +5158,7 @@ int main()
                 indirect.push_back(clsize);
 
                 clctx.cqueue.exec("indirect_copy_float", indirect, {non_evolution_positions_count}, {128});
-            }
+            }*/
 
             {
                 cl::args constraints;
@@ -5202,6 +5202,9 @@ int main()
                 {
                     cl::args diss;
 
+                    diss.push_back(evolution_positions);
+                    diss.push_back(evolution_positions_count);
+
                     diss.push_back(generic_data[which_data][i]);
                     diss.push_back(generic_data[(which_data + 1) % 2][i]);
 
@@ -5215,7 +5218,7 @@ int main()
                     if(coeff == 0)
                         continue;
 
-                    clctx.cqueue.exec("dissipate_single", diss, {size.x(), size.y(), size.z()}, {128, 1, 1});
+                    clctx.cqueue.exec("dissipate_single", diss, {evolution_positions_count}, {128});
                 }
             }
 
