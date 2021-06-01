@@ -782,7 +782,9 @@ void clean_data(__global ushort4* points, int point_count,
     cA0[index] = mix(cA0[index],initial_cA0, sponge_factor);
     cA1[index] = mix(cA1[index],initial_cA1, sponge_factor);
     cA2[index] = mix(cA2[index],initial_cA2, sponge_factor);
+    #ifndef NO_CAIJYY
     cA3[index] = mix(cA3[index],initial_cA3, sponge_factor);
+    #endif // NO_CAIJYY
     cA4[index] = mix(cA4[index],initial_cA4, sponge_factor);
     cA5[index] = mix(cA5[index],initial_cA5, sponge_factor);
 
