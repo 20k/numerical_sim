@@ -1562,7 +1562,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     //value BL_a = 0;
 
-    value BL_s = 1;
+    value BL_s = 0;
 
     for(int i=0; i < (int)black_hole_m.size(); i++)
     {
@@ -5028,7 +5028,7 @@ int main()
 
         clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
 
-        float timestep = 0.02/4;
+        float timestep = 0.02/2;
 
         if(steps < 20)
            timestep = 0.001;

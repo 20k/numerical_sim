@@ -226,11 +226,12 @@ void setup_u_offset(__global float* u_offset,
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    u_offset[IDX(ix, iy, iz)] = 0;
+    u_offset[IDX(ix, iy, iz)] = 1;
 }
 
 ///https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan2008/Workbook33/33_2_elliptic_pde.pdf
 ///https://arxiv.org/pdf/1205.5111v1.pdf 78
+///https://arxiv.org/pdf/gr-qc/0007085.pdf 76?
 __kernel
 void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out,
                        float scale, int4 dim)
@@ -257,10 +258,12 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
     float u = u_offset_in[IDX(ix, iy, iz)];
 
-    /*float B = (1.f/8.f) * pow(a, 7.f) * aij_aIJ;
-    float RHS = -B * pow(1 + a * u, -7);*/
+    float X = 1/init_BL_val;
 
-    float RHS = -(1/8.f) * aij_aIJ * pow(bl_s + u, -7);
+    float B = (1.f/8.f) * pow(X, 7.f) * aij_aIJ;
+    float RHS = -B * pow(1 + X * u, -7);
+
+    //float RHS = -(1/8.f) * aij_aIJ * pow(bl_s + u, -7);
 
     float h2f0 = scale * scale * RHS;
 
