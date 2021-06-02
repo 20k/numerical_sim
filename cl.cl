@@ -759,33 +759,6 @@ void clean_data(__global ushort4* points, int point_count,
     initial_X = 1;
     #endif // RADIATIVE
 
-    /*cY0[index] = mix(cY0[index],initial_cY0, sponge_factor);
-    cY1[index] = mix(cY1[index],initial_cY1, sponge_factor);
-    cY2[index] = mix(cY2[index],initial_cY2, sponge_factor);
-    cY3[index] = mix(cY3[index],initial_cY3, sponge_factor);
-    cY4[index] = mix(cY4[index],initial_cY4, sponge_factor);
-
-    cA0[index] = mix(cA0[index],initial_cA0, sponge_factor);
-    cA1[index] = mix(cA1[index],initial_cA1, sponge_factor);
-    cA2[index] = mix(cA2[index],initial_cA2, sponge_factor);
-    #ifndef NO_CAIJYY
-    cA3[index] = mix(cA3[index],initial_cA3, sponge_factor);
-    #endif // NO_CAIJYY
-    cA4[index] = mix(cA4[index],initial_cA4, sponge_factor);
-    cA5[index] = mix(cA5[index],initial_cA5, sponge_factor);
-
-    cGi0[index] = mix(cGi0[index],init_cGi0, sponge_factor);
-    cGi1[index] = mix(cGi1[index],init_cGi1, sponge_factor);
-    cGi2[index] = mix(cGi2[index],init_cGi2, sponge_factor);
-
-    K[index] = mix(K[index],init_K, sponge_factor);
-    X[index] = mix(X[index],initial_X, sponge_factor);
-
-    gA[index] = mix(gA[index],fin_gA, sponge_factor);
-    gB0[index] = mix(gB0[index],fin_gB0, sponge_factor);
-    gB1[index] = mix(gB1[index],fin_gB1, sponge_factor);
-    gB2[index] = mix(gB2[index],fin_gB2, sponge_factor);*/
-
     ///https://authors.library.caltech.edu/8284/1/RINcqg07.pdf (34)
     float y_r = sponge_factor;
 
