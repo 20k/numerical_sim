@@ -680,7 +680,8 @@ void clean_data(__global ushort4* points, int point_count,
                 __global float* gBB0, __global float* gBB1, __global float* gBB2,
                 #endif // USE_gBB0
                 __global float* u_value,
-                float scale, int4 dim, float time)
+                float scale, int4 dim, float time,
+                float timestep)
 {
     int idx = get_global_id(0);
 
@@ -758,7 +759,7 @@ void clean_data(__global ushort4* points, int point_count,
     initial_X = 1;
     #endif // RADIATIVE
 
-    cY0[index] = mix(cY0[index],initial_cY0, sponge_factor);
+    /*cY0[index] = mix(cY0[index],initial_cY0, sponge_factor);
     cY1[index] = mix(cY1[index],initial_cY1, sponge_factor);
     cY2[index] = mix(cY2[index],initial_cY2, sponge_factor);
     cY3[index] = mix(cY3[index],initial_cY3, sponge_factor);
@@ -783,7 +784,37 @@ void clean_data(__global ushort4* points, int point_count,
     gA[index] = mix(gA[index],fin_gA, sponge_factor);
     gB0[index] = mix(gB0[index],fin_gB0, sponge_factor);
     gB1[index] = mix(gB1[index],fin_gB1, sponge_factor);
-    gB2[index] = mix(gB2[index],fin_gB2, sponge_factor);
+    gB2[index] = mix(gB2[index],fin_gB2, sponge_factor);*/
+
+    ///https://authors.library.caltech.edu/8284/1/RINcqg07.pdf (34)
+    float y_r = sponge_factor;
+
+    cY0[index] += -y_r * (cY0[index] - initial_cY0) * timestep;
+    cY1[index] += -y_r * (cY1[index] - initial_cY1) * timestep;
+    cY2[index] += -y_r * (cY2[index] - initial_cY2) * timestep;
+    cY3[index] += -y_r * (cY3[index] - initial_cY3) * timestep;
+    cY4[index] += -y_r * (cY4[index] - initial_cY4) * timestep;
+
+    cA0[index] += -y_r * (cA0[index] - initial_cA0) * timestep;
+    cA1[index] += -y_r * (cA1[index] - initial_cA1) * timestep;
+    cA2[index] += -y_r * (cA2[index] - initial_cA2) * timestep;
+    #ifndef NO_CAIJYY
+    cA3[index] += -y_r * (cA3[index] - initial_cA3) * timestep;
+    #endif // NO_CAIJYY
+    cA4[index] += -y_r * (cA4[index] - initial_cA4) * timestep;
+    cA5[index] += -y_r * (cA5[index] - initial_cA5) * timestep;
+
+    cGi0[index] += -y_r * (cGi0[index] - init_cGi0) * timestep;
+    cGi1[index] += -y_r * (cGi1[index] - init_cGi1) * timestep;
+    cGi2[index] += -y_r * (cGi2[index] - init_cGi2) * timestep;
+
+    K[index] += -y_r * (K[index] - init_K) * timestep;
+    X[index] += -y_r * (X[index] - initial_X) * timestep;
+
+    gA[index] += -y_r * (gA[index] - fin_gA) * timestep;
+    gB0[index] += -y_r * (gB0[index] - fin_gB0) * timestep;
+    gB1[index] += -y_r * (gB1[index] - fin_gB1) * timestep;
+    gB2[index] += -y_r * (gB2[index] - fin_gB2) * timestep;
 
     #ifdef USE_GBB
     gBB0[index] = mix(gBB0[index], init_gBB0, sponge_factor);

@@ -5246,6 +5246,7 @@ int main()
                 cleaner.push_back(scale);
                 cleaner.push_back(clsize);
                 cleaner.push_back(time_elapsed_s);
+                cleaner.push_back(timestep);
 
                 clctx.cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
             }
