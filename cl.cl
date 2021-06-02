@@ -568,18 +568,10 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
 {
     float edge_half = scale * (dim.x/2);
 
-    float sponge_r0 = scale * ((dim.x/2) - 32);
+    float sponge_r0 = scale * ((dim.x/2) - 64);
+    //float sponge_r0 = scale * ((dim.x/2) - 32);
     //float sponge_r0 = edge_half/2;
     float sponge_r1 = scale * ((dim.x/2) - 8);
-
-    /*if(time >= 4)
-    {
-        float time_frac = (time - 4) / 4;
-
-        time_frac = clamp(time_frac, 0.f, 1.f);
-
-        sponge_r0 = mix(sponge_r0, scale * ((dim.x/2) - 32), time_frac);
-    }*/
 
     float3 fdim = (float3)(dim.x, dim.y, dim.z)/2.f;
 
@@ -591,16 +583,15 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
     if(r >= sponge_r1)
         return 1.f;
 
-    r = clamp(r, sponge_r0, sponge_r1);
+    /*r = clamp(r, sponge_r0, sponge_r1);
 
     float r_frac = (r - sponge_r0) / (sponge_r1 - sponge_r0);
 
-    //if(r_frac >= 0.2f)
-    //    return 0.2f;
+    return r_frac;*/
 
-    return r_frac;
-
-    //return r_frac * pow(r_frac, fabs(sin(time / (2 * M_PI))));
+    float sigma = (sponge_r1 - sponge_r0) / 9;
+    //float sigma = 13.3f;
+    return native_exp(-pow((r - sponge_r1) / sigma, 2));
 }
 
 __kernel
