@@ -668,21 +668,6 @@ void generate_evolution_points(__global ushort4* points, __global int* point_cou
     }
 }
 
-__kernel
-void indirect_copy_float(__global ushort4* points, int point_count, __global float* source, __global float* dest, int4 dim)
-{
-    int idx = get_global_id(0);
-
-    if(idx >= point_count)
-        return;
-
-    int ix = points[idx].x;
-    int iy = points[idx].y;
-    int iz = points[idx].z;
-
-    dest[IDX(ix,iy,iz)] = source[IDX(ix,iy,iz)];
-}
-
 ///https://cds.cern.ch/record/517706/files/0106072.pdf
 ///boundary conditions
 ///todo: damp to schwarzschild, not initial conditions?
