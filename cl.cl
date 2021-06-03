@@ -1157,6 +1157,21 @@ void numerical_dissipate(__global float* cY0, __global float* cY1, __global floa
 #endif // 0
 
 __kernel
+void indirect_copy_float(__global ushort4* points, int point_count, __global float* source, __global float* dest, int4 dim)
+{
+    int idx = get_global_id(0);
+
+    if(idx >= point_count)
+        return;
+
+    int ix = points[idx].x;
+    int iy = points[idx].y;
+    int iz = points[idx].z;
+
+    dest[IDX(ix,iy,iz)] = source[IDX(ix,iy,iz)];
+}
+
+__kernel
 void dissipate_single(__global ushort4* points, int point_count,
                       __global float* buffer, __global float* obuffer,
                       float coefficient,
@@ -1185,7 +1200,8 @@ void dissipate_single(__global ushort4* points, int point_count,
 
     float dissipate_single = KREISS_DISSIPATE_SINGULAR;
 
-    obuffer[index] += dissipate_single * timestep;
+    obuffer[index] += dissipate_single;
+    //obuffer[index] += dissipate_single * timestep;
 }
 
 __kernel

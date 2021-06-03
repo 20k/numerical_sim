@@ -703,7 +703,7 @@ value second_derivative(equation_context& ctx, const value& in, const vec<3, val
     return (right - left) / (h + k);
 }*/
 
-value fourth_derivative(equation_context& ctx, const value& in, const vec<3, value>& offset, int idx)
+/*value fourth_derivative(equation_context& ctx, const value& in, const vec<3, value>& offset, int idx)
 {
     differentiation_context<5> dctx(ctx, in, idx, offset, false);
 
@@ -727,6 +727,23 @@ value fourth_derivative(equation_context& ctx, const value& in, const vec<3, val
     float coeff = 1.f/24.f;
 
     return lhs / (coeff * pow(tdxm2, 4) - 4 * coeff * pow(tdxm1, 4) - 4 * coeff * pow(tdxp1, 4) + coeff * pow(tdxp2, 4));
+}*/
+
+value fourth_derivative(equation_context& ctx, const value& in, const vec<3, value>& offset, int idx)
+{
+    differentiation_context<5> dctx(ctx, in, idx, offset, false);
+
+    vec<3, value> pos = {"ix", "iy", "iz"};
+
+    value um2 = dctx.vars[0];
+    value um1 = dctx.vars[1];
+    value u0  = dctx.vars[2];
+    value up1 = dctx.vars[3];
+    value up2 = dctx.vars[4];
+
+    value lhs = um2 - 4 * um1 + 6 * u0 - 4 * up1 + up2;
+
+    return lhs;
 }
 
 ///https://hal.archives-ouvertes.fr/hal-00569776/document this paper implies you simply sum the directions
@@ -741,8 +758,6 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
     value k = get_scale_distance(ctx, in, offset, idx, 1);
 
     ///todo: fix this
-    value effective_scale = (h + k) / 2.f;
-
     ///https://en.wikipedia.org/wiki/Finite_difference_coefficient according to wikipedia, this is the 6th derivative with 2nd order accuracy. I am confused, but at least I know where it came from
     //value scale = "scale";
 
@@ -751,7 +766,7 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
     differentiation_context<5> dctx(ctx, in, idx, {"0", "0", "0"}, false);
     //value stencil = -(1 / (16.f * effective_scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
 
-    value stencil = (-1 / 16.f) * pow(effective_scale, 3.f) * fourth_derivative(ctx, in, offset, idx);
+    value stencil = (-1 / 16.f) * fourth_derivative(ctx, in, offset, idx);
 
     #endif // FOURTH
 
@@ -4500,7 +4515,7 @@ int main()
     vec3i size = {300, 300, 300};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
-    float c_at_max = 65;
+    float c_at_max = 100;
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
@@ -4677,8 +4692,8 @@ int main()
         }
     }
 
-    float dissipate_low = 0.5;
-    float dissipate_high = 0.5;
+    float dissipate_low = 0.25;
+    float dissipate_high = 0.25;
 
     /*std::array<float, buffer_count> dissipation_coefficients
     {
@@ -5209,12 +5224,22 @@ int main()
             {
                 for(int i=0; i < buffer_count; i++)
                 {
+                    cl::args copy;
+                    copy.push_back(evolution_positions);
+                    copy.push_back(evolution_positions_count);
+
+                    copy.push_back(generic_data[(which_data + 1) % 2][i]);
+                    copy.push_back(generic_data[(which_data) % 2][i]);
+                    copy.push_back(clsize);
+
+                    clctx.cqueue.exec("indirect_copy_float", copy, {evolution_positions_count}, {128});
+
                     cl::args diss;
 
                     diss.push_back(evolution_positions);
                     diss.push_back(evolution_positions_count);
 
-                    diss.push_back(generic_data[which_data][i]);
+                    diss.push_back(generic_data[which_data % 2][i]);
                     diss.push_back(generic_data[(which_data + 1) % 2][i]);
 
                     float coeff = dissipation_coefficients[i];
