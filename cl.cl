@@ -571,14 +571,21 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
 {
     float edge_half = scale * (dim.x/2);
 
-    float sponge_r0 = scale * ((dim.x/2) - 32);
+    float sponge_r0 = scale * ((dim.x/2) - 72);
+    //float sponge_r0 = scale * ((dim.x/2) - 32);
     //float sponge_r0 = scale * ((dim.x/2) - 32);
     //float sponge_r0 = edge_half/2;
     float sponge_r1 = scale * ((dim.x/2) - 8);
 
     float3 fdim = (float3)(dim.x, dim.y, dim.z)/2.f;
 
-    float r = fast_length((float3){x, y, z} - fdim) * scale;
+    float3 diff = ((float3){x, y, z} - fdim) * scale;
+
+    #ifdef MANHATTEN_SPONGE
+    float r = max(fabs(diff.x), max(fabs(diff.y), fabs(diff.z)));
+    #else
+    float r = fast_length(diff);
+    #endif // MANHATTEN_SPONGE
 
     if(r <= sponge_r0)
         return 0.f;
@@ -588,13 +595,11 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
 
     r = clamp(r, sponge_r0, sponge_r1);
 
-    float r_frac = (r - sponge_r0) / (sponge_r1 - sponge_r0);
+    /*float r_frac = (r - sponge_r0) / (sponge_r1 - sponge_r0);
+    return r_frac;*/
 
-    return r_frac;
-
-    /*float sigma = (sponge_r1 - sponge_r0) / 9;
-    //float sigma = 13.3f;
-    return native_exp(-pow((r - sponge_r1) / sigma, 2));*/
+    float sigma = (sponge_r1 - sponge_r0) / 6;
+    return native_exp(-pow((r - sponge_r1) / sigma, 2));
 }
 
 __kernel
