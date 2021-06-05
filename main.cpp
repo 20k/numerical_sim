@@ -744,9 +744,9 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
     value effective_scale = (h + k) / 2.f;
 
     ///https://en.wikipedia.org/wiki/Finite_difference_coefficient according to wikipedia, this is the 6th derivative with 2nd order accuracy. I am confused, but at least I know where it came from
-    //value scale = "scale";
+    value scale = "scale";
 
-    #define FOURTH
+    //#define FOURTH
     #ifdef FOURTH
     differentiation_context<5> dctx(ctx, in, idx, {"0", "0", "0"}, false);
     //value stencil = -(1 / (16.f * effective_scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
@@ -755,7 +755,7 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
 
     #endif // FOURTH
 
-    //#define SIXTH
+    #define SIXTH
     #ifdef SIXTH
     differentiation_context<7> dctx(ctx, in, idx, {"0", "0", "0"}, false);
     value stencil = (1 / (64.f * scale)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
@@ -927,7 +927,7 @@ void build_kreiss_oliger_dissipate_singular(equation_context& ctx)
     ctx.add("KREISS_DISSIPATE_SINGULAR", coeff * kreiss_oliger_dissipate(ctx, buf));
 }
 
-template<int order = 1>
+template<int order = 2>
 value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true, bool linear = false)
 {
     differentiation_context dctx(ctx, in, idx, {"0", "0", "0"}, true, linear);
@@ -2262,7 +2262,7 @@ void build_eqs(equation_context& ctx)
         derived_cGi.idx(i) = sum;
     }*/
 
-    #define USE_DERIVED_CGI
+    //#define USE_DERIVED_CGI
     #ifdef USE_DERIVED_CGI
     for(int i=0; i < 3; i++)
     {
@@ -2348,7 +2348,7 @@ void build_eqs(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            float sigma = 2/5.f;
+            float sigma = 4/5.f;
 
             dtcYij.idx(i, j) += sigma * 0.5f * (gB_lower.idx(i) * bigGi_lower.idx(j) + gB_lower.idx(j) * bigGi_lower.idx(i));
 
@@ -2676,6 +2676,7 @@ void build_eqs(equation_context& ctx)
     ///https://arxiv.org/pdf/gr-qc/0511048.pdf
     ///could likely eliminate the dphi term
 
+    //#define SIMPLE_CHRISTOFFEL
     #ifdef SIMPLE_CHRISTOFFEL
     for(int i=0; i < 3; i++)
     {
@@ -2730,9 +2731,95 @@ void build_eqs(equation_context& ctx)
     }
     #endif // SIMPLE_CHRISTOFFEL
 
+    ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf
+    #define SLIDES_CHRISTOFFEL
+    #ifdef SLIDES_CHRISTOFFEL
+
+    for(int i=0; i < 3; i++)
+    {
+        value p1 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            p1 += gB.idx(m) * hacky_differentiate(ctx, cGi.idx(i), m);
+        }
+
+        value dmbm = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            dmbm += hacky_differentiate(ctx, gB.idx(m), m);
+        }
+
+        value p2 = (2 / 3.f) * derived_cGi.idx(i) * dmbm;
+
+        value p3 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            p3 += -derived_cGi.idx(m) * hacky_differentiate(ctx, gB.idx(i), m);
+        }
+
+        value p4 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            for(int n=0; n < 3; n++)
+            {
+                p4 += icY.idx(m, n) * hacky_differentiate(ctx, digB.idx(n, i), m);
+            }
+        }
+
+        value p5 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            for(int n=0; n < 3; n++)
+            {
+                p5 += (1.f/3.f) * icY.idx(i, m) * hacky_differentiate(ctx, digB.idx(n, n), m);
+            }
+        }
+
+        value p6 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            p6 += -icAij.idx(i, m) * (3.f * gA_X * hacky_differentiate(ctx, X, m) + 2 * hacky_differentiate(ctx, gA, m));
+        }
+
+        value p7 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            for(int n=0; n < 3; n++)
+            {
+                p7 += 2 * gA * christoff2.idx(i, m, n) * icAij.idx(m, n);
+            }
+        }
+
+        value p8 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            p8 += -2 * (2.f/3.f) * gA * icY.idx(i, m) * hacky_differentiate(ctx, K, m);
+        }
+
+        value p9 = 0;
+
+        #define DAMP
+        #ifdef DAMP
+        float sigma = 0.9;
+        p9 = -sigma * bigGi.idx(i) * dmbm;
+        #endif // DAMP
+
+        dtcGi.idx(i) = p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+    }
+
+    #endif // SLIDES_CHRISTOFFEL
+
     ///https://arxiv.org/pdf/1205.5111v1.pdf 49
     ///made it to 58 with this
-    #define CHRISTOFFEL_49
+    //#define CHRISTOFFEL_49
     #ifdef CHRISTOFFEL_49
     tensor<value, 3, 3> littlekij = unpinned_icY.to_tensor() * K;
 
@@ -4677,8 +4764,8 @@ int main()
         }
     }
 
-    float dissipate_low = 0.4;
-    float dissipate_high = 0.4;
+    float dissipate_low = 0.5;
+    float dissipate_high = 0.5;
 
     /*std::array<float, buffer_count> dissipation_coefficients
     {
