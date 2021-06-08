@@ -69,6 +69,9 @@ https://arxiv.org/pdf/gr-qc/0404056.pdf - seems to suggest an analytic solution 
 https://arxiv.org/pdf/1410.8607.pdf - haven't read it yet but this promises everything i want
 
 https://authors.library.caltech.edu/8284/1/RINcqg07.pdf - this gives a conflicting definition of kreiss oliger under B.4/B.5
+https://arxiv.org/pdf/1202.1038.pdf - first order bssn
+https://arxiv.org/pdf/gr-qc/0204002.pdf - modified bssn
+https://arxiv.org/pdf/gr-qc/0204002.pdf - modified bssn, the big one
 */
 
 ///notes:
@@ -1240,7 +1243,7 @@ tensor<T, N> gpu_high_covariant_derivative_scalar(equation_context& ctx, const T
 
 ///https://en.wikipedia.org/wiki/Covariant_derivative#Covariant_derivative_by_field_type
 ///for the tensor DcDa, this returns idx(a, c)
-template<typename T, int N>
+/*template<typename T, int N>
 inline
 tensor<T, N, N> gpu_covariant_derivative_low_vec(equation_context& ctx, const tensor<T, N>& v_in, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
 {
@@ -1264,8 +1267,33 @@ tensor<T, N, N> gpu_covariant_derivative_low_vec(equation_context& ctx, const te
     }
 
     return lac;
+}*/
+
+template<typename T, int N>
+inline
+tensor<T, N, N> gpu_covariant_derivative_low_vec(equation_context& ctx, const tensor<T, N>& v_in, const tensor<T, N, N, N>& christoff2)
+{
+    tensor<T, N, N> lac;
+
+    for(int a=0; a < N; a++)
+    {
+        for(int c=0; c < N; c++)
+        {
+            T sum = 0;
+
+            for(int b=0; b < N; b++)
+            {
+                sum = sum + christoff2.idx(b, c, a) * v_in.idx(b);
+            }
+
+            lac.idx(a, c) = hacky_differentiate(ctx, v_in.idx(a), c) - sum;
+        }
+    }
+
+    return lac;
 }
 
+#if 0
 template<typename T, int N>
 inline
 tensor<T, N, N> gpu_high_covariant_derivative_vec(equation_context& ctx, const tensor<T, N>& in, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
@@ -1291,6 +1319,7 @@ tensor<T, N, N> gpu_high_covariant_derivative_vec(equation_context& ctx, const t
 
     return ret;
 }
+#endif // 0
 
 template<typename T, int N>
 inline
@@ -2353,6 +2382,10 @@ void build_eqs(equation_context& ctx)
         modified_christoff2 = christoff2 - (3.f/5.f) * dijtk - (1.f/5.f) * dijGk + (1.f/3.f) * yjkGi;
     }
 
+    ctx.pin(modified_christoff2);
+
+    //christoff2 = modified_christoff2;
+
     /*tensor<value, 3, 3, 3> cGijk;
 
     for(int i=0; i < 3; i++)
@@ -2615,12 +2648,12 @@ void build_eqs(equation_context& ctx)
             {
                 for(int n=0; n < 3; n++)
                 {
-                    sum += gA * (cY.idx(i, j) / 2.f) * icY.idx(m, n) * gpu_covariant_derivative_low_vec(ctx, dX, cY, icY).idx(n, m);
+                    sum += gA * (cY.idx(i, j) / 2.f) * icY.idx(m, n) * gpu_covariant_derivative_low_vec(ctx, dX, christoff2).idx(n, m);
                     sum += (cY.idx(i, j) / 2.f) * gA_X * -(3.f/2.f) * icY.idx(m, n) * dX.idx(m) * dX.idx(n);
                 }
             }
 
-            value p2 = (1/2.f) * (gA * gpu_covariant_derivative_low_vec(ctx, dX, cY, icY).idx(j, i) - gA_X * (1/2.f) * dX.idx(i) * dX.idx(j));
+            value p2 = (1/2.f) * (gA * gpu_covariant_derivative_low_vec(ctx, dX, christoff2).idx(j, i) - gA_X * (1/2.f) * dX.idx(i) * dX.idx(j));
 
             xgARphiij.idx(i, j) = sum + p2;
         }
@@ -2644,7 +2677,7 @@ void build_eqs(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, digA, cY, icY).idx(j, i);
+            value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, digA, christoff2).idx(j, i);
 
             value s2 = 0.5f * (hacky_differentiate(ctx, X, i) * hacky_differentiate(ctx, gA, j) + hacky_differentiate(ctx, X, j) * hacky_differentiate(ctx, gA, i));
 
@@ -2731,8 +2764,8 @@ void build_eqs(equation_context& ctx)
             float Ka = 0.05f;
 
             dtcAij.idx(i, j) += Ka * gA * 0.5f *
-                                                (gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)
-                                                 + gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(j, i));
+                                                (gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, christoff2).idx(i, j)
+                                                 + gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, christoff2).idx(j, i));
             #endif // DAMP_DTCAIJ
         }
     }
@@ -2815,7 +2848,12 @@ void build_eqs(equation_context& ctx)
         {
             for(int k=0; k < 3; k++)
             {
+                //#define MODIFIED_CHRISTOFFEL
+                #ifndef MODIFIED_CHRISTOFFEL
                 s1 += 2 * gA * christoff2.idx(i, j, k) * icAij.idx(j, k);
+                #else
+                s1 += 2 * gA * modified_christoff2.idx(i, j, k) * icAij.idx(j, k);
+                #endif // MODIFIED_CHRISTOFFEL
             }
         }
 
