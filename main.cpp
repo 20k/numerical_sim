@@ -2659,7 +2659,7 @@ void build_eqs(equation_context& ctx)
     }*/
 
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf
-    tensor<value, 3, 3> xgARphiij;
+    /*tensor<value, 3, 3> xgARphiij;
 
     for(int i=0; i < 3; i++)
     {
@@ -2692,9 +2692,9 @@ void build_eqs(equation_context& ctx)
 
             ctx.pin(xgARij.idx(i, j));
         }
-    }
+    }*/
 
-    tensor<value, 3, 3> Xdidja;
+    /*tensor<value, 3, 3> Xdidja;
 
     for(int i=0; i < 3; i++)
     {
@@ -2720,7 +2720,78 @@ void build_eqs(equation_context& ctx)
         }
     }
 
-    ctx.pin(Xdidja);
+    ctx.pin(Xdidja);*/
+
+    value X_recip = 0.f;
+
+    {
+        float min_X = 0.001;
+
+        X_recip = dual_if(args.X <= min_X,
+        [&]()
+        {
+            return 1.f / min_X;
+        },
+        [&]()
+        {
+            return 1.f / args.X;
+        });
+    }
+
+    tensor<value, 3, 3> RX;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value sum = 0;
+
+            for(int m=0; m < 3; m++)
+            {
+                for(int n=0; n < 3; n++)
+                {
+                    sum += 0.5f * cY.idx(i, j) * X_recip * icY.idx(m, n) * gpu_covariant_derivative_low_vec(ctx, dX, christoff2).idx(n, m);
+                    sum += X_recip * (cY.idx(i, j) / 2.f) * X_recip * -(3.f/2.f) * icY.idx(m, n) * dX.idx(m) * dX.idx(n);
+                }
+            }
+
+            value p2 = X_recip * 0.5f * (gpu_covariant_derivative_low_vec(ctx, dX, christoff2).idx(j, i) - X_recip * 0.5f * dX.idx(i) * dX.idx(j));
+
+            RX.idx(i, j) = sum + p2;
+        }
+    }
+
+    ctx.pin(RX);
+
+    tensor<value, 3, 3> Rij = cRij + RX;
+
+    tensor<value, 3, 3> didja;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value deriv = gpu_covariant_derivative_low_vec(ctx, digA, christoff2).idx(j, i);
+
+            value s2 = X_recip * 0.5f * (hacky_differentiate(ctx, X, i) * hacky_differentiate(ctx, gA, j) + hacky_differentiate(ctx, X, j) * hacky_differentiate(ctx, gA, i));
+
+            value s3 = 0;
+
+            for(int m=0; m < 3; m++)
+            {
+                for(int n=0; n < 3; n++)
+                {
+                    value v = X_recip * -0.5f * cY.idx(i, j) * icY.idx(m, n) * hacky_differentiate(ctx, X, m) * hacky_differentiate(ctx, gA, n);
+
+                    s3 += v;
+                }
+            }
+
+            didja.idx(i, j) = deriv + s2 + s3;
+        }
+    }
+
+    ctx.pin(didja);
 
     ///recover Yij from X and cYij
     ///https://arxiv.org/pdf/gr-qc/0511048.pdf
@@ -2737,7 +2808,7 @@ void build_eqs(equation_context& ctx)
     tensor<value, 3, 3> dtcAij;
 
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf replaced with definition under bssn aux
-    tensor<value, 3, 3> with_trace = -Xdidja + xgARij;
+    //tensor<value, 3, 3> with_trace = -Xdidja + xgARij;
 
     for(int i=0; i < 3; i++)
     {
@@ -2766,7 +2837,9 @@ void build_eqs(equation_context& ctx)
 
             ///not convinced its correct to push x inside of trace free?
             ///what if the riemann quantity is made trace free by cY instead of Yij like I assumed?
-            value trace_free_part = gpu_trace_free(with_trace, cY, icY).idx(i, j);
+            //value trace_free_part = gpu_trace_free(with_trace, cY, icY).idx(i, j);
+
+            value trace_free_part = X * gpu_trace_free(gA * Rij - didja, cY, icY).idx(i, j);
 
             value p1 = trace_free_part;
 
@@ -2784,7 +2857,7 @@ void build_eqs(equation_context& ctx)
             dtcAij.idx(i, j) = p1 + p2 + p3;
 
             #ifdef DAMP_DTCAIJ
-            float Ka = 0.05f;
+            float Ka = 0.25f;
 
             dtcAij.idx(i, j) += Ka * gA * 0.5f *
                                                 (gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, christoff2).idx(i, j)
@@ -2795,7 +2868,7 @@ void build_eqs(equation_context& ctx)
 
     tensor<value, 3, 3> icAij = raise_both(cA, cY, icY);
 
-    value dtK = sum(tensor_upwind(ctx, gB, K)) - sum_multiply(icY.to_tensor(), Xdidja) + gA * (sum_multiply(icAij, cA) + (1/3.f) * K * K);
+    value dtK = sum(tensor_upwind(ctx, gB, K)) - X * sum_multiply(icY.to_tensor(), didja) + gA * (sum_multiply(icAij, cA) + (1/3.f) * K * K);
 
     ///these seem to suffer from oscillations
     tensor<value, 3> dtcGi;
