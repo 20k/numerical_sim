@@ -565,6 +565,11 @@ void calculate_momentum_constraint(__global float* cY0, __global float* cY1, __g
     momentum0[IDX(ix,iy,iz)] = m1;
     momentum1[IDX(ix,iy,iz)] = m2;
     momentum2[IDX(ix,iy,iz)] = m3;
+
+    if(ix == dim.x/2 - 10 && iy == dim.y/2 && iz == dim.z/2)
+    {
+        printf("Momentum %f %f %f\n", m1, m2, m3);
+    }
 }
 
 float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float time)
@@ -581,6 +586,7 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
 
     float3 diff = ((float3){x, y, z} - fdim) * scale;
 
+    #define MANHATTEN_SPONGE
     #ifdef MANHATTEN_SPONGE
     float r = max(fabs(diff.x), max(fabs(diff.y), fabs(diff.z)));
     #else
