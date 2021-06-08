@@ -1540,9 +1540,9 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
     ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
     std::vector<float> black_hole_m{0.463, 0.47};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-5.516, 0, 0}), san_black_hole_pos({5.516, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.516, 0, 0}), san_black_hole_pos({2.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258/5.f}, {0, 0, 0.258/5.f}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 1.25f}, {0, 0, 0.258 * 1.25f}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -1946,12 +1946,11 @@ void build_momentum_constraint(equation_context& ctx)
         Mi.idx(i) = 0;
     }
 
-    //#define DAMP_DTCAIJ
+    #define DAMP_DTCAIJ
     #ifdef DAMP_DTCAIJ
     tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
 
     tensor<value, 3, 3> mixed_cAij = raise_index(args.cA, args.cY, icY);
-
 
     for(int i=0; i < 3; i++)
     {
@@ -2348,7 +2347,7 @@ void build_eqs(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            float sigma = 2/5.f;
+            float sigma = 4/5.f;
 
             dtcYij.idx(i, j) += sigma * 0.5f * (gB_lower.idx(i) * bigGi_lower.idx(j) + gB_lower.idx(j) * bigGi_lower.idx(i));
 
@@ -2657,7 +2656,7 @@ void build_eqs(equation_context& ctx)
             dtcAij.idx(i, j) = p1 + p2 + p3;
 
             #ifdef DAMP_DTCAIJ
-            float Ka = 0.005f;
+            float Ka = 0.05f;
 
             dtcAij.idx(i, j) += Ka * gA * 0.5f *
                                                 (gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)
