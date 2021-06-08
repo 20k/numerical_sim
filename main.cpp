@@ -747,7 +747,7 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
     value effective_scale = (h + k) / 2.f;
 
     ///https://en.wikipedia.org/wiki/Finite_difference_coefficient according to wikipedia, this is the 6th derivative with 2nd order accuracy. I am confused, but at least I know where it came from
-    //value scale = "scale";
+    value scale = "scale";
 
     #define FOURTH
     #ifdef FOURTH
@@ -1571,7 +1571,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.516, 0, 0}), san_black_hole_pos({2.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 1.25f}, {0, 0, 0.258 * 1.25f}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.75f}, {0, 0, 0.258 * 0.75f}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -2388,6 +2388,7 @@ void build_eqs(equation_context& ctx)
     #ifdef REPLACE_CHRISTOFFEL
     christoff2 = modified_christoff2;
 
+    #ifdef REDERIVE_CHRISTOFF1
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
@@ -2405,6 +2406,7 @@ void build_eqs(equation_context& ctx)
             }
         }
     }
+    #endif // REDERIVE_CHRISTOFF1
 
     ctx.pin(christoff1);
     #endif // REPLACE_CHRISTOFFEL
