@@ -2384,7 +2384,30 @@ void build_eqs(equation_context& ctx)
 
     ctx.pin(modified_christoff2);
 
-    //christoff2 = modified_christoff2;
+    #define REPLACE_CHRISTOFFEL
+    #ifdef REPLACE_CHRISTOFFEL
+    christoff2 = modified_christoff2;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                value sum = 0;
+
+                for(int m=0; m < 3; m++)
+                {
+                    sum += christoff2.idx(m, j, k) * cY.idx(i, m);
+                }
+
+                christoff1.idx(i, j, k) = sum;
+            }
+        }
+    }
+
+    ctx.pin(christoff1);
+    #endif // REPLACE_CHRISTOFFEL
 
     /*tensor<value, 3, 3, 3> cGijk;
 
