@@ -2026,6 +2026,37 @@ void build_momentum_constraint(equation_context& ctx)
     }
 }
 
+///this is my best interpretation of Ai<jk>
+tensor<value, 3, 3, 3> make_lower_two_trace_free(const tensor<value, 3, 3, 3>& mT, const metric<value, 3, 3>& met, const inverse_metric<value, 3, 3>& inverse)
+{
+    tensor<value, 3, 3, 3> ret;
+
+    for(int i=0; i < 3; i++)
+    {
+        tensor<value, 3, 3> lower;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                lower.idx(j, k) = mT.idx(i, j, k);
+            }
+        }
+
+        tensor<value, 3, 3> tF = gpu_trace_free(lower, met, inverse);
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                ret.idx(i, j, k) = tF.idx(j, k);
+            }
+        }
+    }
+
+    return ret;
+}
+
 ///https://arxiv.org/pdf/gr-qc/0206072.pdf on stability, they recompute cGi where it does nto hae a derivative
 ///todo: X: This is think is why we're getting nans. Half done
 ///todo: fisheye - half done
@@ -2280,6 +2311,47 @@ void build_eqs(equation_context& ctx)
     #else
     derived_cGi = cGi;
     #endif
+
+    tensor<value, 3, 3, 3> modified_christoff2;
+
+    ///https://arxiv.org/pdf/1205.5111v1.pdf 41
+    {
+        tensor<value, 3> Ti;
+
+        for(int i=0; i < 3; i++)
+        {
+            value sum = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                sum += christoff2.idx(k, k, i);
+            }
+        }
+
+        tensor<value, 3, 3, 3> dijtk;
+        tensor<value, 3, 3, 3> dijGk;
+        tensor<value, 3, 3, 3> yjkGi;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                for(int k=0; k < 3; k++)
+                {
+                    value kronecker_ij = (i == j) ? 1 : 0;
+
+                    dijtk.idx(i, j, k) = kronecker_ij * Ti.idx(k);
+                    dijGk.idx(i, j, k) = kronecker_ij * bigGi_lower.idx(k);
+                    yjkGi.idx(i, j, k) = bigGi.idx(i) * cY.idx(j, k);
+                }
+            }
+        }
+
+        dijtk = make_lower_two_trace_free(dijtk, cY, icY);
+        dijGk = make_lower_two_trace_free(dijGk, cY, icY);
+
+        modified_christoff2 = christoff2 - (3.f/5.f) * dijtk - (1.f/5.f) * dijGk + (1.f/3.f) * yjkGi;
+    }
 
     /*tensor<value, 3, 3, 3> cGijk;
 
