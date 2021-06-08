@@ -2012,11 +2012,8 @@ void build_momentum_constraint(equation_context& ctx)
             return s1 + s2 + s3;
         });
     }
-    #endif // 0
 
-    /*tensor<value, 3> Mi;
-
-    tensor<value, 3, 3> second_cAij = raise_second_index(args.cA, args.cY, unpinned_icY);
+    /*tensor<value, 3, 3> second_cAij = raise_second_index(args.cA, args.cY, unpinned_icY);
 
     for(int i=0; i < 3; i++)
     {
@@ -2048,6 +2045,7 @@ void build_momentum_constraint(equation_context& ctx)
 
         Mi.idx(i) = s1 + s2 + s3 + s4;
     }*/
+    #endif // 0
 
     for(int i=0; i < 3; i++)
     {
