@@ -1541,9 +1541,9 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
     ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
     std::vector<float> black_hole_m{0.463, 0.47};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.516, 0, 0}), san_black_hole_pos({2.516, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 1.25f}, {0, 0, 0.258 * 1.25f}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 1.0f}, {0, 0, 0.258 * 1.0f}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -4679,6 +4679,7 @@ int main()
 
     float dissipate_low = 0.4;
     float dissipate_high = 0.4;
+    float dissipate_gauge = 0.1;
 
     /*std::array<float, buffer_count> dissipation_coefficients
     {
@@ -4698,8 +4699,8 @@ int main()
         dissipate_low, dissipate_low, dissipate_low, //cGi
         dissipate_high, //K
         dissipate_low, //X
-        dissipate_low, //gA
-        dissipate_low, dissipate_low, dissipate_low //gB
+        dissipate_gauge, //gA
+        dissipate_gauge, dissipate_gauge, dissipate_gauge //gB
     };
 
     std::array<cl::buffer, 2> u_args{clctx.ctx, clctx.ctx};
