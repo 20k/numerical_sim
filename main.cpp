@@ -1539,10 +1539,10 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<vec3f> black_hole_velocity{{0, 0, 0.335/8}, {0, 0, -0.335/8}};*/
 
     ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
-    std::vector<float> black_hole_m{0.463, 0.47};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.516, 0, 0}), san_black_hole_pos({2.516, 0, 0})};
-    //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 1.25f}, {0, 0, 0.258 * 1.25f}};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-1.1515 * 0.5f, -0.01, -0.01}), san_black_hole_pos({1.1515 * 0.5f, 0.01, 0.01})};
+    std::vector<float> black_hole_m{0.5f, 0.5f};
+    std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
+    //std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 1.25f}, {0, 0, 0.258 * 1.25f}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -4496,10 +4496,10 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 5;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {300, 300, 300};
+    vec3i size = {350, 350, 350};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
-    float c_at_max = 65;
+    float c_at_max = 40*2;
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
@@ -4676,8 +4676,8 @@ int main()
         }
     }
 
-    float dissipate_low = 0.4;
-    float dissipate_high = 0.4;
+    float dissipate_low = 0.0;
+    float dissipate_high = 0.0;
 
     /*std::array<float, buffer_count> dissipation_coefficients
     {
