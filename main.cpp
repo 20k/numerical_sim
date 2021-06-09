@@ -1543,7 +1543,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 1.0f}, {0, 0, 0.258 * 1.0f}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.35f}, {0, 0, 0.258 * 0.35f}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -2854,9 +2854,10 @@ void build_eqs(equation_context& ctx)
 
     ///so -gA * gA * f_a * K with f_a = 8 / (3 * gA * (3 - gA))
     ///-gA * f_a * K with f_a = 8 / (3 * (3 - gA)) = 8/(9 - 3 * gA)
-    auto f_a_reduced = 8 / (3 * (3 - gA));
+    /*auto f_a_reduced = 8 / (3 * (3 - gA));
+    value dtgA = -gA * f_a_reduced * K + lie_derivative(ctx, gB, gA);*/
 
-    value dtgA = -gA * f_a_reduced * K + lie_derivative(ctx, gB, gA);
+    value dtgA = lie_derivative(ctx, gB, gA) - 2 * gA * K;
 
     #ifndef USE_GBB
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
