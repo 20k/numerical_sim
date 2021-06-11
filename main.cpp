@@ -871,9 +871,7 @@ struct standard_arguments
             }
         }
 
-        tensor<value, 3, 3> Aij = cA / max(X, 0.01f);
-
-        Kij = Aij + Yij.to_tensor() * (K / 3.f);
+        Kij = (cA + cY.to_tensor() * (K / 3.f)) / (X * X);
 
         momentum_constraint.idx(0).make_value(bidx("momentum0", interpolate));
         momentum_constraint.idx(1).make_value(bidx("momentum1", interpolate));
@@ -1677,9 +1675,9 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf (58)
 
-    value X = exp(-4 * conformal_factor);
+    value X = pow(Y, -(1.f/6.f));
 
-    tensor<value, 3, 3> cAij = X * Aij;
+    tensor<value, 3, 3> cAij = X * X * Aij;
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
@@ -2898,6 +2896,7 @@ void build_eqs(equation_context& ctx)
 }
 #endif // 0
 
+#define CCZ4
 #ifdef CCZ4
 inline
 void build_eqs(equation_context& ctx)
@@ -3025,14 +3024,41 @@ void build_eqs(equation_context& ctx)
         hacky_differentiate(ctx, "X", k);
     }
 
-    value digb = 0;
+    value dkbk = 0;
 
     for(int k=0; k < 3; k++)
     {
-        digb += hacky_differentiate(ctx, args.gB.idx(k), k);
+        dkbk += hacky_differentiate(ctx, args.gB.idx(k), k);
     }
 
-    value dtX =
+    value dtX = (1.f/3.f) * args.gA * args.X * args.K - (1.f/3.f) * args.X * dkbk + sum(tensor_upwind(ctx, args.gB, args.X));
+
+    tensor<value, 3, 3> dtcYij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value p1 = -2 * args.gA * args.cA;
+
+            value p2 = 0;
+            value p3 = 0;
+            value p4 = 0;
+            value p5 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                p2 += args.cY.idx(i, k) * hacky_differentiate(ctx, args.gB.idx(k), j);
+                p3 += args.cY.idx(j, k) * hacky_differentiate(ctx, args.gB.idx(k), i);
+                p4 += (-2.f/3.f) * args.cY.idx(i, j) * hacky_differentiate(ctx, args.gB.idx(k), k);
+                p5 += args.gB.idx(k) * hacky_differentiate(ctx, args.cY.idx(i, j), k);
+            }
+
+            dtcYij.idx(i, j) = p1 + p2 + p3 + p4 + p5;
+        }
+    }
+
+    value dtK = 0;
 }
 #endif // CCZ4
 
