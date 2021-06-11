@@ -1781,89 +1781,6 @@ void build_constraints(equation_context& ctx)
     ctx.add("NO_CAIJYY", 1);
 }
 
-inline
-void build_intermediate(equation_context& ctx)
-{
-    standard_arguments args(false);
-
-    int index_table[3][3] = {{0, 1, 2},
-                             {1, 3, 4},
-                             {2, 4, 5}};
-
-    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
-
-    unit_metric<value, 3, 3> cY = args.cY;
-
-    value X = args.X;
-
-    value gA = args.gA;
-    tensor<value, 3> gB = args.gB;
-
-    tensor<value, 3> digA;
-
-    for(int i=0; i < 3; i++)
-    {
-        digA.idx(i) = hacky_differentiate(ctx, gA, i);
-    }
-
-    ctx.pin(digA);
-
-    tensor<value, 3, 3> digB;
-
-
-    ///derivative
-    for(int i=0; i < 3; i++)
-    {
-        ///index
-        for(int j=0; j < 3; j++)
-        {
-            digB.idx(i, j) = hacky_differentiate(ctx, gB.idx(j), i);
-        }
-    }
-
-    ctx.pin(digB);
-
-    for(int k=0; k < 3; k++)
-    {
-        for(int i=0; i < 6; i++)
-        {
-            vec2i idx = linear_indices[i];
-
-            value diff = hacky_differentiate(ctx, cY.idx(idx.x(), idx.y()), k);
-
-            ctx.pin(diff);
-
-            int linear_idx = k * 6 + i;
-
-            ctx.add("init_dcYij" + std::to_string(linear_idx), diff);
-        }
-    }
-
-    for(int i=0; i < 3; i++)
-    {
-        ctx.add("init_digA" + std::to_string(i), digA.idx(i));
-    }
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            int linear_idx = i * 3 + j;
-
-            ctx.add("init_digB" + std::to_string(linear_idx), digB.idx(i, j));
-        }
-    }
-
-    for(int i=0; i < 3; i++)
-    {
-        value dX = hacky_differentiate(ctx, X, i);
-
-        ctx.pin(dX);
-
-        ctx.add("init_dX" + std::to_string(i), dX);
-    }
-}
-
 void build_intermediate_thin(equation_context& ctx)
 {
     standard_arguments args(false);
@@ -4511,9 +4428,6 @@ int main()
     equation_context ctx1;
     get_initial_conditions_eqs(ctx1, centre, scale);
 
-    equation_context ctx2;
-    build_intermediate(ctx2);
-
     equation_context ctx3;
     build_eqs(ctx3);
 
@@ -4563,7 +4477,7 @@ int main()
     argument_string += "-DTEMPORARIES=" + temporary_string + " ";*/
 
     ctx1.build(argument_string, 0);
-    ctx2.build(argument_string, 1);
+    //ctx2.build(argument_string, 1);
     ctx3.build(argument_string, 2);
     ctx4.build(argument_string, 3);
     //ctx5.build(argument_string, 4);
