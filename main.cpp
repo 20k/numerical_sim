@@ -341,6 +341,9 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
         "gB0",
         "gB1",
         "gB2",
+        "theta0",
+        "theta1",
+        "theta2",
 
         "dcYij0",
         "dcYij1",
@@ -795,6 +798,7 @@ struct standard_arguments
 {
     value gA;
     tensor<value, 3> gB;
+    tensor<value, 3> theta;
 
     unit_metric<value, 3, 3> cY;
     tensor<value, 3, 3> cA;
@@ -874,6 +878,10 @@ struct standard_arguments
         momentum_constraint.idx(0).make_value(bidx("momentum0", interpolate));
         momentum_constraint.idx(1).make_value(bidx("momentum1", interpolate));
         momentum_constraint.idx(2).make_value(bidx("momentum2", interpolate));
+
+        theta.idx(0).make_value(bidx("theta0", interpolate));
+        theta.idx(1).make_value(bidx("theta1", interpolate));
+        theta.idx(2).make_value(bidx("theta2", interpolate));
     }
 };
 
@@ -1721,6 +1729,10 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ctx.add("init_gB1", gB1);
     ctx.add("init_gB2", gB2);
 
+    ctx.add("init_theta0", 0);
+    ctx.add("init_theta1", 0);
+    ctx.add("init_theta2", 0);
+
     //#define USE_GBB
     #ifdef USE_GBB
     value gBB0 = 0;
@@ -1864,7 +1876,7 @@ void build_momentum_constraint(equation_context& ctx)
         Mi.idx(i) = 0;
     }
 
-    #define DAMP_DTCAIJ
+    //#define DAMP_DTCAIJ
     #ifdef DAMP_DTCAIJ
     tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
 
@@ -1954,6 +1966,7 @@ void build_momentum_constraint(equation_context& ctx)
 ///todo: I think I can cut down on the memory consumption by precalculating the necessary derivatives
 ///todo: Removing phi was never the issue with the numerical stability
 ///todo: With the current full double buffering scheme, all equations could have their own kernel
+#if 0
 inline
 void build_eqs(equation_context& ctx)
 {
@@ -2879,6 +2892,145 @@ void build_eqs(equation_context& ctx)
 
     //ctx.add("scalar_curvature", scalar_curvature);
 }
+#endif // 0
+
+#ifdef CCZ4
+inline
+void build_eqs(equation_context& ctx)
+{
+    standard_arguments args(false);
+
+    tensor<value, 3> digA;
+    digA.idx(0).make_value("digA0[IDX(ix,iy,iz)]");
+    digA.idx(1).make_value("digA1[IDX(ix,iy,iz)]");
+    digA.idx(2).make_value("digA2[IDX(ix,iy,iz)]");
+
+    tensor<value, 3> dX;
+    dX.idx(0).make_value("dX0[IDX(ix,iy,iz)]");
+    dX.idx(1).make_value("dX1[IDX(ix,iy,iz)]");
+    dX.idx(2).make_value("dX2[IDX(ix,iy,iz)]");
+
+    int index_table[3][3] = {{0, 1, 2},
+                             {1, 3, 4},
+                             {2, 4, 5}};
+
+    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
+
+    tensor<value, 3, 3> kronecker;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            if(i == j)
+                kronecker.idx(i, j) = 1;
+            else
+                kronecker.idx(i, j) = 0;
+        }
+    }
+
+    tensor<value, 3, 3> digB;
+
+    ///derivative
+    for(int i=0; i < 3; i++)
+    {
+        ///value
+        for(int j=0; j < 3; j++)
+        {
+            int idx = i + j * 3;
+
+            std::string name = "digB" + std::to_string(idx) + "[IDX(ix,iy,iz)]";
+
+            digB.idx(i, j).make_value(name);
+        }
+    }
+
+
+    tensor<value, 3, 3, 3> dcYij;
+
+    for(int k=0; k < 3; k++)
+    {
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                int symmetric_index = index_table[i][j];
+
+                int final_index = k + symmetric_index * 3;
+
+                std::string name = "dcYij" + std::to_string(final_index) + "[IDX(ix,iy,iz)]";
+
+                dcYij.idx(k, i, j) = name;
+            }
+        }
+    }
+
+    ///dcgA alias
+    for(int i=0; i < 3; i++)
+    {
+        value v = hacky_differentiate(ctx, gA, i, false);
+
+        ctx.alias(v, digA.idx(i));
+    }
+
+    ///dcgB alias
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value v = hacky_differentiate(ctx, gB.idx(j), i, false);
+
+            ctx.alias(v, digB.idx(i, j));
+        }
+    }
+
+    ///dcYij alias
+    for(int k=0; k < 3; k++)
+    {
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                value v = hacky_differentiate(ctx, cY.idx(i, j), k, false);
+
+                ctx.alias(v, dcYij.idx(k, i, j));
+            }
+        }
+    }
+
+    for(int k=0; k < 3; k++)
+    {
+        for(int i=0; i < 6; i++)
+        {
+            vec2i idx = linear_indices[i];
+
+            hacky_differentiate(ctx, cY.idx(idx.x(), idx.y()), k);
+        }
+
+        for(int i=0; i < 6; i++)
+        {
+            hacky_differentiate(ctx, "cA" + std::to_string(i), k);
+        }
+
+        for(int i=0; i < 3; i++)
+        {
+            hacky_differentiate(ctx, "cGi" + std::to_string(i), k);
+        }
+
+        hacky_differentiate(ctx, "K", k);
+        hacky_differentiate(ctx, "X", k);
+    }
+
+    value digb = 0;
+
+    for(int k=0; k < 3; k++)
+    {
+        digb += hacky_differentiate(ctx, args.gB.idx(k), k);
+    }
+
+    value dtX =
+}
+#endif // CCZ4
 
 template<typename T, int N>
 inline
