@@ -834,7 +834,7 @@ struct standard_arguments
             }
         }
 
-        cY.idx(2, 2) = (1 + cY.idx(1, 1) * cY.idx(0, 2) * cY.idx(0, 2) - 2 * cY.idx(0, 1) * cY.idx(1, 2) * cY.idx(0, 2) + cY.idx(0, 0) * cY.idx(1, 2) * cY.idx(1, 2)) / (cY.idx(0, 0) * cY.idx(1, 1) - cY.idx(1, 2) * cY.idx(1, 2));
+        cY.idx(2, 2) = (1 + cY.idx(1, 1) * cY.idx(0, 2) * cY.idx(0, 2) - 2 * cY.idx(0, 1) * cY.idx(1, 2) * cY.idx(0, 2) + cY.idx(0, 0) * cY.idx(1, 2) * cY.idx(1, 2)) / (cY.idx(0, 0) * cY.idx(1, 1) - cY.idx(0, 1) * cY.idx(0, 1));
 
         for(int i=0; i < 3; i++)
         {
@@ -1543,7 +1543,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.35f}, {0, 0, 0.258 * 0.35f}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.55f}, {0, 0, 0.258 * 0.55f}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -1864,7 +1864,7 @@ void build_momentum_constraint(equation_context& ctx)
         Mi.idx(i) = 0;
     }
 
-    #define DAMP_DTCAIJ
+    //#define DAMP_DTCAIJ
     #ifdef DAMP_DTCAIJ
     tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
 
@@ -2198,6 +2198,10 @@ void build_eqs(equation_context& ctx)
     #else
     derived_cGi = cGi;
     #endif
+
+    ctx.add("derived0", derived_cGi.idx(0));
+    ctx.add("derived1", derived_cGi.idx(1));
+    ctx.add("derived2", derived_cGi.idx(2));
 
     /*tensor<value, 3, 3, 3> cGijk;
 

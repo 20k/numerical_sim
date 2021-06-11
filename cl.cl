@@ -851,6 +851,11 @@ void evolve(__global ushort4* points, int point_count,
     float debug1 = debug_p1;
     float debug2 = debug_p2;
     float debug3 = debug_p3;
+
+    float derivedc0 = derived0;
+    float derivedc1 = derived1;
+    float derivedc2 = derived2;
+
     //float dbgdphi = ik.dphi[0];
 
     /*if(ix == 20 && iy == 20 && iz == 20)
@@ -954,7 +959,7 @@ void evolve(__global ushort4* points, int point_count,
     //if(ix == 139 && iy == 151 && iz == 150)
     //145.500000 150.500000 150.500000
     //if(ix == 146 && iy == 151 && iz == 151)
-    if(ix == 134 && iy == 150 && iz == 152)
+    if(ix == 134 && iy == 150 && iz == 150)
     {
         //float scalar = scalar_curvature;
 
@@ -975,6 +980,9 @@ void evolve(__global ushort4* points, int point_count,
         printf("cGi0 %f\n", cGi0[index]);
         printf("cGi1 %f\n", cGi1[index]);
         printf("cGi2 %f\n", cGi2[index]);
+        printf("derived cGi0 %f\n", derivedc0);
+        printf("derived cGi1 %f\n", derivedc1);
+        printf("derived cGi2 %f\n", derivedc2);
         printf("X %f\n", X[index]);
         printf("K %f\n", K[index]);
         printf("gA %f\n", gA[index]);
