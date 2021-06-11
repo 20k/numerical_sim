@@ -887,9 +887,9 @@ void evolve(__global ushort4* points, int point_count,
     ocGi2[index] = cGi2[index] + (f_dtcGi2) * timestep;
 
     oK[index] = K[index] + (f_dtK) * timestep;
-    oX[index] = X[index] + (f_dtX) * timestep;
+    oX[index] = max(X[index] + (f_dtX) * timestep, 0.0001f);
 
-    ogA[index] = max(gA[index] + (f_dtgA) * timestep, 0.f);
+    ogA[index] = max(gA[index] + (f_dtgA) * timestep, 0.0001f);
     ogB0[index] = gB0[index] + (f_dtgB0) * timestep;
     ogB1[index] = gB1[index] + (f_dtgB1) * timestep;
     ogB2[index] = gB2[index] + (f_dtgB2) * timestep;
