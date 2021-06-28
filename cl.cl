@@ -7,6 +7,31 @@
 
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
 
+__kernel
+void accumulate_rk4(__global float* accum, __global float* ynpx0, __global float* xn0, int max_size, float factor)
+{
+    int idx = get_global_id(0);
+
+    if(idx >= max_size)
+        return;
+
+    ///yn * rk4 factor
+    float yn = ynpx0[idx] - xn0[idx];
+
+    accum[idx] += factor * (yn);
+}
+
+__kernel
+void copy_buffer(__global float* in, __global float* out, int max_size)
+{
+    int idx = get_global_id(0);
+
+    if(idx >= max_size)
+        return;
+
+    out[idx] = in[idx];
+}
+
 float buffer_read_nearest(__global const float* const buffer, int3 position, int4 dim)
 {
     return buffer[position.z * dim.x * dim.y + position.y * dim.x + position.x];

@@ -4562,6 +4562,8 @@ int main()
     int which_data = 0;
 
     std::array<buffer_set, 2> generic_data{buffer_set(clctx.ctx, size), buffer_set(clctx.ctx, size)};
+    buffer_set rk4_intermediate(clctx.ctx, size);
+    buffer_set rk4_xn(clctx.ctx, size);
 
     std::array<std::string, buffer_set::buffer_count> buffer_names
     {
@@ -5015,7 +5017,74 @@ int main()
                 clctx.cqueue.exec("evolve", a1, {evolution_positions_count}, {128});
             };
 
-            step(generic_data[which_data].buffers, generic_data[(which_data + 1) % 2].buffers, timestep);
+            #define RK4
+            #ifdef RK4
+
+            auto& b1 = generic_data[which_data];
+            auto& b2 = generic_data[(which_data + 1) % 2];
+
+            cl_int size_1d = size.x() * size.y() * size.z();
+
+            auto copy_all = [&](auto& in, auto& out)
+            {
+                for(int i=0; i < (int)in.size(); i++)
+                {
+                    cl::args copy;
+                    copy.push_back(in[i]);
+                    copy.push_back(out[i]);
+                    copy.push_back(size_1d);
+
+                    clctx.cqueue.exec("copy_buffer", copy, {size_1d}, {128});
+                }
+            };
+
+            copy_all(b1.buffers, rk4_intermediate.buffers);
+
+            copy_all(b1.buffers, rk4_xn.buffers);
+
+            auto accumulate_rk4 = [&](auto& buffers, cl_float factor)
+            {
+                for(int i=0; i < (int)buffers.size(); i++)
+                {
+                    cl::args accum;
+                    accum.push_back(rk4_intermediate.buffers[i]);
+                    accum.push_back(buffers[i]);
+                    accum.push_back(rk4_xn.buffers[i]);
+                    accum.push_back(size_1d);
+                    accum.push_back(factor);
+
+                    clctx.cqueue.exec("accumulate_rk4", accum, {size_1d}, {128});
+                }
+            };
+
+            ///gives Xn + an * h/2 from xn
+            step(b1.buffers, b2.buffers, timestep/2);
+
+            ///accumulate an
+            accumulate_rk4(b2.buffers, 1.f/3.f);
+
+            ///gives Xn + bn * h/2 from xn + an * h/2
+            step(b2.buffers, b1.buffers, timestep/2);
+
+            ///accumulate bn
+            accumulate_rk4(b1.buffers, 2.f/3.f);
+
+            ///gives xn + cn * h from xn + bn * h/2
+            step(b1.buffers, b2.buffers, timestep);
+
+            accumulate_rk4(b2.buffers, 1.f/3.f);
+
+            ///gives xn + dn * h from xn + cn * h
+            step(b2.buffers, b1.buffers, timestep);
+
+            accumulate_rk4(b1.buffers, 1.f/6.f);
+
+            copy_all(rk4_xn.buffers, generic_data[which_data].buffers);
+            copy_all(rk4_intermediate.buffers, generic_data[(which_data + 1) % 2].buffers);
+
+            #endif // RK4
+
+            //step(generic_data[which_data].buffers, generic_data[(which_data + 1) % 2].buffers, timestep);
 
             {
                 cl::args constraints;
