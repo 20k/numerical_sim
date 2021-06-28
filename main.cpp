@@ -4373,6 +4373,26 @@ std::tuple<cl::buffer, int, cl::buffer, int> generate_evolution_points(cl::conte
     return {real, count, non, non_count};
 }
 
+struct buffer_set
+{
+    #ifndef USE_GBB
+    static constexpr int buffer_count = 11+9;
+    #else
+    static constexpr int buffer_count = 12 + 9 + 3;
+    #endif
+
+    std::vector<cl::buffer> buffers;
+
+    buffer_set(cl::context& ctx, vec3i size)
+    {
+        for(int kk=0; kk < buffer_count; kk++)
+        {
+            buffers.emplace_back(ctx);
+            buffers.back().alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+        }
+    }
+};
+
 ///it seems like basically i need numerical dissipation of some form
 ///if i didn't evolve where sponge = 1, would be massively faster
 int main()
@@ -4541,15 +4561,9 @@ int main()
 
     int which_data = 0;
 
-    std::array<std::vector<cl::buffer>, 2> generic_data;
+    std::array<buffer_set, 2> generic_data{buffer_set(clctx.ctx, size), buffer_set(clctx.ctx, size)};
 
-    #ifndef USE_GBB
-    constexpr int buffer_count = 11+9;
-    #else
-    constexpr int buffer_count = 12 + 9 + 3;
-    #endif
-
-    std::array<std::string, buffer_count> buffer_names
+    std::array<std::string, buffer_set::buffer_count> buffer_names
     {
         "cY0", "cY1", "cY2", "cY3", "cY4",
         "cA0", "cA1", "cA2", "cA3", "cA4", "cA5",
@@ -4559,7 +4573,7 @@ int main()
 
     auto buffer_to_index = [&](const std::string& name)
     {
-        for(int idx = 0; idx < buffer_count; idx++)
+        for(int idx = 0; idx < buffer_set::buffer_count; idx++)
         {
             if(buffer_names[idx] == name)
                 return idx;
@@ -4567,24 +4581,6 @@ int main()
 
         assert(false);
     };
-
-    std::array<bool, buffer_count> redundant_buffers;
-
-    for(int idx=0; idx < 2; idx++)
-    {
-        for(int kk=0; kk < buffer_count; kk++)
-        {
-            if(redundant_buffers[kk] && idx == 1)
-            {
-                generic_data[idx].push_back(generic_data[0][kk]);
-            }
-            else
-            {
-                generic_data[idx].emplace_back(clctx.ctx);
-                generic_data[idx].back().alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
-            }
-        }
-    }
 
     float dissipate_low = 0.4;
     float dissipate_high = 0.4;
@@ -4601,7 +4597,7 @@ int main()
         dissipate_high, dissipate_high, dissipate_high //gB
     };*/
 
-    std::array<float, buffer_count> dissipation_coefficients
+    std::array<float, buffer_set::buffer_count> dissipation_coefficients
     {
         dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, //cY
         dissipate_high, dissipate_high, dissipate_high, 0, dissipate_high, dissipate_high, //cA
@@ -4682,7 +4678,7 @@ int main()
     {
         cl::args init;
 
-        for(auto& i : generic_data[0])
+        for(auto& i : generic_data[0].buffers)
         {
             init.push_back(i);
         }
@@ -4697,7 +4693,7 @@ int main()
     {
         cl::args init;
 
-        for(auto& i : generic_data[1])
+        for(auto& i : generic_data[1].buffers)
         {
             init.push_back(i);
         }
@@ -4879,7 +4875,7 @@ int main()
 
         cl::args render;
 
-        for(auto& i : generic_data[which_data])
+        for(auto& i : generic_data[which_data].buffers)
         {
             render.push_back(i);
         }
@@ -4904,7 +4900,7 @@ int main()
         {
             steps++;
 
-            auto step = [&](auto generic_in, auto generic_out, float current_timestep)
+            auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
             {
                 {
                     auto differentiate = [&](const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
@@ -5019,7 +5015,7 @@ int main()
                 clctx.cqueue.exec("evolve", a1, {evolution_positions_count}, {128});
             };
 
-            step(generic_data[which_data], generic_data[(which_data + 1) % 2], timestep);
+            step(generic_data[which_data].buffers, generic_data[(which_data + 1) % 2].buffers, timestep);
 
             {
                 cl::args constraints;
@@ -5027,7 +5023,7 @@ int main()
                 constraints.push_back(evolution_positions);
                 constraints.push_back(evolution_positions_count);
 
-                for(auto& i : generic_data[(which_data + 1) % 2])
+                for(auto& i : generic_data[(which_data + 1) % 2].buffers)
                 {
                     constraints.push_back(i);
                 }
@@ -5039,15 +5035,15 @@ int main()
             }
 
             {
-                for(int i=0; i < buffer_count; i++)
+                for(int i=0; i < buffer_set::buffer_count; i++)
                 {
                     cl::args diss;
 
                     diss.push_back(evolution_positions);
                     diss.push_back(evolution_positions_count);
 
-                    diss.push_back(generic_data[which_data][i]);
-                    diss.push_back(generic_data[(which_data + 1) % 2][i]);
+                    diss.push_back(generic_data[which_data].buffers[i]);
+                    diss.push_back(generic_data[(which_data + 1) % 2].buffers[i]);
 
                     float coeff = dissipation_coefficients[i];
 
@@ -5070,7 +5066,7 @@ int main()
                 cleaner.push_back(sponge_positions);
                 cleaner.push_back(sponge_positions_count);
 
-                for(auto& i : generic_data[which_data])
+                for(auto& i : generic_data[which_data].buffers)
                 {
                     cleaner.push_back(i);
                 }
@@ -5093,7 +5089,7 @@ int main()
 
             cl::args waveform_args;
 
-            for(auto& i : generic_data[which_data])
+            for(auto& i : generic_data[which_data].buffers)
             {
                 waveform_args.push_back(i);
             }
@@ -5135,7 +5131,7 @@ int main()
         {
             cl::args render_args;
 
-            for(auto& i : generic_data[which_data])
+            for(auto& i : generic_data[which_data].buffers)
             {
                 render_args.push_back(i);
             }
@@ -5167,7 +5163,7 @@ int main()
 
             cl::args init_args;
 
-            for(auto& i : generic_data[which_data])
+            for(auto& i : generic_data[which_data].buffers)
             {
                 init_args.push_back(i);
             }
@@ -5193,7 +5189,7 @@ int main()
 
             cl::args step_args;
 
-            for(auto& i : generic_data[which_data])
+            for(auto& i : generic_data[which_data].buffers)
             {
                 step_args.push_back(i);
             }
