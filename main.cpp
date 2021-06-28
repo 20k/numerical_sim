@@ -4904,117 +4904,122 @@ int main()
         {
             steps++;
 
+            auto step = [&](auto generic_in, auto generic_out, float current_timestep)
             {
-                auto differentiate = [&](const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
                 {
-                    if(name != "cY5")
+                    auto differentiate = [&](const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
                     {
-                        int idx = buffer_to_index(name);
+                        if(name != "cY5")
+                        {
+                            int idx = buffer_to_index(name);
 
-                        cl::args thin;
-                        thin.push_back(evolution_positions);
-                        thin.push_back(evolution_positions_count);
-                        thin.push_back(generic_data[which_data][idx]);
-                        thin.push_back(out1);
-                        thin.push_back(out2);
-                        thin.push_back(out3);
-                        thin.push_back(scale);
-                        thin.push_back(clsize);
+                            cl::args thin;
+                            thin.push_back(evolution_positions);
+                            thin.push_back(evolution_positions_count);
+                            thin.push_back(generic_in[idx]);
+                            thin.push_back(out1);
+                            thin.push_back(out2);
+                            thin.push_back(out3);
+                            thin.push_back(scale);
+                            thin.push_back(clsize);
 
-                        clctx.cqueue.exec("calculate_intermediate_data_thin", thin, {evolution_positions_count}, {128});
-                    }
-                    else
+                            clctx.cqueue.exec("calculate_intermediate_data_thin", thin, {evolution_positions_count}, {128});
+                        }
+                        else
+                        {
+                            int idx0 = buffer_to_index("cY0");
+                            int idx1 = buffer_to_index("cY1");
+                            int idx2 = buffer_to_index("cY2");
+                            int idx3 = buffer_to_index("cY3");
+                            int idx4 = buffer_to_index("cY4");
+
+                            cl::args thin;
+                            thin.push_back(evolution_positions);
+                            thin.push_back(evolution_positions_count);
+                            thin.push_back(generic_in[idx0]);
+                            thin.push_back(generic_in[idx1]);
+                            thin.push_back(generic_in[idx2]);
+                            thin.push_back(generic_in[idx3]);
+                            thin.push_back(generic_in[idx4]);
+
+                            thin.push_back(out1);
+                            thin.push_back(out2);
+                            thin.push_back(out3);
+                            thin.push_back(scale);
+                            thin.push_back(clsize);
+
+                            clctx.cqueue.exec("calculate_intermediate_data_thin_cY5", thin, {evolution_positions_count}, {128});
+                        }
+                    };
+
+                    std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
+                                          "gA", "gB0", "gB1", "gB2", "X"};
+
+                    for(int idx = 0; idx < (int)buffers.size(); idx++)
                     {
-                        int idx0 = buffer_to_index("cY0");
-                        int idx1 = buffer_to_index("cY1");
-                        int idx2 = buffer_to_index("cY2");
-                        int idx3 = buffer_to_index("cY3");
-                        int idx4 = buffer_to_index("cY4");
+                        int i1 = idx * 3 + 0;
+                        int i2 = idx * 3 + 1;
+                        int i3 = idx * 3 + 2;
 
-                        cl::args thin;
-                        thin.push_back(evolution_positions);
-                        thin.push_back(evolution_positions_count);
-                        thin.push_back(generic_data[which_data][idx0]);
-                        thin.push_back(generic_data[which_data][idx1]);
-                        thin.push_back(generic_data[which_data][idx2]);
-                        thin.push_back(generic_data[which_data][idx3]);
-                        thin.push_back(generic_data[which_data][idx4]);
-
-                        thin.push_back(out1);
-                        thin.push_back(out2);
-                        thin.push_back(out3);
-                        thin.push_back(scale);
-                        thin.push_back(clsize);
-
-                        clctx.cqueue.exec("calculate_intermediate_data_thin_cY5", thin, {evolution_positions_count}, {128});
+                        differentiate(buffers[idx], thin_intermediates[i1], thin_intermediates[i2], thin_intermediates[i3]);
                     }
-                };
-
-                std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
-                                      "gA", "gB0", "gB1", "gB2", "X"};
-
-                for(int idx = 0; idx < (int)buffers.size(); idx++)
-                {
-                    int i1 = idx * 3 + 0;
-                    int i2 = idx * 3 + 1;
-                    int i3 = idx * 3 + 2;
-
-                    differentiate(buffers[idx], thin_intermediates[i1], thin_intermediates[i2], thin_intermediates[i3]);
                 }
-            }
 
-            {
-                cl::args momentum_args;
-
-                for(auto& i : generic_data[which_data])
                 {
-                    momentum_args.push_back(i);
+                    cl::args momentum_args;
+
+                    for(auto& i : generic_in)
+                    {
+                        momentum_args.push_back(i);
+                    }
+
+                    for(auto& i : momentum_constraint)
+                    {
+                        momentum_args.push_back(i);
+                    }
+
+                    momentum_args.push_back(scale);
+                    momentum_args.push_back(clsize);
+                    momentum_args.push_back(time_elapsed_s);
+
+                    clctx.cqueue.exec("calculate_momentum_constraint", momentum_args, {size.x(), size.y(), size.z()}, {64, 1, 1});
+                }
+
+                cl::args a1;
+
+                a1.push_back(evolution_positions);
+                a1.push_back(evolution_positions_count);
+
+                for(auto& i : generic_in)
+                {
+                    a1.push_back(i);
+                }
+
+                for(auto& i : generic_out)
+                {
+                    a1.push_back(i);
                 }
 
                 for(auto& i : momentum_constraint)
                 {
-                    momentum_args.push_back(i);
+                    a1.push_back(i);
                 }
 
-                momentum_args.push_back(scale);
-                momentum_args.push_back(clsize);
-                momentum_args.push_back(time_elapsed_s);
+                for(auto& i : thin_intermediates)
+                {
+                    a1.push_back(i);
+                }
 
-                clctx.cqueue.exec("calculate_momentum_constraint", momentum_args, {size.x(), size.y(), size.z()}, {64, 1, 1});
-            }
+                a1.push_back(scale);
+                a1.push_back(clsize);
+                a1.push_back(current_timestep);
+                a1.push_back(time_elapsed_s);
+                a1.push_back(current_simulation_boundary);
 
-            cl::args a1;
+                clctx.cqueue.exec("evolve", a1, {evolution_positions_count}, {128});
+            };
 
-            a1.push_back(evolution_positions);
-            a1.push_back(evolution_positions_count);
-
-            for(auto& i : generic_data[which_data])
-            {
-                a1.push_back(i);
-            }
-
-            for(auto& i : generic_data[(which_data + 1) % 2])
-            {
-                a1.push_back(i);
-            }
-
-            for(auto& i : momentum_constraint)
-            {
-                a1.push_back(i);
-            }
-
-            for(auto& i : thin_intermediates)
-            {
-                a1.push_back(i);
-            }
-
-            a1.push_back(scale);
-            a1.push_back(clsize);
-            a1.push_back(timestep);
-            a1.push_back(time_elapsed_s);
-            a1.push_back(current_simulation_boundary);
-
-            clctx.cqueue.exec("evolve", a1, {evolution_positions_count}, {128});
+            step(generic_data[which_data], generic_data[(which_data + 1) % 2], timestep);
 
             {
                 cl::args constraints;
