@@ -5064,8 +5064,6 @@ int main()
                 a1.push_back(i);
             }
 
-            //a1.push_back(bssnok_datas[which_data]);
-            //a1.push_back(bssnok_datas[(which_data + 1) % 2]);
             a1.push_back(scale);
             a1.push_back(clsize);
             a1.push_back(timestep);
@@ -5073,18 +5071,6 @@ int main()
             a1.push_back(current_simulation_boundary);
 
             clctx.cqueue.exec("evolve", a1, {evolution_positions_count}, {128});
-
-            /*for(int i=0; i < (int)generic_data[which_data].size(); i++)
-            {
-                cl::args indirect;
-                indirect.push_back(non_evolution_positions);
-                indirect.push_back(non_evolution_positions_count);
-                indirect.push_back(generic_data[which_data][i]);
-                indirect.push_back(generic_data[(which_data + 1) % 2][i]);
-                indirect.push_back(clsize);
-
-                clctx.cqueue.exec("indirect_copy_float", indirect, {non_evolution_positions_count}, {128});
-            }*/
 
             {
                 cl::args constraints;
@@ -5097,34 +5083,11 @@ int main()
                     constraints.push_back(i);
                 }
 
-                //constraints.push_back(bssnok_datas[which_data]);
                 constraints.push_back(scale);
                 constraints.push_back(clsize);
 
                 clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {evolution_positions_count}, {128});
             }
-
-            /*{
-                cl::args diss;
-
-                ///the input here is the same input to evolve
-                for(auto& i : generic_data[which_data])
-                {
-                    diss.push_back(i);
-                }
-
-                for(auto& i : generic_data[(which_data + 1) % 2])
-                {
-                    diss.push_back(i);
-                }
-
-                diss.push_back(scale);
-                diss.push_back(clsize);
-                diss.push_back(timestep);
-
-                clctx.cqueue.exec("numerical_dissipate", diss, {size.x(), size.y(), size.z()}, {128, 1, 1});
-
-            }*/
 
             {
                 for(int i=0; i < buffer_count; i++)
@@ -5172,20 +5135,6 @@ int main()
 
                 clctx.cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
             }
-
-            /*cl::args fl3;
-
-            for(auto& i : generic_data[which_data])
-            {
-                fl3.push_back(i);
-            }
-
-            //fl3.push_back(bssnok_datas[which_data]);
-            fl3.push_back(scale);
-            fl3.push_back(clsize);
-            fl3.push_back(intermediate);
-
-            clctx.cqueue.exec("calculate_intermediate_data", fl3, {size.x(), size.y(), size.z()}, {128, 1, 1});*/
 
             float r_extract = c_at_max/4;
 
