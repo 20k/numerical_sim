@@ -5216,7 +5216,7 @@ int main()
             ///accumulate dn
             accumulate_rk4(rk4_scratch2.buffers, timestep/6.f);
 
-            enforce_constraints(rk4_scratch2.buffers);
+            //enforce_constraints(rk4_scratch2.buffers);
 
             //copy_all(rk4_xn.buffers, generic_data[which_data].buffers);
             copy_valid(rk4_intermediate.buffers, generic_data[(which_data + 1) % 2].buffers);
