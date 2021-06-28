@@ -4709,6 +4709,50 @@ int main()
         clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
     }
 
+    {
+        cl::args init;
+
+        for(auto& i : rk4_scratch.buffers)
+        {
+            init.push_back(i);
+        }
+
+        init.push_back(u_args[which_u_args]);
+        init.push_back(scale);
+        init.push_back(clsize);
+
+        clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
+    }
+
+    {
+        cl::args init;
+
+        for(auto& i : rk4_scratch2.buffers)
+        {
+            init.push_back(i);
+        }
+
+        init.push_back(u_args[which_u_args]);
+        init.push_back(scale);
+        init.push_back(clsize);
+
+        clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
+    }
+    {
+        cl::args init;
+
+        for(auto& i : rk4_intermediate.buffers)
+        {
+            init.push_back(i);
+        }
+
+        init.push_back(u_args[which_u_args]);
+        init.push_back(scale);
+        init.push_back(clsize);
+
+        clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
+    }
+
     std::vector<cl::read_info<cl_float2>> read_data;
 
     std::vector<float> real_graph;
@@ -5105,9 +5149,11 @@ int main()
                 for(int i=0; i < (int)buffers.size(); i++)
                 {
                     cl::args accum;
+                    accum.push_back(evolution_positions);
+                    accum.push_back(evolution_positions_count);
+                    accum.push_back(clsize);
                     accum.push_back(rk4_intermediate.buffers[i]);
                     accum.push_back(buffers[i]);
-                    accum.push_back(size_1d);
                     accum.push_back(factor);
 
                     clctx.cqueue.exec("accumulate_rk4", accum, {size_1d}, {128});
@@ -5119,14 +5165,18 @@ int main()
                 for(int i=0; i < (int)buffer_in.size(); i++)
                 {
                     cl::args accum;
+                    accum.push_back(evolution_positions);
+                    accum.push_back(evolution_positions_count);
+                    accum.push_back(clsize);
                     accum.push_back(buffer_in[i]);
                     accum.push_back(rk4_xn[i]);
-                    accum.push_back(size_1d);
                     accum.push_back(factor);
 
                     clctx.cqueue.exec("calculate_rk4_val", accum, {size_1d}, {128});
                 }
             };
+
+            ///the issue is scratch buffers not being populatd with initial conditions
 
             ///gives an
             step(rk4_xn, rk4_scratch.buffers, 0.f);

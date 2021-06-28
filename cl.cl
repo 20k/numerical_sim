@@ -24,14 +24,28 @@ void accumulate_rk4(__global float* accum, __global float* ynpx0, __global float
 #define IDX(i, j, k) ((k) * dim.x * dim.y + (j) * dim.x + (i))
 
 __kernel
-void accumulate_rk4(__global float* accum, __global float* yn, int max_size, float factor)
+void accumulate_rk4(__global ushort4* points, int point_count, int4 dim, __global float* accum, __global float* yn, float factor)
 {
-    int idx = get_global_id(0);
+    int local_idx = get_global_id(0);
 
-    if(idx >= max_size)
+    if(local_idx >= point_count)
         return;
 
-    accum[idx] += factor * yn[idx];
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    #ifndef SYMMETRY_BOUNDARY
+    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
+        return;
+    #endif // SYMMETRY_BOUNDARY
+
+    int index = IDX(ix, iy, iz);
+
+    accum[index] += factor * yn[index];
 }
 
 __kernel
@@ -71,21 +85,30 @@ void copy_valid(__global ushort4* points, int point_count, __global float* in, _
 }
 
 __kernel
-void calculate_rk4_val(__global float* yn_inout, __global float* xn, int max_size, float factor)
+void calculate_rk4_val(__global ushort4* points, int point_count, int4 dim, __global float* yn_inout, __global float* xn, float factor)
 {
-    int idx = get_global_id(0);
+    int local_idx = get_global_id(0);
 
-    if(idx >= max_size)
+    if(local_idx >= point_count)
         return;
 
-    /*if(idx == 1024)
-    {
-        printf("hi %f\n", yn[idx]);
-    }*/
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
 
-    float yn = yn_inout[idx];
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
 
-    yn_inout[idx] = xn[idx] + factor * yn;
+    #ifndef SYMMETRY_BOUNDARY
+    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
+        return;
+    #endif // SYMMETRY_BOUNDARY
+
+    int index = IDX(ix, iy, iz);
+
+    float yn = yn_inout[index];
+
+    yn_inout[index] = xn[index] + factor * yn;
 }
 
 float buffer_read_nearest(__global const float* const buffer, int3 position, int4 dim)
