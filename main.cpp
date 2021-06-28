@@ -4543,16 +4543,6 @@ int main()
 
     std::array<std::vector<cl::buffer>, 2> generic_data;
 
-    /*std::array<bool, 21> redundant_buffers
-    {
-        true, true, true, true, true, true, //dtcYij makes differentiating this unnecessary
-        false, false, false, false, false, false, ///cA
-        false, false, false, ///cGi
-        false, ///K
-        false, ///X
-        true, true, true, true, ///gA, gB0, gB1, gB2,
-    };*/
-
     #ifndef USE_GBB
     constexpr int buffer_count = 11+9;
     #else
@@ -4651,13 +4641,13 @@ int main()
     for(int i=0; i < 1000; i++)
     #endif
     {
-        cl::args interate_u_args;
-        interate_u_args.push_back(u_args[which_u_args]);
-        interate_u_args.push_back(u_args[(which_u_args + 1) % 2]);
-        interate_u_args.push_back(scale);
-        interate_u_args.push_back(clsize);
+        cl::args iterate_u_args;
+        iterate_u_args.push_back(u_args[which_u_args]);
+        iterate_u_args.push_back(u_args[(which_u_args + 1) % 2]);
+        iterate_u_args.push_back(scale);
+        iterate_u_args.push_back(clsize);
 
-        clctx.cqueue.exec("iterative_u_solve", interate_u_args, {size.x(), size.y(), size.z()}, {8, 8, 1});
+        clctx.cqueue.exec("iterative_u_solve", iterate_u_args, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
         which_u_args = (which_u_args + 1) % 2;
     }
@@ -4719,56 +4709,10 @@ int main()
         clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
     }
 
-    /*cl::args initial_clean;
-    initial_clean.push_back(valid_positions);
-    initial_clean.push_back(valid_positions_count);
-
-    for(auto& i : generic_data[0])
-    {
-        initial_clean.push_back(i);
-    }
-
-    //initial_clean.push_back(bssnok_datas[0]);
-    initial_clean.push_back(u_args[which_u_args]);
-    initial_clean.push_back(scale);
-    initial_clean.push_back(clsize);
-    initial_clean.push_back(time_elapsed_s);
-
-    clctx.cqueue.exec("clean_data", initial_clean, {valid_positions_count}, {256});*/
-
-    /*cl::args initial_constraints;
-
-    for(auto& i : generic_data[0])
-    {
-        initial_constraints.push_back(i);
-    }
-
-    //initial_constraints.push_back(bssnok_datas[0]);
-    initial_constraints.push_back(scale);
-    initial_constraints.push_back(clsize);
-
-    clctx.cqueue.exec("enforce_algebraic_constraints", initial_constraints, {size.x(), size.y(), size.z()}, {8, 8, 1});*/
-
-    /*cl::args fl2;
-
-    for(auto& i : generic_data[0])
-    {
-        fl2.push_back(i);
-    }
-
-    //fl2.push_back(bssnok_datas[0]);
-    fl2.push_back(scale);
-    fl2.push_back(clsize);
-    fl2.push_back(intermediate);
-
-    clctx.cqueue.exec("calculate_intermediate_data", fl2, {size.x(), size.y(), size.z()}, {8, 8, 1});*/
-
     std::vector<cl::read_info<cl_float2>> read_data;
 
     std::vector<float> real_graph;
     std::vector<float> real_decomp;
-
-    //clctx.cqueue.exec("clean_data", initial_clean, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
     int which_texture = 0;
     int steps = 0;
