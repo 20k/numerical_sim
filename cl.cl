@@ -7,7 +7,7 @@
 
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
 
-__kernel
+/*__kernel
 void accumulate_rk4(__global float* accum, __global float* ynpx0, __global float* xn0, int max_size, float factor)
 {
     int idx = get_global_id(0);
@@ -19,6 +19,19 @@ void accumulate_rk4(__global float* accum, __global float* ynpx0, __global float
     float yn = ynpx0[idx] - xn0[idx];
 
     accum[idx] += factor * (yn);
+}*/
+
+#define IDX(i, j, k) ((k) * dim.x * dim.y + (j) * dim.x + (i))
+
+__kernel
+void accumulate_rk4(__global float* accum, __global float* yn, int max_size, float factor)
+{
+    int idx = get_global_id(0);
+
+    if(idx >= max_size)
+        return;
+
+    accum[idx] += factor * yn[idx];
 }
 
 __kernel
@@ -30,6 +43,49 @@ void copy_buffer(__global float* in, __global float* out, int max_size)
         return;
 
     out[idx] = in[idx];
+}
+
+__kernel
+void copy_valid(__global ushort4* points, int point_count, __global float* in, __global float* out, int4 dim)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    #ifndef SYMMETRY_BOUNDARY
+    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
+        return;
+    #endif // SYMMETRY_BOUNDARY
+
+    int index = IDX(ix, iy, iz);
+
+    out[index] = in[index];
+}
+
+__kernel
+void calculate_rk4_val(__global float* yn_inout, __global float* xn, int max_size, float factor)
+{
+    int idx = get_global_id(0);
+
+    if(idx >= max_size)
+        return;
+
+    /*if(idx == 1024)
+    {
+        printf("hi %f\n", yn[idx]);
+    }*/
+
+    float yn = yn_inout[idx];
+
+    yn_inout[idx] = xn[idx] + factor * yn;
 }
 
 float buffer_read_nearest(__global const float* const buffer, int3 position, int4 dim)
@@ -108,8 +164,6 @@ float r_to_phys(float r)
 
     return r_phys;
 }
-
-#define IDX(i, j, k) ((k) * dim.x * dim.y + (j) * dim.x + (i))
 
 /*float3 transform_position(int x, int y, int z, int4 dim, float scale)
 {
@@ -897,6 +951,8 @@ void evolve(__global ushort4* points, int point_count,
     float I_cY3 = cY3[index];
     float I_cY4 = cY4[index];
 
+    #define ONLY_DIFF
+    #ifndef ONLY_DIFF
     ocY0[index] = I_cY0 + (f_dtcYij0) * timestep;
     ocY1[index] = I_cY1 + (f_dtcYij1) * timestep;
     ocY2[index] = I_cY2 + (f_dtcYij2) * timestep;
@@ -929,6 +985,34 @@ void evolve(__global ushort4* points, int point_count,
     ogBB1[index] = gBB1[index] + (dtgBB1 + diss_gBB1) * timestep;
     ogBB2[index] = gBB2[index] + (dtgBB2 + diss_gBB2) * timestep;
     #endif // USE_GBB
+    #else
+    ocY0[index] = (f_dtcYij0);
+    ocY1[index] = (f_dtcYij1);
+    ocY2[index] = (f_dtcYij2);
+    ocY3[index] = (f_dtcYij3);
+    ocY4[index] = (f_dtcYij4);
+
+    ocA0[index] = (f_dtcAij0);
+    ocA1[index] = (f_dtcAij1);
+    ocA2[index] = (f_dtcAij2);
+    #ifndef NO_CAIJYY
+    ocA3[index] = (f_dtcAij3);
+    #endif // NO_CAIJYY
+    ocA4[index] = (f_dtcAij4);
+    ocA5[index] = (f_dtcAij5);
+
+    ocGi0[index] = (f_dtcGi0);
+    ocGi1[index] = (f_dtcGi1);
+    ocGi2[index] = (f_dtcGi2);
+
+    oK[index] = (f_dtK);
+    oX[index] =  (f_dtX);
+
+    ogA[index] = (f_dtgA);
+    ogB0[index] = (f_dtgB0);
+    ogB1[index] =  (f_dtgB1);
+    ogB2[index] = (f_dtgB2);
+    #endif // ONLY_DIFF
 
     /*bool debug = false;
 

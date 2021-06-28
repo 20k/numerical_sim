@@ -4563,7 +4563,9 @@ int main()
 
     std::array<buffer_set, 2> generic_data{buffer_set(clctx.ctx, size), buffer_set(clctx.ctx, size)};
     buffer_set rk4_intermediate(clctx.ctx, size);
-    buffer_set rk4_xn(clctx.ctx, size);
+    buffer_set rk4_scratch(clctx.ctx, size);
+    buffer_set rk4_scratch2(clctx.ctx, size);
+    //buffer_set rk4_xn(clctx.ctx, size);
 
     std::array<std::string, buffer_set::buffer_count> buffer_names
     {
@@ -4890,13 +4892,13 @@ int main()
 
         clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
 
-        float timestep = 0.02/2;
+        float timestep = 0.02;
 
         if(steps < 20)
-           timestep = 0.001;
+           timestep = 0.01;
 
         if(steps < 10)
-            timestep = 0.0001;
+            timestep = 0.001;
 
         if(step)
         {
@@ -5017,6 +5019,45 @@ int main()
                 clctx.cqueue.exec("evolve", a1, {evolution_positions_count}, {128});
             };
 
+            auto enforce_constraints = [&](auto& generic_out)
+            {
+                cl::args constraints;
+
+                constraints.push_back(evolution_positions);
+                constraints.push_back(evolution_positions_count);
+
+                for(auto& i : generic_out)
+                {
+                    constraints.push_back(i);
+                }
+
+                constraints.push_back(scale);
+                constraints.push_back(clsize);
+
+                clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {evolution_positions_count}, {128});
+
+
+                {
+                    cl::args cleaner;
+                    cleaner.push_back(sponge_positions);
+                    cleaner.push_back(sponge_positions_count);
+
+                    for(auto& i : generic_out)
+                    {
+                        cleaner.push_back(i);
+                    }
+
+                    //cleaner.push_back(bssnok_datas[which_data]);
+                    cleaner.push_back(u_args[which_u_args]);
+                    cleaner.push_back(scale);
+                    cleaner.push_back(clsize);
+                    cleaner.push_back(time_elapsed_s);
+                    cleaner.push_back(timestep);
+
+                    clctx.cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
+                }
+            };
+
             #define RK4
             #ifdef RK4
 
@@ -5038,9 +5079,26 @@ int main()
                 }
             };
 
+            auto copy_valid = [&](auto& in, auto& out)
+            {
+                for(int i=0; i < (int)in.size(); i++)
+                {
+                    cl::args copy;
+                    copy.push_back(evolution_positions);
+                    copy.push_back(evolution_positions_count);
+                    copy.push_back(in[i]);
+                    copy.push_back(out[i]);
+                    copy.push_back(clsize);
+
+                    clctx.cqueue.exec("copy_valid", copy, {evolution_positions_count}, {128});
+                }
+            };
+
             copy_all(b1.buffers, rk4_intermediate.buffers);
 
-            copy_all(b1.buffers, rk4_xn.buffers);
+            //copy_all(b1.buffers, rk4_xn.buffers);
+
+            auto& rk4_xn = b1.buffers;
 
             auto accumulate_rk4 = [&](auto& buffers, cl_float factor)
             {
@@ -5049,7 +5107,6 @@ int main()
                     cl::args accum;
                     accum.push_back(rk4_intermediate.buffers[i]);
                     accum.push_back(buffers[i]);
-                    accum.push_back(rk4_xn.buffers[i]);
                     accum.push_back(size_1d);
                     accum.push_back(factor);
 
@@ -5057,51 +5114,67 @@ int main()
                 }
             };
 
-            ///gives Xn + an * h/2 from xn
-            step(b1.buffers, b2.buffers, timestep/2);
+            auto diff_to_input = [&](auto& buffer_in, cl_float factor)
+            {
+                for(int i=0; i < (int)buffer_in.size(); i++)
+                {
+                    cl::args accum;
+                    accum.push_back(buffer_in[i]);
+                    accum.push_back(rk4_xn[i]);
+                    accum.push_back(size_1d);
+                    accum.push_back(factor);
 
+                    clctx.cqueue.exec("calculate_rk4_val", accum, {size_1d}, {128});
+                }
+            };
+
+            ///gives an
+            step(rk4_xn, rk4_scratch.buffers, 0.f);
             ///accumulate an
-            accumulate_rk4(b2.buffers, 1.f/3.f);
+            accumulate_rk4(rk4_scratch.buffers, timestep/6.f);
 
-            ///gives Xn + bn * h/2 from xn + an * h/2
-            step(b2.buffers, b1.buffers, timestep/2);
+            ///gives xn + h/2 an
+            diff_to_input(rk4_scratch.buffers, timestep/2);
+
+            enforce_constraints(rk4_scratch.buffers);
+
+            ///gives bn
+            step(rk4_scratch.buffers, rk4_scratch2.buffers, 0.f);
 
             ///accumulate bn
-            accumulate_rk4(b1.buffers, 2.f/3.f);
+            accumulate_rk4(rk4_scratch2.buffers, timestep * 2.f / 6.f);
 
-            ///gives xn + cn * h from xn + bn * h/2
-            step(b1.buffers, b2.buffers, timestep);
+            ///gives xn + h/2 bn
+            diff_to_input(rk4_scratch2.buffers, timestep/2);
 
-            accumulate_rk4(b2.buffers, 1.f/3.f);
+            enforce_constraints(rk4_scratch2.buffers);
 
-            ///gives xn + dn * h from xn + cn * h
-            step(b2.buffers, b1.buffers, timestep);
+            ///gives cn
+            step(rk4_scratch2.buffers, rk4_scratch.buffers, 0.f);
 
-            accumulate_rk4(b1.buffers, 1.f/6.f);
+            ///accumulate cn
+            accumulate_rk4(rk4_scratch.buffers, timestep * 2.f / 6.f);
 
-            copy_all(rk4_xn.buffers, generic_data[which_data].buffers);
-            copy_all(rk4_intermediate.buffers, generic_data[(which_data + 1) % 2].buffers);
+            ///gives xn + h * cn
+            diff_to_input(rk4_scratch.buffers, timestep);
+
+            enforce_constraints(rk4_scratch.buffers);
+
+            ///gives dn
+            step(rk4_scratch.buffers, rk4_scratch2.buffers, 0.f);
+
+            ///accumulate dn
+            accumulate_rk4(rk4_scratch2.buffers, timestep/6.f);
+
+            enforce_constraints(rk4_scratch2.buffers);
+
+            //copy_all(rk4_xn.buffers, generic_data[which_data].buffers);
+            copy_valid(rk4_intermediate.buffers, generic_data[(which_data + 1) % 2].buffers);
+            //copy_all(rk4_intermediate.buffers, generic_data[(which_data + 1) % 2].buffers);
 
             #endif // RK4
 
             //step(generic_data[which_data].buffers, generic_data[(which_data + 1) % 2].buffers, timestep);
-
-            {
-                cl::args constraints;
-
-                constraints.push_back(evolution_positions);
-                constraints.push_back(evolution_positions_count);
-
-                for(auto& i : generic_data[(which_data + 1) % 2].buffers)
-                {
-                    constraints.push_back(i);
-                }
-
-                constraints.push_back(scale);
-                constraints.push_back(clsize);
-
-                clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {evolution_positions_count}, {128});
-            }
 
             {
                 for(int i=0; i < buffer_set::buffer_count; i++)
@@ -5130,7 +5203,7 @@ int main()
 
             which_data = (which_data + 1) % 2;
 
-            {
+            /*{
                 cl::args cleaner;
                 cleaner.push_back(sponge_positions);
                 cleaner.push_back(sponge_positions_count);
@@ -5148,7 +5221,7 @@ int main()
                 cleaner.push_back(timestep);
 
                 clctx.cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
-            }
+            }*/
 
             float r_extract = c_at_max/4;
 
