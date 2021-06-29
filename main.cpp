@@ -5081,7 +5081,25 @@ int main()
                 clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {evolution_positions_count}, {128});
             };
 
-            #define RK4
+            auto& rk4_xn = generic_data[which_data].buffers;
+
+            auto diff_to_input = [&](auto& buffer_in, cl_float factor)
+            {
+                for(int i=0; i < (int)buffer_in.size(); i++)
+                {
+                    cl::args accum;
+                    accum.push_back(evolution_positions);
+                    accum.push_back(evolution_positions_count);
+                    accum.push_back(clsize);
+                    accum.push_back(buffer_in[i]);
+                    accum.push_back(rk4_xn[i]);
+                    accum.push_back(factor);
+
+                    clctx.cqueue.exec("calculate_rk4_val", accum, {size.x() * size.y() * size.z()}, {128});
+                }
+            };
+
+            //#define RK4
             #ifdef RK4
 
             auto& b1 = generic_data[which_data];
@@ -5121,8 +5139,6 @@ int main()
 
             //copy_all(b1.buffers, rk4_xn.buffers);
 
-            auto& rk4_xn = b1.buffers;
-
             auto accumulate_rk4 = [&](auto& buffers, cl_float factor)
             {
                 for(int i=0; i < (int)buffers.size(); i++)
@@ -5136,22 +5152,6 @@ int main()
                     accum.push_back(factor);
 
                     clctx.cqueue.exec("accumulate_rk4", accum, {size_1d}, {128});
-                }
-            };
-
-            auto diff_to_input = [&](auto& buffer_in, cl_float factor)
-            {
-                for(int i=0; i < (int)buffer_in.size(); i++)
-                {
-                    cl::args accum;
-                    accum.push_back(evolution_positions);
-                    accum.push_back(evolution_positions_count);
-                    accum.push_back(clsize);
-                    accum.push_back(buffer_in[i]);
-                    accum.push_back(rk4_xn[i]);
-                    accum.push_back(factor);
-
-                    clctx.cqueue.exec("calculate_rk4_val", accum, {size_1d}, {128});
                 }
             };
 
@@ -5201,29 +5201,14 @@ int main()
             copy_valid(rk4_intermediate.buffers, generic_data[(which_data + 1) % 2].buffers);
             //copy_all(rk4_intermediate.buffers, generic_data[(which_data + 1) % 2].buffers);
 
-            #endif // RK4
+            #else
+            step(generic_data[which_data].buffers, generic_data[(which_data + 1) % 2].buffers, timestep);
 
-            //step(generic_data[which_data].buffers, generic_data[(which_data + 1) % 2].buffers, timestep);
+            diff_to_input(generic_data[(which_data + 1) % 2].buffers, timestep);
 
-            {
-                cl::args cleaner;
-                cleaner.push_back(sponge_positions);
-                cleaner.push_back(sponge_positions_count);
+            enforce_constraints(generic_data[(which_data + 1) % 2].buffers);
+            #endif
 
-                for(auto& i : generic_data[(which_data + 1) % 2].buffers)
-                {
-                    cleaner.push_back(i);
-                }
-
-                //cleaner.push_back(bssnok_datas[which_data]);
-                cleaner.push_back(u_args[which_u_args]);
-                cleaner.push_back(scale);
-                cleaner.push_back(clsize);
-                cleaner.push_back(time_elapsed_s);
-                cleaner.push_back(timestep);
-
-                clctx.cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
-            }
 
             {
                 for(int i=0; i < buffer_set::buffer_count; i++)
@@ -5251,6 +5236,26 @@ int main()
             }
 
             which_data = (which_data + 1) % 2;
+
+            {
+                cl::args cleaner;
+                cleaner.push_back(sponge_positions);
+                cleaner.push_back(sponge_positions_count);
+
+                for(auto& i : generic_data[which_data].buffers)
+                {
+                    cleaner.push_back(i);
+                }
+
+                //cleaner.push_back(bssnok_datas[which_data]);
+                cleaner.push_back(u_args[which_u_args]);
+                cleaner.push_back(scale);
+                cleaner.push_back(clsize);
+                cleaner.push_back(time_elapsed_s);
+                cleaner.push_back(timestep);
+
+                clctx.cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
+            }
 
             /*{
                 cl::args cleaner;
