@@ -4936,13 +4936,13 @@ int main()
 
         clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
 
-        float timestep = 0.02/2;
+        float timestep = 0.16;
 
         if(steps < 20)
-           timestep = 0.001;
+           timestep = 0.016;
 
         if(steps < 10)
-            timestep = 0.0001;
+            timestep = 0.0016;
 
         if(step)
         {
