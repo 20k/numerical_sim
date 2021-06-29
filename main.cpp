@@ -5099,7 +5099,7 @@ int main()
                 }
             };
 
-            //#define RK4
+            #define RK4
             #ifdef RK4
 
             auto& b1 = generic_data[which_data];
@@ -5200,6 +5200,8 @@ int main()
             //copy_all(rk4_xn.buffers, generic_data[which_data].buffers);
             copy_valid(rk4_intermediate.buffers, generic_data[(which_data + 1) % 2].buffers);
             //copy_all(rk4_intermediate.buffers, generic_data[(which_data + 1) % 2].buffers);
+
+            enforce_constraints(generic_data[(which_data + 1) % 2].buffers);
 
             #else
             step(generic_data[which_data].buffers, generic_data[(which_data + 1) % 2].buffers, timestep);
