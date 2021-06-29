@@ -4936,13 +4936,13 @@ int main()
 
         clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
 
-        float timestep = 0.02;
+        float timestep = 0.02/2;
 
         if(steps < 20)
-           timestep = 0.01;
+           timestep = 0.001;
 
         if(steps < 10)
-            timestep = 0.001;
+            timestep = 0.0001;
 
         if(step)
         {
@@ -5079,27 +5079,6 @@ int main()
                 constraints.push_back(clsize);
 
                 clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {evolution_positions_count}, {128});
-
-
-                {
-                    cl::args cleaner;
-                    cleaner.push_back(sponge_positions);
-                    cleaner.push_back(sponge_positions_count);
-
-                    for(auto& i : generic_out)
-                    {
-                        cleaner.push_back(i);
-                    }
-
-                    //cleaner.push_back(bssnok_datas[which_data]);
-                    cleaner.push_back(u_args[which_u_args]);
-                    cleaner.push_back(scale);
-                    cleaner.push_back(clsize);
-                    cleaner.push_back(time_elapsed_s);
-                    cleaner.push_back(timestep);
-
-                    clctx.cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
-                }
             };
 
             #define RK4
@@ -5225,6 +5204,26 @@ int main()
             #endif // RK4
 
             //step(generic_data[which_data].buffers, generic_data[(which_data + 1) % 2].buffers, timestep);
+
+            {
+                cl::args cleaner;
+                cleaner.push_back(sponge_positions);
+                cleaner.push_back(sponge_positions_count);
+
+                for(auto& i : generic_data[(which_data + 1) % 2].buffers)
+                {
+                    cleaner.push_back(i);
+                }
+
+                //cleaner.push_back(bssnok_datas[which_data]);
+                cleaner.push_back(u_args[which_u_args]);
+                cleaner.push_back(scale);
+                cleaner.push_back(clsize);
+                cleaner.push_back(time_elapsed_s);
+                cleaner.push_back(timestep);
+
+                clctx.cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
+            }
 
             {
                 for(int i=0; i < buffer_set::buffer_count; i++)
