@@ -3164,7 +3164,7 @@ void build_eqs(equation_context& ctx)
 
     tensor<value, 3, 3> Rij = Rx + cRij;
 
-    value R = sum_multiply(args.Yij.invert().to_tensor(), Rij);
+    value R = sum_multiply(iYij.to_tensor(), Rij);
 
     value dtK = 0;
 
