@@ -3030,6 +3030,28 @@ void build_eqs(equation_context& ctx)
     tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, args.cY);
     tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, args.cY, icY);
 
+    ///the hat variable is the real cgi
+
+    ///squiggle cgi
+    tensor<value, 3> derived_cGi;
+
+    {
+        for(int i=0; i < 3; i++)
+        {
+            value sum = 0;
+
+            for(int j=0; j < 3; j++)
+            {
+                for(int k=0; k < 3; k++)
+                {
+                    sum += icY.idx(j, k) * christoff2.idx(i, j, k);
+                }
+            }
+
+            derived_cGi.idx(i) = sum;
+        }
+    }
+
     value dkbk = 0;
 
     for(int k=0; k < 3; k++)
