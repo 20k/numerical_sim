@@ -3023,6 +3023,11 @@ void build_eqs(equation_context& ctx)
         hacky_differentiate(ctx, "X", k);
     }
 
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+    tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, args.cY);
+    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, args.cY, icY);
+
     value dkbk = 0;
 
     for(int k=0; k < 3; k++)
@@ -3057,6 +3062,8 @@ void build_eqs(equation_context& ctx)
         }
     }
 
+    inverse_metric<value, 3, 3> iYij = args.Yij.invert();
+
     tensor<value, 3, 3> DiDjgA;
 
     for(int i=0; i < 3; i++)
@@ -3067,7 +3074,79 @@ void build_eqs(equation_context& ctx)
         }
     }
 
+
+    ///ok use the proper form
+    tensor<value, 3, 3> cRij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value s1 = 0;
+
+            for(int l=0; l < 3; l++)
+            {
+                for(int m=0; m < 3; m++)
+                {
+                    s1 = s1 + -0.5f * icY.idx(l, m) * hacky_differentiate(ctx, dcYij.idx(m, i, j), l);
+                }
+            }
+
+            value s2 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                s2 = s2 + 0.5f * (args.cY.idx(k, i) * hacky_differentiate(ctx, args.cGi.idx(k), j) + args.cY.idx(k, j) * hacky_differentiate(ctx, args.cGi.idx(k), i));
+            }
+
+            value s3 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                s3 = s3 + 0.5f * args.cGi.idx(k) * (christoff1.idx(i, j, k) + christoff1.idx(j, i, k));
+            }
+
+            value s4 = 0;
+
+            for(int m=0; m < 3; m++)
+            {
+                for(int l=0; l < 3; l++)
+                {
+                    value inner1 = 0;
+                    value inner2 = 0;
+
+                    for(int k=0; k < 3; k++)
+                    {
+                        inner1 = inner1 + 0.5f * (2 * christoff2.idx(k, l, i) * christoff1.idx(j, k, m) + 2 * christoff2.idx(k, l, j) * christoff1.idx(i, k, m));
+                    }
+
+                    for(int k=0; k < 3; k++)
+                    {
+                        inner2 = inner2 + christoff2.idx(k, i, m) * christoff1.idx(k, l, j);
+                    }
+
+                    s4 = s4 + icY.idx(l, m) * (inner1 + inner2);
+                }
+            }
+
+            cRij.idx(i, j) = s1 + s2 + s3 + s4;
+        }
+    }
+
+
     value dtK = 0;
+
+    {
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                dtK += -iYij.idx(i, j) * DiDjgA.idx(i, j);
+            }
+        }
+
+
+    }
 }
 #endif // CCZ4
 
