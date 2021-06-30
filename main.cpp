@@ -863,15 +863,17 @@ struct standard_arguments
         cGi.idx(1).make_value(bidx("cGi1", interpolate));
         cGi.idx(2).make_value(bidx("cGi2", interpolate));
 
+        value clamped_X = max(X, 0.001f);
+
         for(int i=0; i < 3; i++)
         {
             for(int j=0; j < 3; j++)
             {
-                Yij.idx(i, j) = cY.idx(i, j) / max(X, 0.01f);
+                Yij.idx(i, j) = cY.idx(i, j) / (clamped_X * clamped_X);
             }
         }
 
-        Kij = (cA + cY.to_tensor() * (K / 3.f)) / (X * X);
+        Kij = (cA + cY.to_tensor() * (K / 3.f)) / (clamped_X * clamped_X);
 
         momentum_constraint.idx(0).make_value(bidx("momentum0", interpolate));
         momentum_constraint.idx(1).make_value(bidx("momentum1", interpolate));
@@ -1649,9 +1651,6 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 10
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
     ///phi
-    value conformal_factor = (1/12.f) * log(Y);
-
-    ctx.pin(conformal_factor);
 
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf the york-lichnerowicz split
     tensor<value, 3, 3> Aij;
@@ -2971,7 +2970,7 @@ void build_eqs(equation_context& ctx)
     ///dcgA alias
     for(int i=0; i < 3; i++)
     {
-        value v = hacky_differentiate(ctx, gA, i, false);
+        value v = hacky_differentiate(ctx, args.gA, i, false);
 
         ctx.alias(v, digA.idx(i));
     }
@@ -2981,7 +2980,7 @@ void build_eqs(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            value v = hacky_differentiate(ctx, gB.idx(j), i, false);
+            value v = hacky_differentiate(ctx, args.gB.idx(j), i, false);
 
             ctx.alias(v, digB.idx(i, j));
         }
@@ -2994,7 +2993,7 @@ void build_eqs(equation_context& ctx)
         {
             for(int j=0; j < 3; j++)
             {
-                value v = hacky_differentiate(ctx, cY.idx(i, j), k, false);
+                value v = hacky_differentiate(ctx, args.cY.idx(i, j), k, false);
 
                 ctx.alias(v, dcYij.idx(k, i, j));
             }
@@ -3007,7 +3006,7 @@ void build_eqs(equation_context& ctx)
         {
             vec2i idx = linear_indices[i];
 
-            hacky_differentiate(ctx, cY.idx(idx.x(), idx.y()), k);
+            hacky_differentiate(ctx, args.cY.idx(idx.x(), idx.y()), k);
         }
 
         for(int i=0; i < 6; i++)
@@ -3039,7 +3038,7 @@ void build_eqs(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            value p1 = -2 * args.gA * args.cA;
+            value p1 = -2 * args.gA * args.cA.idx(i, j);
 
             value p2 = 0;
             value p3 = 0;
