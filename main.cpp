@@ -813,6 +813,8 @@ struct standard_arguments
 
     tensor<value, 3> momentum_constraint;
 
+    value clamped_X;
+
     standard_arguments(bool interpolate)
     {
         gA.make_value(bidx("gA", interpolate));
@@ -863,7 +865,7 @@ struct standard_arguments
         cGi.idx(1).make_value(bidx("cGi1", interpolate));
         cGi.idx(2).make_value(bidx("cGi2", interpolate));
 
-        value clamped_X = max(X, 0.001f);
+        clamped_X = max(X, 0.001f);
 
         for(int i=0; i < 3; i++)
         {
@@ -3133,6 +3135,36 @@ void build_eqs(equation_context& ctx)
         }
     }
 
+    tensor<value, 3, 3> Rx;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value pi1 = gpu_covariant_derivative_low_vec(ctx, dX, args.cY, icY).idx(j, i);
+
+            tensor<value, 3, 3> DlDl = gpu_high_covariant_derivative_vec(ctx, dX, args.cY, icY);
+
+            value dl_sum = 0;
+
+            for(int l=0; l < 3; l++)
+            {
+                dl_sum += DlDl.idx(l, l);
+            }
+
+            value pi2 = args.cY.idx(i, j) * dl_sum;
+
+            value p1 = (1/args.clamped_X) * (pi1 + pi2);
+
+            value p2 = (-2.f / (args.clamped_X * args.clamped_X)) * args.cY.idx(i, j) * sum_multiply(raise_index(dX, args.cY, icY), dX);
+
+            Rx.idx(i, j) = p1 + p2;
+        }
+    }
+
+    tensor<value, 3, 3> Rij = Rx + cRij;
+
+    value R = sum_multiply(args.Yij.invert().to_tensor(), Rij);
 
     value dtK = 0;
 
