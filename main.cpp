@@ -3057,6 +3057,16 @@ void build_eqs(equation_context& ctx)
         }
     }
 
+    tensor<value, 3, 3> DiDjgA;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            DiDjgA.idx(i, j) = gpu_covariant_derivative_low_vec(ctx, digA, args.Yij, args.Yij.invert()).idx(j, i);
+        }
+    }
+
     value dtK = 0;
 }
 #endif // CCZ4
