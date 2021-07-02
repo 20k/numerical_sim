@@ -2651,9 +2651,94 @@ void build_eqs(equation_context& ctx)
     }
     #endif // SIMPLE_CHRISTOFFEL
 
+    #define SLIDES_CHRISTOFFEL
+    #ifdef SLIDES_CHRISTOFFEL
+
+    for(int i=0; i < 3; i++)
+    {
+        value p1 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            p1 += gB.idx(m) * hacky_differentiate(ctx, cGi.idx(i), m);
+        }
+
+        value dmbm = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            dmbm += hacky_differentiate(ctx, gB.idx(m), m);
+        }
+
+        value p2 = (2 / 3.f) * derived_cGi.idx(i) * dmbm;
+
+        value p3 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            p3 += -derived_cGi.idx(m) * hacky_differentiate(ctx, gB.idx(i), m);
+        }
+
+        value p4 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            for(int n=0; n < 3; n++)
+            {
+                p4 += icY.idx(m, n) * hacky_differentiate(ctx, digB.idx(n, i), m);
+            }
+        }
+
+        value p5 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            for(int n=0; n < 3; n++)
+            {
+                p5 += (1.f/3.f) * icY.idx(i, m) * hacky_differentiate(ctx, digB.idx(n, n), m);
+            }
+        }
+
+        value p6 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            p6 += -icAij.idx(i, m) * (3.f * gA_X * hacky_differentiate(ctx, X, m) + 2 * hacky_differentiate(ctx, gA, m));
+        }
+
+        value p7 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            for(int n=0; n < 3; n++)
+            {
+                p7 += 2 * gA * christoff2.idx(i, m, n) * icAij.idx(m, n);
+            }
+        }
+
+        value p8 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            p8 += -2 * (2.f/3.f) * gA * icY.idx(i, m) * hacky_differentiate(ctx, K, m);
+        }
+
+        value p9 = 0;
+
+        #define DAMP
+        #ifdef DAMP
+        float sigma = 0.9;
+        p9 = -sigma * bigGi.idx(i) * dmbm;
+        #endif // DAMP
+
+        dtcGi.idx(i) = p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+    }
+
+    #endif // SLIDES_CHRISTOFFEL
+
     ///https://arxiv.org/pdf/1205.5111v1.pdf 49
     ///made it to 58 with this
-    #define CHRISTOFFEL_49
+    //#define CHRISTOFFEL_49
     #ifdef CHRISTOFFEL_49
     tensor<value, 3, 3> littlekij = unpinned_icY.to_tensor() * K;
 
