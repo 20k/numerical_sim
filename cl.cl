@@ -1208,7 +1208,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         float curvature = fabs(A0) + fabs(A1) + fabs(A2) + fabs(A3) + fabs(A4) + fabs(A5);
         #endif // RENDER_AIJ
 
-        float ascalar = fabs(curvature / 10.f);
+        float ascalar = fabs(curvature / 100.f);
 
         max_scalar = max(ascalar, max_scalar);
     }
