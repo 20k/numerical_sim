@@ -1178,6 +1178,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
 
         int index = IDX(ix, iy, iz);
 
+        #ifdef RENDER_YIJ
         float Yxx = cY0[index];
         float Yxy = cY1[index];
         float Yxz = cY2[index];
@@ -1193,8 +1194,21 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
                           fabs(Yyy / cX) +
                           fabs(Yyz / cX) +
                           fabs(Yzz / cX);
+        #endif // RENDER_YIJ
 
-        float ascalar = fabs(curvature / 1000.f);
+        #define RENDER_AIJ
+        #ifdef RENDER_AIJ
+        float A0 = cA0[index];
+        float A1 = cA1[index];
+        float A2 = cA2[index];
+        float A3 = cA3[index];
+        float A4 = cA4[index];
+        float A5 = cA5[index];
+
+        float curvature = fabs(A0) + fabs(A1) + fabs(A2) + fabs(A3) + fabs(A4) + fabs(A5);
+        #endif // RENDER_AIJ
+
+        float ascalar = fabs(curvature / 10.f);
 
         max_scalar = max(ascalar, max_scalar);
     }
