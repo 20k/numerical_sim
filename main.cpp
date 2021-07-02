@@ -4437,7 +4437,7 @@ int main()
     std::string argument_string = "-O3 -cl-std=CL2.0 ";
 
     ///the simulation domain is this * 2
-    int current_simulation_boundary = 5;
+    int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
     vec3i size = {300, 300, 300};
     //vec3i size = {250, 250, 250};
@@ -4584,7 +4584,7 @@ int main()
 
     float dissipate_low = 0.4;
     float dissipate_high = 0.4;
-    float dissipate_gauge = 0.1;
+    float dissipate_gauge = 0.4;
 
     /*std::array<float, buffer_count> dissipation_coefficients
     {
@@ -4890,6 +4890,24 @@ int main()
 
         float timestep = 0.02/2;
 
+        /*if(time_elapsed_s < 7)
+            timestep = 0.005f;
+        else
+        {
+            for(auto& i : dissipation_coefficients)
+            {
+                i = 0.01f;
+            }
+        }*/
+
+        /*if(time_elapsed_s >= 15)
+        {
+            for(auto& i : dissipation_coefficients)
+            {
+                i = 0.2f;
+            }
+        }*/
+
         if(steps < 20)
            timestep = 0.001;
 
@@ -5018,23 +5036,6 @@ int main()
             step(generic_data[which_data].buffers, generic_data[(which_data + 1) % 2].buffers, timestep);
 
             {
-                cl::args constraints;
-
-                constraints.push_back(evolution_positions);
-                constraints.push_back(evolution_positions_count);
-
-                for(auto& i : generic_data[(which_data + 1) % 2].buffers)
-                {
-                    constraints.push_back(i);
-                }
-
-                constraints.push_back(scale);
-                constraints.push_back(clsize);
-
-                clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {evolution_positions_count}, {128});
-            }
-
-            {
                 for(int i=0; i < buffer_set::buffer_count; i++)
                 {
                     cl::args diss;
@@ -5058,7 +5059,6 @@ int main()
                     clctx.cqueue.exec("dissipate_single", diss, {evolution_positions_count}, {128});
                 }
             }
-
             which_data = (which_data + 1) % 2;
 
             {
@@ -5080,6 +5080,24 @@ int main()
 
                 clctx.cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
             }
+
+            {
+                cl::args constraints;
+
+                constraints.push_back(evolution_positions);
+                constraints.push_back(evolution_positions_count);
+
+                for(auto& i : generic_data[which_data].buffers)
+                {
+                    constraints.push_back(i);
+                }
+
+                constraints.push_back(scale);
+                constraints.push_back(clsize);
+
+                clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {evolution_positions_count}, {128});
+            }
+
 
             float r_extract = c_at_max/4;
 
