@@ -1541,7 +1541,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
     ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
     std::vector<float> black_hole_m{0.463, 0.47};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516 * 0.75, 0, 0}), san_black_hole_pos({3.516 * 0.75, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
     std::vector<vec3f> black_hole_velocity{{0, 0, -0.258}, {0, 0, 0.258}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
@@ -1864,7 +1864,7 @@ void build_momentum_constraint(equation_context& ctx)
         Mi.idx(i) = 0;
     }
 
-    //#define DAMP_DTCAIJ
+    #define DAMP_DTCAIJ
     #ifdef DAMP_DTCAIJ
     tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
 
@@ -2578,7 +2578,7 @@ void build_eqs(equation_context& ctx)
             dtcAij.idx(i, j) = p1 + p2 + p3;
 
             #ifdef DAMP_DTCAIJ
-            float Ka = 0.05f;
+            float Ka = 0.01f;
 
             dtcAij.idx(i, j) += Ka * gA * 0.5f *
                                                 (gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)
@@ -4586,8 +4586,8 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.4;
-    float dissipate_high = 0.4;
+    float dissipate_low = 0.3;
+    float dissipate_high = 0.3;
     float dissipate_gauge = 0.1;
 
     /*std::array<float, buffer_count> dissipation_coefficients
@@ -4775,6 +4775,14 @@ int main()
 
     while(!win.should_close())
     {
+        if(time_elapsed_s >= 10)
+        {
+            for(auto& i : dissipation_coefficients)
+            {
+                i = std::min(i, 0.15f);
+            }
+        }
+
         win.poll();
 
         if(!ImGui::GetIO().WantCaptureKeyboard)
