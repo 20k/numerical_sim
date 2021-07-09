@@ -1029,9 +1029,9 @@ value upwind_differentiate(equation_context& ctx, const value& prefix, const val
 
     return final_command;*/
 
-    //return prefix * hacky_differentiate(ctx, in, idx, pin);
+    return prefix * hacky_differentiate(ctx, in, idx, pin);
 
-    differentiation_context<7> dctx(ctx, in, idx, {"0", "0", "0"});
+    /*differentiation_context<7> dctx(ctx, in, idx, {"0", "0", "0"});
 
     value scale = "scale";
 
@@ -1047,7 +1047,7 @@ value upwind_differentiate(equation_context& ctx, const value& prefix, const val
     },
     [&](){
         return prefix * stencil_negative;
-    });
+    });*/
 }
 
 tensor<value, 3> tensor_upwind(equation_context& ctx, const tensor<value, 3>& prefix, const value& in)
@@ -1543,7 +1543,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 1.5f}, {0, 0, 0.258 * 1.5f}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 1.25f}, {0, 0, 0.258 * 1.25f}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -4779,7 +4779,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.1f);
+                i = std::min(i, 0.15f);
             }
         }
 
