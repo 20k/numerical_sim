@@ -2417,6 +2417,23 @@ void build_eqs(equation_context& ctx)
 
     ctx.pin(Xdidja);
 
+
+    {
+        value R = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                R += icY.idx(i, j) * xgARij.idx(i, j) / (gA * X);
+            }
+        }
+
+        value H = R + (2.f/3.f) * K * K - sum_multiply(cA, raise_both(cA, cY, icY));
+
+        ctx.add("hamiltonian", H);
+    }
+
     ///recover Yij from X and cYij
     ///https://arxiv.org/pdf/gr-qc/0511048.pdf
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf
@@ -4763,6 +4780,16 @@ int main()
         cl::args render;
 
         for(auto& i : generic_data[which_data].buffers)
+        {
+            render.push_back(i);
+        }
+
+        for(auto& i : momentum_constraint)
+        {
+            render.push_back(i);
+        }
+
+        for(auto& i : thin_intermediates)
         {
             render.push_back(i);
         }
