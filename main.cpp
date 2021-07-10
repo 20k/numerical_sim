@@ -2284,7 +2284,7 @@ void build_eqs(equation_context& ctx)
             ///linearly interpolate to 0
             value value_at_min = gA / min_X;
 
-            return value_at_min / min_X;
+            return gA / min_X;
         },
         [&]()
         {
@@ -4810,6 +4810,8 @@ int main()
         if(steps < 10)
             timestep = 0.0016;
 
+        timestep = 0;
+
         if(step)
         {
             steps++;
@@ -4969,7 +4971,7 @@ int main()
             };
 
             ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
-            #define RK4
+            //#define RK4
             #ifdef RK4
 
             auto& b1 = generic_data[which_data];
@@ -5078,7 +5080,7 @@ int main()
 
             diff_to_input(generic_data[(which_data + 1) % 2].buffers, timestep);
 
-            enforce_constraints(generic_data[(which_data + 1) % 2].buffers);
+            //enforce_constraints(generic_data[(which_data + 1) % 2].buffers);
             #endif
 
 
@@ -5103,7 +5105,7 @@ int main()
                     if(coeff == 0)
                         continue;
 
-                    clctx.cqueue.exec("dissipate_single", diss, {evolution_positions_count}, {128});
+                    //clctx.cqueue.exec("dissipate_single", diss, {evolution_positions_count}, {128});
                 }
             }
 
@@ -5126,7 +5128,7 @@ int main()
                 cleaner.push_back(time_elapsed_s);
                 cleaner.push_back(timestep);
 
-                clctx.cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
+                //clctx.cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
             }
 
             /*{
