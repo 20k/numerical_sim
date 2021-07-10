@@ -3126,7 +3126,8 @@ void build_eqs(equation_context& ctx)
 
     float s = 1;
     float c = 1;
-    float littlek = 0.001f * 0;
+    float littlek = 0.001f;
+    float use_theta = 1;
 
     tensor<value, 3> ccGi;
 
@@ -3238,7 +3239,7 @@ void build_eqs(equation_context& ctx)
     value Dttheta = gA * ((1.f/3.f) * K * K - (1 - (4.f/3.f) * s) * K * theta - littlek * theta - (2.f/3.f) * s * theta * theta - 0.5f * aij_aIJ + 0.5f * icY_hatRij) +
                     Ziterms;
 
-    value dttheta = (Dttheta + advect(ctx, gB, theta)) * 0;
+    value dttheta = (Dttheta + advect(ctx, gB, theta)) * use_theta;
 
 
     value dibi = 0;
@@ -5251,9 +5252,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.4;
-    float dissipate_high = 0.4;
-    float dissipate_gauge = 0.4;
+    float dissipate_low = 0.3;
+    float dissipate_high = 0.3;
+    float dissipate_gauge = 0.1;
 
     /*std::array<float, buffer_count> dissipation_coefficients
     {
@@ -5275,7 +5276,7 @@ int main()
         dissipate_low, //X
         dissipate_gauge, //gA
         dissipate_gauge, dissipate_gauge, dissipate_gauge, //gB
-        dissipate_low
+        0
     };
 
     std::array<cl::buffer, 2> u_args{clctx.ctx, clctx.ctx};
