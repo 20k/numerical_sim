@@ -3174,8 +3174,9 @@ void build_eqs(equation_context& ctx)
                 {
                     for(int m=0; m < 3; m++)
                     {
-                        p4 += christoff2.idx(m, k, i) * christoff1.idx(m, l, j) +
-                              0.5f * 2 * (christoff2.idx(m, k, i) * christoff1.idx(j, m, l) + christoff2.idx(m, k, j) * christoff1.idx(i, m, l));
+                        p4 += icY.idx(k, l) *
+                        (christoff2.idx(m, k, i) * christoff1.idx(m, l, j)
+                        + 0.5f * 2 * (christoff2.idx(m, k, i) * christoff1.idx(j, m, l) + christoff2.idx(m, k, j) * christoff1.idx(i, m, l)));
                     }
                 }
             }
