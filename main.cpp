@@ -3091,6 +3091,9 @@ void build_eqs(equation_context& ctx)
     ///https://arxiv.org/pdf/1810.12346.pdf 2.15
     ccGi = c * cGi + (1 - c) * derived_cGi;
 
+    ///TODO: FIXY FIX THIS IS ONLY POTENTIALLY RIGHT FOR s=1 c=1
+    tensor<value, 3> sccGi = cGi;
+
     tensor<value, 3, 3> hat_Rij;
 
     for(int i=0; i < 3; i++)
@@ -3198,6 +3201,37 @@ void build_eqs(equation_context& ctx)
     value DtX = (2.f/3.f) * X * (gA * (K + 2 * s * theta) - dibi);
 
     value dtX = DtX + advect(ctx, gB, X);
+
+    value DtK = 0;
+
+    {
+        value p1 = gA * (
+                         (1 - (2.f/3.f) * s) * K * K
+                         - 2 * (1.f - (5.f/3.f) * s) * K * theta
+                         - (3 - 4 * s) * littlek * theta
+                         + (4.f/3.f) * s * theta * theta
+                         + s * aij_aIJ
+                         + 2 * (1 - s) * c * sum_multiply(cZ, dX));
+
+        value p2 = X * sum_multiply(sccGi, digA);
+
+        value p3 = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                p3 += icY.idx(i, j) *
+                (-X * hacky_differentiate(ctx, digA.idx(j), i)
+                 + 0.5f * dX.idx(i) * digA.idx(j)
+                 + gA * ((1 - s) * hat_Rij.idx(i, j)));
+            }
+        }
+
+        DtK = p1 + p2 + p3;
+    }
+
+    value dtK = DtK + advect(ctx, gB, K);
 
 
     #if 0
