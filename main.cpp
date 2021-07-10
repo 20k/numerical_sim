@@ -2108,29 +2108,6 @@ void build_eqs(equation_context& ctx)
         hacky_differentiate(ctx, "X", k);
     }
 
-    /*for(int k=0; k < 3; k++)
-    {
-        for(int i=0; i < 3 * 6; i++)
-        {
-            hacky_differentiate(ctx, "ik.dcYij[" + std::to_string(i) + "]", k);
-        }
-
-        for(int i=0; i < 3; i++)
-        {
-            hacky_differentiate(ctx, "ik.digA[" + std::to_string(i) + "]", k);
-        }
-
-        for(int i=0; i < 3; i++)
-        {
-            hacky_differentiate(ctx, "ik.digB[" + std::to_string(i) + "]", k);
-        }
-
-        for(int i=0; i < 3; i++)
-        {
-            hacky_differentiate(ctx, "ik.dX[" + std::to_string(i) + "]", k);
-        }
-    }*/
-
     tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, cY);
     tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, cY, icY);
 
@@ -2203,49 +2180,6 @@ void build_eqs(equation_context& ctx)
     ctx.add("derived1", derived_cGi.idx(1));
     ctx.add("derived2", derived_cGi.idx(2));
 
-    /*tensor<value, 3, 3, 3> cGijk;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            for(int k=0; k < 3; k++)
-            {
-                int symmetric_index = index_table[j][k];
-
-                int final_index = i * 6 + symmetric_index;
-
-                std::string name = "ik.christoffel[" + std::to_string(final_index) + "]";
-
-                cGijk.idx(i, j, k) = name;
-            }
-        }
-    }*/
-
-    /*tensor<value, 3, 3, 3, 3> dcGijk;
-    ///coordinate derivative direction
-    for(int i=0; i < 3; i++)
-    {
-        ///upper index
-        for(int j=0; j < 3; j++)
-        {
-            ///two symmetric lower indices
-            for(int k=0; k < 3; k++)
-            {
-                for(int l=0; l < 3; l++)
-                {
-                    int symmetric_index = index_table[k][l];
-
-                    int final_index = i * 3 * 6 + j * 6 + symmetric_index;
-
-                    std::string name = "dcGijk[" + std::to_string(final_index) + "]";
-
-                    dcGijk.idx(i, j, k, l).make_value(name);
-                }
-            }
-        }
-    }*/
-
     tensor<value, 3> gB_lower = lower_index(gB, cY);
 
     tensor<value, 3> linear_dB;
@@ -2282,39 +2216,6 @@ void build_eqs(equation_context& ctx)
 
     ///ok use the proper form
     tensor<value, 3, 3> cRij;
-
-    ///https://en.wikipedia.org/wiki/Ricci_curvature#Definition_via_local_coordinates_on_a_smooth_manifold
-    /*for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            value sum = 0;
-
-            for(int a=0; a < 3; a++)
-            {
-                sum = sum + dcGijk.idx(a, a, i, j);
-            }
-
-            value sum2 = 0;
-
-            for(int a=0; a < 3; a++)
-            {
-                sum2 = sum2 + dcGijk.idx(i, a, a, j);
-            }
-
-            value sum3 = 0;
-
-            for(int a=0; a < 3; a++)
-            {
-                for(int b=0; b < 3; b++)
-                {
-                    sum3 = sum3 + cGijk.idx(a, a, b) * cGijk.idx(b, i, j) - cGijk.idx(a, i, b) * cGijk.idx(b, a, j);
-                }
-            }
-
-            cRij.idx(i, j) = sum - sum2 + sum3;
-        }
-    }*/
 
     for(int i=0; i < 3; i++)
     {
@@ -2595,61 +2496,6 @@ void build_eqs(equation_context& ctx)
     tensor<value, 3> dtcGi;
 
     ///https://arxiv.org/pdf/gr-qc/0511048.pdf
-    ///could likely eliminate the dphi term
-
-    #ifdef SIMPLE_CHRISTOFFEL
-    for(int i=0; i < 3; i++)
-    {
-        value sum = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            value s1 = 0;
-
-            for(int k=0; k < 3; k++)
-            {
-                s1 = s1 + icY.idx(j, k) * hacky_differentiate(ctx, digB.idx(k, i), j);
-            }
-
-            value s2 = 0;
-
-            for(int k=0; k < 3; k++)
-            {
-                s2 = s2 + (1.f/3.f) * icY.idx(i, j) * hacky_differentiate(ctx, digB.idx(k, k), j);
-            }
-
-            value s3 = upwind_differentiate(ctx, gB.idx(j), cGi.idx(i), j);
-
-            value s4 = -derived_cGi.idx(j) * hacky_differentiate(ctx, gB.idx(i), j);
-
-            value s5 = (2.f/3.f) * derived_cGi.idx(i) * hacky_differentiate(ctx, gB.idx(j), j);
-
-            value s6 = -2 * icAij.idx(i, j) * hacky_differentiate(ctx, gA, j);
-
-            value s7 = 0;
-
-            {
-                value s8 = 0;
-
-                for(int k=0; k < 3; k++)
-                {
-                    s8 = s8 + christoff2.idx(i, j, k) * icAij.idx(j, k);
-                }
-
-                value s9 = (-1/4.f) * gA_X * 6 * icAij.idx(i, j) * hacky_differentiate(ctx, X, j);
-
-                value s10 = -(2.f/3.f) * icY.idx(i, j) * hacky_differentiate(ctx, K, j);
-
-                s7 = 2 * (gA * s8 + s9 + gA * s10);
-            }
-
-
-            sum = sum + s1 + s2 + s3 + s4 + s5 + s6 + s7;
-        }
-
-        dtcGi.idx(i) = sum;
-    }
-    #endif // SIMPLE_CHRISTOFFEL
 
     ///https://arxiv.org/pdf/1205.5111v1.pdf 49
     ///made it to 58 with this
