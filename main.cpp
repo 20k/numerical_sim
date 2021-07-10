@@ -4851,6 +4851,9 @@ int main()
                 {
                     cl::args momentum_args;
 
+                    momentum_args.push_back(evolution_positions);
+                    momentum_args.push_back(evolution_positions_count);
+
                     for(auto& i : generic_in)
                     {
                         momentum_args.push_back(i);
@@ -4865,7 +4868,7 @@ int main()
                     momentum_args.push_back(clsize);
                     momentum_args.push_back(time_elapsed_s);
 
-                    clctx.cqueue.exec("calculate_momentum_constraint", momentum_args, {size.x(), size.y(), size.z()}, {64, 1, 1});
+                    clctx.cqueue.exec("calculate_momentum_constraint", momentum_args, {evolution_positions_count}, {128});
                 }
 
                 cl::args a1;
