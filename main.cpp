@@ -4564,7 +4564,6 @@ int main()
     std::array<buffer_set, 2> generic_data{buffer_set(clctx.ctx, size), buffer_set(clctx.ctx, size)};
     buffer_set rk4_intermediate(clctx.ctx, size);
     buffer_set rk4_scratch(clctx.ctx, size);
-    buffer_set rk4_scratch2(clctx.ctx, size);
     //buffer_set rk4_xn(clctx.ctx, size);
 
     std::array<std::string, buffer_set::buffer_count> buffer_names
@@ -4724,20 +4723,6 @@ int main()
         clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
     }
 
-    {
-        cl::args init;
-
-        for(auto& i : rk4_scratch2.buffers)
-        {
-            init.push_back(i);
-        }
-
-        init.push_back(u_args[which_u_args]);
-        init.push_back(scale);
-        init.push_back(clsize);
-
-        clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
-    }
     {
         cl::args init;
 
@@ -5166,6 +5151,8 @@ int main()
 
             ///the issue is scratch buffers not being populatd with initial conditions
 
+            auto& scratch_2 = generic_data[(which_data + 1) % 2];
+
             ///gives an
             step(rk4_xn, rk4_scratch.buffers, 0.f);
             ///accumulate an
@@ -5177,18 +5164,18 @@ int main()
             enforce_constraints(rk4_scratch.buffers);
 
             ///gives bn
-            step(rk4_scratch.buffers, rk4_scratch2.buffers, 0.f);
+            step(rk4_scratch.buffers, scratch_2.buffers, 0.f);
 
             ///accumulate bn
-            accumulate_rk4(rk4_scratch2.buffers, timestep * 2.f / 6.f);
+            accumulate_rk4(scratch_2.buffers, timestep * 2.f / 6.f);
 
             ///gives xn + h/2 bn
-            diff_to_input(rk4_scratch2.buffers, timestep/2);
+            diff_to_input(scratch_2.buffers, timestep/2);
 
-            enforce_constraints(rk4_scratch2.buffers);
+            enforce_constraints(scratch_2.buffers);
 
             ///gives cn
-            step(rk4_scratch2.buffers, rk4_scratch.buffers, 0.f);
+            step(scratch_2.buffers, rk4_scratch.buffers, 0.f);
 
             ///accumulate cn
             accumulate_rk4(rk4_scratch.buffers, timestep * 2.f / 6.f);
@@ -5199,12 +5186,10 @@ int main()
             enforce_constraints(rk4_scratch.buffers);
 
             ///gives dn
-            step(rk4_scratch.buffers, rk4_scratch2.buffers, 0.f);
+            step(rk4_scratch.buffers, scratch_2.buffers, 0.f);
 
             ///accumulate dn
-            accumulate_rk4(rk4_scratch2.buffers, timestep/6.f);
-
-            //enforce_constraints(rk4_scratch2.buffers);
+            accumulate_rk4(scratch_2.buffers, timestep/6.f);
 
             //copy_all(rk4_xn.buffers, generic_data[which_data].buffers);
             copy_valid(rk4_intermediate.buffers, generic_data[(which_data + 1) % 2].buffers);
