@@ -3067,6 +3067,8 @@ void build_eqs(equation_context& ctx)
         }
     }
 
+    tensor<value, 3> cZ = 0.5f * (cGi - derived_cGi);
+
     float s = 1;
     float c = 1;
     float littlek = 0.01f;
@@ -3075,7 +3077,6 @@ void build_eqs(equation_context& ctx)
 
     ///https://arxiv.org/pdf/1810.12346.pdf 2.15
     ccGi = c * cGi + (1 - c) * derived_cGi;
-
 
     tensor<value, 3, 3> hat_Rij;
 
@@ -3122,6 +3123,39 @@ void build_eqs(equation_context& ctx)
             }
 
             value s1 = X * (p1 + p2 + p3 + p4);
+
+
+            value p5 = hacky_differentiate(ctx, dX.idx(j), i);
+
+            value p6 = -0.5f * (1/args.clamped_X) * dX.idx(i) * dX.idx(j);
+
+            value p7 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                for(int l=0; l < 3; l++)
+                {
+                    p7 += cY.idx(i, j) * icY.idx(k, l) * (hacky_differentiate(ctx, dX.idx(l), k) - (3.f/2.f) * (1/args.clamped_X) * dX.idx(k) * dX.idx(l));
+                }
+            }
+
+            value p8 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                p8 += -christoff2.idx(k, i, j) * dX.idx(k);
+            }
+
+            value p9 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                p9 += -cY.idx(i, j) * ccGi.idx(k) * dX.idx(k);
+            }
+
+            value s2 = 0.5f * (p5 + p6 + p7 + p8 + p9);
+
+            hat_Rij.idx(i, j) = s1 + s2;
         }
     }
 
