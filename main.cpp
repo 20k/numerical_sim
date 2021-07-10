@@ -3227,8 +3227,15 @@ void build_eqs(equation_context& ctx)
         }
     }
 
+    value Ziterms = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        Ziterms += cZ.idx(i) * (gA * dX.idx(i) * X * digA.idx(i));
+    }
+
     value Dttheta = gA * ((1.f/3.f) * K * K - (1 - (4.f/3.f) * s) * K * theta - littlek * theta - (2.f/3.f) * s * theta * theta - 0.5f * aij_aIJ + 0.5f * icY_hatRij) +
-                    sum_multiply(cZ, (gA * dX - X * digA));
+                    Ziterms;
 
     value dttheta = Dttheta + advect(ctx, gB, theta);
 
