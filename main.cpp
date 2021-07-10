@@ -3471,7 +3471,7 @@ void build_eqs(equation_context& ctx)
     /*auto f_a_reduced = 8 / (3 * (3 - gA));
     value dtgA = -gA * f_a_reduced * K + lie_derivative(ctx, gB, gA);*/
 
-    value dtgA = lie_derivative(ctx, gB, gA) - 2 * gA * K;
+    value dtgA = advect(ctx, gB, gA) - 2 * gA * (K - 2 * (1 - s) * theta);
 
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
     ///todo: remove this
@@ -3491,7 +3491,7 @@ void build_eqs(equation_context& ctx)
 
     float N = 2;
 
-    tensor<value, 3> dtgB = (3.f/4.f) * derived_cGi + bjdjbi - N * gB;
+    tensor<value, 3> dtgB = (3.f/4.f) * cGi + bjdjbi - N * gB;
 
     tensor<value, 3> dtgBB;
     dtgBB.idx(0) = 0;
@@ -5253,7 +5253,7 @@ int main()
 
     float dissipate_low = 0.4;
     float dissipate_high = 0.4;
-    float dissipate_gauge = 0.1;
+    float dissipate_gauge = 0.4;
 
     /*std::array<float, buffer_count> dissipation_coefficients
     {
