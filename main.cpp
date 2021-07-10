@@ -738,16 +738,16 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
 
     vec<3, value> offset = {"0", "0", "0"};
 
-    value h = get_scale_distance(ctx, in, offset, idx, 0);
-    value k = get_scale_distance(ctx, in, offset, idx, 1);
+    //value h = get_scale_distance(ctx, in, offset, idx, 0);
+    //value k = get_scale_distance(ctx, in, offset, idx, 1);
 
     ///todo: fix this
-    value effective_scale = (h + k) / 2.f;
+    //value effective_scale = (h + k) / 2.f;
 
     ///https://en.wikipedia.org/wiki/Finite_difference_coefficient according to wikipedia, this is the 6th derivative with 2nd order accuracy. I am confused, but at least I know where it came from
-    //value scale = "scale";
+    value scale = "scale";
 
-    #define FOURTH
+    //#define FOURTH
     #ifdef FOURTH
     differentiation_context<5> dctx(ctx, in, idx, {"0", "0", "0"}, false);
     //value stencil = -(1 / (16.f * effective_scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
@@ -756,7 +756,7 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
 
     #endif // FOURTH
 
-    //#define SIXTH
+    #define SIXTH
     #ifdef SIXTH
     differentiation_context<7> dctx(ctx, in, idx, {"0", "0", "0"}, false);
     value stencil = (1 / (64.f * scale)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
