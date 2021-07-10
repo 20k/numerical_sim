@@ -2855,6 +2855,18 @@ void build_eqs(equation_context& ctx)
 }
 #endif // 0
 
+value advect(equation_context& ctx, const tensor<value, 3>& gB, const value& in)
+{
+    value ret = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        ret += gB.idx(i) * hacky_differentiate(ctx, in, i);
+    }
+
+    return ret;
+}
+
 inline
 void build_eqs(equation_context& ctx)
 {
@@ -3159,7 +3171,20 @@ void build_eqs(equation_context& ctx)
         }
     }
 
-    //value Dttheta = a * (1/3.f * K * K - )
+    value icY_hatRij = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            icY_hatRij += icY.idx(i, j) * hat_Rij.idx(i, j);
+        }
+    }
+
+    value Dttheta = gA * ((1.f/3.f) * K * K - (1 - (4.f/3.f) * s) * K * theta - littlek * theta - (2.f/3.f) * s * theta * theta - 0.5f * aij_aIJ + 0.5f * icY_hatRij) +
+                    sum_multiply(cZ, (gA * dX - X * digA));
+
+    value dttheta = Dttheta + advect(ctx, gB, theta);
 
 
     #if 0
