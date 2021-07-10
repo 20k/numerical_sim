@@ -1541,7 +1541,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
     ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
     std::vector<float> black_hole_m{0.463, 0.47};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 1, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
     std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.9f}, {0, 0, 0.258 * 0.9f}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
@@ -1563,7 +1563,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     //value BL_a = 0;
 
-    value BL_s = 0;
+    value BL_s = 1;
 
     for(int i=0; i < (int)black_hole_m.size(); i++)
     {
@@ -2261,7 +2261,7 @@ void build_eqs(equation_context& ctx)
 
                     for(int k=0; k < 3; k++)
                     {
-                        inner2 = inner2 + christoff2.idx(k, i, m) * christoff1.idx(k, l, j);
+                        inner2 = inner2 + christoff2.idx(k, i, m) * christoff1.idx(k, j, l);
                     }
 
                     s4 = s4 + icY.idx(l, m) * (inner1 + inner2);
@@ -4469,7 +4469,7 @@ int main()
         dissipate_high, dissipate_high, dissipate_high, 0, dissipate_high, dissipate_high, //cA
         dissipate_low, dissipate_low, dissipate_low, //cGi
         dissipate_high, //K
-        dissipate_low, //X
+        dissipate_low, //Xf
         dissipate_gauge, //gA
         dissipate_gauge, dissipate_gauge, dissipate_gauge //gB
     };
@@ -4804,11 +4804,16 @@ int main()
 
         float timestep = 0.16/2;
 
+        if(steps < 50)
+        {
+            timestep = 0.01;
+        }
+
         if(steps < 20)
-           timestep = 0.016;
+           timestep = 0.001;
 
         if(steps < 10)
-            timestep = 0.0016;
+            timestep = 0.0001;
 
         if(step)
         {

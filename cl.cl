@@ -328,7 +328,7 @@ void setup_u_offset(__global float* u_offset,
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    u_offset[IDX(ix, iy, iz)] = 1;
+    u_offset[IDX(ix, iy, iz)] = 0;
 }
 
 ///https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan2008/Workbook33/33_2_elliptic_pde.pdf
@@ -362,10 +362,10 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
     float X = 1/init_BL_val;
 
-    float B = (1.f/8.f) * pow(X, 7.f) * aij_aIJ;
-    float RHS = -B * pow(1 + X * u, -7);
+    //float B = (1.f/8.f) * pow(X, 7.f) * aij_aIJ;
+    //float RHS = -B * pow(1 + X * u, -7);
 
-    //float RHS = -(1/8.f) * aij_aIJ * pow(bl_s + u, -7);
+    float RHS = -(1/8.f) * aij_aIJ * pow(bl_s + u, -7);
 
     float h2f0 = scale * scale * RHS;
 
@@ -963,6 +963,8 @@ void evolve(__global ushort4* points, int point_count,
     float derivedc1 = derived1;
     float derivedc2 = derived2;
 
+    float ham = hamiltonian;
+
     //float dbgdphi = ik.dphi[0];
 
     /*if(ix == 20 && iy == 20 && iz == 20)
@@ -1041,9 +1043,6 @@ void evolve(__global ushort4* points, int point_count,
     ogB1[index] =  (f_dtgB1);
     ogB2[index] = (f_dtgB2);
     #endif // ONLY_DIFF
-
-    /*float ham = hamiltonian;
-    printf("%f ham\n", ham);*/
 
     /*bool debug = false;
 
@@ -1134,6 +1133,9 @@ void evolve(__global ushort4* points, int point_count,
         printf("Debugp1 %f", debug1);
         printf("Debugp2 %f", debug2);
         printf("Debugp3 %f", debug3);
+
+        printf("ham %f\n", ham);
+
         //printf("dphi %f", dbgdphi);
 
         /*#ifdef debug_val
@@ -1345,7 +1347,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         #else
         float TEMPORARIES2;
 
-        float ascalar = (hamiltonian) * 1000.f;
+        float ascalar = fabs(hamiltonian);
         #endif
 
         max_scalar = max(ascalar, max_scalar);
