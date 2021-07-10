@@ -5252,8 +5252,8 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.3;
-    float dissipate_high = 0.3;
+    float dissipate_low = 0.4;
+    float dissipate_high = 0.4;
     float dissipate_gauge = 0.1;
 
     /*std::array<float, buffer_count> dissipation_coefficients
@@ -5276,7 +5276,7 @@ int main()
         dissipate_low, //X
         dissipate_gauge, //gA
         dissipate_gauge, dissipate_gauge, dissipate_gauge, //gB
-        0
+        dissipate_low //theta
     };
 
     std::array<cl::buffer, 2> u_args{clctx.ctx, clctx.ctx};
