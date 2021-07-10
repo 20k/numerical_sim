@@ -3360,6 +3360,25 @@ void build_eqs(equation_context& ctx)
 
     tensor<value, 3> dtcGi = DtcGi + advect(ctx, gB, cGi);
 
+    tensor<value, 3, 3> DtcYij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value p1 = -2 * gA * cA.idx(i, j);
+
+            value p2 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                p2 += cY.idx(i, k) * digB.idx(j, k) + cY.idx(j, k) * digB.idx(i, k) - (2.f/3.f) * cY.idx(i, j) * digB.idx(k, k);
+            }
+        }
+    }
+
+    tensor<value, 3, 3> dtcYij = DtcYij + advect(ctx, gB, cY.to_tensor());
+
     #if 0
     tensor<value, 3> gB_lower = lower_index(gB, cY);
 
