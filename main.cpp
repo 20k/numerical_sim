@@ -3187,6 +3187,18 @@ void build_eqs(equation_context& ctx)
     value dttheta = Dttheta + advect(ctx, gB, theta);
 
 
+    value dibi = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        dibi += hacky_differentiate(ctx, gB.idx(i), i);
+    }
+
+    value DtX = (2.f/3.f) * X * (gA * (K + 2 * s * theta) - dibi);
+
+    value dtX = DtX + advect(ctx, gB, X);
+
+
     #if 0
     tensor<value, 3> gB_lower = lower_index(gB, cY);
 
