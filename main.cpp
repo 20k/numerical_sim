@@ -3382,6 +3382,8 @@ void build_eqs(equation_context& ctx)
             {
                 p2 += cY.idx(i, k) * digB.idx(j, k) + cY.idx(j, k) * digB.idx(i, k) - (2.f/3.f) * cY.idx(i, j) * digB.idx(k, k);
             }
+
+            DtcYij.idx(i, j) = p1 + p2;
         }
     }
 
