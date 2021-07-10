@@ -2868,6 +2868,47 @@ value advect(equation_context& ctx, const tensor<value, 3>& gB, const value& in)
     return ret;
 }
 
+tensor<value, 3> advect(equation_context& ctx, const tensor<value, 3>& gB, const tensor<value, 3>& in)
+{
+    tensor<value, 3> ret;
+
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            sum += gB.idx(k) * hacky_differentiate(ctx, in.idx(i), k);
+        }
+
+        ret.idx(i) = sum;
+    }
+
+    return ret;
+}
+
+tensor<value, 3, 3> advect(equation_context& ctx, const tensor<value, 3>& gB, const tensor<value, 3, 3>& in)
+{
+    tensor<value, 3, 3> ret;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value sum = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                sum += gB.idx(k) * hacky_differentiate(ctx, in.idx(i, j), k);
+            }
+
+            ret.idx(i, j) = sum;
+        }
+    }
+
+    return ret;
+}
+
 inline
 void build_eqs(equation_context& ctx)
 {
@@ -2900,6 +2941,7 @@ void build_eqs(equation_context& ctx)
     ctx.pin(icY);
 
     tensor<value, 3, 3> cA = args.cA;
+    tensor<value, 3, 3> icA = raise_both(cA, cY, icY);
 
     auto unpinned_cA = cA;
     //ctx.pin(cA);
@@ -3233,6 +3275,90 @@ void build_eqs(equation_context& ctx)
 
     value dtK = DtK + advect(ctx, gB, K);
 
+    tensor<value, 3> DtcGi;
+
+    for(int i=0; i < 3; i++)
+    {
+        value p1 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                p1 += christoff2.idx(i, j, k) * icA.idx(j, k);
+            }
+        }
+
+        value p2 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            p2 += -(3.f/2.f) * icA.idx(i, j) * (1/args.clamped_X) * dX.idx(j);
+        }
+
+        value p3 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            p3 += icY.idx(i, j) * ((1 - (4.f/3.f) * s) * hacky_differentiate(ctx, theta, j) - (2.f/3.f) * hacky_differentiate(ctx, K, j));
+        }
+
+        value p4 = -c * ((2.f/3.f) * K + (4.f/3.f) * s * theta + littlek) * cZ.idx(i);
+
+        value s1 = 2 * gA * (p1 + p2 + p3 + p4);
+
+        value p5 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            p5 += -2 * c * theta * icY.idx(i, j) * digA.idx(j);
+        }
+
+        value p6 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            p6 += -2.f * icA.idx(i, j) * digA.idx(j);
+        }
+
+        value p7 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                p7 += icY.idx(j, k) * hacky_differentiate(ctx, digB.idx(k, i), j);
+            }
+        }
+
+        value p8 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                p8 += (1.f/3.f) * icY.idx(i, j) * hacky_differentiate(ctx, digB.idx(k, k), j);
+            }
+        }
+
+        value p9 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            p9 += -ccGi.idx(j) * digB.idx(j, i);
+        }
+
+        value p10 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            p10 += (2.f/3.f) * ccGi.idx(i) * digB.idx(j, j);
+        }
+
+        DtcGi.idx(i) = s1 + p5 + p6 + p7 + p8 + p9 + p10;
+    }
+
+    tensor<value, 3> dtcGi = DtcGi + advect(ctx, gB, cGi);
 
     #if 0
     tensor<value, 3> gB_lower = lower_index(gB, cY);
