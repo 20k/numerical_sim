@@ -40,6 +40,7 @@ https://aip.scitation.org/doi/am-pdf/10.1063/1.4962723
 https://arxiv.org/pdf/1906.03877.pdf - spherical harmonics
 https://arxiv.org/pdf/1412.4590.pdf - interesting glue of initial conditions to end up with a schwarzschild tail
 http://gravity.psu.edu/numrel/jclub/jc/Cook___LivRev_2000-5.pdf - seems to be a good reference on initial conditions
+https://www.researchgate.net/publication/51952973_Numerical_stability_of_the_Z4c_formulation_of_general_relativity ccz4 equations
 
 https://arxiv.org/pdf/0812.3752.pdf - numerical methods, this paper seems very useful for finite differencing etc. Has 2nd order finite difference non uniform
 https://arxiv.org/pdf/0706.0740.pdf - contains explicit upwind stencils, as well as material on numerical dissipation
