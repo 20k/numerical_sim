@@ -72,50 +72,6 @@ https://authors.library.caltech.edu/8284/1/RINcqg07.pdf - this gives a conflicti
 https://arxiv.org/pdf/1503.03436.pdf - seems to have a usable radiative boundary condition
 */
 
-///notes:
-///off centre black hole results in distortion, probably due to boundary conditions contaminating things
-///this is odd. Maybe don't boundary condition shift and lapse?
-
-//#define USE_GBB
-
-///all conformal variables are explicitly labelled
-/*struct bssnok_data
-{
-    //6 units of cY
-    //6 units of cA
-
-    cl_float cGi0, cGi1, cGi2;
-
-    cl_float K;
-    cl_float X;
-
-    cl_float gA;
-    cl_float gB0;
-    cl_float gB1;
-    cl_float gB2;
-
-    #ifdef USE_GBB
-    cl_float gBB0;
-    cl_float gBB1;
-    cl_float gBB2;
-    #endif // USE_GBB
-};
-///total size = 21
-
-*/
-
-///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
-///38.2
-
-
-struct intermediate_bssnok_data
-{
-    cl_float dcYij[3 * 6];
-    cl_float digA[6];
-    cl_float digB[3*3];
-    cl_float dX[3];
-};
-
 ///https://arxiv.org/pdf/gr-qc/9810065.pdf
 template<typename T, int N>
 inline
@@ -341,6 +297,7 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
         "gB0",
         "gB1",
         "gB2",
+        "theta",
 
         "dcYij0",
         "dcYij1",
@@ -809,6 +766,8 @@ struct standard_arguments
 
     tensor<value, 3> momentum_constraint;
 
+    value theta;
+
     standard_arguments(bool interpolate)
     {
         gA.make_value(bidx("gA", interpolate));
@@ -874,6 +833,8 @@ struct standard_arguments
         momentum_constraint.idx(0).make_value(bidx("momentum0", interpolate));
         momentum_constraint.idx(1).make_value(bidx("momentum1", interpolate));
         momentum_constraint.idx(2).make_value(bidx("momentum2", interpolate));
+
+        theta.make_value(bidx("theta", interpolate));
     }
 };
 
@@ -1720,6 +1681,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ctx.add("init_gB0", gB0);
     ctx.add("init_gB1", gB1);
     ctx.add("init_gB2", gB2);
+
+    ctx.add("init_theta", 0);
 
     //#define USE_GBB
     #ifdef USE_GBB
@@ -2880,6 +2843,8 @@ void build_eqs(equation_context& ctx)
 
         ctx.add(name, dtgBB.idx(i));
     }
+
+    ctx.add("dttheta", 0);
 
     //ctx.add("scalar_curvature", scalar_curvature);
 }
@@ -4376,9 +4341,9 @@ std::tuple<cl::buffer, int, cl::buffer, int> generate_evolution_points(cl::conte
 struct buffer_set
 {
     #ifndef USE_GBB
-    static constexpr int buffer_count = 11+9;
+    static constexpr int buffer_count = 11+9+1;
     #else
-    static constexpr int buffer_count = 12 + 9 + 3;
+    static constexpr int buffer_count = 12 + 9 + 3 + 1;
     #endif
 
     std::vector<cl::buffer> buffers;
@@ -4568,7 +4533,8 @@ int main()
         "cY0", "cY1", "cY2", "cY3", "cY4",
         "cA0", "cA1", "cA2", "cA3", "cA4", "cA5",
         "cGi0", "cGi1", "cGi2",
-        "K", "X", "gA", "gB0", "gB1", "gB2"
+        "K", "X", "gA", "gB0", "gB1", "gB2",
+        "theta",
     };
 
     auto buffer_to_index = [&](const std::string& name)
@@ -4605,7 +4571,8 @@ int main()
         dissipate_high, //K
         dissipate_low, //X
         dissipate_gauge, //gA
-        dissipate_gauge, dissipate_gauge, dissipate_gauge //gB
+        dissipate_gauge, dissipate_gauge, dissipate_gauge, //gB
+        dissipate_low
     };
 
     std::array<cl::buffer, 2> u_args{clctx.ctx, clctx.ctx};

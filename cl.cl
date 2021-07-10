@@ -287,6 +287,7 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
                                   #ifdef USE_gBB0
                                   __global float* gBB0, __global float* gBB1, __global float* gBB2,
                                   #endif // USE_gBB0
+                                  __global float* theta,
                                   __global float* u_value,
                                   float scale, int4 dim)
 {
@@ -334,6 +335,8 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
     gB1[index] = init_gB1;
     gB2[index] = init_gB2;
 
+    theta[index] = init_theta;
+
     #ifdef USE_GBB
     gBB0[index] = init_gBB0;
     gBB1[index] = init_gBB1;
@@ -363,6 +366,7 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
                                    #ifdef USE_gBB0
                                    __global float* gBB0, __global float* gBB1, __global float* gBB2,
                                    #endif // USE_gBB0
+                                   __global float* theta,
                                    float scale, int4 dim)
 {
     int idx = get_global_id(0);
@@ -475,6 +479,7 @@ __kernel
 void calculate_momentum_constraint(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
             __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
             __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
+            __global float* theta,
             __global float* momentum0, __global float* momentum1, __global float* momentum2,
             float scale, int4 dim, float time)
 {
@@ -611,6 +616,7 @@ void clean_data(__global ushort4* points, int point_count,
                 #ifdef USE_gBB0
                 __global float* gBB0, __global float* gBB1, __global float* gBB2,
                 #endif // USE_gBB0
+                __global float* theta,
                 __global float* u_value,
                 float scale, int4 dim, float time,
                 float timestep)
@@ -666,6 +672,8 @@ void clean_data(__global ushort4* points, int point_count,
     float fin_gB1 = init_gB1;
     float fin_gB2 = init_gB2;
 
+    float fin_theta = init_theta;
+
     int index = IDX(ix, iy, iz);
 
     //#define RADIATIVE
@@ -689,6 +697,8 @@ void clean_data(__global ushort4* points, int point_count,
     initial_cA5 = 0;
 
     initial_X = 1;
+
+    fin_theta = 0;
     #endif // RADIATIVE
 
     ///https://authors.library.caltech.edu/8284/1/RINcqg07.pdf (34)
@@ -720,6 +730,8 @@ void clean_data(__global ushort4* points, int point_count,
     gB0[index] += -y_r * (gB0[index] - fin_gB0) * timestep;
     gB1[index] += -y_r * (gB1[index] - fin_gB1) * timestep;
     gB2[index] += -y_r * (gB2[index] - fin_gB2) * timestep;
+
+    theta[index] += -y_r * (theta[index] - fin_theta) * timestep;
 
     #ifdef USE_GBB
     gBB0[index] = mix(gBB0[index], init_gBB0, sponge_factor);
@@ -769,12 +781,14 @@ void evolve(__global ushort4* points, int point_count,
             #ifdef USE_gBB0
             __global float* gBB0, __global float* gBB1, __global float* gBB2,
             #endif // USE_gBB0
+            __global float* theta,
             __global float* ocY0, __global float* ocY1, __global float* ocY2, __global float* ocY3, __global float* ocY4,
             __global float* ocA0, __global float* ocA1, __global float* ocA2, __global float* ocA3, __global float* ocA4, __global float* ocA5,
             __global float* ocGi0, __global float* ocGi1, __global float* ocGi2, __global float* oK, __global float* oX, __global float* ogA, __global float* ogB0, __global float* ogB1, __global float* ogB2,
             #ifdef USE_gBB0
             __global float* ogBB0, __global float* ogBB1, __global float* ogBB2,
             #endif // USE_gBB0
+            __global float* otheta,
             __global float* momentum0, __global float* momentum1, __global float* momentum2,
             __global DERIV_PRECISION* dcYij0, __global DERIV_PRECISION* dcYij1, __global DERIV_PRECISION* dcYij2, __global DERIV_PRECISION* dcYij3, __global DERIV_PRECISION* dcYij4, __global DERIV_PRECISION* dcYij5, __global DERIV_PRECISION* dcYij6, __global DERIV_PRECISION* dcYij7, __global DERIV_PRECISION* dcYij8, __global DERIV_PRECISION* dcYij9, __global DERIV_PRECISION* dcYij10, __global DERIV_PRECISION* dcYij11, __global DERIV_PRECISION* dcYij12, __global DERIV_PRECISION* dcYij13, __global DERIV_PRECISION* dcYij14, __global DERIV_PRECISION* dcYij15, __global DERIV_PRECISION* dcYij16, __global DERIV_PRECISION* dcYij17,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
@@ -856,6 +870,8 @@ void evolve(__global ushort4* points, int point_count,
     float derivedc1 = derived1;
     float derivedc2 = derived2;
 
+    float f_dttheta = dttheta;
+
     //float dbgdphi = ik.dphi[0];
 
     /*if(ix == 20 && iy == 20 && iz == 20)
@@ -898,6 +914,8 @@ void evolve(__global ushort4* points, int point_count,
     ogB0[index] = gB0[index] + (f_dtgB0) * timestep;
     ogB1[index] = gB1[index] + (f_dtgB1) * timestep;
     ogB2[index] = gB2[index] + (f_dtgB2) * timestep;
+
+    otheta[index] = theta[index] + f_dttheta * timestep;
 
     #ifdef USE_GBB
     ogBB0[index] = gBB0[index] + (dtgBB0 + diss_gBB0) * timestep;
@@ -1141,6 +1159,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
             #ifdef USE_gBB0
             __global float* ogBB0, __global float* ogBB1, __global float* ogBB2,
             #endif // USE_gBB0
+            __global float* theta,
             float scale, int4 dim, __write_only image2d_t screen, float time)
 {
     int ix = get_global_id(0);
@@ -1384,6 +1403,7 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
                 #ifdef USE_gBB0
                 __global float* gBB0, __global float* gBB1, __global float* gBB2,
                 #endif // USE_gBB0
+                __global float* theta,
                 float scale, float3 camera_pos, float4 camera_quat,
                 int4 dim, __write_only image2d_t screen)
 {
@@ -1564,6 +1584,7 @@ void init_accurate_rays(__global float* cY0, __global float* cY1, __global float
                         #ifdef USE_gBB0
                         __global float* gBB0, __global float* gBB1, __global float* gBB2,
                         #endif // USE_gBB0
+                        __global float* theta,
                         float scale, float3 camera_pos, float4 camera_quat,
                         int4 dim, __write_only image2d_t screen,
                         __global struct lightray* ray)
@@ -1632,6 +1653,7 @@ void step_accurate_rays(__global float* cY0, __global float* cY1, __global float
                         #ifdef USE_gBB0
                         __global float* gBB0, __global float* gBB1, __global float* gBB2,
                         #endif // USE_gBB0
+                        __global float* theta,
                         float scale, float3 camera_pos, float4 camera_quat,
                         int4 dim, __write_only image2d_t screen,
                         __global struct lightray* ray, float timestep)
@@ -1742,6 +1764,7 @@ void trace_metric(__global float* cY0, __global float* cY1, __global float* cY2,
                   #ifdef USE_gBB0
                   __global float* gBB0, __global float* gBB1, __global float* gBB2,
                   #endif // USE_gBB0
+                  __global float* theta,
                   float scale, float3 camera_pos, float4 camera_quat,
                   int4 dim, __write_only image2d_t screen)
 {
