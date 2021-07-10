@@ -3535,6 +3535,10 @@ void build_eqs(equation_context& ctx)
 
     ctx.add("dttheta", dttheta);
 
+    ctx.add("debug_p1", 0);
+    ctx.add("debug_p2", 0);
+    ctx.add("debug_p3", 0);
+
     //ctx.add("scalar_curvature", scalar_curvature);
 }
 
