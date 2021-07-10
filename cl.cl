@@ -1008,6 +1008,7 @@ void evolve(__global ushort4* points, int point_count,
         printf("gB1 %f\n", gB1[index]);
         printf("gB2 %f\n", gB2[index]);
         //printf("Scalar %f\n", scalar);
+        printf("Theta %f\n", theta[index]);
 
         printf("Debugp1 %f", debug1);
         printf("Debugp2 %f", debug2);

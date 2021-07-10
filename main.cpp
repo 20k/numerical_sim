@@ -3126,7 +3126,7 @@ void build_eqs(equation_context& ctx)
 
     float s = 1;
     float c = 1;
-    float littlek = 0.01f;
+    float littlek = 0.001f * 0;
 
     tensor<value, 3> ccGi;
 
@@ -3238,7 +3238,7 @@ void build_eqs(equation_context& ctx)
     value Dttheta = gA * ((1.f/3.f) * K * K - (1 - (4.f/3.f) * s) * K * theta - littlek * theta - (2.f/3.f) * s * theta * theta - 0.5f * aij_aIJ + 0.5f * icY_hatRij) +
                     Ziterms;
 
-    value dttheta = Dttheta + advect(ctx, gB, theta);
+    value dttheta = (Dttheta + advect(ctx, gB, theta)) * 0;
 
 
     value dibi = 0;
