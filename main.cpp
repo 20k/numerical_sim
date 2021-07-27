@@ -5069,18 +5069,20 @@ int main()
             enforce_constraints(generic_data[(which_data + 1) % 2].buffers);
             #endif
 
-            //#define BACKWARD_EULER
+            #define BACKWARD_EULER
             #ifdef BACKWARD_EULER
             auto& b1 = generic_data[which_data];
             auto& b2 = generic_data[(which_data + 1) % 2];
-
-            copy_valid(b1.buffers, rk4_scratch.buffers);
 
             int iterations = 4;
 
             for(int i=0; i < iterations; i++)
             {
-                step(rk4_scratch.buffers, b2.buffers, timestep);
+                if(i != 0)
+                    step(rk4_scratch.buffers, b2.buffers, timestep);
+                else
+                    step(b1.buffers, b2.buffers, timestep);
+
                 diff_to_input(b2.buffers, timestep);
                 enforce_constraints(b2.buffers);
 
@@ -5089,7 +5091,7 @@ int main()
             }
             #endif
 
-            #define TRAPEZOIDAL
+            //#define TRAPEZOIDAL
             #ifdef TRAPEZOIDAL
             auto& b1 = generic_data[which_data];
             auto& b2 = generic_data[(which_data + 1) % 2];
