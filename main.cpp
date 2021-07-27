@@ -5058,6 +5058,7 @@ int main()
 
             #endif // RK4
 
+            //#define FORWARD_EULER
             #ifdef FORWARD_EULER
             step(generic_data[which_data].buffers, generic_data[(which_data + 1) % 2].buffers, timestep);
 
@@ -5073,7 +5074,7 @@ int main()
 
             copy_valid(b1.buffers, rk4_scratch.buffers);
 
-            int iterations = 8;
+            int iterations = 4;
 
             for(int i=0; i < iterations; i++)
             {
