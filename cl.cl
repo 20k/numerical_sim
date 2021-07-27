@@ -24,6 +24,33 @@ void accumulate_rk4(__global float* accum, __global float* ynpx0, __global float
 #define IDX(i, j, k) ((k) * dim.x * dim.y + (j) * dim.x + (i))
 
 __kernel
+void trapezoidal_accumulate(__global ushort4* points, int point_count, int4 dim, __global float* yn, __global float* fn, __global float* fnp1, float timestep)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    #ifndef SYMMETRY_BOUNDARY
+    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
+        return;
+    #endif // SYMMETRY_BOUNDARY
+
+    int index = IDX(ix, iy, iz);
+
+    float next = yn[index] + 0.5f * timestep * (fn[index] + fnp1[index]);
+
+    fnp1[index] = next;
+}
+
+__kernel
 void accumulate_rk4(__global ushort4* points, int point_count, int4 dim, __global float* accum, __global float* yn, float factor)
 {
     int local_idx = get_global_id(0);

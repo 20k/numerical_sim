@@ -4788,6 +4788,8 @@ int main()
         ///todo: backwards euler test
         float timestep = 0.02;
 
+        timestep = 0.04;
+
         if(steps < 20)
            timestep = 0.001;
 
@@ -5067,7 +5069,7 @@ int main()
             enforce_constraints(generic_data[(which_data + 1) % 2].buffers);
             #endif
 
-            #define BACKWARD_EULER
+            //#define BACKWARD_EULER
             #ifdef BACKWARD_EULER
             auto& b1 = generic_data[which_data];
             auto& b2 = generic_data[(which_data + 1) % 2];
@@ -5086,6 +5088,55 @@ int main()
                     std::swap(b2, rk4_scratch);
             }
             #endif
+
+            #define TRAPEZOIDAL
+            #ifdef TRAPEZOIDAL
+            auto& b1 = generic_data[which_data];
+            auto& b2 = generic_data[(which_data + 1) % 2];
+
+            auto& f_y1 = rk4_intermediate;
+            auto& f_y2 = rk4_scratch;
+
+            step(b1.buffers, f_y1.buffers, timestep);
+            step(b1.buffers, f_y2.buffers, timestep);
+
+            int iterations = 8;
+
+            for(int i=0; i < iterations; i++)
+            {
+                for(int bidx = 0; bidx < f_y1.buffers.size(); bidx++)
+                {
+                    cl::args trapezoidal;
+                    trapezoidal.push_back(evolution_positions);
+                    trapezoidal.push_back(evolution_positions_count);
+                    trapezoidal.push_back(clsize);
+                    trapezoidal.push_back(b1.buffers[bidx]); ///yn
+                    trapezoidal.push_back(f_y1.buffers[bidx]); ///f(Yn)
+                    trapezoidal.push_back(f_y2.buffers[bidx]); ///f(Yn+1) INPUT OUTPUT ARG, CONTAINS Yn+1
+                    trapezoidal.push_back(timestep);
+
+                    clctx.cqueue.exec("trapezoidal_accumulate", trapezoidal, {evolution_positions_count}, {128});
+                }
+
+                //diff_to_input(f_y2.buffers, timestep);
+                enforce_constraints(f_y2.buffers);
+
+                std::swap(f_y2, b2);
+
+                if(i != iterations - 1)
+                {
+                    step(b2.buffers, f_y2.buffers, timestep);
+                }
+            }
+
+            /*int iterations = 4;
+
+            for(int i=0; i < iterations; i++)
+            {
+
+            }*/
+
+            #endif // TRAPEZOIDAL
 
             {
                 for(int i=0; i < buffer_set::buffer_count; i++)
