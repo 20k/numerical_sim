@@ -5100,7 +5100,7 @@ int main()
             step(b1.buffers, f_y1.buffers, timestep);
             step(b1.buffers, f_y2.buffers, timestep);
 
-            int iterations = 8;
+            int iterations = 4;
 
             for(int i=0; i < iterations; i++)
             {
