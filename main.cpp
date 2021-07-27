@@ -4775,13 +4775,24 @@ int main()
 
         clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
 
-        float timestep = 0.16/2;
+        ///rk4
+        ///though no signs of any notable instability for backwards euler
+        /*float timestep = 0.08;
 
         if(steps < 20)
            timestep = 0.016;
 
         if(steps < 10)
-            timestep = 0.0016;
+            timestep = 0.0016;*/
+
+        ///todo: backwards euler test
+        float timestep = 0.02;
+
+        if(steps < 20)
+           timestep = 0.001;
+
+        if(steps < 10)
+            timestep = 0.0001;
 
         if(step)
         {
@@ -4941,10 +4952,24 @@ int main()
                 }
             };
 
-            ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
-            #define RK4
-            #ifdef RK4
+            auto copy_valid = [&](auto& in, auto& out)
+            {
+                for(int i=0; i < (int)in.size(); i++)
+                {
+                    cl::args copy;
+                    copy.push_back(evolution_positions);
+                    copy.push_back(evolution_positions_count);
+                    copy.push_back(in[i]);
+                    copy.push_back(out[i]);
+                    copy.push_back(clsize);
 
+                    clctx.cqueue.exec("copy_valid", copy, {evolution_positions_count}, {128});
+                }
+            };
+
+            ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
+            //#define RK4
+            #ifdef RK4
             auto& b1 = generic_data[which_data];
             auto& b2 = generic_data[(which_data + 1) % 2];
 
@@ -4960,21 +4985,6 @@ int main()
                     copy.push_back(size_1d);
 
                     clctx.cqueue.exec("copy_buffer", copy, {size_1d}, {128});
-                }
-            };
-
-            auto copy_valid = [&](auto& in, auto& out)
-            {
-                for(int i=0; i < (int)in.size(); i++)
-                {
-                    cl::args copy;
-                    copy.push_back(evolution_positions);
-                    copy.push_back(evolution_positions_count);
-                    copy.push_back(in[i]);
-                    copy.push_back(out[i]);
-                    copy.push_back(clsize);
-
-                    clctx.cqueue.exec("copy_valid", copy, {evolution_positions_count}, {128});
                 }
             };
 
@@ -5046,7 +5056,9 @@ int main()
 
             enforce_constraints(generic_data[(which_data + 1) % 2].buffers);
 
-            #else
+            #endif // RK4
+
+            #ifdef FORWARD_EULER
             step(generic_data[which_data].buffers, generic_data[(which_data + 1) % 2].buffers, timestep);
 
             diff_to_input(generic_data[(which_data + 1) % 2].buffers, timestep);
@@ -5054,6 +5066,25 @@ int main()
             enforce_constraints(generic_data[(which_data + 1) % 2].buffers);
             #endif
 
+            #define BACKWARD_EULER
+            #ifdef BACKWARD_EULER
+            auto& b1 = generic_data[which_data];
+            auto& b2 = generic_data[(which_data + 1) % 2];
+
+            copy_valid(b1.buffers, rk4_scratch.buffers);
+
+            int iterations = 8;
+
+            for(int i=0; i < iterations; i++)
+            {
+                step(rk4_scratch.buffers, b2.buffers, timestep);
+                diff_to_input(b2.buffers, timestep);
+                enforce_constraints(b2.buffers);
+
+                if(i != iterations - 1)
+                    std::swap(b2, rk4_scratch);
+            }
+            #endif
 
             {
                 for(int i=0; i < buffer_set::buffer_count; i++)
