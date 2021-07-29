@@ -4604,13 +4604,15 @@ int main()
 
     int rendering_method = 0;
 
+    bool trapezoidal_init = false;
+
     while(!win.should_close())
     {
         if(time_elapsed_s >= 10)
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.23f);
+                i = std::min(i, 0.2f);
             }
         }
 
@@ -4788,7 +4790,7 @@ int main()
         ///todo: backwards euler test
         float timestep = 0.02;
 
-        timestep = 0.04;
+        //timestep = 0.04;
 
         if(steps < 20)
            timestep = 0.001;
@@ -5069,7 +5071,7 @@ int main()
             enforce_constraints(generic_data[(which_data + 1) % 2].buffers);
             #endif
 
-            #define BACKWARD_EULER
+            //#define BACKWARD_EULER
             #ifdef BACKWARD_EULER
             auto& b1 = generic_data[which_data];
             auto& b2 = generic_data[(which_data + 1) % 2];
@@ -5091,7 +5093,7 @@ int main()
             }
             #endif
 
-            //#define TRAPEZOIDAL
+            #define TRAPEZOIDAL
             #ifdef TRAPEZOIDAL
             auto& b1 = generic_data[which_data];
             auto& b2 = generic_data[(which_data + 1) % 2];
@@ -5099,8 +5101,17 @@ int main()
             auto& f_y1 = rk4_intermediate;
             auto& f_y2 = rk4_scratch;
 
+            //if(!trapezoidal_init)
+
+            //step(b1.buffers, f_y1.buffers, timestep);
+
             step(b1.buffers, f_y1.buffers, timestep);
-            step(b1.buffers, f_y2.buffers, timestep);
+            diff_to_input(f_y1.buffers, timestep);
+            enforce_constraints(f_y1.buffers);
+
+            step(f_y1.buffers, f_y2.buffers, timestep);
+
+            step(b1.buffers, f_y1.buffers, timestep);
 
             int iterations = 4;
 
