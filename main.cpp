@@ -1542,9 +1542,13 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
-    //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 1.1f}, {0, 0, 0.258 * 1.1f}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
+    //std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.9f}, {0, 0, 0.258 * 0.9f}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
+
+    /*std::vector<float> black_hole_m{0.463};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-6.516, 0.f, 0.f})};
+    std::vector<vec3f> black_hole_velocity{{0, 0, 0}};*/
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
 
@@ -4431,8 +4435,8 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.3;
-    float dissipate_high = 0.3;
+    float dissipate_low = 0.1;
+    float dissipate_high = 0.1;
     float dissipate_gauge = 0.1;
 
     /*std::array<float, buffer_count> dissipation_coefficients
@@ -4788,7 +4792,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.02;
+        float timestep = 0.01;
 
         //timestep = 0.04;
 
@@ -5071,12 +5075,12 @@ int main()
             enforce_constraints(generic_data[(which_data + 1) % 2].buffers);
             #endif
 
-            //#define BACKWARD_EULER
+            #define BACKWARD_EULER
             #ifdef BACKWARD_EULER
             auto& b1 = generic_data[which_data];
             auto& b2 = generic_data[(which_data + 1) % 2];
 
-            int iterations = 4;
+            int iterations = 6;
 
             for(int i=0; i < iterations; i++)
             {
@@ -5093,7 +5097,7 @@ int main()
             }
             #endif
 
-            #define TRAPEZOIDAL
+            //#define TRAPEZOIDAL
             #ifdef TRAPEZOIDAL
             auto& b1 = generic_data[which_data];
             auto& b2 = generic_data[(which_data + 1) % 2];
