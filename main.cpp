@@ -5058,8 +5058,6 @@ int main()
             copy_valid(rk4_intermediate.buffers, generic_data[(which_data + 1) % 2].buffers);
             //copy_all(rk4_intermediate.buffers, generic_data[(which_data + 1) % 2].buffers);
 
-            enforce_constraints(generic_data[(which_data + 1) % 2].buffers);
-
             #endif // RK4
 
             //#define FORWARD_EULER
@@ -5067,11 +5065,9 @@ int main()
             step(generic_data[which_data].buffers, generic_data[(which_data + 1) % 2].buffers, timestep);
 
             diff_to_input(generic_data[(which_data + 1) % 2].buffers, timestep);
-
-            enforce_constraints(generic_data[(which_data + 1) % 2].buffers);
             #endif
 
-            //#define BACKWARD_EULER
+            #define BACKWARD_EULER
             #ifdef BACKWARD_EULER
             auto& b1 = generic_data[which_data];
             auto& b2 = generic_data[(which_data + 1) % 2];
@@ -5086,14 +5082,16 @@ int main()
                     step(b1.buffers, b2.buffers, timestep);
 
                 diff_to_input(b2.buffers, timestep);
-                enforce_constraints(b2.buffers);
 
                 if(i != iterations - 1)
+                {
+                    enforce_constraints(b2.buffers);
                     std::swap(b2, rk4_scratch);
+                }
             }
             #endif
 
-            #define TRAPEZOIDAL
+            //#define TRAPEZOIDAL
             #ifdef TRAPEZOIDAL
             auto& b1 = generic_data[which_data];
             auto& b2 = generic_data[(which_data + 1) % 2];
@@ -5132,23 +5130,15 @@ int main()
                 }
 
                 //diff_to_input(f_y2.buffers, timestep);
-                enforce_constraints(f_y2.buffers);
 
                 std::swap(f_y2, b2);
 
                 if(i != iterations - 1)
                 {
+                    enforce_constraints(b2.buffers);
                     step(b2.buffers, f_y2.buffers, timestep);
                 }
             }
-
-            /*int iterations = 4;
-
-            for(int i=0; i < iterations; i++)
-            {
-
-            }*/
-
             #endif // TRAPEZOIDAL
 
             {
@@ -5198,25 +5188,7 @@ int main()
                 clctx.cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
             }
 
-            /*{
-                cl::args cleaner;
-                cleaner.push_back(sponge_positions);
-                cleaner.push_back(sponge_positions_count);
-
-                for(auto& i : generic_data[which_data].buffers)
-                {
-                    cleaner.push_back(i);
-                }
-
-                //cleaner.push_back(bssnok_datas[which_data]);
-                cleaner.push_back(u_args[which_u_args]);
-                cleaner.push_back(scale);
-                cleaner.push_back(clsize);
-                cleaner.push_back(time_elapsed_s);
-                cleaner.push_back(timestep);
-
-                clctx.cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
-            }*/
+            enforce_constraints(generic_data[which_data].buffers);
 
             float r_extract = c_at_max/4;
 
