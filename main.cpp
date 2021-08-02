@@ -1543,7 +1543,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.7f}, {0, 0, 0.258 * 0.7f}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.72f}, {0, 0, 0.258 * 0.72f}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -4871,6 +4871,7 @@ int main()
                     }
                 }
 
+                #ifdef DAMP_DTCAIJ
                 {
                     cl::args momentum_args;
 
@@ -4893,6 +4894,7 @@ int main()
 
                     clctx.cqueue.exec("calculate_momentum_constraint", momentum_args, {evolution_positions_count}, {128});
                 }
+                #endif // DAMP_DTCAIJ
 
                 cl::args a1;
 
