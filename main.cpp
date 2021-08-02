@@ -4616,6 +4616,14 @@ int main()
             }
         }
 
+        /*if(time_elapsed_s >= 20)
+        {
+            for(auto& i : dissipation_coefficients)
+            {
+                i = std::min(i, 0.1f);
+            }
+        }*/
+
         win.poll();
 
         if(!ImGui::GetIO().WantCaptureKeyboard)
