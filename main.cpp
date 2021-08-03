@@ -4796,7 +4796,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.02;
+        float timestep = 0.03;
 
         //timestep = 0.04;
 
@@ -5082,7 +5082,7 @@ int main()
             auto& b1 = generic_data[which_data];
             auto& b2 = generic_data[(which_data + 1) % 2];
 
-            int iterations = 4;
+            int iterations = 3;
 
             for(int i=0; i < iterations; i++)
             {
