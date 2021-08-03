@@ -506,16 +506,9 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    //float TEMPORARIES3;
-
     int index = IDX(ix, iy, iz);
 
-    //float fixed_cY0 = fix_cY0;
-    //float fixed_cY1 = fix_cY1;
-    //float fixed_cY2 = fix_cY2;
-    //float fixed_cY3 = fix_cY3;
-    //float fixed_cY4 = fix_cY4;
-
+    #ifndef NO_CAIJYY
     float fixed_cA0 = fix_cA0;
     float fixed_cA1 = fix_cA1;
     float fixed_cA2 = fix_cA2;
@@ -523,18 +516,17 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
     float fixed_cA4 = fix_cA4;
     float fixed_cA5 = fix_cA5;
 
-    //cY0[index] = fixed_cY0;
-    //cY1[index] = fixed_cY1;
-    //cY2[index] = fixed_cY2;
-    //cY3[index] = fixed_cY3;
-    //cY4[index] = fixed_cY4;
-
     cA0[index] = fixed_cA0;
     cA1[index] = fixed_cA1;
     cA2[index] = fixed_cA2;
     cA3[index] = fixed_cA3;
     cA4[index] = fixed_cA4;
     cA5[index] = fixed_cA5;
+    #else
+    float fixed_cA3 = fix_cA3;
+
+    cA3[index] = fixed_cA3;
+    #endif // NO_CAIJYY
 }
 
 __kernel
