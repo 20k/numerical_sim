@@ -1543,7 +1543,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f}, {0, 0, 0.258 * 0.71f}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.25}, {0, 0, 0.258 * 0.71f * 1.25}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -1758,17 +1758,20 @@ void build_constraints(equation_context& ctx)
     ///https://arxiv.org/pdf/0709.3559.pdf b.49
     fixed_cA = fixed_cA / det_cY_pow;*/
 
-    //tensor<value, 3, 3> fixed_cA = gpu_trace_free(cA, cY, cY.invert());
+    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
+
+    #ifdef NO_CAIJYY
     inverse_metric<value, 3, 3> icY = cY.invert();
-
     tensor<value, 3, 3> raised_cA = raise_second_index(cA, cY, icY);
-
     tensor<value, 3, 3> fixed_cA = cA;
 
     fixed_cA.idx(1, 1) = -(raised_cA.idx(0, 0) + raised_cA.idx(2, 2) + cA.idx(0, 1) * icY.idx(0, 1) + cA.idx(1, 2) * icY.idx(1, 2)) / icY.idx(1, 1);
 
-    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
+    ctx.add("NO_CAIJYY", 1);
+    #else
+    tensor<value, 3, 3> fixed_cA = gpu_trace_free(cA, cY, cY.invert());
+    #endif
 
     for(int i=0; i < 6; i++)
     {
@@ -1778,7 +1781,6 @@ void build_constraints(equation_context& ctx)
         ctx.add("fix_cA" + std::to_string(i), fixed_cA.idx(idx.x(), idx.y()));
     }
 
-    ctx.add("NO_CAIJYY", 1);
 }
 
 void build_intermediate_thin(equation_context& ctx)
@@ -4431,9 +4433,15 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.3;
-    float dissipate_high = 0.3;
-    float dissipate_gauge = 0.1;
+    float dissipate_low = 0.5;
+    float dissipate_high = 0.5;
+    float dissipate_gauge = 0.5;
+
+    float dissipate_caijyy = dissipate_high;
+
+    #ifdef NO_CAIJYY
+    dissipate_caijyy = 0;
+    #endif // NO_CAIJYY
 
     /*std::array<float, buffer_count> dissipation_coefficients
     {
@@ -4449,7 +4457,7 @@ int main()
     std::array<float, buffer_set::buffer_count> dissipation_coefficients
     {
         dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, //cY
-        dissipate_high, dissipate_high, dissipate_high, 0, dissipate_high, dissipate_high, //cA
+        dissipate_high, dissipate_high, dissipate_high, dissipate_caijyy, dissipate_high, dissipate_high, //cA
         dissipate_low, dissipate_low, dissipate_low, //cGi
         dissipate_high, //K
         dissipate_low, //X
@@ -4612,7 +4620,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.2f);
+                //i = std::min(i, 0.2f);
             }
         }
 
