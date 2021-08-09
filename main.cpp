@@ -4812,7 +4812,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.05;
+        float timestep = 0.075;
 
         //timestep = 0.04;
 
