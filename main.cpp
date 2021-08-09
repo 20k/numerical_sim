@@ -5347,10 +5347,6 @@ int main()
 
         last_event = next_event;
 
-        ///todo: get rid of this
-        clctx.cqueue.block();
-        glFinish();
-
         {
             ImDrawList* lst = ImGui::GetBackgroundDrawList();
 
@@ -5372,6 +5368,5 @@ int main()
         }
 
         win.display();
-        glFinish();
     }
 }
