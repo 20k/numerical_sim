@@ -5168,6 +5168,10 @@ int main()
             }
             #endif // TRAPEZOIDAL
 
+            #ifdef DOUBLE_ENFORCEMENT
+            enforce_constraints(generic_data[(which_data + 1) % 2].buffers);
+            #endif // DOUBLE_ENFORCEMENT
+
             {
                 for(int i=0; i < buffer_set::buffer_count; i++)
                 {
