@@ -1481,7 +1481,7 @@ int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_d
 
     float experienced_acceleration_change = current_acceleration_err;
 
-    #define MAX_ACCELERATION_CHANGE 0.0001
+    #define MAX_ACCELERATION_CHANGE 0.000001
 
     float err = MAX_ACCELERATION_CHANGE;
     float i_hate_computers = 256*256;
