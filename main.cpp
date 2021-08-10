@@ -1543,7 +1543,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.863, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.25}, {0, 0, 0.258 * 0.71f * 1.25}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.15}, {0, 0, 0.258 * 0.71f * 1.10}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -1760,7 +1760,7 @@ void build_constraints(equation_context& ctx)
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
-    #define NO_CAIJYY
+    //#define NO_CAIJYY
 
     #ifdef NO_CAIJYY
     inverse_metric<value, 3, 3> icY = cY.invert();
@@ -2624,10 +2624,10 @@ void build_eqs(equation_context& ctx)
 
     ///so -gA * gA * f_a * K with f_a = 8 / (3 * gA * (3 - gA))
     ///-gA * f_a * K with f_a = 8 / (3 * (3 - gA)) = 8/(9 - 3 * gA)
-    /*auto f_a_reduced = 8 / (3 * (3 - gA));
-    value dtgA = -gA * f_a_reduced * K + lie_derivative(ctx, gB, gA);*/
+    auto f_a_reduced = 8 / (3 * (3 - gA));
+    value dtgA = -gA * f_a_reduced * K + lie_derivative(ctx, gB, gA);
 
-    value dtgA = lie_derivative(ctx, gB, gA) - 2 * gA * K;
+    //value dtgA = lie_derivative(ctx, gB, gA) - 2 * gA * K;
 
     #ifndef USE_GBB
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
@@ -2646,7 +2646,7 @@ void build_eqs(equation_context& ctx)
         bjdjbi.idx(i) = v;
     }
 
-    float N = 2;
+    float N = 3;
 
     tensor<value, 3> dtgB = (3.f/4.f) * derived_cGi + bjdjbi - N * gB;
 
@@ -4813,7 +4813,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.075;
+        float timestep = 0.05;
 
         //timestep = 0.04;
 
