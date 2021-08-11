@@ -928,7 +928,7 @@ void build_kreiss_oliger_dissipate_singular(equation_context& ctx)
     ctx.add("KREISS_DISSIPATE_SINGULAR", coeff * kreiss_oliger_dissipate(ctx, buf));
 }
 
-template<int order = 1>
+template<int order = 2>
 value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true, bool linear = false)
 {
     differentiation_context dctx(ctx, in, idx, {"0", "0", "0"}, true, linear);
@@ -1543,7 +1543,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.863, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.15}, {0, 0, 0.258 * 0.71f * 1.10}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.65}, {0, 0, 0.258 * 0.71f * 1.05}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -4434,9 +4434,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.5;
-    float dissipate_high = 0.5;
-    float dissipate_gauge = 0.5;
+    float dissipate_low = 0.45;
+    float dissipate_high = 0.45;
+    float dissipate_gauge = 0.45;
 
     float dissipate_caijyy = dissipate_high;
 
@@ -4621,7 +4621,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                //i = std::min(i, 0.2f);
+                i = std::min(i, 0.3f);
             }
         }
 
