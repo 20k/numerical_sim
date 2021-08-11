@@ -58,7 +58,7 @@ https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan20
 https://arxiv.org/pdf/2008.12931.pdf - this contains a good set of equations to try for a more stable bssn
 https://arxiv.org/pdf/gr-qc/0004050.pdf - ISCO explanation
 https://core.ac.uk/download/pdf/144448463.pdf - 7.9 states you can split up trace free variables
-
+w
 https://github.com/GRChombo/GRChombo useful info
 https://arxiv.org/pdf/gr-qc/0505055.pdf - explicit upwind stencils
 https://arxiv.org/pdf/1205.5111v1.pdf - paper on numerical stability
@@ -813,6 +813,8 @@ struct standard_arguments
     {
         gA.make_value(bidx("gA", interpolate));
 
+        gA = max(gA, 0.0001f);
+
         gB.idx(0).make_value(bidx("gB0", interpolate));
         gB.idx(1).make_value(bidx("gB1", interpolate));
         gB.idx(2).make_value(bidx("gB2", interpolate));
@@ -854,6 +856,8 @@ struct standard_arguments
 
         X.make_value(bidx("X", interpolate));
         K.make_value(bidx("K", interpolate));
+
+        X = max(X, 0.0001f);
 
         cGi.idx(0).make_value(bidx("cGi0", interpolate));
         cGi.idx(1).make_value(bidx("cGi1", interpolate));
@@ -928,7 +932,7 @@ void build_kreiss_oliger_dissipate_singular(equation_context& ctx)
     ctx.add("KREISS_DISSIPATE_SINGULAR", coeff * kreiss_oliger_dissipate(ctx, buf));
 }
 
-template<int order = 1>
+template<int order = 2>
 value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true, bool linear = false)
 {
     differentiation_context dctx(ctx, in, idx, {"0", "0", "0"}, true, linear);
@@ -1543,7 +1547,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.25}, {0, 0, 0.258 * 0.71f * 1.25}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.00}, {0, 0, 0.258 * 0.71f * 1.00}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -1760,6 +1764,7 @@ void build_constraints(equation_context& ctx)
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
+    //#define NO_CAIJYY
 
     #ifdef NO_CAIJYY
     inverse_metric<value, 3, 3> icY = cY.invert();
@@ -2623,10 +2628,10 @@ void build_eqs(equation_context& ctx)
 
     ///so -gA * gA * f_a * K with f_a = 8 / (3 * gA * (3 - gA))
     ///-gA * f_a * K with f_a = 8 / (3 * (3 - gA)) = 8/(9 - 3 * gA)
-    /*auto f_a_reduced = 8 / (3 * (3 - gA));
-    value dtgA = -gA * f_a_reduced * K + lie_derivative(ctx, gB, gA);*/
+    auto f_a_reduced = 8 / (3 * (3 - gA));
+    value dtgA = -gA * f_a_reduced * K + lie_derivative(ctx, gB, gA);
 
-    value dtgA = lie_derivative(ctx, gB, gA) - 2 * gA * K;
+    //value dtgA = lie_derivative(ctx, gB, gA) - 2 * gA * K;
 
     #ifndef USE_GBB
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
@@ -2645,7 +2650,7 @@ void build_eqs(equation_context& ctx)
         bjdjbi.idx(i) = v;
     }
 
-    float N = 2;
+    float N = 3;
 
     tensor<value, 3> dtgB = (3.f/4.f) * derived_cGi + bjdjbi - N * gB;
 
@@ -4433,9 +4438,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.5;
-    float dissipate_high = 0.5;
-    float dissipate_gauge = 0.5;
+    float dissipate_low = 0.6;
+    float dissipate_high = 0.6;
+    float dissipate_gauge = 0.6;
 
     float dissipate_caijyy = dissipate_high;
 
@@ -4620,7 +4625,8 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                //i = std::min(i, 0.2f);
+                i = std::min(i, 0.4f);
+                //i = std::min(i, 0.3f);
             }
         }
 
@@ -4812,7 +4818,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.075;
+        float timestep = 0.05;
 
         //timestep = 0.04;
 
@@ -5166,6 +5172,10 @@ int main()
                 }
             }
             #endif // TRAPEZOIDAL
+
+            #ifdef DOUBLE_ENFORCEMENT
+            enforce_constraints(generic_data[(which_data + 1) % 2].buffers);
+            #endif // DOUBLE_ENFORCEMENT
 
             {
                 for(int i=0; i < buffer_set::buffer_count; i++)
