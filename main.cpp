@@ -928,7 +928,7 @@ void build_kreiss_oliger_dissipate_singular(equation_context& ctx)
     ctx.add("KREISS_DISSIPATE_SINGULAR", coeff * kreiss_oliger_dissipate(ctx, buf));
 }
 
-template<int order = 2>
+template<int order = 1>
 value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true, bool linear = false)
 {
     differentiation_context dctx(ctx, in, idx, {"0", "0", "0"}, true, linear);
@@ -4434,9 +4434,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.45;
-    float dissipate_high = 0.45;
-    float dissipate_gauge = 0.45;
+    float dissipate_low = 0.5;
+    float dissipate_high = 0.5;
+    float dissipate_gauge = 0.5;
 
     float dissipate_caijyy = dissipate_high;
 
