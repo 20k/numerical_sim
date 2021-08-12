@@ -1547,7 +1547,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.25}, {0, 0, 0.258 * 0.71f * 1.25}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.4}, {0, 0, 0.258 * 0.71f * 1.4}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -2633,6 +2633,7 @@ void build_eqs(equation_context& ctx)
     //auto f_a_reduced = 8 / (3 * (3 - gA));
     //value dtgA = -gA * f_a_reduced * K + lie_derivative(ctx, gB, gA);
 
+    ///the gauge condition is not the issue
     value dtgA = lie_derivative(ctx, gB, gA) - 2 * gA * K;
 
     #ifndef USE_GBB
