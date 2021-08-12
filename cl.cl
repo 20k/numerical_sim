@@ -503,6 +503,8 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
 
+    float TEMPORARIES3;
+
     #ifndef NO_CAIJYY
     float fixed_cY0 = fix_cY0;
     float fixed_cY1 = fix_cY1;
