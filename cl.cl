@@ -505,12 +505,26 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
 
     #ifndef NO_CAIJYY
+    float fixed_cY0 = fix_cY0;
+    float fixed_cY1 = fix_cY1;
+    float fixed_cY2 = fix_cY2;
+    float fixed_cY3 = fix_cY3;
+    float fixed_cY4 = fix_cY4;
+    float fixed_cY5 = fix_cY5;
+
     float fixed_cA0 = fix_cA0;
     float fixed_cA1 = fix_cA1;
     float fixed_cA2 = fix_cA2;
     float fixed_cA3 = fix_cA3;
     float fixed_cA4 = fix_cA4;
     float fixed_cA5 = fix_cA5;
+
+    cY0[index] = fixed_cY0;
+    cY1[index] = fixed_cY1;
+    cY2[index] = fixed_cY2;
+    cY3[index] = fixed_cY3;
+    cY4[index] = fixed_cY4;
+    cY5[index] = fixed_cY5;
 
     cA0[index] = fixed_cA0;
     cA1[index] = fixed_cA1;
@@ -554,7 +568,7 @@ void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
     buffer_out_3[IDX(ix,iy,iz)] = init_buffer_intermediate2;
 }
 
-__kernel
+/*__kernel
 void calculate_intermediate_data_thin_cY5(__global ushort4* points, int point_count,
                                           __global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
                                           __global DERIV_PRECISION* buffer_out_1, __global DERIV_PRECISION* buffer_out_2, __global DERIV_PRECISION* buffer_out_3,
@@ -586,7 +600,7 @@ void calculate_intermediate_data_thin_cY5(__global ushort4* points, int point_co
     buffer_out_1[IDX(ix,iy,iz)] = i1;
     buffer_out_2[IDX(ix,iy,iz)] = i2;
     buffer_out_3[IDX(ix,iy,iz)] = i3;
-}
+}*/
 
 __kernel
 void calculate_momentum_constraint(__global ushort4* points, int point_count,

@@ -326,6 +326,7 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
         "cY2",
         "cY3",
         "cY4",
+        "cY5",
         "cA0",
         "cA1",
         "cA2",
@@ -836,7 +837,7 @@ struct standard_arguments
             }
         }
 
-        cY.idx(2, 2) = (1 + cY.idx(1, 1) * cY.idx(0, 2) * cY.idx(0, 2) - 2 * cY.idx(0, 1) * cY.idx(1, 2) * cY.idx(0, 2) + cY.idx(0, 0) * cY.idx(1, 2) * cY.idx(1, 2)) / (cY.idx(0, 0) * cY.idx(1, 1) - cY.idx(0, 1) * cY.idx(0, 1));
+        //cY.idx(2, 2) = (1 + cY.idx(1, 1) * cY.idx(0, 2) * cY.idx(0, 2) - 2 * cY.idx(0, 1) * cY.idx(1, 2) * cY.idx(0, 2) + cY.idx(0, 0) * cY.idx(1, 2) * cY.idx(1, 2)) / (cY.idx(0, 0) * cY.idx(1, 1) - cY.idx(0, 1) * cY.idx(0, 1));
 
         for(int i=0; i < 3; i++)
         {
@@ -1743,12 +1744,14 @@ void build_constraints(equation_context& ctx)
 {
     standard_arguments args(false);
 
-    unit_metric<value, 3, 3> cY = args.cY;
+    metric<value, 3, 3> cY = args.cY;
     tensor<value, 3, 3> cA = args.cA;
 
-    /*value det_cY_pow = pow(cY.det(), 1.f/3.f);
+    value det_cY_pow = pow(cY.det(), 1.f/3.f);
 
-    det_cY_pow = 1;
+    metric<value, 3, 3> fixed_cY = cY / det_cY_pow;
+
+    /*det_cY_pow = 1;
     ctx.pin(det_cY_pow);
 
     /// / det_cY_pow
@@ -1775,14 +1778,14 @@ void build_constraints(equation_context& ctx)
 
     ctx.add("NO_CAIJYY", 1);
     #else
-    tensor<value, 3, 3> fixed_cA = gpu_trace_free(cA, cY, cY.invert());
+    tensor<value, 3, 3> fixed_cA = gpu_trace_free(cA, fixed_cY, fixed_cY.invert());
     #endif
 
     for(int i=0; i < 6; i++)
     {
         vec2i idx = linear_indices[i];
 
-        //ctx.add("fix_cY" + std::to_string(i), fixed_cY.idx(idx.x(), idx.y()));
+        ctx.add("fix_cY" + std::to_string(i), fixed_cY.idx(idx.x(), idx.y()));
         ctx.add("fix_cA" + std::to_string(i), fixed_cA.idx(idx.x(), idx.y()));
     }
 
@@ -4926,7 +4929,7 @@ int main()
                 {
                     auto differentiate = [&](const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
                     {
-                        if(name != "cY5")
+                        //if(name != "cY5")
                         {
                             int idx = buffer_to_index(name);
 
@@ -4942,7 +4945,7 @@ int main()
 
                             clctx.cqueue.exec("calculate_intermediate_data_thin", thin, {evolution_positions_count}, {128});
                         }
-                        else
+                        /*else
                         {
                             int idx0 = buffer_to_index("cY0");
                             int idx1 = buffer_to_index("cY1");
@@ -4966,7 +4969,7 @@ int main()
                             thin.push_back(clsize);
 
                             clctx.cqueue.exec("calculate_intermediate_data_thin_cY5", thin, {evolution_positions_count}, {128});
-                        }
+                        }*/
                     };
 
                     std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
