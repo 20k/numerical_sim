@@ -443,6 +443,7 @@ void calculate_initial_conditions(STANDARD_ARGS,
     cY2[index] = init_cY2;
     cY3[index] = init_cY3;
     cY4[index] = init_cY4;
+    cY5[index] = init_cY5;
 
     cA0[index] = init_cA0;
     cA1[index] = init_cA1;
@@ -766,6 +767,7 @@ void clean_data(__global ushort4* points, int point_count,
     float initial_cY2 = init_cY2;
     float initial_cY3 = init_cY3;
     float initial_cY4 = init_cY4;
+    float initial_cY5 = init_cY5;
 
     float initial_cA0 = init_cA0;
     float initial_cA1 = init_cA1;
@@ -814,6 +816,7 @@ void clean_data(__global ushort4* points, int point_count,
     cY2[index] += -y_r * (cY2[index] - initial_cY2) * timestep;
     cY3[index] += -y_r * (cY3[index] - initial_cY3) * timestep;
     cY4[index] += -y_r * (cY4[index] - initial_cY4) * timestep;
+    cY5[index] += -y_r * (cY5[index] - initial_cY5) * timestep;
 
     cA0[index] += -y_r * (cA0[index] - initial_cA0) * timestep;
     cA1[index] += -y_r * (cA1[index] - initial_cA1) * timestep;
@@ -986,6 +989,7 @@ void evolve(__global ushort4* points, int point_count,
     float I_cY2 = cY2[index];
     float I_cY3 = cY3[index];
     float I_cY4 = cY4[index];
+    float I_cY5 = cY5[index];
 
     #define ONLY_DIFF
     #ifndef ONLY_DIFF
@@ -1027,6 +1031,7 @@ void evolve(__global ushort4* points, int point_count,
     ocY2[index] = (f_dtcYij2);
     ocY3[index] = (f_dtcYij3);
     ocY4[index] = (f_dtcYij4);
+    ocY5[index] = (f_dtcYij5);
 
     ocA0[index] = (f_dtcAij0);
     ocA1[index] = (f_dtcAij1);
