@@ -301,6 +301,16 @@ struct equation_context
     }
 };
 
+inline
+constexpr auto get_buffers()
+{
+    return std::array{"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
+                      "cA0", "cA1", "cA2", "cA3", "cA4", "cA5",
+                      "cGi0", "cGi1", "cGi2",
+                      "X", "K",
+                      "gA", "gB0", "gB1", "gB2"};
+}
+
 //#define SYMMETRY_BOUNDARY
 #define BORDER_WIDTH 4
 
@@ -319,29 +329,10 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
         }
     }
 
-    std::array variables
-    {
-        "cY0",
-        "cY1",
-        "cY2",
-        "cY3",
-        "cY4",
-        "cA0",
-        "cA1",
-        "cA2",
-        "cA3",
-        "cA4",
-        "cA5",
-        "cGi0",
-        "cGi1",
-        "cGi2",
-        "X",
-        "K",
-        "gA",
-        "gB0",
-        "gB1",
-        "gB2",
+    auto variable_buffers = get_buffers();
 
+    std::vector variables
+    {
         "dcYij0",
         "dcYij1",
         "dcYij2",
@@ -383,6 +374,11 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
         "momentum1",
         "momentum2",
     };
+
+    for(auto& i : variable_buffers)
+    {
+        variables.push_back(i);
+    }
 
     bool uses_extension = false;
 
@@ -836,7 +832,7 @@ struct standard_arguments
             }
         }
 
-        cY.idx(2, 2) = (1 + cY.idx(1, 1) * cY.idx(0, 2) * cY.idx(0, 2) - 2 * cY.idx(0, 1) * cY.idx(1, 2) * cY.idx(0, 2) + cY.idx(0, 0) * cY.idx(1, 2) * cY.idx(1, 2)) / (cY.idx(0, 0) * cY.idx(1, 1) - cY.idx(0, 1) * cY.idx(0, 1));
+        //cY.idx(2, 2) = (1 + cY.idx(1, 1) * cY.idx(0, 2) * cY.idx(0, 2) - 2 * cY.idx(0, 1) * cY.idx(1, 2) * cY.idx(0, 2) + cY.idx(0, 0) * cY.idx(1, 2) * cY.idx(1, 2)) / (cY.idx(0, 0) * cY.idx(1, 1) - cY.idx(0, 1) * cY.idx(0, 1));
 
         for(int i=0; i < 3; i++)
         {
@@ -1743,8 +1739,22 @@ void build_constraints(equation_context& ctx)
 {
     standard_arguments args(false);
 
-    unit_metric<value, 3, 3> cY = args.cY;
+    tensor<value, 3, 3> cY = args.cY.to_tensor();
     tensor<value, 3, 3> cA = args.cA;
+
+    value det_cY_pow = pow(cY.det(), 1.f/3.f);
+
+    tensor<value, 3, 3> fixed_cY = cY / det_cY_pow;
+
+    metric<value, 3, 3> fixed_cY_metric;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            fixed_cY_metric.idx(i, j) = fixed_cY.idx(i, j);
+        }
+    }
 
     /*value det_cY_pow = pow(cY.det(), 1.f/3.f);
 
@@ -1775,14 +1785,14 @@ void build_constraints(equation_context& ctx)
 
     ctx.add("NO_CAIJYY", 1);
     #else
-    tensor<value, 3, 3> fixed_cA = gpu_trace_free(cA, cY, cY.invert());
+    tensor<value, 3, 3> fixed_cA = gpu_trace_free(cA, fixed_cY_metric, fixed_cY_metric.invert());
     #endif
 
     for(int i=0; i < 6; i++)
     {
         vec2i idx = linear_indices[i];
 
-        //ctx.add("fix_cY" + std::to_string(i), fixed_cY.idx(idx.x(), idx.y()));
+        ctx.add("fix_cY" + std::to_string(i), fixed_cY.idx(idx.x(), idx.y()));
         ctx.add("fix_cA" + std::to_string(i), fixed_cA.idx(idx.x(), idx.y()));
     }
 
@@ -1803,7 +1813,7 @@ void build_intermediate_thin(equation_context& ctx)
     ctx.add("init_buffer_intermediate2", v3);
 }
 
-void build_intermediate_thin_cY5(equation_context& ctx)
+/*void build_intermediate_thin_cY5(equation_context& ctx)
 {
     standard_arguments args(false);
 
@@ -1811,7 +1821,7 @@ void build_intermediate_thin_cY5(equation_context& ctx)
     {
         ctx.add("init_cY5_intermediate" + std::to_string(k), hacky_differentiate(ctx, args.cY.idx(2, 2), k, false));
     }
-}
+}*/
 
 tensor<value, 3, 3, 3> gpu_covariant_derivative_low_tensor(equation_context& ctx, const tensor<value, 3, 3>& mT, const metric<value, 3, 3>& met, const inverse_metric<value, 3, 3>& inverse)
 {
@@ -4317,11 +4327,7 @@ std::tuple<cl::buffer, int, cl::buffer, int> generate_evolution_points(cl::conte
 
 struct buffer_set
 {
-    #ifndef USE_GBB
-    static constexpr int buffer_count = 11+9;
-    #else
-    static constexpr int buffer_count = 12 + 9 + 3;
-    #endif
+    static constexpr int buffer_count = get_buffers().size();
 
     std::vector<cl::buffer> buffers;
 
@@ -4418,8 +4424,8 @@ int main()
     equation_context ctx11;
     build_intermediate_thin(ctx11);
 
-    equation_context ctx12;
-    build_intermediate_thin_cY5(ctx12);
+    //equation_context ctx12;
+    //build_intermediate_thin_cY5(ctx12);
 
     equation_context ctx13;
     build_momentum_constraint(ctx13);
@@ -4453,7 +4459,7 @@ int main()
     setup_initial.build(argument_string, 8);
     ctx10.build(argument_string, 9);
     ctx11.build(argument_string, 10);
-    ctx12.build(argument_string, 11);
+    //ctx12.build(argument_string, 11);
     ctx13.build(argument_string, 12);
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
@@ -4508,13 +4514,7 @@ int main()
     buffer_set rk4_scratch(clctx.ctx, size);
     //buffer_set rk4_xn(clctx.ctx, size);
 
-    std::array<std::string, buffer_set::buffer_count> buffer_names
-    {
-        "cY0", "cY1", "cY2", "cY3", "cY4",
-        "cA0", "cA1", "cA2", "cA3", "cA4", "cA5",
-        "cGi0", "cGi1", "cGi2",
-        "K", "X", "gA", "gB0", "gB1", "gB2"
-    };
+    auto buffer_names = get_buffers();
 
     auto buffer_to_index = [&](const std::string& name)
     {
@@ -4527,9 +4527,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.6;
-    float dissipate_high = 0.6;
-    float dissipate_gauge = 0.6;
+    float dissipate_low = 0.3;
+    float dissipate_high = 0.3;
+    float dissipate_gauge = 0.3;
 
     float dissipate_caijyy = dissipate_high;
 
@@ -4550,7 +4550,7 @@ int main()
 
     std::array<float, buffer_set::buffer_count> dissipation_coefficients
     {
-        dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, //cY
+        dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, //cY
         dissipate_high, dissipate_high, dissipate_high, dissipate_caijyy, dissipate_high, dissipate_high, //cA
         dissipate_low, dissipate_low, dissipate_low, //cGi
         dissipate_high, //K
@@ -4926,47 +4926,19 @@ int main()
                 {
                     auto differentiate = [&](const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
                     {
-                        if(name != "cY5")
-                        {
-                            int idx = buffer_to_index(name);
+                        int idx = buffer_to_index(name);
 
-                            cl::args thin;
-                            thin.push_back(evolution_positions);
-                            thin.push_back(evolution_positions_count);
-                            thin.push_back(generic_in[idx]);
-                            thin.push_back(out1);
-                            thin.push_back(out2);
-                            thin.push_back(out3);
-                            thin.push_back(scale);
-                            thin.push_back(clsize);
+                        cl::args thin;
+                        thin.push_back(evolution_positions);
+                        thin.push_back(evolution_positions_count);
+                        thin.push_back(generic_in[idx]);
+                        thin.push_back(out1);
+                        thin.push_back(out2);
+                        thin.push_back(out3);
+                        thin.push_back(scale);
+                        thin.push_back(clsize);
 
-                            clctx.cqueue.exec("calculate_intermediate_data_thin", thin, {evolution_positions_count}, {128});
-                        }
-                        else
-                        {
-                            int idx0 = buffer_to_index("cY0");
-                            int idx1 = buffer_to_index("cY1");
-                            int idx2 = buffer_to_index("cY2");
-                            int idx3 = buffer_to_index("cY3");
-                            int idx4 = buffer_to_index("cY4");
-
-                            cl::args thin;
-                            thin.push_back(evolution_positions);
-                            thin.push_back(evolution_positions_count);
-                            thin.push_back(generic_in[idx0]);
-                            thin.push_back(generic_in[idx1]);
-                            thin.push_back(generic_in[idx2]);
-                            thin.push_back(generic_in[idx3]);
-                            thin.push_back(generic_in[idx4]);
-
-                            thin.push_back(out1);
-                            thin.push_back(out2);
-                            thin.push_back(out3);
-                            thin.push_back(scale);
-                            thin.push_back(clsize);
-
-                            clctx.cqueue.exec("calculate_intermediate_data_thin_cY5", thin, {evolution_positions_count}, {128});
-                        }
+                        clctx.cqueue.exec("calculate_intermediate_data_thin", thin, {evolution_positions_count}, {128});
                     };
 
                     std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
@@ -5262,6 +5234,8 @@ int main()
             }
             #endif // TRAPEZOIDAL
 
+            ///not double constraint enforcement
+            //#define DOUBLE_ENFORCEMENT
             #ifdef DOUBLE_ENFORCEMENT
             enforce_constraints(generic_data[(which_data + 1) % 2].buffers);
             #endif // DOUBLE_ENFORCEMENT
