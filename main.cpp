@@ -4318,7 +4318,7 @@ std::tuple<cl::buffer, int, cl::buffer, int> generate_evolution_points(cl::conte
 struct buffer_set
 {
     #ifndef USE_GBB
-    static constexpr int buffer_count = 11+9;
+    static constexpr int buffer_count = 12+9;
     #else
     static constexpr int buffer_count = 12 + 9 + 3;
     #endif
@@ -4510,7 +4510,7 @@ int main()
 
     std::array<std::string, buffer_set::buffer_count> buffer_names
     {
-        "cY0", "cY1", "cY2", "cY3", "cY4",
+        "cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
         "cA0", "cA1", "cA2", "cA3", "cA4", "cA5",
         "cGi0", "cGi1", "cGi2",
         "K", "X", "gA", "gB0", "gB1", "gB2"
