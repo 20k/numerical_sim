@@ -631,6 +631,7 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
 {
     float edge_half = scale * (dim.x/2);
 
+    ///this isn't the issue
     //float sponge_r0 = scale * ((dim.x/2) - 48);
     float sponge_r0 = scale * ((dim.x/2) - 32);
     //float sponge_r0 = scale * ((dim.x/2) - 32);
