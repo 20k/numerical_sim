@@ -811,6 +811,7 @@ void clean_data(__global ushort4* points, int point_count,
     initial_cY2 = 0;
     initial_cY3 = 1;
     initial_cY4 = 0;
+    initial_cY5 = 1;
 
     initial_cA0 = 0;
     initial_cA1 = 0;
