@@ -58,7 +58,7 @@ https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan20
 https://arxiv.org/pdf/2008.12931.pdf - this contains a good set of equations to try for a more stable bssn
 https://arxiv.org/pdf/gr-qc/0004050.pdf - ISCO explanation
 https://core.ac.uk/download/pdf/144448463.pdf - 7.9 states you can split up trace free variables
-w
+
 https://github.com/GRChombo/GRChombo useful info
 https://arxiv.org/pdf/gr-qc/0505055.pdf - explicit upwind stencils
 https://arxiv.org/pdf/1205.5111v1.pdf - paper on numerical stability
@@ -932,7 +932,7 @@ void build_kreiss_oliger_dissipate_singular(equation_context& ctx)
     ctx.add("KREISS_DISSIPATE_SINGULAR", coeff * kreiss_oliger_dissipate(ctx, buf));
 }
 
-template<int order = 2>
+template<int order = 1>
 value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true, bool linear = false)
 {
     differentiation_context dctx(ctx, in, idx, {"0", "0", "0"}, true, linear);
@@ -1547,7 +1547,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.00}, {0, 0, 0.258 * 0.71f * 1.00}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 0.85}, {0, 0, 0.258 * 0.71f * 0.85}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -4625,7 +4625,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.4f);
+                i = std::min(i, 0.5f);
                 //i = std::min(i, 0.3f);
             }
         }
