@@ -2186,6 +2186,13 @@ void build_eqs(equation_context& ctx)
     derived_cGi = cGi;
     #endif
 
+    /*for(int i=0; i < 3; i++)
+    {
+        derived_cGi.idx(i) = dual_types::dual_if(sign(derived_cGi.idx(i)) == sign(cGi.idx(i)),
+                                     [&](){return derived_cGi.idx(i);},
+                                     [&](){return cGi.idx(i);});
+    }*/
+
     ctx.add("derived0", derived_cGi.idx(0));
     ctx.add("derived1", derived_cGi.idx(1));
     ctx.add("derived2", derived_cGi.idx(2));
