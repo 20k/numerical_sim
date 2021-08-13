@@ -2163,7 +2163,7 @@ void build_eqs(equation_context& ctx)
         derived_cGi.idx(i) = sum;
     }*/
 
-    #define USE_DERIVED_CGI
+    //#define USE_DERIVED_CGI
     #ifdef USE_DERIVED_CGI
     for(int i=0; i < 3; i++)
     {
