@@ -2282,24 +2282,7 @@ void build_eqs(equation_context& ctx)
 
     ///a / X
     ///not the issue with rebound
-    value gA_X = 0;
-
-    {
-        float min_X = 0.001;
-
-        gA_X = dual_if(X <= min_X,
-        [&]()
-        {
-            ///linearly interpolate to 0
-            value value_at_min = gA / min_X;
-
-            return value_at_min / min_X;
-        },
-        [&]()
-        {
-            return gA / X;
-        });
-    }
+    value gA_X = gA / X;
 
     /*tensor<value, 3, 3> xgADiDjphi;
 
