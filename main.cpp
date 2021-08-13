@@ -304,6 +304,25 @@ struct equation_context
 //#define SYMMETRY_BOUNDARY
 #define BORDER_WIDTH 4
 
+std::string strip_variable(std::string in)
+{
+    std::string valid;
+
+    for(auto i : in)
+    {
+        if(std::isalnum(i))
+        {
+            valid.push_back(i);
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return valid;
+}
+
 inline
 std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
 {
@@ -442,24 +461,23 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
     }
     else
     {
+        std::string stripped = strip_variable(str);
+
+        buffer = stripped;
+        val = stripped;
+
         bool any_found = false;
 
         for(auto& i : variables)
         {
-            if(str.starts_with(i))
+            if(i == stripped)
             {
-                buffer = i;
-                val = buffer;
                 any_found = true;
+                break;
             }
         }
 
-        if(!any_found)
-        {
-            std::cout << "input " << str << std::endl;
-
-            assert(false);
-        }
+        assert(any_found);
     }
 
     return {buffer, val, uses_extension};
@@ -1547,7 +1565,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.0}, {0, 0, 0.258 * 0.71f * 1.0}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.3}, {0, 0, 0.258 * 0.71f * 1.3}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -1662,8 +1680,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         }
     }
 
-    //value gA = 1;
-    value gA = 1/(pow(bl_conformal + u, 2));
+    value gA = 1;
+    //value gA = 1/(pow(bl_conformal + u, 2));
     value gB0 = 0;
     value gB1 = 0;
     value gB2 = 0;
@@ -2163,7 +2181,7 @@ void build_eqs(equation_context& ctx)
         derived_cGi.idx(i) = sum;
     }*/
 
-    //#define USE_DERIVED_CGI
+    #define USE_DERIVED_CGI
     #ifdef USE_DERIVED_CGI
     for(int i=0; i < 3; i++)
     {
@@ -2488,7 +2506,7 @@ void build_eqs(equation_context& ctx)
     tensor<value, 3> dtcGi;
 
     ///christoffel symbol calculation not the issue
-    //#define SLIDES_CHRISTOFFEL
+    #define SLIDES_CHRISTOFFEL
     #ifdef SLIDES_CHRISTOFFEL
     for(int i=0; i < 3; i++)
     {
@@ -2563,7 +2581,7 @@ void build_eqs(equation_context& ctx)
 
         #define DAMP
         #ifdef DAMP
-        float sigma = 0.4;
+        float sigma = 0.25;
         p9 = -sigma * bigGi.idx(i) * dmbm;
         #endif // DAMP
 
@@ -2576,7 +2594,7 @@ void build_eqs(equation_context& ctx)
 
     ///https://arxiv.org/pdf/1205.5111v1.pdf 49
     ///made it to 58 with this
-    #define CHRISTOFFEL_49
+    //#define CHRISTOFFEL_49
     #ifdef CHRISTOFFEL_49
     tensor<value, 3, 3> littlekij = unpinned_icY.to_tensor() * K;
 
@@ -4511,9 +4529,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.5;
-    float dissipate_high = 0.5;
-    float dissipate_gauge = 0.5;
+    float dissipate_low = 0.6;
+    float dissipate_high = 0.6;
+    float dissipate_gauge = 0.6;
 
     float dissipate_caijyy = dissipate_high;
 
@@ -4698,7 +4716,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.3f);
+                i = std::min(i, 0.5f);
                 //i = std::min(i, 0.3f);
             }
         }
@@ -5177,7 +5195,7 @@ int main()
             auto& b1 = generic_data[which_data];
             auto& b2 = generic_data[(which_data + 1) % 2];
 
-            int iterations = 3;
+            int iterations = 2;
 
             for(int i=0; i < iterations; i++)
             {
