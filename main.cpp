@@ -950,7 +950,7 @@ void build_kreiss_oliger_dissipate_singular(equation_context& ctx)
     ctx.add("KREISS_DISSIPATE_SINGULAR", coeff * kreiss_oliger_dissipate(ctx, buf));
 }
 
-template<int order = 1>
+template<int order = 2>
 value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true, bool linear = false)
 {
     differentiation_context dctx(ctx, in, idx, {"0", "0", "0"}, true, linear);
@@ -1565,7 +1565,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.3}, {0, 0, 0.258 * 0.71f * 1.3}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 0.90}, {0, 0, 0.258 * 0.71f * 0.90}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -2506,7 +2506,7 @@ void build_eqs(equation_context& ctx)
     tensor<value, 3> dtcGi;
 
     ///christoffel symbol calculation not the issue
-    #define SLIDES_CHRISTOFFEL
+    //#define SLIDES_CHRISTOFFEL
     #ifdef SLIDES_CHRISTOFFEL
     for(int i=0; i < 3; i++)
     {
@@ -2594,7 +2594,7 @@ void build_eqs(equation_context& ctx)
 
     ///https://arxiv.org/pdf/1205.5111v1.pdf 49
     ///made it to 58 with this
-    //#define CHRISTOFFEL_49
+    #define CHRISTOFFEL_49
     #ifdef CHRISTOFFEL_49
     tensor<value, 3, 3> littlekij = unpinned_icY.to_tensor() * K;
 
@@ -4529,9 +4529,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.6;
-    float dissipate_high = 0.6;
-    float dissipate_gauge = 0.6;
+    float dissipate_low = 0.4;
+    float dissipate_high = 0.4;
+    float dissipate_gauge = 0.4;
 
     float dissipate_caijyy = dissipate_high;
 
@@ -4716,7 +4716,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.5f);
+                i = std::min(i, 0.2f);
                 //i = std::min(i, 0.3f);
             }
         }
