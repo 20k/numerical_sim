@@ -4438,9 +4438,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.6;
-    float dissipate_high = 0.6;
-    float dissipate_gauge = 0.6;
+    float dissipate_low = 0.4;
+    float dissipate_high = 0.4;
+    float dissipate_gauge = 0.4;
 
     float dissipate_caijyy = dissipate_high;
 
@@ -4625,7 +4625,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.5f);
+                i = std::min(i, 0.3f);
                 //i = std::min(i, 0.3f);
             }
         }
