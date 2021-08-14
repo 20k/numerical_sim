@@ -974,9 +974,12 @@ void evolve(__global ushort4* points, int point_count,
     float f_dtgBB2 = dtgBB2;
     #endif // USE_GBB
 
+    float debug0 = debug_p0;
     float debug1 = debug_p1;
     float debug2 = debug_p2;
     float debug3 = debug_p3;
+    float debug4 = debug_p4;
+    float debug5 = debug_p5;
 
     float derivedc0 = derived0;
     float derivedc1 = derived1;
@@ -1073,7 +1076,9 @@ void evolve(__global ushort4* points, int point_count,
     NANCHECK(ocA0);
     NANCHECK(ocA1);
     NANCHECK(ocA2);
-    //NANCHECK(ocA3);
+    #ifndef NO_CAIJYY
+    NANCHECK(ocA3);
+    #endif // NO_CAIJYY
     NANCHECK(ocA4);
     NANCHECK(ocA5);
 
@@ -1086,13 +1091,13 @@ void evolve(__global ushort4* points, int point_count,
     NANCHECK(ogA);
     NANCHECK(ogB0);
     NANCHECK(ogB1);
-    NANCHECK(ogB2);*/
+    NANCHECK(ogB2);
 
     #ifdef USE_GBB
     NANCHECK(gBB0);
     NANCHECK(gBB1);
     NANCHECK(gBB2);
-    #endif // USE_GBB
+    #endif // USE_GBB*/
 
     #if 0
     //if(debug)
@@ -1115,7 +1120,8 @@ void evolve(__global ushort4* points, int point_count,
     //if(ix == 139 && iy == 151 && iz == 150)
     //145.500000 150.500000 150.500000
     //if(ix == 146 && iy == 151 && iz == 151)
-    if(ix == 134 && iy == 150 && iz == 150)
+    //if(ix == 134 && iy == 150 && iz == 150)
+    if(ix == 133 && iy == 151 && iz == 148)
     {
         //float scalar = scalar_curvature;
 
@@ -1125,7 +1131,9 @@ void evolve(__global ushort4* points, int point_count,
         printf("Aij1 %f\n", cA1[index]);
         printf("Aij2 %f\n", cA2[index]);
         printf("Aij3 %f\n", cA3[index]);
+        #ifndef NO_CAIJYY
         printf("Aij4 %f\n", cA4[index]);
+        #endif // NO_CAIJYY
         printf("Aij5 %f\n", cA5[index]);
         printf("Yij0 %f\n", cY0[index]);
         printf("Yij1 %f\n", cY1[index]);
@@ -1147,9 +1155,12 @@ void evolve(__global ushort4* points, int point_count,
         printf("gB2 %f\n", gB2[index]);
         //printf("Scalar %f\n", scalar);
 
+        printf("Debugp0 %f", debug0);
         printf("Debugp1 %f", debug1);
         printf("Debugp2 %f", debug2);
         printf("Debugp3 %f", debug3);
+        printf("Debugp4 %f", debug4);
+        printf("Debugp5 %f", debug5);
         //printf("dphi %f", dbgdphi);
 
         /*#ifdef debug_val
