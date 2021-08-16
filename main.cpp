@@ -5098,7 +5098,7 @@ int main()
             auto& b1 = generic_data[which_data];
             auto& b2 = generic_data[(which_data + 1) % 2];
 
-            int iterations = 3;
+            int iterations = 2;
 
             for(int i=0; i < iterations; i++)
             {
