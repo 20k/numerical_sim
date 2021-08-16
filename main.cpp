@@ -1543,7 +1543,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 0.8}, {0, 0, 0.258 * 0.71f * 0.8}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 0.7}, {0, 0, 0.258 * 0.71f * 0.7}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -2540,7 +2540,7 @@ void build_eqs(equation_context& ctx)
         {
             for(int n=0; n < 3; n++)
             {
-                p5 += (1.f/3.f) * icY.idx(i, m) * hacky_differentiate(ctx, digB.idx(n, n), m);
+                p5 += (1.f/3.f) * icY.idx(i, m) * hacky_differentiate(ctx, digB.idx(m, n), n);
             }
         }
 
