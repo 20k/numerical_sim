@@ -1866,7 +1866,7 @@ void build_momentum_constraint(equation_context& ctx)
         Mi.idx(i) = 0;
     }
 
-    //#define DAMP_DTCAIJ
+    #define DAMP_DTCAIJ
     #ifdef DAMP_DTCAIJ
     tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
 
@@ -1893,15 +1893,7 @@ void build_momentum_constraint(equation_context& ctx)
             s3 += -(3.f/2.f) * mixed_cAij.idx(m, i) * hacky_differentiate(ctx, args.X, m) * X_recip;
         }
 
-        Mi.idx(i) = dual_if(args.X <= 0.001f,
-        []()
-        {
-            return 0.f;
-        },
-        [&]()
-        {
-            return s1 + s2 + s3;
-        });
+        Mi.idx(i) = s1 + s2 + s3;
     }
     #endif // 0
 
@@ -2481,7 +2473,7 @@ void build_eqs(equation_context& ctx)
             dtcAij.idx(i, j) = p1 + p2 + p3;
 
             #ifdef DAMP_DTCAIJ
-            float Ka = 0.01f;
+            float Ka = 0.005f;
 
             dtcAij.idx(i, j) += Ka * gA * 0.5f *
                                                 (gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)
