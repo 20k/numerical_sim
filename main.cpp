@@ -1287,6 +1287,30 @@ tensor<T, N, N> gpu_covariant_derivative_low_vec(equation_context& ctx, const te
 
 template<typename T, int N>
 inline
+tensor<T, N, N> gpu_covariant_derivative_low_vec(equation_context& ctx, const tensor<T, N>& v_in, const tensor<T, N, N, N>& christoff2)
+{
+    tensor<T, N, N> lac;
+
+    for(int a=0; a < N; a++)
+    {
+        for(int c=0; c < N; c++)
+        {
+            T sum = 0;
+
+            for(int b=0; b < N; b++)
+            {
+                sum = sum + christoff2.idx(b, c, a) * v_in.idx(b);
+            }
+
+            lac.idx(a, c) = hacky_differentiate(ctx, v_in.idx(a), c) - sum;
+        }
+    }
+
+    return lac;
+}
+
+/*template<typename T, int N>
+inline
 tensor<T, N, N> gpu_high_covariant_derivative_vec(equation_context& ctx, const tensor<T, N>& in, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
 {
     tensor<T, N, N> deriv_low = gpu_covariant_derivative_low_vec(ctx, in, met, inverse);
@@ -1309,7 +1333,7 @@ tensor<T, N, N> gpu_high_covariant_derivative_vec(equation_context& ctx, const t
     }
 
     return ret;
-}
+}*/
 
 template<typename T, int N>
 inline
@@ -1327,6 +1351,37 @@ tensor<T, N, N> gpu_trace_free(const tensor<T, N, N>& mT, const metric<T, N, N>&
     }
 
     return TF;
+}
+
+///this is my best interpretation of Ai<jk>
+tensor<value, 3, 3, 3> make_lower_two_trace_free(const tensor<value, 3, 3, 3>& mT, const metric<value, 3, 3>& met, const inverse_metric<value, 3, 3>& inverse)
+{
+    tensor<value, 3, 3, 3> ret;
+
+    for(int i=0; i < 3; i++)
+    {
+        tensor<value, 3, 3> lower;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                lower.idx(j, k) = mT.idx(i, j, k);
+            }
+        }
+
+        tensor<value, 3, 3> tF = gpu_trace_free(lower, met, inverse);
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                ret.idx(i, j, k) = tF.idx(j, k);
+            }
+        }
+    }
+
+    return ret;
 }
 
 //https://arxiv.org/pdf/0709.3559.pdf b.48??
@@ -1561,7 +1616,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.25}, {0, 0, 0.258 * 0.71f * 1.25}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.225}, {0, 0, 0.258 * 0.71f * 1.225}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -2192,6 +2247,69 @@ void build_eqs(equation_context& ctx)
     ctx.add("derived1", derived_cGi.idx(1));
     ctx.add("derived2", derived_cGi.idx(2));
 
+    tensor<value, 3, 3, 3> modified_christoff2;
+
+    ///https://arxiv.org/pdf/1205.5111v1.pdf 41
+    {
+        tensor<value, 3> Ti;
+
+        for(int i=0; i < 3; i++)
+        {
+            value sum = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                sum += christoff2.idx(k, k, i);
+            }
+
+            Ti.idx(i) = sum;
+        }
+
+        tensor<value, 3, 3, 3> dijtk;
+        tensor<value, 3, 3, 3> dijGk;
+        tensor<value, 3, 3, 3> yjkGi;
+
+        //tensor<value, 3, 3, 3> dijck;
+        //tensor<value, 3, 3, 3> yjkci;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                for(int k=0; k < 3; k++)
+                {
+                    value kronecker_ij = (i == j) ? 1 : 0;
+
+                    dijtk.idx(i, j, k) = kronecker_ij * Ti.idx(k);
+                    dijGk.idx(i, j, k) = kronecker_ij * bigGi_lower.idx(k);
+                    yjkGi.idx(i, j, k) = bigGi.idx(i) * cY.idx(j, k);
+
+                    //dijck.idx(i, j, k) = kronecker_ij * lower_index(cGi, cY).idx(k);
+                    //yjkci.idx(i, j, k) = cY.idx(j, k) * cGi.idx(i);
+                }
+            }
+        }
+
+        dijtk = make_lower_two_trace_free(dijtk, cY, icY);
+        dijGk = make_lower_two_trace_free(dijGk, cY, icY);
+
+        //dijck = make_lower_two_trace_free(dijck, cY, icY);
+
+        float csigma = 0.25;
+
+        //modified_christoff2 = christoff2 - (3.f/5.f) * dijtk - (1.f/5.f) * dijck + (1.f/3.f) * yjkci;
+        modified_christoff2 = christoff2 - (3.f/5.f) * dijtk * csigma - (1.f/5.f) * dijGk * csigma + (1.f/3.f) * yjkGi * csigma;
+    }
+
+    ctx.pin(modified_christoff2);
+
+    tensor<value, 3, 3, 3> selected_christoff2 = christoff2;
+
+    #define USE_MODIFIED_CHRISTOFFEL
+    #ifdef USE_MODIFIED_CHRISTOFFEL
+    selected_christoff2 = modified_christoff2;
+    #endif // USE_MODIFIED_CHRISTOFFEL
+
     tensor<value, 3> gB_lower = lower_index(gB, cY);
 
     tensor<value, 3> linear_dB;
@@ -2268,12 +2386,12 @@ void build_eqs(equation_context& ctx)
 
                     for(int k=0; k < 3; k++)
                     {
-                        inner1 = inner1 + 0.5f * (2 * christoff2.idx(k, l, i) * christoff1.idx(j, k, m) + 2 * christoff2.idx(k, l, j) * christoff1.idx(i, k, m));
+                        inner1 = inner1 + 0.5f * (2 * selected_christoff2.idx(k, l, i) * christoff1.idx(j, k, m) + 2 * selected_christoff2.idx(k, l, j) * christoff1.idx(i, k, m));
                     }
 
                     for(int k=0; k < 3; k++)
                     {
-                        inner2 = inner2 + christoff2.idx(k, i, m) * christoff1.idx(k, l, j);
+                        inner2 = inner2 + selected_christoff2.idx(k, i, m) * christoff1.idx(k, l, j);
                     }
 
                     s4 = s4 + icY.idx(l, m) * (inner1 + inner2);
@@ -2378,12 +2496,12 @@ void build_eqs(equation_context& ctx)
             {
                 for(int n=0; n < 3; n++)
                 {
-                    sum += gA * (cY.idx(i, j) / 2.f) * icY.idx(m, n) * gpu_covariant_derivative_low_vec(ctx, dX, cY, icY).idx(n, m);
+                    sum += gA * (cY.idx(i, j) / 2.f) * icY.idx(m, n) * gpu_covariant_derivative_low_vec(ctx, dX, selected_christoff2).idx(n, m);
                     sum += (cY.idx(i, j) / 2.f) * gA_X * -(3.f/2.f) * icY.idx(m, n) * dX.idx(m) * dX.idx(n);
                 }
             }
 
-            value p2 = (1/2.f) * (gA * gpu_covariant_derivative_low_vec(ctx, dX, cY, icY).idx(j, i) - gA_X * (1/2.f) * dX.idx(i) * dX.idx(j));
+            value p2 = (1/2.f) * (gA * gpu_covariant_derivative_low_vec(ctx, dX, selected_christoff2).idx(j, i) - gA_X * (1/2.f) * dX.idx(i) * dX.idx(j));
 
             xgARphiij.idx(i, j) = sum + p2;
         }
@@ -2407,7 +2525,7 @@ void build_eqs(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, digA, cY, icY).idx(j, i);
+            value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, digA, selected_christoff2).idx(j, i);
 
             value s2 = 0.5f * (hacky_differentiate(ctx, X, i) * hacky_differentiate(ctx, gA, j) + hacky_differentiate(ctx, X, j) * hacky_differentiate(ctx, gA, i));
 
@@ -2494,8 +2612,8 @@ void build_eqs(equation_context& ctx)
             float Ka = 0.005f;
 
             dtcAij.idx(i, j) += Ka * gA * 0.5f *
-                                                (gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)
-                                                 + gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(j, i));
+                                                (gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, selected_christoff2).idx(i, j)
+                                                 + gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, selected_christoff2).idx(j, i));
             #endif // DAMP_DTCAIJ
         }
     }
@@ -2523,7 +2641,7 @@ void build_eqs(equation_context& ctx)
         {
             for(int k=0; k < 3; k++)
             {
-                s1 += 2 * gA * christoff2.idx(i, j, k) * icAij.idx(j, k);
+                s1 += 2 * gA * modified_christoff2.idx(i, j, k) * icAij.idx(j, k);
             }
         }
 
