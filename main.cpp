@@ -1570,7 +1570,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.25}, {0, 0, 0.258 * 0.71f * 1.25}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.125}, {0, 0, 0.258 * 0.71f * 1.125}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -2259,7 +2259,7 @@ void build_eqs(equation_context& ctx)
     tensor<value, 3, 3> dtcYij = -2 * gA * cA + lie_cYij;
 
     ///makes it to 50 with this enabled
-    //#define USE_DTCYIJ_MODIFICATION
+    #define USE_DTCYIJ_MODIFICATION
     #ifdef USE_DTCYIJ_MODIFICATION
     ///https://arxiv.org/pdf/1205.5111v1.pdf 46
     for(int i=0; i < 3; i++)
@@ -2280,7 +2280,7 @@ void build_eqs(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            float Ky = -0.25;
+            float Ky = -0.1;
 
             for(int k=0; k < 3; k++)
             {
