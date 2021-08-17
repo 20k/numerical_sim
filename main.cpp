@@ -4236,7 +4236,7 @@ struct buffer_set
     #ifndef USE_GBB
     static constexpr int buffer_count = 11+9;
     #else
-    static constexpr int buffer_count = 12 + 9 + 3;
+    static constexpr int buffer_count = 11 + 9 + 3;
     #endif
 
     std::vector<cl::buffer> buffers;

@@ -409,13 +409,21 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     u_offset_out[IDX(ix, iy, iz)] = u0n1;
 }
 
+#ifndef USE_GBB
+#define STANDARD_ARGS __global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, \
+                                  __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5, \
+                                  __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, \
+                                  __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2
+#else
+#define STANDARD_ARGS __global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, \
+                                  __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5, \
+                                  __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, \
+                                  __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2, \
+                                  __global float* gBB0, __global float* gBB1, __global float* gBB2
+#endif // USE_GBB
+
 __kernel
-void calculate_initial_conditions(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
-                                  __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
-                                  __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
-                                  #ifdef USE_gBB0
-                                  __global float* gBB0, __global float* gBB1, __global float* gBB2,
-                                  #endif // USE_gBB0
+void calculate_initial_conditions(STANDARD_ARGS,
                                   __global float* u_value,
                                   float scale, int4 dim)
 {
@@ -486,12 +494,7 @@ void calculate_initial_conditions(__global float* cY0, __global float* cY1, __gl
 
 __kernel
 void enforce_algebraic_constraints(__global ushort4* points, int point_count,
-                                   __global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
-                                   __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
-                                   __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
-                                   #ifdef USE_gBB0
-                                   __global float* gBB0, __global float* gBB1, __global float* gBB2,
-                                   #endif // USE_gBB0
+                                   STANDARD_ARGS,
                                    float scale, int4 dim)
 {
     int idx = get_global_id(0);
@@ -594,11 +597,9 @@ void calculate_intermediate_data_thin_cY5(__global ushort4* points, int point_co
 
 __kernel
 void calculate_momentum_constraint(__global ushort4* points, int point_count,
-                                   __global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
-            __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
-            __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
-            __global float* momentum0, __global float* momentum1, __global float* momentum2,
-            float scale, int4 dim, float time)
+                                   STANDARD_ARGS,
+                                   __global float* momentum0, __global float* momentum1, __global float* momentum2,
+                                   float scale, int4 dim, float time)
 {
     int local_idx = get_global_id(0);
 
@@ -731,12 +732,7 @@ void generate_evolution_points(__global ushort4* points, __global int* point_cou
 ///todo: damp to schwarzschild, not initial conditions?
 __kernel
 void clean_data(__global ushort4* points, int point_count,
-                __global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
-                __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
-                __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
-                #ifdef USE_gBB0
-                __global float* gBB0, __global float* gBB1, __global float* gBB2,
-                #endif // USE_gBB0
+                STANDARD_ARGS,
                 __global float* u_value,
                 float scale, int4 dim, float time,
                 float timestep)
@@ -848,9 +844,9 @@ void clean_data(__global ushort4* points, int point_count,
     gB2[index] += -y_r * (gB2[index] - fin_gB2) * timestep;
 
     #ifdef USE_GBB
-    gBB0[index] = mix(gBB0[index], init_gBB0, sponge_factor);
-    gBB1[index] = mix(gBB1[index], init_gBB1, sponge_factor);
-    gBB2[index] = mix(gBB2[index], init_gBB2, sponge_factor);
+    gBB0[index] = -y_r * (gBB0[index] - fin_gBB0) * timestep;
+    gBB1[index] = -y_r * (gBB1[index] - fin_gBB1) * timestep;
+    gBB2[index] = -y_r * (gBB2[index] - fin_gBB2) * timestep;
     #endif // USE_GBB
 }
 
@@ -1028,9 +1024,9 @@ void evolve(__global ushort4* points, int point_count,
     ogB2[index] = gB2[index] + (f_dtgB2) * timestep;
 
     #ifdef USE_GBB
-    ogBB0[index] = gBB0[index] + (dtgBB0 + diss_gBB0) * timestep;
-    ogBB1[index] = gBB1[index] + (dtgBB1 + diss_gBB1) * timestep;
-    ogBB2[index] = gBB2[index] + (dtgBB2 + diss_gBB2) * timestep;
+    ogBB0[index] = gBB0[index] + (dtgBB0) * timestep;
+    ogBB1[index] = gBB1[index] + (dtgBB1) * timestep;
+    ogBB2[index] = gBB2[index] + (dtgBB2) * timestep;
     #endif // USE_GBB
     #else
     ocY0[index] = (f_dtcYij0);
@@ -1057,8 +1053,14 @@ void evolve(__global ushort4* points, int point_count,
 
     ogA[index] = (f_dtgA);
     ogB0[index] = (f_dtgB0);
-    ogB1[index] =  (f_dtgB1);
+    ogB1[index] = (f_dtgB1);
     ogB2[index] = (f_dtgB2);
+
+    #ifdef USE_GBB
+    ogBB0[index] = (f_dtgBB0);
+    ogBB1[index] = (f_dtgBB1);
+    ogBB2[index] = (f_dtgBB2);
+    #endif // USE_GBB
     #endif // ONLY_DIFF
 
     /*bool debug = false;
@@ -1291,12 +1293,7 @@ void dissipate_single(__global ushort4* points, int point_count,
 }
 
 __kernel
-void render(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
-            __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
-            __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
-            #ifdef USE_gBB0
-            __global float* ogBB0, __global float* ogBB1, __global float* ogBB2,
-            #endif // USE_gBB0
+void render(STANDARD_ARGS,
             float scale, int4 dim, __write_only image2d_t screen, float time)
 {
     int ix = get_global_id(0);
@@ -1520,12 +1517,7 @@ int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_d
 
 
 __kernel
-void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
-                __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
-                __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
-                #ifdef USE_gBB0
-                __global float* gBB0, __global float* gBB1, __global float* gBB2,
-                #endif // USE_gBB0
+void trace_rays(STANDARD_ARGS,
                 float scale, float3 camera_pos, float4 camera_quat,
                 int4 dim, __write_only image2d_t screen)
 {
@@ -1700,12 +1692,7 @@ struct lightray
 ///todo: unify this with the above
 ///the memory overhead is extremely minimal for a huge performance boost
 __kernel
-void init_accurate_rays(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
-                        __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
-                        __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
-                        #ifdef USE_gBB0
-                        __global float* gBB0, __global float* gBB1, __global float* gBB2,
-                        #endif // USE_gBB0
+void init_accurate_rays(STANDARD_ARGS,
                         float scale, float3 camera_pos, float4 camera_quat,
                         int4 dim, __write_only image2d_t screen,
                         __global struct lightray* ray)
@@ -1768,12 +1755,7 @@ void init_accurate_rays(__global float* cY0, __global float* cY1, __global float
 }
 
 __kernel
-void step_accurate_rays(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
-                        __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
-                        __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
-                        #ifdef USE_gBB0
-                        __global float* gBB0, __global float* gBB1, __global float* gBB2,
-                        #endif // USE_gBB0
+void step_accurate_rays(STANDARD_ARGS,
                         float scale, float3 camera_pos, float4 camera_quat,
                         int4 dim, __write_only image2d_t screen,
                         __global struct lightray* ray, float timestep)
@@ -1878,12 +1860,7 @@ float3 rot_quat(const float3 point, float4 quat)
 }
 
 __kernel
-void trace_metric(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
-                  __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
-                  __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
-                  #ifdef USE_gBB0
-                  __global float* gBB0, __global float* gBB1, __global float* gBB2,
-                  #endif // USE_gBB0
+void trace_metric(STANDARD_ARGS,
                   float scale, float3 camera_pos, float4 camera_quat,
                   int4 dim, __write_only image2d_t screen)
 {
