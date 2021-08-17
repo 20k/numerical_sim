@@ -627,6 +627,41 @@ void calculate_momentum_constraint(__global ushort4* points, int point_count,
     momentum2[IDX(ix,iy,iz)] = m3;
 }
 
+__kernel
+void calculate_Gk(__global ushort4* points, int point_count,
+                                   __global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
+            __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
+            __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
+            __global float* Gk0, __global float* Gk1, __global float* Gk2,
+            float scale, int4 dim, float time)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+    #ifndef SYMMETRY_BOUNDARY
+    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
+        return;
+    #endif // SYMMETRY_BOUNDARY
+
+    float TEMPORARIES13;
+
+    float g1 = init_Gk0;
+    float g2 = init_Gk1;
+    float g3 = init_Gk2;
+
+    Gk0[IDX(ix,iy,iz)] = g1;
+    Gk1[IDX(ix,iy,iz)] = g2;
+    Gk2[IDX(ix,iy,iz)] = g3;
+}
+
 float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float time)
 {
     float edge_half = scale * (dim.x/2);
@@ -902,6 +937,7 @@ void evolve(__global ushort4* points, int point_count,
             __global float* ogBB0, __global float* ogBB1, __global float* ogBB2,
             #endif // USE_gBB0
             __global float* momentum0, __global float* momentum1, __global float* momentum2,
+            __global float* Gk0, __global float* Gk1, __global float* Gk2,
             __global DERIV_PRECISION* dcYij0, __global DERIV_PRECISION* dcYij1, __global DERIV_PRECISION* dcYij2, __global DERIV_PRECISION* dcYij3, __global DERIV_PRECISION* dcYij4, __global DERIV_PRECISION* dcYij5, __global DERIV_PRECISION* dcYij6, __global DERIV_PRECISION* dcYij7, __global DERIV_PRECISION* dcYij8, __global DERIV_PRECISION* dcYij9, __global DERIV_PRECISION* dcYij10, __global DERIV_PRECISION* dcYij11, __global DERIV_PRECISION* dcYij12, __global DERIV_PRECISION* dcYij13, __global DERIV_PRECISION* dcYij14, __global DERIV_PRECISION* dcYij15, __global DERIV_PRECISION* dcYij16, __global DERIV_PRECISION* dcYij17,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,

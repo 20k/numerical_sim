@@ -401,6 +401,10 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
         "momentum0",
         "momentum1",
         "momentum2",
+
+        "Gk0",
+        "Gk1",
+        "Gk2",
     };
 
     bool uses_extension = false;
@@ -826,6 +830,7 @@ struct standard_arguments
     tensor<value, 3, 3> Kij;
 
     tensor<value, 3> momentum_constraint;
+    tensor<value, 3> Gk;
 
     standard_arguments(bool interpolate)
     {
@@ -892,6 +897,10 @@ struct standard_arguments
         momentum_constraint.idx(0).make_value(bidx("momentum0", interpolate));
         momentum_constraint.idx(1).make_value(bidx("momentum1", interpolate));
         momentum_constraint.idx(2).make_value(bidx("momentum2", interpolate));
+
+        Gk.idx(0).make_value(bidx("Gk0", interpolate));
+        Gk.idx(1).make_value(bidx("Gk1", interpolate));
+        Gk.idx(2).make_value(bidx("Gk2", interpolate));
     }
 };
 
@@ -1956,6 +1965,48 @@ void build_momentum_constraint(equation_context& ctx)
     }
 }
 
+void build_Gk(equation_context& ctx)
+{
+    standard_arguments args(false);
+
+    #define DAMP_DTCYIJ
+    #ifdef DAMP_DTCYIJ
+    auto icY = args.cY.invert();
+
+    auto christoff2 = gpu_christoffel_symbols_2(ctx, args.cY, icY);
+
+    tensor<value, 3> cGi_G;
+
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                sum += icY.idx(j, k) * christoff2.idx(i, j, k);
+            }
+        }
+
+        cGi_G.idx(i) = sum;
+    }
+
+    ///https://arxiv.org/pdf/1205.5111v1.pdf 34
+    tensor<value, 3> bigGi;
+
+    for(int i=0; i < 3; i++)
+    {
+        bigGi.idx(i) = args.cGi.idx(i) - cGi_G.idx(i);
+    }
+
+    for(int i=0; i < 3; i++)
+    {
+        ctx.add("init_Gk" + std::to_string(i), bigGi.idx(i));
+    }
+    #endif // DAMP_DTCYIJ
+}
+
 ///https://arxiv.org/pdf/gr-qc/0206072.pdf on stability, they recompute cGi where it does nto hae a derivative
 ///todo: X: This is think is why we're getting nans. Half done
 ///todo: fisheye - half done
@@ -2208,7 +2259,7 @@ void build_eqs(equation_context& ctx)
     tensor<value, 3, 3> dtcYij = -2 * gA * cA + lie_cYij;
 
     ///makes it to 50 with this enabled
-    #define USE_DTCYIJ_MODIFICATION
+    //#define USE_DTCYIJ_MODIFICATION
     #ifdef USE_DTCYIJ_MODIFICATION
     ///https://arxiv.org/pdf/1205.5111v1.pdf 46
     for(int i=0; i < 3; i++)
@@ -2223,6 +2274,22 @@ void build_eqs(equation_context& ctx)
         }
     }
     #endif // USE_DTCYIJ_MODIFICATION
+
+    #ifdef DAMP_DTCYIJ
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            float Ky = -0.25;
+
+            for(int k=0; k < 3; k++)
+            {
+                dtcYij.idx(i, j) += Ky * gA * 0.5f * (cY.idx(k, i) * gpu_covariant_derivative_low_vec(ctx, args.Gk, cY, icY).idx(k, j) +
+                                                      cY.idx(k, j) * gpu_covariant_derivative_low_vec(ctx, args.Gk, cY, icY).idx(k, i));
+            }
+        }
+    }
+    #endif // DAMP_DTCYIJ
 
     value dtX = (2.f/3.f) * X * (gA * K - sum(linear_dB)) + sum(tensor_upwind(ctx, gB, X));
 
@@ -4340,6 +4407,9 @@ int main()
     equation_context ctx13;
     build_momentum_constraint(ctx13);
 
+    equation_context ctx14;
+    build_Gk(ctx13);
+
     /*for(auto& i : ctx.values)
     {
         std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
@@ -4371,6 +4441,7 @@ int main()
     ctx11.build(argument_string, 10);
     ctx12.build(argument_string, 11);
     ctx13.build(argument_string, 12);
+    ctx14.build(argument_string, 13);
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 
@@ -4535,6 +4606,13 @@ int main()
     std::array<cl::buffer, 3> momentum_constraint{clctx.ctx, clctx.ctx, clctx.ctx};
 
     for(auto& i : momentum_constraint)
+    {
+        i.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+    }
+
+    std::array<cl::buffer, 3> Gk_constraint{clctx.ctx, clctx.ctx, clctx.ctx};
+
+    for(auto& i : Gk_constraint)
     {
         i.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
     }
@@ -4922,6 +5000,31 @@ int main()
                 }
                 #endif // DAMP_DTCAIJ
 
+                #ifdef DAMP_DTCYIJ
+                {
+                    cl::args Gk_args;
+
+                    Gk_args.push_back(evolution_positions);
+                    Gk_args.push_back(evolution_positions_count);
+
+                    for(auto& i : generic_in)
+                    {
+                        Gk_args.push_back(i);
+                    }
+
+                    for(auto& i : Gk_constraint)
+                    {
+                        Gk_args.push_back(i);
+                    }
+
+                    Gk_args.push_back(scale);
+                    Gk_args.push_back(clsize);
+                    Gk_args.push_back(time_elapsed_s);
+
+                    clctx.cqueue.exec("calculate_Gk", Gk_args, {evolution_positions_count}, {128});
+                }
+                #endif // DAMP_DTCYIJ
+
                 cl::args a1;
 
                 a1.push_back(evolution_positions);
@@ -4938,6 +5041,11 @@ int main()
                 }
 
                 for(auto& i : momentum_constraint)
+                {
+                    a1.push_back(i);
+                }
+
+                for(auto& i : Gk_constraint)
                 {
                     a1.push_back(i);
                 }
