@@ -76,7 +76,7 @@ https://arxiv.org/pdf/1503.03436.pdf - seems to have a usable radiative boundary
 ///off centre black hole results in distortion, probably due to boundary conditions contaminating things
 ///this is odd. Maybe don't boundary condition shift and lapse?
 
-//#define USE_GBB
+#define USE_GBB
 
 ///all conformal variables are explicitly labelled
 /*struct bssnok_data
@@ -360,6 +360,10 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
         "gB0",
         "gB1",
         "gB2",
+
+        "gBB0",
+        "gBB1",
+        "gBB2",
 
         "dcYij0",
         "dcYij1",
@@ -1561,7 +1565,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.25}, {0, 0, 0.258 * 0.71f * 1.25}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.7}, {0, 0, 0.258 * 0.71f * 1.7}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -1676,8 +1680,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         }
     }
 
-    value gA = 1;
-    //value gA = 1/(pow(bl_conformal + u, 2));
+    //value gA = 1;
+    value gA = 1/(pow(bl_conformal + u, 2));
     value gB0 = 0;
     value gB1 = 0;
     value gB2 = 0;
@@ -1884,7 +1888,7 @@ void build_momentum_constraint(equation_context& ctx)
         Mi.idx(i) = 0;
     }
 
-    #define DAMP_DTCAIJ
+    //#define DAMP_DTCAIJ
     #ifdef DAMP_DTCAIJ
     tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
 
@@ -2669,6 +2673,8 @@ void build_eqs(equation_context& ctx)
     tensor<value, 3> dtgB;
     tensor<value, 3> dtgBB;
 
+    //#define STANDARD_GBB
+    #ifdef STANDARD_GBB
     ///https://arxiv.org/pdf/gr-qc/0511048.pdf (11)
     for(int i=0; i < 3; i++)
     {
@@ -2681,6 +2687,42 @@ void build_eqs(equation_context& ctx)
 
         dtgBB.idx(i) = (3.f/4.f) * dtcGi.idx(i) - N * gBB.idx(i);
     }
+    #endif // STANDARD_GBB
+
+    ///https://arxiv.org/pdf/1205.5111v1.pdf (82 + 83)
+    #define ALT_GBB
+    #ifdef ALT_GBB
+    for(int i=0; i < 3; i++)
+    {
+        value p2 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            p2 += gB.idx(j) * hacky_differentiate(ctx, gB.idx(i), j);
+        }
+
+        dtgB.idx(i) = (3.f/4.f) * gBB.idx(i) + p2;
+    }
+
+    for(int i=0; i < 3; i++)
+    {
+        value p1 = dtcGi.idx(i);
+
+        value p2 = -2 * gBB.idx(i);
+
+        value p3 = 0;
+        value p4 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            p3 += gB.idx(j) * hacky_differentiate(ctx, gBB.idx(i), j);
+            p4 += -gB.idx(j) * hacky_differentiate(ctx, cGi.idx(i), j);
+        }
+
+        dtgBB.idx(i) = p1 + p2 + p3 + p4;
+    }
+
+    #endif // ALT_GBB
 
     #endif // USE_GBB
 
@@ -4429,7 +4471,11 @@ int main()
         "cY0", "cY1", "cY2", "cY3", "cY4",
         "cA0", "cA1", "cA2", "cA3", "cA4", "cA5",
         "cGi0", "cGi1", "cGi2",
-        "K", "X", "gA", "gB0", "gB1", "gB2"
+        "K", "X", "gA", "gB0", "gB1", "gB2",
+
+        #ifdef USE_GBB
+        "gBB0", "gBB1", "gBB2"
+        #endif // USE_GBB
     };
 
     auto buffer_to_index = [&](const std::string& name)
@@ -4443,8 +4489,8 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.5;
-    float dissipate_high = 0.5;
+    float dissipate_low = 0.45;
+    float dissipate_high = 0.45;
     float dissipate_gauge = 0.5;
 
     float dissipate_caijyy = dissipate_high;
@@ -4472,7 +4518,11 @@ int main()
         dissipate_high, //K
         dissipate_low, //X
         dissipate_gauge, //gA
-        dissipate_gauge, dissipate_gauge, dissipate_gauge //gB
+        dissipate_gauge, dissipate_gauge, dissipate_gauge, //gB
+
+        #ifdef USE_GBB
+        dissipate_gauge, dissipate_gauge, dissipate_gauge, //gBB
+        #endif // USE_GBB
     };
 
     std::array<cl::buffer, 2> u_args{clctx.ctx, clctx.ctx};
@@ -4626,11 +4676,11 @@ int main()
 
     while(!win.should_close())
     {
-        if(time_elapsed_s >= 10)
+        if(time_elapsed_s >= 20)
         {
             for(auto& i : dissipation_coefficients)
             {
-                //i = std::min(i, 0.2f);
+                //i = std::min(i, 0.4f);
             }
         }
 
@@ -4822,9 +4872,14 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.075;
+        float timestep = 0.05;
 
         //timestep = 0.04;
+
+        if(time_elapsed_s < 10)
+        {
+            timestep = 0.03;
+        }
 
         if(steps < 20)
            timestep = 0.001;

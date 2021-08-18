@@ -788,6 +788,12 @@ void clean_data(__global ushort4* points, int point_count,
     float fin_gB1 = init_gB1;
     float fin_gB2 = init_gB2;
 
+    #ifdef USE_GBB
+    float fin_gBB0 = init_gBB0;
+    float fin_gBB1 = init_gBB1;
+    float fin_gBB2 = init_gBB2;
+    #endif // USE_GBB
+
     int index = IDX(ix, iy, iz);
 
     //#define RADIATIVE
@@ -888,15 +894,15 @@ void evolve(__global ushort4* points, int point_count,
             __global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
             __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
             __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
-            #ifdef USE_gBB0
+            #ifdef USE_GBB
             __global float* gBB0, __global float* gBB1, __global float* gBB2,
-            #endif // USE_gBB0
+            #endif // USE_GBB
             __global float* ocY0, __global float* ocY1, __global float* ocY2, __global float* ocY3, __global float* ocY4,
             __global float* ocA0, __global float* ocA1, __global float* ocA2, __global float* ocA3, __global float* ocA4, __global float* ocA5,
             __global float* ocGi0, __global float* ocGi1, __global float* ocGi2, __global float* oK, __global float* oX, __global float* ogA, __global float* ogB0, __global float* ogB1, __global float* ogB2,
-            #ifdef USE_gBB0
+            #ifdef USE_GBB
             __global float* ogBB0, __global float* ogBB1, __global float* ogBB2,
-            #endif // USE_gBB0
+            #endif // USE_GBB
             __global float* momentum0, __global float* momentum1, __global float* momentum2,
             __global DERIV_PRECISION* dcYij0, __global DERIV_PRECISION* dcYij1, __global DERIV_PRECISION* dcYij2, __global DERIV_PRECISION* dcYij3, __global DERIV_PRECISION* dcYij4, __global DERIV_PRECISION* dcYij5, __global DERIV_PRECISION* dcYij6, __global DERIV_PRECISION* dcYij7, __global DERIV_PRECISION* dcYij8, __global DERIV_PRECISION* dcYij9, __global DERIV_PRECISION* dcYij10, __global DERIV_PRECISION* dcYij11, __global DERIV_PRECISION* dcYij12, __global DERIV_PRECISION* dcYij13, __global DERIV_PRECISION* dcYij14, __global DERIV_PRECISION* dcYij15, __global DERIV_PRECISION* dcYij16, __global DERIV_PRECISION* dcYij17,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
@@ -1088,13 +1094,13 @@ void evolve(__global ushort4* points, int point_count,
     NANCHECK(ogA);
     NANCHECK(ogB0);
     NANCHECK(ogB1);
-    NANCHECK(ogB2);*/
+    NANCHECK(ogB2);
 
     #ifdef USE_GBB
     NANCHECK(gBB0);
     NANCHECK(gBB1);
     NANCHECK(gBB2);
-    #endif // USE_GBB
+    #endif // USE_GBB*/
 
     #if 0
     //if(debug)
@@ -1181,15 +1187,15 @@ __kernel
 void numerical_dissipate(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
                         __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                         __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
-                        #ifdef USE_gBB0
+                        #ifdef USE_GBB
                         __global float* gBB0, __global float* gBB1, __global float* gBB2,
-                        #endif // USE_gBB0
+                        #endif // USE_GBB
                         __global float* ocY0, __global float* ocY1, __global float* ocY2, __global float* ocY3, __global float* ocY4,
                         __global float* ocA0, __global float* ocA1, __global float* ocA2, __global float* ocA3, __global float* ocA4, __global float* ocA5,
                         __global float* ocGi0, __global float* ocGi1, __global float* ocGi2, __global float* oK, __global float* oX, __global float* ogA, __global float* ogB0, __global float* ogB1, __global float* ogB2,
-                        #ifdef USE_gBB0
+                        #ifdef USE_GBB
                         __global float* ogBB0, __global float* ogBB1, __global float* ogBB2,
-                        #endif // USE_gBB0
+                        #endif // USE_GBB
                         float scale, int4 dim, float timestep)
 {
     int ix = get_global_id(0);
@@ -1314,7 +1320,7 @@ void render(STANDARD_ARGS,
                              {1, 3, 4},
                              {2, 4, 5}};
 
-    float max_scalar = 0;
+    float3 max_scalar = (float3)(0,0,0);
 
     //for(int z = 20; z < dim.z-20; z++)
 
@@ -1331,6 +1337,8 @@ void render(STANDARD_ARGS,
 
         int index = IDX(ix, iy, iz);
 
+        #define RENDER_CY
+        #ifdef RENDER_CY
         float Yxx = cY0[index];
         float Yxy = cY1[index];
         float Yxz = cY2[index];
@@ -1340,14 +1348,24 @@ void render(STANDARD_ARGS,
 
         float Yzz = (1 + Yyy * Yxz * Yxz - 2 * Yxy * Yyz * Yxz + Yxx * Yyz * Yyz) / (Yxx * Yyy - Yxy * Yxy);
 
-        float curvature = fabs(Yxx / cX) +
+        float scurvature = fabs(Yxx / cX) +
                           fabs(Yxy / cX) +
                           fabs(Yxz / cX) +
                           fabs(Yyy / cX) +
                           fabs(Yyz / cX) +
                           fabs(Yzz / cX);
 
-        float ascalar = fabs(curvature / 1000.f);
+        float3 curvature = (float3)(scurvature);
+
+        curvature /= 1000.f;
+        #endif // RENDER_CY
+
+        //#define RENDER_GB
+        #ifdef RENDER_GB
+        float3 curvature = (float3)(gB0[index], gB1[index], gB2[index]);
+        #endif // RENDER_GB
+
+        float3 ascalar = fabs(curvature);
 
         max_scalar = max(ascalar, max_scalar);
     }
@@ -1361,9 +1379,7 @@ void render(STANDARD_ARGS,
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 
-    float3 col = {max_scalar, max_scalar, max_scalar};
-
-    float3 lin_col = srgb_to_lin(col);
+    float3 lin_col = srgb_to_lin(max_scalar);
 
     write_imagef(screen, (int2){get_global_id(0), get_global_id(1)}, (float4)(lin_col.xyz, 1));
     //write_imagef(screen, (int2){ix, iy}, (float4){max_scalar, max_scalar, max_scalar, 1});
@@ -1374,9 +1390,9 @@ __kernel
 void extract_waveform(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
                       __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                       __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
-                      #ifdef USE_gBB0
+                      #ifdef USE_GBB
                       __global float* gBB0, __global float* gBB1, __global float* gBB2,
-                      #endif // USE_gBB0
+                      #endif // USE_GBB
                       float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, int4 pos, __global float2* waveform_out)
 {
     int ix = get_global_id(0);
