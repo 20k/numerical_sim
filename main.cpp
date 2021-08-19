@@ -1047,9 +1047,9 @@ value upwind_differentiate(equation_context& ctx, const value& prefix, const val
 
     return final_command;*/
 
-    return prefix * hacky_differentiate(ctx, in, idx, pin);
+    //return prefix * hacky_differentiate(ctx, in, idx, pin);
 
-    /*differentiation_context<7> dctx(ctx, in, idx, {"0", "0", "0"});
+    differentiation_context<7> dctx(ctx, in, idx, {"0", "0", "0"});
 
     value scale = "scale";
 
@@ -1065,7 +1065,7 @@ value upwind_differentiate(equation_context& ctx, const value& prefix, const val
     },
     [&](){
         return prefix * stencil_negative;
-    });*/
+    });
 }
 
 tensor<value, 3> tensor_upwind(equation_context& ctx, const tensor<value, 3>& prefix, const value& in)
@@ -4433,9 +4433,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.5;
-    float dissipate_high = 0.5;
-    float dissipate_gauge = 0.5;
+    float dissipate_low = 0.0;
+    float dissipate_high = 0.0;
+    float dissipate_gauge = 0.0;
 
     float dissipate_caijyy = dissipate_high;
 
