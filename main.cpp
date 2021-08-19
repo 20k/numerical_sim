@@ -1561,7 +1561,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.25}, {0, 0, 0.258 * 0.71f * 1.25}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.5}, {0, 0, 0.258 * 0.71f * 1.5}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -2657,7 +2657,7 @@ void build_eqs(equation_context& ctx)
 
     float N = 2;
 
-    tensor<value, 3> dtgB = (3.f/4.f) * derived_cGi + bjdjbi - N * gB;
+    tensor<value, 3> dtgB = (3.f/4.f) * derived_cGi - N * gB;
 
     tensor<value, 3> dtgBB;
     dtgBB.idx(0) = 0;
@@ -4445,7 +4445,7 @@ int main()
 
     float dissipate_low = 0.5;
     float dissipate_high = 0.5;
-    float dissipate_gauge = 0.5;
+    float dissipate_gauge = 0.1;
 
     float dissipate_caijyy = dissipate_high;
 
