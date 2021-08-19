@@ -2548,12 +2548,7 @@ void build_eqs(equation_context& ctx)
             s4 += -2 * icAij.idx(i, j) * hacky_differentiate(ctx, gA, j);
         }
 
-        value s5 = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            s5 += upwind_differentiate(ctx, gB.idx(j), cGi.idx(i), j);
-        }
+        value s5 = sum(tensor_upwind(ctx, gB, cGi.idx(i)));
 
         value s6 = 0;
 
@@ -2645,12 +2640,7 @@ void build_eqs(equation_context& ctx)
 
     for(int i=0; i < 3; i++)
     {
-        value v = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-           v += upwind_differentiate(ctx, gB.idx(j), gB.idx(i), j);
-        }
+        value v = sum(tensor_upwind(ctx, gB, gB.idx(i)));
 
         bjdjbi.idx(i) = v;
     }
