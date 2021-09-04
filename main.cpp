@@ -496,6 +496,13 @@ struct differentiation_context
     {
         std::vector<std::string> variables = in.get_all_variables();
 
+        /*std::cout << "EXPR " << type_to_string(in) << std::endl;
+
+        for(auto& i : variables)
+        {
+            std::cout << "V " << i << std::endl;
+        }*/
+
         value cp = in;
 
         auto index_raw = [](const value& x, const value& y, const value& z)
@@ -1017,7 +1024,7 @@ value diff2(equation_context& ctx, const value& in, int idx, int idy, bool pin =
         differentiation_context dctx(ctx, in, idx, {"0", "0", "0"}, true, linear);
         std::array<value, 5> vars = dctx.vars;
 
-        return (1.f/(12.f * scale * scale)) * (-vars[4] + 16.f * vars[3] - 30.f * vars[2] + 16.f * vars[1] - vars[0]);
+        return (-vars[4] + 16.f * vars[3] - 30.f * vars[2] + 16.f * vars[1] - vars[0]) / (12 * scale * scale);
     }
 
     std::array<float, 25> coefficients
@@ -1028,6 +1035,9 @@ value diff2(equation_context& ctx, const value& in, int idx, int idy, bool pin =
         8,-64, 0, 64,-8,
        -1,  8, 0, -8, 1,
     };
+
+    //std::cout << "DIFFERENTIATING " << type_to_string(in) << std::endl;
+    //std::cout << "IDV " << idx << " " << idy << std::endl;
 
     value accum = 0;
 
@@ -1048,7 +1058,7 @@ value diff2(equation_context& ctx, const value& in, int idx, int idy, bool pin =
             offsets[idx] = std::to_string(local_i);
             offsets[idy] = std::to_string(local_j);
 
-            differentiation_context<5> dctx(ctx, in, 0, offsets, true, linear);
+            differentiation_context<5> dctx(ctx, in, -1, offsets, true, linear);
 
             /*std::cout << "WHICH " << idx << " " << idy << std::endl;
             std::cout << "WHERE " << local_i << " " << local_j << std::endl;
@@ -1058,7 +1068,7 @@ value diff2(equation_context& ctx, const value& in, int idx, int idy, bool pin =
         }
     }
 
-    std::cout << "ACCUM " << type_to_string(accum) << std::endl;
+    //std::cout << "ACCUM " << type_to_string(accum) << std::endl;
 
     return accum / (144.f * scale * scale);
 }
@@ -4921,7 +4931,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.075;
+        float timestep = 0.025;
 
         //timestep = 0.04;
 
