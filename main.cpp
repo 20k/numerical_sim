@@ -1668,7 +1668,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.25}, {0, 0, 0.258 * 0.71f * 1.25}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.0}, {0, 0, 0.258 * 0.71f * 1.0}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -2604,7 +2604,7 @@ void build_eqs(equation_context& ctx)
             dtcAij.idx(i, j) = p1 + p2 + p3;
 
             #ifdef DAMP_DTCAIJ
-            float Ka = 0.005f;
+            float Ka = 0.05f;
 
             dtcAij.idx(i, j) += Ka * gA * 0.5f *
                                                 (gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)
@@ -4552,9 +4552,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.0;
-    float dissipate_high = 0.0;
-    float dissipate_gauge = 0.0;
+    float dissipate_low = 0.6;
+    float dissipate_high = 0.6;
+    float dissipate_gauge = 0.6;
 
     float dissipate_caijyy = dissipate_high;
 
@@ -4931,7 +4931,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.025;
+        float timestep = 0.005;
 
         //timestep = 0.04;
 
@@ -5205,6 +5205,7 @@ int main()
 
             #endif // RK4
 
+            ///something is wrong with the integrators?
             //#define FORWARD_EULER
             #ifdef FORWARD_EULER
             step(generic_data[which_data].buffers, generic_data[(which_data + 1) % 2].buffers, timestep);
