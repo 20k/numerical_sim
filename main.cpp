@@ -4552,9 +4552,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.6;
-    float dissipate_high = 0.6;
-    float dissipate_gauge = 0.6;
+    float dissipate_low = 0.3;
+    float dissipate_high = 0.3;
+    float dissipate_gauge = 0.3;
 
     float dissipate_caijyy = dissipate_high;
 
@@ -5206,14 +5206,16 @@ int main()
             #endif // RK4
 
             ///something is wrong with the integrators?
-            //#define FORWARD_EULER
+            #define FORWARD_EULER
             #ifdef FORWARD_EULER
-            step(generic_data[which_data].buffers, generic_data[(which_data + 1) % 2].buffers, timestep);
+            //copy_valid(generic_data[which_data].buffers, rk4_intermediate.buffers);
+            //step(rk4_intermediate.buffers, generic_data[(which_data + 1) % 2].buffers, timestep);
 
+            step(generic_data[which_data].buffers, generic_data[(which_data + 1) % 2].buffers, timestep);
             diff_to_input(generic_data[(which_data + 1) % 2].buffers, timestep);
             #endif
 
-            #define BACKWARD_EULER
+            //#define BACKWARD_EULER
             #ifdef BACKWARD_EULER
             auto& b1 = generic_data[which_data];
             auto& b2 = generic_data[(which_data + 1) % 2];
