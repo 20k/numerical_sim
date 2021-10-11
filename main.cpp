@@ -1545,9 +1545,9 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
     ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
     std::vector<float> black_hole_m{0.463, 0.47};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516*2, 0, 0}), san_black_hole_pos({3.516*2, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 0.85}, {0, 0, 0.258 * 0.71f * 0.85}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.4f * 0.85/2}, {0, 0, 0.258 * 0.71f * 1.4f * 0.85/2}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -1871,7 +1871,7 @@ void build_momentum_constraint(equation_context& ctx)
         Mi.idx(i) = 0;
     }
 
-    //#define DAMP_DTCAIJ
+    #define DAMP_DTCAIJ
     #ifdef DAMP_DTCAIJ
     tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
 
@@ -2203,6 +2203,7 @@ void build_eqs(equation_context& ctx)
     tensor<value, 3, 3> dtcYij = -2 * gA * cA + lie_cYij;
 
     ///makes it to 50 with this enabled
+    ///TODO: TEST MORE EXTENSIVELY
     #define USE_DTCYIJ_MODIFICATION
     #ifdef USE_DTCYIJ_MODIFICATION
     ///https://arxiv.org/pdf/1205.5111v1.pdf 46
@@ -2210,7 +2211,7 @@ void build_eqs(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            float sigma = 4/5.f;
+            float sigma = 4.8/5.f;
 
             dtcYij.idx(i, j) += sigma * 0.5f * (gB_lower.idx(i) * bigGi_lower.idx(j) + gB_lower.idx(j) * bigGi_lower.idx(i));
 
@@ -2486,7 +2487,7 @@ void build_eqs(equation_context& ctx)
             dtcAij.idx(i, j) = p1 + p2 + p3;
 
             #ifdef DAMP_DTCAIJ
-            float Ka = 0.01f;
+            float Ka = 0.1f;
 
             dtcAij.idx(i, j) += Ka * gA * 0.5f *
                                                 (gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)
@@ -2554,7 +2555,7 @@ void build_eqs(equation_context& ctx)
 
         for(int j=0; j < 3; j++)
         {
-            s6 += -derived_cGi.idx(j) * digB.idx(j, i);
+            s6 += -cGi.idx(j) * digB.idx(j, i);
         }
 
         value s7 = 0;
@@ -2581,11 +2582,11 @@ void build_eqs(equation_context& ctx)
 
         for(int k=0; k < 3; k++)
         {
-            s9 += (2.f/3.f) * digB.idx(k, k) * derived_cGi.idx(i);
+            s9 += (2.f/3.f) * digB.idx(k, k) * cGi.idx(i);
         }
 
         ///this is the only instanced of derived_cGi that might want to be regular cGi
-        value s10 = (2.f/3.f) * -2 * gA * K * derived_cGi.idx(i);
+        value s10 = (2.f/3.f) * -2 * gA * K * cGi.idx(i);
 
         dtcGi.idx(i) = s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8 + s9 + s10;
 
@@ -2652,7 +2653,7 @@ void build_eqs(equation_context& ctx)
 
     float N = 3;
 
-    tensor<value, 3> dtgB = (3.f/4.f) * derived_cGi + bjdjbi - N * gB;
+    tensor<value, 3> dtgB = (3.f/4.f) * cGi_G + bjdjbi - N * gB;
 
     tensor<value, 3> dtgBB;
     dtgBB.idx(0) = 0;
@@ -4438,9 +4439,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.6;
-    float dissipate_high = 0.6;
-    float dissipate_gauge = 0.6;
+    float dissipate_low = 0.8;
+    float dissipate_high = 0.8;
+    float dissipate_gauge = 0.8;
 
     float dissipate_caijyy = dissipate_high;
 
@@ -5104,7 +5105,7 @@ int main()
             auto& b1 = generic_data[which_data];
             auto& b2 = generic_data[(which_data + 1) % 2];
 
-            int iterations = 3;
+            int iterations = 2;
 
             for(int i=0; i < iterations; i++)
             {

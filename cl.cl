@@ -641,6 +641,7 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
 
     float3 diff = ((float3){x, y, z} - fdim) * scale;
 
+    //#define MANHATTEN_SPONGE
     #ifdef MANHATTEN_SPONGE
     float r = max(fabs(diff.x), max(fabs(diff.y), fabs(diff.z)));
     #else
@@ -655,7 +656,7 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
 
     r = clamp(r, sponge_r0, sponge_r1);
 
-    return (r - sponge_r0) / (sponge_r1 - sponge_r0);
+    return clamp((r - sponge_r0) / (sponge_r1 - sponge_r0), 0.f, 1.f);
 
     /*float sigma = (sponge_r1 - sponge_r0) / 6;
     return native_exp(-pow((r - sponge_r1) / sigma, 2));*/
