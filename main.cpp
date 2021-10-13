@@ -1546,9 +1546,9 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
     ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
     std::vector<float> black_hole_m{0.463, 0.47};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0.1, 0.1}), san_black_hole_pos({3.516, -0.1, -0.1})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.1}, {0, 0, 0.258 * 0.71f * 1.1}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 0.8}, {0, 0, 0.258 * 0.71f * 0.8}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -2514,7 +2514,7 @@ void build_eqs(equation_context& ctx)
     tensor<value, 3> dtcGi;
 
     ///christoffel symbol calculation not the issue
-    #define SLIDES_CHRISTOFFEL
+    //#define SLIDES_CHRISTOFFEL
     #ifdef SLIDES_CHRISTOFFEL
     for(int i=0; i < 3; i++)
     {
@@ -2602,7 +2602,7 @@ void build_eqs(equation_context& ctx)
 
     ///https://arxiv.org/pdf/1205.5111v1.pdf 49
     ///made it to 58 with this
-    //#define CHRISTOFFEL_49
+    #define CHRISTOFFEL_49
     #ifdef CHRISTOFFEL_49
     tensor<value, 3, 3> littlekij = unpinned_icY.to_tensor() * K;
 
@@ -2725,11 +2725,11 @@ void build_eqs(equation_context& ctx)
 
     ///so -gA * gA * f_a * K with f_a = 8 / (3 * gA * (3 - gA))
     ///-gA * f_a * K with f_a = 8 / (3 * (3 - gA)) = 8/(9 - 3 * gA)
-    //auto f_a_reduced = 8 / (3 * (3 - gA));
-    //value dtgA = -gA * f_a_reduced * K + lie_derivative(ctx, gB, gA);
+    auto f_a_reduced = 8 / (3 * (3 - gA));
+    value dtgA = -gA * f_a_reduced * K + lie_derivative(ctx, gB, gA);
 
     ///the gauge condition is not the issue
-    value dtgA = lie_derivative(ctx, gB, gA) - 2 * gA * K;
+    //value dtgA = lie_derivative(ctx, gB, gA) - 2 * gA * K;
 
     #ifndef USE_GBB
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
@@ -4473,7 +4473,7 @@ int main()
     #endif // USE_GBB
 
     ///seems to make 0 difference to instability time
-    //#define USE_HALF_INTERMEDIATE
+    #define USE_HALF_INTERMEDIATE
     #ifdef USE_HALF_INTERMEDIATE
     int intermediate_data_size = sizeof(cl_half);
     argument_string += "-DDERIV_PRECISION=half ";
@@ -4560,7 +4560,7 @@ int main()
 
     std::array<float, buffer_set::buffer_count> dissipation_coefficients
     {
-        dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, //cY
+        dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, //cY
         dissipate_high, dissipate_high, dissipate_high, dissipate_caijyy, dissipate_high, dissipate_high, //cA
         dissipate_low, dissipate_low, dissipate_low, //cGi
         dissipate_high, //K
@@ -4724,7 +4724,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.3f);
+                i = std::min(i, 0.5f);
                 //i = std::min(i, 0.3f);
             }
         }
@@ -5203,7 +5203,7 @@ int main()
             auto& b1 = generic_data[which_data];
             auto& b2 = generic_data[(which_data + 1) % 2];
 
-            int iterations = 3;
+            int iterations = 2;
 
             for(int i=0; i < iterations; i++)
             {
