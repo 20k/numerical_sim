@@ -1512,7 +1512,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         vec3f scaled = round((in / scale) * bulge);
 
-        vec3f offsets = {0.5f, 0.5f, 0.5f};
+        vec3f offsets = {0.3523452676f, 0.1515667584346f, 0.251234564575478f};
 
         auto get_sign = [](float in)
         {
@@ -1545,9 +1545,9 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
     ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
     std::vector<float> black_hole_m{0.463, 0.47};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, -0.15+0.2, -0.1}), san_black_hole_pos({3.516, 0.15+0.2, 0.12})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 0.85}, {0, 0, 0.258 * 0.71f * 0.85}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 0.3}, {0, 0, 0.258 * 0.71f * 0.3}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -4625,7 +4625,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.5f);
+                i = std::min(i, 0.2f);
                 //i = std::min(i, 0.3f);
             }
         }
@@ -4818,7 +4818,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.05;
+        float timestep = 0.025;
 
         //timestep = 0.04;
 
@@ -5104,7 +5104,7 @@ int main()
             auto& b1 = generic_data[which_data];
             auto& b2 = generic_data[(which_data + 1) % 2];
 
-            int iterations = 3;
+            int iterations = 2;
 
             for(int i=0; i < iterations; i++)
             {
