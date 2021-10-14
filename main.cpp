@@ -1516,7 +1516,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         auto get_sign = [](float in)
         {
-            return in >= 0 ? 1 : -1;
+            return in >= 0 ? 0.765f : 0.68f;
         };
 
         offsets.x() *= get_sign(s1);
