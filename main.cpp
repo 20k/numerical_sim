@@ -1480,6 +1480,9 @@ tensor<value, 3, 3> calculate_bcAij(const vec<3, value>& pos, const std::vector<
                 vec<3, value> vri = {bhpos.x(), bhpos.y(), bhpos.z()};
 
                 value ra = (pos - vri).length();
+
+                ra = max(ra, 1e-6);
+
                 vec<3, value> nia = (pos - vri) / ra;
 
                 tensor<value, 3> momentum_lower = lower_index(momentum_tensor, flat);
@@ -1525,7 +1528,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         std::cout << "Black hole at voxel " << scaled + centre + offsets << std::endl;
 
-        return scaled * scale / bulge + offsets * scale / bulge;
+        return scaled * scale / bulge + 0 * offsets * scale / bulge;
     };
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
@@ -1547,7 +1550,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 0.85}, {0, 0, 0.258 * 0.71f * 0.85}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 0.95}, {0, 0, 0.258 * 0.71f * 0.95}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -1577,6 +1580,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
         vec<3, value> vri = {ri.x(), ri.y(), ri.z()};
 
         value dist = (pos - vri).length();
+
+        dist = max(dist, 1e-6);
 
         BL_s += Mi / (2 * dist);
     }
