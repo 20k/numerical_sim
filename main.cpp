@@ -813,7 +813,7 @@ struct standard_arguments
     {
         gA.make_value(bidx("gA", interpolate));
 
-        gA = max(gA, 0.0001f);
+        gA = max(gA, 0.005f);
 
         gB.idx(0).make_value(bidx("gB0", interpolate));
         gB.idx(1).make_value(bidx("gB1", interpolate));
@@ -857,7 +857,7 @@ struct standard_arguments
         X.make_value(bidx("X", interpolate));
         K.make_value(bidx("K", interpolate));
 
-        X = max(X, 0.0001f);
+        X = max(X, 0.01f);
 
         cGi.idx(0).make_value(bidx("cGi0", interpolate));
         cGi.idx(1).make_value(bidx("cGi1", interpolate));
@@ -867,11 +867,11 @@ struct standard_arguments
         {
             for(int j=0; j < 3; j++)
             {
-                Yij.idx(i, j) = cY.idx(i, j) / max(X, 0.01f);
+                Yij.idx(i, j) = cY.idx(i, j) / max(X, 0.001f);
             }
         }
 
-        tensor<value, 3, 3> Aij = cA / max(X, 0.01f);
+        tensor<value, 3, 3> Aij = cA / max(X, 0.001f);
 
         Kij = Aij + Yij.to_tensor() * (K / 3.f);
 
@@ -1480,6 +1480,9 @@ tensor<value, 3, 3> calculate_bcAij(const vec<3, value>& pos, const std::vector<
                 vec<3, value> vri = {bhpos.x(), bhpos.y(), bhpos.z()};
 
                 value ra = (pos - vri).length();
+
+                ra = max(ra, 1e-6);
+
                 vec<3, value> nia = (pos - vri) / ra;
 
                 tensor<value, 3> momentum_lower = lower_index(momentum_tensor, flat);
@@ -1525,7 +1528,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         std::cout << "Black hole at voxel " << scaled + centre + offsets << std::endl;
 
-        return scaled * scale / bulge + offsets * scale / bulge;
+        return scaled * scale / bulge + 0 * offsets * scale / bulge;
     };
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
@@ -1547,7 +1550,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 0.85}, {0, 0, 0.258 * 0.71f * 0.85}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.45}, {0, 0, 0.258 * 0.71f * 1.45}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -1577,6 +1580,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
         vec<3, value> vri = {ri.x(), ri.y(), ri.z()};
 
         value dist = (pos - vri).length();
+
+        dist = max(dist, 1e-6);
 
         BL_s += Mi / (2 * dist);
     }
@@ -2299,6 +2304,7 @@ void build_eqs(equation_context& ctx)
         });
     }
 
+
     /*tensor<value, 3, 3> xgADiDjphi;
 
     for(int i=0; i < 3; i++)
@@ -2628,10 +2634,10 @@ void build_eqs(equation_context& ctx)
 
     ///so -gA * gA * f_a * K with f_a = 8 / (3 * gA * (3 - gA))
     ///-gA * f_a * K with f_a = 8 / (3 * (3 - gA)) = 8/(9 - 3 * gA)
-    auto f_a_reduced = 8 / (3 * (3 - gA));
-    value dtgA = -gA * f_a_reduced * K + lie_derivative(ctx, gB, gA);
+    /*auto f_a_reduced = 8 / (3 * (3 - gA));
+    value dtgA = -gA * f_a_reduced * K + lie_derivative(ctx, gB, gA);*/
 
-    //value dtgA = lie_derivative(ctx, gB, gA) - 2 * gA * K;
+    value dtgA = lie_derivative(ctx, gB, gA) - 2 * gA * K;
 
     #ifndef USE_GBB
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
@@ -2650,7 +2656,7 @@ void build_eqs(equation_context& ctx)
         bjdjbi.idx(i) = v;
     }
 
-    float N = 3;
+    float N = 2;
 
     tensor<value, 3> dtgB = (3.f/4.f) * derived_cGi + bjdjbi - N * gB;
 
@@ -4438,9 +4444,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.6;
-    float dissipate_high = 0.6;
-    float dissipate_gauge = 0.6;
+    float dissipate_low = 0.5;
+    float dissipate_high = 0.5;
+    float dissipate_gauge = 0.5;
 
     float dissipate_caijyy = dissipate_high;
 
@@ -4621,11 +4627,11 @@ int main()
 
     while(!win.should_close())
     {
-        if(time_elapsed_s >= 10)
+        if(time_elapsed_s >= 15)
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.5f);
+                i = std::min(i, 0.45f);
                 //i = std::min(i, 0.3f);
             }
         }
@@ -5104,7 +5110,7 @@ int main()
             auto& b1 = generic_data[which_data];
             auto& b2 = generic_data[(which_data + 1) % 2];
 
-            int iterations = 3;
+            int iterations = 2;
 
             for(int i=0; i < iterations; i++)
             {
