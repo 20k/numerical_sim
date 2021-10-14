@@ -1550,7 +1550,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.48}, {0, 0, 0.258 * 0.71f * 1.48}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.45}, {0, 0, 0.258 * 0.71f * 1.45}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -2168,7 +2168,7 @@ void build_eqs(equation_context& ctx)
         derived_cGi.idx(i) = sum;
     }*/
 
-    #define USE_DERIVED_CGI
+    //#define USE_DERIVED_CGI
     #ifdef USE_DERIVED_CGI
     for(int i=0; i < 3; i++)
     {
@@ -2658,7 +2658,7 @@ void build_eqs(equation_context& ctx)
 
     float N = 2;
 
-    tensor<value, 3> dtgB = (3.f/4.f) * derived_cGi + bjdjbi - N * gB;
+    tensor<value, 3> dtgB = (3.f/4.f) * cGi + bjdjbi - N * gB;
 
     tensor<value, 3> dtgBB;
     dtgBB.idx(0) = 0;
@@ -4631,7 +4631,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.45f);
+                i = std::min(i, 0.5f);
                 //i = std::min(i, 0.3f);
             }
         }
