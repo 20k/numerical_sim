@@ -309,6 +309,25 @@ struct equation_context
 //#define SYMMETRY_BOUNDARY
 #define BORDER_WIDTH 4
 
+std::string strip_variable(std::string in)
+{
+    std::string valid;
+
+    for(auto i : in)
+    {
+        if(std::isalnum(i))
+        {
+            valid.push_back(i);
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return valid;
+}
+
 inline
 std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
 {
@@ -447,24 +466,23 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
     }
     else
     {
+        std::string stripped = strip_variable(str);
+
+        buffer = stripped;
+        val = stripped;
+
         bool any_found = false;
 
         for(auto& i : variables)
         {
-            if(str.starts_with(i))
+            if(i == stripped)
             {
-                buffer = i;
-                val = buffer;
                 any_found = true;
+                break;
             }
         }
 
-        if(!any_found)
-        {
-            std::cout << "input " << str << std::endl;
-
-            assert(false);
-        }
+        assert(any_found);
     }
 
     return {buffer, val, uses_extension};
