@@ -4619,8 +4619,14 @@ int main()
 
     bool pao = false;
 
+    bool frameskip = true;
+
+    int iteration = 0;
+
     while(!win.should_close())
     {
+        iteration++;
+
         if(time_elapsed_s >= 15)
         {
             for(auto& i : dissipation_coefficients)
@@ -4789,6 +4795,8 @@ int main()
 
             ImGui::Checkbox("pao", &pao);
 
+            ImGui::Checkbox("frameskip", &frameskip);
+
             /*if(real_decomp.size() > 0)
             {
                 ImGui::PushItemWidth(400);
@@ -4814,7 +4822,7 @@ int main()
         render.push_back(rtex[which_texture]);
         render.push_back(time_elapsed_s);
 
-        clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
+        //clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
 
         ///rk4
         ///though no signs of any notable instability for backwards euler
@@ -5284,32 +5292,35 @@ int main()
             current_simulation_boundary = clamp(current_simulation_boundary, 0, size.x()/2);
         }
 
-        if(rendering_method == 0 || rendering_method == 1)
+        if((frameskip && ((iteration % 5) == 0)) || !frameskip)
         {
-            cl::args render_args;
-
-            for(auto& i : generic_data[which_data].buffers)
+            if(rendering_method == 0 || rendering_method == 1)
             {
-                render_args.push_back(i);
-            }
+                cl::args render_args;
 
-            cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
-            cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
+                for(auto& i : generic_data[which_data].buffers)
+                {
+                    render_args.push_back(i);
+                }
 
-            render_args.push_back(scale);
-            render_args.push_back(ccamera_pos);
-            render_args.push_back(ccamera_quat);
-            render_args.push_back(clsize);
-            render_args.push_back(rtex[which_texture]);
+                cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
+                cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
 
-            //assert(render_args.arg_list.size() == 29);
+                render_args.push_back(scale);
+                render_args.push_back(ccamera_pos);
+                render_args.push_back(ccamera_quat);
+                render_args.push_back(clsize);
+                render_args.push_back(rtex[which_texture]);
 
-            if(should_render || snap)
-            {
-                if(rendering_method == 0)
-                    clctx.cqueue.exec("trace_metric", render_args, {width, height}, {16, 16});
-                else
-                    clctx.cqueue.exec("trace_rays", render_args, {width, height}, {16, 16});
+                //assert(render_args.arg_list.size() == 29);
+
+                if(should_render || snap)
+                {
+                    if(rendering_method == 0)
+                        clctx.cqueue.exec("trace_metric", render_args, {width, height}, {16, 16});
+                    else
+                        clctx.cqueue.exec("trace_rays", render_args, {width, height}, {16, 16});
+                }
             }
         }
 
