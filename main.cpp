@@ -2090,27 +2090,6 @@ void build_cY(equation_context& ctx)
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(args.cY, icY);
-
-    ///https://arxiv.org/pdf/1205.5111v1.pdf just after 34
-    ///this is currently the same as derived_cGi, but they're used differently
-    tensor<value, 3> cGi_G;
-
-    for(int i=0; i < 3; i++)
-    {
-        value sum = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            for(int k=0; k < 3; k++)
-            {
-                sum += icY.idx(j, k) * christoff2.idx(i, j, k);
-            }
-        }
-
-        cGi_G.idx(i) = sum;
-    }
-
     tensor<value, 3> bigGi_lower = lower_index(args.bigGi, args.cY);
 
     tensor<value, 3> gB_lower = lower_index(args.gB, args.cY);
@@ -2455,7 +2434,6 @@ void build_cGi(equation_context& ctx)
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-    tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, args.cY);
     tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(args.cY, icY);
 
     ctx.pin(christoff2);
@@ -2465,8 +2443,6 @@ void build_cGi(equation_context& ctx)
     inverse_metric<value, 3, 3> unpinned_icY = cY.invert();
 
     tensor<value, 3, 3> cA = args.cA;
-
-    auto unpinned_cA = cA;
 
     ///the christoffel symbol
     tensor<value, 3> cGi = args.cGi;
@@ -2618,18 +2594,11 @@ void build_K(equation_context& ctx)
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-    tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, args.cY);
-    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(args.cY, icY);
-
     unit_metric<value, 3, 3> cY = args.cY;
-
-    inverse_metric<value, 3, 3> unpinned_icY = cY.invert();
 
     ctx.pin(icY);
 
     tensor<value, 3, 3> cA = args.cA;
-
-    auto unpinned_cA = cA;
 
     ///the christoffel symbol
     tensor<value, 3> cGi = args.cGi;
@@ -2679,39 +2648,14 @@ void build_X(equation_context& ctx)
 {
     standard_arguments args(false);
 
-    inverse_metric<value, 3, 3> icY = args.cY.invert();
-
-    tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, args.cY);
-    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(args.cY, icY);
-
-    unit_metric<value, 3, 3> cY = args.cY;
-
-    inverse_metric<value, 3, 3> unpinned_icY = cY.invert();
-
-    ctx.pin(icY);
-
-    tensor<value, 3, 3> cA = args.cA;
-
-    auto unpinned_cA = cA;
-
-    ///the christoffel symbol
-    tensor<value, 3> cGi = args.cGi;
-
-    value gA = args.gA;
-
-    tensor<value, 3> gB = args.gB;
-
-    value X = args.X;
-    value K = args.K;
-
     tensor<value, 3> linear_dB;
 
     for(int i=0; i < 3; i++)
     {
-        linear_dB.idx(i) = hacky_differentiate(gB.idx(i), i);
+        linear_dB.idx(i) = hacky_differentiate(args.gB.idx(i), i);
     }
 
-    value dtX = (2.f/3.f) * X * (gA * K - sum(linear_dB)) + sum(tensor_upwind(ctx, gB, X));
+    value dtX = (2.f/3.f) * args.X * (args.gA * args.K - sum(linear_dB)) + sum(tensor_upwind(ctx, args.gB, args.X));
 
     ctx.add("dtX", dtX);
 }
@@ -2721,32 +2665,7 @@ void build_gA(equation_context& ctx)
 {
     standard_arguments args(false);
 
-    inverse_metric<value, 3, 3> icY = args.cY.invert();
-
-    tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, args.cY);
-    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(args.cY, icY);
-
-    unit_metric<value, 3, 3> cY = args.cY;
-
-    inverse_metric<value, 3, 3> unpinned_icY = cY.invert();
-
-    ctx.pin(icY);
-
-    tensor<value, 3, 3> cA = args.cA;
-
-    auto unpinned_cA = cA;
-
-    ///the christoffel symbol
-    tensor<value, 3> cGi = args.cGi;
-
-    value gA = args.gA;
-
-    tensor<value, 3> gB = args.gB;
-
-    value X = args.X;
-    value K = args.K;
-
-    value dtgA = lie_derivative(ctx, gB, gA) - 2 * gA * K;
+    value dtgA = lie_derivative(ctx, args.gB, args.gA) - 2 * args.gA * args.K;
 
     ctx.add("dtgA", dtgA);
 }
@@ -2755,31 +2674,6 @@ inline
 void build_gB(equation_context& ctx)
 {
     standard_arguments args(false);
-
-    inverse_metric<value, 3, 3> icY = args.cY.invert();
-
-    tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, args.cY);
-    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(args.cY, icY);
-
-    unit_metric<value, 3, 3> cY = args.cY;
-
-    inverse_metric<value, 3, 3> unpinned_icY = cY.invert();
-
-    ctx.pin(icY);
-
-    tensor<value, 3, 3> cA = args.cA;
-
-    auto unpinned_cA = cA;
-
-    ///the christoffel symbol
-    tensor<value, 3> cGi = args.cGi;
-
-    value gA = args.gA;
-
-    tensor<value, 3> gB = args.gB;
-
-    value X = args.X;
-    value K = args.K;
 
     #ifndef USE_GBB
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
@@ -2792,7 +2686,7 @@ void build_gB(equation_context& ctx)
 
         for(int j=0; j < 3; j++)
         {
-           v += upwind_differentiate(ctx, gB.idx(j), gB.idx(i), j);
+           v += upwind_differentiate(ctx, args.gB.idx(j), args.gB.idx(i), j);
         }
 
         bjdjbi.idx(i) = v;
@@ -2800,7 +2694,7 @@ void build_gB(equation_context& ctx)
 
     float N = 2;
 
-    tensor<value, 3> dtgB = (3.f/4.f) * cGi + bjdjbi - N * gB;
+    tensor<value, 3> dtgB = (3.f/4.f) * args.cGi + bjdjbi - N * args.gB;
 
     tensor<value, 3> dtgBB;
     dtgBB.idx(0) = 0;
@@ -4397,10 +4291,10 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {200, 200, 200};
+    vec3i size = {300, 300, 300};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
-    float c_at_max = 65 * (200.f/300.f);
+    float c_at_max = 65 * (300.f/300.f);
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
