@@ -2639,7 +2639,7 @@ void build_eqs(equation_context& ctx)
         bjdjbi.idx(i) = v;
     }
 
-    float N = 6;
+    float N = 3;
 
     tensor<value, 3> dtgB = (3.f/4.f) * cGi + bjdjbi - N * gB;
 
