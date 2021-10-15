@@ -3907,6 +3907,9 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 {
     standard_arguments args(true);
 
+    ctx.pin(args.Kij);
+    ctx.pin(args.Yij);
+
     /*ctx.pin(args.gA);
     ctx.pin(args.gB);
     ctx.pin(args.cY);
@@ -3914,8 +3917,6 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     ctx.pin(args.Yij);*/
 
     //ctx.pin(args.Yij);
-
-    auto unpinned_Yij = args.Yij;
 
     ///upper index, aka contravariant
     vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
