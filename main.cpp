@@ -932,7 +932,7 @@ void build_kreiss_oliger_dissipate_singular(equation_context& ctx)
     ctx.add("KREISS_DISSIPATE_SINGULAR", coeff * kreiss_oliger_dissipate(ctx, buf));
 }
 
-template<int order = 3>
+template<int order = 2>
 value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true, bool linear = false)
 {
     value scale = "scale";
