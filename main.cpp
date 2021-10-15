@@ -932,27 +932,36 @@ void build_kreiss_oliger_dissipate_singular(equation_context& ctx)
     ctx.add("KREISS_DISSIPATE_SINGULAR", coeff * kreiss_oliger_dissipate(ctx, buf));
 }
 
-template<int order = 2>
+template<int order = 3>
 value hacky_differentiate(equation_context& ctx, const value& in, int idx, bool pin = true, bool linear = false)
 {
-    differentiation_context dctx(ctx, in, idx, {"0", "0", "0"}, true, linear);
-
-    std::array<value, 5> vars = dctx.vars;
-
     value scale = "scale";
 
     value final_command;
 
     if(order == 1)
     {
+        differentiation_context dctx(ctx, in, idx, {"0", "0", "0"}, true, linear);
+        std::array<value, 5> vars = dctx.vars;
+
         final_command = (vars[3] - vars[1]) / (2 * scale);
     }
     else if(order == 2)
     {
+        differentiation_context dctx(ctx, in, idx, {"0", "0", "0"}, true, linear);
+        std::array<value, 5> vars = dctx.vars;
+
         final_command = (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
     }
+    else if(order == 3)
+    {
+        differentiation_context<7> dctx(ctx, in, idx, {"0", "0", "0"}, true, linear);
+        std::array<value, 7> vars = dctx.vars;
 
-    static_assert(order == 1 || order == 2);
+        final_command = (-(1/60.f) * vars[0] + (3/20.f) * vars[1] - (3/4.f) * vars[2] + 0 * vars[3] + (3/4.f) * vars[4] - (3/20.f) * vars[5] + (1/60.f) * vars[6]) / scale;
+    }
+
+    static_assert(order == 1 || order == 2 || order == 3);
 
     /*value final_command;
 
