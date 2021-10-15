@@ -1556,10 +1556,10 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<vec3f> black_hole_velocity{{0, 0, 0.335/8}, {0, 0, -0.335/8}};*/
 
     ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
-    std::vector<float> black_hole_m{0.9, 0.47};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516 * 1.5f, 0, 0})};
+    std::vector<float> black_hole_m{0.463, 0.47};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.4 * 0.01}, {0, 0, 0.258 * 0.71f * 1.4 * 1.8}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.4}, {0, 0, 0.258 * 0.71f * 1.4}};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
 
     //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
@@ -2648,7 +2648,7 @@ void build_eqs(equation_context& ctx)
         bjdjbi.idx(i) = v;
     }
 
-    float N = 4;
+    float N = 2;
 
     tensor<value, 3> dtgB = (3.f/4.f) * cGi + bjdjbi - N * gB;
 
@@ -4293,7 +4293,7 @@ int main()
     vec3i size = {200, 200, 200};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
-    float c_at_max = 45;
+    float c_at_max = 65 * (200.f/300.f);
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
@@ -4625,7 +4625,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.45f);
+                i = std::min(i, 0.4f);
             }
         }
 
@@ -4633,7 +4633,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.4f);
+                i = std::min(i, 0.25f);
             }
         }
 
