@@ -2158,6 +2158,9 @@ void build_cA(equation_context& ctx)
     tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, args.cY);
     tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(args.cY, icY);
 
+    ctx.pin(christoff1);
+    ctx.pin(christoff2);
+
     unit_metric<value, 3, 3> cY = args.cY;
 
     inverse_metric<value, 3, 3> unpinned_icY = cY.invert();
@@ -2303,6 +2306,9 @@ void build_cA(equation_context& ctx)
         }
     }*/
 
+    tensor<value, 3, 3> cov_div_X = gpu_covariant_derivative_low_vec(ctx, args.dX, cY, icY);
+    ctx.pin(cov_div_X);
+
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf
     tensor<value, 3, 3> xgARphiij;
 
@@ -2316,7 +2322,7 @@ void build_cA(equation_context& ctx)
             {
                 for(int n=0; n < 3; n++)
                 {
-                    sum += gA * (cY.idx(i, j) / 2.f) * icY.idx(m, n) * gpu_covariant_derivative_low_vec(ctx, args.dX, cY, icY).idx(n, m);
+                    sum += gA * (cY.idx(i, j) / 2.f) * icY.idx(m, n) * cov_div_X.idx(n, m);
                     sum += (cY.idx(i, j) / 2.f) * gA_X * -(3.f/2.f) * icY.idx(m, n) * args.dX.idx(m) * args.dX.idx(n);
                 }
             }
@@ -2327,17 +2333,9 @@ void build_cA(equation_context& ctx)
         }
     }
 
-    tensor<value, 3, 3> xgARij;
+    tensor<value, 3, 3> xgARij = xgARphiij + X * gA * cRij;
 
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            xgARij.idx(i, j) = xgARphiij.idx(i, j) + X * gA * cRij.idx(i, j);
-
-            ctx.pin(xgARij.idx(i, j));
-        }
-    }
+    ctx.pin(xgARij);
 
     tensor<value, 3, 3> Xdidja;
 
@@ -2378,11 +2376,15 @@ void build_cA(equation_context& ctx)
     ///Aki G^kj
     tensor<value, 3, 3> mixed_cAij = raise_index(cA, cY, icY);
 
+    ctx.pin(mixed_cAij);
+
     ///not sure dtcaij is correct, need to investigate
     tensor<value, 3, 3> dtcAij;
 
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf replaced with definition under bssn aux
     tensor<value, 3, 3> with_trace = -Xdidja + xgARij;
+
+    tensor<value, 3, 3> without_trace = gpu_trace_free(with_trace, cY, icY);
 
     for(int i=0; i < 3; i++)
     {
@@ -2411,9 +2413,7 @@ void build_cA(equation_context& ctx)
 
             ///not convinced its correct to push x inside of trace free?
             ///what if the riemann quantity is made trace free by cY instead of Yij like I assumed?
-            value trace_free_part = gpu_trace_free(with_trace, cY, icY).idx(i, j);
-
-            value p1 = trace_free_part;
+            value p1 = without_trace.idx(i, j);
 
             value p2 = gA * (K * cA.idx(i, j) - 2 * sum);
 
@@ -2448,7 +2448,6 @@ void build_cA(equation_context& ctx)
     }
 }
 
-
 inline
 void build_cGi(equation_context& ctx)
 {
@@ -2459,11 +2458,11 @@ void build_cGi(equation_context& ctx)
     tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, args.cY);
     tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(args.cY, icY);
 
+    ctx.pin(christoff2);
+
     unit_metric<value, 3, 3> cY = args.cY;
 
     inverse_metric<value, 3, 3> unpinned_icY = cY.invert();
-
-    ctx.pin(icY);
 
     tensor<value, 3, 3> cA = args.cA;
 
@@ -2480,8 +2479,6 @@ void build_cGi(equation_context& ctx)
     value K = args.K;
 
     tensor<value, 3, 3> icAij = raise_both(cA, cY, icY);
-
-    //value dtK = sum(tensor_upwind(ctx, gB, K)) - sum_multiply(icY.to_tensor(), Xdidja) + gA * (sum_multiply(icAij, cA) + (1/3.f) * K * K);
 
     value gA_X = gA / X;
 
@@ -4526,6 +4523,8 @@ int main()
         std::ofstream out("args.txt");
         out << argument_string;
     }
+
+    std::cout << "Size " << argument_string.size() << std::endl;
 
     cl::program prog(clctx.ctx, "cl.cl");
     prog.build(clctx.ctx, argument_string);
