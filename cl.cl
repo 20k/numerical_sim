@@ -885,110 +885,6 @@ void dissipate(__global float* buffer_in, __global float* buffer_out, float scal
 
 #define NANCHECK(w) if(isnan(w[index])){printf("NAN " #w " %i %i %i\n", ix, iy, iz); debug = true;}
 
-
-
-__kernel
-void evolve_cbase(__global ushort4* points, int point_count,
-            __global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
-            __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
-            __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
-            #ifdef USE_gBB0
-            __global float* gBB0, __global float* gBB1, __global float* gBB2,
-            #endif // USE_gBB0
-            __global float* ocY0, __global float* ocY1, __global float* ocY2, __global float* ocY3, __global float* ocY4,
-            __global float* ocA0, __global float* ocA1, __global float* ocA2, __global float* ocA3, __global float* ocA4, __global float* ocA5,
-            __global float* ocGi0, __global float* ocGi1, __global float* ocGi2, __global float* oK, __global float* oX, __global float* ogA, __global float* ogB0, __global float* ogB1, __global float* ogB2,
-            #ifdef USE_gBB0
-            __global float* ogBB0, __global float* ogBB1, __global float* ogBB2,
-            #endif // USE_gBB0
-            __global float* momentum0, __global float* momentum1, __global float* momentum2,
-            __global DERIV_PRECISION* dcYij0, __global DERIV_PRECISION* dcYij1, __global DERIV_PRECISION* dcYij2, __global DERIV_PRECISION* dcYij3, __global DERIV_PRECISION* dcYij4, __global DERIV_PRECISION* dcYij5, __global DERIV_PRECISION* dcYij6, __global DERIV_PRECISION* dcYij7, __global DERIV_PRECISION* dcYij8, __global DERIV_PRECISION* dcYij9, __global DERIV_PRECISION* dcYij10, __global DERIV_PRECISION* dcYij11, __global DERIV_PRECISION* dcYij12, __global DERIV_PRECISION* dcYij13, __global DERIV_PRECISION* dcYij14, __global DERIV_PRECISION* dcYij15, __global DERIV_PRECISION* dcYij16, __global DERIV_PRECISION* dcYij17,
-            __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
-            __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
-            __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep, float time, int current_simulation_boundary)
-{
-    int local_idx = get_global_id(0);
-
-    if(local_idx >= point_count)
-        return;
-
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
-    int index = IDX(ix, iy, iz);
-
-    float TEMPORARIES2;
-
-    float f_dtcYij0 = dtcYij0;
-    float f_dtcYij1 = dtcYij1;
-    float f_dtcYij2 = dtcYij2;
-    float f_dtcYij3 = dtcYij3;
-    float f_dtcYij4 = dtcYij4;
-    float f_dtcYij5 = dtcYij5;
-
-    float f_dtcAij0 = dtcAij0;
-    float f_dtcAij1 = dtcAij1;
-    float f_dtcAij2 = dtcAij2;
-    float f_dtcAij3 = dtcAij3;
-    float f_dtcAij4 = dtcAij4;
-    float f_dtcAij5 = dtcAij5;
-
-    float f_dtcGi0 = dtcGi0;
-    float f_dtcGi1 = dtcGi1;
-    float f_dtcGi2 = dtcGi2;
-
-    float f_dtK = dtK;
-    float f_dtX = dtX;
-
-    float f_dtgA = dtgA;
-    float f_dtgB0 = dtgB0;
-    float f_dtgB1 = dtgB1;
-    float f_dtgB2 = dtgB2;
-
-    float I_cY0 = cY0[index];
-    float I_cY1 = cY1[index];
-    float I_cY2 = cY2[index];
-    float I_cY3 = cY3[index];
-    float I_cY4 = cY4[index];
-
-    ocY0[index] = (f_dtcYij0);
-    ocY1[index] = (f_dtcYij1);
-    ocY2[index] = (f_dtcYij2);
-    ocY3[index] = (f_dtcYij3);
-    ocY4[index] = (f_dtcYij4);
-
-    ocA0[index] = (f_dtcAij0);
-    ocA1[index] = (f_dtcAij1);
-    ocA2[index] = (f_dtcAij2);
-    #ifndef NO_CAIJYY
-    ocA3[index] = (f_dtcAij3);
-    #endif // NO_CAIJYY
-    ocA4[index] = (f_dtcAij4);
-    ocA5[index] = (f_dtcAij5);
-
-    ocGi0[index] = (f_dtcGi0);
-    ocGi1[index] = (f_dtcGi1);
-    ocGi2[index] = (f_dtcGi2);
-
-    oK[index] = (f_dtK);
-    oX[index] =  (f_dtX);
-
-    ogA[index] = (f_dtgA);
-    ogB0[index] = (f_dtgB0);
-    ogB1[index] =  (f_dtgB1);
-    ogB2[index] = (f_dtgB2);
-}
-
 __kernel
 void evolve_cY(__global ushort4* points, int point_count,
             __global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
@@ -1029,7 +925,7 @@ void evolve_cY(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
 
-    float TEMPORARIES2;
+    float TEMPORARIEStcy;
 
     float f_dtcYij0 = dtcYij0;
     float f_dtcYij1 = dtcYij1;
@@ -1092,7 +988,7 @@ void evolve_cA(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
 
-    float TEMPORARIES2;
+    float TEMPORARIEStca;
 
     float f_dtcAij0 = dtcAij0;
     float f_dtcAij1 = dtcAij1;
@@ -1151,7 +1047,7 @@ void evolve_cGi(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
 
-    float TEMPORARIES2;
+    float TEMPORARIEStcgi;
 
     float f_dtcGi0 = dtcGi0;
     float f_dtcGi1 = dtcGi1;
@@ -1203,7 +1099,7 @@ void evolve_K(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
 
-    float TEMPORARIES2;
+    float TEMPORARIEStk;
 
     float f_dtK = dtK;
 
@@ -1251,7 +1147,7 @@ void evolve_X(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
 
-    float TEMPORARIES2;
+    float TEMPORARIEStx;
 
     float f_dtX = dtX;
 
@@ -1298,7 +1194,7 @@ void evolve_gA(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
 
-    float TEMPORARIES2;
+    float TEMPORARIEStga;
 
     float f_dtgA = dtgA;
 
@@ -1346,7 +1242,7 @@ void evolve_gB(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
 
-    float TEMPORARIES2;
+    float TEMPORARIEStgb;
 
     float f_dtgB0 = dtgB0;
     float f_dtgB1 = dtgB1;
@@ -1357,6 +1253,7 @@ void evolve_gB(__global ushort4* points, int point_count,
     ogB2[index] = (f_dtgB2);
 }
 
+#if 0
 ///todo: need to correctly evolve boundaries
 ///todo: need to factor out the differentials
 __kernel
@@ -1643,6 +1540,7 @@ void evolve(__global ushort4* points, int point_count,
     }
     #endif // 0
 }
+#endif
 
 #if 0
 ///kreiss
