@@ -2639,7 +2639,7 @@ void build_eqs(equation_context& ctx)
         bjdjbi.idx(i) = v;
     }
 
-    float N = 3;
+    float N = 4;
 
     tensor<value, 3> dtgB = (3.f/4.f) * cGi + bjdjbi - N * gB;
 
@@ -4281,7 +4281,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {300, 300, 300};
+    vec3i size = {250, 250, 250};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = 65;
@@ -4616,7 +4616,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.4f);
+                i = std::min(i, 0.45f);
             }
         }
 
@@ -4624,7 +4624,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.35f);
+                i = std::min(i, 0.4f);
             }
         }
 
