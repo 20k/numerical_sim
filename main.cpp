@@ -1799,7 +1799,6 @@ void build_constraints(equation_context& ctx)
         //ctx.add("fix_cY" + std::to_string(i), fixed_cY.idx(idx.x(), idx.y()));
         ctx.add("fix_cA" + std::to_string(i), fixed_cA.idx(idx.x(), idx.y()));
     }
-
 }
 
 void build_intermediate_thin(equation_context& ctx)
@@ -1964,6 +1963,12 @@ void build_momentum_constraint(equation_context& ctx)
         ctx.add("init_momentum" + std::to_string(i), Mi.idx(i));
     }
 }
+
+/*inline
+void build_cY(equation_context& ctx)
+{
+
+}*/
 
 ///https://arxiv.org/pdf/gr-qc/0206072.pdf on stability, they recompute cGi where it does nto hae a derivative
 ///todo: X: This is think is why we're getting nans. Half done
@@ -4961,7 +4966,13 @@ int main()
                 a1.push_back(time_elapsed_s);
                 a1.push_back(current_simulation_boundary);
 
-                clctx.cqueue.exec("evolve", a1, {evolution_positions_count}, {128});
+                clctx.cqueue.exec("evolve_cY", a1, {evolution_positions_count}, {128});
+                clctx.cqueue.exec("evolve_cA", a1, {evolution_positions_count}, {128});
+                clctx.cqueue.exec("evolve_cGi", a1, {evolution_positions_count}, {128});
+                clctx.cqueue.exec("evolve_K", a1, {evolution_positions_count}, {128});
+                clctx.cqueue.exec("evolve_X", a1, {evolution_positions_count}, {128});
+                clctx.cqueue.exec("evolve_gA", a1, {evolution_positions_count}, {128});
+                clctx.cqueue.exec("evolve_gB", a1, {evolution_positions_count}, {128});
             };
 
             auto enforce_constraints = [&](auto& generic_out)
