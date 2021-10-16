@@ -123,12 +123,55 @@ void calculate_rk4_val(__global ushort4* points, int point_count, int4 dim, __gl
     yn_inout[index] = xn[index] + factor * yn;
 }
 
-float buffer_read_nearest(__global const float* const buffer, int3 position, int4 dim)
+half buffer_read_nearest(__global const half* const buffer, int3 position, int4 dim)
 {
     return buffer[position.z * dim.x * dim.y + position.y * dim.x + position.x];
 }
 
-float buffer_read_linear(__global const float* const buffer, float3 position, int4 dim)
+float buffer_read_linear(__global const half* const buffer, float3 position, int4 dim)
+{
+    /*position = round(position);
+
+    int3 ipos = (int3)(position.x, position.y, position.z);
+
+    return buffer[ipos.z * dim.x * dim.y + ipos.y * dim.x + ipos.x];*/
+
+    half3 floored = floor((half3){position.x, position.y, position.z});
+
+    int3 ipos = (int3)(floored.x, floored.y, floored.z);
+
+    half c000 = buffer_read_nearest(buffer, ipos + (int3)(0,0,0), dim);
+    half c100 = buffer_read_nearest(buffer, ipos + (int3)(1,0,0), dim);
+
+    half c010 = buffer_read_nearest(buffer, ipos + (int3)(0,1,0), dim);
+    half c110 = buffer_read_nearest(buffer, ipos + (int3)(1,1,0), dim);
+
+    half c001 = buffer_read_nearest(buffer, ipos + (int3)(0,0,1), dim);
+    half c101 = buffer_read_nearest(buffer, ipos + (int3)(1,0,1), dim);
+
+    half c011 = buffer_read_nearest(buffer, ipos + (int3)(0,1,1), dim);
+    half c111 = buffer_read_nearest(buffer, ipos + (int3)(1,1,1), dim);
+
+    half3 frac = (half3){position.x, position.y, position.z} - floored;
+
+    half c00 = c000 * (1 - frac.x) + c100 * frac.x;
+    half c01 = c001 * (1 - frac.x) + c101 * frac.x;
+
+    half c10 = c010 * (1 - frac.x) + c110 * frac.x;
+    half c11 = c011 * (1 - frac.x) + c111 * frac.x;
+
+    half c0 = c00 * (1 - frac.y) + c10 * frac.y;
+    half c1 = c01 * (1 - frac.y) + c11 * frac.y;
+
+    return c0 * (1 - frac.z) + c1 * frac.z;
+}
+
+float buffer_read_nearestf(__global const float* const buffer, int3 position, int4 dim)
+{
+    return buffer[position.z * dim.x * dim.y + position.y * dim.x + position.x];
+}
+
+float buffer_read_linearf(__global const float* const buffer, float3 position, int4 dim)
 {
     /*position = round(position);
 
@@ -140,18 +183,18 @@ float buffer_read_linear(__global const float* const buffer, float3 position, in
 
     int3 ipos = (int3)(floored.x, floored.y, floored.z);
 
-    float c000 = buffer_read_nearest(buffer, ipos + (int3)(0,0,0), dim);
-    float c100 = buffer_read_nearest(buffer, ipos + (int3)(1,0,0), dim);
+    float c000 = buffer_read_nearestf(buffer, ipos + (int3)(0,0,0), dim);
+    float c100 = buffer_read_nearestf(buffer, ipos + (int3)(1,0,0), dim);
 
-    float c010 = buffer_read_nearest(buffer, ipos + (int3)(0,1,0), dim);
-    float c110 = buffer_read_nearest(buffer, ipos + (int3)(1,1,0), dim);
+    float c010 = buffer_read_nearestf(buffer, ipos + (int3)(0,1,0), dim);
+    float c110 = buffer_read_nearestf(buffer, ipos + (int3)(1,1,0), dim);
 
 
-    float c001 = buffer_read_nearest(buffer, ipos + (int3)(0,0,1), dim);
-    float c101 = buffer_read_nearest(buffer, ipos + (int3)(1,0,1), dim);
+    float c001 = buffer_read_nearestf(buffer, ipos + (int3)(0,0,1), dim);
+    float c101 = buffer_read_nearestf(buffer, ipos + (int3)(1,0,1), dim);
 
-    float c011 = buffer_read_nearest(buffer, ipos + (int3)(0,1,1), dim);
-    float c111 = buffer_read_nearest(buffer, ipos + (int3)(1,1,1), dim);
+    float c011 = buffer_read_nearestf(buffer, ipos + (int3)(0,1,1), dim);
+    float c111 = buffer_read_nearestf(buffer, ipos + (int3)(1,1,1), dim);
 
     float3 frac = position - floored;
 
@@ -1412,6 +1455,32 @@ void init_rays(__global float* cY0, __global float* cY1, __global float* cY2, __
     int iz = fipos.z;
 }*/
 
+__kernel
+void float_to_half_reduced(__global ushort4* points, int point_count, int4 dim, __global float* in, __global half* out)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    out[IDX(ix,iy,iz)] = in[IDX(ix,iy,iz)];
+}
+
+__kernel
+void float_to_half_full(__global float* in, __global half* out, int num)
+{
+    int idx = get_global_id(0);
+
+    if(idx >= num)
+        return;
+
+    out[idx] = in[idx];
+}
+
 enum ds_result
 {
     DS_NONE,
@@ -1442,13 +1511,12 @@ int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_d
     return DS_NONE;
 }
 
-
 __kernel
-void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
-                __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
-                __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
+void trace_rays(__global half* cY0, __global half* cY1, __global half* cY2, __global half* cY3, __global half* cY4,
+                __global half* cA0, __global half* cA1, __global half* cA2, __global half* cA3, __global half* cA4, __global half* cA5,
+                __global half* cGi0, __global half* cGi1, __global half* cGi2, __global half* K, __global half* X, __global half* gA, __global half* gB0, __global half* gB1, __global half* gB2,
                 #ifdef USE_gBB0
-                __global float* gBB0, __global float* gBB1, __global float* gBB2,
+                __global half* gBB0, __global half* gBB1, __global half* gBB2,
                 #endif // USE_gBB0
                 float scale, float3 camera_pos, float4 camera_quat,
                 int4 dim, __write_only image2d_t screen)

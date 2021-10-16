@@ -4281,12 +4281,12 @@ struct buffer_set
 
     std::vector<cl::buffer> buffers;
 
-    buffer_set(cl::context& ctx, vec3i size)
+    buffer_set(cl::context& ctx, vec3i size, size_t element_size = sizeof(cl_float))
     {
         for(int kk=0; kk < buffer_count; kk++)
         {
             buffers.emplace_back(ctx);
-            buffers.back().alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+            buffers.back().alloc(size.x() * size.y() * size.z() * element_size);
         }
     }
 };
@@ -4495,6 +4495,8 @@ int main()
     buffer_set rk4_scratch(clctx.ctx, size);
     //buffer_set rk4_xn(clctx.ctx, size);
 
+    buffer_set trace_data(clctx.ctx, size, sizeof(cl_half));
+
     std::array<std::string, buffer_set::buffer_count> buffer_names
     {
         "cY0", "cY1", "cY2", "cY3", "cY4",
@@ -4671,6 +4673,20 @@ int main()
         init.push_back(clsize);
 
         clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
+    }
+
+    for(int i=0; i < (int)generic_data[0].buffers.size(); i++)
+    {
+        cl::args init;
+
+        cl_int arg_count = size.x() * size.y() * size.z();
+
+        init.push_back(generic_data[0].buffers[i]);
+        init.push_back(trace_data.buffers[i]);
+
+        init.push_back(arg_count);
+
+        clctx.cqueue.exec("float_to_half_full", init, {arg_count}, {256});
     }
 
     std::vector<cl::read_info<cl_float2>> read_data;
@@ -5368,13 +5384,38 @@ int main()
             current_simulation_boundary = clamp(current_simulation_boundary, 0, size.x()/2);
         }
 
-        if(rendering_method == 0 || rendering_method == 1)
+        if((rendering_method == 0 || rendering_method == 1) && (should_render || snap))
         {
             cl::args render_args;
 
-            for(auto& i : generic_data[which_data].buffers)
+            if(rendering_method == 0)
             {
-                render_args.push_back(i);
+                for(auto& i : generic_data[which_data].buffers)
+                {
+                    render_args.push_back(i);
+                }
+            }
+
+            if(rendering_method == 1)
+            {
+                for(int i=0; i < (int)generic_data[which_data].buffers.size(); i++)
+                {
+                    cl::args init;
+
+                    init.push_back(evolution_positions);
+                    init.push_back(evolution_positions_count);
+                    init.push_back(clsize);
+
+                    init.push_back(generic_data[which_data].buffers[i]);
+                    init.push_back(trace_data.buffers[i]);
+
+                    clctx.cqueue.exec("float_to_half_reduced", init, {evolution_positions_count}, {256});
+                }
+
+                for(auto& i : trace_data.buffers)
+                {
+                    render_args.push_back(i);
+                }
             }
 
             cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
@@ -5388,13 +5429,10 @@ int main()
 
             //assert(render_args.arg_list.size() == 29);
 
-            if(should_render || snap)
-            {
-                if(rendering_method == 0)
-                    clctx.cqueue.exec("trace_metric", render_args, {width, height}, {16, 16});
-                else
-                    clctx.cqueue.exec("trace_rays", render_args, {width, height}, {16, 16});
-            }
+            if(rendering_method == 0)
+                clctx.cqueue.exec("trace_metric", render_args, {width, height}, {16, 16});
+            else
+                clctx.cqueue.exec("trace_rays", render_args, {width, height}, {16, 16});
         }
 
         if(rendering_method == 2 && snap)
