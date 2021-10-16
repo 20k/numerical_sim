@@ -3845,13 +3845,23 @@ void process_geodesics(equation_context& ctx)
     vec<4, value> basis_y = basis.v4;
     vec<4, value> basis_z = basis.v2;
 
+    ctx.pin(basis_x);
+    ctx.pin(basis_y);
+    ctx.pin(basis_z);
+
     pixel_direction = pixel_direction.norm();
 
     vec<3, value> basis3_x = {basis_x.y(), basis_x.z(), basis_x.w()};
     vec<3, value> basis3_y = {basis_y.y(), basis_y.z(), basis_y.w()};
     vec<3, value> basis3_z = {basis_z.y(), basis_z.z(), basis_z.w()};
 
+    ctx.pin(basis3_x);
+    ctx.pin(basis3_y);
+    ctx.pin(basis3_z);
+
     pixel_direction = unrotate_vector(basis3_x.norm(), basis3_y.norm(), basis3_z.norm(),  pixel_direction);
+
+    ctx.pin(pixel_direction);
 
     vec<4, value> pixel_x = pixel_direction.x() * basis_x;
     vec<4, value> pixel_y = pixel_direction.y() * basis_y;
