@@ -2117,13 +2117,19 @@ void build_cY(equation_context& ctx)
 {
     standard_arguments args(false);
 
-    inverse_metric<value, 3, 3> icY = args.cY.invert();
+    metric<value, 3, 3> unpinned_cY = args.cY;
+
+    ctx.pin(args.cY);
 
     tensor<value, 3> bigGi_lower = lower_index(args.bigGi, args.cY);
-
     tensor<value, 3> gB_lower = lower_index(args.gB, args.cY);
 
-    tensor<value, 3, 3> lie_cYij = gpu_lie_derivative_weight(ctx, args.gB, args.cY);
+    ctx.pin(bigGi_lower);
+    ctx.pin(gB_lower);
+
+    tensor<value, 3, 3> lie_cYij = gpu_lie_derivative_weight(ctx, args.gB, unpinned_cY);
+
+    ctx.pin(lie_cYij);
 
     ///https://arxiv.org/pdf/gr-qc/0511048.pdf (1)
     ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.66
