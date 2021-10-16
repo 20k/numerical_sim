@@ -271,7 +271,7 @@ struct equation_context
         values.push_back({name, v});
     }
 
-    void build(std::string& argument_string, const std::string& str)
+    void build_impl(std::string& argument_string, const std::string& str)
     {
         for(auto& i : values)
         {
@@ -298,6 +298,17 @@ struct equation_context
             temporary_string.pop_back();
 
         argument_string += "-DTEMPORARIES" + str + "=" + temporary_string + " ";
+    }
+
+    void build(std::string& argument_string, const std::string& str)
+    {
+        int old_length = argument_string.size();
+
+        build_impl(argument_string, str);
+
+        int new_length = argument_string.size();
+
+        std::cout << "EXTRA LENGTH " << (new_length - old_length) << " " << str << std::endl;
     }
 
     void build(std::string& argument_string, int idx)
@@ -4310,10 +4321,10 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {300, 300, 300};
+    vec3i size = {200, 200, 200};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
-    float c_at_max = 65 * (300.f/300.f);
+    float c_at_max = 65 * (200.f/300.f);
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
@@ -4430,7 +4441,7 @@ int main()
     argument_string += "-DDERIV_PRECISION=float ";
     #endif
 
-    std::cout << "ARGS " << argument_string << std::endl;
+    //std::cout << "ARGS " << argument_string << std::endl;
 
     {
         std::ofstream out("args.txt");
