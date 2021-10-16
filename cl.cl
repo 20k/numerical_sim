@@ -1421,40 +1421,20 @@ enum ds_result
 
 int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_ds_out)
 {
-    float current_acceleration_err = fast_length(next_acceleration) * 0.01f;
+    #define MIN_STEP 0.5f
 
-    float experienced_acceleration_change = current_acceleration_err;
-
-    #define MAX_ACCELERATION_CHANGE 0.0001
-
-    float err = MAX_ACCELERATION_CHANGE;
-    float i_hate_computers = 256*256;
-
-    //#define MIN_STEP 0.00001f
-    //#define MIN_STEP 0.000001f
-    #define MIN_STEP 0.1f
-
-    float max_timestep = 100000;
-
-    float diff = experienced_acceleration_change * i_hate_computers;
-
-    if(diff < err * i_hate_computers / pow(max_timestep, 2))
-        diff = err * i_hate_computers / pow(max_timestep, 2);
-
-    ///of course, as is tradition, whatever works for kerr does not work for alcubierre
-    ///the sqrt error calculation is significantly better for alcubierre, largely in terms of having no visual artifacts at all
-    ///whereas the pow version is nearly 2x faster for kerr
-    float next_ds = native_sqrt(((err * i_hate_computers) / diff));
+    float next_ds = 0.01f * 1/fast_length(next_acceleration);
 
     ///produces strictly worse results for kerr
-    next_ds = 0.99f * current_ds * clamp(next_ds / current_ds, 0.3f, 2.f);
+    next_ds = 0.99f * current_ds * clamp(next_ds / current_ds, 0.1f, 4.f);
 
     next_ds = max(next_ds, MIN_STEP);
+    next_ds = min(next_ds, 1.f);
 
     *next_ds_out = next_ds;
 
-    if(next_ds == MIN_STEP && (diff/i_hate_computers) > err * 10000)
-        return DS_RETURN;
+    //if(next_ds == MIN_STEP)
+    //    return DS_RETURN;
 
     if(next_ds < current_ds/1.95f)
         return DS_SKIP;
@@ -1522,7 +1502,7 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
         V2 = V2_d;
     }
 
-    float next_ds = 0.00001f;
+    float next_ds = 0.1f;
 
     bool deliberate_termination = false;
     bool last_skipped = false;
@@ -1598,6 +1578,10 @@ void trace_rays(__global float* cY0, __global float* cY1, __global float* cY2, _
         }
 
         last_skipped = false;
+
+        /*ds = 0.025f * 1/fast_length(next_acceleration);
+        ds = min(ds, 2.f);
+        ds = max(ds, 0.5f);*/
 
         V0 += dV0 * ds;
         V1 += dV1 * ds;
