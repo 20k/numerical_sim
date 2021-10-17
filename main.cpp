@@ -1479,7 +1479,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
     ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
-    std::vector<float> black_hole_m{0.5, 0.6};
+    std::vector<float> black_hole_m{0.4, 0.5};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-5, 0, 0}), san_black_hole_pos({5, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
     std::vector<vec3f> black_hole_velocity{{0, 0, -0.125 / 0.5}, {0, 0, 0.125 / 0.6}};
@@ -4306,9 +4306,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.5;
-    float dissipate_high = 0.5;
-    float dissipate_gauge = 0.5;
+    float dissipate_low = 0.4;
+    float dissipate_high = 0.4;
+    float dissipate_gauge = 0.4;
 
     float dissipate_caijyy = dissipate_high;
 
@@ -4491,11 +4491,11 @@ int main()
 
     while(!win.should_close())
     {
-        if(time_elapsed_s >= 15)
+        if(time_elapsed_s >= 10)
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.4f);
+                i = std::min(i, 0.25f);
             }
         }
 
