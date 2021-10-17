@@ -473,7 +473,7 @@ struct differentiation_context
     std::array<value, elements> ys;
     std::array<value, elements> zs;
 
-    differentiation_context(const value& in, int idx, const vec<3, value>& idx_offset, bool should_pin = true, bool linear_interpolation = false)
+    differentiation_context(const value& in, int idx, bool should_pin = true, bool linear_interpolation = false)
     {
         std::vector<std::string> variables = in.get_all_variables();
 
@@ -523,8 +523,6 @@ struct differentiation_context
                     v = value(index_without_extension(buffer, index_raw(x, y, z)));
             }
 
-            //ctx.pin(v);
-
             return v;
         };
 
@@ -549,26 +547,12 @@ struct differentiation_context
             int offset = i - (elements - 1)/2;
 
             if(idx == 0)
-                xs[i] += offset + idx_offset.x();
+                xs[i] += offset;
             if(idx == 1)
-                ys[i] += offset + idx_offset.y();
+                ys[i] += offset;
             if(idx == 2)
-                zs[i] += offset + idx_offset.z();
+                zs[i] += offset;
         }
-
-        /*std::map<std::string, std::string> substitutions1;
-        std::map<std::string, std::string> substitutions2;
-
-        for(auto& i : variables)
-        {
-            std::tuple<std::string, std::string, bool> decomp = decompose_variable(i);
-
-            value to_sub1 = index(std::get<1>(decomp), std::get<0>(decomp), std::get<2>(decomp), x1, y1, z1);
-            value to_sub2 = index(std::get<1>(decomp), std::get<0>(decomp), std::get<2>(decomp), x2, y2, z2);
-
-            substitutions1[i] = type_to_string(to_sub1);
-            substitutions2[i] = type_to_string(to_sub2);
-        }*/
 
         std::array<std::map<std::string, std::string>, elements> substitutions;
 
@@ -580,11 +564,6 @@ struct differentiation_context
             {
                 value to_sub = index(std::get<1>(decomp), std::get<0>(decomp), std::get<2>(decomp), xs[kk], ys[kk], zs[kk]);
 
-                if(should_pin)
-                {
-                    //ctx.pin(to_sub);
-                }
-
                 substitutions[kk][i] = type_to_string(to_sub);
             }
         }
@@ -594,15 +573,6 @@ struct differentiation_context
             vars[i] = cp;
             vars[i].substitute(substitutions[i]);
         }
-
-        ///todo: pin the individual variables?
-        /*if(should_pin)
-        {
-            for(auto& i : vars)
-            {
-                ctx.pin(i);
-            }
-        }*/
     }
 };
 
@@ -611,19 +581,15 @@ value get_distance(const vec<3, value>& p1, const vec<3, value>& p2)
     return "get_distance(" + type_to_string(p1.x(), true) + "," + type_to_string(p1.y(), true) + "," + type_to_string(p1.z(), true) + "," + type_to_string(p2.x(), true) + "," + type_to_string(p2.y(), true) + "," + type_to_string(p2.z(), true) + ",dim,scale)";
 }
 
-value get_scale_distance(equation_context& ctx, const value& in, const vec<3, value>& offset, int idx, int which)
+value get_scale_distance(equation_context& ctx, const value& in, int idx, int which)
 {
-    differentiation_context<3> dctx(in, idx, offset, false);
+    differentiation_context<3> dctx(in, idx, false);
 
     value final_command;
 
     value ix = "ix";
     value iy = "iy";
     value iz = "iz";
-
-    ix += offset.x();
-    iy += offset.y();
-    iz += offset.z();
 
     std::string ix0 = type_to_string(ix, true);
     std::string iy0 = type_to_string(iy, true);
@@ -657,12 +623,12 @@ vec<3, value> get_idx_offset(int idx)
 
 #define DIFFERENTIATION_WIDTH 3
 
-value first_derivative(equation_context& ctx, const value& in, const vec<3, value>& offset, int idx)
+value first_derivative(equation_context& ctx, const value& in, int idx)
 {
-    differentiation_context<3> dctx(in, idx, offset, false);
+    differentiation_context<3> dctx(in, idx, false);
 
-    value h = get_scale_distance(ctx, in, offset, idx, 0);
-    value k = get_scale_distance(ctx, in, offset, idx, 1);
+    value h = get_scale_distance(ctx, in, idx, 0);
+    value k = get_scale_distance(ctx, in, idx, 1);
 
     ///f(x + h) - f(x - k)
     value final_command = (dctx.vars[2] - dctx.vars[0]) / (h + k);
@@ -670,9 +636,9 @@ value first_derivative(equation_context& ctx, const value& in, const vec<3, valu
     return final_command;
 }
 
-value second_derivative(equation_context& ctx, const value& in, const vec<3, value>& offset, int idx)
+value second_derivative(equation_context& ctx, const value& in, int idx)
 {
-    differentiation_context<5> dctx(in, idx, offset, false);
+    differentiation_context<5> dctx(in, idx, false);
 
     vec<3, value> pos = {"ix", "iy", "iz"};
 
@@ -692,20 +658,9 @@ value second_derivative(equation_context& ctx, const value& in, const vec<3, val
     return (um1 + up1 - 2 * u0) / (0.5 * (tdxp1 * tdxp1 + tdxm1 * tdxm1));
 }
 
-/*value third_derivative(equation_context& ctx, const value& in, const vec<3, value>& offset, int idx)
+value fourth_derivative(equation_context& ctx, const value& in, int idx)
 {
-    value h = get_scale_distance(ctx, in, offset, idx, 0);
-    value k = get_scale_distance(ctx, in, offset, idx, 1);
-
-    value right = second_derivative(ctx, in, get_idx_offset(idx) + offset, idx);
-    value left = second_derivative(ctx, in, -get_idx_offset(idx) + offset, idx);
-
-    return (right - left) / (h + k);
-}*/
-
-value fourth_derivative(equation_context& ctx, const value& in, const vec<3, value>& offset, int idx)
-{
-    differentiation_context<5> dctx(in, idx, offset, false);
+    differentiation_context<5> dctx(in, idx, false);
 
     vec<3, value> pos = {"ix", "iy", "iz"};
 
@@ -735,10 +690,8 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
 {
     //std::cout << "TEST " << type_to_string(second_derivative(ctx, in, {"0", "0", "0"}, idx)) << std::endl;
 
-    vec<3, value> offset = {"0", "0", "0"};
-
-    value h = get_scale_distance(ctx, in, offset, idx, 0);
-    value k = get_scale_distance(ctx, in, offset, idx, 1);
+    value h = get_scale_distance(ctx, in, idx, 0);
+    value k = get_scale_distance(ctx, in, idx, 1);
 
     ///todo: fix this
     value effective_scale = (h + k) / 2.f;
@@ -748,16 +701,16 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
 
     //#define FOURTH
     #ifdef FOURTH
-    differentiation_context<5> dctx(in, idx, {"0", "0", "0"}, false);
+    differentiation_context<5> dctx(in, idx, false);
     //value stencil = -(1 / (16.f * effective_scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
 
-    value stencil = (-1 / 16.f) * pow(effective_scale, 3.f) * fourth_derivative(ctx, in, offset, idx);
+    value stencil = (-1 / 16.f) * pow(effective_scale, 3.f) * fourth_derivative(ctx, in, idx);
 
     #endif // FOURTH
 
     #define SIXTH
     #ifdef SIXTH
-    differentiation_context<7> dctx(in, idx, {"0", "0", "0"}, false);
+    differentiation_context<7> dctx(in, idx, false);
     value stencil = (1 / (64.f * scale)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
     #endif // SIXTH
 
@@ -800,21 +753,21 @@ value hacky_differentiate(const value& in, int idx, bool pin = true, bool linear
 
     if(order == 1)
     {
-        differentiation_context dctx(in, idx, {"0", "0", "0"}, true, linear);
+        differentiation_context dctx(in, idx, true, linear);
         std::array<value, 5> vars = dctx.vars;
 
         final_command = (vars[3] - vars[1]) / (2 * scale);
     }
     else if(order == 2)
     {
-        differentiation_context dctx(in, idx, {"0", "0", "0"}, true, linear);
+        differentiation_context dctx(in, idx, true, linear);
         std::array<value, 5> vars = dctx.vars;
 
         final_command = (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
     }
     else if(order == 3)
     {
-        differentiation_context<7> dctx(in, idx, {"0", "0", "0"}, true, linear);
+        differentiation_context<7> dctx(in, idx, true, linear);
         std::array<value, 7> vars = dctx.vars;
 
         final_command = (-(1/60.f) * vars[0] + (3/20.f) * vars[1] - (3/4.f) * vars[2] + 0 * vars[3] + (3/4.f) * vars[4] - (3/20.f) * vars[5] + (1/60.f) * vars[6]) / scale;
@@ -837,11 +790,6 @@ value hacky_differentiate(const value& in, int idx, bool pin = true, bool linear
         ///f(x + h) - f(x - k)
         final_command = (vars[3] - vars[1]) / (h + k);
     }*/
-
-    if(pin)
-    {
-        //ctx.pin(final_command);
-    }
 
     return final_command;
 }
@@ -893,11 +841,6 @@ value upwind_differentiate(equation_context& ctx, const value& prefix, const val
     ///- here probably isn't right
     ///neither is correct, this is fundamentally wrong somewhere
     value final_command = (a_p * u_n + a_n * u_p);
-
-    if(pin)
-    {
-        ctx.pin(final_command);
-    }
 
     return final_command;*/
 
@@ -971,7 +914,6 @@ tensor<T, N, N> gpu_lie_derivative_weight(equation_context& ctx, const tensor<T,
 
             for(int k=0; k < N; k++)
             {
-                //sum = sum + B.idx(k) * hacky_differentiate(mT.idx(i, j), k);
                 sum = sum + upwind_differentiate(ctx, B.idx(k), mT.idx(i, j), k);
                 sum = sum + mT.idx(i, k) * hacky_differentiate(B.idx(k), j);
                 sum = sum + mT.idx(j, k) * hacky_differentiate(B.idx(k), i);
@@ -1074,43 +1016,6 @@ tensor<value, N> lower_index(const tensor<value, N>& mT, const metric<value, N, 
     return ret;
 }
 
-/*template<typename T, int N>
-inline
-tensor<T, N> gpu_covariant_derivative_scalar(equation_context& ctx, const T& in)
-{
-    tensor<T, N> ret;
-
-    for(int i=0; i < N; i++)
-    {
-        ret.idx(i) = hacky_differentiate(in, i);
-    }
-
-    return ret;
-}
-
-template<typename T, int N>
-inline
-tensor<T, N> gpu_high_covariant_derivative_scalar(equation_context& ctx, const T& in, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
-{
-    tensor<T, N> deriv_low = gpu_covariant_derivative_scalar<T, N>(ctx, in);
-
-    tensor<T, N> ret;
-
-    for(int i=0; i < N; i++)
-    {
-        T sum = 0;
-
-        for(int p=0; p < N; p++)
-        {
-            sum = sum + inverse.idx(i, p) * deriv_low.idx(p);
-        }
-
-        ret.idx(i) = sum;
-    }
-
-    return ret;
-}*/
-
 ///https://en.wikipedia.org/wiki/Covariant_derivative#Covariant_derivative_by_field_type
 ///for the tensor DcDa, this returns idx(a, c)
 template<typename T, int N>
@@ -1182,36 +1087,6 @@ tensor<T, N, N> gpu_trace_free(const tensor<T, N, N>& mT, const metric<T, N, N>&
 
     return TF;
 }
-
-//https://arxiv.org/pdf/0709.3559.pdf b.48??
-///the algebraic constraints are an extremely good candidate for simulation instability
-template<typename T, int N>
-inline
-tensor<T, N, N> gpu_trace_free_cAij(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
-{
-    tensor<T, N, N> TF;
-
-    for(int i=0; i < N; i++)
-    {
-        for(int j=0; j < N; j++)
-        {
-            value sum = 0;
-
-            for(int l=0; l < N; l++)
-            {
-                for(int m=0; m < N; m++)
-                {
-                    sum += mT.idx(l, m) * inverse.idx(i, l) * inverse.idx(j, m);
-                }
-            }
-
-            TF.idx(i, j) = mT.idx(i, j) - (1.f/3.f) * sum;
-        }
-    }
-
-    return TF;
-}
-
 
 template<typename T, int N>
 inline
@@ -1612,28 +1487,11 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     };
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
-    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({0, -1.1515 * 0.5f, 0}), san_black_hole_pos({0, 1.1515 * 0.5f, 0})};
-    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.1515, 0, 0}), san_black_hole_pos({3.1515, 0, 0})};
-    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({5, 0, 0})};
-    //std::vector<float> black_hole_m{0.5f, 0.5f};
-    //std::vector<vec3f> black_hole_velocity{{0, 0, 0.025}, {0, 0, -0.025}}; ///pick better velocities
-
-    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.1515f, 0, 0}), san_black_hole_pos({2.1515f, 0, 0})};
-    //std::vector<vec3f> black_hole_pos{san_black_hole_pos({-2.5f - 0, 0, 0}), san_black_hole_pos({2.5f + 0, 0, 0})};
-    //std::vector<vec3f> black_hole_velocity{{0, 0, -0.05}, {0, 0, 0.05}};
-
-    /*std::vector<float> black_hole_m{0.45f, 0.45f};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.1515f, 0, 0}), san_black_hole_pos({3.1515f, 0, 0})};
-    std::vector<vec3f> black_hole_velocity{{0, 0, 0.335/8}, {0, 0, -0.335/8}};*/
-
     ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
     std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.4}, {0, 0, 0.258 * 0.71f * 1.4}};
-    //std::vector<vec3f> black_hole_velocity{{0, 0, 0.5f * -0.258/black_hole_m[0]}, {0, 0, 0.5f * 0.258/black_hole_m[1]}};
-
-    //std::vector<vec3f> black_hole_velocity{{0,0,0.000025}, {0,0,-0.000025}};
 
     metric<value, 3, 3> flat_metric;
 
@@ -1648,8 +1506,6 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     tensor<value, 3, 3> bcAij = calculate_bcAij(pos, black_hole_m, black_hole_pos, black_hole_velocity);
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
-    //value BL_a = 0;
-
     value BL_s = 0;
 
     for(int i=0; i < (int)black_hole_m.size(); i++)
@@ -1688,7 +1544,6 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     {
         ctx.add("init_bcA" + std::to_string(i), bcAij.idx(linear_indices[i].x(), linear_indices[i].y()));
     }
-
 
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 69
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
@@ -1839,9 +1694,6 @@ void build_constraints(equation_context& ctx)
     /// / det_cY_pow
     metric<value, 3, 3> fixed_cY = cY / det_cY_pow;*/
 
-    ///sucks
-    //tensor<value, 3, 3> fixed_cA = gpu_trace_free_cAij(cA, fixed_cY, fixed_cY.invert());
-
     /*tensor<value, 3, 3> fixed_cA = cA;
 
     ///https://arxiv.org/pdf/0709.3559.pdf b.49
@@ -1860,6 +1712,7 @@ void build_constraints(equation_context& ctx)
 
     ctx.add("NO_CAIJYY", 1);
     #else
+    ///https://arxiv.org/pdf/0709.3559.pdf b.48?? note: this defines a seemingly alternate method to do the below, but it doesn't work amazingly well
     tensor<value, 3, 3> fixed_cA = gpu_trace_free(cA, cY, cY.invert());
     #endif
 
