@@ -1497,8 +1497,10 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
         float v0 = sqrt(m1 * m1 / (R * M));
         float v1 = sqrt(m0 * m0 / (R * M));
 
-        black_hole_velocity[0].z() = -v0;
-        black_hole_velocity[1].z() = v1;
+        vec3f v0_v = {0.0, 0.0, -1};
+
+        black_hole_velocity[0] = v0 * v0_v.norm();
+        black_hole_velocity[1] = v1 * -v0_v.norm();
 
         float r0 = m1 * R / M;
         float r1 = m0 * R / M;
