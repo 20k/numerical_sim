@@ -1479,10 +1479,28 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
     ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
-    std::vector<float> black_hole_m{0.463, 0.47};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516*2, 0, 0}), san_black_hole_pos({3.516*2, 0, 0})};
+    std::vector<float> black_hole_m{0.5, 0.6};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-5, 0, 0}), san_black_hole_pos({5, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.09 * 1.025/2}, {0, 0, 0.258 * 0.71f * 1.09 * 1.025/2}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.125 / 0.5}, {0, 0, 0.125 / 0.6}};
+
+    #define KEPLER
+    #ifdef KEPLER
+    {
+        float R = (black_hole_pos[1] - black_hole_pos[0]).length();
+
+        float m0 = black_hole_m[0];
+        float m1 = black_hole_m[1];
+
+        float M = m0 + m1;
+
+        float v0 = sqrt(m1 * m1 / (R * M));
+        float v1 = sqrt(m0 * m0 / (R * M));
+
+        black_hole_velocity[0].z() = -v0;
+        black_hole_velocity[1].z() = v1;
+    }
+    #endif // KEPLER
 
     metric<value, 3, 3> flat_metric;
 
