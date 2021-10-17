@@ -1499,6 +1499,12 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         black_hole_velocity[0].z() = -v0;
         black_hole_velocity[1].z() = v1;
+
+        float r0 = m1 * R / M;
+        float r1 = m0 * R / M;
+
+        black_hole_pos[0] = san_black_hole_pos({-r0, 0, 0});
+        black_hole_pos[1] = san_black_hole_pos({r1, 0, 0});
     }
     #endif // KEPLER
 
