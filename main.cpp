@@ -1216,6 +1216,8 @@ struct standard_arguments
 
     tensor<value, 3> cGi;
 
+    value gA_X;
+
     metric<value, 3, 3> Yij;
     tensor<value, 3, 3> Kij;
 
@@ -1235,11 +1237,13 @@ struct standard_arguments
 
     tensor<value, 3> bigGi;
 
+
     standard_arguments(bool interpolate)
     {
         gA.make_value(bidx("gA", interpolate));
 
-        gA = max(gA, 0.005f);
+        gA = max(gA, 0.f);
+        //gA = max(gA, 0.00001f);
 
         gB.idx(0).make_value(bidx("gB0", interpolate));
         gB.idx(1).make_value(bidx("gB1", interpolate));
@@ -1283,7 +1287,9 @@ struct standard_arguments
         X.make_value(bidx("X", interpolate));
         K.make_value(bidx("K", interpolate));
 
-        X = max(X, 0.01f);
+        //X = max(X, 0.0001f);
+
+        gA_X = gA / max(X, 0.0001f);
 
         cGi.idx(0).make_value(bidx("cGi0", interpolate));
         cGi.idx(1).make_value(bidx("cGi1", interpolate));
@@ -1468,15 +1474,15 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         std::cout << "Black hole at voxel " << scaled + centre << std::endl;
 
-        return scaled;
+        return scaled * scale / bulge;
     };
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
     ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
     std::vector<float> black_hole_m{0.463, 0.47};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516*2, 0, 0}), san_black_hole_pos({3.516*2, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.4 * 1.025}, {0, 0, 0.258 * 0.71f * 1.4 * 1.025}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.0 * 1.025/2}, {0, 0, 0.258 * 0.71f * 1.0 * 1.025/2}};
 
     metric<value, 3, 3> flat_metric;
 
@@ -2017,7 +2023,8 @@ void build_cA(equation_context& ctx)
     }
 
     ///a / X
-    value gA_X = gA / X;
+    //value gA_X = gA / X;
+    value gA_X = args.gA_X;
 
 
     /*tensor<value, 3, 3> xgADiDjphi;
@@ -2252,7 +2259,7 @@ void build_cGi(equation_context& ctx)
 
     tensor<value, 3, 3> icAij = raise_both(cA, cY, icY);
 
-    value gA_X = gA / X;
+    value gA_X = args.gA_X;
 
     ///these seem to suffer from oscillations
     tensor<value, 3> dtcGi;
