@@ -782,48 +782,6 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
     #endif
 }
 
-#if 0
-void build_kreiss_oliger_dissipate(equation_context& ctx)
-{
-    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
-
-    standard_arguments args(false);
-
-    float dissipate_low = 0.15;
-    float dissipate_high = 0.35;
-
-    for(int i=0; i < 6; i++)
-    {
-        vec2i idx = linear_indices[i];
-
-        ctx.add("k_cYij" + std::to_string(i), dissipate_low * kreiss_oliger_dissipate(ctx, args.cY.idx(idx.x(), idx.y())));
-    }
-
-    ctx.add("k_X", dissipate_high * kreiss_oliger_dissipate(ctx, args.X));
-
-    for(int i=0; i < 6; i++)
-    {
-        vec2i idx = linear_indices[i];
-
-        ctx.add("k_cAij" + std::to_string(i), dissipate_high * kreiss_oliger_dissipate(ctx, args.cA.idx(idx.x(), idx.y())));
-    }
-
-    ctx.add("k_K", dissipate_high * kreiss_oliger_dissipate(ctx, args.K));
-
-    for(int i=0; i < 3; i++)
-    {
-        ctx.add("k_cGi" + std::to_string(i), dissipate_high * kreiss_oliger_dissipate(ctx, args.cGi.idx(i)));
-    }
-
-    ctx.add("k_gA", dissipate_high * kreiss_oliger_dissipate(ctx, args.gA));
-
-    for(int i=0; i < 3; i++)
-    {
-        ctx.add("k_gB" + std::to_string(i), dissipate_high * kreiss_oliger_dissipate(ctx, args.gB.idx(i)));
-    }
-}
-#endif // 0
-
 void build_kreiss_oliger_dissipate_singular(equation_context& ctx)
 {
     value buf = "buffer[IDX(ix,iy,iz)]";
