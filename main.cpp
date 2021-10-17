@@ -1289,7 +1289,7 @@ struct standard_arguments
 
         //X = max(X, 0.0001f);
 
-        gA_X = gA / max(X, 0.0001f);
+        gA_X = gA / max(X, 0.001f);
 
         cGi.idx(0).make_value(bidx("cGi0", interpolate));
         cGi.idx(1).make_value(bidx("cGi1", interpolate));
@@ -4306,9 +4306,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.4;
-    float dissipate_high = 0.4;
-    float dissipate_gauge = 0.4;
+    float dissipate_low = 0.3;
+    float dissipate_high = 0.3;
+    float dissipate_gauge = 0.3;
 
     float dissipate_caijyy = dissipate_high;
 
