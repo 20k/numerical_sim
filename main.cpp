@@ -1491,7 +1491,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.463, 0.47};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-3.516, 0, 0}), san_black_hole_pos({3.516, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.4}, {0, 0, 0.258 * 0.71f * 1.4}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, -0.258 * 0.71f * 1.4 * 1.025}, {0, 0, 0.258 * 0.71f * 1.4 * 1.025}};
 
     metric<value, 3, 3> flat_metric;
 
@@ -4113,10 +4113,10 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {200, 200, 200};
+    vec3i size = {250, 250, 250};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
-    float c_at_max = 65 * (200.f/300.f);
+    float c_at_max = 65 * (250.f/300.f);
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
 
