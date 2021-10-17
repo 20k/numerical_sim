@@ -881,13 +881,7 @@ void evolve_cY(__global ushort4* points, int point_count,
     float f_dtcYij2 = dtcYij2;
     float f_dtcYij3 = dtcYij3;
     float f_dtcYij4 = dtcYij4;
-    float f_dtcYij5 = dtcYij5;
-
-    float I_cY0 = cY0[index];
-    float I_cY1 = cY1[index];
-    float I_cY2 = cY2[index];
-    float I_cY3 = cY3[index];
-    float I_cY4 = cY4[index];
+    //float f_dtcYij5 = dtcYij5;
 
     ocY0[index] = (f_dtcYij0);
     ocY1[index] = (f_dtcYij1);
