@@ -78,43 +78,8 @@ https://arxiv.org/pdf/1503.03436.pdf - seems to have a usable radiative boundary
 
 //#define USE_GBB
 
-///all conformal variables are explicitly labelled
-/*struct bssnok_data
-{
-    //6 units of cY
-    //6 units of cA
-
-    cl_float cGi0, cGi1, cGi2;
-
-    cl_float K;
-    cl_float X;
-
-    cl_float gA;
-    cl_float gB0;
-    cl_float gB1;
-    cl_float gB2;
-
-    #ifdef USE_GBB
-    cl_float gBB0;
-    cl_float gBB1;
-    cl_float gBB2;
-    #endif // USE_GBB
-};
-///total size = 21
-
-*/
-
 ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
 ///38.2
-
-
-struct intermediate_bssnok_data
-{
-    cl_float dcYij[3 * 6];
-    cl_float digA[6];
-    cl_float digB[3*3];
-    cl_float dX[3];
-};
 
 ///https://arxiv.org/pdf/gr-qc/9810065.pdf
 template<typename T, int N>
@@ -5337,6 +5302,7 @@ int main()
 
             //waveform_args.push_back(bssnok_datas[which_data]);
             waveform_args.push_back(scale);
+
             waveform_args.push_back(clsize);
             waveform_args.push_back(intermediate);
             waveform_args.push_back(pos);
