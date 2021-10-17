@@ -1464,26 +1464,11 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
     auto san_black_hole_pos = [&](vec3f in)
     {
-        float s1 = in.x();
-        float s2 = in.y();
-        float s3 = in.z();
-
         vec3f scaled = round((in / scale) * bulge);
 
-        vec3f offsets = {0.5f, 0.5f, 0.5f};
+        std::cout << "Black hole at voxel " << scaled + centre << std::endl;
 
-        auto get_sign = [](float in)
-        {
-            return in >= 0 ? 1 : -1;
-        };
-
-        offsets.x() *= get_sign(s1);
-        offsets.y() *= get_sign(s2);
-        offsets.z() *= get_sign(s3);
-
-        std::cout << "Black hole at voxel " << scaled + centre + offsets << std::endl;
-
-        return scaled * scale / bulge + 0 * offsets * scale / bulge;
+        return scaled;
     };
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
