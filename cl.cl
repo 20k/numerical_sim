@@ -807,7 +807,7 @@ void clean_data(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
 
-    //#define RADIATIVE
+    #define RADIATIVE
     #ifdef RADIATIVE
     fin_gA = 1;
     fin_gB0 = 0;

@@ -1479,7 +1479,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
     ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
-    std::vector<float> black_hole_m{0.4, 0.5};
+    std::vector<float> black_hole_m{0.5, 0.5};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-5, 0, 0}), san_black_hole_pos({5, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
     std::vector<vec3f> black_hole_velocity{{0, 0, -0.125 / 0.5}, {0, 0, 0.125 / 0.6}};
@@ -1499,8 +1499,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         vec3f v0_v = {0.0, 0.0, -1};
 
-        black_hole_velocity[0] = v0 * v0_v.norm();
-        black_hole_velocity[1] = v1 * -v0_v.norm();
+        black_hole_velocity[0] = v0 * v0_v.norm() * 0.7575;
+        black_hole_velocity[1] = v1 * -v0_v.norm() * 0.7575;
 
         float r0 = m1 * R / M;
         float r1 = m0 * R / M;
@@ -4308,9 +4308,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.5;
-    float dissipate_high = 0.5;
-    float dissipate_gauge = 0.5;
+    float dissipate_low = 0.3;
+    float dissipate_high = 0.3;
+    float dissipate_gauge = 0.3;
 
     float dissipate_caijyy = dissipate_high;
 
@@ -4374,7 +4374,7 @@ int main()
     ///I need to do this properly, where it keeps iterating until it converges
     ///todo: this doesn't converge yet!
     #ifndef GPU_PROFILE
-    for(int i=0; i < 5000; i++)
+    for(int i=0; i < 20000; i++)
     #else
     for(int i=0; i < 1000; i++)
     #endif
@@ -4479,7 +4479,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.3f);
+                i = std::min(i, 0.25f);
             }
         }
 
