@@ -411,22 +411,7 @@ void symmetrise(__global float* input, int4 dim)
 
     int flipped_y = dim.y - 1 - iy;
 
-    //printf("%f %f\n", input[IDX(ix,iy,iz)], input[IDX(ix,flipped_y,iz)]);
-
-    /*float s = sign(input[IDX(ix,iy,iz)]);
-
-    if(fabs(input[IDX(ix, iy, iz)]) < 0.0001f)
-    {
-        s = 1;
-    }
-
-    input[IDX(ix,iy,iz)] = input[IDX(ix,flipped_y,iz)] * s;*/
-
-    float mirror = input[IDX(ix,flipped_y,iz)];
-
-    float current = input[IDX(ix,iy,iz)];
-
-    input[IDX(ix,iy,iz)] = (mirror + current) / 2.f;
+    input[IDX(ix,iy,iz)] = input[IDX(ix,flipped_y,iz)];
 }
 
 __kernel

@@ -4436,8 +4436,6 @@ int main()
 
     for(int i=0; i < (int)generic_data[0].buffers.size(); i++)
     {
-        //symmetrise(generic_data[0].buffers[i]);
-
         cl::copy(clctx.cqueue, generic_data[0].buffers[i], generic_data[1].buffers[i]);
         cl::copy(clctx.cqueue, generic_data[0].buffers[i], rk4_scratch.buffers[i]);
         cl::copy(clctx.cqueue, generic_data[0].buffers[i], rk4_intermediate.buffers[i]);
@@ -4481,7 +4479,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.25f);
+                i = std::min(i, 0.3f);
             }
         }
 
@@ -4690,22 +4688,6 @@ int main()
 
         if(step)
         {
-            for(int i=0; i < (int)generic_data[which_data].buffers.size(); i++)
-            {
-                //symmetrise(generic_data[which_data].buffers[i]);
-            }
-
-            //if(time_elapsed_s > 10)
-            {
-                /*symmetrise(generic_data[which_data].buffers[buffer_to_index("cY0")]);
-                symmetrise(generic_data[which_data].buffers[buffer_to_index("cY1")]);
-                symmetrise(generic_data[which_data].buffers[buffer_to_index("cY2")]);
-                symmetrise(generic_data[which_data].buffers[buffer_to_index("cY3")]);
-                symmetrise(generic_data[which_data].buffers[buffer_to_index("cY4")]);*/
-
-                symmetrise(generic_data[which_data].buffers[buffer_to_index("X")]);
-            }
-
             steps++;
 
             auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
