@@ -8,6 +8,16 @@
 
 #define IDX(i, j, k) ((k) * dim.x * dim.y + (j) * dim.x + (i))
 
+bool invalid_first(int ix, int iy, int iz, int4 dim)
+{
+    return ix < BORDER_WIDTH || iy < BORDER_WIDTH || iz < BORDER_WIDTH || ix >= dim.x - BORDER_WIDTH || iy >= dim.y - BORDER_WIDTH || iz >= dim.z - BORDER_WIDTH;
+}
+
+bool invalid_second(int ix, int iy, int iz, int4 dim)
+{
+    return ix < BORDER_WIDTH * 2 || iy < BORDER_WIDTH * 2 || iz < BORDER_WIDTH * 2 || ix >= dim.x - BORDER_WIDTH * 2 || iy >= dim.y - BORDER_WIDTH * 2 || iz >= dim.z - BORDER_WIDTH * 2;
+}
+
 __kernel
 void trapezoidal_accumulate(__global ushort4* points, int point_count, int4 dim, __global float* yn, __global float* fn, __global float* fnp1, float timestep)
 {
@@ -24,7 +34,7 @@ void trapezoidal_accumulate(__global ushort4* points, int point_count, int4 dim,
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
+    if(invalid_second(ix, iy, iz, dim))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -51,7 +61,7 @@ void accumulate_rk4(__global ushort4* points, int point_count, int4 dim, __globa
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
+    if(invalid_second(ix, iy, iz, dim))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -87,7 +97,7 @@ void copy_valid(__global ushort4* points, int point_count, __global float* in, _
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
+    if(invalid_second(ix, iy, iz, dim))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -112,7 +122,7 @@ void calculate_rk4_val(__global ushort4* points, int point_count, int4 dim, __gl
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
+    if(invalid_second(ix, iy, iz, dim))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -518,7 +528,7 @@ void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(ix < BORDER_WIDTH || ix >= dim.x - BORDER_WIDTH - 1 || iy < BORDER_WIDTH || iy >= dim.y - BORDER_WIDTH - 1 || iz < BORDER_WIDTH || iz >= dim.z - BORDER_WIDTH - 1)
+    if(invalid_first(ix, iy, iz, dim))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -548,7 +558,7 @@ void calculate_intermediate_data_thin_cY5(__global ushort4* points, int point_co
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(ix < BORDER_WIDTH || ix >= dim.x - BORDER_WIDTH - 1 || iy < BORDER_WIDTH || iy >= dim.y - BORDER_WIDTH - 1 || iz < BORDER_WIDTH || iz >= dim.z - BORDER_WIDTH - 1)
+    if(invalid_first(ix, iy, iz, dim))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -583,7 +593,7 @@ void calculate_momentum_constraint(__global ushort4* points, int point_count,
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
     #ifndef SYMMETRY_BOUNDARY
-    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
+    if(invalid_second(ix, iy, iz, dim))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -868,7 +878,7 @@ void evolve_cY(__global ushort4* points, int point_count,
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
+    if(invalid_second(ix, iy, iz, dim))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -925,7 +935,7 @@ void evolve_cA(__global ushort4* points, int point_count,
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
+    if(invalid_second(ix, iy, iz, dim))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -984,7 +994,7 @@ void evolve_cGi(__global ushort4* points, int point_count,
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
+    if(invalid_second(ix, iy, iz, dim))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -1036,7 +1046,7 @@ void evolve_K(__global ushort4* points, int point_count,
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
+    if(invalid_second(ix, iy, iz, dim))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -1084,7 +1094,7 @@ void evolve_X(__global ushort4* points, int point_count,
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
+    if(invalid_second(ix, iy, iz, dim))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -1131,7 +1141,7 @@ void evolve_gA(__global ushort4* points, int point_count,
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
+    if(invalid_second(ix, iy, iz, dim))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -1179,7 +1189,7 @@ void evolve_gB(__global ushort4* points, int point_count,
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
+    if(invalid_second(ix, iy, iz, dim))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -1215,7 +1225,7 @@ void dissipate_single(__global ushort4* points, int point_count,
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(ix < BORDER_WIDTH*2 || ix >= dim.x - BORDER_WIDTH*2 - 1 || iy < BORDER_WIDTH*2 || iy >= dim.y - BORDER_WIDTH*2 - 1 || iz < BORDER_WIDTH*2 || iz >= dim.z - BORDER_WIDTH*2 - 1)
+    if(invalid_second(ix, iy, iz, dim))
         return;
     #endif // SYMMETRY_BOUNDARY
 
