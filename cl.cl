@@ -391,6 +391,25 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 }
 
 __kernel
+void symmetrise(__global float* input, int4 dim)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    ///filter everything from the lower half, and the centre pixel
+    if(iy < dim.y / 2)
+        return;
+
+    int flipped_y = dim.y - 1 - iy;
+
+    input[IDX(ix,iy,iz)] = input[IDX(ix,flipped_y,iz)];
+}
+
+__kernel
 void calculate_initial_conditions(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
                                   __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                                   __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,

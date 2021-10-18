@@ -4362,6 +4362,15 @@ int main()
 
     clctx.cqueue.exec("setup_u_offset", initial_u_args2, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
+    auto symmetrise = [&](auto& buf)
+    {
+        cl::args symm_args;
+        symm_args.push_back(buf);
+        symm_args.push_back(clsize);
+
+        clctx.cqueue.exec("symmetrise", symm_args, {size.x(), size.y(), size.z()}, {8, 8, 1});
+    };
+
     ///I need to do this properly, where it keeps iterating until it converges
     #ifndef GPU_PROFILE
     for(int i=0; i < 5000; i++)
@@ -4378,6 +4387,8 @@ int main()
         clctx.cqueue.exec("iterative_u_solve", iterate_u_args, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
         which_u_args = (which_u_args + 1) % 2;
+
+        symmetrise(u_args[which_u_args]);
     }
 
     u_args[(which_u_args + 1) % 2].native_mem_object.release();
