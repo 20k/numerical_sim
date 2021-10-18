@@ -4131,12 +4131,12 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {250, 250, 250};
+    vec3i size = {251, 251, 251};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
-    float c_at_max = 65 * (250.f/300.f);
+    float c_at_max = 65 * (251.f/300.f);
     float scale = c_at_max / (size.largest_elem());
-    vec3f centre = {size.x()/2, size.y()/2, size.z()/2};
+    vec3f centre = {size.x()/2.f, size.y()/2.f, size.z()/2.f};
 
     equation_context setup_initial;
     setup_initial_conditions(setup_initial, centre, scale);
@@ -4308,9 +4308,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.3;
-    float dissipate_high = 0.3;
-    float dissipate_gauge = 0.3;
+    float dissipate_low = 0.5;
+    float dissipate_high = 0.5;
+    float dissipate_gauge = 0.5;
 
     float dissipate_caijyy = dissipate_high;
 
@@ -4362,7 +4362,17 @@ int main()
 
     clctx.cqueue.exec("setup_u_offset", initial_u_args2, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
+    auto symmetrise = [&](auto& buf)
+    {
+        cl::args symm_args;
+        symm_args.push_back(buf);
+        symm_args.push_back(clsize);
+
+        clctx.cqueue.exec("symmetrise", symm_args, {size.x(), size.y(), size.z()}, {8, 8, 1});
+    };
+
     ///I need to do this properly, where it keeps iterating until it converges
+    ///todo: this doesn't converge yet!
     #ifndef GPU_PROFILE
     for(int i=0; i < 5000; i++)
     #else
@@ -4378,6 +4388,8 @@ int main()
         clctx.cqueue.exec("iterative_u_solve", iterate_u_args, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
         which_u_args = (which_u_args + 1) % 2;
+
+        symmetrise(u_args[which_u_args]);
     }
 
     u_args[(which_u_args + 1) % 2].native_mem_object.release();
@@ -4422,49 +4434,13 @@ int main()
         clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
     }
 
+    for(int i=0; i < (int)generic_data[0].buffers.size(); i++)
     {
-        cl::args init;
+        //symmetrise(generic_data[0].buffers[i]);
 
-        for(auto& i : generic_data[1].buffers)
-        {
-            init.push_back(i);
-        }
-
-        init.push_back(u_args[which_u_args]);
-        init.push_back(scale);
-        init.push_back(clsize);
-
-        clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
-    }
-
-    {
-        cl::args init;
-
-        for(auto& i : rk4_scratch.buffers)
-        {
-            init.push_back(i);
-        }
-
-        init.push_back(u_args[which_u_args]);
-        init.push_back(scale);
-        init.push_back(clsize);
-
-        clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
-    }
-
-    {
-        cl::args init;
-
-        for(auto& i : rk4_intermediate.buffers)
-        {
-            init.push_back(i);
-        }
-
-        init.push_back(u_args[which_u_args]);
-        init.push_back(scale);
-        init.push_back(clsize);
-
-        clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
+        cl::copy(clctx.cqueue, generic_data[0].buffers[i], generic_data[1].buffers[i]);
+        cl::copy(clctx.cqueue, generic_data[0].buffers[i], rk4_scratch.buffers[i]);
+        cl::copy(clctx.cqueue, generic_data[0].buffers[i], rk4_intermediate.buffers[i]);
     }
 
     std::vector<cl::read_info<cl_float2>> read_data;
@@ -4497,7 +4473,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.25f);
+                i = std::min(i, 0.3f);
             }
         }
 
@@ -4714,6 +4690,22 @@ int main()
 
         if(step)
         {
+            for(int i=0; i < (int)generic_data[which_data].buffers.size(); i++)
+            {
+                //symmetrise(generic_data[which_data].buffers[i]);
+            }
+
+            //if(time_elapsed_s > 10)
+            {
+                /*symmetrise(generic_data[which_data].buffers[buffer_to_index("cY0")]);
+                symmetrise(generic_data[which_data].buffers[buffer_to_index("cY1")]);
+                symmetrise(generic_data[which_data].buffers[buffer_to_index("cY2")]);
+                symmetrise(generic_data[which_data].buffers[buffer_to_index("cY3")]);
+                symmetrise(generic_data[which_data].buffers[buffer_to_index("cY4")]);*/
+
+                symmetrise(generic_data[which_data].buffers[buffer_to_index("X")]);
+            }
+
             steps++;
 
             auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
