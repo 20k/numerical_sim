@@ -1499,6 +1499,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         vec3f v0_v = {0.0, 0.0, -1};
 
+        ///made it to 532 after 2 + 3/4s orbits
         black_hole_velocity[0] = v0 * v0_v.norm() * 0.757525;
         black_hole_velocity[1] = v1 * -v0_v.norm() * 0.757525;
 
