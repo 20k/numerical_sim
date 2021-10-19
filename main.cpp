@@ -1480,7 +1480,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
     ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
     std::vector<float> black_hole_m{0.5, 0.5};
-    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-5, 0, 0}), san_black_hole_pos({5, 0, 0})};
+    std::vector<vec3f> black_hole_pos{san_black_hole_pos({-4, 0, 0}), san_black_hole_pos({4, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
     std::vector<vec3f> black_hole_velocity{{0, 0, -0.125 / 0.5}, {0, 0, 0.125 / 0.6}};
 
@@ -1500,8 +1500,9 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
         vec3f v0_v = {0.0, 0.0, -1};
 
         ///made it to 532 after 2 + 3/4s orbits
-        black_hole_velocity[0] = v0 * v0_v.norm() * 0.86;
-        black_hole_velocity[1] = v1 * -v0_v.norm() * 0.86;
+        ///1125
+        black_hole_velocity[0] = v0 * v0_v.norm() * 1.1415;
+        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.1415;
 
         float r0 = m1 * R / M;
         float r1 = m0 * R / M;
