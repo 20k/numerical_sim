@@ -835,11 +835,14 @@ void clean_data(__global ushort4* points, int point_count,
     ///https://authors.library.caltech.edu/8284/1/RINcqg07.pdf (34)
     float y_r = sponge_factor;
 
+    #define EVOLVE_CY_AT_BOUNDARY
+    #ifndef EVOLVE_CY_AT_BOUNDARY
     cY0[index] += -y_r * (cY0[index] - initial_cY0) * timestep;
     cY1[index] += -y_r * (cY1[index] - initial_cY1) * timestep;
     cY2[index] += -y_r * (cY2[index] - initial_cY2) * timestep;
     cY3[index] += -y_r * (cY3[index] - initial_cY3) * timestep;
     cY4[index] += -y_r * (cY4[index] - initial_cY4) * timestep;
+    #endif // EVOLVE_CY_AT_BOUNDARY
 
     cA0[index] += -y_r * (cA0[index] - initial_cA0) * timestep;
     cA1[index] += -y_r * (cA1[index] - initial_cA1) * timestep;
