@@ -1355,15 +1355,19 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     //write_imagef(screen, (int2){ix, iy}, (float4){max_scalar, max_scalar, max_scalar, 1});
 }
 
-#if 0
+#if 1
 __kernel
-void extract_waveform(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
+void extract_waveform(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
                       __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
                       __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
                       #ifdef USE_gBB0
                       __global float* gBB0, __global float* gBB1, __global float* gBB2,
                       #endif // USE_gBB0
-                      float scale, int4 dim, __global struct intermediate_bssnok_data* temp_in, int4 pos, __global float2* waveform_out)
+                      __global DERIV_PRECISION* dcYij0, __global DERIV_PRECISION* dcYij1, __global DERIV_PRECISION* dcYij2, __global DERIV_PRECISION* dcYij3, __global DERIV_PRECISION* dcYij4, __global DERIV_PRECISION* dcYij5, __global DERIV_PRECISION* dcYij6, __global DERIV_PRECISION* dcYij7, __global DERIV_PRECISION* dcYij8, __global DERIV_PRECISION* dcYij9, __global DERIV_PRECISION* dcYij10, __global DERIV_PRECISION* dcYij11, __global DERIV_PRECISION* dcYij12, __global DERIV_PRECISION* dcYij13, __global DERIV_PRECISION* dcYij14, __global DERIV_PRECISION* dcYij15, __global DERIV_PRECISION* dcYij16, __global DERIV_PRECISION* dcYij17,
+                      __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
+                      __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
+                      __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
+                      float scale, int4 dim, int4 pos, __global float2* waveform_out)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -1376,12 +1380,6 @@ void extract_waveform(__global float* cY0, __global float* cY1, __global float* 
         return;
 
     float3 offset = transform_position(ix, iy, iz, dim, scale);
-
-    /*float s = length(offset);
-    float theta = acos(z / s);
-    float phi = atan2(y, x);*/
-
-    struct intermediate_bssnok_data ik = temp_in[IDX(ix, iy, iz)];
 
     float TEMPORARIES4;
 

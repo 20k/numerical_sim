@@ -458,6 +458,11 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
             }
         }
 
+        if(!any_found)
+        {
+            std::cout << "None for " << stripped << std::endl;
+        }
+
         assert(any_found);
     }
 
@@ -2799,6 +2804,8 @@ void extract_waveforms(equation_context& ctx)
 
     tensor<value, 3, 3> Kij = args.Kij;
 
+    //ctx.pin(Kij);
+
     metric<value, 3, 3> Yij = args.Yij;
 
     inverse_metric<value, 3, 3> iYij = Yij.invert();
@@ -2995,6 +3002,10 @@ void extract_waveforms(equation_context& ctx)
     v2a = (v2a - v1a * wij(0, 1)) / (wij(1, 1));
     v3a = (v3a - v1a * wij(0, 2) - v2a * wij(1, 2)) / sqrt(wij(2, 2));
 
+    ctx.pin(v1a);
+    ctx.pin(v2a);
+    ctx.pin(v3a);
+
     vec<4, value> thetau = {0, v3a[0], v3a[1], v3a[2]};
     vec<4, value> phiu = {0, v1a[0], v1a[1], v1a[2]};
 
@@ -3008,6 +3019,8 @@ void extract_waveforms(equation_context& ctx)
     }
 
     tensor<value, 3, 3, 3> raised_eijk = raise_index_generic(raise_index_generic(eijk_tensor, iYij, 1), iYij, 2);
+
+    ctx.pin(raised_eijk);
 
     dual_types::complex<value> w4;
 
@@ -3819,8 +3832,8 @@ int main()
     equation_context ctx4;
     build_constraints(ctx4);
 
-    //equation_context ctx5;
-    //extract_waveforms(ctx5);
+    equation_context ctx5;
+    extract_waveforms(ctx5);
 
     equation_context ctx6;
     process_geodesics(ctx6);
@@ -3865,7 +3878,7 @@ int main()
     //ctx2.build(argument_string, 1);
     //ctx3.build(argument_string, 2);
     ctx4.build(argument_string, 3);
-    //ctx5.build(argument_string, 4);
+    ctx5.build(argument_string, 4);
     ctx6.build(argument_string, 5);
     ctx7.build(argument_string, 6);
     //ctx8.build(argument_string, 7);
@@ -4678,6 +4691,51 @@ int main()
             enforce_constraints(generic_data[(which_data + 1) % 2].buffers);
             #endif // DOUBLE_ENFORCEMENT
 
+            {
+                float r_extract = c_at_max/4;
+
+                //printf("OFF %f\n", r_extract/scale);
+
+                cl_int4 pos = {clsize.x()/2, clsize.y()/2 + r_extract / scale, clsize.z()/2, 0};
+
+                cl::args waveform_args;
+
+                for(auto& i : generic_data[which_data].buffers)
+                {
+                    waveform_args.push_back(i);
+                }
+
+                for(auto& i : thin_intermediates)
+                {
+                    waveform_args.push_back(i);
+                }
+
+                waveform_args.push_back(scale);
+                waveform_args.push_back(clsize);
+                waveform_args.push_back(pos);
+                waveform_args.push_back(waveform);
+
+                clctx.cqueue.exec("extract_waveform", waveform_args, {size.x(), size.y(), size.z()}, {128, 1, 1});
+
+                cl::read_info<cl_float2> data = waveform.read_async<cl_float2>(clctx.cqueue, 1);
+
+                data.evt.block();
+
+                cl_float2 val = *data.data;
+
+                data.consume();
+
+                dual_types::complex<float> w4 = {val.s[0], val.s[1]};
+
+                real_graph.push_back(val.s[0]);
+
+                /*float harmonic = get_harmonic(w4, 2, 0).real;
+
+                //printf("Harm %f\n", harmonic);
+
+                real_decomp.push_back(harmonic);*/
+            }
+
             copy_valid(generic_data[(which_data + 1) % 2].buffers, generic_data[which_data].buffers);
 
             {
@@ -4728,47 +4786,6 @@ int main()
             }
 
             enforce_constraints(generic_data[which_data].buffers);
-
-            float r_extract = c_at_max/4;
-
-            //printf("OFF %f\n", r_extract/scale);
-
-            /*cl_int4 pos = {clsize.x()/2, clsize.y()/2 + r_extract / scale, clsize.z()/2, 0};
-
-            cl::args waveform_args;
-
-            for(auto& i : generic_data[which_data].buffers)
-            {
-                waveform_args.push_back(i);
-            }
-
-            //waveform_args.push_back(bssnok_datas[which_data]);
-            waveform_args.push_back(scale);
-
-            waveform_args.push_back(clsize);
-            waveform_args.push_back(intermediate);
-            waveform_args.push_back(pos);
-            waveform_args.push_back(waveform);
-
-            clctx.cqueue.exec("extract_waveform", waveform_args, {size.x(), size.y(), size.z()}, {128, 1, 1});
-
-            cl::read_info<cl_float2> data = waveform.read_async<cl_float2>(clctx.cqueue, 1);
-
-            data.evt.block();
-
-            cl_float2 val = *data.data;
-
-            data.consume();
-
-            dual_types::complex<float> w4 = {val.s[0], val.s[1]};
-
-            real_graph.push_back(val.s[0]);
-
-            float harmonic = get_harmonic(w4, 2, 0).real;
-
-            //printf("Harm %f\n", harmonic);
-
-            real_decomp.push_back(harmonic);*/
 
             time_elapsed_s += timestep;
             current_simulation_boundary += DIFFERENTIATION_WIDTH;
