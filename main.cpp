@@ -1958,11 +1958,8 @@ void build_cY(equation_context& ctx)
 }
 
 inline
-tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& args, tensor<value, 3, 3, 3> christoff1, tensor<value, 3, 3, 3> christoff2)
+tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& args, const inverse_metric<value, 3, 3>& icY, const tensor<value, 3, 3, 3>& christoff1, const tensor<value, 3, 3, 3>& christoff2)
 {
-    inverse_metric<value, 3, 3> icY = args.cY.invert();
-    ctx.pin(icY);
-
     value gA_X = args.gA_X;
 
     tensor<value, 3, 3> cRij;
@@ -2097,7 +2094,7 @@ void build_cA(equation_context& ctx)
     ///a / X
     value gA_X = args.gA_X;
 
-    tensor<value, 3, 3> xgARij = calculate_xgARij(ctx, args, christoff1, christoff2);
+    tensor<value, 3, 3> xgARij = calculate_xgARij(ctx, args, icY, christoff1, christoff2);
 
     ctx.pin(xgARij);
 
