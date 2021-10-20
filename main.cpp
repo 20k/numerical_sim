@@ -4128,7 +4128,7 @@ int main()
 
     opencl_context& clctx = *win.clctx;
 
-    std::string argument_string = "-O3 -cl-std=CL2.0 ";
+    std::string argument_string = "-O3 -cl-std=CL2.0 -cl-uniform-work-group-size -cl-mad-enable -cl-finite-math-only ";
 
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
@@ -4364,15 +4364,6 @@ int main()
 
     clctx.cqueue.exec("setup_u_offset", initial_u_args2, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
-    auto symmetrise = [&](auto& buf)
-    {
-        cl::args symm_args;
-        symm_args.push_back(buf);
-        symm_args.push_back(clsize);
-
-        clctx.cqueue.exec("symmetrise", symm_args, {size.x(), size.y(), size.z()}, {8, 8, 1});
-    };
-
     ///I need to do this properly, where it keeps iterating until it converges
     ///todo: this doesn't converge yet!
     #ifndef GPU_PROFILE
@@ -4390,8 +4381,6 @@ int main()
         clctx.cqueue.exec("iterative_u_solve", iterate_u_args, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
         which_u_args = (which_u_args + 1) % 2;
-
-        symmetrise(u_args[which_u_args]);
     }
 
     u_args[(which_u_args + 1) % 2].native_mem_object.release();

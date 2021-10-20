@@ -370,12 +370,12 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
     float u = u_offset_in[IDX(ix, iy, iz)];
 
-    float X = 1/init_BL_val;
+    //float X = 1/init_BL_val;
 
-    float B = (1.f/8.f) * pow(X, 7.f) * aij_aIJ;
-    float RHS = -B * pow(1 + X * u, -7);
+    //float B = (1.f/8.f) * pow(X, 7.f) * aij_aIJ;
+    //float RHS = -B * pow(1 + X * u, -7);
 
-    //float RHS = -(1/8.f) * aij_aIJ * pow(bl_s + u, -7);
+    float RHS = -(1/8.f) * aij_aIJ * pow(bl_s + u, -7);
 
     float h2f0 = scale * scale * RHS;
 
@@ -386,32 +386,30 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     float uzm1 = u_offset_in[IDX(ix, iy, iz-1)];
     float uzp1 = u_offset_in[IDX(ix, iy, iz+1)];
 
-    ///-6u0 + the rest of the terms = h^2 f0
-    ///order of operations here is different depending on which side of the centre you are on
-    float u0n1 = (1/6.f) * (uxm1 + uxp1 + uym1 + uyp1 + uzm1 + uzp1 - h2f0);
+    ///so, floating point maths isn't associative
+    ///which means that if we're on the other side of a symmetric boundary about the central plane
+    ///the order of operations will be different
+    ///the if statements correct this, which makes this method numerically symmetric, and implicitly
+    ///converges to a symmetric solution if available
+    float Xs = uxm1 + uxp1;
 
-    //u0n1 = round(u0n1 * 1000000) / 1000000;
+    if(ix > (dim.x - 1)/2)
+        Xs = uxp1 + uxm1;
+
+    float Ys = uyp1 + uym1;
+
+    if(iy > (dim.y - 1)/2)
+        Ys = uym1 + uyp1;
+
+    float Zs = uzp1 + uzm1;
+
+    if(iz > (dim.z - 1)/2)
+        Zs = uzm1 + uzp1;
+
+    ///-6u0 + the rest of the terms = h^2 f0
+    float u0n1 = (1/6.f) * (Xs + Ys + Zs - h2f0);
 
     u_offset_out[IDX(ix, iy, iz)] = u0n1;
-}
-
-__kernel
-void symmetrise(__global float* input, int4 dim)
-{
-    int ix = get_global_id(0);
-    int iy = get_global_id(1);
-    int iz = get_global_id(2);
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    ///filter everything from the lower half, and the centre pixel
-    if(iy < ((dim.y + 1) / 2))
-        return;
-
-    int flipped_y = dim.y - 1 - iy;
-
-    input[IDX(ix,iy,iz)] = input[IDX(ix,flipped_y,iz)];
 }
 
 __kernel
