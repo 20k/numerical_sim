@@ -2751,38 +2751,39 @@ dual_types::complex<float> get_harmonic(const dual_types::complex<float>& value,
 ///https://scc.ustc.edu.cn/zlsc/sugon/intel/ipp/ipp_manual/IPPM/ippm_ch9/ch9_SHT.htm this states you can approximate
 ///a spherical harmonic transform integral with simple summation
 ///assumes unigrid
-#if 0
+///https://arxiv.org/pdf/1606.02532.pdf 104 etc
+#if 1
 inline
 void extract_waveforms(equation_context& ctx)
 {
     printf("Extracting waveforms\n");
 
+    tensor<value, 3, 3> kronecker;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            if(i == j)
+                kronecker.idx(i, j) = 1;
+            else
+                kronecker.idx(i, j) = 0;
+        }
+    }
+
     standard_arguments args(false);
 
-    tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, cY);
-    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(cY, icY);
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
+    ctx.pin(icY);
+
+    tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, args.cY);
+    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(args.cY, icY);
 
     ctx.pin(christoff1);
     ctx.pin(christoff2);
 
-    tensor<value, 3> derived_cGi;
+    tensor<value, 3> derived_cGi = args.cGi;;
 
-    ///https://arxiv.org/pdf/gr-qc/0206072.pdf page 4
-    ///or https://arxiv.org/pdf/gr-qc/0511048.pdf after 7 actually
-    for(int i=0; i < 3; i++)
-    {
-        value sum = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            for(int k=0; k < 3; k++)
-            {
-                sum = sum + icY.idx(j, k) * christoff2.idx(i, j, k);
-            }
-        }
-
-        derived_cGi.idx(i) = sum;
-    }
 
     ///NEEDS SCALING???
     vec<3, value> pos;
@@ -2790,134 +2791,15 @@ void extract_waveforms(equation_context& ctx)
     pos.y() = "offset.y";
     pos.z() = "offset.z";
 
-    tensor<value, 3, 3> cRij;
+    tensor<value, 3, 3> xgARij = calculate_xgARij(ctx, args, icY, christoff1, christoff2);
 
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            value s1 = 0;
-
-            for(int l=0; l < 3; l++)
-            {
-                for(int m=0; m < 3; m++)
-                {
-                    s1 = s1 + -0.5f * icY.idx(l, m) * hacky_differentiate(dcYij.idx(m, i, j), l);
-                }
-            }
-
-            value s2 = 0;
-
-            for(int k=0; k < 3; k++)
-            {
-                s2 = s2 + 0.5f * (cY.idx(k, i) * hacky_differentiate(cGi.idx(k), j) + cY.idx(k, j) * hacky_differentiate(cGi.idx(k), i));
-            }
-
-            value s3 = 0;
-
-            ///could factor out cGi
-            for(int k=0; k < 3; k++)
-            {
-                s3 = s3 + 0.5f * (derived_cGi.idx(k) * christoff1.idx(i, j, k) + derived_cGi.idx(k) * christoff1.idx(j, i, k));
-            }
-
-            value s4 = 0;
-
-            for(int m=0; m < 3; m++)
-            {
-                for(int l=0; l < 3; l++)
-                {
-                    value inner1 = 0;
-                    value inner2 = 0;
-
-                    for(int k=0; k < 3; k++)
-                    {
-                        inner1 = inner1 + 0.5f * (2 * christoff2.idx(k, l, i) * christoff1.idx(j, k, m) + 2 * christoff2.idx(k, l, j) * christoff1.idx(i, k, m));
-                    }
-
-                    for(int k=0; k < 3; k++)
-                    {
-                        inner2 = inner2 + christoff2.idx(k, i, m) * christoff1.idx(k, l, j);
-                    }
-
-                    s4 = s4 + icY.idx(l, m) * (inner1 + inner2);
-                }
-            }
-
-            cRij.idx(i, j) = s1 + s2 + s3 + s4;
-        }
-    }
-
-    ctx.pin(cRij);
-
-    tensor<value, 3, 3> Rphiij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            value s1 = -2 * gpu_covariant_derivative_low_vec(ctx, dphi, cY, icY).idx(j, i);
-
-            value s2 = 0;
-
-            for(int l=0; l < 3; l++)
-            {
-                s2 = s2 + gpu_high_covariant_derivative_vec(ctx, dphi, cY, icY).idx(l, l);
-            }
-
-            s2 = -2 * cY.idx(i, j) * s2;
-
-            value s3 = 4 * (dphi.idx(i)) * (dphi.idx(j));
-
-            value s4 = 0;
-
-            for(int l=0; l < 3; l++)
-            {
-                s4 = s4 + raise_index(dphi, cY, icY).idx(l) * dphi.idx(l);
-            }
-
-            s4 = -4 * cY.idx(i, j) * s4;
-
-            Rphiij.idx(i, j) = s1 + s2 + s3 + s4;
-        }
-    }
-
-    ctx.pin(Rphiij);
-
-    tensor<value, 3, 3> Rij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            Rij.idx(i, j) = Rphiij.idx(i, j) + cRij.idx(i, j);
-
-        }
-    }
+    tensor<value, 3, 3> Rij = xgARij / (args.gA * args.X);
 
     ctx.pin(Rij);
 
-    tensor<value, 3, 3> Kij;
+    tensor<value, 3, 3> Kij = args.Kij;
 
-    ///https://arxiv.org/pdf/gr-qc/0505055.pdf 3.6
-    ///https://arxiv.org/pdf/gr-qc/0511048.pdf note that these equations are the same (just before (1)), its because they're using the non conformal metric
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            Kij.idx(i, j) = (1/X) * (cA.idx(i, j) + (1.f/3.f) * cY.idx(i, j) * K);
-        }
-    }
-
-    metric<value, 3, 3> Yij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            Yij.idx(i, j) = cY.idx(i, j) / X;
-        }
-    }
+    metric<value, 3, 3> Yij = args.Yij;
 
     inverse_metric<value, 3, 3> iYij = Yij.invert();
 
@@ -2925,28 +2807,7 @@ void extract_waveforms(equation_context& ctx)
 
     //auto christoff_Y = gpu_christoffel_symbols_2(Yij, iYij);
 
-    tensor<value, 3, 3, 3> xcChristoff;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            for(int k=0; k < 3; k++)
-            {
-                value lsum = 0;
-
-                for(int l=0; l < 3; l++)
-                {
-                    lsum = lsum - cY.idx(i, j) * icY.idx(k, l) * hacky_differentiate(X, l);
-                }
-
-                xcChristoff.idx(k, i, j) = X * christoff2.idx(k, i, j) - 0.5f * (kronecker.idx(k,i) * hacky_differentiate(X, j) + kronecker.idx(k, j) * hacky_differentiate(X, i) + lsum);
-
-                ctx.pin(xcChristoff.idx(k, i, j));
-            }
-        }
-    }
-
+    ///lecture slides
     tensor<value, 3, 3, 3> christoff_Y;
 
     for(int i=0; i < 3; i++)
@@ -2955,7 +2816,17 @@ void extract_waveforms(equation_context& ctx)
         {
             for(int k=0; k < 3; k++)
             {
-                christoff_Y.idx(i, j, k) = xcChristoff.idx(i, j, k) / X;
+                value sum = 0;
+
+                for(int m=0; m < 3; m++)
+                {
+                    sum += -args.cY.idx(j, k) * icY.idx(i, m) * hacky_differentiate(args.X, m);
+                }
+
+                christoff_Y.idx(i, j, k) = christoff2.idx(i, j, k) - (1 / (2 * args.X)) *
+                (kronecker.idx(i, k) * hacky_differentiate(args.X, j) +
+                 kronecker.idx(i, j) * hacky_differentiate(args.X, k) +
+                 sum);
             }
         }
     }
@@ -3164,7 +3035,7 @@ void extract_waveforms(equation_context& ctx)
                     k_sum_1 = k_sum_1 + Kij.idx(i, k) * raise_index_generic(Kij, iYij, 0).idx(k, j);
                 }
 
-                dual_types::complex<value> inner_sum = -Rij.idx(i, j) - K * Kij.idx(i, j) + k_sum_1 + k_sum_2;
+                dual_types::complex<value> inner_sum = -Rij.idx(i, j) - args.K * Kij.idx(i, j) + k_sum_1 + k_sum_2;
 
                 ///mu is a 4 vector, but we use it spatially
                 ///this exposes the fact that i really runs from 1-4 instead of 0-3
