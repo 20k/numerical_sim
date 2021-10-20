@@ -1506,8 +1506,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         ///made it to 532 after 2 + 3/4s orbits
         ///1125
-        black_hole_velocity[0] = v0 * v0_v.norm() * 1.15;
-        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.15;
+        black_hole_velocity[0] = v0 * v0_v.norm() * 1.;
+        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.;
 
         float r0 = m1 * R / M;
         float r1 = m0 * R / M;
@@ -4696,7 +4696,8 @@ int main()
 
                 //printf("OFF %f\n", r_extract/scale);
 
-                cl_int4 pos = {clsize.x()/2, clsize.y()/2 + r_extract / scale, clsize.z()/2, 0};
+                ///need to put extraction at the side somewhere
+                cl_int4 pos = {clsize.x()/2 + 10, clsize.y()/2 + 10, clsize.z()/2  + r_extract / scale, 0};
 
                 cl::args waveform_args;
 
@@ -4727,7 +4728,8 @@ int main()
 
                 dual_types::complex<float> w4 = {val.s[0], val.s[1]};
 
-                real_graph.push_back(val.s[0]);
+                if(!isnanf(val.s[0]))
+                    real_graph.push_back(val.s[0]);
 
                 /*float harmonic = get_harmonic(w4, 2, 0).real;
 
