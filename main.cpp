@@ -3080,7 +3080,7 @@ void extract_waveforms(equation_context& ctx)
     v2a = (v2a - v1a * wij(0, 1)) / (wij(1, 1));
     v3a = (v3a - v1a * wij(0, 2) - v2a * wij(1, 2)) / sqrt(wij(2, 2));*/
 
-    auto [v1a, v2a, v3a] = orthonormalise(v1ai, v2ai, v3ai, Yij);
+    auto [v1a, v2a, v3a] = orthonormalise(ctx, v1ai, v2ai, v3ai, Yij);
 
     ctx.pin(v1a);
     ctx.pin(v2a);
