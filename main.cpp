@@ -3911,10 +3911,10 @@ struct gravitational_wave_manager
         cl_float2* read = nullptr;
     };
 
-    cl_int4 wave_dim = {20, 20, 20};
+    cl_int4 wave_dim = {160, 160, 160};
     cl_int4 wave_pos;
 
-    std::array<cl::buffer, 3> buffers;
+    std::array<cl::buffer, 3> wave_buffers;
     std::vector<cl_float2*> pending_unprocessed_data;
     std::mutex lock;
     std::optional<cl::event> last_event;
@@ -3925,18 +3925,20 @@ struct gravitational_wave_manager
 
     int elements = 0;
 
-    gravitational_wave_manager(cl::context& ctx, vec3i simulation_size, float c_at_max, float scale) : buffers{ctx, ctx, ctx}, read_queue(ctx, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE)
+    gravitational_wave_manager(cl::context& ctx, vec3i simulation_size, float c_at_max, float scale) : wave_buffers{ctx, ctx, ctx}, read_queue(ctx, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE)
     {
         elements = wave_dim.s[0] * wave_dim.s[1] * wave_dim.s[2];
 
         float r_extract = c_at_max/3;
 
-        for(int i=0; i < buffers.size(); i++)
+        for(int i=0; i < wave_buffers.size(); i++)
         {
-            buffers[i].alloc(sizeof(cl_float2) * elements);
+            wave_buffers[i].alloc(sizeof(cl_float2) * elements);
         }
 
-        wave_pos = {simulation_size.x()/2, simulation_size.y()/2 + r_extract / scale, simulation_size.z()/2, 0};
+        wave_pos = {simulation_size.x() / 2, simulation_size.y() / 2, simulation_size.z() / 2};
+
+        //wave_pos = {simulation_size.x()/2, simulation_size.y()/2 + r_extract / scale, simulation_size.z()/2, 0};
     }
 
     static void callback(cl_event event, cl_int event_command_status, void* user_data)
@@ -3966,7 +3968,7 @@ struct gravitational_wave_manager
             waveform_args.push_back(i);
         }
 
-        cl::buffer& next = buffers[(next_buffer % 3)];
+        cl::buffer& next = wave_buffers[(next_buffer % 3)];
         next_buffer++;
 
         waveform_args.push_back(scale);
@@ -4014,8 +4016,25 @@ struct gravitational_wave_manager
 
             for(int i=0; i < elements; i++)
             {
-                as_vector.push_back({vec[i].s[0],vec[i].s[1]});
+                if(isnanf(vec[i].s[0]))
+                    vec[i].s[0] = 0;
+
+                if(isnanf(vec[i].s[1]))
+                    vec[i].s[1] = 0;
+
+                as_vector.push_back({vec[i].s[0], vec[i].s[1]});
             }
+
+            /*for(int k=0; k < wave_dim.s[2]; k++)
+            {
+                for(int j=0; j < wave_dim.s[1]; j++)
+                {
+                    for(int i=0; i < wave_dim.s[0]; i++)
+                    {
+
+                    }
+                }
+            }*/
 
             //if(!isnanf(val.s[0]))
             //    real_graph.push_back(val.s[0]);
@@ -4078,10 +4097,10 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {289, 289, 289};
+    vec3i size = {249, 249, 249};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
-    float c_at_max = 80 * (289.f/300.f);
+    float c_at_max = 80 * (size.x()/300.f);
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2.f, size.y()/2.f, size.z()/2.f};
 
