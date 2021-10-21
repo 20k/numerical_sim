@@ -1334,13 +1334,13 @@ struct standard_arguments
             }
         }
 
-        digA.idx(0).make_value("digA0[IDX(ix,iy,iz)]");
-        digA.idx(1).make_value("digA1[IDX(ix,iy,iz)]");
-        digA.idx(2).make_value("digA2[IDX(ix,iy,iz)]");
+        digA.idx(0).make_value(bidx("digA0", interpolate));
+        digA.idx(1).make_value(bidx("digA1", interpolate));
+        digA.idx(2).make_value(bidx("digA2", interpolate));
 
-        dX.idx(0).make_value("dX0[IDX(ix,iy,iz)]");
-        dX.idx(1).make_value("dX1[IDX(ix,iy,iz)]");
-        dX.idx(2).make_value("dX2[IDX(ix,iy,iz)]");
+        dX.idx(0).make_value(bidx("dX0", interpolate));
+        dX.idx(1).make_value(bidx("dX1", interpolate));
+        dX.idx(2).make_value(bidx("dX2", interpolate));
 
         ///derivative
         for(int i=0; i < 3; i++)
@@ -1350,7 +1350,7 @@ struct standard_arguments
             {
                 int idx = i + j * 3;
 
-                std::string name = "digB" + std::to_string(idx) + "[IDX(ix,iy,iz)]";
+                std::string name = bidx("digB" + std::to_string(idx), interpolate);
 
                 digB.idx(i, j).make_value(name);
             }
