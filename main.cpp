@@ -2753,6 +2753,83 @@ dual_types::complex<float> get_harmonic(const dual_types::complex<float>& value,
     return harmonic;
 }
 
+
+template<int N>
+value dot_product(const vec<N, value>& u, const vec<N, value>& v, const metric<value, N, N>& met)
+{
+    tensor<value, N> as_tensor;
+
+    for(int i=0; i < N; i++)
+    {
+        as_tensor.idx(i) = u[i];
+    }
+
+    auto lowered_as_tensor = lower_index(as_tensor, met);
+
+    vec<N, value> lowered;
+
+    for(int i=0; i < N; i++)
+    {
+        lowered[i] = lowered_as_tensor.idx(i);
+    }
+
+    return dot(lowered, v);
+}
+
+template<int N>
+vec<N, value> gram_proj(const vec<N, value>& u, const vec<N, value>& v, const metric<value, N, N>& met)
+{
+    value top = dot_product(u, v, met);
+
+    value bottom = dot_product(u, u, met);
+
+    return (top / bottom) * u;
+}
+
+template<int N>
+vec<N, value> normalize_big_metric(const vec<N, value>& in, const metric<value, N, N>& met)
+{
+    value dot = dot_product(in, in, met);
+
+    return in / sqrt(fabs(dot));
+}
+
+///raised indices for v/1/2/3
+std::array<vec<3, value>, 3> orthonormalise(equation_context& ctx, const vec<3, value>& v1, const vec<3, value>& v2, const vec<3, value>& v3, const metric<value, 3, 3>& met)
+{
+    vec<3, value> u1 = v1;
+
+    vec<3, value> u2 = v2;
+    u2 = u2 - gram_proj(u1, u2, met);
+
+    ctx.pin(u2);
+
+    vec<3, value> u3 = v3;
+    u3 = u3 - gram_proj(u1, u3, met);
+    u3 = u3 - gram_proj(u2, u3, met);
+
+    ctx.pin(u3);
+
+    u1 = u1.norm();
+    u2 = u2.norm();
+    u3 = u3.norm();
+
+    ctx.pin(u1);
+    ctx.pin(u2);
+    ctx.pin(u3);
+
+    u1 = normalize_big_metric(u1, met);
+    u2 = normalize_big_metric(u2, met);
+    u3 = normalize_big_metric(u3, met);
+
+    ctx.pin(u1);
+    ctx.pin(u2);
+    ctx.pin(u3);
+
+    return {u1, u2, u3};
+}
+
+
 ///https://scc.ustc.edu.cn/zlsc/sugon/intel/ipp/ipp_manual/IPPM/ippm_ch9/ch9_SHT.htm this states you can approximate
 ///a spherical harmonic transform integral with simple summation
 ///assumes unigrid
@@ -2943,9 +3020,9 @@ void extract_waveforms(equation_context& ctx)
 
     ///gab is their spatial metric in lazarus
 
-    vec<3, value> v1a = {-pos.y(), pos.x(), 0};
-    vec<3, value> v2a = {pos.x(), pos.y(), pos.z()};
-    vec<3, value> v3a;
+    vec<3, value> v1ai = {-pos.y(), pos.x(), 0};
+    vec<3, value> v2ai = {pos.x(), pos.y(), pos.z()};
+    vec<3, value> v3ai;
 
     for(int a=0; a < 3; a++)
     {
@@ -2957,15 +3034,15 @@ void extract_waveforms(equation_context& ctx)
             {
                 for(int b=0; b < 3; b++)
                 {
-                    sum += iYij.idx(a, d) * eijk.idx(d, b, c) * v1a[b] * v2a[c];
+                    sum += iYij.idx(a, d) * eijk.idx(d, b, c) * v1ai[b] * v2ai[c];
                 }
             }
         }
 
-        v3a[a] = pow(Yij.det(), 0.5f) * sum;
+        v3ai[a] = pow(Yij.det(), 0.5f) * sum;
     }
 
-    auto v_idx = [&](int idx)
+    /*auto v_idx = [&](int idx)
     {
         if(idx == 0)
             return v1a;
@@ -3001,7 +3078,9 @@ void extract_waveforms(equation_context& ctx)
     ///https://arxiv.org/pdf/gr-qc/0104063.pdf 5.7. I already have code for doing this but lets stay exact
     v1a = v1a / sqrt(wij(0, 0));
     v2a = (v2a - v1a * wij(0, 1)) / (wij(1, 1));
-    v3a = (v3a - v1a * wij(0, 2) - v2a * wij(1, 2)) / sqrt(wij(2, 2));
+    v3a = (v3a - v1a * wij(0, 2) - v2a * wij(1, 2)) / sqrt(wij(2, 2));*/
+
+    auto [v1a, v2a, v3a] = orthonormalise(v1ai, v2ai, v3ai, Yij);
 
     ctx.pin(v1a);
     ctx.pin(v2a);
@@ -3121,38 +3200,6 @@ struct frame_basis
     vec<4, value> v3;
     vec<4, value> v4;
 };
-
-value dot_product(const vec<4, value>& u, const vec<4, value>& v, const metric<value, 4, 4>& met)
-{
-    tensor<value, 4> as_tensor;
-
-    for(int i=0; i < 4; i++)
-    {
-        as_tensor.idx(i) = u[i];
-    }
-
-    auto lowered_as_tensor = lower_index(as_tensor, met);
-
-    vec<4, value> lowered = {lowered_as_tensor.idx(0), lowered_as_tensor.idx(1), lowered_as_tensor.idx(2), lowered_as_tensor.idx(3)};
-
-    return dot(lowered, v);
-}
-
-vec<4, value> gram_proj(const vec<4, value>& u, const vec<4, value>& v, const metric<value, 4, 4>& met)
-{
-    value top = dot_product(u, v, met);
-
-    value bottom = dot_product(u, u, met);
-
-    return (top / bottom) * u;
-}
-
-vec<4, value> normalize_big_metric(const vec<4, value>& in, const metric<value, 4, 4>& met)
-{
-    value dot = dot_product(in, in, met);
-
-    return in / sqrt(fabs(dot));
-}
 
 frame_basis calculate_frame_basis(equation_context& ctx, const metric<value, 4, 4>& met)
 {
