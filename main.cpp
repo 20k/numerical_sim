@@ -4121,8 +4121,12 @@ int main()
         i.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
     }
 
-    cl::buffer waveform(clctx.ctx);
-    waveform.alloc(sizeof(cl_float2));
+    //cl::buffer waveform(clctx.ctx);
+    //waveform.alloc(sizeof(cl_float2));
+
+    cl_int4 waveform_dim = {20, 20, 20};
+    cl::buffer waveform_square(clctx.ctx);
+    waveform_square.alloc(sizeof(cl_float2) * waveform_dim.s[0] * waveform_dim.s[1] * waveform_dim.s[2]);
 
     {
         cl::args init;
@@ -4769,15 +4773,16 @@ int main()
                 waveform_args.push_back(scale);
                 waveform_args.push_back(clsize);
                 waveform_args.push_back(pos);
-                waveform_args.push_back(waveform);
+                waveform_args.push_back(waveform_dim);
+                waveform_args.push_back(waveform_square);
 
                 clctx.cqueue.exec("extract_waveform", waveform_args, {size.x(), size.y(), size.z()}, {128, 1, 1});
 
-                cl::read_info<cl_float2> data = waveform.read_async<cl_float2>(clctx.cqueue, 1);
+                cl::read_info<cl_float2> data = waveform_square.read_async<cl_float2>(clctx.cqueue, waveform_dim.s[0] * waveform_dim.s[1] * waveform_dim.s[2]);
 
                 data.evt.block();
 
-                cl_float2 val = *data.data;
+                cl_float2 val = data.data[0];
 
                 data.consume();
 

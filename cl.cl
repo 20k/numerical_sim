@@ -1367,7 +1367,7 @@ void extract_waveform(__global float* cY0, __global float* cY1, __global float* 
                       __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
                       __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
                       __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-                      float scale, int4 dim, int4 pos, __global float2* waveform_out)
+                      float scale, int4 dim, int4 pos, int4 waveform_dim, __global float2* waveform_out)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -1376,8 +1376,19 @@ void extract_waveform(__global float* cY0, __global float* cY1, __global float* 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    if(ix != pos.x || iy != pos.y || iz != pos.z)
+    //if(ix != pos.x || iy != pos.y || iz != pos.z)
+    //    return;
+
+    int4 tl = pos - waveform_dim/2;
+    int4 br = pos + waveform_dim/2;
+
+    if(ix < tl.x || iy < tl.y || iz < tl.z)
         return;
+
+    if(ix >= br.x || iy >= br.y || iz >= br.z)
+        return;
+
+    int4 local_coordinate = (int4)(ix, iy, iz, 0) - tl;
 
     float3 offset = transform_position(ix, iy, iz, dim, scale);
 
@@ -1391,14 +1402,16 @@ void extract_waveform(__global float* cY0, __global float* cY1, __global float* 
         }
     }*/
 
-    int index = IDX(ix, iy, iz);
+    //int index = IDX(ix, iy, iz);
 
     //printf("Scale %f\n", scale);
 
     //printf("X %f\n", X[index]);
 
-    waveform_out[0].x = w4_real;
-    waveform_out[0].y = w4_complex;
+    int wave_idx = local_coordinate.z * waveform_dim.x * waveform_dim.y + local_coordinate.y * waveform_dim.x + local_coordinate.x;
+
+    waveform_out[wave_idx].x = w4_real;
+    waveform_out[wave_idx].y = w4_complex;
 
     //printf("WAV %f\n", waveform_out[0].x);
 
