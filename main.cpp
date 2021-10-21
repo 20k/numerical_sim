@@ -2734,7 +2734,7 @@ auto spherical_integrate(const T& f_theta_phi, int n)
 }
 
 ///this isn't correct at all. The integration might be fine, but we can't take the spherical harmonics of a constant
-inline
+/*inline
 dual_types::complex<float> get_harmonic(const dual_types::complex<float>& value, int l, int m)
 {
     auto func = [&](float theta, float phi)
@@ -2751,8 +2751,79 @@ dual_types::complex<float> get_harmonic(const dual_types::complex<float>& value,
     dual_types::complex<float> harmonic = spherical_integrate(func, n);
 
     return harmonic;
+}*/
+
+dual_types::complex<float> linear_interpolate(const std::vector<dual_types::complex<float>>& vals, vec3f pos, vec3i dim)
+{
+    vec3f floored = floor(pos);
+
+    vec3i ipos = (vec3i){floored.x(), floored.y(), floored.z()};
+
+    auto index = [&](vec3i lpos)
+    {
+        return vals[lpos.z() * dim.x() * dim.y() + lpos.y() * dim.x() + lpos.x()];
+    };
+
+    auto c000 = index(ipos + (vec3i){0,0,0});
+    auto c100 = index(ipos + (vec3i){1,0,0});
+
+    auto c010 = index(ipos + (vec3i){0,1,0});
+    auto c110 = index(ipos + (vec3i){1,1,0});
+
+    auto c001 = index(ipos + (vec3i){0,0,1});
+    auto c101 = index(ipos + (vec3i){1,0,1});
+
+    auto c011 = index(ipos + (vec3i){0,1,1});
+    auto c111 = index(ipos + (vec3i){1,1,1});
+
+    vec3f frac = pos - floored;
+
+    auto c00 = c000 * (1 - frac.x()) + c100 * frac.x();
+    auto c01 = c001 * (1 - frac.x()) + c101 * frac.x();
+
+    auto c10 = c010 * (1 - frac.x()) + c110 * frac.x();
+    auto c11 = c011 * (1 - frac.x()) + c111 * frac.x();
+
+    auto c0 = c00 * (1 - frac.y()) + c10 * frac.y();
+    auto c1 = c01 * (1 - frac.y()) + c11 * frac.y();
+
+    return c0 * (1 - frac.z()) + c1 * frac.z();
 }
 
+inline
+float get_harmonic(const std::vector<dual_types::complex<float>>& vals, vec3i dim, int l, int m)
+{
+    vec3f centre = {dim.x()/2, dim.y()/2, dim.z()/2};
+
+    float rad = std::min(std::min(dim.x(), dim.y()), dim.z());
+
+    rad = (rad / 2) - 2;
+
+    auto func = [&](float theta, float phi)
+    {
+        dual_types::complex<float> harmonic = sYlm(2, l, m, theta, phi);
+
+        dual_types::complex<float> conj = conjugate(harmonic);
+
+        //printf("Hreal %f\n", harmonic.real);
+
+        vec3f pos = {rad * cos(phi) * sin(theta), rad * sin(phi) * sin(theta), rad * cos(theta)};
+
+        pos += centre;
+
+        dual_types::complex<float> interpolated = linear_interpolate(vals, pos, dim);
+
+        float scalar_product = interpolated.real * conj.real + interpolated.imaginary * conj.imaginary;
+
+        return scalar_product;
+    };
+
+    int n = 16;
+
+    float harmonic = spherical_integrate(func, n);
+
+    return harmonic;
+}
 
 template<int N>
 value dot_product(const vec<N, value>& u, const vec<N, value>& v, const metric<value, N, N>& met)
@@ -4344,12 +4415,12 @@ int main()
 
             ImGui::Checkbox("pao", &pao);
 
-            /*if(real_decomp.size() > 0)
+            if(real_decomp.size() > 0)
             {
                 ImGui::PushItemWidth(400);
                 ImGui::PlotLines("w4_l2_m0", &real_decomp[0], real_decomp.size());
                 ImGui::PopItemWidth();
-            }*/
+            }
 
             ImGui::End();
 
@@ -4782,6 +4853,13 @@ int main()
 
                 data.evt.block();
 
+                std::vector<dual_types::complex<float>> as_vector;
+
+                for(int i=0; i < waveform_dim.s[0] * waveform_dim.s[1] * waveform_dim.s[2]; i++)
+                {
+                    as_vector.push_back({data.data[i].s[0], data.data[i].s[1]});
+                }
+
                 cl_float2 val = data.data[0];
 
                 data.consume();
@@ -4791,11 +4869,10 @@ int main()
                 if(!isnanf(val.s[0]))
                     real_graph.push_back(val.s[0]);
 
-                /*float harmonic = get_harmonic(w4, 2, 0).real;
+                float harmonic = get_harmonic(as_vector, {waveform_dim.s[0], waveform_dim.s[1], waveform_dim.s[2]}, 2, 0);
 
-                //printf("Harm %f\n", harmonic);
-
-                real_decomp.push_back(harmonic);*/
+                if(!isnanf(harmonic))
+                    real_decomp.push_back(harmonic);
             }
 
             copy_valid(generic_data[(which_data + 1) % 2].buffers, generic_data[which_data].buffers);
