@@ -13,6 +13,7 @@
 #include <fstream>
 #include <imgui/misc/freetype/imgui_freetype.h>
 #include <vec/tensor.hpp>
+#include <condition_variable>
 
 /**
 current paper set
@@ -3902,6 +3903,135 @@ struct buffer_set
     }
 };
 
+struct gravitational_wave_manager
+{
+    struct callback_data
+    {
+        gravitational_wave_manager* me = nullptr;
+        cl_float2* read = nullptr;
+    };
+
+    cl_int4 wave_dim = {20, 20, 20};
+    cl_int4 wave_pos;
+
+    std::array<cl::buffer, 3> buffers;
+    std::vector<cl_float2*> pending_unprocessed_data;
+    std::mutex lock;
+    std::optional<cl::event> last_event;
+
+    cl::command_queue read_queue;
+
+    uint32_t next_buffer = 0;
+
+    int elements = 0;
+
+    gravitational_wave_manager(cl::context& ctx, vec3i simulation_size, float c_at_max, float scale) : buffers{ctx, ctx, ctx}, read_queue(ctx, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE)
+    {
+        elements = wave_dim.s[0] * wave_dim.s[1] * wave_dim.s[2];
+
+        float r_extract = c_at_max/3;
+
+        for(int i=0; i < buffers.size(); i++)
+        {
+            buffers[i].alloc(sizeof(cl_float2) * elements);
+        }
+
+        wave_pos = {simulation_size.x()/2, simulation_size.y()/2 + r_extract / scale, simulation_size.z()/2, 0};
+    }
+
+    static void callback(cl_event event, cl_int event_command_status, void* user_data)
+    {
+        callback_data& data = *(callback_data*)user_data;
+
+        if(event_command_status != CL_COMPLETE)
+            return;
+
+        std::lock_guard guard(data.me->lock);
+        data.me->pending_unprocessed_data.push_back((cl_float2*)data.read);
+
+        delete ((callback_data*)user_data);
+    }
+
+    void issue_extraction(cl::command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<cl::buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize)
+    {
+        cl::args waveform_args;
+
+        for(auto& i : buffers)
+        {
+            waveform_args.push_back(i);
+        }
+
+        for(auto& i : thin_intermediates)
+        {
+            waveform_args.push_back(i);
+        }
+
+        cl::buffer& next = buffers[(next_buffer % 3)];
+        next_buffer++;
+
+        waveform_args.push_back(scale);
+        waveform_args.push_back(clsize);
+        waveform_args.push_back(wave_pos);
+        waveform_args.push_back(wave_dim);
+        waveform_args.push_back(next);
+
+        cl::event kernel_event = cqueue.exec("extract_waveform", waveform_args, {clsize.x(), clsize.y(), clsize.z()}, {128, 1, 1});
+
+        cl_float2* next_data = new cl_float2[elements];
+
+        cl::event data = next.read_async(read_queue, (char*)next_data, elements * sizeof(cl_float2), {kernel_event});
+
+        callback_data* cb_data = new callback_data;
+        cb_data->me = this;
+        cb_data->read = next_data;
+
+        data.set_completion_callback(callback, cb_data);
+
+        if(last_event.has_value())
+        {
+            last_event.value().block();
+        }
+
+        last_event = data;
+    }
+
+    std::vector<float> process()
+    {
+        std::vector<float> real_harmonic;
+
+        std::vector<cl_float2*> to_process;
+
+        {
+            std::lock_guard guard(lock);
+
+            to_process = std::move(pending_unprocessed_data);
+            pending_unprocessed_data.clear();
+        }
+
+        for(cl_float2* vec : to_process)
+        {
+            std::vector<dual_types::complex<float>> as_vector;
+
+            for(int i=0; i < elements; i++)
+            {
+                as_vector.push_back({vec[i].s[0],vec[i].s[1]});
+            }
+
+            //if(!isnanf(val.s[0]))
+            //    real_graph.push_back(val.s[0]);
+
+            float harmonic = get_harmonic(as_vector, {wave_dim.s[0], wave_dim.s[1], wave_dim.s[2]}, 2, 0);
+
+            if(!isnanf(harmonic))
+                real_harmonic.push_back(harmonic);
+
+            delete [] vec;
+        }
+
+        return real_harmonic;
+    }
+};
+
 ///it seems like basically i need numerical dissipation of some form
 ///if i didn't evolve where sponge = 1, would be massively faster
 int main()
@@ -4182,7 +4312,7 @@ int main()
     ///I need to do this properly, where it keeps iterating until it converges
     ///todo: this doesn't converge yet!
     #ifndef GPU_PROFILE
-    for(int i=0; i < 20000; i++)
+    for(int i=0; i < 5000; i++)
     #else
     for(int i=0; i < 1000; i++)
     #endif
@@ -4225,9 +4355,7 @@ int main()
     //cl::buffer waveform(clctx.ctx);
     //waveform.alloc(sizeof(cl_float2));
 
-    cl_int4 waveform_dim = {20, 20, 20};
-    cl::buffer waveform_square(clctx.ctx);
-    waveform_square.alloc(sizeof(cl_float2) * waveform_dim.s[0] * waveform_dim.s[1] * waveform_dim.s[2]);
+    gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
 
     {
         cl::args init;
@@ -4250,8 +4378,6 @@ int main()
         cl::copy(clctx.cqueue, generic_data[0].buffers[i], rk4_scratch.buffers[i]);
         cl::copy(clctx.cqueue, generic_data[0].buffers[i], rk4_intermediate.buffers[i]);
     }
-
-    std::vector<cl::read_info<cl_float2>> read_data;
 
     std::vector<float> real_graph;
     std::vector<float> real_decomp;
@@ -4500,8 +4626,12 @@ int main()
         {
             steps++;
 
+            std::vector<cl::buffer>* last_valid_thin_buffer = &generic_data[which_data].buffers;
+
             auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
             {
+                last_valid_thin_buffer = &generic_in;
+
                 {
                     auto differentiate = [&](const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
                     {
@@ -4852,57 +4982,15 @@ int main()
             #endif // DOUBLE_ENFORCEMENT
 
             {
-                float r_extract = c_at_max/3;
+                wave_manager.issue_extraction(clctx.cqueue, *last_valid_thin_buffer, thin_intermediates, scale, clsize);
 
-                //printf("OFF %f\n", r_extract/scale);
+                std::vector<float> values = wave_manager.process();
 
-                ///need to put extraction at the side somewhere
-                cl_int4 pos = {clsize.x()/2, clsize.y()/2 + r_extract / scale, clsize.z()/2, 0};
-
-                cl::args waveform_args;
-
-                for(auto& i : generic_data[which_data].buffers)
+                for(float v : values)
                 {
-                    waveform_args.push_back(i);
+                    if(!isnanf(v))
+                        real_decomp.push_back(v);
                 }
-
-                for(auto& i : thin_intermediates)
-                {
-                    waveform_args.push_back(i);
-                }
-
-                waveform_args.push_back(scale);
-                waveform_args.push_back(clsize);
-                waveform_args.push_back(pos);
-                waveform_args.push_back(waveform_dim);
-                waveform_args.push_back(waveform_square);
-
-                clctx.cqueue.exec("extract_waveform", waveform_args, {size.x(), size.y(), size.z()}, {128, 1, 1});
-
-                cl::read_info<cl_float2> data = waveform_square.read_async<cl_float2>(clctx.cqueue, waveform_dim.s[0] * waveform_dim.s[1] * waveform_dim.s[2]);
-
-                data.evt.block();
-
-                std::vector<dual_types::complex<float>> as_vector;
-
-                for(int i=0; i < waveform_dim.s[0] * waveform_dim.s[1] * waveform_dim.s[2]; i++)
-                {
-                    as_vector.push_back({data.data[i].s[0], data.data[i].s[1]});
-                }
-
-                cl_float2 val = data.data[0];
-
-                data.consume();
-
-                dual_types::complex<float> w4 = {val.s[0], val.s[1]};
-
-                if(!isnanf(val.s[0]))
-                    real_graph.push_back(val.s[0]);
-
-                float harmonic = get_harmonic(as_vector, {waveform_dim.s[0], waveform_dim.s[1], waveform_dim.s[2]}, 2, 0);
-
-                if(!isnanf(harmonic))
-                    real_decomp.push_back(harmonic);
             }
 
             copy_valid(generic_data[(which_data + 1) % 2].buffers, generic_data[which_data].buffers);
