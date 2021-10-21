@@ -2956,6 +2956,8 @@ void extract_waveforms(equation_context& ctx)
 
     metric<value, 3, 3> Yij = args.Yij;
 
+    ctx.pin(Yij);
+
     inverse_metric<value, 3, 3> iYij = Yij.invert();
 
     ctx.pin(iYij);
@@ -3040,18 +3042,9 @@ void extract_waveforms(equation_context& ctx)
         }
     }
 
-    tensor<value, 3, 3, 3> eijk_tensor;
+    tensor<value, 3, 3, 3> eijk_tensor = sqrt(Yij.det()) * eijk;
 
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            for(int k=0; k < 3; k++)
-            {
-                eijk_tensor.idx(i, j, k) = sqrt(Yij.det()) * eijk.idx(i, j, k);
-            }
-        }
-    }
+    ctx.pin(eijk);
 
     ctx.pin(eijk_tensor);
 
