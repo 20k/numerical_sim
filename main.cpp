@@ -2957,7 +2957,7 @@ void extract_waveforms(equation_context& ctx)
             {
                 for(int b=0; b < 3; b++)
                 {
-                    sum = sum + iYij.idx(a, d) * eijk.idx(d, b, c) * v1a[b] * v2a[c];
+                    sum += iYij.idx(a, d) * eijk.idx(d, b, c) * v1a[b] * v2a[c];
                 }
             }
         }
@@ -2990,7 +2990,7 @@ void extract_waveforms(equation_context& ctx)
         {
             for(int b=0; b < 3; b++)
             {
-                sum = sum + v_i[a] * v_j[b] * Yij.idx(a, b);
+                sum += v_i[a] * v_j[b] * Yij.idx(a, b);
             }
         }
 
@@ -3018,6 +3018,14 @@ void extract_waveforms(equation_context& ctx)
         mu.idx(i) = dual_types::complex<value>(1.f/sqrt(2.f)) * (thetau[i] + unit_i * phiu[i]);
     }
 
+    ///https://en.wikipedia.org/wiki/Newman%E2%80%93Penrose_formalism
+    tensor<dual_types::complex<value>, 4> mu_dash;
+
+    for(int i=0; i < 4; i++)
+    {
+        mu_dash.idx(i) = dual_types::conjugate(mu.idx(i));
+    }
+
     tensor<value, 3, 3, 3> raised_eijk = raise_index_generic(raise_index_generic(eijk_tensor, iYij, 1), iYij, 2);
 
     ctx.pin(raised_eijk);
@@ -3031,7 +3039,8 @@ void extract_waveforms(equation_context& ctx)
         {
             for(int j=0; j < 3; j++)
             {
-                dual_types::complex<value> k_sum_1(0.f);
+                value k_sum_1 = 0;
+
                 dual_types::complex<value> k_sum_2(0.f);
 
                 for(int k=0; k < 3; k++)
@@ -3043,16 +3052,16 @@ void extract_waveforms(equation_context& ctx)
                         rhs_sum = rhs_sum + unit_i * raised_eijk.idx(i, k, l) * cdKij.idx(l, j, k);
                     }
 
-                    k_sum_2 = k_sum_2 + rhs_sum;
+                    k_sum_2 += rhs_sum;
 
-                    k_sum_1 = k_sum_1 + Kij.idx(i, k) * raise_index_generic(Kij, iYij, 0).idx(k, j);
+                    k_sum_1 += Kij.idx(i, k) * raise_index_generic(Kij, iYij, 0).idx(k, j);
                 }
 
                 dual_types::complex<value> inner_sum = -Rij.idx(i, j) - args.K * Kij.idx(i, j) + k_sum_1 + k_sum_2;
 
                 ///mu is a 4 vector, but we use it spatially
                 ///this exposes the fact that i really runs from 1-4 instead of 0-3
-                sum = sum + inner_sum * mu.idx(i + 1) * mu.idx(j + 1);
+                sum = sum + inner_sum * mu_dash.idx(i + 1) * mu_dash.idx(j + 1);
             }
         }
 
@@ -4675,8 +4684,8 @@ int main()
                     clctx.cqueue.exec("trapezoidal_accumulate", trapezoidal, {evolution_positions_count}, {128});
                 }
 
-                //diff_to_input(f_y2.buffers, timestep);
 
+                //diff_to_input(f_y2.buffers, timestep);
                 std::swap(f_y2, b2);
 
                 if(i != iterations - 1)
@@ -4697,7 +4706,7 @@ int main()
                 //printf("OFF %f\n", r_extract/scale);
 
                 ///need to put extraction at the side somewhere
-                cl_int4 pos = {clsize.x()/2 + 10, clsize.y()/2 + 10, clsize.z()/2  + r_extract / scale, 0};
+                cl_int4 pos = {clsize.x()/2 + 1, clsize.y()/2 + 1, clsize.z()/2  + r_extract / scale, 0};
 
                 cl::args waveform_args;
 
