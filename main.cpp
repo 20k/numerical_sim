@@ -3103,7 +3103,7 @@ void extract_waveforms(equation_context& ctx)
             }
         }
 
-        v3ai[a] = pow(Yij.det(), 0.5f) * sum;
+        v3ai[a] = sum;
     }
 
     /*auto v_idx = [&](int idx)
