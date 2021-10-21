@@ -2997,6 +2997,7 @@ void extract_waveforms(equation_context& ctx)
         return sum;
     };
 
+    ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///https://arxiv.org/pdf/gr-qc/0104063.pdf 5.7. I already have code for doing this but lets stay exact
     v1a = v1a / sqrt(wij(0, 0));
     v2a = (v2a - v1a * wij(0, 1)) / (wij(1, 1));
@@ -3006,16 +3007,18 @@ void extract_waveforms(equation_context& ctx)
     ctx.pin(v2a);
     ctx.pin(v3a);
 
-    vec<4, value> thetau = {0, v3a[0], v3a[1], v3a[2]};
-    vec<4, value> phiu = {0, v1a[0], v1a[1], v1a[2]};
+    //vec<4, value> thetau = {0, v3a[0], v3a[1], v3a[2]};
+    //vec<4, value> phiu = {0, v1a[0], v1a[1], v1a[2]};
 
     dual_types::complex<value> unit_i = dual_types::unit_i();
 
     tensor<dual_types::complex<value>, 4> mu;
 
-    for(int i=0; i < 4; i++)
+    for(int i=1; i < 4; i++)
     {
-        mu.idx(i) = dual_types::complex<value>(1.f/sqrt(2.f)) * (thetau[i] + unit_i * phiu[i]);
+        mu.idx(i) = dual_types::complex<value>(1.f/sqrt(2.f)) * (v1a[i - 1] + unit_i * v3a[i - 1]);
+
+        //mu.idx(i) = dual_types::complex<value>(1.f/sqrt(2.f)) * (thetau[i] + unit_i * phiu[i]);
     }
 
     ///https://en.wikipedia.org/wiki/Newman%E2%80%93Penrose_formalism
