@@ -2761,6 +2761,8 @@ dual_types::complex<float> linear_interpolate(const std::vector<dual_types::comp
 
     auto index = [&](vec3i lpos)
     {
+        assert(lpos.x() >= 0 && lpos.y() >= 0 && lpos.z() >= 0 && lpos.x() < dim.x() && lpos.y() < dim.y() && lpos.z() < dim.z());
+
         return vals[lpos.z() * dim.x() * dim.y() + lpos.y() * dim.x() + lpos.x()];
     };
 
@@ -2797,7 +2799,7 @@ float get_harmonic(const std::vector<dual_types::complex<float>>& vals, vec3i di
 
     float rad = std::min(std::min(dim.x(), dim.y()), dim.z());
 
-    rad = (rad / 2) - 2;
+    rad = (rad / 2) - 3;
 
     auto func = [&](float theta, float phi)
     {
@@ -2813,6 +2815,8 @@ float get_harmonic(const std::vector<dual_types::complex<float>>& vals, vec3i di
 
         dual_types::complex<float> interpolated = linear_interpolate(vals, pos, dim);
 
+        printf("interpolated %f %f\n", interpolated.real, interpolated.imaginary);
+
         float scalar_product = interpolated.real * conj.real + interpolated.imaginary * conj.imaginary;
 
         return scalar_product;
@@ -2821,6 +2825,8 @@ float get_harmonic(const std::vector<dual_types::complex<float>>& vals, vec3i di
     int n = 16;
 
     float harmonic = spherical_integrate(func, n);
+
+    printf("Harmonic %f\n", harmonic);
 
     return harmonic;
 }
@@ -3103,7 +3109,7 @@ void extract_waveforms(equation_context& ctx)
             }
         }
 
-        v3ai[a] = sum;
+        v3ai[a] = sqrt(Yij.det()) * sum;
     }
 
     /*auto v_idx = [&](int idx)
