@@ -1506,8 +1506,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         ///made it to 532 after 2 + 3/4s orbits
         ///1125
-        black_hole_velocity[0] = v0 * v0_v.norm() * 1.;
-        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.;
+        black_hole_velocity[0] = v0 * v0_v.norm() * 1.03;
+        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.03;
 
         float r0 = m1 * R / M;
         float r1 = m0 * R / M;
@@ -2626,6 +2626,11 @@ template<typename T>
 inline
 dual_types::complex<T> sYlm(int negative_s, int l, int m, T theta, T phi)
 {
+    static std::map<std::tuple<int, int, int, T, T>, dual_types::complex<T>> cache;
+
+    if(auto found_it = cache.find(std::tuple{negative_s, l, m, theta, phi}); found_it != cache.end())
+        return found_it->second;
+
     int s = negative_s;
 
     auto dlms = [&]()
@@ -2653,7 +2658,11 @@ dual_types::complex<T> sYlm(int negative_s, int l, int m, T theta, T phi)
 
     T coeff = pow(-1, s) * sqrt((2 * l + 1) / (4 * M_PI));
 
-    return coeff * dlms() * expi(m * phi);
+    dual_types::complex<T> ret = coeff * dlms() * expi(m * phi);
+
+    cache[std::tuple{negative_s, l, m, theta, phi}] = ret;
+
+    return ret;
 }
 
 ///https://pomax.github.io/bezierinfo/legendre-gauss.html
@@ -2815,7 +2824,7 @@ float get_harmonic(const std::vector<dual_types::complex<float>>& vals, vec3i di
 
         dual_types::complex<float> interpolated = linear_interpolate(vals, pos, dim);
 
-        printf("interpolated %f %f\n", interpolated.real, interpolated.imaginary);
+        //printf("interpolated %f %f\n", interpolated.real, interpolated.imaginary);
 
         float scalar_product = interpolated.real * conj.real + interpolated.imaginary * conj.imaginary;
 
@@ -2826,7 +2835,7 @@ float get_harmonic(const std::vector<dual_types::complex<float>>& vals, vec3i di
 
     float harmonic = spherical_integrate(func, n);
 
-    printf("Harmonic %f\n", harmonic);
+    //printf("Harmonic %f\n", harmonic);
 
     return harmonic;
 }
@@ -3917,10 +3926,10 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {251, 251, 251};
+    vec3i size = {289, 289, 289};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
-    float c_at_max = 65 * (251.f/300.f);
+    float c_at_max = 80 * (289.f/300.f);
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2.f, size.y()/2.f, size.z()/2.f};
 
@@ -4821,12 +4830,12 @@ int main()
             #endif // DOUBLE_ENFORCEMENT
 
             {
-                float r_extract = c_at_max/4;
+                float r_extract = c_at_max/3;
 
                 //printf("OFF %f\n", r_extract/scale);
 
                 ///need to put extraction at the side somewhere
-                cl_int4 pos = {clsize.x()/2 + 1, clsize.y()/2 + 1, clsize.z()/2  + r_extract / scale, 0};
+                cl_int4 pos = {clsize.x()/2 + 1, clsize.y()/2 + 25, clsize.z()/2  + r_extract / scale, 0};
 
                 cl::args waveform_args;
 
