@@ -1241,7 +1241,7 @@ struct standard_arguments
     tensor<value, 3> dX;
 
     tensor<value, 3> bigGi;
-
+    tensor<value, 3> derived_cGi;
 
     standard_arguments(bool interpolate)
     {
@@ -1380,6 +1380,13 @@ struct standard_arguments
         {
             bigGi.idx(i) = cGi.idx(i) - cGi_G.idx(i);
         }
+
+        //#define USE_DERIVED_CGI
+        #ifdef USE_DERIVED_CGI
+        derived_cGi = cGi_G;
+        #else
+        derived_cGi = cGi;
+        #endif
 
         /*
         ///dcgA alias
@@ -1969,7 +1976,7 @@ tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& 
 
     tensor<value, 3, 3> cRij;
 
-    tensor<value, 3> derived_cGi = args.cGi;
+    tensor<value, 3> derived_cGi = args.derived_cGi;
 
     for(int i=0; i < 3; i++)
     {
@@ -2094,7 +2101,7 @@ void build_cA(equation_context& ctx)
     value X = args.X;
     value K = args.K;
 
-    tensor<value, 3> derived_cGi = args.cGi;
+    tensor<value, 3> derived_cGi = args.derived_cGi;
 
     ///a / X
     value gA_X = args.gA_X;
@@ -2248,7 +2255,7 @@ void build_cGi(equation_context& ctx)
     ///these seem to suffer from oscillations
     tensor<value, 3> dtcGi;
 
-    tensor<value, 3> derived_cGi = args.cGi;
+    tensor<value, 3> derived_cGi = args.derived_cGi;
 
     ///https://arxiv.org/pdf/gr-qc/0511048.pdf
 
@@ -2481,7 +2488,7 @@ void build_gB(equation_context& ctx)
 
     float N = 2;
 
-    tensor<value, 3> dtgB = (3.f/4.f) * args.cGi + bjdjbi - N * args.gB;
+    tensor<value, 3> dtgB = (3.f/4.f) * args.derived_cGi + bjdjbi - N * args.gB;
 
     tensor<value, 3> dtgBB;
     dtgBB.idx(0) = 0;
@@ -2949,9 +2956,6 @@ void extract_waveforms(equation_context& ctx)
 
     ctx.pin(christoff1);
     ctx.pin(christoff2);
-
-    tensor<value, 3> derived_cGi = args.cGi;;
-
 
     ///NEEDS SCALING???
     vec<3, value> pos;
