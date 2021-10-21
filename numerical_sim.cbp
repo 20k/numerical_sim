@@ -60,14 +60,13 @@
 			<Add directory="deps/imgui" />
 		</Compiler>
 		<Linker>
+			<Add option="-static-libstdc++" />
+			<Add option="-static-libgcc" />
+			<Add option="-static" />
 			<Add option="-lmingw32" />
 			<Add option="-l:libssl.a" />
 			<Add option="-l:libglfw3.a" />
 			<Add option="-l:libglew32.a" />
-			<Add option="-lsfml-graphics-s" />
-			<Add option="-lsfml-window-s" />
-			<Add option="-lsfml-audio-s" />
-			<Add option="-lsfml-system-s" />
 			<Add option="-Wl,--start-group" />
 			<Add option="-l:libharfbuzz.a" />
 			<Add option="-l:libfreetype.a" />
@@ -94,10 +93,8 @@
 			<Add option="-l:libboost_system-mt.a" />
 			<Add option="-lcrypto" />
 			<Add option="-lssl" />
-			<Add option="-l:libboost_fiber-mt.a" />
-			<Add option="-l:libboost_context-mt.a" />
 			<Add option="-lbacktrace" />
-			<Add option="-lopencl" />
+			<Add option="-l:libOpenCL.dll.a" />
 			<Add option="-lImm32" />
 			<Add option="-ldwrite" />
 		</Linker>
