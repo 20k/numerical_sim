@@ -3045,14 +3045,10 @@ void extract_waveforms(equation_context& ctx)
 
                 for(int k=0; k < 3; k++)
                 {
-                    dual_types::complex<value> rhs_sum(0.f);
-
                     for(int l=0; l < 3; l++)
                     {
-                        rhs_sum = rhs_sum + unit_i * raised_eijk.idx(i, k, l) * cdKij.idx(l, j, k);
+                        k_sum_2 += unit_i * raised_eijk.idx(i, k, l) * cdKij.idx(l, j, k);
                     }
-
-                    k_sum_2 += rhs_sum;
 
                     k_sum_1 += Kij.idx(i, k) * raise_index_generic(Kij, iYij, 0).idx(k, j);
                 }
@@ -3061,7 +3057,7 @@ void extract_waveforms(equation_context& ctx)
 
                 ///mu is a 4 vector, but we use it spatially
                 ///this exposes the fact that i really runs from 1-4 instead of 0-3
-                sum = sum + inner_sum * mu_dash.idx(i + 1) * mu_dash.idx(j + 1);
+                sum += inner_sum * mu_dash.idx(i + 1) * mu_dash.idx(j + 1);
             }
         }
 
