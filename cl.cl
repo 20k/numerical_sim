@@ -1408,6 +1408,18 @@ void extract_waveform(__global float* cY0, __global float* cY1, __global float* 
 
     //printf("X %f\n", X[index]);
 
+    /*float v0 = dbgv0;
+    float v1 = dbgv1;
+    float v2 = dbgv2;
+
+    float v3 = dbgv3;
+    float v4 = dbgv4;
+    float v5 = dbgv5;*/
+
+    /*float debug = dbgw2;
+    //printf("debug %f %f %f %f %f %f %f %i %i %i\n", debug, v0, v1, v2, v3, v4, v5, ix, iy, iz);
+    printf("debug %f %i %i %i %f %f %f\n", debug, ix, iy, iz, offset.x, offset.y, offset.z);*/
+
     int wave_idx = local_coordinate.z * waveform_dim.x * waveform_dim.y + local_coordinate.y * waveform_dim.x + local_coordinate.x;
 
     waveform_out[wave_idx].x = w4_real;

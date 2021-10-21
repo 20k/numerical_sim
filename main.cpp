@@ -2890,9 +2890,18 @@ vec<N, value> normalize_big_metric(const vec<N, value>& in, const metric<value, 
 ///raised indices for v/1/2/3
 std::array<vec<3, value>, 3> orthonormalise(equation_context& ctx, const vec<3, value>& v1, const vec<3, value>& v2, const vec<3, value>& v3, const metric<value, 3, 3>& met)
 {
+    ctx.add("dbgv0", v1[0]);
+    ctx.add("dbgv1", v1[1]);
+    ctx.add("dbgv2", v1[2]);
+
+    ctx.add("dbgv3", v2[0]);
+    ctx.add("dbgv4", v2[1]);
+    ctx.add("dbgv5", v2[2]);
+
     vec<3, value> u1 = v1;
 
     vec<3, value> u2 = v2;
+
     u2 = u2 - gram_proj(u1, u2, met);
 
     ctx.pin(u2);
@@ -2903,13 +2912,16 @@ std::array<vec<3, value>, 3> orthonormalise(equation_context& ctx, const vec<3, 
 
     ctx.pin(u3);
 
-    u1 = u1.norm();
+    /*u1 = u1.norm();
     u2 = u2.norm();
-    u3 = u3.norm();
+    u3 = u3.norm();*/
 
     ctx.pin(u1);
     ctx.pin(u2);
     ctx.pin(u3);
+
+    ctx.add("dbgw2", dot_product(u2, u2, met));
+    //ctx.add("dbgw2", lower_index(as_tensor, met).idx(0));
 
     u1 = normalize_big_metric(u1, met);
     u2 = normalize_big_metric(u2, met);
@@ -2977,9 +2989,10 @@ void extract_waveforms(equation_context& ctx)
 
     ctx.pin(Yij);
 
-    inverse_metric<value, 3, 3> iYij = Yij.invert();
+    inverse_metric<value, 3, 3> iYij = args.X * icY;
+    //inverse_metric<value, 3, 3> iYij = Yij.invert();
 
-    ctx.pin(iYij);
+    //ctx.pin(iYij);
 
     //auto christoff_Y = gpu_christoffel_symbols_2(Yij, iYij);
 
@@ -3169,6 +3182,8 @@ void extract_waveforms(equation_context& ctx)
     ctx.pin(v2a);
     ctx.pin(v3a);
 
+    ctx.add("dbgw", v1a[0]);
+
     //vec<4, value> thetau = {0, v3a[0], v3a[1], v3a[2]};
     //vec<4, value> phiu = {0, v1a[0], v1a[1], v1a[2]};
 
@@ -3181,7 +3196,10 @@ void extract_waveforms(equation_context& ctx)
         mu.idx(i) = dual_types::complex<value>(1.f/sqrt(2.f)) * (v1a[i - 1] + unit_i * v3a[i - 1]);
 
         //mu.idx(i) = dual_types::complex<value>(1.f/sqrt(2.f)) * (thetau[i] + unit_i * phiu[i]);
+        ctx.pin(mu.idx(i).real);
+        ctx.pin(mu.idx(i).imaginary);
     }
+
 
     ///https://en.wikipedia.org/wiki/Newman%E2%80%93Penrose_formalism
     tensor<dual_types::complex<value>, 4> mu_dash;
@@ -4839,7 +4857,7 @@ int main()
                 //printf("OFF %f\n", r_extract/scale);
 
                 ///need to put extraction at the side somewhere
-                cl_int4 pos = {clsize.x()/2 + 1, clsize.y()/2 + 25, clsize.z()/2  + r_extract / scale, 0};
+                cl_int4 pos = {clsize.x()/2, clsize.y()/2 + r_extract / scale, clsize.z()/2, 0};
 
                 cl::args waveform_args;
 
