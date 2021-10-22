@@ -2203,7 +2203,7 @@ void build_cA(equation_context& ctx)
             dtcAij.idx(i, j) = p1 + p2 + p3;
 
             #ifdef DAMP_DTCAIJ
-            float Ka = 0.0025f;
+            float Ka = 0.0005f;
 
             dtcAij.idx(i, j) += Ka * gA * 0.5f *
                                                 (gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)
@@ -2628,20 +2628,19 @@ dual_types::complex<float> expi(float val)
 ///https://arxiv.org/pdf/1906.03877.pdf 8
 ///aha!
 ///https://arxiv.org/pdf/0709.0093.pdf
+///https://arxiv.org/pdf/gr-qc/0610128.pdf 40
 ///at last! A non horrible reference and non gpl reference for negative spin!
 ///this is where the cactus code comes from as well
 template<typename T>
 inline
-dual_types::complex<T> sYlm(int negative_s, int l, int m, T theta, T phi)
+dual_types::complex<T> sYlm_2(int s, int l, int m, T theta, T phi)
 {
     static std::map<std::tuple<int, int, int, T, T>, dual_types::complex<T>> cache;
 
-    if(auto found_it = cache.find(std::tuple{negative_s, l, m, theta, phi}); found_it != cache.end())
+    if(auto found_it = cache.find(std::tuple{s, l, m, theta, phi}); found_it != cache.end())
         return found_it->second;
 
-    int s = negative_s;
-
-    auto dlms = [&]()
+    auto dlms = [](T theta, int l, int m, int s)
     {
         int k1 = std::max(0, m - s);
         int k2 = std::min(l + m, l - s);
@@ -2666,9 +2665,9 @@ dual_types::complex<T> sYlm(int negative_s, int l, int m, T theta, T phi)
 
     T coeff = pow(-1, s) * sqrt((2 * l + 1) / (4 * M_PI));
 
-    dual_types::complex<T> ret = coeff * dlms() * expi(m * phi);
+    dual_types::complex<T> ret = coeff * dlms(theta, l, m, -s) * expi(m * phi);
 
-    cache[std::tuple{negative_s, l, m, theta, phi}] = ret;
+    cache[std::tuple{s, l, m, theta, phi}] = ret;
 
     return ret;
 }
@@ -2829,7 +2828,7 @@ float get_harmonic(const std::vector<dual_types::complex<float>>& vals, vec3i di
 
     auto func = [&](float theta, float phi)
     {
-        dual_types::complex<float> harmonic = sYlm(2, l, m, theta, phi);
+        dual_types::complex<float> harmonic = sYlm_2(-2, l, m, theta, phi);
 
         dual_types::complex<float> conj = conjugate(harmonic);
 

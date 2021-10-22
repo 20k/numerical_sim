@@ -807,7 +807,7 @@ void clean_data(__global ushort4* points, int point_count,
 
     ///todo: investigate if 2 full orbits is possible on the non radiative condition
     ///woooo
-    //#define RADIATIVE
+    #define RADIATIVE
     #ifdef RADIATIVE
     fin_gA = 1;
     fin_gB0 = 0;
