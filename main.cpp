@@ -1510,12 +1510,12 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
         float v0 = sqrt(m1 * m1 / (R * M));
         float v1 = sqrt(m0 * m0 / (R * M));
 
-        vec3f v0_v = {0.0, 0.0, -1};
+        vec3f v0_v = {0.0, -1, 0};
 
         ///made it to 532 after 2 + 3/4s orbits
         ///1125
-        black_hole_velocity[0] = v0 * v0_v.norm() * 1.15;
-        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.15;
+        black_hole_velocity[0] = v0 * v0_v.norm() * 1.2;
+        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.2;
 
         float r0 = m1 * R / M;
         float r1 = m0 * R / M;
@@ -1840,7 +1840,7 @@ void build_momentum_constraint(equation_context& ctx)
         Mi.idx(i) = 0;
     }
 
-    //#define DAMP_DTCAIJ
+    #define DAMP_DTCAIJ
     #ifdef DAMP_DTCAIJ
     tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
 
@@ -2203,7 +2203,7 @@ void build_cA(equation_context& ctx)
             dtcAij.idx(i, j) = p1 + p2 + p3;
 
             #ifdef DAMP_DTCAIJ
-            float Ka = 0.01f;
+            float Ka = 0.0025f;
 
             dtcAij.idx(i, j) += Ka * gA * 0.5f *
                                                 (gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)
@@ -2770,7 +2770,7 @@ dual_types::complex<float> get_harmonic(const dual_types::complex<float>& value,
     return harmonic;
 }*/
 
-dual_types::complex<float> linear_interpolate(const std::vector<dual_types::complex<float>>& vals, vec3f pos, vec3i dim)
+float linear_interpolate(const std::vector<float>& vals, vec3f pos, vec3i dim)
 {
     vec3f floored = floor(pos);
 
@@ -2812,6 +2812,15 @@ dual_types::complex<float> linear_interpolate(const std::vector<dual_types::comp
 inline
 float get_harmonic(const std::vector<dual_types::complex<float>>& vals, vec3i dim, int l, int m)
 {
+    std::vector<float> real;
+    std::vector<float> imaginary;
+
+    for(auto& i : vals)
+    {
+        real.push_back(i.real);
+        imaginary.push_back(i.imaginary);
+    }
+
     vec3f centre = {dim.x()/2, dim.y()/2, dim.z()/2};
 
     float rad = std::min(std::min(dim.x(), dim.y()), dim.z());
@@ -2830,11 +2839,12 @@ float get_harmonic(const std::vector<dual_types::complex<float>>& vals, vec3i di
 
         pos += centre;
 
-        dual_types::complex<float> interpolated = linear_interpolate(vals, pos, dim);
+        float interpolated_real = linear_interpolate(real, pos, dim);
+        float interpolated_imaginary = linear_interpolate(imaginary, pos, dim);
 
         //printf("interpolated %f %f\n", interpolated.real, interpolated.imaginary);
 
-        float scalar_product = interpolated.real * conj.real + interpolated.imaginary * conj.imaginary;
+        float scalar_product = interpolated_real * conj.real + interpolated_imaginary * conj.imaginary;
 
         return scalar_product;
     };
@@ -4097,10 +4107,10 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {249, 249, 249};
+    vec3i size = {289, 289, 289};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
-    float c_at_max = 70 * (size.x()/300.f);
+    float c_at_max = 75 * (size.x()/300.f);
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2.f, size.y()/2.f, size.z()/2.f};
 
@@ -4602,21 +4612,6 @@ int main()
         if(run)
             step = true;
 
-        cl::args render;
-
-        for(auto& i : generic_data[which_data].buffers)
-        {
-            render.push_back(i);
-        }
-
-        //render.push_back(bssnok_datas[which_data]);
-        render.push_back(scale);
-        render.push_back(clsize);
-        render.push_back(rtex[which_texture]);
-        render.push_back(time_elapsed_s);
-
-        clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
-
         ///rk4
         ///though no signs of any notable instability for backwards euler
         /*float timestep = 0.08;
@@ -4628,7 +4623,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.05;
+        float timestep = 0.035;
 
         //timestep = 0.04;
 
@@ -5010,6 +5005,29 @@ int main()
                     if(!isnanf(v))
                         real_decomp.push_back(v);
                 }
+            }
+
+            {
+                cl::args render;
+
+                for(auto& i : *last_valid_thin_buffer)
+                {
+                    render.push_back(i);
+                }
+
+                for(auto& i : thin_intermediates)
+                {
+                    render.push_back(i);
+                }
+
+                //render.push_back(bssnok_datas[which_data]);
+                render.push_back(scale);
+                render.push_back(clsize);
+                render.push_back(rtex[which_texture]);
+                render.push_back(time_elapsed_s);
+
+                clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
+
             }
 
             //copy_valid(generic_data[(which_data + 1) % 2].buffers, generic_data[which_data].buffers);

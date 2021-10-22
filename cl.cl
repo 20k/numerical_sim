@@ -643,7 +643,7 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
     float edge_half = scale * ((dim.x - 2)/2.f);
 
     //float sponge_r0 = scale * ((dim.x/2) - 48);
-    float sponge_r0 = scale * (((dim.x - 1)/2.f) - 24);
+    float sponge_r0 = scale * (((dim.x - 1)/2.f) - 32);
     //float sponge_r0 = scale * ((dim.x/2) - 32);
     //float sponge_r0 = edge_half/2;
     float sponge_r1 = scale * (((dim.x - 1)/2.f) - 6);
@@ -807,7 +807,7 @@ void clean_data(__global ushort4* points, int point_count,
 
     ///todo: investigate if 2 full orbits is possible on the non radiative condition
     ///woooo
-    #define RADIATIVE
+    //#define RADIATIVE
     #ifdef RADIATIVE
     fin_gA = 1;
     fin_gB0 = 0;
@@ -1280,14 +1280,18 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
             #ifdef USE_gBB0
             __global float* ogBB0, __global float* ogBB1, __global float* ogBB2,
             #endif // USE_gBB0
+            __global DERIV_PRECISION* dcYij0, __global DERIV_PRECISION* dcYij1, __global DERIV_PRECISION* dcYij2, __global DERIV_PRECISION* dcYij3, __global DERIV_PRECISION* dcYij4, __global DERIV_PRECISION* dcYij5, __global DERIV_PRECISION* dcYij6, __global DERIV_PRECISION* dcYij7, __global DERIV_PRECISION* dcYij8, __global DERIV_PRECISION* dcYij9, __global DERIV_PRECISION* dcYij10, __global DERIV_PRECISION* dcYij11, __global DERIV_PRECISION* dcYij12, __global DERIV_PRECISION* dcYij13, __global DERIV_PRECISION* dcYij14, __global DERIV_PRECISION* dcYij15, __global DERIV_PRECISION* dcYij16, __global DERIV_PRECISION* dcYij17,
+            __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
+            __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
+            __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
             float scale, int4 dim, __write_only image2d_t screen, float time)
 {
     int ix = get_global_id(0);
-    //int iy = get_global_id(1);
+    int iy = get_global_id(1);
     //int iz = dim.z/2;
-    int iy = (dim.y - 1)/2;
-    int iz = get_global_id(1);
-
+    //int iy = (dim.y - 1)/2;
+    //int iz = get_global_id(1);
+    int iz = (dim.z - 1)/2;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -1295,6 +1299,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
     if(ix <= 4 || ix >= dim.x - 5 || iy <= 4 || iy >= dim.y - 5 || iz <= 4 || iz >= dim.z - 5)
         return;
 
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
 
     int index_table[3][3] = {{0, 1, 2},
                              {1, 3, 4},
@@ -1338,6 +1343,18 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
         max_scalar = max(ascalar, max_scalar);
     }
 
+    float real = 0;
+
+    {
+        float TEMPORARIES4;
+
+        real = w4_real;
+
+        real = fabs(real) * 1000.f;
+
+        real = clamp(real, 0.f, 1.f);
+    }
+
     /*if(ix == 125 && iy == 125)
     {
         printf("scalar %f\n", max_scalar);
@@ -1347,7 +1364,7 @@ void render(__global float* cY0, __global float* cY1, __global float* cY2, __glo
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 
-    float3 col = {max_scalar, max_scalar, max_scalar};
+    float3 col = {real, max_scalar, max_scalar};
 
     float3 lin_col = srgb_to_lin(col);
 
