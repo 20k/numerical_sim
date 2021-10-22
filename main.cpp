@@ -1382,7 +1382,7 @@ struct standard_arguments
             bigGi.idx(i) = cGi.idx(i) - cGi_G.idx(i);
         }
 
-        //#define USE_DERIVED_CGI
+        #define USE_DERIVED_CGI
         #ifdef USE_DERIVED_CGI
         derived_cGi = cGi_G;
         #else
@@ -1514,8 +1514,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         ///made it to 532 after 2 + 3/4s orbits
         ///1125
-        black_hole_velocity[0] = v0 * v0_v.norm() * 1.03;
-        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.03;
+        black_hole_velocity[0] = v0 * v0_v.norm() * 1.15;
+        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.15;
 
         float r0 = m1 * R / M;
         float r1 = m0 * R / M;
@@ -2839,7 +2839,7 @@ float get_harmonic(const std::vector<dual_types::complex<float>>& vals, vec3i di
         return scalar_product;
     };
 
-    int n = 16;
+    int n = 64;
 
     float harmonic = spherical_integrate(func, n);
 
@@ -3911,7 +3911,7 @@ struct gravitational_wave_manager
         cl_float2* read = nullptr;
     };
 
-    cl_int4 wave_dim = {160, 160, 160};
+    cl_int4 wave_dim = {140, 140, 140};
     cl_int4 wave_pos;
 
     std::array<cl::buffer, 3> wave_buffers;
@@ -4039,7 +4039,7 @@ struct gravitational_wave_manager
             //if(!isnanf(val.s[0]))
             //    real_graph.push_back(val.s[0]);
 
-            float harmonic = get_harmonic(as_vector, {wave_dim.s[0], wave_dim.s[1], wave_dim.s[2]}, 2, 0);
+            float harmonic = get_harmonic(as_vector, {wave_dim.s[0], wave_dim.s[1], wave_dim.s[2]}, 2, 2);
 
             if(!isnanf(harmonic))
                 real_harmonic.push_back(harmonic);
@@ -4100,7 +4100,7 @@ int main()
     vec3i size = {249, 249, 249};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
-    float c_at_max = 80 * (size.x()/300.f);
+    float c_at_max = 70 * (size.x()/300.f);
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2.f, size.y()/2.f, size.z()/2.f};
 
