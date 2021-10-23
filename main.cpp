@@ -5127,7 +5127,7 @@ int main()
 
             }
 
-            //copy_valid(generic_data[(which_data + 1) % 2].buffers, generic_data[which_data].buffers);
+            copy_valid(generic_data[(which_data + 1) % 2].buffers, generic_data[which_data].buffers);
 
             {
                 for(int i=0; i < buffer_set::buffer_count; i++)

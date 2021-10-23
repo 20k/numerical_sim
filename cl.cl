@@ -643,7 +643,7 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
     float edge_half = scale * ((dim.x - 2)/2.f);
 
     //float sponge_r0 = scale * ((dim.x/2) - 48);
-    float sponge_r0 = scale * (((dim.x - 1)/2.f) - 32);
+    float sponge_r0 = scale * (((dim.x - 1)/2.f) - 48);
     //float sponge_r0 = scale * ((dim.x/2) - 32);
     //float sponge_r0 = edge_half/2;
     float sponge_r1 = scale * (((dim.x - 1)/2.f) - 6);
@@ -666,10 +666,10 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float 
 
     r = clamp(r, sponge_r0, sponge_r1);
 
-    return (r - sponge_r0) / (sponge_r1 - sponge_r0);
+    //return (r - sponge_r0) / (sponge_r1 - sponge_r0);
 
-    /*float sigma = (sponge_r1 - sponge_r0) / 6;
-    return native_exp(-pow((r - sponge_r1) / sigma, 2));*/
+    float sigma = (sponge_r1 - sponge_r0) / 2;
+    return native_exp(-pow((r - sponge_r1) / sigma, 2));
 }
 
 __kernel
@@ -807,7 +807,7 @@ void clean_data(__global ushort4* points, int point_count,
 
     ///todo: investigate if 2 full orbits is possible on the non radiative condition
     ///woooo
-    #define RADIATIVE
+    //#define RADIATIVE
     #ifdef RADIATIVE
     fin_gA = 1;
     fin_gB0 = 0;
