@@ -1386,43 +1386,34 @@ void extract_waveform(__global float* cY0, __global float* cY1, __global float* 
                       __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
                       float scale, int4 dim, int4 pos, int4 waveform_dim, __global float2* waveform_out)
 {
-    int ix = get_global_id(0);
-    int iy = get_global_id(1);
-    int iz = get_global_id(2);
+    int lix = get_global_id(0);
+    int liy = get_global_id(1);
+    int liz = get_global_id(2);
 
-    if(ix >= waveform_dim.x || iy >= waveform_dim.y || iz >= waveform_dim.z)
+    if(lix >= waveform_dim.x || liy >= waveform_dim.y || liz >= waveform_dim.z)
         return;
 
-    //if(ix != pos.x || iy != pos.y || iz != pos.z)
-    //    return;
-
-    //int4 tl = pos - waveform_dim/2;
-    //int4 br = pos + waveform_dim/2;
-
-    //if(ix < tl.x || iy < tl.y || iz < tl.z)
-    //    return;
-
-    //if(ix >= br.x || iy >= br.y || iz >= br.z)
-    //    return;
-
-    //int4 local_coordinate = (int4)(ix, iy, iz, 0) - tl;
-
-    //float3 offset_from_pos = (float3)(ix, iy, iz) - (float3)(pos.x, pos.y, pos.z);
+    int3 half_dim = waveform_dim.xyz/2;
 
     float rad = (min(min(waveform_dim.x, waveform_dim.y), waveform_dim.z) / 2.f) - 3;
 
-    //float my_rad = length(offset_from_pos);
-
-    float my_rad = length((float3)(ix, iy, iz) - (float3)(waveform_dim.x/2, waveform_dim.y/2, waveform_dim.z/2));
+    float my_rad = length((float3)(lix, liy, liz) - (float3)(waveform_dim.x/2, waveform_dim.y/2, waveform_dim.z/2));
 
     if(my_rad < rad - 10)
         return;
 
-    float3 offset = transform_position(ix, iy, iz, dim, scale);
+    int3 voxel_pos = (int3)(lix, liy, liz) - half_dim + pos.xyz;
+
+    ///necessary for temporaries
+    int ix = voxel_pos.x;
+    int iy = voxel_pos.y;
+    int iz = voxel_pos.z;
+
+    float3 offset = transform_position(voxel_pos.x, voxel_pos.y, voxel_pos.z, dim, scale);
 
     float TEMPORARIES4;
 
-    int wave_idx = iz * waveform_dim.x * waveform_dim.y + iy * waveform_dim.x + ix;
+    int wave_idx = liz * waveform_dim.x * waveform_dim.y + liy * waveform_dim.x + lix;
 
     waveform_out[wave_idx].x = w4_real;
     waveform_out[wave_idx].y = w4_complex;
