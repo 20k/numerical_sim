@@ -1925,7 +1925,7 @@ void build_momentum_constraint(equation_context& ctx)
         Mi.idx(i) = 0;
     }
 
-    #define DAMP_DTCAIJ
+    //#define DAMP_DTCAIJ
     #ifdef DAMP_DTCAIJ
     tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
 
@@ -2290,7 +2290,7 @@ void build_cA(equation_context& ctx)
             dtcAij.idx(i, j) = p1 + p2 + p3;
 
             #ifdef DAMP_DTCAIJ
-            float Ka = 0.0005f;
+            float Ka = 0.005f;
 
             dtcAij.idx(i, j) += Ka * gA * 0.5f *
                                                 (gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)
@@ -5127,7 +5127,7 @@ int main()
 
             }
 
-            copy_valid(generic_data[(which_data + 1) % 2].buffers, generic_data[which_data].buffers);
+            //copy_valid(generic_data[(which_data + 1) % 2].buffers, generic_data[which_data].buffers);
 
             {
                 for(int i=0; i < buffer_set::buffer_count; i++)
