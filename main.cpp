@@ -13,7 +13,6 @@
 #include <fstream>
 #include <imgui/misc/freetype/imgui_freetype.h>
 #include <vec/tensor.hpp>
-#include <condition_variable>
 
 /**
 current paper set
@@ -241,8 +240,82 @@ struct equation_context
         values.push_back({name, v});
     }
 
+    void strip_unused()
+    {
+        std::set<std::string> used_names;
+
+        for(auto& i : values)
+        {
+            auto& name = i.first;
+            value& v = i.second;
+
+            used_names.insert(name);
+
+            std::vector<std::string> all_used = v.get_all_variables();
+
+            for(auto& k : all_used)
+            {
+                used_names.insert(k);
+            }
+        }
+
+        std::vector<std::pair<std::string, value>> unprocessed_temporaries = temporaries;
+
+        bool any_change = true;
+
+        while(any_change && unprocessed_temporaries.size() > 0)
+        {
+            any_change = false;
+
+            for(int i=0; i < (int)unprocessed_temporaries.size(); i++)
+            {
+                std::pair<std::string, value>& next = unprocessed_temporaries[i];
+
+                //unprocessed_temporaries.erase(unprocessed_temporaries.begin());
+
+                if(used_names.find(next.first) != used_names.end())
+                {
+                    std::vector<std::string> all_used = next.second.get_all_variables();
+
+                    used_names.insert(next.first);
+
+                    for(auto& kk : all_used)
+                    {
+                        used_names.insert(kk);
+                    }
+
+                    any_change = true;
+
+                    unprocessed_temporaries.erase(unprocessed_temporaries.begin() + i);
+                    i--;
+                    continue;
+                }
+            }
+        }
+
+        std::set<std::string> to_erase;
+
+        for(auto& i : unprocessed_temporaries)
+        {
+            to_erase.insert(i.first);
+        }
+
+
+        for(int i=0; i < (int)temporaries.size(); i++)
+        {
+            if(to_erase.find(temporaries[i].first) != to_erase.end())
+            {
+                temporaries.erase(temporaries.begin() + i);
+                i--;
+                continue;
+            }
+        }
+    }
+
     void build_impl(std::string& argument_string, const std::string& str)
     {
+        strip_unused();
+
         for(auto& i : values)
         {
             std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
@@ -1363,6 +1436,12 @@ struct standard_arguments
 
         tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(cY, icY);
 
+        auto pinned_christoff2 = christoff2;
+        ctx.pin(pinned_christoff2);
+
+        auto pinned_icY = icY;
+        //ctx.pin(pinned_icY);
+
         tensor<value, 3> cGi_G;
 
         for(int i=0; i < 3; i++)
@@ -1373,12 +1452,14 @@ struct standard_arguments
             {
                 for(int k=0; k < 3; k++)
                 {
-                    sum += icY.idx(j, k) * christoff2.idx(i, j, k);
+                    sum += pinned_icY.idx(j, k) * pinned_christoff2.idx(i, j, k);
                 }
             }
 
             cGi_G.idx(i) = sum;
         }
+
+        ctx.pin(cGi_G);
 
         ///https://arxiv.org/pdf/1205.5111v1.pdf 34
         for(int i=0; i < 3; i++)
@@ -1386,7 +1467,7 @@ struct standard_arguments
             bigGi.idx(i) = cGi.idx(i) - cGi_G.idx(i);
         }
 
-        #define USE_DERIVED_CGI
+        //#define USE_DERIVED_CGI
         #ifdef USE_DERIVED_CGI
         derived_cGi = cGi_G;
         #else
