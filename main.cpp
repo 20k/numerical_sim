@@ -1459,7 +1459,7 @@ struct standard_arguments
             cGi_G.idx(i) = sum;
         }
 
-        ctx.pin(cGi_G);
+        //ctx.pin(cGi_G);
 
         ///https://arxiv.org/pdf/1205.5111v1.pdf 34
         for(int i=0; i < 3; i++)
