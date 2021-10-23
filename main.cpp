@@ -4529,6 +4529,8 @@ int main()
 
     while(!win.should_close())
     {
+        steady_timer frametime;
+
         if(time_elapsed_s >= 10)
         {
             for(auto& i : dissipation_coefficients)
@@ -4739,6 +4741,8 @@ int main()
 
             std::vector<cl::buffer>* last_valid_thin_buffer = &generic_data[which_data].buffers;
 
+            auto& base_yn = generic_data[which_data].buffers;
+
             auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
             {
                 last_valid_thin_buffer = &generic_in;
@@ -4842,6 +4846,11 @@ int main()
                     a1.push_back(i);
                 }
 
+                for(auto& i : base_yn)
+                {
+                    a1.push_back(i);
+                }
+
                 for(auto& i : momentum_constraint)
                 {
                     a1.push_back(i);
@@ -4885,8 +4894,6 @@ int main()
                 clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {evolution_positions_count}, {128});
             };
 
-            auto& rk4_xn = generic_data[which_data].buffers;
-
             auto diff_to_input = [&](auto& buffer_in, cl_float factor)
             {
                 for(int i=0; i < (int)buffer_in.size(); i++)
@@ -4896,7 +4903,7 @@ int main()
                     accum.push_back(evolution_positions_count);
                     accum.push_back(clsize);
                     accum.push_back(buffer_in[i]);
-                    accum.push_back(rk4_xn[i]);
+                    accum.push_back(base_yn[i]);
                     accum.push_back(factor);
 
                     clctx.cqueue.exec("calculate_rk4_val", accum, {size.x() * size.y() * size.z()}, {128});
@@ -4964,7 +4971,7 @@ int main()
             auto& scratch_2 = generic_data[(which_data + 1) % 2];
 
             ///gives an
-            step(rk4_xn, rk4_scratch.buffers, 0.f);
+            step(base_yn, rk4_scratch.buffers, 0.f);
             ///accumulate an
             accumulate_rk4(rk4_scratch.buffers, timestep/6.f);
 
@@ -5001,7 +5008,7 @@ int main()
             ///accumulate dn
             accumulate_rk4(scratch_2.buffers, timestep/6.f);
 
-            //copy_all(rk4_xn.buffers, generic_data[which_data].buffers);
+            //copy_all(base_yn.buffers, generic_data[which_data].buffers);
             copy_valid(rk4_intermediate.buffers, generic_data[(which_data + 1) % 2].buffers);
             //copy_all(rk4_intermediate.buffers, generic_data[(which_data + 1) % 2].buffers);
 
@@ -5028,7 +5035,7 @@ int main()
                 else
                     step(b1.buffers, b2.buffers, timestep);
 
-                diff_to_input(b2.buffers, timestep);
+                //diff_to_input(b2.buffers, timestep);
 
                 if(i != iterations - 1)
                 {
@@ -5290,5 +5297,7 @@ int main()
         }
 
         win.display();
+
+        printf("Time: %f\n", frametime.restart() * 1000.);
     }
 }
