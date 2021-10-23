@@ -129,6 +129,10 @@ struct equation_context
             }
         }
 
+        /*if(type_to_string(v).size() > 100000)
+        {
+            std::cout << type_to_string(v) << std::endl;
+        }*/
 
         std::string name = "pv" + std::to_string(temporaries.size());
         //std::string name = "pv[" + std::to_string(temporaries.size()) + "]";
@@ -1244,7 +1248,7 @@ struct standard_arguments
     tensor<value, 3> bigGi;
     tensor<value, 3> derived_cGi;
 
-    standard_arguments(bool interpolate)
+    standard_arguments(equation_context& ctx, bool interpolate)
     {
         gA.make_value(bidx("gA", interpolate));
 
@@ -1713,7 +1717,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 inline
 void build_constraints(equation_context& ctx)
 {
-    standard_arguments args(false);
+    standard_arguments args(ctx, false);
 
     unit_metric<value, 3, 3> cY = args.cY;
     tensor<value, 3, 3> cA = args.cA;
@@ -1759,7 +1763,7 @@ void build_constraints(equation_context& ctx)
 
 void build_intermediate_thin(equation_context& ctx)
 {
-    standard_arguments args(false);
+    standard_arguments args(ctx, false);
 
     value buffer = "buffer[IDX(ix,iy,iz)]";
 
@@ -1774,7 +1778,7 @@ void build_intermediate_thin(equation_context& ctx)
 
 void build_intermediate_thin_cY5(equation_context& ctx)
 {
-    standard_arguments args(false);
+    standard_arguments args(ctx, false);
 
     for(int k=0; k < 3; k++)
     {
@@ -1811,7 +1815,7 @@ tensor<value, 3, 3, 3> gpu_covariant_derivative_low_tensor(equation_context& ctx
 
 void build_momentum_constraint(equation_context& ctx)
 {
-    standard_arguments args(false);
+    standard_arguments args(ctx, false);
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
     auto unpinned_icY = icY;
@@ -1923,7 +1927,7 @@ void build_momentum_constraint(equation_context& ctx)
 inline
 void build_cY(equation_context& ctx)
 {
-    standard_arguments args(false);
+    standard_arguments args(ctx, false);
 
     metric<value, 3, 3> unpinned_cY = args.cY;
 
@@ -2072,7 +2076,9 @@ tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& 
 inline
 void build_cA(equation_context& ctx)
 {
-    standard_arguments args(false);
+    standard_arguments args(ctx, false);
+
+    ctx.pin(args.derived_cGi);
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
@@ -2225,7 +2231,7 @@ void build_cA(equation_context& ctx)
 inline
 void build_cGi(equation_context& ctx)
 {
-    standard_arguments args(false);
+    standard_arguments args(ctx, false);
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
@@ -2385,7 +2391,7 @@ void build_cGi(equation_context& ctx)
 inline
 void build_K(equation_context& ctx)
 {
-    standard_arguments args(false);
+    standard_arguments args(ctx, false);
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
@@ -2441,7 +2447,7 @@ void build_K(equation_context& ctx)
 inline
 void build_X(equation_context& ctx)
 {
-    standard_arguments args(false);
+    standard_arguments args(ctx, false);
 
     tensor<value, 3> linear_dB;
 
@@ -2458,7 +2464,7 @@ void build_X(equation_context& ctx)
 inline
 void build_gA(equation_context& ctx)
 {
-    standard_arguments args(false);
+    standard_arguments args(ctx, false);
 
     value dtgA = lie_derivative(ctx, args.gB, args.gA) - 2 * args.gA * args.K;
 
@@ -2468,7 +2474,7 @@ void build_gA(equation_context& ctx)
 inline
 void build_gB(equation_context& ctx)
 {
-    standard_arguments args(false);
+    standard_arguments args(ctx, false);
 
     #ifndef USE_GBB
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
@@ -2910,13 +2916,20 @@ std::array<vec<3, value>, 3> orthonormalise(equation_context& ctx, const vec<3, 
 
     vec<3, value> u1 = v1;
 
+    ctx.pin(u1);
+
     vec<3, value> u2 = v2;
+
+    ctx.pin(u2);
 
     u2 = u2 - gram_proj(u1, u2, met);
 
     ctx.pin(u2);
 
     vec<3, value> u3 = v3;
+
+    ctx.pin(u3);
+
     u3 = u3 - gram_proj(u1, u3, met);
     u3 = u3 - gram_proj(u2, u3, met);
 
@@ -2930,7 +2943,7 @@ std::array<vec<3, value>, 3> orthonormalise(equation_context& ctx, const vec<3, 
     ctx.pin(u2);
     ctx.pin(u3);
 
-    ctx.add("dbgw2", dot_product(u2, u2, met));
+    //ctx.add("dbgw2", dot_product(u2, u2, met));
     //ctx.add("dbgw2", lower_index(as_tensor, met).idx(0));
 
     u1 = normalize_big_metric(u1, met);
@@ -2968,7 +2981,7 @@ void extract_waveforms(equation_context& ctx)
         }
     }
 
-    standard_arguments args(false);
+    standard_arguments args(ctx, false);
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
     ctx.pin(icY);
@@ -2992,14 +3005,17 @@ void extract_waveforms(equation_context& ctx)
     ctx.pin(Rij);
 
     tensor<value, 3, 3> Kij = args.Kij;
+    tensor<value, 3, 3> unpinned_Kij = Kij;
 
-    //ctx.pin(Kij);
+    ctx.pin(Kij);
 
     metric<value, 3, 3> Yij = args.Yij;
 
     ctx.pin(Yij);
 
     inverse_metric<value, 3, 3> iYij = args.X * icY;
+    ctx.pin(iYij);
+
     //inverse_metric<value, 3, 3> iYij = Yij.invert();
 
     //ctx.pin(iYij);
@@ -3043,7 +3059,7 @@ void extract_waveforms(equation_context& ctx)
         {
             for(int a=0; a < 3; a++)
             {
-                value deriv = hacky_differentiate(Kij.idx(a, b), c);
+                value deriv = hacky_differentiate(unpinned_Kij.idx(a, b), c);
 
                 value sum = 0;
 
@@ -3085,8 +3101,6 @@ void extract_waveforms(equation_context& ctx)
     }
 
     tensor<value, 3, 3, 3> eijk_tensor = sqrt(Yij.det()) * eijk;
-
-    ctx.pin(eijk);
 
     ctx.pin(eijk_tensor);
 
@@ -3192,7 +3206,7 @@ void extract_waveforms(equation_context& ctx)
     ctx.pin(v2a);
     ctx.pin(v3a);
 
-    ctx.add("dbgw", v1a[0]);
+    //ctx.add("dbgw", v1a[0]);
 
     //vec<4, value> thetau = {0, v3a[0], v3a[1], v3a[2]};
     //vec<4, value> phiu = {0, v1a[0], v1a[1], v1a[2]};
@@ -3417,7 +3431,7 @@ vec<3, value> unrotate_vector(const vec<3, value>& bx, const vec<3, value>& by, 
 
 void process_geodesics(equation_context& ctx)
 {
-    standard_arguments args(true);
+    standard_arguments args(ctx, true);
 
     /*vec<3, value> camera;
     camera.x().make_value("camera_pos.x");
@@ -3553,7 +3567,7 @@ value dot_metric(const tensor<value, N>& v1_upper, const tensor<value, N>& v2_up
 ///https://arxiv.org/pdf/1208.3927.pdf (28a)
 void loop_geodesics(equation_context& ctx, vec3f dim)
 {
-    standard_arguments args(true);
+    standard_arguments args(ctx, true);
 
     ctx.pin(args.Kij);
     ctx.pin(args.Yij);
@@ -4026,7 +4040,10 @@ struct gravitational_wave_manager
             for(int i=0; i < elements; i++)
             {
                 if(isnanf(vec[i].s[0]))
+                {
+                    //printf("no\n");
                     vec[i].s[0] = 0;
+                }
 
                 if(isnanf(vec[i].s[1]))
                     vec[i].s[1] = 0;
