@@ -1390,59 +1390,42 @@ void extract_waveform(__global float* cY0, __global float* cY1, __global float* 
     int iy = get_global_id(1);
     int iz = get_global_id(2);
 
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+    if(ix >= waveform_dim.x || iy >= waveform_dim.y || iz >= waveform_dim.z)
         return;
 
     //if(ix != pos.x || iy != pos.y || iz != pos.z)
     //    return;
 
-    int4 tl = pos - waveform_dim/2;
-    int4 br = pos + waveform_dim/2;
+    //int4 tl = pos - waveform_dim/2;
+    //int4 br = pos + waveform_dim/2;
 
-    if(ix < tl.x || iy < tl.y || iz < tl.z)
+    //if(ix < tl.x || iy < tl.y || iz < tl.z)
+    //    return;
+
+    //if(ix >= br.x || iy >= br.y || iz >= br.z)
+    //    return;
+
+    //int4 local_coordinate = (int4)(ix, iy, iz, 0) - tl;
+
+    //float3 offset_from_pos = (float3)(ix, iy, iz) - (float3)(pos.x, pos.y, pos.z);
+
+    float rad = (min(min(waveform_dim.x, waveform_dim.y), waveform_dim.z) / 2.f) - 3;
+
+    //float my_rad = length(offset_from_pos);
+
+    float my_rad = length((float3)(ix, iy, iz) - (float3)(waveform_dim.x/2, waveform_dim.y/2, waveform_dim.z/2));
+
+    if(my_rad < rad - 10)
         return;
-
-    if(ix >= br.x || iy >= br.y || iz >= br.z)
-        return;
-
-    int4 local_coordinate = (int4)(ix, iy, iz, 0) - tl;
 
     float3 offset = transform_position(ix, iy, iz, dim, scale);
 
     float TEMPORARIES4;
 
-    /*for(int i=0; i < TEMP_COUNT4; i++)
-    {
-        if(!isfinite(pv[i]))
-        {
-            printf("%i idx is not finite %f\n", i, pv[i]);
-        }
-    }*/
-
-    //int index = IDX(ix, iy, iz);
-
-    //printf("Scale %f\n", scale);
-
-    //printf("X %f\n", X[index]);
-
-    /*float v0 = dbgv0;
-    float v1 = dbgv1;
-    float v2 = dbgv2;
-
-    float v3 = dbgv3;
-    float v4 = dbgv4;
-    float v5 = dbgv5;*/
-
-    /*float debug = dbgw2;
-    //printf("debug %f %f %f %f %f %f %f %i %i %i\n", debug, v0, v1, v2, v3, v4, v5, ix, iy, iz);
-    printf("debug %f %i %i %i %f %f %f\n", debug, ix, iy, iz, offset.x, offset.y, offset.z);*/
-
-    int wave_idx = local_coordinate.z * waveform_dim.x * waveform_dim.y + local_coordinate.y * waveform_dim.x + local_coordinate.x;
+    int wave_idx = iz * waveform_dim.x * waveform_dim.y + iy * waveform_dim.x + ix;
 
     waveform_out[wave_idx].x = w4_real;
     waveform_out[wave_idx].y = w4_complex;
-
-    //printf("WAV %f\n", waveform_out[0].x);
 
     #ifdef w4_debugr
     printf("Debugw4r %f\n", w4_debugr);

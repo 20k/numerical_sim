@@ -4081,7 +4081,7 @@ struct gravitational_wave_manager
         waveform_args.push_back(wave_dim);
         waveform_args.push_back(next);
 
-        cl::event kernel_event = cqueue.exec("extract_waveform", waveform_args, {clsize.x(), clsize.y(), clsize.z()}, {128, 1, 1});
+        cl::event kernel_event = cqueue.exec("extract_waveform", waveform_args, {wave_dim.s[0], wave_dim.s[1], wave_dim.s[2]}, {8, 8, 2});
 
         cl_float2* next_data = new cl_float2[elements];
 
@@ -5127,7 +5127,7 @@ int main()
 
             }
 
-            copy_valid(generic_data[(which_data + 1) % 2].buffers, generic_data[which_data].buffers);
+            //copy_valid(generic_data[(which_data + 1) % 2].buffers, generic_data[which_data].buffers);
 
             {
                 for(int i=0; i < buffer_set::buffer_count; i++)
