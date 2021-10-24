@@ -1795,6 +1795,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
 }
 
 ///algebraic_constraints
+///https://arxiv.org/pdf/1507.00570.pdf says that the cY modification is bad
 inline
 void build_constraints(equation_context& ctx)
 {
@@ -3243,49 +3244,25 @@ void extract_waveforms(equation_context& ctx)
         v3ai[a] = sqrt(Yij.det()) * sum;
     }
 
-    /*auto v_idx = [&](int idx)
-    {
-        if(idx == 0)
-            return v1a;
-
-        if(idx == 1)
-            return v2a;
-
-        if(idx == 2)
-            return v3a;
-
-        assert(false);
-    };
-
-    auto wij = [&](int i, int j)
-    {
-        auto v_i = v_idx(i);
-        auto v_j = v_idx(j);
-
-        value sum = 0;
-
-        for(int a=0; a < 3; a++)
-        {
-            for(int b=0; b < 3; b++)
-            {
-                sum += v_i[a] * v_j[b] * Yij.idx(a, b);
-            }
-        }
-
-        return sum;
-    };
-
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///https://arxiv.org/pdf/gr-qc/0104063.pdf 5.7. I already have code for doing this but lets stay exact
-    v1a = v1a / sqrt(wij(0, 0));
-    v2a = (v2a - v1a * wij(0, 1)) / (wij(1, 1));
-    v3a = (v3a - v1a * wij(0, 2) - v2a * wij(1, 2)) / sqrt(wij(2, 2));*/
 
     auto [v1a, v2a, v3a] = orthonormalise(ctx, v1ai, v2ai, v3ai, Yij);
 
     ctx.pin(v1a);
     ctx.pin(v2a);
     ctx.pin(v3a);
+
+    /*{
+        value r = pos.length();
+
+        value theta = atan2(sqrt(pos.x() * pos.x() + pos.y() * pos.y()), pos.z());
+
+        value phi = dual_types::dual_if(pos.x() >= 0,
+                                        [&](){return atan2(pos.y(), pos.x());},
+                                        [&](){return atan2(pos.y(), pos.x()) + M_PI;}
+                                        );
+    }*/
 
     //ctx.add("dbgw", v1a[0]);
 
