@@ -522,19 +522,19 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
     float fixed_cY4 = fix_cY4;
     float fixed_cY5 = fix_cY5;
 
-    cY0[index] = fixed_cY0;
-    cY1[index] = fixed_cY1;
-    cY2[index] = fixed_cY2;
-    cY3[index] = fixed_cY3;
-    cY4[index] = fixed_cY4;
-    cY5[index] = fixed_cY5;
-
     float fixed_cA0 = fix_cA0;
     float fixed_cA1 = fix_cA1;
     float fixed_cA2 = fix_cA2;
     float fixed_cA3 = fix_cA3;
     float fixed_cA4 = fix_cA4;
     float fixed_cA5 = fix_cA5;
+
+    cY0[index] = fixed_cY0;
+    cY1[index] = fixed_cY1;
+    cY2[index] = fixed_cY2;
+    cY3[index] = fixed_cY3;
+    cY4[index] = fixed_cY4;
+    cY5[index] = fixed_cY5;
 
     cA0[index] = fixed_cA0;
     cA1[index] = fixed_cA1;
