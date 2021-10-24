@@ -412,9 +412,16 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     u_offset_out[IDX(ix, iy, iz)] = u0n1;
 }
 
+#ifndef USE_GBB
 #define STANDARD_ARGS(p) __global float* p##cY0, __global float* p##cY1, __global float* p##cY2, __global float* p##cY3, __global float* p##cY4, __global float* p##cY5, \
             __global float* p##cA0, __global float* p##cA1, __global float* p##cA2, __global float* p##cA3, __global float* p##cA4, __global float* p##cA5, \
             __global float* p##cGi0, __global float* p##cGi1, __global float* p##cGi2, __global float* p##K, __global float* p##X, __global float* p##gA, __global float* p##gB0, __global float* p##gB1, __global float* p##gB2
+#else
+#define STANDARD_ARGS(p) __global float* p##cY0, __global float* p##cY1, __global float* p##cY2, __global float* p##cY3, __global float* p##cY4, __global float* p##cY5, \
+            __global float* p##cA0, __global float* p##cA1, __global float* p##cA2, __global float* p##cA3, __global float* p##cA4, __global float* p##cA5, \
+            __global float* p##cGi0, __global float* p##cGi1, __global float* p##cGi2, __global float* p##K, __global float* p##X, __global float* p##gA, __global float* p##gB0, __global float* p##gB1, __global float* p##gB2, \
+            __global float* p##gBB0, __global float* p##gBB1, __global float* p##gBB2
+#endif
 
 __kernel
 void calculate_initial_conditions(STANDARD_ARGS(),
@@ -808,6 +815,12 @@ void clean_data(__global ushort4* points, int point_count,
     float fin_gB1 = init_gB1;
     float fin_gB2 = init_gB2;
 
+    #ifdef USE_GBB
+    float fin_gBB0 = init_gBB0;
+    float fin_gBB1 = init_gBB1;
+    float fin_gBB2 = init_gBB2;
+    #endif // USE_GBB
+
     int index = IDX(ix, iy, iz);
 
     ///todo: investigate if 2 full orbits is possible on the non radiative condition
@@ -870,9 +883,9 @@ void clean_data(__global ushort4* points, int point_count,
     gB2[index] += -y_r * (gB2[index] - fin_gB2) * timestep;
 
     #ifdef USE_GBB
-    gBB0[index] = mix(gBB0[index], init_gBB0, sponge_factor);
-    gBB1[index] = mix(gBB1[index], init_gBB1, sponge_factor);
-    gBB2[index] = mix(gBB2[index], init_gBB2, sponge_factor);
+    gBB0[index] += -y_r * (gBB0[index] - fin_gBB0) * timestep;
+    gBB1[index] += -y_r * (gBB1[index] - fin_gBB1) * timestep;
+    gBB2[index] += -y_r * (gBB2[index] - fin_gBB2) * timestep;
     #endif // USE_GBB
 }
 
@@ -1034,13 +1047,33 @@ void evolve_cGi(__global ushort4* points, int point_count,
     float f_dtcGi1 = dtcGi1;
     float f_dtcGi2 = dtcGi2;
 
-    float b0 = base_cGi0[index];
-    float b1 = base_cGi1[index];
-    float b2 = base_cGi2[index];
+    #ifdef USE_GBB
+    float f_gBB0 = dtgBB0;
+    float f_gBB1 = dtgBB1;
+    float f_gBB2 = dtgBB2;
+    #endif // USE_GBB
 
-    ocGi0[index] = f_dtcGi0 * timestep + b0;
-    ocGi1[index] = f_dtcGi1 * timestep + b1;
-    ocGi2[index] = f_dtcGi2 * timestep + b2;
+    {
+        float b0 = base_cGi0[index];
+        float b1 = base_cGi1[index];
+        float b2 = base_cGi2[index];
+
+        ocGi0[index] = f_dtcGi0 * timestep + b0;
+        ocGi1[index] = f_dtcGi1 * timestep + b1;
+        ocGi2[index] = f_dtcGi2 * timestep + b2;
+    }
+
+    #ifdef USE_GBB
+    {
+        float b0 = base_gBB0[index];
+        float b1 = base_gBB1[index];
+        float b2 = base_gBB2[index];
+
+        ogBB0[index] = f_gBB0 * timestep + b0;
+        ogBB1[index] = f_gBB1 * timestep + b1;
+        ogBB2[index] = f_gBB2 * timestep + b2;
+    }
+    #endif // USE_GBB
 }
 
 

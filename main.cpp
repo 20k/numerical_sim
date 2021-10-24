@@ -420,6 +420,9 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
         "gB0",
         "gB1",
         "gB2",
+        "gBB0",
+        "gBB1",
+        "gBB2",
 
         "dcYij0",
         "dcYij1",
@@ -1291,6 +1294,7 @@ struct standard_arguments
 {
     value gA;
     tensor<value, 3> gB;
+    tensor<value, 3> gBB;
 
     unit_metric<value, 3, 3> cY;
     tensor<value, 3, 3> cA;
@@ -1332,6 +1336,10 @@ struct standard_arguments
         gB.idx(0).make_value(bidx("gB0", interpolate));
         gB.idx(1).make_value(bidx("gB1", interpolate));
         gB.idx(2).make_value(bidx("gB2", interpolate));
+
+        gBB.idx(0).make_value(bidx("gBB0", interpolate));
+        gBB.idx(1).make_value(bidx("gBB1", interpolate));
+        gBB.idx(2).make_value(bidx("gBB2", interpolate));
 
         std::array<int, 9> arg_table
         {
@@ -1600,8 +1608,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         ///made it to 532 after 2 + 3/4s orbits
         ///1125
-        black_hole_velocity[0] = v0 * v0_v.norm() * 1.2;
-        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.2;
+        black_hole_velocity[0] = v0 * v0_v.norm() * 1.3;
+        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.3;
 
         float r0 = m1 * R / M;
         float r1 = m0 * R / M;
@@ -1783,7 +1791,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ctx.add("init_gB1", gB1);
     ctx.add("init_gB2", gB2);
 
-    //#define USE_GBB
+    #define USE_GBB
     #ifdef USE_GBB
     value gBB0 = 0;
     value gBB1 = 0;
@@ -2556,9 +2564,6 @@ void build_gB(equation_context& ctx)
 {
     standard_arguments args(ctx, false);
 
-    #ifndef USE_GBB
-    ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
-    ///todo: remove this
     tensor<value, 3> bjdjbi;
 
     for(int i=0; i < 3; i++)
@@ -2573,6 +2578,10 @@ void build_gB(equation_context& ctx)
         bjdjbi.idx(i) = v;
     }
 
+    #ifndef USE_GBB
+    ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
+    ///todo: remove this
+
     float N = 2;
 
     tensor<value, 3> dtgB = (3.f/4.f) * args.derived_cGi + bjdjbi - N * args.gB;
@@ -2584,21 +2593,53 @@ void build_gB(equation_context& ctx)
 
     #else
 
+    tensor<value, 3> bjdjBi;
+
+    for(int i=0; i < 3; i++)
+    {
+        value v = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+           v += upwind_differentiate(ctx, args.gB.idx(j), args.gBB.idx(i), j);
+        }
+
+        bjdjBi.idx(i) = v;
+    }
+
+    tensor<value, 3> christoffd;
+
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            sum += args.gB.idx(j) * hacky_differentiate(args.cGi.idx(i), j);
+        }
+
+        christoffd.idx(i) = sum;
+    }
+
+    tensor<value, 3> dtcGi;
+    dtcGi.idx(0).make_value("f_dtcGi0");
+    dtcGi.idx(1).make_value("f_dtcGi1");
+    dtcGi.idx(2).make_value("f_dtcGi2");
+
     tensor<value, 3> dtgB;
     tensor<value, 3> dtgBB;
 
     ///https://arxiv.org/pdf/gr-qc/0511048.pdf (11)
-    for(int i=0; i < 3; i++)
+    /*for(int i=0; i < 3; i++)
     {
-        dtgB.idx(i) = gBB.idx(i);
-    }
+        dtgB.idx(i) = (3.f/4.f) * args.gBB.idx(i) + bjdjbi.idx(i);
+    }*/
 
-    for(int i=0; i < 3; i++)
-    {
-        float N = 2;
+    dtgB = (3.f/4.f) * args.gBB + bjdjbi;
 
-        dtgBB.idx(i) = (3.f/4.f) * dtcGi.idx(i) - N * gBB.idx(i);
-    }
+    float N = 2;
+
+    dtgBB = dtcGi - N * args.gBB + bjdjBi - christoffd;
 
     #endif // USE_GBB
 
@@ -4342,7 +4383,11 @@ int main()
         "cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
         "cA0", "cA1", "cA2", "cA3", "cA4", "cA5",
         "cGi0", "cGi1", "cGi2",
-        "K", "X", "gA", "gB0", "gB1", "gB2"
+        "K", "X", "gA",
+        "gB0", "gB1", "gB2",
+        #ifdef USE_GBB
+        "gBB0", "gBB1", "gBB2",
+        #endif // USE_GBB
     };
 
     auto buffer_to_index = [&](const std::string& name)
@@ -4385,7 +4430,10 @@ int main()
         dissipate_high, //K
         dissipate_low, //X
         dissipate_gauge, //gA
-        dissipate_gauge, dissipate_gauge, dissipate_gauge //gB
+        dissipate_gauge, dissipate_gauge, dissipate_gauge, //gB
+        #ifdef USE_GBB
+        dissipate_gauge, dissipate_gauge, dissipate_gauge, //gBB
+        #endif // USE_GBB
     };
 
     std::array<cl::buffer, 2> u_args{clctx.ctx, clctx.ctx};
@@ -4806,49 +4854,54 @@ int main()
                 }
                 #endif // DAMP_DTCAIJ
 
-                cl::args a1;
-
-                a1.push_back(evolution_positions);
-                a1.push_back(evolution_positions_count);
-
-                for(auto& i : generic_in)
+                auto step_kernel = [&](const std::string& name)
                 {
-                    a1.push_back(i);
-                }
+                    cl::args a1;
 
-                for(auto& i : generic_out)
-                {
-                    a1.push_back(i);
-                }
+                    a1.push_back(evolution_positions);
+                    a1.push_back(evolution_positions_count);
 
-                for(auto& i : base_yn)
-                {
-                    a1.push_back(i);
-                }
+                    for(auto& i : generic_in)
+                    {
+                        a1.push_back(i);
+                    }
 
-                for(auto& i : momentum_constraint)
-                {
-                    a1.push_back(i);
-                }
+                    for(auto& i : generic_out)
+                    {
+                        a1.push_back(i);
+                    }
 
-                for(auto& i : thin_intermediates)
-                {
-                    a1.push_back(i);
-                }
+                    for(auto& i : base_yn)
+                    {
+                        a1.push_back(i);
+                    }
 
-                a1.push_back(scale);
-                a1.push_back(clsize);
-                a1.push_back(current_timestep);
-                a1.push_back(time_elapsed_s);
-                a1.push_back(current_simulation_boundary);
+                    for(auto& i : momentum_constraint)
+                    {
+                        a1.push_back(i);
+                    }
 
-                clctx.cqueue.exec("evolve_cY", a1, {evolution_positions_count}, {128});
-                clctx.cqueue.exec("evolve_cA", a1, {evolution_positions_count}, {128});
-                clctx.cqueue.exec("evolve_cGi", a1, {evolution_positions_count}, {128});
-                clctx.cqueue.exec("evolve_K", a1, {evolution_positions_count}, {128});
-                clctx.cqueue.exec("evolve_X", a1, {evolution_positions_count}, {128});
-                clctx.cqueue.exec("evolve_gA", a1, {evolution_positions_count}, {128});
-                clctx.cqueue.exec("evolve_gB", a1, {evolution_positions_count}, {128});
+                    for(auto& i : thin_intermediates)
+                    {
+                        a1.push_back(i);
+                    }
+
+                    a1.push_back(scale);
+                    a1.push_back(clsize);
+                    a1.push_back(current_timestep);
+                    a1.push_back(time_elapsed_s);
+                    a1.push_back(current_simulation_boundary);
+
+                    clctx.cqueue.exec(name, a1, {evolution_positions_count}, {128});
+                };
+
+                step_kernel("evolve_cY");
+                step_kernel("evolve_cA");
+                step_kernel("evolve_cGi");
+                step_kernel("evolve_K");
+                step_kernel("evolve_X");
+                step_kernel("evolve_gA");
+                step_kernel("evolve_gB");
             };
 
             auto enforce_constraints = [&](auto& generic_out)
