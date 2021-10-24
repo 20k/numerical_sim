@@ -412,7 +412,7 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     u_offset_out[IDX(ix, iy, iz)] = u0n1;
 }
 
-#define STANDARD_ARGS(p) __global float* p##cY0, __global float* p##cY1, __global float* p##cY2, __global float* p##cY3, __global float* p##cY4, \
+#define STANDARD_ARGS(p) __global float* p##cY0, __global float* p##cY1, __global float* p##cY2, __global float* p##cY3, __global float* p##cY4, __global float* p##cY5, \
             __global float* p##cA0, __global float* p##cA1, __global float* p##cA2, __global float* p##cA3, __global float* p##cA4, __global float* p##cA5, \
             __global float* p##cGi0, __global float* p##cGi1, __global float* p##cGi2, __global float* p##K, __global float* p##X, __global float* p##gA, __global float* p##gB0, __global float* p##gB1, __global float* p##gB2
 
@@ -445,6 +445,7 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     cY2[index] = init_cY2;
     cY3[index] = init_cY3;
     cY4[index] = init_cY4;
+    cY5[index] = init_cY5;
 
     cA0[index] = init_cA0;
     cA1[index] = init_cA1;
@@ -514,6 +515,20 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
 
     #ifndef NO_CAIJYY
+    float fixed_cY0 = fix_cY0;
+    float fixed_cY1 = fix_cY1;
+    float fixed_cY2 = fix_cY2;
+    float fixed_cY3 = fix_cY3;
+    float fixed_cY4 = fix_cY4;
+    float fixed_cY5 = fix_cY5;
+
+    cY0[index] = fixed_cY0;
+    cY1[index] = fixed_cY1;
+    cY2[index] = fixed_cY2;
+    cY3[index] = fixed_cY3;
+    cY4[index] = fixed_cY4;
+    cY5[index] = fixed_cY5;
+
     float fixed_cA0 = fix_cA0;
     float fixed_cA1 = fix_cA1;
     float fixed_cA2 = fix_cA2;
@@ -563,6 +578,7 @@ void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
     buffer_out_3[IDX(ix,iy,iz)] = init_buffer_intermediate2;
 }
 
+#if 0
 __kernel
 void calculate_intermediate_data_thin_cY5(__global ushort4* points, int point_count,
                                           __global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
@@ -596,6 +612,7 @@ void calculate_intermediate_data_thin_cY5(__global ushort4* points, int point_co
     buffer_out_2[IDX(ix,iy,iz)] = i2;
     buffer_out_3[IDX(ix,iy,iz)] = i3;
 }
+#endif // 0
 
 __kernel
 void calculate_momentum_constraint(__global ushort4* points, int point_count,
@@ -775,6 +792,7 @@ void clean_data(__global ushort4* points, int point_count,
     float initial_cY2 = init_cY2;
     float initial_cY3 = init_cY3;
     float initial_cY4 = init_cY4;
+    float initial_cY5 = init_cY5;
 
     float initial_cA0 = init_cA0;
     float initial_cA1 = init_cA1;
@@ -827,6 +845,7 @@ void clean_data(__global ushort4* points, int point_count,
     cY2[index] += -y_r * (cY2[index] - initial_cY2) * timestep;
     cY3[index] += -y_r * (cY3[index] - initial_cY3) * timestep;
     cY4[index] += -y_r * (cY4[index] - initial_cY4) * timestep;
+    cY5[index] += -y_r * (cY5[index] - initial_cY5) * timestep;
     #endif // EVOLVE_CY_AT_BOUNDARY
 
     cA0[index] += -y_r * (cA0[index] - initial_cA0) * timestep;
@@ -904,19 +923,21 @@ void evolve_cY(__global ushort4* points, int point_count,
     float f_dtcYij2 = dtcYij2;
     float f_dtcYij3 = dtcYij3;
     float f_dtcYij4 = dtcYij4;
-    //float f_dtcYij5 = dtcYij5;
+    float f_dtcYij5 = dtcYij5;
 
     float b0 = base_cY0[index];
     float b1 = base_cY1[index];
     float b2 = base_cY2[index];
     float b3 = base_cY3[index];
     float b4 = base_cY4[index];
+    float b5 = base_cY5[index];
 
     ocY0[index] = f_dtcYij0 * timestep + b0;
     ocY1[index] = f_dtcYij1 * timestep + b1;
     ocY2[index] = f_dtcYij2 * timestep + b2;
     ocY3[index] = f_dtcYij3 * timestep + b3;
     ocY4[index] = f_dtcYij4 * timestep + b4;
+    ocY5[index] = f_dtcYij5 * timestep + b5;
 }
 
 __kernel

@@ -1804,13 +1804,10 @@ void build_constraints(equation_context& ctx)
     unit_metric<value, 3, 3> cY = args.cY;
     tensor<value, 3, 3> cA = args.cA;
 
-    /*value det_cY_pow = pow(cY.det(), 1.f/3.f);
-
-    det_cY_pow = 1;
-    ctx.pin(det_cY_pow);
+    value det_cY_pow = pow(cY.det(), 1.f/3.f);
 
     /// / det_cY_pow
-    metric<value, 3, 3> fixed_cY = cY / det_cY_pow;*/
+    metric<value, 3, 3> fixed_cY = cY / det_cY_pow;
 
     /*tensor<value, 3, 3> fixed_cA = cA;
 
@@ -1838,7 +1835,7 @@ void build_constraints(equation_context& ctx)
     {
         vec2i idx = linear_indices[i];
 
-        //ctx.add("fix_cY" + std::to_string(i), fixed_cY.idx(idx.x(), idx.y()));
+        ctx.add("fix_cY" + std::to_string(i), fixed_cY.idx(idx.x(), idx.y()));
         ctx.add("fix_cA" + std::to_string(i), fixed_cA.idx(idx.x(), idx.y()));
     }
 }
@@ -3967,7 +3964,7 @@ std::tuple<cl::buffer, int, cl::buffer, int> generate_evolution_points(cl::conte
 struct buffer_set
 {
     #ifndef USE_GBB
-    static constexpr int buffer_count = 11+9;
+    static constexpr int buffer_count = 12+9;
     #else
     static constexpr int buffer_count = 12 + 9 + 3;
     #endif
@@ -4341,7 +4338,7 @@ int main()
 
     std::array<std::string, buffer_set::buffer_count> buffer_names
     {
-        "cY0", "cY1", "cY2", "cY3", "cY4",
+        "cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
         "cA0", "cA1", "cA2", "cA3", "cA4", "cA5",
         "cGi0", "cGi1", "cGi2",
         "K", "X", "gA", "gB0", "gB1", "gB2"
@@ -4381,7 +4378,7 @@ int main()
 
     std::array<float, buffer_set::buffer_count> dissipation_coefficients
     {
-        dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, //cY
+        dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, //cY
         dissipate_high, dissipate_high, dissipate_high, dissipate_caijyy, dissipate_high, dissipate_high, //cA
         dissipate_low, dissipate_low, dissipate_low, //cGi
         dissipate_high, //K
@@ -4727,7 +4724,7 @@ int main()
                 {
                     auto differentiate = [&](const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
                     {
-                        if(name != "cY5")
+                        //if(name != "cY5")
                         {
                             int idx = buffer_to_index(name);
 
@@ -4743,7 +4740,7 @@ int main()
 
                             clctx.cqueue.exec("calculate_intermediate_data_thin", thin, {evolution_positions_count}, {128});
                         }
-                        else
+                        /*else
                         {
                             int idx0 = buffer_to_index("cY0");
                             int idx1 = buffer_to_index("cY1");
@@ -4767,7 +4764,7 @@ int main()
                             thin.push_back(clsize);
 
                             clctx.cqueue.exec("calculate_intermediate_data_thin_cY5", thin, {evolution_positions_count}, {128});
-                        }
+                        }*/
                     };
 
                     std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
