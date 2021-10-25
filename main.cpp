@@ -4773,47 +4773,19 @@ int main()
                 {
                     auto differentiate = [&](const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
                     {
-                        //if(name != "cY5")
-                        {
-                            int idx = buffer_to_index(name);
+                        int idx = buffer_to_index(name);
 
-                            cl::args thin;
-                            thin.push_back(evolution_positions);
-                            thin.push_back(evolution_positions_count);
-                            thin.push_back(generic_in[idx]);
-                            thin.push_back(out1);
-                            thin.push_back(out2);
-                            thin.push_back(out3);
-                            thin.push_back(scale);
-                            thin.push_back(clsize);
+                        cl::args thin;
+                        thin.push_back(evolution_positions);
+                        thin.push_back(evolution_positions_count);
+                        thin.push_back(generic_in[idx]);
+                        thin.push_back(out1);
+                        thin.push_back(out2);
+                        thin.push_back(out3);
+                        thin.push_back(scale);
+                        thin.push_back(clsize);
 
-                            clctx.cqueue.exec("calculate_intermediate_data_thin", thin, {evolution_positions_count}, {128});
-                        }
-                        /*else
-                        {
-                            int idx0 = buffer_to_index("cY0");
-                            int idx1 = buffer_to_index("cY1");
-                            int idx2 = buffer_to_index("cY2");
-                            int idx3 = buffer_to_index("cY3");
-                            int idx4 = buffer_to_index("cY4");
-
-                            cl::args thin;
-                            thin.push_back(evolution_positions);
-                            thin.push_back(evolution_positions_count);
-                            thin.push_back(generic_in[idx0]);
-                            thin.push_back(generic_in[idx1]);
-                            thin.push_back(generic_in[idx2]);
-                            thin.push_back(generic_in[idx3]);
-                            thin.push_back(generic_in[idx4]);
-
-                            thin.push_back(out1);
-                            thin.push_back(out2);
-                            thin.push_back(out3);
-                            thin.push_back(scale);
-                            thin.push_back(clsize);
-
-                            clctx.cqueue.exec("calculate_intermediate_data_thin_cY5", thin, {evolution_positions_count}, {128});
-                        }*/
+                        clctx.cqueue.exec("calculate_intermediate_data_thin", thin, {evolution_positions_count}, {128});
                     };
 
                     std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
