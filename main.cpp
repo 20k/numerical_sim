@@ -1608,8 +1608,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         ///made it to 532 after 2 + 3/4s orbits
         ///1125
-        black_hole_velocity[0] = v0 * v0_v.norm() * 1.3;
-        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.3;
+        black_hole_velocity[0] = v0 * v0_v.norm() * 1.37;
+        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.37;
 
         float r0 = m1 * R / M;
         float r1 = m0 * R / M;
@@ -4080,12 +4080,12 @@ struct gravitational_wave_manager
 
         for(auto& i : buffers)
         {
-            waveform_args.push_back(i);
+            waveform_args.push_back(i.as_device_read_only());
         }
 
         for(auto& i : thin_intermediates)
         {
-            waveform_args.push_back(i);
+            waveform_args.push_back(i.as_device_read_only());
         }
 
         cl::buffer& next = wave_buffers[(next_buffer % 3)];
@@ -4755,7 +4755,7 @@ int main()
         if(steps < 10)
             timestep = 0.0001;
 
-        if(pao && time_elapsed_s > 150)
+        if(pao && time_elapsed_s > 200)
             step = false;
 
         if(step)
@@ -4780,10 +4780,10 @@ int main()
                             cl::args thin;
                             thin.push_back(evolution_positions);
                             thin.push_back(evolution_positions_count);
-                            thin.push_back(generic_in[idx]);
-                            thin.push_back(out1);
-                            thin.push_back(out2);
-                            thin.push_back(out3);
+                            thin.push_back(generic_in[idx].as_device_read_only());
+                            thin.push_back(out1.as_device_write_only());
+                            thin.push_back(out2.as_device_write_only());
+                            thin.push_back(out3.as_device_write_only());
                             thin.push_back(scale);
                             thin.push_back(clsize);
 
@@ -4858,32 +4858,32 @@ int main()
                 {
                     cl::args a1;
 
-                    a1.push_back(evolution_positions);
+                    a1.push_back(evolution_positions.as_device_read_only());
                     a1.push_back(evolution_positions_count);
 
                     for(auto& i : generic_in)
                     {
-                        a1.push_back(i);
+                        a1.push_back(i.as_device_read_only());
                     }
 
                     for(auto& i : generic_out)
                     {
-                        a1.push_back(i);
+                        a1.push_back(i.as_device_write_only());
                     }
 
                     for(auto& i : base_yn)
                     {
-                        a1.push_back(i);
+                        a1.push_back(i.as_device_read_only());
                     }
 
                     for(auto& i : momentum_constraint)
                     {
-                        a1.push_back(i);
+                        a1.push_back(i.as_device_read_only());
                     }
 
                     for(auto& i : thin_intermediates)
                     {
-                        a1.push_back(i);
+                        a1.push_back(i.as_device_read_only());
                     }
 
                     a1.push_back(scale);
@@ -4908,7 +4908,7 @@ int main()
             {
                 cl::args constraints;
 
-                constraints.push_back(evolution_positions);
+                constraints.push_back(evolution_positions.as_device_read_only());
                 constraints.push_back(evolution_positions_count);
 
                 for(auto& i : generic_out)
@@ -5144,12 +5144,12 @@ int main()
 
                 for(auto& i : *last_valid_thin_buffer)
                 {
-                    render.push_back(i);
+                    render.push_back(i.as_device_read_only());
                 }
 
                 for(auto& i : thin_intermediates)
                 {
-                    render.push_back(i);
+                    render.push_back(i.as_device_read_only());
                 }
 
                 //render.push_back(bssnok_datas[which_data]);
@@ -5169,11 +5169,11 @@ int main()
                 {
                     cl::args diss;
 
-                    diss.push_back(evolution_positions);
+                    diss.push_back(evolution_positions.as_device_read_only());
                     diss.push_back(evolution_positions_count);
 
-                    diss.push_back(generic_data[which_data].buffers[i]);
-                    diss.push_back(generic_data[(which_data + 1) % 2].buffers[i]);
+                    diss.push_back(generic_data[which_data].buffers[i].as_device_read_only());
+                    diss.push_back(generic_data[(which_data + 1) % 2].buffers[i].as_device_write_only());
 
                     float coeff = dissipation_coefficients[i];
 
@@ -5193,7 +5193,7 @@ int main()
 
             {
                 cl::args cleaner;
-                cleaner.push_back(sponge_positions);
+                cleaner.push_back(sponge_positions.as_device_read_only());
                 cleaner.push_back(sponge_positions_count);
 
                 for(auto& i : generic_data[which_data].buffers)
@@ -5202,7 +5202,7 @@ int main()
                 }
 
                 //cleaner.push_back(bssnok_datas[which_data]);
-                cleaner.push_back(u_args[which_u_args]);
+                cleaner.push_back(u_args[which_u_args].as_device_read_only());
                 cleaner.push_back(scale);
                 cleaner.push_back(clsize);
                 cleaner.push_back(time_elapsed_s);
@@ -5225,7 +5225,7 @@ int main()
 
             for(auto& i : generic_data[which_data].buffers)
             {
-                render_args.push_back(i);
+                render_args.push_back(i.as_device_read_only());
             }
 
             cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
