@@ -1608,8 +1608,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         ///made it to 532 after 2 + 3/4s orbits
         ///1125
-        black_hole_velocity[0] = v0 * v0_v.norm() * 1.3;
-        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.3;
+        black_hole_velocity[0] = v0 * v0_v.norm() * 1.15;
+        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.15;
 
         float r0 = m1 * R / M;
         float r1 = m0 * R / M;
@@ -4031,7 +4031,7 @@ struct gravitational_wave_manager
         cl_float2* read = nullptr;
     };
 
-    cl_int4 wave_dim = {140, 140, 140};
+    cl_int4 wave_dim = {120, 120, 120};
     cl_int4 wave_pos;
 
     std::array<cl::buffer, 3> wave_buffers;
@@ -4220,10 +4220,10 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {289, 289, 289};
+    vec3i size = {251, 251, 251};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
-    float c_at_max = 75 * (size.x()/300.f);
+    float c_at_max = 65 * (size.x()/300.f);
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2.f, size.y()/2.f, size.z()/2.f};
 
@@ -4482,7 +4482,7 @@ int main()
     auto [sponge_positions, sponge_positions_count] = generate_sponge_points(clctx.ctx, clctx.cqueue, scale, size);
     auto [evolution_positions, evolution_positions_count, non_evolution_positions, non_evolution_positions_count] = generate_evolution_points(clctx.ctx, clctx.cqueue, scale, size);
 
-    clctx.cqueue.block();
+    non_evolution_positions.native_mem_object.release();
 
     std::vector<cl::buffer> thin_intermediates;
 
@@ -4498,7 +4498,9 @@ int main()
 
     for(auto& i : momentum_constraint)
     {
+        #ifdef DAMP_DTCAIJ
         i.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+        #endif // DAMP_DTCAIJ
     }
 
     //cl::buffer waveform(clctx.ctx);
