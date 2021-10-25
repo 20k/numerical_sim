@@ -4378,7 +4378,7 @@ int main()
     int which_data = 0;
 
     std::array<buffer_set, 2> generic_data{buffer_set(clctx.ctx, size), buffer_set(clctx.ctx, size)};
-    buffer_set rk4_intermediate(clctx.ctx, size);
+    //buffer_set rk4_intermediate(clctx.ctx, size);
     buffer_set rk4_scratch(clctx.ctx, size);
     //buffer_set rk4_xn(clctx.ctx, size);
 
@@ -5114,15 +5114,15 @@ int main()
             #endif // DOUBLE_ENFORCEMENT
 
             {
-                //last_run_event = wave_manager.issue_extraction(async_queue, *last_valid_thin_buffer, thin_intermediates, scale, clsize, last_run_event);
+                last_run_event = wave_manager.issue_extraction(async_queue, *last_valid_thin_buffer, thin_intermediates, scale, clsize, last_run_event);
 
-                /*std::vector<float> values = wave_manager.process();
+                std::vector<float> values = wave_manager.process();
 
                 for(float v : values)
                 {
                     if(!isnanf(v))
                         real_decomp.push_back(v);
-                }*/
+                }
             }
 
             {
