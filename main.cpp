@@ -1608,8 +1608,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         ///made it to 532 after 2 + 3/4s orbits
         ///1125
-        black_hole_velocity[0] = v0 * v0_v.norm() * 1.3;
-        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.3;
+        black_hole_velocity[0] = v0 * v0_v.norm() * 1.37;
+        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.37;
 
         float r0 = m1 * R / M;
         float r1 = m0 * R / M;
@@ -4074,7 +4074,7 @@ struct gravitational_wave_manager
         delete ((callback_data*)user_data);
     }
 
-    void issue_extraction(cl::command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<cl::buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize)
+    std::vector<cl::event> issue_extraction(cl::command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<cl::buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize, std::vector<cl::event> evts)
     {
         cl::args waveform_args;
 
@@ -4097,7 +4097,7 @@ struct gravitational_wave_manager
         waveform_args.push_back(wave_dim);
         waveform_args.push_back(next);
 
-        cl::event kernel_event = cqueue.exec("extract_waveform", waveform_args, {wave_dim.s[0], wave_dim.s[1], wave_dim.s[2]}, {8, 8, 2});
+        cl::event kernel_event = cqueue.exec("extract_waveform", waveform_args, {wave_dim.s[0], wave_dim.s[1], wave_dim.s[2]}, {8, 8, 2}, evts);
 
         cl_float2* next_data = new cl_float2[elements];
 
@@ -4115,6 +4115,8 @@ struct gravitational_wave_manager
         }
 
         last_event = data;
+
+        return {kernel_event};
     }
 
     std::vector<float> process()
@@ -4214,6 +4216,8 @@ int main()
     io.Fonts->AddFontFromFileTTF("VeraMono.ttf", 14, &font_cfg);
 
     opencl_context& clctx = *win.clctx;
+
+    cl::command_queue async_queue(clctx.ctx, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE);
 
     std::string argument_string = "-O3 -cl-std=CL2.0 -cl-uniform-work-group-size -cl-mad-enable -cl-finite-math-only -cl-denorms-are-zero ";
 
@@ -4525,7 +4529,7 @@ int main()
     {
         cl::copy(clctx.cqueue, generic_data[0].buffers[i], generic_data[1].buffers[i]);
         cl::copy(clctx.cqueue, generic_data[0].buffers[i], rk4_scratch.buffers[i]);
-        cl::copy(clctx.cqueue, generic_data[0].buffers[i], rk4_intermediate.buffers[i]);
+        //cl::copy(clctx.cqueue, generic_data[0].buffers[i], rk4_intermediate.buffers[i]);
     }
 
     std::vector<float> real_graph;
@@ -4549,6 +4553,10 @@ int main()
     bool trapezoidal_init = false;
 
     bool pao = false;
+
+    std::vector<cl::event> last_run_event;
+
+    clctx.cqueue.block();
 
     while(!win.should_close())
     {
@@ -4766,54 +4774,28 @@ int main()
 
             auto& base_yn = generic_data[which_data].buffers;
 
-            auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
+            auto step = [&](auto& generic_in, auto& generic_out, float current_timestep, std::vector<cl::event> events)
             {
                 last_valid_thin_buffer = &generic_in;
+
+                std::vector<cl::event> evt;
 
                 {
                     auto differentiate = [&](const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
                     {
-                        //if(name != "cY5")
-                        {
-                            int idx = buffer_to_index(name);
+                        int idx = buffer_to_index(name);
 
-                            cl::args thin;
-                            thin.push_back(evolution_positions);
-                            thin.push_back(evolution_positions_count);
-                            thin.push_back(generic_in[idx]);
-                            thin.push_back(out1);
-                            thin.push_back(out2);
-                            thin.push_back(out3);
-                            thin.push_back(scale);
-                            thin.push_back(clsize);
+                        cl::args thin;
+                        thin.push_back(evolution_positions);
+                        thin.push_back(evolution_positions_count);
+                        thin.push_back(generic_in[idx]);
+                        thin.push_back(out1);
+                        thin.push_back(out2);
+                        thin.push_back(out3);
+                        thin.push_back(scale);
+                        thin.push_back(clsize);
 
-                            clctx.cqueue.exec("calculate_intermediate_data_thin", thin, {evolution_positions_count}, {128});
-                        }
-                        /*else
-                        {
-                            int idx0 = buffer_to_index("cY0");
-                            int idx1 = buffer_to_index("cY1");
-                            int idx2 = buffer_to_index("cY2");
-                            int idx3 = buffer_to_index("cY3");
-                            int idx4 = buffer_to_index("cY4");
-
-                            cl::args thin;
-                            thin.push_back(evolution_positions);
-                            thin.push_back(evolution_positions_count);
-                            thin.push_back(generic_in[idx0]);
-                            thin.push_back(generic_in[idx1]);
-                            thin.push_back(generic_in[idx2]);
-                            thin.push_back(generic_in[idx3]);
-                            thin.push_back(generic_in[idx4]);
-
-                            thin.push_back(out1);
-                            thin.push_back(out2);
-                            thin.push_back(out3);
-                            thin.push_back(scale);
-                            thin.push_back(clsize);
-
-                            clctx.cqueue.exec("calculate_intermediate_data_thin_cY5", thin, {evolution_positions_count}, {128});
-                        }*/
+                        return async_queue.exec("calculate_intermediate_data_thin", thin, {evolution_positions_count}, {128}, events);
                     };
 
                     std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
@@ -4825,7 +4807,7 @@ int main()
                         int i2 = idx * 3 + 1;
                         int i3 = idx * 3 + 2;
 
-                        differentiate(buffers[idx], thin_intermediates[i1], thin_intermediates[i2], thin_intermediates[i3]);
+                        evt.push_back(differentiate(buffers[idx], thin_intermediates[i1], thin_intermediates[i2], thin_intermediates[i3]));
                     }
                 }
 
@@ -4892,19 +4874,23 @@ int main()
                     a1.push_back(time_elapsed_s);
                     a1.push_back(current_simulation_boundary);
 
-                    clctx.cqueue.exec(name, a1, {evolution_positions_count}, {128});
+                    return async_queue.exec(name, a1, {evolution_positions_count}, {128}, evt);
                 };
 
-                step_kernel("evolve_cY");
-                step_kernel("evolve_cA");
-                step_kernel("evolve_cGi");
-                step_kernel("evolve_K");
-                step_kernel("evolve_X");
-                step_kernel("evolve_gA");
-                step_kernel("evolve_gB");
+                std::vector<cl::event> out_events;
+
+                out_events.push_back(step_kernel("evolve_cY"));
+                out_events.push_back(step_kernel("evolve_cA"));
+                out_events.push_back(step_kernel("evolve_cGi"));
+                out_events.push_back(step_kernel("evolve_K"));
+                out_events.push_back(step_kernel("evolve_X"));
+                out_events.push_back(step_kernel("evolve_gA"));
+                out_events.push_back(step_kernel("evolve_gB"));
+
+                return out_events;
             };
 
-            auto enforce_constraints = [&](auto& generic_out)
+            auto enforce_constraints = [&](auto& generic_out, std::vector<cl::event> evt)
             {
                 cl::args constraints;
 
@@ -4919,7 +4905,7 @@ int main()
                 constraints.push_back(scale);
                 constraints.push_back(clsize);
 
-                clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {evolution_positions_count}, {128});
+                return std::vector<cl::event>{async_queue.exec("enforce_algebraic_constraints", constraints, {evolution_positions_count}, {128}, evt)};
             };
 
             auto diff_to_input = [&](auto& buffer_in, cl_float factor)
@@ -4934,7 +4920,7 @@ int main()
                     accum.push_back(base_yn[i]);
                     accum.push_back(factor);
 
-                    clctx.cqueue.exec("calculate_rk4_val", accum, {size.x() * size.y() * size.z()}, {128});
+                    async_queue.exec("calculate_rk4_val", accum, {size.x() * size.y() * size.z()}, {128});
                 }
             };
 
@@ -4949,7 +4935,7 @@ int main()
                     copy.push_back(out[i]);
                     copy.push_back(clsize);
 
-                    clctx.cqueue.exec("copy_valid", copy, {evolution_positions_count}, {128});
+                    async_queue.exec("copy_valid", copy, {evolution_positions_count}, {128});
                 }
             };
 
@@ -5059,15 +5045,15 @@ int main()
             for(int i=0; i < iterations; i++)
             {
                 if(i != 0)
-                    step(rk4_scratch.buffers, b2.buffers, timestep);
+                    last_run_event = step(rk4_scratch.buffers, b2.buffers, timestep, last_run_event);
                 else
-                    step(b1.buffers, b2.buffers, timestep);
+                    last_run_event = step(b1.buffers, b2.buffers, timestep, last_run_event);
 
                 //diff_to_input(b2.buffers, timestep);
 
                 if(i != iterations - 1)
                 {
-                    enforce_constraints(b2.buffers);
+                    last_run_event = enforce_constraints(b2.buffers, last_run_event);
                     std::swap(b2, rk4_scratch);
                 }
             }
@@ -5128,15 +5114,15 @@ int main()
             #endif // DOUBLE_ENFORCEMENT
 
             {
-                wave_manager.issue_extraction(clctx.cqueue, *last_valid_thin_buffer, thin_intermediates, scale, clsize);
+                //last_run_event = wave_manager.issue_extraction(async_queue, *last_valid_thin_buffer, thin_intermediates, scale, clsize, last_run_event);
 
-                std::vector<float> values = wave_manager.process();
+                /*std::vector<float> values = wave_manager.process();
 
                 for(float v : values)
                 {
                     if(!isnanf(v))
                         real_decomp.push_back(v);
-                }
+                }*/
             }
 
             {
@@ -5158,8 +5144,7 @@ int main()
                 render.push_back(rtex[which_texture]);
                 render.push_back(time_elapsed_s);
 
-                clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
-
+                clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16}, last_run_event);
             }
 
             //copy_valid(generic_data[(which_data + 1) % 2].buffers, generic_data[which_data].buffers);
@@ -5185,7 +5170,7 @@ int main()
                     if(coeff == 0)
                         continue;
 
-                    clctx.cqueue.exec("dissipate_single", diss, {evolution_positions_count}, {128});
+                    last_run_event = std::vector<cl::event>{async_queue.exec("dissipate_single", diss, {evolution_positions_count}, {128}, last_run_event)};
                 }
             }
 
@@ -5208,10 +5193,10 @@ int main()
                 cleaner.push_back(time_elapsed_s);
                 cleaner.push_back(timestep);
 
-                clctx.cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
+                last_run_event = std::vector<cl::event>{async_queue.exec("clean_data", cleaner, {sponge_positions_count}, {256}, last_run_event)};
             }
 
-            enforce_constraints(generic_data[which_data].buffers);
+            last_run_event = enforce_constraints(generic_data[which_data].buffers, last_run_event);
 
             time_elapsed_s += timestep;
             current_simulation_boundary += DIFFERENTIATION_WIDTH;
@@ -5299,8 +5284,8 @@ int main()
 
         cl::event next_event = rtex[which_texture].unacquire(clctx.cqueue);
 
-        if(last_event.has_value())
-            last_event.value().block();
+        //if(last_event.has_value())
+        //    last_event.value().block();
 
         last_event = next_event;
 
