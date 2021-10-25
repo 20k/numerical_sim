@@ -4374,7 +4374,7 @@ int main()
     int which_data = 0;
 
     std::array<buffer_set, 2> generic_data{buffer_set(clctx.ctx, size), buffer_set(clctx.ctx, size)};
-    buffer_set rk4_intermediate(clctx.ctx, size);
+    //buffer_set rk4_intermediate(clctx.ctx, size);
     buffer_set rk4_scratch(clctx.ctx, size);
     //buffer_set rk4_xn(clctx.ctx, size);
 
@@ -4525,7 +4525,7 @@ int main()
     {
         cl::copy(clctx.cqueue, generic_data[0].buffers[i], generic_data[1].buffers[i]);
         cl::copy(clctx.cqueue, generic_data[0].buffers[i], rk4_scratch.buffers[i]);
-        cl::copy(clctx.cqueue, generic_data[0].buffers[i], rk4_intermediate.buffers[i]);
+        //cl::copy(clctx.cqueue, generic_data[0].buffers[i], rk4_intermediate.buffers[i]);
     }
 
     std::vector<float> real_graph;
