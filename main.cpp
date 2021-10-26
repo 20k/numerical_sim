@@ -1608,8 +1608,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         ///made it to 532 after 2 + 3/4s orbits
         ///1125
-        black_hole_velocity[0] = v0 * v0_v.norm() * 1.15;
-        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.15;
+        black_hole_velocity[0] = v0 * v0_v.norm() * 1.154;
+        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.154;
 
         float r0 = m1 * R / M;
         float r1 = m0 * R / M;
@@ -1909,7 +1909,7 @@ void build_momentum_constraint(equation_context& ctx)
     auto unpinned_icY = icY;
     ctx.pin(icY);
 
-    value X_recip = 0.f;
+    /*value X_recip = 0.f;
 
     {
         float min_X = 0.001;
@@ -1923,7 +1923,9 @@ void build_momentum_constraint(equation_context& ctx)
         {
             return 1.f / args.X;
         });
-    }
+    }*/
+
+    value X_clamped = max(args.X, 0.001f);
 
     tensor<value, 3> Mi;
 
@@ -1932,8 +1934,13 @@ void build_momentum_constraint(equation_context& ctx)
         Mi.idx(i) = 0;
     }
 
+    //#define BETTERDAMP_DTCAIJ
     //#define DAMP_DTCAIJ
-    #ifdef DAMP_DTCAIJ
+    #if defined(DAMP_DTCAIJ) || defined(BETTERDAMP_DTCAIJ)
+    #define CALCULATE_MOMENTUM_CONSTRAINT
+    #endif // defined
+
+    #ifdef CALCULATE_MOMENTUM_CONSTRAINT
     tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
 
     tensor<value, 3, 3> mixed_cAij = raise_index(args.cA, args.cY, icY);
@@ -1956,10 +1963,10 @@ void build_momentum_constraint(equation_context& ctx)
 
         for(int m=0; m < 3; m++)
         {
-            s3 += -(3.f/2.f) * mixed_cAij.idx(m, i) * hacky_differentiate(args.X, m) * X_recip;
+            s3 += -(3.f/2.f) * mixed_cAij.idx(m, i) * hacky_differentiate(args.X, m) / X_clamped;
         }
 
-        Mi.idx(i) = dual_if(args.X <= 0.001f,
+        /*Mi.idx(i) = dual_if(args.X <= 0.001f,
         []()
         {
             return 0.f;
@@ -1967,7 +1974,9 @@ void build_momentum_constraint(equation_context& ctx)
         [&]()
         {
             return s1 + s2 + s3;
-        });
+        });*/
+
+        Mi.idx(i) = s1 + s2 + s3;
     }
     #endif // 0
 
@@ -2166,6 +2175,8 @@ void build_cA(equation_context& ctx)
 {
     standard_arguments args(ctx, false);
 
+    value scale = "scale";
+
     ctx.pin(args.derived_cGi);
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
@@ -2254,6 +2265,31 @@ void build_cA(equation_context& ctx)
 
     tensor<value, 3, 3> without_trace = gpu_trace_free(with_trace, cY, icY);
 
+    #ifdef BETTERDAMP_DTCAIJ
+    tensor<value, 3, 3> momentum_deriv;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            momentum_deriv.idx(i, j) = hacky_differentiate(args.momentum_constraint.idx(i), j);
+        }
+    }
+
+    tensor<value, 3, 3> symmetric_momentum_deriv;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            symmetric_momentum_deriv.idx(i, j) = 0.5f * (momentum_deriv.idx(i, j) + momentum_deriv.idx(j, i));
+        }
+    }
+
+    ctx.pin(symmetric_momentum_deriv);
+
+    #endif // BETTERDAMP_DTCAIJ
+
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
@@ -2303,6 +2339,13 @@ void build_cA(equation_context& ctx)
                                                 (gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)
                                                  + gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(j, i));
             #endif // DAMP_DTCAIJ
+
+            #ifdef BETTERDAMP_DTCAIJ
+            value F_a = scale * gA;
+
+            ///https://arxiv.org/pdf/1205.5111v1.pdf (56)
+            dtcAij.idx(i, j) += scale * F_a * gpu_trace_free(symmetric_momentum_deriv, cY, icY).idx(i, j);
+            #endif // BETTERDAMP_DTCAIJ
         }
     }
 
@@ -4498,9 +4541,9 @@ int main()
 
     for(auto& i : momentum_constraint)
     {
-        #ifdef DAMP_DTCAIJ
+        #ifdef CALCULATE_MOMENTUM_CONSTRAINT
         i.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
-        #endif // DAMP_DTCAIJ
+        #endif // CALCULATE_MOMENTUM_CONSTRAINT
     }
 
     //cl::buffer waveform(clctx.ctx);
@@ -4555,6 +4598,22 @@ int main()
     while(!win.should_close())
     {
         steady_timer frametime;
+
+        /*if(time_elapsed_s >= 5)
+        {
+            for(auto& i : dissipation_coefficients)
+            {
+                i = std::min(i, 0.1f);
+            }
+        }*/
+
+        /*if(time_elapsed_s >= 15)
+        {
+            for(auto& i : dissipation_coefficients)
+            {
+                i = std::min(i, 0.15f);
+            }
+        }*/
 
         if(time_elapsed_s >= 10)
         {
@@ -4803,7 +4862,7 @@ int main()
                     }
                 }
 
-                #ifdef DAMP_DTCAIJ
+                #ifdef CALCULATE_MOMENTUM_CONSTRAINT
                 {
                     cl::args momentum_args;
 
@@ -4826,7 +4885,7 @@ int main()
 
                     clctx.cqueue.exec("calculate_momentum_constraint", momentum_args, {evolution_positions_count}, {128});
                 }
-                #endif // DAMP_DTCAIJ
+                #endif // CALCULATE_MOMENTUM_CONSTRAINT
 
                 auto step_kernel = [&](const std::string& name)
                 {
