@@ -1608,8 +1608,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         ///made it to 532 after 2 + 3/4s orbits
         ///1125
-        black_hole_velocity[0] = v0 * v0_v.norm() * 1.1553;
-        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.1553;
+        black_hole_velocity[0] = v0 * v0_v.norm() * 1.025;
+        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.025;
 
         float r0 = m1 * R / M;
         float r1 = m0 * R / M;
@@ -4074,7 +4074,7 @@ struct gravitational_wave_manager
         cl_float2* read = nullptr;
     };
 
-    cl_int4 wave_dim = {120, 120, 120};
+    cl_int4 wave_dim = {150, 150, 150};
     cl_int4 wave_pos;
 
     std::array<cl::buffer, 3> wave_buffers;
@@ -4263,10 +4263,10 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {251, 251, 251};
+    vec3i size = {281, 281, 281};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
-    float c_at_max = 65 * (size.x()/300.f);
+    float c_at_max = 65 * (251/300.f);
     float scale = c_at_max / (size.largest_elem());
     vec3f centre = {size.x()/2.f, size.y()/2.f, size.z()/2.f};
 
