@@ -3304,8 +3304,8 @@ void extract_waveforms(equation_context& ctx)
 
     ///gab is their spatial metric in lazarus
 
-    vec<3, value> v1ai = {-pos.y(), pos.x(), 0};
-    vec<3, value> v2ai = {pos.x(), pos.y(), pos.z()};
+    vec<3, value> v1ai = {-pos.y(), pos.x() + 1e-6f, 0};
+    vec<3, value> v2ai = {pos.x() + 1e-6f, pos.y(), pos.z()};
     vec<3, value> v3ai;
 
     for(int a=0; a < 3; a++)
