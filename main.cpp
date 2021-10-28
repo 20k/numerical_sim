@@ -1608,8 +1608,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         ///made it to 532 after 2 + 3/4s orbits
         ///1125
-        black_hole_velocity[0] = v0 * v0_v.norm() * 1.025;
-        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.025;
+        black_hole_velocity[0] = v0 * v0_v.norm() * 1.0275;
+        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.0275;
 
         float r0 = m1 * R / M;
         float r1 = m0 * R / M;
@@ -1936,7 +1936,8 @@ void build_momentum_constraint(equation_context& ctx)
 
     //#define BETTERDAMP_DTCAIJ
     //#define DAMP_DTCAIJ
-    #if defined(DAMP_DTCAIJ) || defined(BETTERDAMP_DTCAIJ)
+    #define BETTERDAMP_DTCAIJ_PT2
+    #if defined(DAMP_DTCAIJ) || defined(BETTERDAMP_DTCAIJ) || defined(BETTERDAMP_DTCAIJ_PT2)
     #define CALCULATE_MOMENTUM_CONSTRAINT
     #endif // defined
 
@@ -2171,6 +2172,22 @@ tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& 
 }
 
 inline
+tensor<value, 3, 3> trace_free_symmetric(const tensor<value, 3, 3>& mT, const metric<value, 3, 3>& met, const inverse_metric<value, 3, 3>& inverse)
+{
+   tensor<value, 3, 3> ret;
+
+   for(int i=0; i < 3; i++)
+   {
+       for(int j=0; j < 3; j++)
+       {
+           ret.idx(i, j) = 0.5f * (mT.idx(i, j) + mT.idx(j, i));
+       }
+   }
+
+   return gpu_trace_free(ret, met, inverse);
+}
+
+inline
 void build_cA(equation_context& ctx)
 {
     standard_arguments args(ctx, false);
@@ -2348,6 +2365,64 @@ void build_cA(equation_context& ctx)
             #endif // BETTERDAMP_DTCAIJ
         }
     }
+
+    #ifdef BETTERDAMP_DTCAIJ_PT2
+
+    tensor<value, 3> gB_lower = lower_index(gB, cY);
+
+    tensor<value, 3> Ai;
+
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+        value sum2 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                sum += icY.idx(j, k) * hacky_differentiate(unpinned_cA.idx(j, k), i);
+                sum2 += cA.idx(j, k) * hacky_differentiate(unpinned_icY.idx(j, k), i);
+            }
+        }
+
+        Ai.idx(i) = sum + sum2;
+    }
+
+    tensor<value, 3, 3> gBiMj_with_trace;
+    tensor<value, 3, 3> BiAj_with_trace;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            gBiMj_with_trace.idx(i, j) = (-3.f/5.f) * gB_lower.idx(i) * args.momentum_constraint.idx(j);
+            BiAj_with_trace.idx(i, j) = (-1/10.f) * gB_lower.idx(i) * Ai.idx(j);
+        }
+    }
+
+    tensor<value, 3, 3> gBiMj = gpu_trace_free(gBiMj_with_trace, args.cY, icY);
+    tensor<value, 3, 3> BiAj = gpu_trace_free(BiAj_with_trace, args.cY, icY);
+
+    tensor<value, 3, 3> YijBkAk;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value sum = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                sum += (-1.f/3.f) * cY.idx(i, j) * gB.idx(k) * Ai.idx(k);
+            }
+
+            YijBkAk.idx(i, j) = sum;
+        }
+    }
+
+    dtcAij += gBiMj + BiAj + YijBkAk;
+    #endif // BETTERDAMP_DTCAIJ_PT2
 
     for(int i=0; i < 6; i++)
     {
@@ -4205,7 +4280,7 @@ struct gravitational_wave_manager
             //if(!isnanf(val.s[0]))
             //    real_graph.push_back(val.s[0]);
 
-            float harmonic = get_harmonic(as_vector, {wave_dim.s[0], wave_dim.s[1], wave_dim.s[2]}, 2, 2);
+            float harmonic = get_harmonic(as_vector, {wave_dim.s[0], wave_dim.s[1], wave_dim.s[2]}, 2, 0);
 
             if(!isnanf(harmonic))
                 real_harmonic.push_back(harmonic);
@@ -4816,7 +4891,7 @@ int main()
         if(steps < 10)
             timestep = 0.0001;
 
-        if(pao && time_elapsed_s > 150)
+        if(pao && time_elapsed_s > 300)
             step = false;
 
         if(step)
