@@ -4179,31 +4179,8 @@ struct gravitational_wave_manager
 
             for(int i=0; i < elements; i++)
             {
-                if(isnanf(vec[i].s[0]))
-                {
-                    //printf("no\n");
-                    vec[i].s[0] = 0;
-                }
-
-                if(isnanf(vec[i].s[1]))
-                    vec[i].s[1] = 0;
-
                 as_vector.push_back({vec[i].s[0], vec[i].s[1]});
             }
-
-            /*for(int k=0; k < wave_dim.s[2]; k++)
-            {
-                for(int j=0; j < wave_dim.s[1]; j++)
-                {
-                    for(int i=0; i < wave_dim.s[0]; i++)
-                    {
-
-                    }
-                }
-            }*/
-
-            //if(!isnanf(val.s[0]))
-            //    real_graph.push_back(val.s[0]);
 
             float harmonic = get_harmonic(as_vector, {wave_dim.s[0], wave_dim.s[1], wave_dim.s[2]}, 2, 2);
 
