@@ -1561,6 +1561,7 @@ tensor<value, 3, 3> calculate_single_bcAij(const vec<3, value>& pos, float black
         for(int j=0; j < 3; j++)
         {
             flat.idx(i, j) = (i == j) ? 1 : 0;
+            bcAij.idx(i, j) = 0;
         }
     }
 
@@ -1587,7 +1588,6 @@ tensor<value, 3, 3> calculate_single_bcAij(const vec<3, value>& pos, float black
 
 
             ///spin
-
             value s1 = 0;
             value s2 = 0;
 
@@ -1646,7 +1646,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-4, 0, 0}), san_black_hole_pos({4, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
     std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_spin{{0, 0, -0.25f}, {0, 0, -0.25f}};
+    std::vector<vec3f> black_hole_spin{{0, 0, -0.45f}, {0, 0, -0.45f}};
 
     #define KEPLER
     #ifdef KEPLER
@@ -1665,8 +1665,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         ///made it to 532 after 2 + 3/4s orbits
         ///1125
-        black_hole_velocity[0] = v0 * v0_v.norm() * 1.069;
-        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.069;
+        black_hole_velocity[0] = v0 * v0_v.norm() * 1.2;
+        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.2;
 
         float r0 = m1 * R / M;
         float r1 = m0 * R / M;
@@ -4516,7 +4516,7 @@ int main()
     ///I need to do this properly, where it keeps iterating until it converges
     ///todo: this doesn't converge yet!
     #ifndef GPU_PROFILE
-    for(int i=0; i < 5000; i++)
+    for(int i=0; i < 20000; i++)
     #else
     for(int i=0; i < 1000; i++)
     #endif

@@ -370,12 +370,13 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
     float u = u_offset_in[IDX(ix, iy, iz)];
 
-    //float X = 1/init_BL_val;
+    ///https://arxiv.org/pdf/gr-qc/0007085.pdf (78) implies that the two formulations are not equivalent
+    float X = 1/init_BL_val;
 
-    //float B = (1.f/8.f) * pow(X, 7.f) * aij_aIJ;
-    //float RHS = -B * pow(1 + X * u, -7);
+    float B = (1.f/8.f) * pow(X, 7.f) * aij_aIJ;
+    float RHS = -B * pow(1 + X * u, -7);
 
-    float RHS = -(1/8.f) * aij_aIJ * pow(bl_s + u, -7);
+    //float RHS = -(1/8.f) * aij_aIJ * pow(bl_s + u, -7);
 
     float h2f0 = scale * scale * RHS;
 
