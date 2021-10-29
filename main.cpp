@@ -1014,6 +1014,35 @@ tensor<T, N, N> gpu_lie_derivative_weight(equation_context& ctx, const tensor<T,
     return lie;
 }
 
+tensor<value, 3, 3, 3> get_eijk()
+{
+    auto eijk_func = [](int i, int j, int k)
+    {
+        if((i == 0 && j == 1 && k == 2) || (i == 1 && j == 2 && k == 0) || (i == 2 && j == 0 && k == 1))
+            return 1;
+
+        if(i == j || j == k || k == i)
+            return 0;
+
+        return -1;
+    };
+
+    tensor<value, 3, 3, 3> eijk;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                eijk.idx(i, j, k) = eijk_func(i, j, k);
+            }
+        }
+    }
+
+    return eijk;
+}
+
 ///mT symmetric?
 template<typename T, int N>
 tensor<T, N, N> raise_index(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
@@ -1519,10 +1548,10 @@ struct standard_arguments
     }
 };
 
-
-///this does not return the same kind of conformal cAij as bssn uses, need to reconstruct Kij!
-tensor<value, 3, 3> calculate_bcAij(const vec<3, value>& pos, const std::vector<float>& black_hole_m, const std::vector<vec3f>& black_hole_pos, const std::vector<vec3f>& black_hole_velocity)
+tensor<value, 3, 3> calculate_single_bcAij(const vec<3, value>& pos, float black_hole_m, vec3f black_hole_pos, vec3f black_hole_velocity, vec3f black_hole_spin)
 {
+    tensor<value, 3, 3, 3> eijk = get_eijk();
+
     tensor<value, 3, 3> bcAij;
 
     metric<value, 3, 3> flat;
@@ -1535,30 +1564,57 @@ tensor<value, 3, 3> calculate_bcAij(const vec<3, value>& pos, const std::vector<
         }
     }
 
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            vec3f bhpos = black_hole_pos;
+            vec3f momentum = black_hole_velocity * black_hole_m;
+            tensor<value, 3> momentum_tensor = {momentum.x(), momentum.y(), momentum.z()};
+
+            vec<3, value> vri = {bhpos.x(), bhpos.y(), bhpos.z()};
+
+            value ra = (pos - vri).length();
+
+            ra = max(ra, 1e-6);
+
+            vec<3, value> nia = (pos - vri) / ra;
+
+            tensor<value, 3> momentum_lower = lower_index(momentum_tensor, flat);
+            tensor<value, 3> nia_lower = lower_index(tensor<value, 3>{nia.x(), nia.y(), nia.z()}, flat);
+
+            bcAij.idx(i, j) += (3 / (2.f * ra * ra)) * (momentum_lower.idx(i) * nia_lower.idx(j) + momentum_lower.idx(j) * nia_lower.idx(i) - (flat.idx(i, j) - nia_lower.idx(i) * nia_lower.idx(j)) * sum_multiply(momentum_tensor, nia_lower));
+
+
+            ///spin
+
+            value s1 = 0;
+            value s2 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                for(int l=0; l < 3; l++)
+                {
+                    s1 += eijk.idx(k, i, l) * black_hole_spin[l] * nia[k] * nia_lower.idx(j);
+                    s2 += eijk.idx(k, j, l) * black_hole_spin[l] * nia[k] * nia_lower.idx(i);
+                }
+            }
+
+            bcAij.idx(i, j) += (3 / (ra*ra*ra)) * (s1 + s2);
+        }
+    }
+
+    return bcAij;
+}
+
+///this does not return the same kind of conformal cAij as bssn uses, need to reconstruct Kij!
+tensor<value, 3, 3> calculate_bcAij(const vec<3, value>& pos, const std::vector<float>& black_hole_m, const std::vector<vec3f>& black_hole_pos, const std::vector<vec3f>& black_hole_velocity, const std::vector<vec3f>& black_hole_spin)
+{
+    tensor<value, 3, 3> bcAij;
+
     for(int bh_idx = 0; bh_idx < (int)black_hole_pos.size(); bh_idx++)
     {
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                vec3f bhpos = black_hole_pos[bh_idx];
-                vec3f momentum = black_hole_velocity[bh_idx] * black_hole_m[bh_idx];
-                tensor<value, 3> momentum_tensor = {momentum.x(), momentum.y(), momentum.z()};
-
-                vec<3, value> vri = {bhpos.x(), bhpos.y(), bhpos.z()};
-
-                value ra = (pos - vri).length();
-
-                ra = max(ra, 1e-6);
-
-                vec<3, value> nia = (pos - vri) / ra;
-
-                tensor<value, 3> momentum_lower = lower_index(momentum_tensor, flat);
-                tensor<value, 3> nia_lower = lower_index(tensor<value, 3>{nia.x(), nia.y(), nia.z()}, flat);
-
-                bcAij.idx(i, j) += (3 / (2.f * ra * ra)) * (momentum_lower.idx(i) * nia_lower.idx(j) + momentum_lower.idx(j) * nia_lower.idx(i) - (flat.idx(i, j) - nia_lower.idx(i) * nia_lower.idx(j)) * sum_multiply(momentum_tensor, nia_lower));
-            }
-        }
+        bcAij += calculate_single_bcAij(pos, black_hole_m[bh_idx], black_hole_pos[bh_idx], black_hole_velocity[bh_idx], black_hole_spin[bh_idx]);
     }
 
     return bcAij;
@@ -1589,7 +1645,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<float> black_hole_m{0.5, 0.5};
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-4, 0, 0}), san_black_hole_pos({4, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_velocity{{0, 0, -0.125 / 0.5}, {0, 0, 0.125 / 0.6}};
+    std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
+    std::vector<vec3f> black_hole_spin{{0, 0, -0.25f}, {0, 0, -0.25f}};
 
     #define KEPLER
     #ifdef KEPLER
@@ -1629,7 +1686,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
         }
     }
 
-    tensor<value, 3, 3> bcAij = calculate_bcAij(pos, black_hole_m, black_hole_pos, black_hole_velocity);
+    tensor<value, 3, 3> bcAij = calculate_bcAij(pos, black_hole_m, black_hole_pos, black_hole_velocity, black_hole_spin);
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     value BL_s = 0;
@@ -3239,31 +3296,9 @@ void extract_waveforms(equation_context& ctx)
 
     ctx.pin(cdKij);
 
+    tensor<value, 3, 3, 3> eijk = get_eijk();
+
     ///can raise and lower the indices... its a regular tensor bizarrely
-    auto eijk_func = [](int i, int j, int k)
-    {
-        if((i == 0 && j == 1 && k == 2) || (i == 1 && j == 2 && k == 0) || (i == 2 && j == 0 && k == 1))
-            return 1;
-
-        if(i == j || j == k || k == i)
-            return 0;
-
-        return -1;
-    };
-
-    tensor<value, 3, 3, 3> eijk;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            for(int k=0; k < 3; k++)
-            {
-                eijk.idx(i, j, k) = eijk_func(i, j, k);
-            }
-        }
-    }
-
     tensor<value, 3, 3, 3> eijk_tensor = sqrt(Yij.det()) * eijk;
 
     ctx.pin(eijk_tensor);
@@ -4559,10 +4594,9 @@ int main()
     bool run = false;
     bool should_render = true;
 
-    vec3f camera_pos = {0, c_at_max/2.f - 1, 0};
-    //vec3f camera_pos = {175,200,175};
+    vec3f camera_pos = {0, 0, -c_at_max/2.f + 1};
     quat camera_quat;
-    camera_quat.load_from_axis_angle({1, 0, 0, M_PI/2});
+    camera_quat.load_from_axis_angle({1, 0, 0, 0});
 
     std::optional<cl::event> last_event;
 
