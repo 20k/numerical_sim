@@ -1665,8 +1665,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         ///made it to 532 after 2 + 3/4s orbits
         ///1125
-        black_hole_velocity[0] = v0 * v0_v.norm() * 1.069;
-        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.069;
+        black_hole_velocity[0] = v0 * v0_v.norm() * 0.65;
+        black_hole_velocity[1] = v1 * -v0_v.norm() * 0.65;
 
         float r0 = m1 * R / M;
         float r1 = m0 * R / M;
@@ -1992,7 +1992,7 @@ void build_momentum_constraint(equation_context& ctx)
     }
 
     //#define BETTERDAMP_DTCAIJ
-    //#define DAMP_DTCAIJ
+    #define DAMP_DTCAIJ
     #if defined(DAMP_DTCAIJ) || defined(BETTERDAMP_DTCAIJ)
     #define CALCULATE_MOMENTUM_CONSTRAINT
     #endif // defined
@@ -2390,7 +2390,7 @@ void build_cA(equation_context& ctx)
             dtcAij.idx(i, j) = p1 + p2 + p3;
 
             #ifdef DAMP_DTCAIJ
-            float Ka = 0.005f;
+            float Ka = 0.001f;
 
             dtcAij.idx(i, j) += Ka * gA * 0.5f *
                                                 (gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)
@@ -4630,7 +4630,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.3f);
+                i = std::min(i, 0.2f);
             }
         }
 
@@ -4638,7 +4638,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.25f);
+                i = std::min(i, 0.2f);
             }
         }
 
