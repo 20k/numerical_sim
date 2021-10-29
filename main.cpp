@@ -1646,7 +1646,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<vec3f> black_hole_pos{san_black_hole_pos({-4, 0, 0}), san_black_hole_pos({4, 0, 0})};
     //std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
     std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
-    std::vector<vec3f> black_hole_spin{{0, 0, -0.45f}, {0, 0, -0.45f}};
+    std::vector<vec3f> black_hole_spin{{0, 0, 0}, {0, 0, 0}};
 
     #define KEPLER
     #ifdef KEPLER
@@ -1665,8 +1665,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         ///made it to 532 after 2 + 3/4s orbits
         ///1125
-        black_hole_velocity[0] = v0 * v0_v.norm() * 1.2;
-        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.2;
+        black_hole_velocity[0] = v0 * v0_v.norm() * 1.069;
+        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.069;
 
         float r0 = m1 * R / M;
         float r1 = m0 * R / M;
