@@ -1665,8 +1665,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         ///made it to 532 after 2 + 3/4s orbits
         ///1125
-        black_hole_velocity[0] = v0 * v0_v.norm() * 0.65;
-        black_hole_velocity[1] = v1 * -v0_v.norm() * 0.65;
+        black_hole_velocity[0] = v0 * v0_v.norm() * 1.1f;
+        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.1f;
 
         float r0 = m1 * R / M;
         float r1 = m0 * R / M;
@@ -1992,7 +1992,7 @@ void build_momentum_constraint(equation_context& ctx)
     }
 
     //#define BETTERDAMP_DTCAIJ
-    #define DAMP_DTCAIJ
+    //#define DAMP_DTCAIJ
     #if defined(DAMP_DTCAIJ) || defined(BETTERDAMP_DTCAIJ)
     #define CALCULATE_MOMENTUM_CONSTRAINT
     #endif // defined
@@ -2390,7 +2390,7 @@ void build_cA(equation_context& ctx)
             dtcAij.idx(i, j) = p1 + p2 + p3;
 
             #ifdef DAMP_DTCAIJ
-            float Ka = 0.001f;
+            float Ka = 0.0001f;
 
             dtcAij.idx(i, j) += Ka * gA * 0.5f *
                                                 (gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)
@@ -4456,9 +4456,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.3;
+    float dissipate_low = 0.1;
     float dissipate_high = 0.3;
-    float dissipate_gauge = 0.3;
+    float dissipate_gauge = 0.1;
 
     float dissipate_caijyy = dissipate_high;
 
@@ -4516,7 +4516,7 @@ int main()
     ///I need to do this properly, where it keeps iterating until it converges
     ///todo: this doesn't converge yet!
     #ifndef GPU_PROFILE
-    for(int i=0; i < 20000; i++)
+    for(int i=0; i < 5000; i++)
     #else
     for(int i=0; i < 1000; i++)
     #endif
@@ -4630,7 +4630,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.2f);
+                i = std::min(i, 0.3f);
             }
         }
 
@@ -4638,7 +4638,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.2f);
+                i = std::min(i, 0.3f);
             }
         }
 
@@ -4827,7 +4827,7 @@ int main()
         if(steps < 10)
             timestep = 0.0001;
 
-        if(pao && time_elapsed_s > 150)
+        if(pao && time_elapsed_s > 300)
             step = false;
 
         if(step)
@@ -5206,7 +5206,10 @@ int main()
 
             }
 
-            //copy_valid(generic_data[(which_data + 1) % 2].buffers, generic_data[which_data].buffers);
+            //#define DISSIPATE_SELF
+            #ifdef DISSIPATE_SELF
+            copy_valid(generic_data[(which_data + 1) % 2].buffers, generic_data[which_data].buffers);
+            #endif // DISSIPATE_SELF
 
             {
                 for(int i=0; i < buffer_set::buffer_count; i++)
