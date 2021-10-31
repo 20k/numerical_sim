@@ -933,7 +933,7 @@ value diff2(equation_context& ctx, const value& in, int idx, int idy, const valu
             differentiation_context<5> dctx(in, idx, true, ctx.uses_linear);
             std::array<value, 5> vars = dctx.vars;
 
-            return (1/(12.f * scale)) * (-vars[0] + 16 * vars[1] - 30 * vars[2] + 16 * vars[3] - vars[4]);
+            return (-vars[0] + 16 * vars[1] - 30 * vars[2] + 16 * vars[3] - vars[4]) / (12 * scale * scale);
         }
     }
 
@@ -4569,9 +4569,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.1;
-    float dissipate_high = 0.25;
-    float dissipate_gauge = 0.1;
+    float dissipate_low = 0.25;
+    float dissipate_high = 0.3;
+    float dissipate_gauge = 0.25;
 
     float dissipate_caijyy = dissipate_high;
 
