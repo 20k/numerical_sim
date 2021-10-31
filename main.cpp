@@ -1548,6 +1548,7 @@ struct standard_arguments
     }
 };
 
+///https://arxiv.org/pdf/gr-qc/0610128.pdf initial conditions, see (7)
 tensor<value, 3, 3> calculate_single_bcAij(const vec<3, value>& pos, float black_hole_m, vec3f black_hole_pos, vec3f black_hole_velocity, vec3f black_hole_spin)
 {
     tensor<value, 3, 3, 3> eijk = get_eijk();
@@ -1648,7 +1649,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     std::vector<vec3f> black_hole_velocity{{0, 0, 0}, {0, 0, 0}};
     std::vector<vec3f> black_hole_spin{{0, 0, 0}, {0, 0, 0}};
 
-    #define KEPLER
+    //#define KEPLER
     #ifdef KEPLER
     {
         float R = (black_hole_pos[1] - black_hole_pos[0]).length();
@@ -1665,8 +1666,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
         ///made it to 532 after 2 + 3/4s orbits
         ///1125
-        black_hole_velocity[0] = v0 * v0_v.norm() * 1.1f;
-        black_hole_velocity[1] = v1 * -v0_v.norm() * 1.1f;
+        black_hole_velocity[0] = v0 * v0_v.norm() * 0.6575f;
+        black_hole_velocity[1] = v1 * -v0_v.norm() * 0.6575f;
 
         float r0 = m1 * R / M;
         float r1 = m0 * R / M;
@@ -1675,6 +1676,16 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
         black_hole_pos[1] = san_black_hole_pos({r1, 0, 0});
     }
     #endif // KEPLER
+
+    ///https://arxiv.org/pdf/gr-qc/0610128.pdf
+    #define PAPER_0610128
+    #ifdef PAPER_0610128
+    black_hole_m = {0.483, 0.483};
+    black_hole_pos = {san_black_hole_pos({-3.257, 0.f, 0.f}), san_black_hole_pos({3.257, 0, 0})};
+    black_hole_velocity = {{0, 0.133 / black_hole_m[0], 0}, {0, -0.133 / black_hole_m[1], 0}};
+    black_hole_spin = {{0,0,0}, {0,0,0}};
+
+    #endif // PAPER_0610128
 
     metric<value, 3, 3> flat_metric;
 
@@ -2735,12 +2746,19 @@ void build_gB(equation_context& ctx)
         dtgB.idx(i) = (3.f/4.f) * args.gBB.idx(i) + bjdjbi.idx(i);
     }*/
 
+    #ifdef PAPER_0610128
+    float N = 1;
+
+    dtgB = (3.f/4.f) * args.gBB;
+
+    dtgBB = dtcGi - N * args.gBB;
+    #else
     dtgB = (3.f/4.f) * args.gBB + bjdjbi;
 
     float N = 2;
 
     dtgBB = dtcGi - N * args.gBB + bjdjBi - christoffd;
-
+    #endif // PAPER_0610128
     #endif // USE_GBB
 
     for(int i=0; i < 3; i++)
@@ -4457,7 +4475,7 @@ int main()
     };
 
     float dissipate_low = 0.1;
-    float dissipate_high = 0.3;
+    float dissipate_high = 0.25;
     float dissipate_gauge = 0.1;
 
     float dissipate_caijyy = dissipate_high;
@@ -4630,7 +4648,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.3f);
+                i = std::min(i, 0.25f);
             }
         }
 
@@ -4638,7 +4656,7 @@ int main()
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.3f);
+                i = std::min(i, 0.25f);
             }
         }
 
@@ -4817,7 +4835,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.035;
+        float timestep = 0.02;
 
         //timestep = 0.04;
 
