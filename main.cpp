@@ -884,7 +884,7 @@ value hacky_differentiate(const value& in, int idx, bool pin = true, bool linear
 }
 #endif // 0
 
-template<int order = 2>
+template<int order = 3>
 value diff1(equation_context& ctx, const value& in, int idx)
 {
     static_assert(order == 1 || order == 2 || order == 3);
@@ -913,20 +913,20 @@ value diff1(equation_context& ctx, const value& in, int idx)
     }
 }
 
-template<int order = 2>
+template<int order = 3>
 value diff2(equation_context& ctx, const value& in, int idx, int idy, const value& first_x)
 {
-    static_assert(order == 1 || order == 2);
+    static_assert(order == 1 || order == 2 || order == 3);
     value scale = "scale";
 
-    if(idx == idy)
+    /*if(idx == idy)
     {
         if(order == 1)
         {
             differentiation_context<3> dctx(in, idx, true, ctx.uses_linear);
             std::array<value, 3> vars = dctx.vars;
 
-            return (vars[0] - 2 * vars[1] + vars[2]) / scale;
+            return (vars[0] - 2 * vars[1] + vars[2]) / (scale * scale);
         }
         else if(order == 2)
         {
@@ -935,7 +935,14 @@ value diff2(equation_context& ctx, const value& in, int idx, int idy, const valu
 
             return (-vars[0] + 16 * vars[1] - 30 * vars[2] + 16 * vars[3] - vars[4]) / (12 * scale * scale);
         }
-    }
+        else if(order == 3)
+        {
+            differentiation_context<7> dctx(in, idx, true, ctx.uses_linear);
+            std::array<value, 7> vars = dctx.vars;
+
+            return ((1/90.f) * vars[0] - (3/20.f) * vars[1] + (3/2.f) * vars[2] - (49/18.f) * vars[3] + (3/2.f) * vars[4] - (3/20.f) * vars[5] + (1/90.f) * vars[6]) / (scale * scale);
+        }
+    }*/
 
     //if(idy < idx)
     //    std::swap(idx, idy);
@@ -2839,19 +2846,19 @@ void build_gB(equation_context& ctx)
         dtgB.idx(i) = (3.f/4.f) * args.gBB.idx(i) + bjdjbi.idx(i);
     }*/
 
-    #ifdef PAPER_0610128
+    /*#ifdef PAPER_0610128
     float N = 1;
 
     dtgB = (3.f/4.f) * args.gBB;
 
     dtgBB = dtcGi - N * args.gBB;
-    #else
+    #else*/
     dtgB = (3.f/4.f) * args.gBB + bjdjbi;
 
-    float N = 2;
+    float N = 1;
 
     dtgBB = dtcGi - N * args.gBB + bjdjBi - christoffd;
-    #endif // PAPER_0610128
+    //#endif // PAPER_0610128
     #endif // USE_GBB
 
     for(int i=0; i < 3; i++)
@@ -4570,8 +4577,8 @@ int main()
     };
 
     float dissipate_low = 0.25;
-    float dissipate_high = 0.3;
-    float dissipate_gauge = 0.25;
+    float dissipate_high = 0.25;
+    float dissipate_gauge = 0.05;
 
     float dissipate_caijyy = dissipate_high;
 
@@ -4739,7 +4746,7 @@ int main()
             }
         }*/
 
-        if(time_elapsed_s >= 10)
+        if(time_elapsed_s >= 15)
         {
             for(auto& i : dissipation_coefficients)
             {
