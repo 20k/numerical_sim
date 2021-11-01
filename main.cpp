@@ -884,10 +884,10 @@ value hacky_differentiate(const value& in, int idx, bool pin = true, bool linear
 }
 #endif // 0
 
-template<int order = 3>
+template<int order = 2>
 value diff1(equation_context& ctx, const value& in, int idx)
 {
-    static_assert(order == 1 || order == 2 || order == 3);
+    static_assert(order == 1 || order == 2 || order == 3 || order == 4);
     value scale = "scale";
 
     if(order == 1)
@@ -911,15 +911,22 @@ value diff1(equation_context& ctx, const value& in, int idx)
 
         return (-(1/60.f) * vars[0] + (3/20.f) * vars[1] - (3/4.f) * vars[2] + 0 * vars[3] + (3/4.f) * vars[4] - (3/20.f) * vars[5] + (1/60.f) * vars[6]) / scale;
     }
+    else if(order == 4)
+    {
+        differentiation_context<9> dctx(in, idx, true, ctx.uses_linear);
+        std::array<value, 9> vars = dctx.vars;
+
+        return ((1/280.f) * vars[0] - (4/105.f) * vars[1] + (1/5.f) * vars[2] - (4/5.f) * vars[3] + (4/5.f) * vars[5] - (1/5.f) * vars[6] + (4/105.f) * vars[7] - (1/280.f) * vars[8]) / scale;
+    }
 }
 
-template<int order = 3>
+template<int order = 2>
 value diff2(equation_context& ctx, const value& in, int idx, int idy, const value& first_x)
 {
-    static_assert(order == 1 || order == 2 || order == 3);
+    static_assert(order == 1 || order == 2 || order == 3 || order == 4);
     value scale = "scale";
 
-    /*if(idx == idy)
+    if(idx == idy)
     {
         if(order == 1)
         {
@@ -942,7 +949,14 @@ value diff2(equation_context& ctx, const value& in, int idx, int idy, const valu
 
             return ((1/90.f) * vars[0] - (3/20.f) * vars[1] + (3/2.f) * vars[2] - (49/18.f) * vars[3] + (3/2.f) * vars[4] - (3/20.f) * vars[5] + (1/90.f) * vars[6]) / (scale * scale);
         }
-    }*/
+        else if(order == 4)
+        {
+            differentiation_context<9> dctx(in, idx, true, ctx.uses_linear);
+            std::array<value, 9> vars = dctx.vars;
+
+            return ((-1/560.f) * vars[0] + (8/315.f) * vars[1] - (1/5.f) * vars[2] + (8/5.f) * vars[3] - (205/72.f) * vars[4] + (8/5.f) * vars[5] - (1/5.f) * vars[6] + (8/315.f) * vars[7] - (1/560.f) * vars[8]) / (scale * scale);
+        }
+    }
 
     //if(idy < idx)
     //    std::swap(idx, idy);
@@ -4576,9 +4590,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.25;
-    float dissipate_high = 0.25;
-    float dissipate_gauge = 0.05;
+    float dissipate_low = 0.2;
+    float dissipate_high = 0.2;
+    float dissipate_gauge = 0.0;
 
     float dissipate_caijyy = dissipate_high;
 
@@ -4754,13 +4768,21 @@ int main()
             }
         }
 
-        if(time_elapsed_s >= 25)
+        if(time_elapsed_s >= 40)
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.25f);
+                i = std::min(i, 0.2f);
             }
         }
+
+        /*if(time_elapsed_s >= 70)
+        {
+            for(auto& i : dissipation_coefficients)
+            {
+                i = std::min(i, 0.1f);
+            }
+        }*/
 
         /*if(time_elapsed_s >= 40)
         {
