@@ -561,7 +561,7 @@ struct differentiation_context
     std::array<value, elements> ys;
     std::array<value, elements> zs;
 
-    differentiation_context(const value& in, int idx, bool should_pin = true, bool linear_interpolation = false)
+    differentiation_context(const value& in, int idx, bool should_pin = true, bool linear_interpolation = false, vec<3, value> idx_offset = {"0","0","0"})
     {
         std::vector<std::string> variables = in.get_all_variables();
 
@@ -640,6 +640,21 @@ struct differentiation_context
                 ys[i] += offset;
             if(idx == 2)
                 zs[i] += offset;
+        }
+
+        for(auto& i : xs)
+        {
+            i += idx_offset[0];
+        }
+
+        for(auto& i : ys)
+        {
+            i += idx_offset[1];
+        }
+
+        for(auto& i : zs)
+        {
+            i += idx_offset[2];
         }
 
         std::array<std::map<std::string, std::string>, elements> substitutions;
@@ -923,6 +938,7 @@ value diff1(equation_context& ctx, const value& in, int idx)
 template<int order = 2>
 value diff2(equation_context& ctx, const value& in, int idx, int idy, const value& first_x)
 {
+    #if 0
     static_assert(order == 1 || order == 2 || order == 3 || order == 4);
     value scale = "scale";
 
@@ -962,6 +978,59 @@ value diff2(equation_context& ctx, const value& in, int idx, int idy, const valu
     //    std::swap(idx, idy);
 
     return diff1<order>(ctx, first_x, idy);
+    #endif // 0
+
+    value scale = "scale";
+
+    if(idx == idy)
+    {
+        differentiation_context<5> dctx(in, idx, true, ctx.uses_linear, {"0", "0", "0"});
+        std::array<value, 5> vars = dctx.vars;
+
+        return (1.f/(12.f * scale * scale)) * (-vars[4] + 16.f * vars[3] - 30.f * vars[2] + 16.f * vars[1] - vars[0]);
+    }
+
+    std::array<float, 25> coefficients
+    {
+        1, -8, 0, 8, -1,
+       -8, 64, 0,-64, 8,
+        0,  0, 0,  0, 0,
+        8,-64, 0, 64,-8,
+       -1,  8, 0, -8, 1,
+    };
+
+    value accum = 0;
+
+    for(int i=0; i < 5; i++)
+    {
+        for(int j=0; j < 5; j++)
+        {
+            ///[-2, -1, 0, 1, 2]
+            int local_i = i - 2;
+            int local_j = j - 2;
+
+            float coeff = coefficients[i * 5 + j];
+
+            vec<3, value> offsets = {"0", "0", "0"};
+
+            assert(idx != idy);
+
+            offsets[idx] = std::to_string(local_i);
+            offsets[idy] = std::to_string(local_j);
+
+            differentiation_context<5> dctx(in, 0, true, ctx.uses_linear, offsets);
+
+            /*std::cout << "WHICH " << idx << " " << idy << std::endl;
+            std::cout << "WHERE " << local_i << " " << local_j << std::endl;
+            std::cout << "VARS " << type_to_string(dctx.vars[2]) << std::endl;*/
+
+            accum += dctx.vars[2] * coeff;
+        }
+    }
+
+    std::cout << "ACCUM " << type_to_string(accum) << std::endl;
+
+    return accum / (144.f * scale * scale);
 }
 
 /*tensor<value, 3> tensor_derivative(equation_context& ctx, const value& in)
@@ -1544,7 +1613,7 @@ struct standard_arguments
         momentum_constraint.idx(2).make_value(bidx("momentum2", interpolate));
 
 
-        for(int k=0; k < 3; k++)
+        /*for(int k=0; k < 3; k++)
         {
             for(int i=0; i < 3; i++)
             {
@@ -1581,7 +1650,7 @@ struct standard_arguments
 
                 digB.idx(i, j).make_value(name);
             }
-        }
+        }*/
 
         tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, cY, icY);
 
@@ -2331,11 +2400,11 @@ tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& 
                 for(int n=0; n < 3; n++)
                 {
                     sum += args.gA * (args.cY.idx(i, j) / 2.f) * icY.idx(m, n) * cov_div_X.idx(n, m);
-                    sum += (args.cY.idx(i, j) / 2.f) * gA_X * -(3.f/2.f) * icY.idx(m, n) * args.dX.idx(m) * args.dX.idx(n);
+                    sum += (args.cY.idx(i, j) / 2.f) * gA_X * -(3.f/2.f) * icY.idx(m, n) * diff1(ctx, args.X, m) * diff1(ctx, args.X, n);
                 }
             }
 
-            value p2 = (1/2.f) * (args.gA * gpu_double_covariant_derivative(ctx, args.X, args.dX, args.cY, icY).idx(j, i) - gA_X * (1/2.f) * args.dX.idx(i) * args.dX.idx(j));
+            value p2 = (1/2.f) * (args.gA * gpu_double_covariant_derivative(ctx, args.X, args.dX, args.cY, icY).idx(j, i) - gA_X * (1/2.f) * diff1(ctx, args.X, i) * diff1(ctx, args.X, j));
 
             xgARphiij.idx(i, j) = sum + p2;
         }
@@ -2626,7 +2695,8 @@ void build_cGi(equation_context& ctx)
 
         for(int j=0; j < 3; j++)
         {
-            s6 += -derived_cGi.idx(j) * args.digB.idx(j, i);
+            //s6 += -derived_cGi.idx(j) * args.digB.idx(j, i);
+            s6 += -derived_cGi.idx(j) * diff1(ctx, args.gB.idx(i), j);
         }
 
         value s7 = 0;
@@ -2655,7 +2725,7 @@ void build_cGi(equation_context& ctx)
 
         for(int k=0; k < 3; k++)
         {
-            s9 += (2.f/3.f) * args.digB.idx(k, k) * derived_cGi.idx(i);
+            s9 += (2.f/3.f) * diff1(ctx, args.gB.idx(k), k) * derived_cGi.idx(i);
         }
 
         ///this is the only instanced of derived_cGi that might want to be regular cGi
@@ -2678,13 +2748,14 @@ void build_cGi(equation_context& ctx)
 
         for(int k=0; k < 3; k++)
         {
-            bkk += args.digB.idx(k, k);
+            //bkk += args.digB.idx(k, k);
+            bkk += diff1(ctx, args.gB.idx(k), k);
         }
 
         float E = 1;
 
         value lambdai = (2.f/3.f) * (bkk - 2 * gA * K)
-                        - args.digB.idx(i, i)
+                        - diff1(ctx, args.gB.idx(i), i)
                         - (2.f/5.f) * gA * raise_second_index(cA, cY, icY).idx(i, i);
 
         dtcGi.idx(i) += -(1 + E) * step(lambdai) * lambdai * args.bigGi.idx(i);
@@ -5011,7 +5082,7 @@ int main()
                         int i2 = idx * 3 + 1;
                         int i3 = idx * 3 + 2;
 
-                        differentiate(buffers[idx], thin_intermediates[i1], thin_intermediates[i2], thin_intermediates[i3]);
+                        //differentiate(buffers[idx], thin_intermediates[i1], thin_intermediates[i2], thin_intermediates[i3]);
                     }
                 }
 
