@@ -1271,13 +1271,14 @@ void dissipate_single(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
 
+    //#define VARIABLE_DAMP
     #ifdef VARIABLE_DAMP
     float3 offset = transform_position(ix, iy, iz, dim, scale);
 
     float radius = length(offset);
 
     float inner_radius = 0.f;
-    float outer_radius = 2.f;
+    float outer_radius = 3.f;
 
     float inner_diss = 0.25f;
     float outer_diss = 1.f;

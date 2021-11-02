@@ -1221,7 +1221,7 @@ template<typename T, int N>
 inline
 tensor<T, N, N> gpu_covariant_derivative_low_vec(equation_context& ctx, const tensor<T, N>& v_in, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
 {
-    auto christoff = gpu_christoffel_symbols_2(met, inverse);
+    auto christoff = gpu_christoffel_symbols_2(ctx, met, inverse);
 
     tensor<T, N, N> lac;
 
@@ -2114,7 +2114,7 @@ void build_momentum_constraint(equation_context& ctx)
     }
 
     //#define BETTERDAMP_DTCAIJ
-    //#define DAMP_DTCAIJ
+    #define DAMP_DTCAIJ
     #if defined(DAMP_DTCAIJ) || defined(BETTERDAMP_DTCAIJ)
     #define CALCULATE_MOMENTUM_CONSTRAINT
     #endif // defined
@@ -2136,13 +2136,13 @@ void build_momentum_constraint(equation_context& ctx)
             }
         }
 
-        value s2 = -(2.f/3.f) * hacky_differentiate(args.K, i);
+        value s2 = -(2.f/3.f) * diff1(ctx, args.K, i);
 
         value s3 = 0;
 
         for(int m=0; m < 3; m++)
         {
-            s3 += -(3.f/2.f) * mixed_cAij.idx(m, i) * hacky_differentiate(args.X, m) / X_clamped;
+            s3 += -(3.f/2.f) * mixed_cAij.idx(m, i) * diff1(ctx, args.X, m) / X_clamped;
         }
 
         /*Mi.idx(i) = dual_if(args.X <= 0.001f,
@@ -4590,9 +4590,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.2;
-    float dissipate_high = 0.2;
-    float dissipate_gauge = 0.0;
+    float dissipate_low = 0.1;
+    float dissipate_high = 0.15;
+    float dissipate_gauge = 0.1;
 
     float dissipate_caijyy = dissipate_high;
 
@@ -4760,11 +4760,11 @@ int main()
             }
         }*/
 
-        if(time_elapsed_s >= 15)
+        if(time_elapsed_s >= 10)
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.25f);
+                i = std::min(i, 0.15f);
             }
         }
 
