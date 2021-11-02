@@ -1271,22 +1271,26 @@ void dissipate_single(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
 
+    #define VARIABLE_DAMP
     #ifdef VARIABLE_DAMP
     float3 offset = transform_position(ix, iy, iz, dim, scale);
 
     float radius = length(offset);
 
-    float inner_radius = 0.f;
-    float outer_radius = 2.f;
+    float inner_radius = 9.f;
+    float outer_radius = 15.f;
 
-    float inner_diss = 0.25f;
-    float outer_diss = 1.f;
+    float inner_diss = 1.f;
+    float outer_diss = 2.f;
 
     float clamped = clamp(radius, inner_radius, outer_radius);
 
-    float frac = (radius - inner_radius) / (outer_radius - inner_radius);
+    float frac = (clamped - inner_radius) / (outer_radius - inner_radius);
 
     float damp = frac * (outer_diss - inner_diss) + inner_diss;
+
+    //if(clamped < 14)
+    //printf("Rad frac %f %f %i %i %i\n", clamped, damp, ix, iy, iz);
     #else
     float damp = 1;
     #endif

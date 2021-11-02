@@ -1221,7 +1221,7 @@ template<typename T, int N>
 inline
 tensor<T, N, N> gpu_covariant_derivative_low_vec(equation_context& ctx, const tensor<T, N>& v_in, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
 {
-    auto christoff = gpu_christoffel_symbols_2(met, inverse);
+    auto christoff = gpu_christoffel_symbols_2(ctx, met, inverse);
 
     tensor<T, N, N> lac;
 
@@ -1793,7 +1793,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     #ifdef PAPER_0610128
     black_hole_m = {0.483, 0.483};
     black_hole_pos = {san_black_hole_pos({-3.257, 0.f, 0.f}), san_black_hole_pos({3.257, 0, 0})};
-    black_hole_velocity = {{0, 0.133 / black_hole_m[0], 0}, {0, -0.133 / black_hole_m[1], 0}};
+    black_hole_velocity = {{0, 0.9875 * 0.133 / black_hole_m[0], 0}, {0, 0.9875 * -0.133 / black_hole_m[1], 0}};
     black_hole_spin = {{0,0,0}, {0,0,0}};
 
     #endif // PAPER_0610128
@@ -1907,8 +1907,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         }
     }
 
-    value gA = 1;
-    //value gA = 1/(pow(bl_conformal + u, 2));
+    //value gA = 1;
+    value gA = 1/(pow(bl_conformal + u, 2));
     value gB0 = 0;
     value gB1 = 0;
     value gB2 = 0;
@@ -1970,7 +1970,7 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ctx.add("init_gB1", gB1);
     ctx.add("init_gB2", gB2);
 
-    #define USE_GBB
+    //#define USE_GBB
     #ifdef USE_GBB
     value gBB0 = 0;
     value gBB1 = 0;
@@ -2136,13 +2136,13 @@ void build_momentum_constraint(equation_context& ctx)
             }
         }
 
-        value s2 = -(2.f/3.f) * hacky_differentiate(args.K, i);
+        value s2 = -(2.f/3.f) * diff1(ctx, args.K, i);
 
         value s3 = 0;
 
         for(int m=0; m < 3; m++)
         {
-            s3 += -(3.f/2.f) * mixed_cAij.idx(m, i) * hacky_differentiate(args.X, m) / X_clamped;
+            s3 += -(3.f/2.f) * mixed_cAij.idx(m, i) * diff1(ctx, args.X, m) / X_clamped;
         }
 
         /*Mi.idx(i) = dual_if(args.X <= 0.001f,
@@ -4590,9 +4590,9 @@ int main()
         assert(false);
     };
 
-    float dissipate_low = 0.2;
-    float dissipate_high = 0.2;
-    float dissipate_gauge = 0.0;
+    float dissipate_low = 0.25;
+    float dissipate_high = 0.25;
+    float dissipate_gauge = 0.25;
 
     float dissipate_caijyy = dissipate_high;
 
@@ -4760,21 +4760,21 @@ int main()
             }
         }*/
 
-        if(time_elapsed_s >= 15)
+        if(time_elapsed_s >= 30)
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.25f);
+                //i = std::min(i, 0.2f);
             }
         }
 
-        if(time_elapsed_s >= 40)
+        /*if(time_elapsed_s >= 30)
         {
             for(auto& i : dissipation_coefficients)
             {
-                i = std::min(i, 0.2f);
+                i = std::min(i, 0.15f);
             }
-        }
+        }*/
 
         /*if(time_elapsed_s >= 70)
         {
@@ -4959,7 +4959,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.02;
+        float timestep = 0.035;
 
         //timestep = 0.04;
 
