@@ -926,7 +926,7 @@ value diff2(equation_context& ctx, const value& in, int idx, int idy, const valu
     static_assert(order == 1 || order == 2 || order == 3 || order == 4);
     value scale = "scale";
 
-    if(idx == idy)
+    /*if(idx == idy)
     {
         if(order == 1)
         {
@@ -956,7 +956,7 @@ value diff2(equation_context& ctx, const value& in, int idx, int idy, const valu
 
             return ((-1/560.f) * vars[0] + (8/315.f) * vars[1] - (1/5.f) * vars[2] + (8/5.f) * vars[3] - (205/72.f) * vars[4] + (8/5.f) * vars[5] - (1/5.f) * vars[6] + (8/315.f) * vars[7] - (1/560.f) * vars[8]) / (scale * scale);
         }
-    }
+    }*/
 
     //if(idy < idx)
     //    std::swap(idx, idy);
