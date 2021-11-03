@@ -2271,20 +2271,24 @@ tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& 
     {
         for(int j=0; j < 3; j++)
         {
-            value sum = 0;
+            value s1 = 0;
+            value s2 = 0;
 
             for(int m=0; m < 3; m++)
             {
                 for(int n=0; n < 3; n++)
                 {
-                    sum += args.gA * (args.cY.idx(i, j) / 2.f) * icY.idx(m, n) * cov_div_X.idx(n, m);
-                    sum += (args.cY.idx(i, j) / 2.f) * gA_X * -(3.f/2.f) * icY.idx(m, n) * args.dX.idx(m) * args.dX.idx(n);
+                    s1 += icY.idx(m, n) * cov_div_X.idx(n, m);
+                    s2 += icY.idx(m, n) * args.dX.idx(m) * args.dX.idx(n);
                 }
             }
 
-            value p2 = (1/2.f) * (args.gA * gpu_double_covariant_derivative(ctx, args.X, args.dX, args.cY, icY).idx(j, i) - gA_X * (1/2.f) * args.dX.idx(i) * args.dX.idx(j));
+            value s3 = (1/2.f) * (args.gA * cov_div_X.idx(j, i) - gA_X * (1/2.f) * args.dX.idx(i) * args.dX.idx(j));
 
-            xgARphiij.idx(i, j) = sum + p2;
+            s1 = args.gA * (args.cY.idx(i, j) / 2.f) * s1;
+            s2 = gA_X * (args.cY.idx(i, j) / 2.f) * -(3.f/2.f) * s2;
+
+            xgARphiij.idx(i, j) = s1 + s2 + s3;
         }
     }
 
@@ -2358,13 +2362,13 @@ void build_cA(equation_context& ctx)
             {
                 for(int n=0; n < 3; n++)
                 {
-                    value v = -0.5f * cY.idx(i, j) * icY.idx(m, n) * diff1(ctx, X, m) * diff1(ctx, gA, n);
+                    value v = icY.idx(m, n) * diff1(ctx, X, m) * diff1(ctx, gA, n);
 
                     s3 += v;
                 }
             }
 
-            Xdidja.idx(i, j) = Xderiv + s2 + s3;
+            Xdidja.idx(i, j) = Xderiv + s2 + -0.5f * cY.idx(i, j) * s3;
         }
     }
 
