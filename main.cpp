@@ -1793,7 +1793,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     #ifdef PAPER_0610128
     black_hole_m = {0.483, 0.483};
     black_hole_pos = {san_black_hole_pos({-3.257, 0.f, 0.f}), san_black_hole_pos({3.257, 0, 0})};
-    black_hole_velocity = {{0, 0.9875 * 0.133 / black_hole_m[0], 0}, {0, 0.9875 * -0.133 / black_hole_m[1], 0}};
+    black_hole_velocity = {{0, 0.98775 * 0.133 / black_hole_m[0], 0}, {0, 0.98775 * -0.133 / black_hole_m[1], 0}};
     black_hole_spin = {{0,0,0}, {0,0,0}};
 
     #endif // PAPER_0610128
