@@ -106,6 +106,8 @@ struct equation_context
     std::vector<std::pair<value, value>> aliases;
     bool uses_linear = false;
 
+    int order = 2;
+
     void pin(value& v)
     {
         for(auto& i : temporaries)
@@ -884,10 +886,10 @@ value hacky_differentiate(const value& in, int idx, bool pin = true, bool linear
 }
 #endif // 0
 
-template<int order = 2>
 value diff1(equation_context& ctx, const value& in, int idx)
 {
-    static_assert(order == 1 || order == 2 || order == 3 || order == 4);
+    int order = ctx.order;
+
     value scale = "scale";
 
     if(order == 1)
@@ -918,12 +920,15 @@ value diff1(equation_context& ctx, const value& in, int idx)
 
         return ((1/280.f) * vars[0] - (4/105.f) * vars[1] + (1/5.f) * vars[2] - (4/5.f) * vars[3] + (4/5.f) * vars[5] - (1/5.f) * vars[6] + (4/105.f) * vars[7] - (1/280.f) * vars[8]) / scale;
     }
+
+    assert(false);
+    return 0;
 }
 
-template<int order = 2>
 value diff2(equation_context& ctx, const value& in, int idx, int idy, const value& first_x)
 {
-    static_assert(order == 1 || order == 2 || order == 3 || order == 4);
+    int order = ctx.order;
+
     value scale = "scale";
 
     /*if(idx == idy)
@@ -961,7 +966,7 @@ value diff2(equation_context& ctx, const value& in, int idx, int idy, const valu
     //if(idy < idx)
     //    std::swap(idx, idy);
 
-    return diff1<order>(ctx, first_x, idy);
+    return diff1(ctx, first_x, idy);
 }
 
 /*tensor<value, 3> tensor_derivative(equation_context& ctx, const value& in)
@@ -3738,6 +3743,8 @@ vec<3, value> unrotate_vector(const vec<3, value>& bx, const vec<3, value>& by, 
 
 void process_geodesics(equation_context& ctx)
 {
+    ctx.order = 1;
+
     standard_arguments args(ctx);
 
     /*vec<3, value> camera;
@@ -3874,6 +3881,8 @@ value dot_metric(const tensor<value, N>& v1_upper, const tensor<value, N>& v2_up
 ///https://arxiv.org/pdf/1208.3927.pdf (28a)
 void loop_geodesics(equation_context& ctx, vec3f dim)
 {
+    ctx.order = 1;
+
     standard_arguments args(ctx);
 
     ctx.pin(args.Kij);
@@ -3891,8 +3900,6 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
     vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
 
-    constexpr int order = 1;
-
     tensor<value, 3, 3> digB;
 
     ///derivative
@@ -3901,7 +3908,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         ///index
         for(int j=0; j < 3; j++)
         {
-            digB.idx(i, j) = diff1<order>(ctx, args.gB.idx(j), i);
+            digB.idx(i, j) = diff1(ctx, args.gB.idx(j), i);
         }
     }
 
@@ -3909,7 +3916,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     for(int i=0; i < 3; i++)
     {
-        digA.idx(i) = diff1<order>(ctx, args.gA, i);
+        digA.idx(i) = diff1(ctx, args.gA, i);
     }
 
     float universe_length = (dim/2.f).max_elem();
@@ -3946,11 +3953,11 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
                 for(int m=0; m < 3; m++)
                 {
-                    sm += icY.idx(i, m) * diff1<order>(ctx, args.X, m);
+                    sm += icY.idx(i, m) * diff1(ctx, args.X, m);
                 }
 
                 full_christoffel2.idx(i, j, k) = conformal_christoff2.idx(i, j, k) -
-                                                 (1.f/(2.f * max(args.X, 0.001f))) * (kronecker_ik * diff1<order>(ctx, args.X, j) + kronecker_ij * diff1<order>(ctx, args.X, k) - args.cY.idx(j, k) * sm);
+                                                 (1.f/(2.f * max(args.X, 0.001f))) * (kronecker_ik * diff1(ctx, args.X, j) + kronecker_ij * diff1(ctx, args.X, k) - args.cY.idx(j, k) * sm);
             }
         }
     }
@@ -3988,8 +3995,8 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
                 christoffel_sum += full_christoffel2.idx(i, j, k) * V_upper.idx(k);
             }
 
-            V_upper_diff.idx(i) += args.gA * V_upper.idx(j) * (V_upper.idx(i) * (diff1<order>(ctx, log(max(args.gA, 0.0001f)), j) - kjvk) + 2 * raise_index(args.Kij, args.Yij, iYij).idx(i, j) - christoffel_sum)
-                                   - iYij.idx(i, j) * diff1<order>(ctx, args.gA, j) - V_upper.idx(j) * diff1<order>(ctx, args.gB.idx(i), j);
+            V_upper_diff.idx(i) += args.gA * V_upper.idx(j) * (V_upper.idx(i) * (diff1(ctx, log(max(args.gA, 0.0001f)), j) - kjvk) + 2 * raise_index(args.Kij, args.Yij, iYij).idx(i, j) - christoffel_sum)
+                                   - iYij.idx(i, j) * diff1(ctx, args.gA, j) - V_upper.idx(j) * diff1(ctx, args.gB.idx(i), j);
 
         }
     }
