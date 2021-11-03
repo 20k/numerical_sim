@@ -1271,7 +1271,7 @@ void dissipate_single(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
 
-    #define VARIABLE_DAMP
+    //#define VARIABLE_DAMP
     #ifdef VARIABLE_DAMP
     float3 offset = transform_position(ix, iy, iz, dim, scale);
 
