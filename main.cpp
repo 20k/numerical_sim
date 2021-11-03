@@ -386,7 +386,7 @@ std::string strip_variable(std::string in)
 }
 
 inline
-std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
+std::tuple<std::string, std::string> decompose_variable(std::string str)
 {
     std::string buffer;
     std::string val;
@@ -469,45 +469,7 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
         "momentum2",
     };
 
-    bool uses_extension = false;
-
-    if(str.starts_with("v->"))
-    {
-        buffer = "in";
-
-        val = str;
-
-        val.erase(val.begin());
-        val.erase(val.begin());
-        val.erase(val.begin());
-
-        uses_extension = true;
-    }
-    else if(str.starts_with("v."))
-    {
-        buffer = "in";
-
-        val = str;
-
-        val.erase(val.begin());
-        val.erase(val.begin());
-
-        uses_extension = true;
-    }
-    else if(str.starts_with("ik."))
-    {
-        buffer = "temp_in";
-
-        val = str;
-
-        val.erase(val.begin());
-        val.erase(val.begin());
-        val.erase(val.begin());
-
-        uses_extension = true;
-    }
-
-    else if(str.starts_with("buffer_read_linear"))
+    if(str.starts_with("buffer_read_linear"))
     {
         std::string_view sview = str;
         sview.remove_prefix(strlen("buffer_read_linear("));
@@ -551,7 +513,7 @@ std::tuple<std::string, std::string, bool> decompose_variable(std::string str)
         assert(any_found);
     }
 
-    return {buffer, val, uses_extension};
+    return {buffer, val};
 }
 
 template<int elements = 5>
@@ -579,41 +541,21 @@ struct differentiation_context
             return "buffer_read_linear(" + buffer + ",(float3)(" + type_to_string(x, false) + "," + type_to_string(y, false) + "," + type_to_string(z, false) + "),dim)";
         };
 
-        auto index_buffer = [](const std::string& variable, const std::string& buffer, const std::string& with_what)
-        {
-            return buffer + "[" + with_what + "]." + variable;
-        };
-
         auto index_without_extension = [](const std::string& buffer, const std::string& with_what)
         {
             return buffer + "[" + with_what + "]";
         };
 
-        auto index = [index_buffer, index_without_extension, index_raw, fetch_linear, linear_interpolation](const std::string& val, const std::string& buffer, bool uses_extension, const value& x, const value& y, const value& z)
+        auto index = [index_without_extension, index_raw, fetch_linear, linear_interpolation](const std::string& val, const std::string& buffer, const value& x, const value& y, const value& z)
         {
-            value v;
-
             if(linear_interpolation)
             {
-                if(uses_extension)
-                {
-                    std::cout << "Uses extension " << buffer << std::endl;
-                }
-
-                assert(!uses_extension);
-
-                v = value(fetch_linear(buffer, x, y, z));
+                return fetch_linear(buffer, x, y, z);
             }
-
             else
             {
-                if(uses_extension)
-                    v = value(index_buffer(val, buffer, index_raw(x, y, z)));
-                else
-                    v = value(index_without_extension(buffer, index_raw(x, y, z)));
+                return index_without_extension(buffer, index_raw(x, y, z));
             }
-
-            return v;
         };
 
         for(int i=0; i < elements; i++)
@@ -648,11 +590,11 @@ struct differentiation_context
 
         for(auto& i : variables)
         {
-            std::tuple<std::string, std::string, bool> decomp = decompose_variable(i);
+            std::tuple<std::string, std::string> decomp = decompose_variable(i);
 
             for(int kk=0; kk < elements; kk++)
             {
-                value to_sub = index(std::get<1>(decomp), std::get<0>(decomp), std::get<2>(decomp), xs[kk], ys[kk], zs[kk]);
+                value to_sub = index(std::get<1>(decomp), std::get<0>(decomp), xs[kk], ys[kk], zs[kk]);
 
                 substitutions[kk][i] = type_to_string(to_sub);
             }
@@ -4268,7 +4210,7 @@ struct gravitational_wave_manager
 
         float r_extract = c_at_max/3;
 
-        for(int i=0; i < wave_buffers.size(); i++)
+        for(int i=0; i < (int)wave_buffers.size(); i++)
         {
             wave_buffers[i].alloc(sizeof(cl_float2) * elements);
         }
