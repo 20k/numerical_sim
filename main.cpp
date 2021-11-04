@@ -867,7 +867,7 @@ value diff1(equation_context& ctx, const value& in, int idx)
     return 0;
 }
 
-value diff2(equation_context& ctx, const value& in, int idx, int idy, const value& first_x)
+value diff2(equation_context& ctx, const value& in, int idx, int idy, const value& first_x, const value& first_y)
 {
     int order = ctx.order;
 
@@ -905,8 +905,17 @@ value diff2(equation_context& ctx, const value& in, int idx, int idy, const valu
         }
     }*/
 
-    //if(idy < idx)
-    //    std::swap(idx, idy);
+    #define SYMMETRIC_DERIVATIVES
+    #ifdef SYMMETRIC_DERIVATIVES
+    if(idx < idy)
+    {
+        return diff1(ctx, first_y, idx);
+    }
+    else
+    {
+        return diff1(ctx, first_x, idy);
+    }
+    #endif // SYMMETRIC_DERIVATIVES
 
     return diff1(ctx, first_x, idy);
 }
@@ -1209,7 +1218,7 @@ tensor<T, N, N> gpu_double_covariant_derivative(equation_context& ctx, const T& 
                 sum += christoff.idx(b, c, a) * diff1(ctx, in, b);
             }
 
-            lac.idx(a, c) = diff2(ctx, in, a, c, first_derivatives.idx(a)) - sum;
+            lac.idx(a, c) = diff2(ctx, in, a, c, first_derivatives.idx(a), first_derivatives.idx(c)) - sum;
         }
     }
 
@@ -2216,7 +2225,7 @@ tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& 
             {
                 for(int m=0; m < 3; m++)
                 {
-                    s1 = s1 + -0.5f * icY.idx(l, m) * diff2(ctx, args.cY.idx(i, j), m, l, args.dcYij.idx(m, i, j));
+                    s1 = s1 + -0.5f * icY.idx(l, m) * diff2(ctx, args.cY.idx(i, j), m, l, args.dcYij.idx(m, i, j), args.dcYij.idx(l, i, j));
                 }
             }
 
@@ -2587,7 +2596,7 @@ void build_cGi(equation_context& ctx)
             for(int k=0; k < 3; k++)
             {
                 //s7 += icY.idx(j, k) * hacky_differentiate(args.digB.idx(k, i), j);
-                s7 += icY.idx(j, k) * diff2(ctx, args.gB.idx(i), k, j, args.digB.idx(k, i));
+                s7 += icY.idx(j, k) * diff2(ctx, args.gB.idx(i), k, j, args.digB.idx(k, i), args.digB.idx(j, i));
             }
         }
 
@@ -2598,7 +2607,7 @@ void build_cGi(equation_context& ctx)
             for(int k=0; k < 3; k++)
             {
                 //s8 += (1.f/3.f) * icY.idx(i, j) * hacky_differentiate(args.digB.idx(k, k), j);
-                s8 += (1.f/3.f) * icY.idx(i, j) * diff2(ctx, args.gB.idx(k), k, j, args.digB.idx(k, k));
+                s8 += (1.f/3.f) * icY.idx(i, j) * diff2(ctx, args.gB.idx(k), k, j, args.digB.idx(k, k), args.digB.idx(j, k));
             }
         }
 
