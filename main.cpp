@@ -1549,7 +1549,7 @@ struct standard_arguments
 
         tensor<value, 3> cGi_G;
 
-        for(int i=0; i < 3; i++)
+        /*for(int i=0; i < 3; i++)
         {
             value sum = 0;
 
@@ -1559,6 +1559,18 @@ struct standard_arguments
                 {
                     sum += pinned_icY.idx(j, k) * pinned_christoff2.idx(i, j, k);
                 }
+            }
+
+            cGi_G.idx(i) = sum;
+        }*/
+
+        for(int i=0; i < 3; i++)
+        {
+            value sum = 0;
+
+            for(int j=0; j < 3; j++)
+            {
+                sum += -diff1(ctx, icY.idx(i, j), j);
             }
 
             cGi_G.idx(i) = sum;
