@@ -4615,11 +4615,7 @@ int main()
 
     clctx.cqueue.exec("setup_u_offset", initial_u_args, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
-    cl::args initial_u_args2;
-    initial_u_args2.push_back(u_args[1]);
-    initial_u_args2.push_back(clsize);
-
-    clctx.cqueue.exec("setup_u_offset", initial_u_args2, {size.x(), size.y(), size.z()}, {8, 8, 1});
+    cl::copy(clctx.cqueue, u_args[0], u_args[1]);
 
     ///I need to do this properly, where it keeps iterating until it converges
     ///todo: this doesn't converge yet!
