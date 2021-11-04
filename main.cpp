@@ -2185,8 +2185,6 @@ void build_cY(equation_context& ctx)
 
     tensor<value, 3, 3> lie_cYij = gpu_lie_derivative_weight(ctx, args.gB, unpinned_cY);
 
-    ctx.pin(lie_cYij);
-
     ///https://arxiv.org/pdf/gr-qc/0511048.pdf (1)
     ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.66
     tensor<value, 3, 3> dtcYij = -2 * args.gA * args.cA + lie_cYij;
@@ -3928,6 +3926,8 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
             }
         }
     }
+
+    //tensor<value, 3, 3, 3> full_christoffel2 = gpu_christoffel_symbols_2(ctx, args.Yij, iYij);
 
     value length_sq = dot_metric(V_upper, V_upper, args.Yij);
 
