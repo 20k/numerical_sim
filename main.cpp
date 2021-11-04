@@ -3986,9 +3986,11 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     {
         for(int j=0; j < 3; j++)
         {
-            p0 += (1/args.gA) * sqrt(iYij.idx(i, j) * p_lower.idx(i) * p_lower.idx(j));
+            p0 += iYij.idx(i, j) * p_lower.idx(i) * p_lower.idx(j);
         }
     }
+
+    p0 = (1/args.gA) * sqrt(p0);
 
     tensor<value, 3> dx = {0, 0, 0};
 
@@ -4006,13 +4008,13 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     for(int i=0; i < 3; i++)
     {
-        value s1 = -args.gA * hacky_differentiate(args.gA, i, true, true) * p0 * p0;
+        value s1 = -args.gA * diff1(ctx, args.gA, i) * p0 * p0;
 
         value s2 = 0;
 
         for(int k=0; k < 3; k++)
         {
-            s2 += hacky_differentiate(args.gB.idx(k), i, true, true) * p_lower.idx(k) * p0;
+            s2 += diff1(ctx, args.gB.idx(k), i) * p_lower.idx(k) * p0;
         }
 
         value s3 = 0;
@@ -4021,7 +4023,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         {
             for(int m=0; m < 3; m++)
             {
-                s3 += -0.5f * hacky_differentiate(iYij.idx(l, m), i, true, true) * p_lower.idx(l) * p_lower.idx(m);
+                s3 += -0.5f * diff1(ctx, iYij.idx(l, m), i) * p_lower.idx(l) * p_lower.idx(m);
             }
         }
 
