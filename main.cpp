@@ -4335,6 +4335,79 @@ struct gravitational_wave_manager
     }
 };
 
+template<typename T>
+float calculate_scale(float c_at_max, const T& size)
+{
+    return c_at_max / size.largest_elem();
+}
+
+cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_int> base_size, float c_at_max, int scale_factor, std::optional<cl::buffer> base)
+{
+    vec<4, cl_int> reduced_clsize = ((base_size - 1) / scale_factor) + 1;
+
+    std::array<cl::buffer, 2> reduced_u_args{ctx, ctx};
+
+    if(base.has_value())
+        reduced_u_args[0] = base.value();
+    else
+        reduced_u_args[0].alloc(reduced_clsize.x() * reduced_clsize.y() * reduced_clsize.z() * sizeof(cl_float));
+
+    reduced_u_args[1].alloc(reduced_clsize.x() * reduced_clsize.y() * reduced_clsize.z() * sizeof(cl_float));
+
+    int which_reduced = 0;
+
+    {
+        cl::args initial_u_args;
+        initial_u_args.push_back(reduced_u_args[1]);
+        initial_u_args.push_back(reduced_clsize);
+
+        cqueue.exec("setup_u_offset", initial_u_args, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1});
+
+        if(!base.has_value())
+            cl::copy(cqueue, reduced_u_args[1], reduced_u_args[0]);
+    }
+
+    #ifndef GPU_PROFILE
+    for(int i=0; i < 3000; i++)
+    #else
+    for(int i=0; i < 1000; i++)
+    #endif
+    {
+        float local_scale = calculate_scale(c_at_max, reduced_clsize);
+
+        cl::args iterate_u_args;
+        iterate_u_args.push_back(reduced_u_args[which_reduced]);
+        iterate_u_args.push_back(reduced_u_args[(which_reduced + 1) % 2]);
+        iterate_u_args.push_back(local_scale);
+        iterate_u_args.push_back(reduced_clsize);
+
+        cqueue.exec("iterative_u_solve", iterate_u_args, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1});
+
+        which_reduced = (which_reduced + 1) % 2;
+    }
+
+    return reduced_u_args[which_reduced];
+}
+
+cl::buffer upscale_u(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& source_buffer, vec<4, cl_int> base_size, int upscale_scale, int source_scale)
+{
+    vec<4, cl_int> reduced_clsize = ((base_size - 1) / source_scale) + 1;
+    vec<4, cl_int> upper_clsize = ((base_size - 1) / upscale_scale) + 1;
+
+    cl::buffer u_arg(ctx);
+    u_arg.alloc(upper_clsize.x() * upper_clsize.y() * upper_clsize.z() * sizeof(cl_float));
+
+    cl::args upscale_args;
+    upscale_args.push_back(source_buffer);
+    upscale_args.push_back(u_arg);
+    upscale_args.push_back(reduced_clsize);
+    upscale_args.push_back(upper_clsize);
+
+    cqueue.exec("upscale_u", upscale_args, {upper_clsize.x(), upper_clsize.y(), upper_clsize.z()}, {8, 8, 1});
+
+    return u_arg;
+}
+
 ///it seems like basically i need numerical dissipation of some form
 ///if i didn't evolve where sponge = 1, would be massively faster
 int main()
@@ -4385,7 +4458,7 @@ int main()
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = 65 * (251/300.f);
-    float scale = c_at_max / (size.largest_elem());
+    float scale = calculate_scale(c_at_max, size);
     vec3f centre = {size.x()/2.f, size.y()/2.f, size.z()/2.f};
 
     equation_context setup_initial;
@@ -4599,44 +4672,23 @@ int main()
         #endif // USE_GBB
     };
 
-    std::array<cl::buffer, 2> u_args{clctx.ctx, clctx.ctx};
-    u_args[0].alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
-    u_args[1].alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
-
-    int which_u_args = 0;
-
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
     cl_float time_elapsed_s = 0;
 
-    cl::args initial_u_args;
-    initial_u_args.push_back(u_args[0]);
-    initial_u_args.push_back(clsize);
+    cl::buffer u_arg(clctx.ctx);
 
-    clctx.cqueue.exec("setup_u_offset", initial_u_args, {size.x(), size.y(), size.z()}, {8, 8, 1});
-
-    cl::copy(clctx.cqueue, u_args[0], u_args[1]);
-
-    ///I need to do this properly, where it keeps iterating until it converges
-    ///todo: this doesn't converge yet!
-    #ifndef GPU_PROFILE
-    for(int i=0; i < 5000; i++)
-    #else
-    for(int i=0; i < 1000; i++)
-    #endif
     {
-        cl::args iterate_u_args;
-        iterate_u_args.push_back(u_args[which_u_args]);
-        iterate_u_args.push_back(u_args[(which_u_args + 1) % 2]);
-        iterate_u_args.push_back(scale);
-        iterate_u_args.push_back(clsize);
+        cl::buffer reduced0 = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 4, std::nullopt);
 
-        clctx.cqueue.exec("iterative_u_solve", iterate_u_args, {size.x(), size.y(), size.z()}, {8, 8, 1});
+        cl::buffer upscaled0 = upscale_u(clctx.ctx, clctx.cqueue, reduced0, clsize, 2, 4);
 
-        which_u_args = (which_u_args + 1) % 2;
+        cl::buffer reduced1 = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 2, upscaled0);
+
+        cl::buffer upscaled1 = upscale_u(clctx.ctx, clctx.cqueue, reduced1, clsize, 1, 2);
+
+        u_arg = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 1, upscaled1);
     }
-
-    u_args[(which_u_args + 1) % 2].native_mem_object.release();
 
     auto [sponge_positions, sponge_positions_count] = generate_sponge_points(clctx.ctx, clctx.cqueue, scale, size);
     auto [evolution_positions, evolution_positions_count, non_evolution_positions, non_evolution_positions_count] = generate_evolution_points(clctx.ctx, clctx.cqueue, scale, size);
@@ -4675,7 +4727,7 @@ int main()
             init.push_back(i);
         }
 
-        init.push_back(u_args[which_u_args]);
+        init.push_back(u_arg);
         init.push_back(scale);
         init.push_back(clsize);
 
@@ -5361,7 +5413,7 @@ int main()
                 }
 
                 //cleaner.push_back(bssnok_datas[which_data]);
-                cleaner.push_back(u_args[which_u_args]);
+                cleaner.push_back(u_arg);
                 cleaner.push_back(scale);
                 cleaner.push_back(clsize);
                 cleaner.push_back(time_elapsed_s);

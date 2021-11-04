@@ -7,6 +7,7 @@
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
 
 #define IDX(i, j, k) ((k) * dim.x * dim.y + (j) * dim.x + (i))
+#define IDXD(i, j, k, d) ((k) * (d.x) * (d.y) + (j) * (d.x) + (i))
 
 bool invalid_first(int ix, int iy, int iz, int4 dim)
 {
@@ -146,6 +147,8 @@ float buffer_read_linear(__global const float* const buffer, float3 position, in
 
     return buffer[ipos.z * dim.x * dim.y + ipos.y * dim.x + ipos.x];*/
 
+    position = clamp(position, (float3)(0,0,0), (float3)(dim.x-2, dim.y-2, dim.z-2));
+
     float3 floored = floor(position);
 
     int3 ipos = (int3)(floored.x, floored.y, floored.z);
@@ -155,7 +158,6 @@ float buffer_read_linear(__global const float* const buffer, float3 position, in
 
     float c010 = buffer_read_nearest(buffer, ipos + (int3)(0,1,0), dim);
     float c110 = buffer_read_nearest(buffer, ipos + (int3)(1,1,0), dim);
-
 
     float c001 = buffer_read_nearest(buffer, ipos + (int3)(0,0,1), dim);
     float c101 = buffer_read_nearest(buffer, ipos + (int3)(1,0,1), dim);
@@ -341,6 +343,45 @@ void setup_u_offset(__global float* u_offset,
     u_offset[IDX(ix, iy, iz)] = 1;
 }
 
+///out is > in
+///this incorrectly does not produce a symmetric result
+__kernel
+void upscale_u(__global float* u_in, __global float* u_out, int4 in_dim, int4 out_dim)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= out_dim.x || iy >= out_dim.y || iz >= out_dim.z)
+        return;
+
+    float3 upper_pos = (float3)(ix, iy, iz);
+
+    /*float3 normed = upper_pos / (float3)(out_dim.x - 1, out_dim.y - 1, out_dim.z - 1);
+
+    float3 lower_pos = normed * (float3)(in_dim.x - 1, in_dim.y - 1, in_dim.z - 1);
+
+    float3 lower_rounded = round(lower_pos);*/
+
+    float3 upper_centre = convert_float3((out_dim.xyz - 1) / 2);
+
+    float3 upper_offset = upper_pos - upper_centre;
+
+    float scale = (out_dim.x - 1) / (in_dim.x - 1);
+
+    float3 lower_offset = upper_offset / scale;
+
+    ///symmetric, rounds away from 0
+    float3 lower_pos = round(lower_offset) + convert_float3((in_dim.xyz - 1) / 2);
+
+    float val = buffer_read_nearest(u_in, convert_int3(lower_pos), in_dim);
+
+    if(ix == 0 || iy == 0 || iz == 0 || ix == out_dim.x - 1 || iy == out_dim.y - 1 || iz == out_dim.z - 1)
+        val = 1;
+
+    u_out[IDXD(ix, iy, iz, out_dim)] = val;
+}
+
 ///https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan2008/Workbook33/33_2_elliptic_pde.pdf
 ///https://arxiv.org/pdf/1205.5111v1.pdf 78
 ///https://arxiv.org/pdf/gr-qc/0007085.pdf 76?
@@ -411,6 +452,16 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
     //if(ix == 50 && iy == dim.y/2 && iz == dim.z/2)
     //    printf("hi %.23f\n", u0n1);
+
+    /*if(ix == (dim.x - 1) / 2 && iy == (dim.y - 1) / 2)
+    {
+        int cz = (dim.z - 1) / 2;
+
+        if(iz == cz - 1 || iz == cz || iz == cz + 1)
+        {
+            printf("Val %.24f %i\n", u0n1, iz);
+        }
+    }*/
 
     u_offset_out[IDX(ix, iy, iz)] = u0n1;
 }
