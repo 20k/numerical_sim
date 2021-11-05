@@ -3138,6 +3138,51 @@ float linear_interpolate(const std::vector<float>& vals, vec3f pos, vec3i dim)
 }
 
 inline
+vec3f dim_to_centre(vec3i dim)
+{
+    vec3i even = dim - 1;
+
+    return {even.x()/2.f, even.y()/2.f, even.z()/2.f};
+}
+
+inline
+float get_harmonic_extraction_radius(vec3i dim)
+{
+    vec3f centre = dim_to_centre(dim);
+
+    float rad = std::min(std::min(dim.x(), dim.y()), dim.z());
+
+    rad = (rad / 2) - 3;
+
+    return rad;
+}
+
+inline
+std::vector<vec3f> get_harmonic_extraction_points(vec3i dim)
+{
+    std::vector<vec3f> ret;
+
+    float rad = get_harmonic_extraction_radius(dim);
+    vec3f centre = dim_to_centre(dim);
+
+    auto func = [&](float theta, float phi)
+    {
+        vec3f pos = {rad * cos(phi) * sin(theta), rad * sin(phi) * sin(theta), rad * cos(theta)};
+
+        pos += centre;
+
+        ret.push_back(pos);
+    };
+
+    std::sort(ret.begin(), ret.end(), [](vec3f p1, vec3f p2)
+    {
+        return std::tie(p1.z(), p1.y(), p1.x()) < std::tie(p2.z(), p2.y(), p2.x());
+    });
+
+    return ret;
+}
+
+inline
 float get_harmonic(const std::vector<dual_types::complex<float>>& vals, vec3i dim, int l, int m)
 {
     std::vector<float> real;
@@ -3149,11 +3194,9 @@ float get_harmonic(const std::vector<dual_types::complex<float>>& vals, vec3i di
         imaginary.push_back(i.imaginary);
     }
 
-    vec3f centre = {dim.x()/2, dim.y()/2, dim.z()/2};
+    float rad = get_harmonic_extraction_radius(dim);
 
-    float rad = std::min(std::min(dim.x(), dim.y()), dim.z());
-
-    rad = (rad / 2) - 3;
+    vec3f centre = dim_to_centre(dim);
 
     auto func = [&](float theta, float phi)
     {
