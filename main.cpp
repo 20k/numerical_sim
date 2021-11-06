@@ -1225,6 +1225,32 @@ tensor<T, N, N> gpu_double_covariant_derivative(equation_context& ctx, const T& 
     return lac;
 }
 
+template<typename T, int N>
+inline
+tensor<T, N, N> gpu_double_covariant_derivative_use_deriv(equation_context& ctx, const T& in, const tensor<T, N>& first_derivatives, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
+{
+    auto christoff = gpu_christoffel_symbols_2(ctx, met, inverse);
+
+    tensor<T, N, N> lac;
+
+    for(int a=0; a < N; a++)
+    {
+        for(int c=0; c < N; c++)
+        {
+            T sum = 0;
+
+            for(int b=0; b < N; b++)
+            {
+                sum += christoff.idx(b, c, a) * first_derivatives.idx(b);
+            }
+
+            lac.idx(a, c) = diff2(ctx, in, a, c, first_derivatives.idx(a), first_derivatives.idx(c)) - sum;
+        }
+    }
+
+    return lac;
+}
+
 /*template<typename T, int N>
 inline
 tensor<T, N, N> gpu_high_covariant_derivative_vec(equation_context& ctx, const tensor<T, N>& in, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
@@ -1290,6 +1316,43 @@ tensor<T, N, N, N> gpu_christoffel_symbols_2(equation_context& ctx, const metric
                     local = local + diff1(ctx, met.idx(m, k), l);
                     local = local + diff1(ctx, met.idx(m, l), k);
                     local = local - diff1(ctx, met.idx(k, l), m);
+
+                    sum = sum + local * inverse.idx(i, m);
+                }
+
+                christoff.idx(i, k, l) = 0.5 * sum;
+            }
+        }
+    }
+
+    return christoff;
+}
+
+template<typename T, int N>
+inline
+tensor<T, N, N, N> gpu_christoffel_symbols_2_with_deriv(equation_context& ctx, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse, const tensor<T, N, N, N>& met_derivs)
+{
+    tensor<T, N, N, N> christoff;
+
+    for(int i=0; i < N; i++)
+    {
+        for(int k=0; k < N; k++)
+        {
+            for(int l=0; l < N; l++)
+            {
+                T sum = 0;
+
+                for(int m=0; m < N; m++)
+                {
+                    value local = 0;
+
+                    /*local = local + diff1(ctx, met.idx(m, k), l);
+                    local = local + diff1(ctx, met.idx(m, l), k);
+                    local = local - diff1(ctx, met.idx(k, l), m);*/
+
+                    local += met_derivs.idx(l, m, k);
+                    local += met_derivs.idx(k, m, l);
+                    local += -met_derivs.idx(m, k, l);
 
                     sum = sum + local * inverse.idx(i, m);
                 }
@@ -2280,7 +2343,7 @@ tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& 
         }
     }
 
-    tensor<value, 3, 3> cov_div_X = gpu_double_covariant_derivative(ctx, args.X, args.dX, args.cY, icY);
+    tensor<value, 3, 3> cov_div_X = gpu_double_covariant_derivative_use_deriv(ctx, args.X, args.dX, args.cY, icY);
     ctx.pin(cov_div_X);
 
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf
@@ -2330,7 +2393,7 @@ void build_cA(equation_context& ctx)
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
     tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, args.cY);
-    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, args.cY, icY);
+    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2_with_deriv(ctx, args.cY, icY, args.dcYij);
 
     ctx.pin(christoff1);
     ctx.pin(christoff2);
@@ -2370,10 +2433,11 @@ void build_cA(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            value Xderiv = X * gpu_double_covariant_derivative(ctx, args.gA, args.digA, cY, icY).idx(j, i);
+            value Xderiv = X * gpu_double_covariant_derivative_use_deriv(ctx, args.gA, args.digA, cY, icY).idx(j, i);
             //value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, args.digA, cY, icY).idx(j, i);
 
-            value s2 = 0.5f * (diff1(ctx, X, i) * diff1(ctx, gA, j) + diff1(ctx, X, j) * diff1(ctx, gA, i));
+            //value s2 = 0.5f * (diff1(ctx, X, i) * diff1(ctx, gA, j) + diff1(ctx, X, j) * diff1(ctx, gA, i));
+            value s2 = 0.5f * (args.dX.idx(i) * args.digA.idx(j) + args.dX.idx(j) * args.digA.idx(i));
 
             value s3 = 0;
 
@@ -2381,7 +2445,7 @@ void build_cA(equation_context& ctx)
             {
                 for(int n=0; n < 3; n++)
                 {
-                    value v = icY.idx(m, n) * diff1(ctx, X, m) * diff1(ctx, gA, n);
+                    value v = icY.idx(m, n) * args.dX.idx(m) * args.digA.idx(n);
 
                     s3 += v;
                 }
