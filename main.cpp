@@ -122,20 +122,6 @@ struct equation_context
             }
         }
 
-        /*for(auto& i : aliases)
-        {
-            if(dual_types::equivalent(v, i.first))
-            {
-                v = i.second;
-                return;
-            }
-        }*/
-
-        /*if(type_to_string(v).size() > 100000)
-        {
-            std::cout << type_to_string(v) << std::endl;
-        }*/
-
         std::string name = "pv" + std::to_string(temporaries.size());
         //std::string name = "pv[" + std::to_string(temporaries.size()) + "]";
 
@@ -226,16 +212,14 @@ struct equation_context
 
     void alias(const value& concrete, const value& alias)
     {
-        /*for(auto& i : aliases)
+        for(auto& i : aliases)
         {
             if(dual_types::equivalent(concrete, i.first))
             {
-                concrete = i.second;
+                assert(dual_types::equivalent(alias, i.second));
                 return;
             }
-        }*/
-
-        std::cout << "CONC " << type_to_string(concrete) << " " << type_to_string(alias) << std::endl;
+        }
 
         aliases.push_back({concrete, alias});
     }
@@ -316,16 +300,23 @@ struct equation_context
         }
     }
 
-    void build_impl(std::string& argument_string, const std::string& str)
+    void substutite_aliases()
     {
-        std::cout << "ALIASES " << aliases.size() << std::endl;
-
         for(auto& [name, v] : values)
         {
             v.substitute(aliases);
         }
 
+        for(auto& [name, v] : temporaries)
+        {
+            v.substitute(aliases);
+        }
+    }
+
+    void build_impl(std::string& argument_string, const std::string& str)
+    {
         strip_unused();
+        substutite_aliases();
 
         for(auto& i : values)
         {
