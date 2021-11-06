@@ -3152,11 +3152,7 @@ vec3f dim_to_centre(vec3i dim)
 inline
 float get_harmonic_extraction_radius(int extract_pixel)
 {
-    float rad = extract_pixel;
-
-    rad = (rad / 2) - 3;
-
-    return rad;
+    return extract_pixel;
 }
 
 inline
@@ -3221,11 +3217,6 @@ float get_harmonic(const std::vector<cl_ushort4>& points, const std::vector<dual
     for(int i=0; i < (int)points.size(); i++)
     {
         cl_ushort4 point = points[i];
-
-        /*if(i == 1234)
-        {
-            std::cout << "P " << point.s[0] << " " << point.s[1] << " " << point.s[2] << " val " << vals[i].real << std::endl;
-        }*/
 
         real_value_map[point.s[0]][point.s[1]][point.s[2]] = vals[i].real;
         imaginary_value_map[point.s[0]][point.s[1]][point.s[2]] = vals[i].imaginary;
@@ -4297,8 +4288,7 @@ struct gravitational_wave_manager
         cl_float2* read = nullptr;
     };
 
-    cl_int4 wave_dim = {150, 150, 150};
-    int extract_pixel = 150;
+    int extract_pixel = 75;
     cl_int4 wave_pos;
     vec3i simulation_size;
 
@@ -4322,14 +4312,8 @@ struct gravitational_wave_manager
 
         float r_extract = c_at_max/3;
 
-        wave_pos = {simulation_size.x() / 2, simulation_size.y() / 2, simulation_size.z() / 2};
-
         raw_harmonic_points = get_harmonic_extraction_points(simulation_size, extract_pixel);
 
-        /*for(auto& i : raw_harmonic_points)
-        {
-            std::cout << "IXYZ " << i.s[0] << " " << i.s[1] << " " << i.s[2] << std::endl;
-        }*/
 
         elements = raw_harmonic_points.size();
         harmonic_points.alloc(sizeof(cl_ushort4) * elements);
@@ -4341,7 +4325,6 @@ struct gravitational_wave_manager
             wave_buffers[i].alloc(sizeof(cl_float2) * elements);
         }
 
-        //wave_pos = {simulation_size.x()/2, simulation_size.y()/2 + r_extract / scale, simulation_size.z()/2, 0};
     }
 
     static void callback(cl_event event, cl_int event_command_status, void* user_data)
@@ -4381,8 +4364,6 @@ struct gravitational_wave_manager
 
         waveform_args.push_back(scale);
         waveform_args.push_back(clsize);
-        waveform_args.push_back(wave_pos);
-        waveform_args.push_back(wave_dim);
         waveform_args.push_back(next);
 
         cl::event kernel_event = cqueue.exec("extract_waveform", waveform_args, {point_count}, {128});

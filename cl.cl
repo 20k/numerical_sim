@@ -1457,31 +1457,8 @@ void extract_waveform(__global ushort4* points, int point_count,
                       __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
                       __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
                       __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-                      float scale, int4 dim, int4 pos, int4 waveform_dim, __global float2* waveform_out)
+                      float scale, int4 dim, __global float2* waveform_out)
 {
-    /*int lix = get_global_id(0);
-    int liy = get_global_id(1);
-    int liz = get_global_id(2);
-
-    if(lix >= waveform_dim.x || liy >= waveform_dim.y || liz >= waveform_dim.z)
-        return;
-
-    int3 half_dim = waveform_dim.xyz/2;
-
-    float rad = (min(min(waveform_dim.x, waveform_dim.y), waveform_dim.z) / 2.f) - 3;
-
-    float my_rad = length((float3)(lix, liy, liz) - (float3)(waveform_dim.x/2, waveform_dim.y/2, waveform_dim.z/2));
-
-    if(my_rad < rad - 10)
-        return;
-
-    int3 voxel_pos = (int3)(lix, liy, liz) - half_dim + pos.xyz;
-
-    ///necessary for temporaries
-    int ix = voxel_pos.x;
-    int iy = voxel_pos.y;
-    int iz = voxel_pos.z;*/
-
     int local_idx = get_global_id(0);
 
     if(local_idx >= point_count)
