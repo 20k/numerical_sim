@@ -3098,7 +3098,7 @@ dual_types::complex<float> get_harmonic(const dual_types::complex<float>& value,
     return harmonic;
 }*/
 
-float linear_interpolate(const std::vector<float>& vals, vec3f pos, vec3i dim)
+float linear_interpolate(const std::map<int, std::map<int, std::map<int, float>>>& vals_map, vec3f pos, vec3i dim)
 {
     vec3f floored = floor(pos);
 
@@ -3108,7 +3108,11 @@ float linear_interpolate(const std::vector<float>& vals, vec3f pos, vec3i dim)
     {
         assert(lpos.x() >= 0 && lpos.y() >= 0 && lpos.z() >= 0 && lpos.x() < dim.x() && lpos.y() < dim.y() && lpos.z() < dim.z());
 
-        return vals[lpos.z() * dim.x() * dim.y() + lpos.y() * dim.x() + lpos.x()];
+        //std::cout << "MAPV " << vals_map.at(lpos.x()).at(lpos.y()).at(lpos.z()) << std::endl;
+
+        return vals_map.at(lpos.x()).at(lpos.y()).at(lpos.z());
+
+        //return vals[lpos.z() * dim.x() * dim.y() + lpos.y() * dim.x() + lpos.x()];
     };
 
     auto c000 = index(ipos + (vec3i){0,0,0});
@@ -3146,11 +3150,9 @@ vec3f dim_to_centre(vec3i dim)
 }
 
 inline
-float get_harmonic_extraction_radius(vec3i dim)
+float get_harmonic_extraction_radius(int extract_pixel)
 {
-    vec3f centre = dim_to_centre(dim);
-
-    float rad = std::min(std::min(dim.x(), dim.y()), dim.z());
+    float rad = extract_pixel;
 
     rad = (rad / 2) - 3;
 
@@ -3158,11 +3160,11 @@ float get_harmonic_extraction_radius(vec3i dim)
 }
 
 inline
-std::vector<vec3f> get_harmonic_extraction_points(vec3i dim)
+std::vector<cl_ushort4> get_harmonic_extraction_points(vec3i dim, int extract_pixel)
 {
-    std::vector<vec3f> ret;
+    std::vector<vec3i> ret_as_int;
 
-    float rad = get_harmonic_extraction_radius(dim);
+    float rad = get_harmonic_extraction_radius(extract_pixel);
     vec3f centre = dim_to_centre(dim);
 
     auto func = [&](float theta, float phi)
@@ -3171,30 +3173,65 @@ std::vector<vec3f> get_harmonic_extraction_points(vec3i dim)
 
         pos += centre;
 
-        ret.push_back(pos);
+        vec3f ff0 = floor(pos);
+
+        vec3i f0 = {ff0.x(), ff0.y(), ff0.z()};
+
+        ret_as_int.push_back(f0);
+        ret_as_int.push_back({f0.x() + 1, f0.y(), f0.z()});
+        ret_as_int.push_back({f0.x(), f0.y() + 1, f0.z()});
+        ret_as_int.push_back({f0.x(), f0.y(), f0.z() + 1});
+
+        ret_as_int.push_back({f0.x() + 1, f0.y() + 1, f0.z()});
+        ret_as_int.push_back({f0.x() + 1, f0.y(), f0.z() + 1});
+        ret_as_int.push_back({f0.x(), f0.y() + 1, f0.z() + 1});
+
+        ret_as_int.push_back({f0.x() + 1, f0.y() + 1, f0.z() + 1});
+
+        return 0.f;
     };
 
-    std::sort(ret.begin(), ret.end(), [](vec3f p1, vec3f p2)
+    int n = 64;
+
+    (void)spherical_integrate(func, n);
+
+    std::vector<cl_ushort4> ret;
+
+    for(vec3i i : ret_as_int)
     {
-        return std::tie(p1.z(), p1.y(), p1.x()) < std::tie(p2.z(), p2.y(), p2.x());
+        ret.push_back({i.x(), i.y(), i.z(), 0});
+    }
+
+    std::sort(ret.begin(), ret.end(), [](cl_ushort4 p1, cl_ushort4 p2)
+    {
+        return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
     });
 
     return ret;
 }
 
 inline
-float get_harmonic(const std::vector<dual_types::complex<float>>& vals, vec3i dim, int l, int m)
+float get_harmonic(const std::vector<cl_ushort4>& points, const std::vector<dual_types::complex<float>>& vals, vec3i dim, int extract_pixel, int l, int m)
 {
-    std::vector<float> real;
-    std::vector<float> imaginary;
+    std::map<int, std::map<int, std::map<int, float>>> real_value_map;
+    std::map<int, std::map<int, std::map<int, float>>> imaginary_value_map;
 
-    for(auto& i : vals)
+    assert(points.size() == vals.size());
+
+    for(int i=0; i < (int)points.size(); i++)
     {
-        real.push_back(i.real);
-        imaginary.push_back(i.imaginary);
+        cl_ushort4 point = points[i];
+
+        /*if(i == 1234)
+        {
+            std::cout << "P " << point.s[0] << " " << point.s[1] << " " << point.s[2] << " val " << vals[i].real << std::endl;
+        }*/
+
+        real_value_map[point.s[0]][point.s[1]][point.s[2]] = vals[i].real;
+        imaginary_value_map[point.s[0]][point.s[1]][point.s[2]] = vals[i].imaginary;
     }
 
-    float rad = get_harmonic_extraction_radius(dim);
+    float rad = get_harmonic_extraction_radius(extract_pixel);
 
     vec3f centre = dim_to_centre(dim);
 
@@ -3210,8 +3247,8 @@ float get_harmonic(const std::vector<dual_types::complex<float>>& vals, vec3i di
 
         pos += centre;
 
-        float interpolated_real = linear_interpolate(real, pos, dim);
-        float interpolated_imaginary = linear_interpolate(imaginary, pos, dim);
+        float interpolated_real = linear_interpolate(real_value_map, pos, dim);
+        float interpolated_imaginary = linear_interpolate(imaginary_value_map, pos, dim);
 
         //printf("interpolated %f %f\n", interpolated.real, interpolated.imaginary);
 
@@ -4261,12 +4298,17 @@ struct gravitational_wave_manager
     };
 
     cl_int4 wave_dim = {150, 150, 150};
+    int extract_pixel = 150;
     cl_int4 wave_pos;
+    vec3i simulation_size;
 
     std::array<cl::buffer, 3> wave_buffers;
     std::vector<cl_float2*> pending_unprocessed_data;
     std::mutex lock;
     std::optional<cl::event> last_event;
+
+    std::vector<cl_ushort4> raw_harmonic_points;
+    cl::buffer harmonic_points;
 
     cl::command_queue read_queue;
 
@@ -4274,18 +4316,30 @@ struct gravitational_wave_manager
 
     int elements = 0;
 
-    gravitational_wave_manager(cl::context& ctx, vec3i simulation_size, float c_at_max, float scale) : wave_buffers{ctx, ctx, ctx}, read_queue(ctx, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE)
+    gravitational_wave_manager(cl::context& ctx, vec3i _simulation_size, float c_at_max, float scale) : wave_buffers{ctx, ctx, ctx}, read_queue(ctx, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE), harmonic_points{ctx}
     {
-        elements = wave_dim.s[0] * wave_dim.s[1] * wave_dim.s[2];
+        simulation_size = _simulation_size;
 
         float r_extract = c_at_max/3;
+
+        wave_pos = {simulation_size.x() / 2, simulation_size.y() / 2, simulation_size.z() / 2};
+
+        raw_harmonic_points = get_harmonic_extraction_points(simulation_size, extract_pixel);
+
+        /*for(auto& i : raw_harmonic_points)
+        {
+            std::cout << "IXYZ " << i.s[0] << " " << i.s[1] << " " << i.s[2] << std::endl;
+        }*/
+
+        elements = raw_harmonic_points.size();
+        harmonic_points.alloc(sizeof(cl_ushort4) * elements);
+        harmonic_points.write(read_queue, raw_harmonic_points);
+        read_queue.block();
 
         for(int i=0; i < (int)wave_buffers.size(); i++)
         {
             wave_buffers[i].alloc(sizeof(cl_float2) * elements);
         }
-
-        wave_pos = {simulation_size.x() / 2, simulation_size.y() / 2, simulation_size.z() / 2};
 
         //wave_pos = {simulation_size.x()/2, simulation_size.y()/2 + r_extract / scale, simulation_size.z()/2, 0};
     }
@@ -4307,6 +4361,11 @@ struct gravitational_wave_manager
     {
         cl::args waveform_args;
 
+        cl_int point_count = raw_harmonic_points.size();
+
+        waveform_args.push_back(harmonic_points);
+        waveform_args.push_back(point_count);
+
         for(auto& i : buffers)
         {
             waveform_args.push_back(i);
@@ -4326,7 +4385,7 @@ struct gravitational_wave_manager
         waveform_args.push_back(wave_dim);
         waveform_args.push_back(next);
 
-        cl::event kernel_event = cqueue.exec("extract_waveform", waveform_args, {wave_dim.s[0], wave_dim.s[1], wave_dim.s[2]}, {8, 8, 2});
+        cl::event kernel_event = cqueue.exec("extract_waveform", waveform_args, {point_count}, {128});
 
         cl_float2* next_data = new cl_float2[elements];
 
@@ -4368,7 +4427,7 @@ struct gravitational_wave_manager
                 as_vector.push_back({vec[i].s[0], vec[i].s[1]});
             }
 
-            float harmonic = get_harmonic(as_vector, {wave_dim.s[0], wave_dim.s[1], wave_dim.s[2]}, 2, 2);
+            float harmonic = get_harmonic(raw_harmonic_points, as_vector, simulation_size, extract_pixel, 2, 2);
 
             if(!isnanf(harmonic))
                 real_harmonic.push_back(harmonic);
@@ -4412,11 +4471,17 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
             cl::copy(cqueue, reduced_u_args[1], reduced_u_args[0]);
     }
 
-    #ifndef GPU_PROFILE
-    for(int i=0; i < 3000; i++)
-    #else
-    for(int i=0; i < 1000; i++)
-    #endif
+    int N = 3000;
+
+    #ifdef GPU_PROFILE
+    N = 1000;
+    #endif // GPU_PROFILE
+
+    #ifdef QUICKSTART
+    N = 200;
+    #endif // QUICKSTART
+
+    for(int i=0; i < N; i++)
     {
         float local_scale = calculate_scale(c_at_max, reduced_clsize);
 

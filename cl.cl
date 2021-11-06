@@ -1446,19 +1446,20 @@ void render(STANDARD_ARGS(),
     float3 lin_col = srgb_to_lin(col);
 
     write_imagef(screen, (int2){get_global_id(0), get_global_id(1)}, (float4)(lin_col.xyz, 1));
-    //write_imagef(screen, (int2){ix, iy}, (float4){max_scalar, max_scalar, max_scalar, 1});
+    //write_imagef(screen, (int2){ix, iy}, (float4){max_sca1lar, max_scalar, max_scalar, 1});
 }
 
 #if 1
 __kernel
-void extract_waveform(STANDARD_ARGS(),
+void extract_waveform(__global ushort4* points, int point_count,
+                      STANDARD_ARGS(),
                       __global DERIV_PRECISION* dcYij0, __global DERIV_PRECISION* dcYij1, __global DERIV_PRECISION* dcYij2, __global DERIV_PRECISION* dcYij3, __global DERIV_PRECISION* dcYij4, __global DERIV_PRECISION* dcYij5, __global DERIV_PRECISION* dcYij6, __global DERIV_PRECISION* dcYij7, __global DERIV_PRECISION* dcYij8, __global DERIV_PRECISION* dcYij9, __global DERIV_PRECISION* dcYij10, __global DERIV_PRECISION* dcYij11, __global DERIV_PRECISION* dcYij12, __global DERIV_PRECISION* dcYij13, __global DERIV_PRECISION* dcYij14, __global DERIV_PRECISION* dcYij15, __global DERIV_PRECISION* dcYij16, __global DERIV_PRECISION* dcYij17,
                       __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
                       __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
                       __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
                       float scale, int4 dim, int4 pos, int4 waveform_dim, __global float2* waveform_out)
 {
-    int lix = get_global_id(0);
+    /*int lix = get_global_id(0);
     int liy = get_global_id(1);
     int liz = get_global_id(2);
 
@@ -1479,16 +1480,23 @@ void extract_waveform(STANDARD_ARGS(),
     ///necessary for temporaries
     int ix = voxel_pos.x;
     int iy = voxel_pos.y;
-    int iz = voxel_pos.z;
+    int iz = voxel_pos.z;*/
 
-    float3 offset = transform_position(voxel_pos.x, voxel_pos.y, voxel_pos.z, dim, scale);
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
 
     float TEMPORARIES4;
 
-    int wave_idx = liz * waveform_dim.x * waveform_dim.y + liy * waveform_dim.x + lix;
-
-    waveform_out[wave_idx].x = w4_real;
-    waveform_out[wave_idx].y = w4_complex;
+    waveform_out[local_idx].x = w4_real;
+    waveform_out[local_idx].y = w4_complex;
 
     #ifdef w4_debugr
     printf("Debugw4r %f\n", w4_debugr);
