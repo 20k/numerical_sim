@@ -4700,7 +4700,7 @@ int main()
     rtex[1].create_from_texture(tex[1].handle);
 
     cl::buffer ray_buffer(clctx.ctx);
-    ray_buffer.alloc(sizeof(lightray) * width * height);
+    ray_buffer.alloc(sizeof(cl_float) * 10 * width * height);
 
     int which_data = 0;
 
@@ -5023,7 +5023,7 @@ int main()
             rtex[0].create_from_texture(tex[0].handle);
             rtex[1].create_from_texture(tex[1].handle);
 
-            ray_buffer.alloc(4 * 10 * width * height);
+            ray_buffer.alloc(sizeof(cl_float) * 10 * width * height);
         }
 
         rtex[which_texture].acquire(clctx.cqueue);
@@ -5525,32 +5525,70 @@ int main()
             current_simulation_boundary = clamp(current_simulation_boundary, 0, size.x()/2);
         }
 
-        if(rendering_method == 0 || rendering_method == 1)
+        if(should_render || snap)
         {
-            cl::args render_args;
-
-            for(auto& i : generic_data[which_data].buffers)
+            if(rendering_method == 0)
             {
-                render_args.push_back(i);
+                cl::args render_args;
+
+                for(auto& i : generic_data[which_data].buffers)
+                {
+                    render_args.push_back(i);
+                }
+
+                cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
+                cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
+
+                render_args.push_back(scale);
+                render_args.push_back(ccamera_pos);
+                render_args.push_back(ccamera_quat);
+                render_args.push_back(clsize);
+                render_args.push_back(rtex[which_texture]);
+
+                clctx.cqueue.exec("trace_metric", render_args, {width, height}, {16, 16});
             }
 
-            cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
-            cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
-
-            render_args.push_back(scale);
-            render_args.push_back(ccamera_pos);
-            render_args.push_back(ccamera_quat);
-            render_args.push_back(clsize);
-            render_args.push_back(rtex[which_texture]);
-
-            //assert(render_args.arg_list.size() == 29);
-
-            if(should_render || snap)
+            if(rendering_method == 1)
             {
-                if(rendering_method == 0)
-                    clctx.cqueue.exec("trace_metric", render_args, {width, height}, {16, 16});
-                else
-                    clctx.cqueue.exec("trace_rays", render_args, {width, height}, {16, 16});
+                cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
+                cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
+
+                {
+                    cl::args init_args;
+
+                    init_args.push_back(ray_buffer);
+
+                    for(auto& i : generic_data[which_data].buffers)
+                    {
+                        init_args.push_back(i);
+                    }
+
+                    init_args.push_back(scale);
+                    init_args.push_back(ccamera_pos);
+                    init_args.push_back(ccamera_quat);
+                    init_args.push_back(clsize);
+                    init_args.push_back(width);
+                    init_args.push_back(height);
+
+                    clctx.cqueue.exec("init_rays", init_args, {width, height}, {16, 16});
+                }
+
+                {
+                    cl::args render_args;
+
+                    render_args.push_back(ray_buffer);
+
+                    for(auto& i : generic_data[which_data].buffers)
+                    {
+                        render_args.push_back(i);
+                    }
+
+                    render_args.push_back(scale);
+                    render_args.push_back(clsize);
+                    render_args.push_back(rtex[which_texture]);
+
+                    clctx.cqueue.exec("trace_rays", render_args, {width * height}, {64});
+                }
             }
         }
 

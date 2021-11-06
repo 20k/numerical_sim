@@ -1522,6 +1522,17 @@ void init_rays(__global float* cY0, __global float* cY1, __global float* cY2, __
     int iz = fipos.z;
 }*/
 
+struct lightray_simple
+{
+    float lp1;
+    float lp2;
+    float lp3;
+
+    float V0;
+    float V1;
+    float V2;
+};
+
 enum ds_result
 {
     DS_NONE,
@@ -1552,31 +1563,21 @@ int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_d
     return DS_NONE;
 }
 
-
 __kernel
-void trace_rays(STANDARD_ARGS(),
+void init_rays(__global struct lightray_simple* rays,
+                STANDARD_ARGS(),
                 float scale, float3 camera_pos, float4 camera_quat,
-                int4 dim, __write_only image2d_t screen)
+                int4 dim, int width, int height)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
 
-    if(x >= get_image_width(screen))
+    if(x >= width)
         return;
 
-    if(y >= get_image_height(screen))
+    if(y >= height)
         return;
 
-    float width = get_image_width(screen);
-    float height = get_image_height(screen);
-
-    ///ray location
-
-    float3 pos = camera_pos;
-
-    pos = clamp(pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
-
-    ///temporary while i don't do interpolation
     float lp0;
     float lp1;
     float lp2;
@@ -1607,6 +1608,45 @@ void trace_rays(STANDARD_ARGS(),
         V2 = V2_d;
     }
 
+    struct lightray_simple out;
+    out.lp1 = lp1;
+    out.lp2 = lp2;
+    out.lp3 = lp3;
+
+    out.V0 = V0;
+    out.V1 = V1;
+    out.V2 = V2;
+
+    rays[y * width + x] = out;
+}
+
+__kernel
+void trace_rays(__global struct lightray_simple* rays,
+                STANDARD_ARGS(),
+                float scale,
+                int4 dim, __write_only image2d_t screen)
+{
+    int width = get_image_width(screen);
+    int height = get_image_height(screen);
+
+    int idx = get_global_id(0);
+
+    if(idx >= (width * height))
+        return;
+
+    float lp1 = rays[idx].lp1;
+    float lp2 = rays[idx].lp2;
+    float lp3 = rays[idx].lp3;
+
+    float V0 = rays[idx].V0;
+    float V1 = rays[idx].V1;
+    float V2 = rays[idx].V2;
+
+    int x = idx % width;
+    int y = idx / width;
+
+    ///ray location
+    ///temporary while i don't do interpolation
     float next_ds = 0.1f;
 
     bool deliberate_termination = false;
