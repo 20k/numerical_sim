@@ -122,14 +122,14 @@ struct equation_context
             }
         }
 
-        for(auto& i : aliases)
+        /*for(auto& i : aliases)
         {
             if(dual_types::equivalent(v, i.first))
             {
                 v = i.second;
                 return;
             }
-        }
+        }*/
 
         /*if(type_to_string(v).size() > 100000)
         {
@@ -224,16 +224,18 @@ struct equation_context
         pin(mT.to_concrete());
     }*/
 
-    void alias(value& concrete, value& alias)
+    void alias(const value& concrete, const value& alias)
     {
-        for(auto& i : aliases)
+        /*for(auto& i : aliases)
         {
             if(dual_types::equivalent(concrete, i.first))
             {
                 concrete = i.second;
                 return;
             }
-        }
+        }*/
+
+        std::cout << "CONC " << type_to_string(concrete) << " " << type_to_string(alias) << std::endl;
 
         aliases.push_back({concrete, alias});
     }
@@ -303,7 +305,6 @@ struct equation_context
             to_erase.insert(i.first);
         }
 
-
         for(int i=0; i < (int)temporaries.size(); i++)
         {
             if(to_erase.find(temporaries[i].first) != to_erase.end())
@@ -317,6 +318,13 @@ struct equation_context
 
     void build_impl(std::string& argument_string, const std::string& str)
     {
+        std::cout << "ALIASES " << aliases.size() << std::endl;
+
+        for(auto& [name, v] : values)
+        {
+            v.substitute(aliases);
+        }
+
         strip_unused();
 
         for(auto& i : values)
@@ -909,10 +917,15 @@ value diff2(equation_context& ctx, const value& in, int idx, int idy, const valu
     #ifdef SYMMETRIC_DERIVATIVES
     if(idx < idy)
     {
+        ///we're using first_y, so alias unconditionally
+        ctx.alias(diff1(ctx, in, idy), first_y);
+
         return diff1(ctx, first_y, idx);
     }
     else
     {
+        ctx.alias(diff1(ctx, in, idx), first_x);
+
         return diff1(ctx, first_x, idy);
     }
     #endif // SYMMETRIC_DERIVATIVES
