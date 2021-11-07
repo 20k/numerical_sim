@@ -5611,7 +5611,6 @@ int main()
 
                         render_args.push_back(scale);
                         render_args.push_back(clsize);
-                        render_args.push_back(rtex[which_texture]);
 
                         clctx.cqueue.exec("trace_rays", render_args, {width * height}, {64});
 

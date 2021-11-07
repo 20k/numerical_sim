@@ -1637,20 +1637,14 @@ void init_rays(__global struct lightray_simple* rays, __global int* ray_count0, 
 
     *ray_count0 = width * height;
     *ray_count1 = 0;
-
-    //rays[y * width + x] = out;
 }
 
 __kernel
 void trace_rays(__global struct lightray_simple* rays_in, __global struct lightray_simple* rays_out, __global struct lightray_simple* rays_terminated,
                 __global int* ray_count_in, __global int* ray_count_out, __global int* ray_count_terminated,
                 STANDARD_ARGS(),
-                float scale,
-                int4 dim, __write_only image2d_t screen)
+                float scale, int4 dim)
 {
-    int width = get_image_width(screen);
-    int height = get_image_height(screen);
-
     int idx = get_global_id(0);
 
     int count_in = *ray_count_in;
