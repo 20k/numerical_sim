@@ -5615,8 +5615,6 @@ int main()
 
                         clctx.cqueue.exec("trace_rays", render_args, {width * height}, {64});
 
-                        //ray_count[0].set_to_zero(clctx.cqueue);
-
                         std::swap(ray_count[0], ray_count[1]);
                         std::swap(ray_buffer[0], ray_buffer[1]);
                     }

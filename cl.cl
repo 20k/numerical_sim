@@ -1775,15 +1775,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         int next_idx = atomic_inc(ray_count_terminated);
         rays_terminated[next_idx] = ray_out;
     }
-
-    /*float4 col = {1,0,1,1};
-
-    if(deliberate_termination || last_skipped)
-    {
-        col = (float4){0,0,0,1};
-    }
-
-    write_imagef(screen, (int2){x, y}, col);*/
 }
 
 __kernel void render_rays(__global struct lightray_simple* rays_in, __global int* ray_count, __write_only image2d_t screen, float scale)
