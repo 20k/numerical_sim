@@ -1531,6 +1531,8 @@ struct lightray_simple
     float V0;
     float V1;
     float V2;
+
+    int x, y;
 };
 
 enum ds_result
@@ -1617,7 +1619,23 @@ void init_rays(__global struct lightray_simple* rays,
     out.V1 = V1;
     out.V2 = V2;
 
-    rays[y * width + x] = out;
+    out.x = x;
+    out.y = y;
+
+    int linear_local_idx = get_local_linear_id();
+
+    int block_size = get_local_size(0) * get_local_size(1);
+
+    int group_idx = get_group_id(0);
+    int group_idy = get_group_id(1);
+
+    int group_width = get_num_groups(0);
+
+    int group_linear = group_idy * group_width + group_idx;
+
+    rays[group_linear * block_size + linear_local_idx] = out;
+
+    //rays[y * width + x] = out;
 }
 
 __kernel
@@ -1642,8 +1660,8 @@ void trace_rays(__global struct lightray_simple* rays,
     float V1 = rays[idx].V1;
     float V2 = rays[idx].V2;
 
-    int x = idx % width;
-    int y = idx / width;
+    int x = rays[idx].x;
+    int y = rays[idx].y;
 
     ///ray location
     ///temporary while i don't do interpolation
