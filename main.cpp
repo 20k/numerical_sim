@@ -5587,11 +5587,11 @@ int main()
                     init_args.push_back(width);
                     init_args.push_back(height);
 
-                    clctx.cqueue.exec("init_rays", init_args, {width, height}, {16, 16});
+                    clctx.cqueue.exec("init_rays", init_args, {width, height}, {8, 8});
                 }
 
                 {
-                    for(int i=0; i < 2; i++)
+                    for(int i=0; i < 1; i++)
                     {
                         ray_count[1].set_to_zero(clctx.cqueue);
 
