@@ -4699,8 +4699,19 @@ int main()
     rtex[0].create_from_texture(tex[0].handle);
     rtex[1].create_from_texture(tex[1].handle);
 
-    cl::buffer ray_buffer(clctx.ctx);
-    ray_buffer.alloc(sizeof(cl_float) * 10 * width * height);
+    std::array<cl::buffer, 2> ray_buffer{clctx.ctx, clctx.ctx};
+    ray_buffer[0].alloc(sizeof(cl_float) * 10 * width * height);
+    ray_buffer[1].alloc(sizeof(cl_float) * 10 * width * height);
+
+    cl::buffer rays_terminated(clctx.ctx);
+    rays_terminated.alloc(sizeof(cl_float) * 10 * width * height);
+
+    std::array<cl::buffer, 2> ray_count{clctx.ctx, clctx.ctx};
+    ray_count[0].alloc(sizeof(cl_int));
+    ray_count[1].alloc(sizeof(cl_int));
+
+    cl::buffer ray_count_terminated(clctx.ctx);
+    ray_count_terminated.alloc(sizeof(cl_int));
 
     int which_data = 0;
 
@@ -5023,7 +5034,9 @@ int main()
             rtex[0].create_from_texture(tex[0].handle);
             rtex[1].create_from_texture(tex[1].handle);
 
-            ray_buffer.alloc(sizeof(cl_float) * 10 * width * height);
+            ray_buffer[0].alloc(sizeof(cl_float) * 10 * width * height);
+            ray_buffer[1].alloc(sizeof(cl_float) * 10 * width * height);
+            ray_count_terminated.alloc(sizeof(cl_float) * 10 * width * height);
         }
 
         rtex[which_texture].acquire(clctx.cqueue);
@@ -5553,10 +5566,14 @@ int main()
                 cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
                 cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
 
+                ray_count_terminated.set_to_zero(clctx.cqueue);
+
                 {
                     cl::args init_args;
 
-                    init_args.push_back(ray_buffer);
+                    init_args.push_back(ray_buffer[0]);
+                    init_args.push_back(ray_count[0]);
+                    init_args.push_back(ray_count[1]);
 
                     for(auto& i : generic_data[which_data].buffers)
                     {
@@ -5574,20 +5591,45 @@ int main()
                 }
 
                 {
-                    cl::args render_args;
-
-                    render_args.push_back(ray_buffer);
-
-                    for(auto& i : generic_data[which_data].buffers)
+                    for(int i=0; i < 20; i++)
                     {
-                        render_args.push_back(i);
+                        ray_count[1].set_to_zero(clctx.cqueue);
+
+                        cl::args render_args;
+
+                        render_args.push_back(ray_buffer[0]);
+                        render_args.push_back(ray_buffer[1]);
+                        render_args.push_back(rays_terminated);
+                        render_args.push_back(ray_count[0]);
+                        render_args.push_back(ray_count[1]);
+                        render_args.push_back(ray_count_terminated);
+
+                        for(auto& i : generic_data[which_data].buffers)
+                        {
+                            render_args.push_back(i);
+                        }
+
+                        render_args.push_back(scale);
+                        render_args.push_back(clsize);
+                        render_args.push_back(rtex[which_texture]);
+
+                        clctx.cqueue.exec("trace_rays", render_args, {width * height}, {64});
+
+                        //ray_count[0].set_to_zero(clctx.cqueue);
+
+                        std::swap(ray_count[0], ray_count[1]);
+                        std::swap(ray_buffer[0], ray_buffer[1]);
                     }
+                }
 
-                    render_args.push_back(scale);
-                    render_args.push_back(clsize);
+                {
+                    cl::args render_args;
+                    render_args.push_back(rays_terminated);
+                    render_args.push_back(ray_count_terminated);
                     render_args.push_back(rtex[which_texture]);
+                    render_args.push_back(scale);
 
-                    clctx.cqueue.exec("trace_rays", render_args, {width * height}, {64});
+                    clctx.cqueue.exec("render_rays", render_args, {width * height}, {128});
                 }
             }
         }

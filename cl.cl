@@ -1566,7 +1566,7 @@ int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_d
 }
 
 __kernel
-void init_rays(__global struct lightray_simple* rays,
+void init_rays(__global struct lightray_simple* rays, __global int* ray_count0, __global int* ray_count1,
                 STANDARD_ARGS(),
                 float scale, float3 camera_pos, float4 camera_quat,
                 int4 dim, int width, int height)
@@ -1635,11 +1635,15 @@ void init_rays(__global struct lightray_simple* rays,
 
     rays[group_linear * block_size + linear_local_idx] = out;
 
+    *ray_count0 = width * height;
+    *ray_count1 = 0;
+
     //rays[y * width + x] = out;
 }
 
 __kernel
-void trace_rays(__global struct lightray_simple* rays,
+void trace_rays(__global struct lightray_simple* rays_in, __global struct lightray_simple* rays_out, __global struct lightray_simple* rays_terminated,
+                __global int* ray_count_in, __global int* ray_count_out, __global int* ray_count_terminated,
                 STANDARD_ARGS(),
                 float scale,
                 int4 dim, __write_only image2d_t screen)
@@ -1649,19 +1653,23 @@ void trace_rays(__global struct lightray_simple* rays,
 
     int idx = get_global_id(0);
 
-    if(idx >= (width * height))
+    int count_in = *ray_count_in;
+
+    if(idx >= count_in)
         return;
 
-    float lp1 = rays[idx].lp1;
-    float lp2 = rays[idx].lp2;
-    float lp3 = rays[idx].lp3;
+    struct lightray_simple ray_in = rays_in[idx];
 
-    float V0 = rays[idx].V0;
-    float V1 = rays[idx].V1;
-    float V2 = rays[idx].V2;
+    float lp1 = ray_in.lp1;
+    float lp2 = ray_in.lp2;
+    float lp3 = ray_in.lp3;
 
-    int x = rays[idx].x;
-    int y = rays[idx].y;
+    float V0 = ray_in.V0;
+    float V1 = ray_in.V1;
+    float V2 = ray_in.V2;
+
+    int x = ray_in.x;
+    int y = ray_in.y;
 
     ///ray location
     ///temporary while i don't do interpolation
@@ -1670,7 +1678,7 @@ void trace_rays(__global struct lightray_simple* rays,
     bool deliberate_termination = false;
     bool last_skipped = false;
 
-    for(int iteration=0; iteration < 16000; iteration++)
+    for(int iteration=0; iteration < 100; iteration++)
     {
         float3 cpos = {lp1, lp2, lp3};
 
@@ -1688,7 +1696,7 @@ void trace_rays(__global struct lightray_simple* rays,
 
         if(terminate_length >= universe_size / 1.01f)
         {
-            float fr = fast_length(cpos);
+            /*float fr = fast_length(cpos);
             float theta = acos(cpos.z / fr);
             float phi = atan2(cpos.y, cpos.x);
 
@@ -1710,8 +1718,10 @@ void trace_rays(__global struct lightray_simple* rays,
                 val.z = 1;
             }
 
-            write_imagef(screen, (int2){x, y}, val);
-            return;
+            write_imagef(screen, (int2){x, y}, val);*/
+
+            deliberate_termination = true;
+            break;
         }
 
         float ds = next_ds;
@@ -1731,6 +1741,7 @@ void trace_rays(__global struct lightray_simple* rays,
         if(res == DS_RETURN)
         {
             deliberate_termination = true;
+            //write_imagef(screen, (int2){x, y}, (float4)(0,0,0,1));
             break;
         }
 
@@ -1762,18 +1773,99 @@ void trace_rays(__global struct lightray_simple* rays,
         if(fast_length((float3){dX0, dX1, dX2}) < 0.2f)
         {
             deliberate_termination = true;
+            //write_imagef(screen, (int2){x, y}, (float4)(0,0,0,1));
             break;
         }
     }
 
-    float4 col = {1,0,1,1};
+
+    struct lightray_simple ray_out;
+    ray_out.x = x;
+    ray_out.y = y;
+
+    ray_out.lp1 = lp1;
+    ray_out.lp2 = lp2;
+    ray_out.lp3 = lp3;
+
+    ray_out.V0 = V0;
+    ray_out.V1 = V1;
+    ray_out.V2 = V2;
+
+    if(!deliberate_termination)
+    {
+        int next_idx = atomic_inc(ray_count_out);
+        rays_out[next_idx] = ray_out;
+    }
+    else
+    {
+        int next_idx = atomic_inc(ray_count_terminated);
+        rays_terminated[next_idx] = ray_out;
+    }
+
+    /*float4 col = {1,0,1,1};
 
     if(deliberate_termination || last_skipped)
     {
         col = (float4){0,0,0,1};
     }
 
-    write_imagef(screen, (int2){x, y}, col);
+    write_imagef(screen, (int2){x, y}, col);*/
+}
+
+__kernel void render_rays(__global struct lightray_simple* rays_in, __global int* ray_count, __write_only image2d_t screen, float scale)
+{
+    int idx = get_global_id(0);
+
+    if(idx >= *ray_count)
+        return;
+
+    struct lightray_simple ray_in = rays_in[idx];
+
+    float lp1 = ray_in.lp1;
+    float lp2 = ray_in.lp2;
+    float lp3 = ray_in.lp3;
+
+    float V0 = ray_in.V0;
+    float V1 = ray_in.V1;
+    float V2 = ray_in.V2;
+
+    int x = ray_in.x;
+    int y = ray_in.y;
+
+    float3 cpos = {lp1, lp2, lp3};
+
+    float terminate_length = fast_length(cpos);
+
+    if(terminate_length >= universe_size / 1.01f)
+    {
+        float fr = fast_length(cpos);
+        float theta = acos(cpos.z / fr);
+        float phi = atan2(cpos.y, cpos.x);
+
+        float sxf = (phi + M_PI) / (2 * M_PI);
+        float syf = theta / M_PI;
+
+        float4 val = (float4)(0,0,0,1);
+
+        int x_half = fabs(fmod((sxf + 1) * 10.f, 1.f)) > 0.5 ? 1 : 0;
+        int y_half = fabs(fmod((syf + 1) * 10.f, 1.f)) > 0.5 ? 1 : 0;
+
+        val.x = x_half;
+        val.y = y_half;
+
+        if(syf < 0.1 || syf >= 0.9)
+        {
+            val.x = 0;
+            val.y = 0;
+            val.z = 1;
+        }
+
+        write_imagef(screen, (int2){x, y}, val);
+    }
+    else
+    {
+        write_imagef(screen, (int2){x, y}, (float4)(0,0,0,1));
+    }
 }
 
 struct lightray
