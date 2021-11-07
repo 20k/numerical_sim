@@ -1760,14 +1760,22 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     #endif // KEPLER
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
-    #define PAPER_0610128
+    //#define PAPER_0610128
     #ifdef PAPER_0610128
     black_hole_m = {0.483, 0.483};
     black_hole_pos = {san_black_hole_pos({-3.257, 0.f, 0.f}), san_black_hole_pos({3.257, 0, 0})};
     black_hole_velocity = {{0, 0.983 * 0.133 / black_hole_m[0], 0}, {0, 0.983 * -0.133 / black_hole_m[1], 0}};
     black_hole_spin = {{0,0,0}, {0,0,0}};
-
     #endif // PAPER_0610128
+
+    #define PAPER_150700570
+    #ifdef PAPER_150700570
+    black_hole_m = {0.1764, 0.1764};
+    //black_hole_m = {0.3528, 0.3528};
+    black_hole_pos = {san_black_hole_pos({3.257, 0, 0}), san_black_hole_pos({-3.257, 0, 0})};
+    black_hole_velocity = {{0, 0.9 * -0.12616 / black_hole_m[0], 0}, {0, 0.9 * 0.12616 / black_hole_m[1], 0}};
+    black_hole_spin = {{0, 0, 0.225}, {0, 0, 0.225}};
+    #endif
 
     metric<value, 3, 3> flat_metric;
 
@@ -2084,7 +2092,7 @@ void build_momentum_constraint(equation_context& ctx)
         Mi.idx(i) = 0;
     }
 
-    //#define BETTERDAMP_DTCAIJ
+    #define BETTERDAMP_DTCAIJ
     //#define DAMP_DTCAIJ
     #if defined(DAMP_DTCAIJ) || defined(BETTERDAMP_DTCAIJ)
     #define CALCULATE_MOMENTUM_CONSTRAINT
@@ -2424,7 +2432,7 @@ void build_cA(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            momentum_deriv.idx(i, j) = hacky_differentiate(args.momentum_constraint.idx(i), j);
+            momentum_deriv.idx(i, j) = diff1(ctx, args.momentum_constraint.idx(i), j);
         }
     }
 
@@ -3997,7 +4005,7 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
             cl::copy(cqueue, reduced_u_args[1], reduced_u_args[0]);
     }
 
-    int N = 3000;
+    int N = 5000;
 
     #ifdef GPU_PROFILE
     N = 1000;
@@ -4630,7 +4638,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.035;
+        float timestep = 0.005;
 
         //timestep = 0.04;
 

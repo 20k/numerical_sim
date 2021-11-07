@@ -463,7 +463,7 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
         }
     }*/
 
-    u_offset_out[IDX(ix, iy, iz)] = u0n1;
+    u_offset_out[IDX(ix, iy, iz)] = mix(u, u0n1, 0.9f);
 }
 
 #ifndef USE_GBB
