@@ -1678,7 +1678,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     bool deliberate_termination = false;
     bool last_skipped = false;
 
-    for(int iteration=0; iteration < 100; iteration++)
+    for(int iteration=0; iteration < 65000; iteration++)
     {
         float3 cpos = {lp1, lp2, lp3};
 
@@ -1696,30 +1696,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         if(terminate_length >= universe_size / 1.01f)
         {
-            /*float fr = fast_length(cpos);
-            float theta = acos(cpos.z / fr);
-            float phi = atan2(cpos.y, cpos.x);
-
-            float sxf = (phi + M_PI) / (2 * M_PI);
-            float syf = theta / M_PI;
-
-            float4 val = (float4)(0,0,0,1);
-
-            int x_half = fabs(fmod((sxf + 1) * 10.f, 1.f)) > 0.5 ? 1 : 0;
-            int y_half = fabs(fmod((syf + 1) * 10.f, 1.f)) > 0.5 ? 1 : 0;
-
-            val.x = x_half;
-            val.y = y_half;
-
-            if(syf < 0.1 || syf >= 0.9)
-            {
-                val.x = 0;
-                val.y = 0;
-                val.z = 1;
-            }
-
-            write_imagef(screen, (int2){x, y}, val);*/
-
             deliberate_termination = true;
             break;
         }
@@ -1741,7 +1717,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         if(res == DS_RETURN)
         {
             deliberate_termination = true;
-            //write_imagef(screen, (int2){x, y}, (float4)(0,0,0,1));
             break;
         }
 
@@ -1773,7 +1748,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         if(fast_length((float3){dX0, dX1, dX2}) < 0.2f)
         {
             deliberate_termination = true;
-            //write_imagef(screen, (int2){x, y}, (float4)(0,0,0,1));
             break;
         }
     }

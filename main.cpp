@@ -5591,7 +5591,7 @@ int main()
                 }
 
                 {
-                    for(int i=0; i < 20; i++)
+                    for(int i=0; i < 2; i++)
                     {
                         ray_count[1].set_to_zero(clctx.cqueue);
 
