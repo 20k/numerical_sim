@@ -3997,6 +3997,42 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
             cl::copy(cqueue, reduced_u_args[1], reduced_u_args[0]);
     }
 
+    float local_scale = calculate_scale(c_at_max, reduced_clsize);
+
+    std::vector<float> vscale{local_scale};
+    std::vector<cl_int4> vdim{{reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z(), 0}};
+
+    cl::buffer scale_arg(ctx);
+    scale_arg.alloc(sizeof(cl_float));
+    scale_arg.write(cqueue, vscale);
+
+    cl::buffer dim_arg(ctx);
+    dim_arg.alloc(sizeof(cl_int4));
+    dim_arg.write(cqueue, vdim);
+
+    cl::kernel kernel_base = ctx.fetch_kernel("iterative_u_solve");
+
+    cl::kernel specialisation0 = kernel_base.clone();
+    cl::kernel specialisation1 = kernel_base.clone();
+
+    cl::args a0;
+    a0.push_back(reduced_u_args[0]);
+    a0.push_back(reduced_u_args[1]);
+    a0.push_back(scale_arg);
+    a0.push_back(dim_arg);
+
+    specialisation0.set_args(a0);
+
+    cl::args a1;
+    a1.push_back(reduced_u_args[1]);
+    a1.push_back(reduced_u_args[0]);
+    a1.push_back(scale_arg);
+    a1.push_back(dim_arg);
+
+    specialisation1.set_args(a1);
+
+    steady_timer time;
+
     int N = 3000;
 
     #ifdef GPU_PROFILE
@@ -4009,9 +4045,7 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
 
     for(int i=0; i < N; i++)
     {
-        float local_scale = calculate_scale(c_at_max, reduced_clsize);
-
-        cl::args iterate_u_args;
+        /*cl::args iterate_u_args;
         iterate_u_args.push_back(reduced_u_args[which_reduced]);
         iterate_u_args.push_back(reduced_u_args[(which_reduced + 1) % 2]);
         iterate_u_args.push_back(local_scale);
@@ -4019,8 +4053,21 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
 
         cqueue.exec("iterative_u_solve", iterate_u_args, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1});
 
-        which_reduced = (which_reduced + 1) % 2;
+        which_reduced = (which_reduced + 1) % 2;*/
+
+        if((i % 2) == 0)
+        {
+            cqueue.exec(specialisation0, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1}, {});
+        }
+        else
+        {
+            cqueue.exec(specialisation1, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1}, {});
+        }
     }
+
+    cqueue.block();
+
+    std::cout << "ETIME " << time.get_elapsed_time_s() << std::endl;
 
     return reduced_u_args[which_reduced];
 }

@@ -387,8 +387,11 @@ void upscale_u(__global float* u_in, __global float* u_out, int4 in_dim, int4 ou
 ///https://arxiv.org/pdf/gr-qc/0007085.pdf 76?
 __kernel
 void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out,
-                       float scale, int4 dim)
+                       __global float* gscale, __global int4* gdim)
 {
+    float scale = *gscale;
+    int4 dim = *gdim;
+
     int ix = get_global_id(0);
     int iy = get_global_id(1);
     int iz = get_global_id(2);
@@ -536,7 +539,7 @@ void calculate_initial_conditions(STANDARD_ARGS(),
 
     if(ix == (250/2) && iz == (250/2))
     {
-        if(iy == 124 || iy == 125 || iy == 126)
+        if(iy == ((dim.x - 1)/2) - 1 || iy == (dim.x - 1)/2 || iy == ((dim.x - 1)/2) + 1)
         {
             printf("U: %.9f %i\n", u_value[IDX(ix,iy,iz)], iy);
         }
