@@ -2424,7 +2424,7 @@ void build_cA(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            momentum_deriv.idx(i, j) = hacky_differentiate(args.momentum_constraint.idx(i), j);
+            momentum_deriv.idx(i, j) = diff1(ctx, args.momentum_constraint.idx(i), j);
         }
     }
 
