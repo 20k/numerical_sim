@@ -4045,52 +4045,58 @@ cl::buffer upscale_u(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& so
     return u_arg;
 }
 
-///it seems like basically i need numerical dissipation of some form
-///if i didn't evolve where sponge = 1, would be massively faster
-int main()
+struct opencl_info
 {
-    steady_timer time_to_main;
+    int width = 0;
+    int height = 0;
 
-    int width = 800;
-    int height = 600;
+    vec3f camera_pos;
+    quat camera_quat;
+};
 
-    render_settings sett;
-    sett.width = width;
-    sett.height = height;
-    sett.opencl = true;
-    sett.no_double_buffer = true;
-    sett.is_srgb = true;
+struct shared_opencl_info
+{
+    std::mutex mut;
+    opencl_info val;
 
-    render_window win(sett, "Geodesics");
+    opencl_info pull()
+    {
+        std::lock_guard guard(mut);
+        return val;
+    }
 
-    assert(win.clctx);
+    void set(opencl_info in)
+    {
+        std::lock_guard guard(mut);
+        val = in;
+    }
+};
 
-    ImFontAtlas* atlas = ImGui::GetIO().Fonts;
-    atlas->FontBuilderFlags = ImGuiFreeTypeBuilderFlags_LCD | ImGuiFreeTypeBuilderFlags_FILTER_DEFAULT | ImGuiFreeTypeBuilderFlags_LoadColor;
+struct simulation_parameters
+{
+    vec3i size = {281, 281, 281};
+    float c_at_max = 65 * (251/300.f);
+    float scale = calculate_scale(c_at_max, size);
+};
 
-    ImFontConfig font_cfg;
-    font_cfg.GlyphExtraSpacing = ImVec2(0, 0);
-    font_cfg.FontBuilderFlags = ImGuiFreeTypeBuilderFlags_LCD | ImGuiFreeTypeBuilderFlags_FILTER_DEFAULT | ImGuiFreeTypeBuilderFlags_LoadColor;
-
-    ImGuiIO& io = ImGui::GetIO();
-
-    io.Fonts->Clear();
-    io.Fonts->AddFontFromFileTTF("VeraMono.ttf", 14, &font_cfg);
-
-    opencl_context& clctx = *win.clctx;
+void opencl_thread(cl::context ctx, shared_opencl_info& shared_val)
+{
+    cl::command_queue cqueue(ctx);
 
     std::string argument_string = "-I ./ -O3 -cl-std=CL2.0 -cl-uniform-work-group-size -cl-mad-enable -cl-finite-math-only -cl-denorms-are-zero ";
 
     std::string u_argument_string = argument_string;
 
+    simulation_parameters params;
+
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {281, 281, 281};
+    vec3i size = params.size;
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
-    float c_at_max = 65 * (251/300.f);
-    float scale = calculate_scale(c_at_max, size);
+    float c_at_max = params.c_at_max;
+    float scale = params.scale;
     vec3f centre = {size.x()/2.f, size.y()/2.f, size.z()/2.f};
 
     equation_context setup_initial;
@@ -4098,27 +4104,27 @@ int main()
 
     setup_initial.build(u_argument_string, 8);
 
-    cl::program u_program(clctx.ctx, "u_solver.cl");
-    u_program.build(clctx.ctx, u_argument_string);
+    cl::program u_program(ctx, "u_solver.cl");
+    u_program.build(ctx, u_argument_string);
 
-    clctx.ctx.register_program(u_program);
+    ctx.register_program(u_program);
 
-    cl::buffer u_arg(clctx.ctx);
+    cl::buffer u_arg(ctx);
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
     {
         printf("Usolving\n");
 
-        cl::buffer reduced0 = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 4, std::nullopt);
+        cl::buffer reduced0 = solve_for_u(ctx, cqueue, clsize, c_at_max, 4, std::nullopt);
 
-        cl::buffer upscaled0 = upscale_u(clctx.ctx, clctx.cqueue, reduced0, clsize, 2, 4);
+        cl::buffer upscaled0 = upscale_u(ctx, cqueue, reduced0, clsize, 2, 4);
 
-        cl::buffer reduced1 = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 2, upscaled0);
+        cl::buffer reduced1 = solve_for_u(ctx, cqueue, clsize, c_at_max, 2, upscaled0);
 
-        cl::buffer upscaled1 = upscale_u(clctx.ctx, clctx.cqueue, reduced1, clsize, 1, 2);
+        cl::buffer upscaled1 = upscale_u(ctx, cqueue, reduced1, clsize, 1, 2);
 
-        u_arg = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 1, upscaled1);
+        u_arg = solve_for_u(ctx, cqueue, clsize, c_at_max, 1, upscaled1);
     }
 
     equation_context ctx1;
@@ -4213,45 +4219,36 @@ int main()
 
     std::cout << "Size " << argument_string.size() << std::endl;
 
-    cl::program prog(clctx.ctx, "cl.cl");
-    prog.build(clctx.ctx, argument_string);
+    cl::program prog(ctx, "cl.cl");
+    prog.build(ctx, argument_string);
 
-    clctx.ctx.register_program(prog);
+    ctx.register_program(prog);
 
-    texture_settings tsett;
-    tsett.width = width;
-    tsett.height = height;
-    tsett.is_srgb = false;
-    tsett.generate_mipmaps = false;
+    opencl_info inf = shared_val.pull();
 
-    std::array<texture, 2> tex;
-    tex[0].load_from_memory(tsett, nullptr);
-    tex[1].load_from_memory(tsett, nullptr);
+    int width = inf.width;
+    int height = inf.height;
 
-    std::array<cl::gl_rendertexture, 2> rtex{clctx.ctx, clctx.ctx};
-    rtex[0].create_from_texture(tex[0].handle);
-    rtex[1].create_from_texture(tex[1].handle);
-
-    std::array<cl::buffer, 2> ray_buffer{clctx.ctx, clctx.ctx};
+    std::array<cl::buffer, 2> ray_buffer{ctx, ctx};
     ray_buffer[0].alloc(sizeof(cl_float) * 10 * width * height);
     ray_buffer[1].alloc(sizeof(cl_float) * 10 * width * height);
 
-    cl::buffer rays_terminated(clctx.ctx);
+    cl::buffer rays_terminated(ctx);
     rays_terminated.alloc(sizeof(cl_float) * 10 * width * height);
 
-    std::array<cl::buffer, 2> ray_count{clctx.ctx, clctx.ctx};
+    std::array<cl::buffer, 2> ray_count{ctx, ctx};
     ray_count[0].alloc(sizeof(cl_int));
     ray_count[1].alloc(sizeof(cl_int));
 
-    cl::buffer ray_count_terminated(clctx.ctx);
+    cl::buffer ray_count_terminated(ctx);
     ray_count_terminated.alloc(sizeof(cl_int));
 
     int which_data = 0;
 
-    std::array<buffer_set, 2> generic_data{buffer_set(clctx.ctx, size), buffer_set(clctx.ctx, size)};
-    //buffer_set rk4_intermediate(clctx.ctx, size);
-    buffer_set rk4_scratch(clctx.ctx, size);
-    //buffer_set rk4_xn(clctx.ctx, size);
+    std::array<buffer_set, 2> generic_data{buffer_set(ctx, size), buffer_set(ctx, size)};
+    //buffer_set rk4_intermediate(ctx, size);
+    buffer_set rk4_scratch(ctx, size);
+    //buffer_set rk4_xn(ctx, size);
 
     std::array<std::string, buffer_set::buffer_count> buffer_names
     {
@@ -4302,8 +4299,8 @@ int main()
 
     cl_float time_elapsed_s = 0;
 
-    auto [sponge_positions, sponge_positions_count] = generate_sponge_points(clctx.ctx, clctx.cqueue, scale, size);
-    auto [evolution_positions, evolution_positions_count, non_evolution_positions, non_evolution_positions_count] = generate_evolution_points(clctx.ctx, clctx.cqueue, scale, size);
+    auto [sponge_positions, sponge_positions_count] = generate_sponge_points(ctx, cqueue, scale, size);
+    auto [evolution_positions, evolution_positions_count, non_evolution_positions, non_evolution_positions_count] = generate_evolution_points(ctx, cqueue, scale, size);
 
     non_evolution_positions.native_mem_object.release();
 
@@ -4313,11 +4310,11 @@ int main()
 
     for(int i = 0; i < thin_intermediate_buffer_count; i++)
     {
-        thin_intermediates.emplace_back(clctx.ctx);
+        thin_intermediates.emplace_back(ctx);
         thin_intermediates.back().alloc(size.x() * size.y() * size.z() * intermediate_data_size);
     }
 
-    std::array<cl::buffer, 3> momentum_constraint{clctx.ctx, clctx.ctx, clctx.ctx};
+    std::array<cl::buffer, 3> momentum_constraint{ctx, ctx, ctx};
 
     for(auto& i : momentum_constraint)
     {
@@ -4326,7 +4323,7 @@ int main()
         #endif // CALCULATE_MOMENTUM_CONSTRAINT
     }
 
-    gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
+    gravitational_wave_manager wave_manager(ctx, size, c_at_max, scale);
 
     {
         cl::args init;
@@ -4340,210 +4337,51 @@ int main()
         init.push_back(scale);
         init.push_back(clsize);
 
-        clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
+        cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
     }
 
     for(int i=0; i < (int)generic_data[0].buffers.size(); i++)
     {
-        cl::copy(clctx.cqueue, generic_data[0].buffers[i], generic_data[1].buffers[i]);
-        cl::copy(clctx.cqueue, generic_data[0].buffers[i], rk4_scratch.buffers[i]);
-        //cl::copy(clctx.cqueue, generic_data[0].buffers[i], rk4_intermediate.buffers[i]);
+        cl::copy(cqueue, generic_data[0].buffers[i], generic_data[1].buffers[i]);
+        cl::copy(cqueue, generic_data[0].buffers[i], rk4_scratch.buffers[i]);
+        //cl::copy(cqueue, generic_data[0].buffers[i], rk4_intermediate.buffers[i]);
     }
 
-    std::vector<float> real_graph;
+    printf("DIMS %i %i\n", width, height);
+
+    /*texture_settings tsett;
+    tsett.width = width;
+    tsett.height = height;
+    tsett.is_srgb = false;
+    tsett.generate_mipmaps = false;*/
+
+    //texture tex;
+    //tex.load_from_memory(tsett, nullptr);
+
+    cl_image_format fmt;
+    fmt.image_channel_data_type = CL_FLOAT;
+    fmt.image_channel_order = CL_RGBA;
+
+    cl::image tex(ctx);
+    tex.alloc({width, height}, fmt);
+
     std::vector<float> real_decomp;
 
-    int which_texture = 0;
     int steps = 0;
-
-    bool run = false;
-    bool should_render = true;
-
-    vec3f camera_pos = {0, 0, -c_at_max/2.f + 1};
-    quat camera_quat;
-    camera_quat.load_from_axis_angle({1, 0, 0, 0});
-
-    std::optional<cl::event> last_event;
-
-    int rendering_method = 0;
-
-    bool trapezoidal_init = false;
-
     bool pao = false;
 
-    std::cout << "Init time " << time_to_main.get_elapsed_time_s() << std::endl;
-
-    while(!win.should_close())
+    while(1)
     {
         steady_timer frametime;
 
-        if(time_elapsed_s >= 30)
-        {
-            for(auto& i : dissipation_coefficients)
-            {
-                //i = std::min(i, 0.2f);
-            }
-        }
+        cqueue.block();
 
-        win.poll();
+        /*opencl_info pulled = shared_val.pull();
 
-        if(!ImGui::GetIO().WantCaptureKeyboard)
-        {
-            float speed = 0.001;
+        vec3f camera_pos = pulled.camera_pos;
+        quat camera_quat = pulled.camera_quat;*/
 
-            if(ImGui::IsKeyDown(GLFW_KEY_LEFT_SHIFT))
-                speed = 0.1;
-
-            if(ImGui::IsKeyDown(GLFW_KEY_LEFT_CONTROL))
-                speed = 0.00001;
-
-            if(ImGui::IsKeyDown(GLFW_KEY_LEFT_ALT))
-                speed /= 1000;
-
-            if(ImGui::IsKeyDown(GLFW_KEY_Z))
-                speed *= 100;
-
-            if(ImGui::IsKeyDown(GLFW_KEY_X))
-                speed *= 100;
-
-            if(ImGui::IsKeyPressed(GLFW_KEY_B))
-            {
-                camera_pos = {0, 0, -100};
-            }
-
-            if(ImGui::IsKeyPressed(GLFW_KEY_C))
-            {
-                camera_pos = {0, 0, 0};
-            }
-
-            if(ImGui::IsKeyDown(GLFW_KEY_RIGHT))
-            {
-                mat3f m = mat3f().ZRot(-M_PI/128);
-
-                quat q;
-                q.load_from_matrix(m);
-
-                camera_quat = q * camera_quat;
-            }
-
-            if(ImGui::IsKeyDown(GLFW_KEY_LEFT))
-            {
-                mat3f m = mat3f().ZRot(M_PI/128);
-
-                quat q;
-                q.load_from_matrix(m);
-
-                camera_quat = q * camera_quat;
-            }
-
-            vec3f up = {0, 0, -1};
-            vec3f right = rot_quat({1, 0, 0}, camera_quat);
-            vec3f forward_axis = rot_quat({0, 0, 1}, camera_quat);
-
-            if(ImGui::IsKeyDown(GLFW_KEY_DOWN))
-            {
-                quat q;
-                q.load_from_axis_angle({right.x(), right.y(), right.z(), M_PI/128});
-
-                camera_quat = q * camera_quat;
-            }
-
-            if(ImGui::IsKeyDown(GLFW_KEY_UP))
-            {
-                quat q;
-                q.load_from_axis_angle({right.x(), right.y(), right.z(), -M_PI/128});
-
-                camera_quat = q * camera_quat;
-            }
-
-            vec3f offset = {0,0,0};
-
-            offset += forward_axis * ((ImGui::IsKeyDown(GLFW_KEY_W) - ImGui::IsKeyDown(GLFW_KEY_S)) * speed);
-            offset += right * (ImGui::IsKeyDown(GLFW_KEY_D) - ImGui::IsKeyDown(GLFW_KEY_A)) * speed;
-            offset += up * (ImGui::IsKeyDown(GLFW_KEY_E) - ImGui::IsKeyDown(GLFW_KEY_Q)) * speed;
-
-            /*camera.y() += offset.x();
-            camera.z() += offset.y();
-            camera.w() += offset.z();*/
-
-            camera_pos += offset;
-        }
-
-        //std::cout << camera_quat.q << std::endl;
-        //std::cout << "POS " << camera_pos << std::endl;
-
-        auto buffer_size = rtex[which_texture].size<2>();
-
-        if((vec2i){buffer_size.x(), buffer_size.y()} != win.get_window_size())
-        {
-            width = win.get_window_size().x();
-            height = win.get_window_size().y();
-
-            texture_settings new_sett;
-            new_sett.width = width;
-            new_sett.height = height;
-            new_sett.is_srgb = false;
-            new_sett.generate_mipmaps = false;
-
-            tex[0].load_from_memory(new_sett, nullptr);
-            tex[1].load_from_memory(new_sett, nullptr);
-
-            rtex[0].create_from_texture(tex[0].handle);
-            rtex[1].create_from_texture(tex[1].handle);
-
-            ray_buffer[0].alloc(sizeof(cl_float) * 10 * width * height);
-            ray_buffer[1].alloc(sizeof(cl_float) * 10 * width * height);
-            ray_count_terminated.alloc(sizeof(cl_float) * 10 * width * height);
-        }
-
-        rtex[which_texture].acquire(clctx.cqueue);
-
-        bool step = false;
-
-            ImGui::Begin("Test Window", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-
-            if(ImGui::Button("Step"))
-                step = true;
-
-            ImGui::Checkbox("Run", &run);
-            ImGui::Checkbox("Render", &should_render);
-
-            ImGui::Text("Time: %f\n", time_elapsed_s);
-
-            bool snap = ImGui::Button("Snapshot");
-
-            ImGui::InputInt("Render Method", &rendering_method, 1);
-
-            if(real_graph.size() > 0)
-            {
-                ImGui::PushItemWidth(400);
-                ImGui::PlotLines("w4      ", &real_graph[0], real_graph.size());
-                ImGui::PopItemWidth();
-            }
-
-            ImGui::Checkbox("pao", &pao);
-
-            if(real_decomp.size() > 0)
-            {
-                ImGui::PushItemWidth(400);
-                ImGui::PlotLines("w4_l2_m0", &real_decomp[0], real_decomp.size());
-                ImGui::PopItemWidth();
-            }
-
-            ImGui::End();
-
-        if(run)
-            step = true;
-
-        ///rk4
-        ///though no signs of any notable instability for backwards euler
-        /*float timestep = 0.08;
-
-        if(steps < 20)
-           timestep = 0.016;
-
-        if(steps < 10)
-            timestep = 0.0016;*/
+        bool step = true;
 
         ///todo: backwards euler test
         float timestep = 0.035;
@@ -4586,7 +4424,7 @@ int main()
                         thin.push_back(scale);
                         thin.push_back(clsize);
 
-                        clctx.cqueue.exec("calculate_intermediate_data_thin", thin, {evolution_positions_count}, {128});
+                        cqueue.exec("calculate_intermediate_data_thin", thin, {evolution_positions_count}, {128});
                     };
 
                     std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
@@ -4623,7 +4461,7 @@ int main()
                     momentum_args.push_back(clsize);
                     momentum_args.push_back(time_elapsed_s);
 
-                    clctx.cqueue.exec("calculate_momentum_constraint", momentum_args, {evolution_positions_count}, {128});
+                    cqueue.exec("calculate_momentum_constraint", momentum_args, {evolution_positions_count}, {128});
                 }
                 #endif // CALCULATE_MOMENTUM_CONSTRAINT
 
@@ -4665,7 +4503,7 @@ int main()
                     a1.push_back(time_elapsed_s);
                     a1.push_back(current_simulation_boundary);
 
-                    clctx.cqueue.exec(name, a1, {evolution_positions_count}, {128});
+                    cqueue.exec(name, a1, {evolution_positions_count}, {128});
                 };
 
                 step_kernel("evolve_cY");
@@ -4692,7 +4530,7 @@ int main()
                 constraints.push_back(scale);
                 constraints.push_back(clsize);
 
-                clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {evolution_positions_count}, {128});
+                cqueue.exec("enforce_algebraic_constraints", constraints, {evolution_positions_count}, {128});
             };
 
             auto diff_to_input = [&](auto& buffer_in, cl_float factor)
@@ -4707,7 +4545,7 @@ int main()
                     accum.push_back(base_yn[i]);
                     accum.push_back(factor);
 
-                    clctx.cqueue.exec("calculate_rk4_val", accum, {size.x() * size.y() * size.z()}, {128});
+                    cqueue.exec("calculate_rk4_val", accum, {size.x() * size.y() * size.z()}, {128});
                 }
             };
 
@@ -4722,7 +4560,7 @@ int main()
                     copy.push_back(out[i]);
                     copy.push_back(clsize);
 
-                    clctx.cqueue.exec("copy_valid", copy, {evolution_positions_count}, {128});
+                    cqueue.exec("copy_valid", copy, {evolution_positions_count}, {128});
                 }
             };
 
@@ -4743,7 +4581,7 @@ int main()
                     copy.push_back(out[i]);
                     copy.push_back(size_1d);
 
-                    clctx.cqueue.exec("copy_buffer", copy, {size_1d}, {128});
+                    cqueue.exec("copy_buffer", copy, {size_1d}, {128});
                 }
             };
 
@@ -4763,7 +4601,7 @@ int main()
                     accum.push_back(buffers[i]);
                     accum.push_back(factor);
 
-                    clctx.cqueue.exec("accumulate_rk4", accum, {size_1d}, {128});
+                    cqueue.exec("accumulate_rk4", accum, {size_1d}, {128});
                 }
             };
 
@@ -4881,7 +4719,7 @@ int main()
                     trapezoidal.push_back(f_y2.buffers[bidx]); ///f(Yn+1) INPUT OUTPUT ARG, CONTAINS Yn+1
                     trapezoidal.push_back(timestep);
 
-                    clctx.cqueue.exec("trapezoidal_accumulate", trapezoidal, {evolution_positions_count}, {128});
+                    cqueue.exec("trapezoidal_accumulate", trapezoidal, {evolution_positions_count}, {128});
                 }
 
 
@@ -4901,7 +4739,7 @@ int main()
             #endif // DOUBLE_ENFORCEMENT
 
             {
-                wave_manager.issue_extraction(clctx.cqueue, *last_valid_thin_buffer, thin_intermediates, scale, clsize);
+                wave_manager.issue_extraction(cqueue, *last_valid_thin_buffer, thin_intermediates, scale, clsize);
 
                 std::vector<float> values = wave_manager.process();
 
@@ -4912,7 +4750,7 @@ int main()
                 }
             }
 
-            {
+            /*{
                 cl::args render;
 
                 for(auto& i : *last_valid_thin_buffer)
@@ -4928,12 +4766,11 @@ int main()
                 //render.push_back(bssnok_datas[which_data]);
                 render.push_back(scale);
                 render.push_back(clsize);
-                render.push_back(rtex[which_texture]);
+                render.push_back(tex);
                 render.push_back(time_elapsed_s);
 
-                clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
-
-            }
+                cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
+            }*/
 
             //#define DISSIPATE_SELF
             #ifdef DISSIPATE_SELF
@@ -4961,7 +4798,7 @@ int main()
                     if(coeff == 0)
                         continue;
 
-                    clctx.cqueue.exec("dissipate_single", diss, {evolution_positions_count}, {128});
+                    cqueue.exec("dissipate_single", diss, {evolution_positions_count}, {128});
                 }
             }
 
@@ -4984,7 +4821,7 @@ int main()
                 cleaner.push_back(time_elapsed_s);
                 cleaner.push_back(timestep);
 
-                clctx.cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
+                cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
             }
 
             enforce_constraints(generic_data[which_data].buffers);
@@ -4995,7 +4832,11 @@ int main()
             current_simulation_boundary = clamp(current_simulation_boundary, 0, size.x()/2);
         }
 
-        if(should_render || snap)
+        bool should_render = false;
+        bool snap = false;
+        int rendering_method = 1;
+
+        /*if(should_render || snap)
         {
             if(rendering_method == 0)
             {
@@ -5013,9 +4854,9 @@ int main()
                 render_args.push_back(ccamera_pos);
                 render_args.push_back(ccamera_quat);
                 render_args.push_back(clsize);
-                render_args.push_back(rtex[which_texture]);
+                render_args.push_back(tex);
 
-                clctx.cqueue.exec("trace_metric", render_args, {width, height}, {16, 16});
+                cqueue.exec("trace_metric", render_args, {width, height}, {16, 16});
             }
 
             if(rendering_method == 1)
@@ -5023,7 +4864,7 @@ int main()
                 cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
                 cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
 
-                ray_count_terminated.set_to_zero(clctx.cqueue);
+                ray_count_terminated.set_to_zero(cqueue);
 
                 {
                     cl::args init_args;
@@ -5044,13 +4885,13 @@ int main()
                     init_args.push_back(width);
                     init_args.push_back(height);
 
-                    clctx.cqueue.exec("init_rays", init_args, {width, height}, {8, 8});
+                    cqueue.exec("init_rays", init_args, {width, height}, {8, 8});
                 }
 
                 {
                     for(int i=0; i < 1; i++)
                     {
-                        ray_count[1].set_to_zero(clctx.cqueue);
+                        ray_count[1].set_to_zero(cqueue);
 
                         cl::args render_args;
 
@@ -5069,7 +4910,7 @@ int main()
                         render_args.push_back(scale);
                         render_args.push_back(clsize);
 
-                        clctx.cqueue.exec("trace_rays", render_args, {width * height}, {64});
+                        cqueue.exec("trace_rays", render_args, {width * height}, {64});
 
                         std::swap(ray_count[0], ray_count[1]);
                         std::swap(ray_buffer[0], ray_buffer[1]);
@@ -5080,10 +4921,10 @@ int main()
                     cl::args render_args;
                     render_args.push_back(rays_terminated);
                     render_args.push_back(ray_count_terminated);
-                    render_args.push_back(rtex[which_texture]);
+                    render_args.push_back(tex);
                     render_args.push_back(scale);
 
-                    clctx.cqueue.exec("render_rays", render_args, {width * height}, {128});
+                    cqueue.exec("render_rays", render_args, {width * height}, {128});
                 }
             }
         }
@@ -5104,15 +4945,15 @@ int main()
             init_args.push_back(ccamera_pos);
             init_args.push_back(ccamera_quat);
             init_args.push_back(clsize);
-            init_args.push_back(rtex[which_texture]);
+            init_args.push_back(tex);
             init_args.push_back(ray_buffer);
 
-            clctx.cqueue.exec("init_accurate_rays", init_args, {width, height}, {8, 8});
+            cqueue.exec("init_accurate_rays", init_args, {width, height}, {8, 8});
 
             printf("Init\n");
-        }
+        }*/
 
-        if(rendering_method == 2 && step)
+        /*if(rendering_method == 2 && step)
         {
             cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
             cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
@@ -5130,21 +4971,281 @@ int main()
             step_args.push_back(ccamera_pos);
             step_args.push_back(ccamera_quat);
             step_args.push_back(clsize);
-            step_args.push_back(rtex[which_texture]);
+            step_args.push_back(tex);
             step_args.push_back(ray_buffer);
             step_args.push_back(timestep);
 
-            clctx.cqueue.exec("step_accurate_rays", step_args, {width * height}, {128});
+            cqueue.exec("step_accurate_rays", step_args, {width * height}, {128});
+        }*/
+
+        printf("Time2: %f\n", frametime.restart() * 1000.);
+    }
+}
+
+///it seems like basically i need numerical dissipation of some form
+///if i didn't evolve where sponge = 1, would be massively faster
+int main()
+{
+    steady_timer time_to_main;
+
+    int width = 800;
+    int height = 600;
+
+    render_settings sett;
+    sett.width = width;
+    sett.height = height;
+    sett.opencl = true;
+    sett.no_double_buffer = true;
+    sett.is_srgb = true;
+
+    render_window win(sett, "Geodesics");
+
+    assert(win.clctx);
+
+    ImFontAtlas* atlas = ImGui::GetIO().Fonts;
+    atlas->FontBuilderFlags = ImGuiFreeTypeBuilderFlags_LCD | ImGuiFreeTypeBuilderFlags_FILTER_DEFAULT | ImGuiFreeTypeBuilderFlags_LoadColor;
+
+    ImFontConfig font_cfg;
+    font_cfg.GlyphExtraSpacing = ImVec2(0, 0);
+    font_cfg.FontBuilderFlags = ImGuiFreeTypeBuilderFlags_LCD | ImGuiFreeTypeBuilderFlags_FILTER_DEFAULT | ImGuiFreeTypeBuilderFlags_LoadColor;
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    io.Fonts->Clear();
+    io.Fonts->AddFontFromFileTTF("VeraMono.ttf", 14, &font_cfg);
+
+    opencl_context& clctx = *win.clctx;
+
+    simulation_parameters params;
+
+    vec3f camera_pos = {0, 0, -params.c_at_max/2.f + 1};
+    quat camera_quat;
+    camera_quat.load_from_axis_angle({1, 0, 0, 0});
+
+    shared_opencl_info shared_data;
+
+    {
+        opencl_info inf;
+        inf.width = width;
+        inf.height = height;
+        inf.camera_pos = camera_pos;
+        inf.camera_quat = camera_quat;
+
+        shared_data.set(inf);
+    }
+
+    std::thread(opencl_thread, clctx.ctx, std::ref(shared_data)).detach();
+
+    texture_settings tsett;
+    tsett.width = width;
+    tsett.height = height;
+    tsett.is_srgb = false;
+    tsett.generate_mipmaps = false;
+
+    std::array<texture, 2> tex;
+    tex[0].load_from_memory(tsett, nullptr);
+    tex[1].load_from_memory(tsett, nullptr);
+
+    /*std::array<cl::gl_rendertexture, 2> rtex{clctx.ctx, clctx.ctx};
+    rtex[0].create_from_texture(tex[0].handle);
+    rtex[1].create_from_texture(tex[1].handle);*/
+
+    std::vector<float> real_graph;
+    std::vector<float> real_decomp;
+
+    int which_texture = 0;
+    int steps = 0;
+
+    bool run = false;
+    bool should_render = true;
+
+    std::optional<cl::event> last_event;
+
+    int rendering_method = 0;
+
+    bool trapezoidal_init = false;
+
+    bool pao = false;
+
+    std::cout << "Init time " << time_to_main.get_elapsed_time_s() << std::endl;
+
+    while(!win.should_close())
+    {
+        steady_timer frametime;
+
+        /*if(time_elapsed_s >= 30)
+        {
+            for(auto& i : dissipation_coefficients)
+            {
+                //i = std::min(i, 0.2f);
+            }
+        }*/
+
+        win.poll();
+
+        if(!ImGui::GetIO().WantCaptureKeyboard)
+        {
+            float speed = 0.001;
+
+            if(ImGui::IsKeyDown(GLFW_KEY_LEFT_SHIFT))
+                speed = 0.1;
+
+            if(ImGui::IsKeyDown(GLFW_KEY_LEFT_CONTROL))
+                speed = 0.00001;
+
+            if(ImGui::IsKeyDown(GLFW_KEY_LEFT_ALT))
+                speed /= 1000;
+
+            if(ImGui::IsKeyDown(GLFW_KEY_Z))
+                speed *= 100;
+
+            if(ImGui::IsKeyDown(GLFW_KEY_X))
+                speed *= 100;
+
+            if(ImGui::IsKeyPressed(GLFW_KEY_B))
+            {
+                camera_pos = {0, 0, -100};
+            }
+
+            if(ImGui::IsKeyPressed(GLFW_KEY_C))
+            {
+                camera_pos = {0, 0, 0};
+            }
+
+            if(ImGui::IsKeyDown(GLFW_KEY_RIGHT))
+            {
+                mat3f m = mat3f().ZRot(-M_PI/128);
+
+                quat q;
+                q.load_from_matrix(m);
+
+                camera_quat = q * camera_quat;
+            }
+
+            if(ImGui::IsKeyDown(GLFW_KEY_LEFT))
+            {
+                mat3f m = mat3f().ZRot(M_PI/128);
+
+                quat q;
+                q.load_from_matrix(m);
+
+                camera_quat = q * camera_quat;
+            }
+
+            vec3f up = {0, 0, -1};
+            vec3f right = rot_quat({1, 0, 0}, camera_quat);
+            vec3f forward_axis = rot_quat({0, 0, 1}, camera_quat);
+
+            if(ImGui::IsKeyDown(GLFW_KEY_DOWN))
+            {
+                quat q;
+                q.load_from_axis_angle({right.x(), right.y(), right.z(), M_PI/128});
+
+                camera_quat = q * camera_quat;
+            }
+
+            if(ImGui::IsKeyDown(GLFW_KEY_UP))
+            {
+                quat q;
+                q.load_from_axis_angle({right.x(), right.y(), right.z(), -M_PI/128});
+
+                camera_quat = q * camera_quat;
+            }
+
+            vec3f offset = {0,0,0};
+
+            offset += forward_axis * ((ImGui::IsKeyDown(GLFW_KEY_W) - ImGui::IsKeyDown(GLFW_KEY_S)) * speed);
+            offset += right * (ImGui::IsKeyDown(GLFW_KEY_D) - ImGui::IsKeyDown(GLFW_KEY_A)) * speed;
+            offset += up * (ImGui::IsKeyDown(GLFW_KEY_E) - ImGui::IsKeyDown(GLFW_KEY_Q)) * speed;
+
+            /*camera.y() += offset.x();
+            camera.z() += offset.y();
+            camera.w() += offset.z();*/
+
+            camera_pos += offset;
         }
 
-        cl::event next_event = rtex[which_texture].unacquire(clctx.cqueue);
+        //std::cout << camera_quat.q << std::endl;
+        //std::cout << "POS " << camera_pos << std::endl;
 
-        if(last_event.has_value())
-            last_event.value().block();
+        auto buffer_size = tex[which_texture].dim.xy();
 
-        last_event = next_event;
-
+        if((vec2i){buffer_size.x(), buffer_size.y()} != win.get_window_size())
         {
+            width = win.get_window_size().x();
+            height = win.get_window_size().y();
+
+            texture_settings new_sett;
+            new_sett.width = width;
+            new_sett.height = height;
+            new_sett.is_srgb = false;
+            new_sett.generate_mipmaps = false;
+
+            tex[0].load_from_memory(new_sett, nullptr);
+            tex[1].load_from_memory(new_sett, nullptr);
+
+            //rtex[0].create_from_texture(tex[0].handle);
+            //rtex[1].create_from_texture(tex[1].handle);
+
+            //ray_buffer[0].alloc(sizeof(cl_float) * 10 * width * height);
+            //ray_buffer[1].alloc(sizeof(cl_float) * 10 * width * height);
+            //ray_count_terminated.alloc(sizeof(cl_float) * 10 * width * height);
+        }
+
+        //rtex[which_texture].acquire(clctx.cqueue);
+
+        bool step = false;
+
+            ImGui::Begin("Test Window", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+
+            if(ImGui::Button("Step"))
+                step = true;
+
+            ImGui::Checkbox("Run", &run);
+            ImGui::Checkbox("Render", &should_render);
+
+            //ImGui::Text("Time: %f\n", time_elapsed_s);
+
+            bool snap = ImGui::Button("Snapshot");
+
+            ImGui::InputInt("Render Method", &rendering_method, 1);
+
+            if(real_graph.size() > 0)
+            {
+                ImGui::PushItemWidth(400);
+                ImGui::PlotLines("w4      ", &real_graph[0], real_graph.size());
+                ImGui::PopItemWidth();
+            }
+
+            ImGui::Checkbox("pao", &pao);
+
+            if(real_decomp.size() > 0)
+            {
+                ImGui::PushItemWidth(400);
+                ImGui::PlotLines("w4_l2_m0", &real_decomp[0], real_decomp.size());
+                ImGui::PopItemWidth();
+            }
+
+            ImGui::End();
+
+        if(run)
+            step = true;
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+        ///rk4
+        ///though no signs of any notable instability for backwards euler
+        /*float timestep = 0.08;
+
+        if(steps < 20)
+           timestep = 0.016;
+
+        if(steps < 10)
+            timestep = 0.0016;*/
+
+        //rtex[which_texture].unacquire(clctx.cqueue);
+
+        /*{
             ImDrawList* lst = ImGui::GetBackgroundDrawList();
 
             ImVec2 screen_pos = ImGui::GetMainViewport()->Pos;
@@ -5162,10 +5263,10 @@ int main()
             }
 
             lst->AddImage((void*)rtex[which_texture].texture_id, tl, br, ImVec2(0, 0), ImVec2(1.f, 1.f));
-        }
+        }*/
 
         win.display();
 
-        printf("Time: %f\n", frametime.restart() * 1000.);
+        //printf("Time: %f\n", frametime.restart() * 1000.);
     }
 }
