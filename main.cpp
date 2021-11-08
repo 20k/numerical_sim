@@ -4079,6 +4079,8 @@ int main()
 
     opencl_context& clctx = *win.clctx;
 
+    cl::command_queue thin_queue(clctx.ctx, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE);
+
     std::string argument_string = "-I ./ -O3 -cl-std=CL2.0 -cl-uniform-work-group-size -cl-mad-enable -cl-finite-math-only -cl-denorms-are-zero ";
 
     std::string u_argument_string = argument_string;
@@ -4569,7 +4571,11 @@ int main()
 
             auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
             {
+                cl::event marker_event = clctx.cqueue.enqueue_marker({});
+
                 last_valid_thin_buffer = &generic_in;
+
+                std::vector<cl::event> event_q;
 
                 {
                     auto differentiate = [&](const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
@@ -4586,7 +4592,7 @@ int main()
                         thin.push_back(scale);
                         thin.push_back(clsize);
 
-                        clctx.cqueue.exec("calculate_intermediate_data_thin", thin, {evolution_positions_count}, {128});
+                        return thin_queue.exec("calculate_intermediate_data_thin", thin, {evolution_positions_count}, {128}, {marker_event});
                     };
 
                     std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
@@ -4598,7 +4604,7 @@ int main()
                         int i2 = idx * 3 + 1;
                         int i3 = idx * 3 + 2;
 
-                        differentiate(buffers[idx], thin_intermediates[i1], thin_intermediates[i2], thin_intermediates[i3]);
+                        event_q.push_back(differentiate(buffers[idx], thin_intermediates[i1], thin_intermediates[i2], thin_intermediates[i3]));
                     }
                 }
 
@@ -4665,16 +4671,20 @@ int main()
                     a1.push_back(time_elapsed_s);
                     a1.push_back(current_simulation_boundary);
 
-                    clctx.cqueue.exec(name, a1, {evolution_positions_count}, {128});
+                    return thin_queue.exec(name, a1, {evolution_positions_count}, {128}, event_q);
                 };
 
-                step_kernel("evolve_cY");
-                step_kernel("evolve_cA");
-                step_kernel("evolve_cGi");
-                step_kernel("evolve_K");
-                step_kernel("evolve_X");
-                step_kernel("evolve_gA");
-                step_kernel("evolve_gB");
+                std::vector<cl::event> steps;
+
+                steps.push_back(step_kernel("evolve_cY"));
+                steps.push_back(step_kernel("evolve_cA"));
+                steps.push_back(step_kernel("evolve_cGi"));
+                steps.push_back(step_kernel("evolve_K"));
+                steps.push_back(step_kernel("evolve_X"));
+                steps.push_back(step_kernel("evolve_gA"));
+                steps.push_back(step_kernel("evolve_gB"));
+
+                clctx.cqueue.enqueue_marker(steps);
             };
 
             auto enforce_constraints = [&](auto& generic_out)
@@ -4941,6 +4951,10 @@ int main()
             #endif // DISSIPATE_SELF
 
             {
+                cl::event marker = clctx.cqueue.enqueue_marker({});
+
+                std::vector<cl::event> deps;
+
                 for(int i=0; i < buffer_set::buffer_count; i++)
                 {
                     cl::args diss;
@@ -4961,8 +4975,10 @@ int main()
                     if(coeff == 0)
                         continue;
 
-                    clctx.cqueue.exec("dissipate_single", diss, {evolution_positions_count}, {128});
+                    deps.push_back(thin_queue.exec("dissipate_single", diss, {evolution_positions_count}, {128}, {marker}));
                 }
+
+                clctx.cqueue.enqueue_marker(deps);
             }
 
             which_data = (which_data + 1) % 2;
@@ -5139,8 +5155,8 @@ int main()
 
         cl::event next_event = rtex[which_texture].unacquire(clctx.cqueue);
 
-        if(last_event.has_value())
-            last_event.value().block();
+        //if(last_event.has_value())
+        //    last_event.value().block();
 
         last_event = next_event;
 
