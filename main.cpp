@@ -4057,6 +4057,8 @@ int main()
         printf("HARM %f\n", harm.real);
     }*/
 
+    steady_timer time_to_main;
+
     int width = 800;
     int height = 600;
 
@@ -4224,11 +4226,11 @@ int main()
 
     std::cout << "Size " << argument_string.size() << std::endl;
 
-    cl::program prog(clctx.ctx, "cl.cl");
-    prog.build(clctx.ctx, argument_string);
-
     cl::program u_program(clctx.ctx, "u_solver.cl");
     u_program.build(clctx.ctx, u_argument_string);
+
+    cl::program prog(clctx.ctx, "cl.cl");
+    prog.build(clctx.ctx, argument_string);
 
     clctx.ctx.register_program(u_program);
 
@@ -4418,6 +4420,8 @@ int main()
     bool trapezoidal_init = false;
 
     bool pao = false;
+
+    std::cout << "Init time " << time_to_main.get_elapsed_time_s() << std::endl;
 
     while(!win.should_close())
     {
