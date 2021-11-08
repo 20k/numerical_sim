@@ -4049,15 +4049,6 @@ cl::buffer upscale_u(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& so
 ///if i didn't evolve where sponge = 1, would be massively faster
 int main()
 {
-    //return 0;
-
-    /*for(float v = 0; v <= M_PI * 10; v += 0.01)
-    {
-        auto harm = get_harmonic(v, 2, 0);
-
-        printf("HARM %f\n", harm.real);
-    }*/
-
     steady_timer time_to_main;
 
     int width = 800;
@@ -4133,9 +4124,6 @@ int main()
     equation_context ctx1;
     get_initial_conditions_eqs(ctx1, centre, scale);
 
-    //equation_context ctx3;
-    //build_eqs(ctx3);
-
     equation_context dtcY;
     build_cY(dtcY);
 
@@ -4171,9 +4159,6 @@ int main()
     ctx7.uses_linear = true;
     loop_geodesics(ctx7, {size.x(), size.y(), size.z()});
 
-    /*equation_context ctx8;
-    build_kreiss_oliger_dissipate(ctx8);*/
-
     equation_context ctx10;
     build_kreiss_oliger_dissipate_singular(ctx10);
 
@@ -4186,32 +4171,11 @@ int main()
     equation_context ctx13;
     build_momentum_constraint(ctx13);
 
-    /*for(auto& i : ctx.values)
-    {
-        std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
-
-        argument_string += str;
-    }
-
-    argument_string += "-DTEMP_COUNT=" + std::to_string(ctx.temporaries.size()) + " ";
-
-    std::string temporary_string;
-
-    for(auto& i : ctx.temporaries)
-    {
-        temporary_string += type_to_string(i.second) + ",";
-    }
-
-    argument_string += "-DTEMPORARIES=" + temporary_string + " ";*/
-
     ctx1.build(argument_string, 0);
-    //ctx2.build(argument_string, 1);
-    //ctx3.build(argument_string, 2);
     ctx4.build(argument_string, 3);
     ctx5.build(argument_string, 4);
     ctx6.build(argument_string, 5);
     ctx7.build(argument_string, 6);
-    //ctx8.build(argument_string, 7);
     setup_initial.build(argument_string, 8);
     ctx10.build(argument_string, 9);
     ctx11.build(argument_string, 10);
@@ -4241,8 +4205,6 @@ int main()
     int intermediate_data_size = sizeof(cl_float);
     argument_string += "-DDERIV_PRECISION=float ";
     #endif
-
-    //std::cout << "ARGS " << argument_string << std::endl;
 
     {
         std::ofstream out("args.txt");
@@ -4324,17 +4286,6 @@ int main()
     dissipate_caijyy = 0;
     #endif // NO_CAIJYY
 
-    /*std::array<float, buffer_count> dissipation_coefficients
-    {
-        dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, //cY
-        dissipate_high, dissipate_high, dissipate_high, dissipate_high, dissipate_high, dissipate_high, //cA
-        dissipate_high, dissipate_high, dissipate_high, //cGi
-        dissipate_high, //K
-        dissipate_high, //X
-        dissipate_high, //gA
-        dissipate_high, dissipate_high, dissipate_high //gB
-    };*/
-
     std::array<float, buffer_set::buffer_count> dissipation_coefficients
     {
         dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, //cY
@@ -4374,9 +4325,6 @@ int main()
         i.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
         #endif // CALCULATE_MOMENTUM_CONSTRAINT
     }
-
-    //cl::buffer waveform(clctx.ctx);
-    //waveform.alloc(sizeof(cl_float2));
 
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
 
@@ -4429,22 +4377,6 @@ int main()
     {
         steady_timer frametime;
 
-        /*if(time_elapsed_s >= 5)
-        {
-            for(auto& i : dissipation_coefficients)
-            {
-                i = std::min(i, 0.1f);
-            }
-        }*/
-
-        /*if(time_elapsed_s >= 15)
-        {
-            for(auto& i : dissipation_coefficients)
-            {
-                i = std::min(i, 0.15f);
-            }
-        }*/
-
         if(time_elapsed_s >= 30)
         {
             for(auto& i : dissipation_coefficients)
@@ -4452,38 +4384,6 @@ int main()
                 //i = std::min(i, 0.2f);
             }
         }
-
-        /*if(time_elapsed_s >= 30)
-        {
-            for(auto& i : dissipation_coefficients)
-            {
-                i = std::min(i, 0.15f);
-            }
-        }*/
-
-        /*if(time_elapsed_s >= 70)
-        {
-            for(auto& i : dissipation_coefficients)
-            {
-                i = std::min(i, 0.1f);
-            }
-        }*/
-
-        /*if(time_elapsed_s >= 40)
-        {
-            for(auto& i : dissipation_coefficients)
-            {
-                i = std::min(i, 0.15f);
-            }
-        }*/
-
-        /*if(time_elapsed_s >= 20)
-        {
-            for(auto& i : dissipation_coefficients)
-            {
-                i = std::min(i, 0.1f);
-            }
-        }*/
 
         win.poll();
 
