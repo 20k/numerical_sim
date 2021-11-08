@@ -382,13 +382,20 @@ void upscale_u(__global float* u_in, __global float* u_out, int4 in_dim, int4 ou
     u_out[IDXD(ix, iy, iz, out_dim)] = val;
 }
 
+//__kernel
+//void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out,
+//                       float scale, int4 dim, int counter);
+
 ///https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan2008/Workbook33/33_2_elliptic_pde.pdf
 ///https://arxiv.org/pdf/1205.5111v1.pdf 78
 ///https://arxiv.org/pdf/gr-qc/0007085.pdf 76?
 __kernel
-void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out,
-                       float scale, int4 dim)
+void iterative_u_solve_impl(__global float* u_offset_in, __global float* u_offset_out,
+                       float scale, int4 dim, queue_t def, int counter)
 {
+    if(counter >= 1)
+        return;
+
     int ix = get_global_id(0);
     int iy = get_global_id(1);
     int iz = get_global_id(2);
@@ -465,6 +472,106 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
     u_offset_out[IDX(ix, iy, iz)] = mix(u, u0n1, 0.9f);
     //u_offset_out[IDX(ix, iy, iz)] = u0n1;
+
+    if(ix == 1 && iy == 1 && iz == 1)
+    {
+        size_t lws[3] = {8, 8, 1};
+        size_t gws[3] = {get_global_size(0), get_global_size(1), get_global_size(2)};
+
+        enqueue_kernel(def, CLK_ENQUEUE_FLAGS_WAIT_KERNEL, ndrange_3D(gws, lws),
+                       0, NULL, NULL,
+        ^{
+            iterative_u_solve_impl(u_offset_out, u_offset_in, scale, dim, def, counter + 1);
+        });
+    }
+
+    /*if(ix == 1 && iy == 1 && iz == 1)
+    {
+        release_event(mine);
+    }*/
+}
+
+__kernel
+void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out,
+                       float scale, int4 dim, __global int* counter, queue_t def)
+{
+    //if(counter >= 100)
+    //    return;
+
+    //printf("Count %i\n", counter);
+
+    size_t g_ws[3] = {dim.x, dim.y, dim.z};
+    size_t l_ws[3] = {8, 8, 1};
+
+    for(int i=0; i < 3; i++)
+    {
+        if((g_ws[i] % l_ws[i]) != 0)
+        {
+            size_t rem = g_ws[i] % l_ws[i];
+
+            g_ws[i] -= rem;
+            g_ws[i] += l_ws[i];
+        }
+    }
+
+    /*enqueue_kernel(dqueue, CLK_ENQUEUE_FLAGS_WAIT_KERNEL, ndrange_3D(g_ws, l_ws),
+                   0, NULL, NULL,
+    ^{
+        iterative_u_solve_impl(u_offset_in, u_offset_out, scale, dim);
+    });*/
+
+    //clk_event_t evts[100];
+
+    /*ndrange_t range = ndrange_3D(g_ws, l_ws);
+
+    clk_event_t last;
+
+    enqueue_kernel(def, CLK_ENQUEUE_FLAGS_WAIT_KERNEL, range,
+                   0, NULL, &last,
+    ^{
+        iterative_u_solve_impl(u_offset_in, u_offset_out, scale, dim);
+
+        //if(get_global_linear_id() == 0)
+        //    release_event(last);
+    });
+
+    for(int i=1; i < 100; i++)
+    {
+        clk_event_t mine;
+
+        if((i % 2) == 0)
+        {
+            enqueue_kernel(def, CLK_ENQUEUE_FLAGS_WAIT_KERNEL, range,
+                       1, &last, &mine,
+            ^{
+                iterative_u_solve_impl(u_offset_in, u_offset_out, scale, dim);
+
+                //if(get_global_linear_id() == 0)
+                //    release_event(mine);
+            });
+        }
+        else
+        {
+            enqueue_kernel(def, CLK_ENQUEUE_FLAGS_WAIT_KERNEL, range,
+                       1, &last, &mine,
+            ^{
+                iterative_u_solve_impl(u_offset_out, u_offset_in, scale, dim);
+
+                //if(get_global_linear_id() == 0)
+                //    release_event(mine);
+            });
+        }
+
+        last = mine;
+        release_event(last);
+    }
+
+    release_event(last);*/
+
+    /*for(int i=0; i < 100; i++)
+    {
+        release_event(evts[i]);
+    }*/
 }
 
 #ifndef USE_GBB

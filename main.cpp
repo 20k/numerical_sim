@@ -3971,7 +3971,7 @@ float calculate_scale(float c_at_max, const T& size)
     return c_at_max / size.largest_elem();
 }
 
-cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_int> base_size, float c_at_max, int scale_factor, std::optional<cl::buffer> base)
+cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, cl::device_command_queue& device, vec<4, cl_int> base_size, float c_at_max, int scale_factor, std::optional<cl::buffer> base)
 {
     vec<4, cl_int> reduced_clsize = ((base_size - 1) / scale_factor) + 1;
 
@@ -4007,8 +4007,24 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
     N = 200;
     #endif // QUICKSTART
 
+    #define DEVICE_SIDE_ENQUEUE
+    #ifdef DEVICE_SIDE_ENQUEUE
+    N /= 1;
+    #endif // DEVICE_SIDE_ENQUEUE
+
+    steady_timer iterate_elapsed;
+
+    int zero = 0;
+
+    cl::buffer gzero(ctx);
+    gzero.alloc(sizeof(cl_int));
+
     for(int i=0; i < N; i++)
     {
+        //gzero.set_to_zero(cqueue);
+
+        //cqueue.block();
+
         float local_scale = calculate_scale(c_at_max, reduced_clsize);
 
         cl::args iterate_u_args;
@@ -4016,11 +4032,23 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
         iterate_u_args.push_back(reduced_u_args[(which_reduced + 1) % 2]);
         iterate_u_args.push_back(local_scale);
         iterate_u_args.push_back(reduced_clsize);
+        iterate_u_args.push_back(device);
+        iterate_u_args.push_back(zero);
 
-        cqueue.exec("iterative_u_solve", iterate_u_args, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1});
+        //#ifndef DEVICE_SIDE_ENQUEUE
+        cqueue.exec("iterative_u_solve_impl", iterate_u_args, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1});
+        //#else
+        //cqueue.exec("iterative_u_solve", iterate_u_args, {1}, {1});
+        //#endif
 
-        which_reduced = (which_reduced + 1) % 2;
+        //which_reduced = (which_reduced + 1) % 2;
     }
+
+    cqueue.block();
+
+    double elapsed = iterate_elapsed.get_elapsed_time_s();
+
+    std::cout << "Iterative u " << elapsed << std::endl;
 
     return reduced_u_args[which_reduced];
 }
@@ -4069,6 +4097,7 @@ int main()
 
     render_window win(sett, "Geodesics");
 
+
     assert(win.clctx);
 
     ImFontAtlas* atlas = ImGui::GetIO().Fonts;
@@ -4084,6 +4113,8 @@ int main()
     io.Fonts->AddFontFromFileTTF("VeraMono.ttf", 14, &font_cfg);
 
     opencl_context& clctx = *win.clctx;
+
+    cl::device_command_queue dqueue(clctx.ctx);
 
     std::string argument_string = "-O3 -cl-std=CL2.0 -cl-uniform-work-group-size -cl-mad-enable -cl-finite-math-only -cl-denorms-are-zero ";
 
@@ -4326,15 +4357,15 @@ int main()
     cl::buffer u_arg(clctx.ctx);
 
     {
-        cl::buffer reduced0 = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 4, std::nullopt);
+        cl::buffer reduced0 = solve_for_u(clctx.ctx, clctx.cqueue, dqueue, clsize, c_at_max, 4, std::nullopt);
 
         cl::buffer upscaled0 = upscale_u(clctx.ctx, clctx.cqueue, reduced0, clsize, 2, 4);
 
-        cl::buffer reduced1 = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 2, upscaled0);
+        cl::buffer reduced1 = solve_for_u(clctx.ctx, clctx.cqueue, dqueue, clsize, c_at_max, 2, upscaled0);
 
         cl::buffer upscaled1 = upscale_u(clctx.ctx, clctx.cqueue, reduced1, clsize, 1, 2);
 
-        u_arg = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 1, upscaled1);
+        u_arg = solve_for_u(clctx.ctx, clctx.cqueue, dqueue, clsize, c_at_max, 1, upscaled1);
     }
 
     auto [sponge_positions, sponge_positions_count] = generate_sponge_points(clctx.ctx, clctx.cqueue, scale, size);
