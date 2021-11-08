@@ -4104,6 +4104,31 @@ int main()
     equation_context setup_initial;
     setup_initial_conditions(setup_initial, centre, scale);
 
+    setup_initial.build(u_argument_string, 8);
+
+    cl::program u_program(clctx.ctx, "u_solver.cl");
+    u_program.build(clctx.ctx, u_argument_string);
+
+    clctx.ctx.register_program(u_program);
+
+    cl::buffer u_arg(clctx.ctx);
+
+    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
+
+    {
+        printf("Usolving\n");
+
+        cl::buffer reduced0 = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 4, std::nullopt);
+
+        cl::buffer upscaled0 = upscale_u(clctx.ctx, clctx.cqueue, reduced0, clsize, 2, 4);
+
+        cl::buffer reduced1 = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 2, upscaled0);
+
+        cl::buffer upscaled1 = upscale_u(clctx.ctx, clctx.cqueue, reduced1, clsize, 1, 2);
+
+        u_arg = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 1, upscaled1);
+    }
+
     equation_context ctx1;
     get_initial_conditions_eqs(ctx1, centre, scale);
 
@@ -4187,7 +4212,6 @@ int main()
     ctx7.build(argument_string, 6);
     //ctx8.build(argument_string, 7);
     setup_initial.build(argument_string, 8);
-    setup_initial.build(u_argument_string, 8);
     ctx10.build(argument_string, 9);
     ctx11.build(argument_string, 10);
     ctx12.build(argument_string, 11);
@@ -4226,31 +4250,8 @@ int main()
 
     std::cout << "Size " << argument_string.size() << std::endl;
 
-    cl::program u_program(clctx.ctx, "u_solver.cl");
-    u_program.build(clctx.ctx, u_argument_string);
-
     cl::program prog(clctx.ctx, "cl.cl");
     prog.build(clctx.ctx, argument_string);
-
-    clctx.ctx.register_program(u_program);
-
-    cl::buffer u_arg(clctx.ctx);
-
-    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
-
-    {
-        printf("Usolving\n");
-
-        cl::buffer reduced0 = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 4, std::nullopt);
-
-        cl::buffer upscaled0 = upscale_u(clctx.ctx, clctx.cqueue, reduced0, clsize, 2, 4);
-
-        cl::buffer reduced1 = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 2, upscaled0);
-
-        cl::buffer upscaled1 = upscale_u(clctx.ctx, clctx.cqueue, reduced1, clsize, 1, 2);
-
-        u_arg = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 1, upscaled1);
-    }
 
     clctx.ctx.register_program(prog);
 
