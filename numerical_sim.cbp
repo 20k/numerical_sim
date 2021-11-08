@@ -149,7 +149,7 @@
 		<Unit filename="legendre_nodes.h" />
 		<Unit filename="legendre_weights.h" />
 		<Unit filename="main.cpp" />
-		<Unit filename="main.h" />
+		<Unit filename="u_solver.cl" />
 		<Extensions>
 			<lib_finder disable_auto="1" />
 		</Extensions>

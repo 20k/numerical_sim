@@ -4085,7 +4085,7 @@ int main()
 
     opencl_context& clctx = *win.clctx;
 
-    std::string argument_string = "-O3 -cl-std=CL2.0 -cl-uniform-work-group-size -cl-mad-enable -cl-finite-math-only -cl-denorms-are-zero ";
+    std::string argument_string = "-I ./ -O3 -cl-std=CL2.0 -cl-uniform-work-group-size -cl-mad-enable -cl-finite-math-only -cl-denorms-are-zero ";
 
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
