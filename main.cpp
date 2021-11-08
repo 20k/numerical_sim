@@ -4057,6 +4057,8 @@ int main()
         printf("HARM %f\n", harm.real);
     }*/
 
+    steady_timer time_to_main;
+
     int width = 800;
     int height = 600;
 
@@ -4085,7 +4087,9 @@ int main()
 
     opencl_context& clctx = *win.clctx;
 
-    std::string argument_string = "-O3 -cl-std=CL2.0 -cl-uniform-work-group-size -cl-mad-enable -cl-finite-math-only -cl-denorms-are-zero ";
+    std::string argument_string = "-I ./ -O3 -cl-std=CL2.0 -cl-uniform-work-group-size -cl-mad-enable -cl-finite-math-only -cl-denorms-are-zero ";
+
+    std::string u_argument_string = argument_string;
 
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
@@ -4099,6 +4103,31 @@ int main()
 
     equation_context setup_initial;
     setup_initial_conditions(setup_initial, centre, scale);
+
+    setup_initial.build(u_argument_string, 8);
+
+    cl::program u_program(clctx.ctx, "u_solver.cl");
+    u_program.build(clctx.ctx, u_argument_string);
+
+    clctx.ctx.register_program(u_program);
+
+    cl::buffer u_arg(clctx.ctx);
+
+    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
+
+    {
+        printf("Usolving\n");
+
+        cl::buffer reduced0 = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 4, std::nullopt);
+
+        cl::buffer upscaled0 = upscale_u(clctx.ctx, clctx.cqueue, reduced0, clsize, 2, 4);
+
+        cl::buffer reduced1 = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 2, upscaled0);
+
+        cl::buffer upscaled1 = upscale_u(clctx.ctx, clctx.cqueue, reduced1, clsize, 1, 2);
+
+        u_arg = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 1, upscaled1);
+    }
 
     equation_context ctx1;
     get_initial_conditions_eqs(ctx1, centre, scale);
@@ -4319,23 +4348,7 @@ int main()
         #endif // USE_GBB
     };
 
-    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
-
     cl_float time_elapsed_s = 0;
-
-    cl::buffer u_arg(clctx.ctx);
-
-    {
-        cl::buffer reduced0 = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 4, std::nullopt);
-
-        cl::buffer upscaled0 = upscale_u(clctx.ctx, clctx.cqueue, reduced0, clsize, 2, 4);
-
-        cl::buffer reduced1 = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 2, upscaled0);
-
-        cl::buffer upscaled1 = upscale_u(clctx.ctx, clctx.cqueue, reduced1, clsize, 1, 2);
-
-        u_arg = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 1, upscaled1);
-    }
 
     auto [sponge_positions, sponge_positions_count] = generate_sponge_points(clctx.ctx, clctx.cqueue, scale, size);
     auto [evolution_positions, evolution_positions_count, non_evolution_positions, non_evolution_positions_count] = generate_evolution_points(clctx.ctx, clctx.cqueue, scale, size);
@@ -4408,6 +4421,8 @@ int main()
     bool trapezoidal_init = false;
 
     bool pao = false;
+
+    std::cout << "Init time " << time_to_main.get_elapsed_time_s() << std::endl;
 
     while(!win.should_close())
     {
