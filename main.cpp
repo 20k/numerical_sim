@@ -4087,6 +4087,8 @@ int main()
 
     std::string argument_string = "-I ./ -O3 -cl-std=CL2.0 -cl-uniform-work-group-size -cl-mad-enable -cl-finite-math-only -cl-denorms-are-zero ";
 
+    std::string u_argument_string = argument_string;
+
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
@@ -4183,6 +4185,7 @@ int main()
     ctx7.build(argument_string, 6);
     //ctx8.build(argument_string, 7);
     setup_initial.build(argument_string, 8);
+    setup_initial.build(u_argument_string, 8);
     ctx10.build(argument_string, 9);
     ctx11.build(argument_string, 10);
     ctx12.build(argument_string, 11);
@@ -4223,6 +4226,29 @@ int main()
 
     cl::program prog(clctx.ctx, "cl.cl");
     prog.build(clctx.ctx, argument_string);
+
+    cl::program u_program(clctx.ctx, "u_solver.cl");
+    u_program.build(clctx.ctx, u_argument_string);
+
+    clctx.ctx.register_program(u_program);
+
+    cl::buffer u_arg(clctx.ctx);
+
+    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
+
+    {
+        printf("Usolving\n");
+
+        cl::buffer reduced0 = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 4, std::nullopt);
+
+        cl::buffer upscaled0 = upscale_u(clctx.ctx, clctx.cqueue, reduced0, clsize, 2, 4);
+
+        cl::buffer reduced1 = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 2, upscaled0);
+
+        cl::buffer upscaled1 = upscale_u(clctx.ctx, clctx.cqueue, reduced1, clsize, 1, 2);
+
+        u_arg = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 1, upscaled1);
+    }
 
     clctx.ctx.register_program(prog);
 
@@ -4319,23 +4345,7 @@ int main()
         #endif // USE_GBB
     };
 
-    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
-
     cl_float time_elapsed_s = 0;
-
-    cl::buffer u_arg(clctx.ctx);
-
-    {
-        cl::buffer reduced0 = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 4, std::nullopt);
-
-        cl::buffer upscaled0 = upscale_u(clctx.ctx, clctx.cqueue, reduced0, clsize, 2, 4);
-
-        cl::buffer reduced1 = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 2, upscaled0);
-
-        cl::buffer upscaled1 = upscale_u(clctx.ctx, clctx.cqueue, reduced1, clsize, 1, 2);
-
-        u_arg = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 1, upscaled1);
-    }
 
     auto [sponge_positions, sponge_positions_count] = generate_sponge_points(clctx.ctx, clctx.cqueue, scale, size);
     auto [evolution_positions, evolution_positions_count, non_evolution_positions, non_evolution_positions_count] = generate_evolution_points(clctx.ctx, clctx.cqueue, scale, size);
