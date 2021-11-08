@@ -111,6 +111,7 @@
 			<Add option="-l:libOpenCL.dll.a" />
 			<Add option="-lImm32" />
 			<Add option="-ldwrite" />
+			<Add option="-l:libtbb.dll.a" />
 		</Linker>
 		<Unit filename="cl.cl" />
 		<Unit filename="deps/geodesic/dual_value.hpp" />

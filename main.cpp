@@ -12,6 +12,7 @@
 #include <imgui/misc/freetype/imgui_freetype.h>
 #include <vec/tensor.hpp>
 #include "gravitational_waves.hpp"
+#include <execution>
 
 /**
 current paper set
@@ -3866,7 +3867,7 @@ std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_
 
     cpu_points.resize(count);
 
-    std::sort(cpu_points.begin(), cpu_points.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
+    std::sort(std::execution::par_unseq, cpu_points.begin(), cpu_points.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
     {
         return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
     });
@@ -3922,12 +3923,12 @@ std::tuple<cl::buffer, int, cl::buffer, int> generate_evolution_points(cl::conte
     cpu_points.resize(count);
     cpu_non_points.resize(non_count);
 
-    std::sort(cpu_points.begin(), cpu_points.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
+    std::sort(std::execution::par_unseq, cpu_points.begin(), cpu_points.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
     {
         return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
     });
 
-    std::sort(cpu_non_points.begin(), cpu_non_points.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
+    std::sort(std::execution::par_unseq, cpu_non_points.begin(), cpu_non_points.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
     {
         return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
     });
