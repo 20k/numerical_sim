@@ -273,9 +273,11 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     gBB2[index] = init_gBB2;
     #endif // USE_GBB
 
-    if(ix == (250/2) && iz == (250/2))
+    if(ix == (dim.x-1)/2 && iz == (dim.z-1)/2)
     {
-        if(iy == 124 || iy == 125 || iy == 126)
+        int hy = (dim.y-1)/2;
+
+        if(iy == hy-1 || iy == hy || iy == hy+1)
         {
             printf("U: %.9f %i\n", u_value[IDX(ix,iy,iz)], iy);
         }
