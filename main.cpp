@@ -1765,9 +1765,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     #ifdef PAPER_0610128
     black_hole_m = {0.483, 0.483};
     black_hole_pos = {san_black_hole_pos({-3.257, 0.f, 0.f}), san_black_hole_pos({3.257, 0, 0})};
-    black_hole_velocity = {{0, 0.983 * 0.133 / black_hole_m[0], 0}, {0, 0.983 * -0.133 / black_hole_m[1], 0}};
+    black_hole_velocity = {{0, 0.8 * 0.133 / black_hole_m[0], 0}, {0, 0.8 * -0.133 / black_hole_m[1], 0}};
     black_hole_spin = {{0,0,0}, {0,0,0}};
-
     #endif // PAPER_0610128
 
     metric<value, 3, 3> flat_metric;
@@ -2085,12 +2084,13 @@ void build_momentum_constraint(equation_context& ctx)
         Mi.idx(i) = 0;
     }
 
-    //#define BETTERDAMP_DTCAIJ
+    #define BETTERDAMP_DTCAIJ
     //#define DAMP_DTCAIJ
     #if defined(DAMP_DTCAIJ) || defined(BETTERDAMP_DTCAIJ)
     #define CALCULATE_MOMENTUM_CONSTRAINT
     #endif // defined
 
+    #if 0
     #ifdef CALCULATE_MOMENTUM_CONSTRAINT
     tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
 
@@ -2130,8 +2130,7 @@ void build_momentum_constraint(equation_context& ctx)
         Mi.idx(i) = s1 + s2 + s3;
     }
     #endif // 0
-
-    /*tensor<value, 3> Mi;
+    #endif // 0
 
     tensor<value, 3, 3> second_cAij = raise_second_index(args.cA, args.cY, unpinned_icY);
 
@@ -2141,7 +2140,7 @@ void build_momentum_constraint(equation_context& ctx)
 
         for(int j=0; j < 3; j++)
         {
-            s1 += hacky_differentiate(second_cAij.idx(i, j), j);
+            s1 += diff1(ctx, second_cAij.idx(i, j), j);
         }
 
         value s2 = 0;
@@ -2150,7 +2149,7 @@ void build_momentum_constraint(equation_context& ctx)
         {
             for(int k=0; k < 3; k++)
             {
-                s2 += -0.5f * icY.idx(j, k) * hacky_differentiate(args.cA.idx(j, k), i);
+                s2 += -0.5f * icY.idx(j, k) * diff1(ctx, args.cA.idx(j, k), i);
             }
         }
 
@@ -2158,13 +2157,13 @@ void build_momentum_constraint(equation_context& ctx)
 
         for(int j=0; j < 3; j++)
         {
-            s3 += -0.25f * 6 * X_recip * hacky_differentiate(args.X, j) * second_cAij.idx(i, j);
+            s3 += -0.25f * 6 * (1/X_clamped) * diff1(ctx, args.X, j) * second_cAij.idx(i, j);
         }
 
-        value s4 = -(2.f/3.f) * hacky_differentiate(args.K, i);
+        value s4 = -(2.f/3.f) * diff1(ctx, args.K, i);
 
         Mi.idx(i) = s1 + s2 + s3 + s4;
-    }*/
+    }
 
     for(int i=0; i < 3; i++)
     {
@@ -2781,7 +2780,7 @@ void build_gB(equation_context& ctx)
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
     ///todo: remove this
 
-    float N = 2;
+    float N = 4;
 
     tensor<value, 3> dtgB = (3.f/4.f) * args.derived_cGi + bjdjbi - N * args.gB;
 
@@ -3998,7 +3997,7 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
             cl::copy(cqueue, reduced_u_args[1], reduced_u_args[0]);
     }
 
-    int N = 3000;
+    int N = 8000;
 
     #ifdef GPU_PROFILE
     N = 1000;
@@ -4356,8 +4355,8 @@ int main()
     int which_texture = 0;
     int steps = 0;
 
-    bool run = false;
-    bool should_render = true;
+    bool run = true;
+    bool should_render = false;
 
     vec3f camera_pos = {0, 0, -c_at_max/2.f + 1};
     quat camera_quat;
@@ -4369,7 +4368,7 @@ int main()
 
     bool trapezoidal_init = false;
 
-    bool pao = false;
+    bool pao = true;
 
     std::cout << "Init time " << time_to_main.get_elapsed_time_s() << std::endl;
 
@@ -4556,7 +4555,7 @@ int main()
         if(steps < 10)
             timestep = 0.0001;
 
-        if(pao && time_elapsed_s > 300)
+        if(pao && time_elapsed_s > 150)
             step = false;
 
         if(step)
