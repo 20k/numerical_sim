@@ -4045,6 +4045,27 @@ cl::buffer upscale_u(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& so
     return u_arg;
 }
 
+cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, float c_at_max)
+{
+    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
+
+    std::optional<cl::buffer> last;
+
+    for(int i=4; i >= 0; i--)
+    {
+        int up_size = pow(2, i+1);
+        int current_size = pow(2, i);
+
+        cl::buffer reduced = solve_for_u(ctx, cqueue, clsize, c_at_max, up_size, last);
+
+        cl::buffer upscaled = upscale_u(ctx, cqueue, reduced, clsize, current_size, up_size);
+
+        last = upscaled;
+    }
+
+    return solve_for_u(ctx, cqueue, clsize, c_at_max, 1, last);
+}
+
 ///it seems like basically i need numerical dissipation of some form
 ///if i didn't evolve where sponge = 1, would be massively faster
 int main()
@@ -4107,19 +4128,7 @@ int main()
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
-    {
-        printf("Usolving\n");
-
-        cl::buffer reduced0 = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 4, std::nullopt);
-
-        cl::buffer upscaled0 = upscale_u(clctx.ctx, clctx.cqueue, reduced0, clsize, 2, 4);
-
-        cl::buffer reduced1 = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 2, upscaled0);
-
-        cl::buffer upscaled1 = upscale_u(clctx.ctx, clctx.cqueue, reduced1, clsize, 1, 2);
-
-        u_arg = solve_for_u(clctx.ctx, clctx.cqueue, clsize, c_at_max, 1, upscaled1);
-    }
+    u_arg = iterate_u(clctx.ctx, clctx.cqueue, size, c_at_max);
 
     equation_context ctx1;
     get_initial_conditions_eqs(ctx1, centre, scale);
