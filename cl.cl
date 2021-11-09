@@ -6,10 +6,8 @@
 
 #pragma OPENCL EXTENSION cl_khr_fp16 : enable
 
-#define IDX(i, j, k) ((k) * dim.x * dim.y + (j) * dim.x + (i))
-#define IDXD(i, j, k, d) ((k) * (d.x) * (d.y) + (j) * (d.x) + (i))
-
 #include "transform_position.cl"
+#include "common.cl"
 
 bool invalid_first(int ix, int iy, int iz, int4 dim)
 {
@@ -134,51 +132,6 @@ void calculate_rk4_val(__global ushort4* points, int point_count, int4 dim, __gl
     float yn = yn_inout[index];
 
     yn_inout[index] = xn[index] + factor * yn;
-}
-
-float buffer_read_nearest(__global const float* const buffer, int3 position, int4 dim)
-{
-    return buffer[position.z * dim.x * dim.y + position.y * dim.x + position.x];
-}
-
-float buffer_read_linear(__global const float* const buffer, float3 position, int4 dim)
-{
-    /*position = round(position);
-
-    int3 ipos = (int3)(position.x, position.y, position.z);
-
-    return buffer[ipos.z * dim.x * dim.y + ipos.y * dim.x + ipos.x];*/
-
-    position = clamp(position, (float3)(0,0,0), (float3)(dim.x-2, dim.y-2, dim.z-2));
-
-    float3 floored = floor(position);
-
-    int3 ipos = (int3)(floored.x, floored.y, floored.z);
-
-    float c000 = buffer_read_nearest(buffer, ipos + (int3)(0,0,0), dim);
-    float c100 = buffer_read_nearest(buffer, ipos + (int3)(1,0,0), dim);
-
-    float c010 = buffer_read_nearest(buffer, ipos + (int3)(0,1,0), dim);
-    float c110 = buffer_read_nearest(buffer, ipos + (int3)(1,1,0), dim);
-
-    float c001 = buffer_read_nearest(buffer, ipos + (int3)(0,0,1), dim);
-    float c101 = buffer_read_nearest(buffer, ipos + (int3)(1,0,1), dim);
-
-    float c011 = buffer_read_nearest(buffer, ipos + (int3)(0,1,1), dim);
-    float c111 = buffer_read_nearest(buffer, ipos + (int3)(1,1,1), dim);
-
-    float3 frac = position - floored;
-
-    float c00 = c000 * (1 - frac.x) + c100 * frac.x;
-    float c01 = c001 * (1 - frac.x) + c101 * frac.x;
-
-    float c10 = c010 * (1 - frac.x) + c110 * frac.x;
-    float c11 = c011 * (1 - frac.x) + c111 * frac.x;
-
-    float c0 = c00 * (1 - frac.y) + c10 * frac.y;
-    float c1 = c01 * (1 - frac.y) + c11 * frac.y;
-
-    return c0 * (1 - frac.z) + c1 * frac.z;
 }
 
 void buffer_write(__global float* buffer, int3 position, int4 dim, float value)

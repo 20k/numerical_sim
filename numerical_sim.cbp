@@ -114,6 +114,7 @@
 			<Add option="-l:libtbb.dll.a" />
 		</Linker>
 		<Unit filename="cl.cl" />
+		<Unit filename="common.cl" />
 		<Unit filename="deps/geodesic/dual_value.hpp" />
 		<Unit filename="deps/imgui/backends/imgui_impl_glfw.cpp" />
 		<Unit filename="deps/imgui/backends/imgui_impl_opengl3.cpp" />

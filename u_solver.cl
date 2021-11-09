@@ -1,12 +1,5 @@
 #include "transform_position.cl"
-
-#define IDX(i, j, k) ((k) * dim.x * dim.y + (j) * dim.x + (i))
-#define IDXD(i, j, k, d) ((k) * (d.x) * (d.y) + (j) * (d.x) + (i))
-
-float buffer_read_nearest(__global const float* const buffer, int3 position, int4 dim)
-{
-    return buffer[position.z * dim.x * dim.y + position.y * dim.x + position.x];
-}
+#include "common.cl"
 
 __kernel
 void setup_u_offset(__global float* u_offset,
@@ -51,9 +44,11 @@ void upscale_u(__global float* u_in, __global float* u_out, int4 in_dim, int4 ou
     float3 lower_offset = upper_offset / scale;
 
     ///symmetric, rounds away from 0
-    float3 lower_pos = round(lower_offset) + convert_float3((in_dim.xyz - 1) / 2);
+    float3 lower_pos = (lower_offset) + convert_float3((in_dim.xyz - 1) / 2);
 
-    float val = buffer_read_nearest(u_in, convert_int3(lower_pos), in_dim);
+    float val = buffer_read_linear(u_in, lower_pos, in_dim);
+
+    //float val = buffer_read_nearest(u_in, convert_int3(lower_pos), in_dim);
 
     if(ix == 0 || iy == 0 || iz == 0 || ix == out_dim.x - 1 || iy == out_dim.y - 1 || iz == out_dim.z - 1)
         val = 1;

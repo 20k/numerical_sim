@@ -4051,7 +4051,7 @@ cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, fl
 
     std::optional<cl::buffer> last;
 
-    for(int i=4; i >= 0; i--)
+    for(int i=2; i >= 0; i--)
     {
         int up_size = pow(2, i+1);
         int current_size = pow(2, i);
