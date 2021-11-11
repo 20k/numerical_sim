@@ -4030,7 +4030,7 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
 
         cqueue.exec("setup_u_offset", initial_u_args, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1});
 
-        cqueue.block();
+        //cqueue.block();
 
         if(!base.has_value())
             cl::copy(cqueue, reduced_u_args[1], reduced_u_args[0]);
@@ -4058,7 +4058,7 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
 
         cqueue.exec("iterative_u_solve", iterate_u_args, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1});
 
-        cqueue.block();
+        //cqueue.block();
 
         which_reduced = (which_reduced + 1) % 2;
     }
@@ -4082,7 +4082,7 @@ cl::buffer upscale_u(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& so
 
     cqueue.exec("upscale_u", upscale_args, {upper_clsize.x(), upper_clsize.y(), upper_clsize.z()}, {8, 8, 1});
 
-    cqueue.block();
+    //cqueue.block();
 
     return u_arg;
 }
@@ -4105,7 +4105,11 @@ cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, fl
         last = upscaled;
     }
 
-    return solve_for_u(ctx, cqueue, clsize, c_at_max, 1, last);
+    cl::buffer ret = solve_for_u(ctx, cqueue, clsize, c_at_max, 1, last);
+
+    cqueue.block();
+
+    return ret;
 }
 
 ///it seems like basically i need numerical dissipation of some form
