@@ -4324,6 +4324,7 @@ int main()
     {
         thin_intermediates.emplace_back(clctx.ctx);
         thin_intermediates.back().alloc(size.x() * size.y() * size.z() * intermediate_data_size);
+        thin_intermediates.back().set_to_zero(clctx.cqueue);
     }
 
     std::array<cl::buffer, 3> momentum_constraint{clctx.ctx, clctx.ctx, clctx.ctx};
@@ -4332,7 +4333,9 @@ int main()
     {
         #ifdef CALCULATE_MOMENTUM_CONSTRAINT
         i.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
-        #endif // CALCULATE_MOMENTUM_CONSTRAINT
+        #else
+        i.alloc(sizeof(cl_int));
+        #endif
     }
 
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
