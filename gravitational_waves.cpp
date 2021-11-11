@@ -373,6 +373,8 @@ void gravitational_wave_manager::issue_extraction(cl::command_queue& cqueue, std
 
     cl::event kernel_event = cqueue.exec("extract_waveform", waveform_args, {point_count}, {128});
 
+    cqueue.block();
+
     cl_float2* next_data = new cl_float2[elements];
 
     cl::event data = next.read_async(read_queue, (char*)next_data, elements * sizeof(cl_float2), {kernel_event});

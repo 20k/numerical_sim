@@ -4030,6 +4030,8 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
 
         cqueue.exec("setup_u_offset", initial_u_args, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1});
 
+        cqueue.block();
+
         if(!base.has_value())
             cl::copy(cqueue, reduced_u_args[1], reduced_u_args[0]);
     }
@@ -4056,6 +4058,8 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
 
         cqueue.exec("iterative_u_solve", iterate_u_args, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1});
 
+        cqueue.block();
+
         which_reduced = (which_reduced + 1) % 2;
     }
 
@@ -4077,6 +4081,8 @@ cl::buffer upscale_u(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& so
     upscale_args.push_back(upper_clsize);
 
     cqueue.exec("upscale_u", upscale_args, {upper_clsize.x(), upper_clsize.y(), upper_clsize.z()}, {8, 8, 1});
+
+    cqueue.block();
 
     return u_arg;
 }
@@ -4386,6 +4392,8 @@ int main()
         init.push_back(clsize);
 
         clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
+
+        clctx.cqueue.block();
     }
 
     for(int i=0; i < (int)generic_data[0].buffers.size(); i++)
@@ -4394,6 +4402,8 @@ int main()
         cl::copy(clctx.cqueue, generic_data[0].buffers[i], rk4_scratch.buffers[i]);
         //cl::copy(clctx.cqueue, generic_data[0].buffers[i], rk4_intermediate.buffers[i]);
     }
+
+    clctx.cqueue.block();
 
     std::vector<float> real_graph;
     std::vector<float> real_decomp;
@@ -4632,6 +4642,8 @@ int main()
                         thin.push_back(clsize);
 
                         clctx.cqueue.exec("calculate_intermediate_data_thin", thin, {evolution_positions_count}, {128});
+
+                        clctx.cqueue.block();
                     };
 
                     std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
@@ -4711,6 +4723,8 @@ int main()
                     a1.push_back(current_simulation_boundary);
 
                     clctx.cqueue.exec(name, a1, {evolution_positions_count}, {128});
+
+                    clctx.cqueue.block();
                 };
 
                 step_kernel("evolve_cY");
@@ -4738,6 +4752,8 @@ int main()
                 constraints.push_back(clsize);
 
                 clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {evolution_positions_count}, {128});
+
+                clctx.cqueue.block();
             };
 
             auto diff_to_input = [&](auto& buffer_in, cl_float factor)
@@ -4978,6 +4994,8 @@ int main()
 
                 clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
 
+                clctx.cqueue.block();
+
             }
 
             //#define DISSIPATE_SELF
@@ -4986,6 +5004,8 @@ int main()
             #endif // DISSIPATE_SELF
 
             {
+                clctx.cqueue.block();
+
                 for(int i=0; i < buffer_set::buffer_count; i++)
                 {
                     cl::args diss;
@@ -5008,6 +5028,8 @@ int main()
 
                     clctx.cqueue.exec("dissipate_single", diss, {evolution_positions_count}, {128});
                 }
+
+                clctx.cqueue.block();
             }
 
             which_data = (which_data + 1) % 2;
@@ -5030,6 +5052,8 @@ int main()
                 cleaner.push_back(timestep);
 
                 clctx.cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
+
+                clctx.cqueue.block();
             }
 
             enforce_constraints(generic_data[which_data].buffers);

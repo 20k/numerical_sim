@@ -1038,15 +1038,17 @@ void dissipate_single(__global POINTS_TYPE* points, int point_count,
     if(local_idx >= point_count)
         return;
 
-    int ix = unpack_points(points[local_idx]).x;
-    int iy = unpack_points(points[local_idx]).y;
-    int iz = unpack_points(points[local_idx]).z;
+    unsigned int point = points[local_idx];
 
-    if(isnan(buffer[IDX(ix,iy,iz)]))
-        printf("Where %i %i %i\n", ix, iy, iz);
+    int ix = unpack_points(point).x;
+    int iy = unpack_points(point).y;
+    int iz = unpack_points(point).z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
+
+    if(isnan(buffer[IDX(ix,iy,iz)]))
+        printf("Where %i %i %i\n", ix, iy, iz);
 
     #ifndef SYMMETRY_BOUNDARY
     if(invalid_second(ix, iy, iz, dim))
@@ -1083,7 +1085,11 @@ void dissipate_single(__global POINTS_TYPE* points, int point_count,
 
     float dissipate_single = KREISS_DISSIPATE_SINGULAR;
 
-    obuffer[index] += damp * dissipate_single * timestep;
+    float buffer_value = obuffer[index];
+
+    barrier(CLK_GLOBAL_MEM_FENCE);
+
+    obuffer[index] = buffer_value + damp * dissipate_single * timestep;
 
     barrier(CLK_GLOBAL_MEM_FENCE);
 
