@@ -777,9 +777,11 @@ void evolve_cA(__global POINTS_TYPE* points, int point_count,
     if(local_idx >= point_count)
         return;
 
-    int ix = unpack_points(points[local_idx]).x;
-    int iy = unpack_points(points[local_idx]).y;
-    int iz = unpack_points(points[local_idx]).z;
+    unsigned int point = points[local_idx];
+
+    int ix = unpack_points(point).x;
+    int iy = unpack_points(point).y;
+    int iz = unpack_points(point).z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -793,12 +795,16 @@ void evolve_cA(__global POINTS_TYPE* points, int point_count,
 
     float TEMPORARIEStca;
 
+    barrier(CLK_GLOBAL_MEM_FENCE);
+
     float f_dtcAij0 = dtcAij0;
     float f_dtcAij1 = dtcAij1;
     float f_dtcAij2 = dtcAij2;
     float f_dtcAij3 = dtcAij3;
     float f_dtcAij4 = dtcAij4;
     float f_dtcAij5 = dtcAij5;
+
+    barrier(CLK_GLOBAL_MEM_FENCE);
 
     float b0 = base_cA0[index];
     float b1 = base_cA1[index];
@@ -807,12 +813,14 @@ void evolve_cA(__global POINTS_TYPE* points, int point_count,
     float b4 = base_cA4[index];
     float b5 = base_cA5[index];
 
+    barrier(CLK_GLOBAL_MEM_FENCE);
+
     ocA0[index] = f_dtcAij0 * timestep + b0;
     ocA1[index] = f_dtcAij1 * timestep + b1;
     ocA2[index] = f_dtcAij2 * timestep + b2;
-    #ifndef NO_CAIJYY
+    //#ifndef NO_CAIJYY
     ocA3[index] = f_dtcAij3 * timestep + b3;
-    #endif // NO_CAIJYY
+    //#endif // NO_CAIJYY
     ocA4[index] = f_dtcAij4 * timestep + b4;
     ocA5[index] = f_dtcAij5 * timestep + b5;
 }

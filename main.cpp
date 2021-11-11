@@ -4265,7 +4265,7 @@ int main()
 
     opencl_context& clctx = *win.clctx;
 
-    std::string argument_string = "-I ./ -O3 -cl-std=CL2.0 -cl-uniform-work-group-size -cl-mad-enable -cl-finite-math-only -cl-denorms-are-zero ";
+    std::string argument_string = "-I ./ -O3 -cl-std=CL2.0 -cl-uniform-work-group-size -cl-mad-enable -cl-finite-math-only ";
 
     std::string u_argument_string = argument_string;
 
@@ -4501,6 +4501,7 @@ int main()
     {
         thin_intermediates.emplace_back(clctx.ctx);
         thin_intermediates.back().alloc(size.x() * size.y() * size.z() * intermediate_data_size);
+        thin_intermediates.back().set_to_zero(clctx.cqueue);
     }
 
     std::array<cl::buffer, 3> momentum_constraint{clctx.ctx, clctx.ctx, clctx.ctx};
@@ -5029,6 +5030,11 @@ int main()
             auto debug_everything = [&]()
             {
                 #ifdef ARBITRARILY_WORKING
+                for(int i=0; i < thin_intermediates.size(); i++)
+                {
+                    dump_to_file(clctx.cqueue, thin_intermediates[i], "thin_" + std::to_string(i));
+                }
+
                 for(int i=0; i < buffer_set::buffer_count; i++)
                 {
                     dump_to_file(clctx.cqueue, generic_data[0].buffers[i], buffer_names[i] + "_0");
@@ -5040,6 +5046,12 @@ int main()
                 dump_to_file(clctx.cqueue, evolution_positions, "evp");
                 dump_to_file(clctx.cqueue, sponge_positions, "sponge");
                 #else
+
+                for(int i=0; i < thin_intermediates.size(); i++)
+                {
+                    check_against_file<float>(clctx.cqueue, thin_intermediates[i], "thin_" + std::to_string(i), size);
+                }
+
                 for(int i=0; i < buffer_set::buffer_count; i++)
                 {
                     check_against_file<float>(clctx.cqueue, generic_data[0].buffers[i], buffer_names[i] + "_0", size);
