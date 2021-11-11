@@ -3838,6 +3838,49 @@ struct lightray
     cl_int x, y;
 };
 
+std::vector<unsigned int> pack_points(const std::vector<cl_ushort4>& points)
+{
+    std::vector<unsigned int> ret;
+    //ret.reserve(points.size());
+
+    for(auto& i : points)
+    {
+        uint32_t x = i.s[0];
+        uint32_t y = i.s[1];
+        uint32_t z = i.s[2];
+
+        //std::cout << "HI " << x << " " << y << " " << z << std::endl;
+
+        uint32_t v = (x << 20u) | (y << 10u) | z;
+
+        ret.push_back(v);
+    }
+
+    return ret;
+}
+
+cl::buffer allocate_points(cl::context& ctx, cl::command_queue& cqueue, const std::vector<cl_ushort4>& points)
+{
+    cl::buffer buf(ctx);
+
+    #define PACK_POINTS
+    #ifdef PACK_POINTS
+
+    buf.alloc(points.size() * sizeof(cl_uint));
+
+    std::vector<unsigned int> vals = pack_points(points);
+    buf.write(cqueue, vals);
+
+    #else
+
+    buf.alloc(points.size() * sizeof(cl_ushort4));
+    buf.write(cqueue, points);
+
+    #endif // PACK_POINTS
+
+    return buf;
+}
+
 std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
 {
     cl::buffer points(ctx);
@@ -3872,11 +3915,9 @@ std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_
         return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
     });
 
-    cl::buffer real(ctx);
-    real.alloc(cpu_points.size() * sizeof(cl_ushort4));
-    real.write(cqueue, cpu_points);
-
     printf("Sponge point reduction %i\n", count);
+
+    cl::buffer real = allocate_points(ctx, cqueue, cpu_points);
 
     return {real, count};
 }
@@ -3933,13 +3974,8 @@ std::tuple<cl::buffer, int, cl::buffer, int> generate_evolution_points(cl::conte
         return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
     });
 
-    cl::buffer real(ctx);
-    real.alloc(cpu_points.size() * sizeof(cl_ushort4));
-    real.write(cqueue, cpu_points);
-
-    cl::buffer non(ctx);
-    non.alloc(cpu_non_points.size() * sizeof(cl_ushort4));
-    non.write(cqueue, cpu_non_points);
+    cl::buffer real = allocate_points(ctx, cqueue, cpu_points);
+    cl::buffer non = allocate_points(ctx, cqueue, cpu_non_points);
 
     printf("Evolve point reduction %i\n", count);
 

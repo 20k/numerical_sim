@@ -9,6 +9,34 @@
 #include "transform_position.cl"
 #include "common.cl"
 
+#define PACK_POINTS
+
+#ifndef PACK_POINTS
+
+#define POINTS_TYPE ushort4
+
+int3 unpack_points(POINTS_TYPE packed)
+{
+    return (int3)(packed.x, packed.y, packed.z);
+}
+
+#else
+#define POINTS_TYPE unsigned int
+
+int3 unpack_points(POINTS_TYPE packed)
+{
+    #define PACK_BITS 10u
+
+    int x = (packed >> 20u) & 1023;
+    int y = (packed >> 10u) & 1023;
+    int z = packed & 1023;
+
+    //printf("X y z %i %i %i\n", x, y, z);
+
+    return (int3)(x, y, z);
+}
+#endif
+
 bool invalid_first(int ix, int iy, int iz, int4 dim)
 {
     return ix < BORDER_WIDTH || iy < BORDER_WIDTH || iz < BORDER_WIDTH || ix >= dim.x - BORDER_WIDTH || iy >= dim.y - BORDER_WIDTH || iz >= dim.z - BORDER_WIDTH;
@@ -20,16 +48,16 @@ bool invalid_second(int ix, int iy, int iz, int4 dim)
 }
 
 __kernel
-void trapezoidal_accumulate(__global ushort4* points, int point_count, int4 dim, __global float* yn, __global float* fn, __global float* fnp1, float timestep)
+void trapezoidal_accumulate(__global POINTS_TYPE* points, int point_count, int4 dim, __global float* yn, __global float* fn, __global float* fnp1, float timestep)
 {
     int local_idx = get_global_id(0);
 
     if(local_idx >= point_count)
         return;
 
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
+    int ix = unpack_points(points[local_idx]).x;
+    int iy = unpack_points(points[local_idx]).y;
+    int iz = unpack_points(points[local_idx]).z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -47,16 +75,16 @@ void trapezoidal_accumulate(__global ushort4* points, int point_count, int4 dim,
 }
 
 __kernel
-void accumulate_rk4(__global ushort4* points, int point_count, int4 dim, __global float* accum, __global float* yn, float factor)
+void accumulate_rk4(__global POINTS_TYPE* points, int point_count, int4 dim, __global float* accum, __global float* yn, float factor)
 {
     int local_idx = get_global_id(0);
 
     if(local_idx >= point_count)
         return;
 
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
+    int ix = unpack_points(points[local_idx]).x;
+    int iy = unpack_points(points[local_idx]).y;
+    int iz = unpack_points(points[local_idx]).z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -83,16 +111,16 @@ void copy_buffer(__global float* in, __global float* out, int max_size)
 }
 
 __kernel
-void copy_valid(__global ushort4* points, int point_count, __global float* in, __global float* out, int4 dim)
+void copy_valid(__global POINTS_TYPE* points, int point_count, __global float* in, __global float* out, int4 dim)
 {
     int local_idx = get_global_id(0);
 
     if(local_idx >= point_count)
         return;
 
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
+    int ix = unpack_points(points[local_idx]).x;
+    int iy = unpack_points(points[local_idx]).y;
+    int iz = unpack_points(points[local_idx]).z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -108,16 +136,16 @@ void copy_valid(__global ushort4* points, int point_count, __global float* in, _
 }
 
 __kernel
-void calculate_rk4_val(__global ushort4* points, int point_count, int4 dim, __global float* yn_inout, __global float* xn, float factor)
+void calculate_rk4_val(__global POINTS_TYPE* points, int point_count, int4 dim, __global float* yn_inout, __global float* xn, float factor)
 {
     int local_idx = get_global_id(0);
 
     if(local_idx >= point_count)
         return;
 
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
+    int ix = unpack_points(points[local_idx]).x;
+    int iy = unpack_points(points[local_idx]).y;
+    int iz = unpack_points(points[local_idx]).z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -252,7 +280,7 @@ void calculate_initial_conditions(STANDARD_ARGS(),
 }
 
 __kernel
-void enforce_algebraic_constraints(__global ushort4* points, int point_count,
+void enforce_algebraic_constraints(__global POINTS_TYPE* points, int point_count,
                                    STANDARD_ARGS(),
                                    float scale, int4 dim)
 {
@@ -261,9 +289,9 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
     if(idx >= point_count)
         return;
 
-    int ix = points[idx].x;
-    int iy = points[idx].y;
-    int iz = points[idx].z;
+    int ix = unpack_points(points[idx]).x;
+    int iy = unpack_points(points[idx]).y;
+    int iz = unpack_points(points[idx]).z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -306,7 +334,7 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
 }
 
 __kernel
-void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
+void calculate_intermediate_data_thin(__global POINTS_TYPE* points, int point_count,
                                       __global float* buffer, __global DERIV_PRECISION* buffer_out_1, __global DERIV_PRECISION* buffer_out_2, __global DERIV_PRECISION* buffer_out_3,
                                       float scale, int4 dim)
 {
@@ -315,9 +343,9 @@ void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
     if(local_idx >= point_count)
         return;
 
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
+    int ix = unpack_points(points[local_idx]).x;
+    int iy = unpack_points(points[local_idx]).y;
+    int iz = unpack_points(points[local_idx]).z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -336,7 +364,7 @@ void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
 
 #if 0
 __kernel
-void calculate_intermediate_data_thin_cY5(__global ushort4* points, int point_count,
+void calculate_intermediate_data_thin_cY5(__global POINTS_TYPE* points, int point_count,
                                           __global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4,
                                           __global DERIV_PRECISION* buffer_out_1, __global DERIV_PRECISION* buffer_out_2, __global DERIV_PRECISION* buffer_out_3,
                                          float scale, int4 dim)
@@ -346,9 +374,9 @@ void calculate_intermediate_data_thin_cY5(__global ushort4* points, int point_co
     if(local_idx >= point_count)
         return;
 
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
+    int ix = unpack_points(points[local_idx]).x;
+    int iy = unpack_points(points[local_idx]).y;
+    int iz = unpack_points(points[local_idx]).z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -371,7 +399,7 @@ void calculate_intermediate_data_thin_cY5(__global ushort4* points, int point_co
 #endif // 0
 
 __kernel
-void calculate_momentum_constraint(__global ushort4* points, int point_count,
+void calculate_momentum_constraint(__global POINTS_TYPE* points, int point_count,
                                    STANDARD_ARGS(),
                                    __global float* momentum0, __global float* momentum1, __global float* momentum2,
                                    float scale, int4 dim, float time)
@@ -381,9 +409,9 @@ void calculate_momentum_constraint(__global ushort4* points, int point_count,
     if(local_idx >= point_count)
         return;
 
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
+    int ix = unpack_points(points[local_idx]).x;
+    int iy = unpack_points(points[local_idx]).y;
+    int iz = unpack_points(points[local_idx]).z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -506,7 +534,7 @@ void generate_evolution_points(__global ushort4* points, __global int* point_cou
 ///boundary conditions
 ///todo: damp to schwarzschild, not initial conditions?
 __kernel
-void clean_data(__global ushort4* points, int point_count,
+void clean_data(__global POINTS_TYPE* points, int point_count,
                 STANDARD_ARGS(),
                 __global float* u_value,
                 float scale, int4 dim, float time,
@@ -517,9 +545,9 @@ void clean_data(__global ushort4* points, int point_count,
     if(idx >= point_count)
         return;
 
-    int ix = points[idx].x;
-    int iy = points[idx].y;
-    int iz = points[idx].z;
+    int ix = unpack_points(points[idx]).x;
+    int iy = unpack_points(points[idx]).y;
+    int iz = unpack_points(points[idx]).z;
 
     #ifdef SYMMETRY_BOUNDARY
     return;
@@ -648,7 +676,7 @@ float3 srgb_to_lin(float3 C_srgb)
 #define NANCHECK(w) if(isnan(w[index])){printf("NAN " #w " %i %i %i\n", ix, iy, iz); debug = true;}
 
 __kernel
-void evolve_cY(__global ushort4* points, int point_count,
+void evolve_cY(__global POINTS_TYPE* points, int point_count,
             STANDARD_ARGS(),
             STANDARD_ARGS(o),
             STANDARD_ARGS(base_),
@@ -664,9 +692,9 @@ void evolve_cY(__global ushort4* points, int point_count,
     if(local_idx >= point_count)
         return;
 
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
+    int ix = unpack_points(points[local_idx]).x;
+    int iy = unpack_points(points[local_idx]).y;
+    int iz = unpack_points(points[local_idx]).z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -700,10 +728,15 @@ void evolve_cY(__global ushort4* points, int point_count,
     ocY3[index] = f_dtcYij3 * timestep + b3;
     ocY4[index] = f_dtcYij4 * timestep + b4;
     ocY5[index] = f_dtcYij5 * timestep + b5;
+
+    /*if(isnan(ocY0[index]))
+    {
+        printf("nan %i %i %i\n", ix, iy, iz);
+    }*/
 }
 
 __kernel
-void evolve_cA(__global ushort4* points, int point_count,
+void evolve_cA(__global POINTS_TYPE* points, int point_count,
             STANDARD_ARGS(),
             STANDARD_ARGS(o),
             STANDARD_ARGS(base_),
@@ -719,9 +752,9 @@ void evolve_cA(__global ushort4* points, int point_count,
     if(local_idx >= point_count)
         return;
 
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
+    int ix = unpack_points(points[local_idx]).x;
+    int iy = unpack_points(points[local_idx]).y;
+    int iz = unpack_points(points[local_idx]).z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -760,7 +793,7 @@ void evolve_cA(__global ushort4* points, int point_count,
 }
 
 __kernel
-void evolve_cGi(__global ushort4* points, int point_count,
+void evolve_cGi(__global POINTS_TYPE* points, int point_count,
             STANDARD_ARGS(),
             STANDARD_ARGS(o),
             STANDARD_ARGS(base_),
@@ -776,9 +809,9 @@ void evolve_cGi(__global ushort4* points, int point_count,
     if(local_idx >= point_count)
         return;
 
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
+    int ix = unpack_points(points[local_idx]).x;
+    int iy = unpack_points(points[local_idx]).y;
+    int iz = unpack_points(points[local_idx]).z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -827,7 +860,7 @@ void evolve_cGi(__global ushort4* points, int point_count,
 
 
 __kernel
-void evolve_K(__global ushort4* points, int point_count,
+void evolve_K(__global POINTS_TYPE* points, int point_count,
             STANDARD_ARGS(),
             STANDARD_ARGS(o),
             STANDARD_ARGS(base_),
@@ -843,9 +876,9 @@ void evolve_K(__global ushort4* points, int point_count,
     if(local_idx >= point_count)
         return;
 
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
+    int ix = unpack_points(points[local_idx]).x;
+    int iy = unpack_points(points[local_idx]).y;
+    int iz = unpack_points(points[local_idx]).z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -868,7 +901,7 @@ void evolve_K(__global ushort4* points, int point_count,
 
 
 __kernel
-void evolve_X(__global ushort4* points, int point_count,
+void evolve_X(__global POINTS_TYPE* points, int point_count,
             STANDARD_ARGS(),
             STANDARD_ARGS(o),
             STANDARD_ARGS(base_),
@@ -884,9 +917,9 @@ void evolve_X(__global ushort4* points, int point_count,
     if(local_idx >= point_count)
         return;
 
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
+    int ix = unpack_points(points[local_idx]).x;
+    int iy = unpack_points(points[local_idx]).y;
+    int iz = unpack_points(points[local_idx]).z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -908,7 +941,7 @@ void evolve_X(__global ushort4* points, int point_count,
 }
 
 __kernel
-void evolve_gA(__global ushort4* points, int point_count,
+void evolve_gA(__global POINTS_TYPE* points, int point_count,
             STANDARD_ARGS(),
             STANDARD_ARGS(o),
             STANDARD_ARGS(base_),
@@ -924,9 +957,9 @@ void evolve_gA(__global ushort4* points, int point_count,
     if(local_idx >= point_count)
         return;
 
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
+    int ix = unpack_points(points[local_idx]).x;
+    int iy = unpack_points(points[local_idx]).y;
+    int iz = unpack_points(points[local_idx]).z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -949,7 +982,7 @@ void evolve_gA(__global ushort4* points, int point_count,
 
 
 __kernel
-void evolve_gB(__global ushort4* points, int point_count,
+void evolve_gB(__global POINTS_TYPE* points, int point_count,
             STANDARD_ARGS(),
             STANDARD_ARGS(o),
             STANDARD_ARGS(base_),
@@ -965,9 +998,9 @@ void evolve_gB(__global ushort4* points, int point_count,
     if(local_idx >= point_count)
         return;
 
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
+    int ix = unpack_points(points[local_idx]).x;
+    int iy = unpack_points(points[local_idx]).y;
+    int iz = unpack_points(points[local_idx]).z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -995,7 +1028,7 @@ void evolve_gB(__global ushort4* points, int point_count,
 }
 
 __kernel
-void dissipate_single(__global ushort4* points, int point_count,
+void dissipate_single(__global POINTS_TYPE* points, int point_count,
                       __global float* buffer, __global float* obuffer,
                       float coefficient,
                       float scale, int4 dim, float timestep)
@@ -1005,9 +1038,12 @@ void dissipate_single(__global ushort4* points, int point_count,
     if(local_idx >= point_count)
         return;
 
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
+    int ix = unpack_points(points[local_idx]).x;
+    int iy = unpack_points(points[local_idx]).y;
+    int iz = unpack_points(points[local_idx]).z;
+
+    if(isnan(buffer[IDX(ix,iy,iz)]))
+        printf("Where %i %i %i\n", ix, iy, iz);
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -1048,6 +1084,11 @@ void dissipate_single(__global ushort4* points, int point_count,
     float dissipate_single = KREISS_DISSIPATE_SINGULAR;
 
     obuffer[index] += damp * dissipate_single * timestep;
+
+    barrier(CLK_GLOBAL_MEM_FENCE);
+
+    if(isnan(obuffer[index]))
+        printf("Where2 %i %i %i\n", ix, iy, iz);
 }
 
 __kernel
@@ -1146,7 +1187,7 @@ void render(STANDARD_ARGS(),
 
 #if 1
 __kernel
-void extract_waveform(__global ushort4* points, int point_count,
+void extract_waveform(__global POINTS_TYPE* points, int point_count,
                       STANDARD_ARGS(),
                       __global DERIV_PRECISION* dcYij0, __global DERIV_PRECISION* dcYij1, __global DERIV_PRECISION* dcYij2, __global DERIV_PRECISION* dcYij3, __global DERIV_PRECISION* dcYij4, __global DERIV_PRECISION* dcYij5, __global DERIV_PRECISION* dcYij6, __global DERIV_PRECISION* dcYij7, __global DERIV_PRECISION* dcYij8, __global DERIV_PRECISION* dcYij9, __global DERIV_PRECISION* dcYij10, __global DERIV_PRECISION* dcYij11, __global DERIV_PRECISION* dcYij12, __global DERIV_PRECISION* dcYij13, __global DERIV_PRECISION* dcYij14, __global DERIV_PRECISION* dcYij15, __global DERIV_PRECISION* dcYij16, __global DERIV_PRECISION* dcYij17,
                       __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
@@ -1159,9 +1200,9 @@ void extract_waveform(__global ushort4* points, int point_count,
     if(local_idx >= point_count)
         return;
 
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
+    int ix = unpack_points(points[local_idx]).x;
+    int iy = unpack_points(points[local_idx]).y;
+    int iz = unpack_points(points[local_idx]).z;
 
     float3 offset = transform_position(ix, iy, iz, dim, scale);
 
