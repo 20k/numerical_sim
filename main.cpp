@@ -106,7 +106,7 @@ struct equation_context
     std::vector<std::pair<value, value>> aliases;
     bool uses_linear = false;
 
-    int order = 2;
+    int order = 1;
 
     void pin(value& v)
     {
@@ -773,6 +773,8 @@ void build_kreiss_oliger_dissipate_singular(equation_context& ctx)
     value coeff = "coefficient";
 
     ctx.add("KREISS_DISSIPATE_SINGULAR", coeff * kreiss_oliger_dissipate(ctx, buf));
+
+    std::cout << "HI " << type_to_string(kreiss_oliger_dissipate(ctx, buf)) << std::endl;
 }
 
 #if 0
@@ -4318,6 +4320,8 @@ int main()
 
     int which_data = 0;
 
+    //clctx.cqueue.block();
+
     std::array<buffer_set, 2> generic_data{buffer_set(clctx.ctx, clctx.cqueue, size), buffer_set(clctx.ctx, clctx.cqueue, size)};
     //buffer_set rk4_intermediate(clctx.ctx, size);
 
@@ -5052,7 +5056,11 @@ int main()
                     if(coeff == 0)
                         continue;
 
+                    std::cout << "Buf " << buffer_names[i] << std::endl;
+
                     clctx.cqueue.exec("dissipate_single", diss, {evolution_positions_count}, {128});
+
+                    clctx.cqueue.block();
                 }
 
                 clctx.cqueue.block();

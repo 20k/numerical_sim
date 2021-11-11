@@ -254,7 +254,7 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     gBB2[index] = init_gBB2;
     #endif // USE_GBB
 
-    if(ix == (dim.x-1)/2 && iz == (dim.z-1)/2)
+    /*if(ix == (dim.x-1)/2 && iz == (dim.z-1)/2)
     {
         int hy = (dim.y-1)/2;
 
@@ -262,13 +262,23 @@ void calculate_initial_conditions(STANDARD_ARGS(),
         {
             printf("U: %.9f %i\n", u_value[IDX(ix,iy,iz)], iy);
         }
-    }
+    }*/
 
     //Where2 10 143 168
 
-    if(ix == 10 && iy == 143 && iz == 168)
+    if(ix <= 10 && iy == 143 && iz == 168)
     {
-        printf("Hi there U: %.9f\n", u_value[IDX(ix,iy,iz)]);
+        //printf("Hi there U: %.9f\n", u_value[IDX(ix,iy,iz)]);
+
+        /*printf("CY0 default here %f\n", cY0[index]);
+        printf("CY1 default here %f\n", cY1[index]);
+        printf("CY2 default here %f\n", cY2[index]);
+        printf("CY3 default here %f\n", cY3[index]);
+        printf("CY4 default here %f\n", cY4[index]);
+        printf("CY5 default here %f\n", cY5[index]);*/
+
+        printf("Good_X %f\n", X[index]);
+        printf("Good_A %f\n", gA[index]);
     }
 
     /*if(x == 50 && y == 50 && z == 50)
@@ -296,9 +306,11 @@ void enforce_algebraic_constraints(__global POINTS_TYPE* points, int point_count
     if(idx >= point_count)
         return;
 
-    int ix = unpack_points(points[idx]).x;
-    int iy = unpack_points(points[idx]).y;
-    int iz = unpack_points(points[idx]).z;
+    unsigned int point = points[idx];
+
+    int ix = unpack_points(point).x;
+    int iy = unpack_points(point).y;
+    int iz = unpack_points(point).z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -319,6 +331,8 @@ void enforce_algebraic_constraints(__global POINTS_TYPE* points, int point_count
     float fixed_cA3 = fix_cA3;
     float fixed_cA4 = fix_cA4;
     float fixed_cA5 = fix_cA5;
+
+    barrier(CLK_GLOBAL_MEM_FENCE);
 
     cY0[index] = fixed_cY0;
     cY1[index] = fixed_cY1;
@@ -350,9 +364,11 @@ void calculate_intermediate_data_thin(__global POINTS_TYPE* points, int point_co
     if(local_idx >= point_count)
         return;
 
-    int ix = unpack_points(points[local_idx]).x;
-    int iy = unpack_points(points[local_idx]).y;
-    int iz = unpack_points(points[local_idx]).z;
+    unsigned int point = points[local_idx];
+
+    int ix = unpack_points(point).x;
+    int iy = unpack_points(point).y;
+    int iz = unpack_points(point).z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -699,9 +715,11 @@ void evolve_cY(__global POINTS_TYPE* points, int point_count,
     if(local_idx >= point_count)
         return;
 
-    int ix = unpack_points(points[local_idx]).x;
-    int iy = unpack_points(points[local_idx]).y;
-    int iz = unpack_points(points[local_idx]).z;
+    int point = points[local_idx];
+
+    int ix = unpack_points(point).x;
+    int iy = unpack_points(point).y;
+    int iz = unpack_points(point).z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -1101,7 +1119,27 @@ void dissipate_single(__global POINTS_TYPE* points, int point_count,
     barrier(CLK_GLOBAL_MEM_FENCE);
 
     if(isnan(obuffer[index]))
-        printf("Where2 %i %i %i\n", ix, iy, iz);
+    {
+        for(int i=-3; i <= 3; i++)
+        {
+            for(int j=-3; j <= 3; j++)
+            {
+                for(int k=-3; k <= 3; k++)
+                {
+                    int lx = i + ix;
+                    int ly = j + iy;
+                    int lz = k + iz;
+
+                    float val = buffer[IDX(lx,ly,lz)];
+
+                    printf("Ival %f %i %i %i  %i %i %i\n", val, i, j, k, ix, iy, iz);
+                }
+            }
+        }
+
+
+        printf("Where2 %f %i %i %i\n", buffer_value, ix, iy, iz);
+    }
 }
 
 __kernel
