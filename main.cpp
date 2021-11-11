@@ -3883,14 +3883,24 @@ cl::buffer allocate_points(cl::context& ctx, cl::command_queue& cqueue, const st
 
 std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
 {
+    cqueue.block();
+
     cl::buffer points(ctx);
     cl::buffer real_count(ctx);
 
     points.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
+
+    //cqueue.block();
+
     real_count.alloc(sizeof(cl_int));
+
+    //cqueue.block();
+
     real_count.set_to_zero(cqueue);
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
+
+    //cqueue.block();
 
     cl::args args;
     args.push_back(points);
@@ -3899,6 +3909,8 @@ std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_
     args.push_back(clsize);
 
     cqueue.exec("generate_sponge_points", args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
+
+    //cqueue.block();
 
     std::vector<cl_ushort4> cpu_points = points.read<cl_ushort4>(cqueue);
 
@@ -3918,6 +3930,8 @@ std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_
     printf("Sponge point reduction %i\n", count);
 
     cl::buffer real = allocate_points(ctx, cqueue, cpu_points);
+
+    cqueue.block();
 
     return {real, count};
 }
@@ -3992,12 +4006,13 @@ struct buffer_set
 
     std::vector<cl::buffer> buffers;
 
-    buffer_set(cl::context& ctx, vec3i size)
+    buffer_set(cl::context& ctx, cl::command_queue& cqueue, vec3i size)
     {
         for(int kk=0; kk < buffer_count; kk++)
         {
             buffers.emplace_back(ctx);
             buffers.back().alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+            buffers.back().set_to_zero(cqueue);
         }
     }
 };
@@ -4107,8 +4122,6 @@ cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, fl
 
     cl::buffer ret = solve_for_u(ctx, cqueue, clsize, c_at_max, 1, last);
 
-    cqueue.block();
-
     return ret;
 }
 
@@ -4175,6 +4188,8 @@ int main()
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
     u_arg = iterate_u(clctx.ctx, clctx.cqueue, size, c_at_max);
+
+    //clctx.cqueue.block();
 
     equation_context ctx1;
     get_initial_conditions_eqs(ctx1, centre, scale);
@@ -4303,10 +4318,13 @@ int main()
 
     int which_data = 0;
 
-    std::array<buffer_set, 2> generic_data{buffer_set(clctx.ctx, size), buffer_set(clctx.ctx, size)};
+    std::array<buffer_set, 2> generic_data{buffer_set(clctx.ctx, clctx.cqueue, size), buffer_set(clctx.ctx, clctx.cqueue, size)};
     //buffer_set rk4_intermediate(clctx.ctx, size);
-    buffer_set rk4_scratch(clctx.ctx, size);
+
+    buffer_set rk4_scratch(clctx.ctx, clctx.cqueue, size);
     //buffer_set rk4_xn(clctx.ctx, size);
+
+    //clctx.cqueue.block();
 
     std::array<std::string, buffer_set::buffer_count> buffer_names
     {
@@ -4383,10 +4401,11 @@ int main()
 
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
 
+    auto init_buffer = [&](auto& bufs)
     {
         cl::args init;
 
-        for(auto& i : generic_data[0].buffers)
+        for(auto& i : bufs.buffers)
         {
             init.push_back(i);
         }
@@ -4396,16 +4415,19 @@ int main()
         init.push_back(clsize);
 
         clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
+    };
 
-        clctx.cqueue.block();
-    }
 
-    for(int i=0; i < (int)generic_data[0].buffers.size(); i++)
+    /*for(int i=0; i < (int)generic_data[0].buffers.size(); i++)
     {
         cl::copy(clctx.cqueue, generic_data[0].buffers[i], generic_data[1].buffers[i]);
         cl::copy(clctx.cqueue, generic_data[0].buffers[i], rk4_scratch.buffers[i]);
         //cl::copy(clctx.cqueue, generic_data[0].buffers[i], rk4_intermediate.buffers[i]);
-    }
+    }*/
+
+    init_buffer(generic_data[0]);
+    init_buffer(generic_data[1]);
+    init_buffer(rk4_scratch);
 
     clctx.cqueue.block();
 

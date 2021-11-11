@@ -264,6 +264,13 @@ void calculate_initial_conditions(STANDARD_ARGS(),
         }
     }
 
+    //Where2 10 143 168
+
+    if(ix == 10 && iy == 143 && iz == 168)
+    {
+        printf("Hi there U: %.9f\n", u_value[IDX(ix,iy,iz)]);
+    }
+
     /*if(x == 50 && y == 50 && z == 50)
     {
         printf("gTEST0 %f\n", f->cY0);
