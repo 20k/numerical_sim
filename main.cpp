@@ -13,6 +13,7 @@
 #include <vec/tensor.hpp>
 #include "gravitational_waves.hpp"
 #include <execution>
+#include <toolkit/fs_helpers.hpp>
 
 /**
 current paper set
@@ -4127,6 +4128,109 @@ cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, fl
     return ret;
 }
 
+void dump_to_file(cl::command_queue& cqueue, cl::buffer& buf, const std::string& name)
+{
+    std::vector<char> vals = buf.read<char>(cqueue);
+
+    file::write(name, std::string(vals.begin(), vals.end()), file::mode::BINARY);
+}
+
+template<typename T>
+void check_against_file(cl::command_queue& cqueue, cl::buffer& buf, const std::string& name, vec3i dim)
+{
+    std::vector<T> my_vals = buf.read<T>(cqueue);
+
+    std::string file_vals = file::read(name, file::mode::BINARY);
+
+    /*std::vector<char> as_char(file_vals.begin(), file_vals.end());
+
+    std::vector<T> as_t;
+
+    for(int i=0; i < as_char.size() / sizeof(T); i++)
+    {
+        char* ptr = as_char.begin() + i * sizeof(T);
+        T val_T = 0;
+
+        memcpy(&val_T, ptr, sizeof(T));
+
+        as_t.push_back(val_T);
+    }*/
+
+    std::vector<T> as_t;
+    as_t.resize(file_vals.size() / sizeof(T));
+
+    memcpy(&as_t[0], file_vals.c_str(), file_vals.size());
+
+    std::cout << "Buf " << name << " file vals " << as_t.size() << " my vals " << my_vals.size() << std::endl;
+
+    assert(as_t.size() == my_vals.size());
+
+    for(int z=0; z < dim.z(); z++)
+    {
+        for(int y=0; y < dim.y(); y++)
+        {
+            for(int x=0; x < dim.x(); x++)
+            {
+                int idx = z * dim.x() * dim.y() + y * dim.x() + x;
+
+                T v1_v = my_vals[idx];
+
+                if(v1_v != as_t[idx])
+                {
+                    std::cout << "Here" << std::endl;
+
+                    printf("Err at %i %i %i\n", x, y, z);
+                    std::cout << "Got " << v1_v << " Expected " << as_t[idx] << std::endl;
+                }
+            }
+        }
+    }
+}
+
+
+template<typename T>
+void check_against_lin(cl::command_queue& cqueue, cl::buffer& buf, const std::string& name, vec3i dim)
+{
+    std::vector<T> my_vals = buf.read<T>(cqueue);
+
+    std::string file_vals = file::read(name, file::mode::BINARY);
+
+    /*std::vector<char> as_char(file_vals.begin(), file_vals.end());
+
+    std::vector<T> as_t;
+
+    for(int i=0; i < as_char.size() / sizeof(T); i++)
+    {
+        char* ptr = as_char.begin() + i * sizeof(T);
+        T val_T = 0;
+
+        memcpy(&val_T, ptr, sizeof(T));
+
+        as_t.push_back(val_T);
+    }*/
+
+    std::vector<T> as_t;
+    as_t.resize(file_vals.size() / sizeof(T));
+
+    memcpy(&as_t[0], file_vals.c_str(), file_vals.size());
+
+    std::cout << "Buf " << name << " file vals " << as_t.size() << " my vals " << my_vals.size() << std::endl;
+
+    assert(as_t.size() == my_vals.size());
+
+    for(int idx=0; idx < as_t.size(); idx++)
+    {
+        T v1_v = my_vals[idx];
+
+        if(v1_v != as_t[idx])
+        {
+            std::cout << "Here " << idx << std::endl;
+            std::cout << "Got " << v1_v << " Expected " << as_t[idx] << std::endl;
+        }
+    }
+}
+
+
 ///it seems like basically i need numerical dissipation of some form
 ///if i didn't evolve where sponge = 1, would be massively faster
 int main()
@@ -4322,6 +4426,11 @@ int main()
 
     //clctx.cqueue.block();
 
+    //#define ARBITRARILY_WORKING
+    #ifdef ARBITRARILY_WORKING
+    clctx.cqueue.block();
+    #endif // ARBITRARILY_WORKING
+
     std::array<buffer_set, 2> generic_data{buffer_set(clctx.ctx, clctx.cqueue, size), buffer_set(clctx.ctx, clctx.cqueue, size)};
     //buffer_set rk4_intermediate(clctx.ctx, size);
 
@@ -4401,6 +4510,8 @@ int main()
         #ifdef CALCULATE_MOMENTUM_CONSTRAINT
         i.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
         #endif // CALCULATE_MOMENTUM_CONSTRAINT
+
+        i.alloc(sizeof(cl_int));
     }
 
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
@@ -4457,6 +4568,8 @@ int main()
     bool pao = false;
 
     std::cout << "Init time " << time_to_main.get_elapsed_time_s() << std::endl;
+
+    clctx.cqueue.block();
 
     while(!win.should_close())
     {
@@ -4913,12 +5026,40 @@ int main()
             diff_to_input(generic_data[(which_data + 1) % 2].buffers, timestep);
             #endif
 
+            auto debug_everything = [&]()
+            {
+                #ifdef ARBITRARILY_WORKING
+                for(int i=0; i < buffer_set::buffer_count; i++)
+                {
+                    dump_to_file(clctx.cqueue, generic_data[0].buffers[i], buffer_names[i] + "_0");
+                    dump_to_file(clctx.cqueue, generic_data[1].buffers[i], buffer_names[i] + "_1");
+                    dump_to_file(clctx.cqueue, rk4_scratch.buffers[i], buffer_names[i] + "_rk");
+                }
+
+                dump_to_file(clctx.cqueue, u_arg, "uarg");
+                dump_to_file(clctx.cqueue, evolution_positions, "evp");
+                dump_to_file(clctx.cqueue, sponge_positions, "sponge");
+                #else
+                for(int i=0; i < buffer_set::buffer_count; i++)
+                {
+                    check_against_file<float>(clctx.cqueue, generic_data[0].buffers[i], buffer_names[i] + "_0", size);
+                    check_against_file<float>(clctx.cqueue, generic_data[1].buffers[i], buffer_names[i] + "_1", size);
+                    check_against_file<float>(clctx.cqueue, rk4_scratch.buffers[i], buffer_names[i] + "_rk", size);
+                }
+
+                check_against_file<float>(clctx.cqueue, u_arg, "uarg", size);
+
+                check_against_lin<unsigned int>(clctx.cqueue, evolution_positions, "evp", size);
+                check_against_lin<unsigned int>(clctx.cqueue, sponge_positions, "sponge", size);
+                #endif
+            };
+
             #define BACKWARD_EULER
             #ifdef BACKWARD_EULER
             auto& b1 = generic_data[which_data];
             auto& b2 = generic_data[(which_data + 1) % 2];
 
-            int iterations = 2;
+            int iterations = 1;
 
             for(int i=0; i < iterations; i++)
             {
@@ -4936,6 +5077,8 @@ int main()
                 }
             }
             #endif
+
+            debug_everything();
 
             //#define TRAPEZOIDAL
             #ifdef TRAPEZOIDAL
