@@ -3881,69 +3881,88 @@ std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_
     return {real, count};
 }
 
-std::tuple<cl::buffer, int, cl::buffer, int> generate_evolution_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
+struct evolution_points
 {
-    cl::buffer evolved_points(ctx);
-    cl::buffer evolved_count(ctx);
+    cl::buffer first_derivative_points;
+    cl::buffer second_derivative_points;
 
-    cl::buffer non_evolved_points(ctx);
-    cl::buffer non_evolved_count(ctx);
+    int first_count = 0;
+    int second_count = 0;
 
-    evolved_points.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
-    non_evolved_points.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
+    evolution_points(cl::context& ctx) : first_derivative_points(ctx), second_derivative_points(ctx){}
+};
 
-    evolved_count.alloc(sizeof(cl_int));
-    non_evolved_count.alloc(sizeof(cl_int));
+evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
+{
+    cl::buffer points_1(ctx);
+    cl::buffer count_1(ctx);
 
-    evolved_count.set_to_zero(cqueue);
-    non_evolved_count.set_to_zero(cqueue);
+    cl::buffer points_2(ctx);
+    cl::buffer count_2(ctx);
+
+    points_1.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
+    points_2.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
+
+    count_1.alloc(sizeof(cl_int));
+    count_2.alloc(sizeof(cl_int));
+
+    count_1.set_to_zero(cqueue);
+    count_2.set_to_zero(cqueue);
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
     cl::args args;
-    args.push_back(evolved_points);
-    args.push_back(evolved_count);
-    args.push_back(non_evolved_points);
-    args.push_back(non_evolved_count);
+    args.push_back(points_1);
+    args.push_back(count_1);
+    args.push_back(points_2);
+    args.push_back(count_2);
     args.push_back(scale);
     args.push_back(clsize);
 
     cqueue.exec("generate_evolution_points", args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
 
-    std::vector<cl_ushort4> cpu_points = evolved_points.read<cl_ushort4>(cqueue);
-    std::vector<cl_ushort4> cpu_non_points = non_evolved_points.read<cl_ushort4>(cqueue);
+    std::vector<cl_ushort4> cpu_points_1 = points_1.read<cl_ushort4>(cqueue);
+    std::vector<cl_ushort4> cpu_points_2 = points_2.read<cl_ushort4>(cqueue);
 
-    printf("Original evolve points %i\n", cpu_points.size());
+    printf("Original evolve points %i\n", cpu_points_1.size());
 
-    cl_int count = evolved_count.read<cl_int>(cqueue).at(0);
-    cl_int non_count = non_evolved_count.read<cl_int>(cqueue).at(0);
+    cl_int cpu_count_1 = count_1.read<cl_int>(cqueue).at(0);
+    cl_int cpu_count_2 = count_2.read<cl_int>(cqueue).at(0);
 
-    assert(count > 0);
+    assert(cpu_count_1 > 0);
+    assert(cpu_count_2 > 0);
 
-    cpu_points.resize(count);
-    cpu_non_points.resize(non_count);
+    cpu_points_1.resize(cpu_count_1);
+    cpu_points_2.resize(cpu_count_2);
 
-    std::sort(std::execution::par_unseq, cpu_points.begin(), cpu_points.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
+    std::sort(std::execution::par_unseq, cpu_points_1.begin(), cpu_points_1.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
     {
         return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
     });
 
-    std::sort(std::execution::par_unseq, cpu_non_points.begin(), cpu_non_points.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
+    std::sort(std::execution::par_unseq, cpu_points_2.begin(), cpu_points_2.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
     {
         return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
     });
 
-    cl::buffer real(ctx);
-    real.alloc(cpu_points.size() * sizeof(cl_ushort4));
-    real.write(cqueue, cpu_points);
+    cl::buffer shrunk_points_1(ctx);
+    shrunk_points_1.alloc(cpu_points_1.size() * sizeof(cl_ushort4));
+    shrunk_points_1.write(cqueue, cpu_points_1);
 
-    cl::buffer non(ctx);
-    non.alloc(cpu_non_points.size() * sizeof(cl_ushort4));
-    non.write(cqueue, cpu_non_points);
+    cl::buffer shrunk_points_2(ctx);
+    shrunk_points_2.alloc(cpu_points_2.size() * sizeof(cl_ushort4));
+    shrunk_points_2.write(cqueue, cpu_points_2);
 
-    printf("Evolve point reduction %i\n", count);
+    evolution_points ret(ctx);
+    ret.first_count = cpu_count_1;
+    ret.second_count = cpu_count_2;
 
-    return {real, count, non, non_count};
+    ret.first_derivative_points = shrunk_points_1;
+    ret.second_derivative_points = shrunk_points_2;
+
+    printf("Evolve point reduction %i\n", cpu_count_1);
+
+    return ret;
 }
 
 struct buffer_set
@@ -4312,9 +4331,7 @@ int main()
     cl_float time_elapsed_s = 0;
 
     auto [sponge_positions, sponge_positions_count] = generate_sponge_points(clctx.ctx, clctx.cqueue, scale, size);
-    auto [evolution_positions, evolution_positions_count, non_evolution_positions, non_evolution_positions_count] = generate_evolution_points(clctx.ctx, clctx.cqueue, scale, size);
-
-    non_evolution_positions.native_mem_object.release();
+    evolution_points points_set = generate_evolution_points(clctx.ctx, clctx.cqueue, scale, size);
 
     std::vector<cl::buffer> thin_intermediates;
 
@@ -4589,8 +4606,8 @@ int main()
                         int idx = buffer_to_index(name);
 
                         cl::args thin;
-                        thin.push_back(evolution_positions);
-                        thin.push_back(evolution_positions_count);
+                        thin.push_back(points_set.first_derivative_points);
+                        thin.push_back(points_set.first_count);
                         thin.push_back(generic_in[idx]);
                         thin.push_back(out1);
                         thin.push_back(out2);
@@ -4598,7 +4615,7 @@ int main()
                         thin.push_back(scale);
                         thin.push_back(clsize);
 
-                        clctx.cqueue.exec("calculate_intermediate_data_thin", thin, {evolution_positions_count}, {128});
+                        clctx.cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.first_count}, {128});
                     };
 
                     std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
@@ -4643,8 +4660,8 @@ int main()
                 {
                     cl::args a1;
 
-                    a1.push_back(evolution_positions);
-                    a1.push_back(evolution_positions_count);
+                    a1.push_back(points_set.second_derivative_points);
+                    a1.push_back(points_set.second_count);
 
                     for(auto& i : generic_in)
                     {
@@ -4677,7 +4694,7 @@ int main()
                     a1.push_back(time_elapsed_s);
                     a1.push_back(current_simulation_boundary);
 
-                    clctx.cqueue.exec(name, a1, {evolution_positions_count}, {128});
+                    clctx.cqueue.exec(name, a1, {points_set.second_count}, {128});
                 };
 
                 step_kernel("evolve_cY");
@@ -4693,8 +4710,10 @@ int main()
             {
                 cl::args constraints;
 
-                constraints.push_back(evolution_positions);
-                constraints.push_back(evolution_positions_count);
+                ///technically this function could work anywhere as it does not need derivatives
+                ///but only the valid second derivative points are used
+                constraints.push_back(points_set.second_derivative_points);
+                constraints.push_back(points_set.second_count);
 
                 for(auto& i : generic_out)
                 {
@@ -4704,7 +4723,7 @@ int main()
                 constraints.push_back(scale);
                 constraints.push_back(clsize);
 
-                clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {evolution_positions_count}, {128});
+                clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {points_set.second_count}, {128});
             };
 
             auto diff_to_input = [&](auto& buffer_in, cl_float factor)
@@ -4712,14 +4731,14 @@ int main()
                 for(int i=0; i < (int)buffer_in.size(); i++)
                 {
                     cl::args accum;
-                    accum.push_back(evolution_positions);
-                    accum.push_back(evolution_positions_count);
+                    accum.push_back(points_set.second_derivative_points);
+                    accum.push_back(points_set.second_count);
                     accum.push_back(clsize);
                     accum.push_back(buffer_in[i]);
                     accum.push_back(base_yn[i]);
                     accum.push_back(factor);
 
-                    clctx.cqueue.exec("calculate_rk4_val", accum, {size.x() * size.y() * size.z()}, {128});
+                    clctx.cqueue.exec("calculate_rk4_val", accum, {points_set.second_count}, {128});
                 }
             };
 
@@ -4728,13 +4747,13 @@ int main()
                 for(int i=0; i < (int)in.size(); i++)
                 {
                     cl::args copy;
-                    copy.push_back(evolution_positions);
-                    copy.push_back(evolution_positions_count);
+                    copy.push_back(points_set.second_derivative_points);
+                    copy.push_back(points_set.second_count);
                     copy.push_back(in[i]);
                     copy.push_back(out[i]);
                     copy.push_back(clsize);
 
-                    clctx.cqueue.exec("copy_valid", copy, {evolution_positions_count}, {128});
+                    clctx.cqueue.exec("copy_valid", copy, {points_set.second_count}, {128});
                 }
             };
 
@@ -4957,8 +4976,8 @@ int main()
                 {
                     cl::args diss;
 
-                    diss.push_back(evolution_positions);
-                    diss.push_back(evolution_positions_count);
+                    diss.push_back(points_set.second_derivative_points);
+                    diss.push_back(points_set.second_count);
 
                     diss.push_back(generic_data[which_data].buffers[i]);
                     diss.push_back(generic_data[(which_data + 1) % 2].buffers[i]);
@@ -4973,7 +4992,7 @@ int main()
                     if(coeff == 0)
                         continue;
 
-                    clctx.cqueue.exec("dissipate_single", diss, {evolution_positions_count}, {128});
+                    clctx.cqueue.exec("dissipate_single", diss, {points_set.second_count}, {128});
                 }
             }
 
