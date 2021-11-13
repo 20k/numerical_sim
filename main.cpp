@@ -3945,11 +3945,16 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
         return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
     });
 
-    cl::buffer shrunk_points_1(ctx);
-    shrunk_points_1.alloc(cpu_points_1.size() * sizeof(cl_ushort4));
-    shrunk_points_1.write(cqueue, cpu_points_1);
+    for(auto& i : cpu_points_1)
+    {
+        cpu_points_2.push_back(i);
+    }
 
     cl::buffer shrunk_points_2(ctx);
+    shrunk_points_2.alloc(cpu_points_2.size() * sizeof(cl_ushort4));
+    shrunk_points_2.write(cqueue, cpu_points_2);
+
+    /*cl::buffer shrunk_points_2(ctx);
     shrunk_points_2.alloc(cpu_points_2.size() * sizeof(cl_ushort4));
     shrunk_points_2.write(cqueue, cpu_points_2);
 
@@ -3958,7 +3963,15 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
     ret.second_count = cpu_count_2;
 
     ret.first_derivative_points = shrunk_points_1;
+    ret.second_derivative_points = shrunk_points_2;*/
+
+    evolution_points ret(ctx);
+
+    ret.first_derivative_points = shrunk_points_2;
     ret.second_derivative_points = shrunk_points_2;
+
+    ret.first_count = cpu_points_2.size();
+    ret.second_count = cpu_count_2;
 
     printf("Evolve point reduction %i\n", cpu_count_1);
 

@@ -329,6 +329,7 @@ void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
 
     float TEMPORARIES10;
 
+    ///the bottleneck with this function is entirely writes
     buffer_out_1[IDX(ix,iy,iz)] = init_buffer_intermediate0;
     buffer_out_2[IDX(ix,iy,iz)] = init_buffer_intermediate1;
     buffer_out_3[IDX(ix,iy,iz)] = init_buffer_intermediate2;
@@ -548,18 +549,17 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
 
     int3 pos = (int3)(ix, iy, iz);
 
-    if(valid_first_derivative_point(pos, scale, dim))
-    {
-        int idx = atomic_inc(point_count_1st);
-
-        points_1st[idx].xyz = (ushort3)(ix, iy, iz);
-    }
-
     if(valid_second_derivative_point(pos, scale, dim))
     {
         int idx = atomic_inc(point_count_2nd);
 
         points_2nd[idx].xyz = (ushort3)(ix, iy, iz);
+    }
+    else if(valid_first_derivative_point(pos, scale, dim))
+    {
+        int idx = atomic_inc(point_count_1st);
+
+        points_1st[idx].xyz = (ushort3)(ix, iy, iz);
     }
 }
 
