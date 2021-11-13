@@ -4341,7 +4341,14 @@ int main()
     {
         thin_intermediates.emplace_back(clctx.ctx);
         thin_intermediates.back().alloc(size.x() * size.y() * size.z() * intermediate_data_size);
+
+        #ifdef USE_HALF_INTERMEDIATE
         thin_intermediates.back().set_to_zero(clctx.cqueue);
+        #else
+        cl_float nan = std::nanf("");
+
+        thin_intermediates.back().fill(clctx.cqueue, nan);
+        #endif
     }
 
     std::array<cl::buffer, 3> momentum_constraint{clctx.ctx, clctx.ctx, clctx.ctx};
