@@ -488,7 +488,7 @@ bool valid_first_derivative_point(int3 pos, float scale, int4 dim)
 
     for(int z=-width; z <= width; z++)
     {
-        for(int y=-width; z <= width; z++)
+        for(int y=-width; y <= width; y++)
         {
             for(int x=-width; x <= width; x++)
             {
@@ -518,7 +518,7 @@ bool valid_second_derivative_point(int3 pos, float scale, int4 dim)
 
     for(int z=-width; z <= width; z++)
     {
-        for(int y=-width; z <= width; z++)
+        for(int y=-width; y <= width; y++)
         {
             for(int x=-width; x <= width; x++)
             {
