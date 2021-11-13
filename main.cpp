@@ -2092,6 +2092,7 @@ void build_momentum_constraint(equation_context& ctx)
     #endif // defined
 
     #ifdef CALCULATE_MOMENTUM_CONSTRAINT
+    #if 0
     tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
 
     tensor<value, 3, 3> mixed_cAij = raise_index(args.cA, args.cY, icY);
@@ -2128,6 +2129,40 @@ void build_momentum_constraint(equation_context& ctx)
         });*/
 
         Mi.idx(i) = s1 + s2 + s3;
+    }
+    #endif // 0
+
+    tensor<value, 3, 3> second_cAij = raise_second_index(args.cA, args.cY, unpinned_icY);
+
+    for(int i=0; i < 3; i++)
+    {
+        value s1 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s1 += diff1(ctx, second_cAij.idx(i, j), j);
+        }
+
+        value s2 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                s2 += -0.5f * icY.idx(j, k) * diff1(ctx, args.cA.idx(j, k), i);
+            }
+        }
+
+        value s3 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s3 += -0.25f * 6 * (1/X_clamped) * diff1(ctx, args.X, j) * second_cAij.idx(i, j);
+        }
+
+        value s4 = -(2.f/3.f) * diff1(ctx, args.K, i);
+
+        Mi.idx(i) = s1 + s2 + s3 + s4;
     }
     #endif // 0
 
@@ -4357,6 +4392,7 @@ int main()
     {
         #ifdef CALCULATE_MOMENTUM_CONSTRAINT
         i.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+        i.set_to_zero(clctx.cqueue);
         #else
         i.alloc(sizeof(cl_int));
         #endif
@@ -4642,8 +4678,8 @@ int main()
                 {
                     cl::args momentum_args;
 
-                    momentum_args.push_back(evolution_positions);
-                    momentum_args.push_back(evolution_positions_count);
+                    momentum_args.push_back(points_set.first_derivative_points);
+                    momentum_args.push_back(points_set.first_count);
 
                     for(auto& i : generic_in)
                     {
@@ -4659,7 +4695,7 @@ int main()
                     momentum_args.push_back(clsize);
                     momentum_args.push_back(time_elapsed_s);
 
-                    clctx.cqueue.exec("calculate_momentum_constraint", momentum_args, {evolution_positions_count}, {128});
+                    clctx.cqueue.exec("calculate_momentum_constraint", momentum_args, {points_set.first_count}, {128});
                 }
                 #endif // CALCULATE_MOMENTUM_CONSTRAINT
 
