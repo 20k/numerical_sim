@@ -329,9 +329,69 @@ void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
 
     float TEMPORARIES10;
 
+    int idx = IDX(ix,iy,iz);
+
+    int lid = get_local_id(0);
+
+    #ifdef TYPE_1
+    __local float buf1[16];
+    __local float buf2[16];
+    __local float buf3[16];
+
+
+    buf1[lid] = init_buffer_intermediate0;
+    buf2[lid] = init_buffer_intermediate1;
+    buf3[lid] = init_buffer_intermediate2;
+
+    //barrier(CLK_LOCAL_MEM_FENCE);
+
+    event_t evts[3];
+
+    evts[0] = async_work_group_copy(buffer_out_1 + idx - lid, buf1, 16, 0);
+    evts[1] = async_work_group_copy(buffer_out_2 + idx - lid, buf2, 16, 0);
+    evts[2] = async_work_group_copy(buffer_out_3 + idx - lid, buf3, 16, 0);
+
+    wait_group_events(3, evts);
+
+    #endif
+
+    //#define TYPE_2
+    #ifdef TYPE_2
+    __local float buf[16];
+
+    buf[lid] = init_buffer_intermediate0;
+
+    event_t evt;
+
+    evt = async_work_group_copy(buffer_out_1 + idx - lid, buf, 16, 0);
+
+    float v1 = init_buffer_intermediate1;
+
+    wait_group_events(1, &evt);
+
+    buf[lid] = v1;
+
+    evt = async_work_group_copy(buffer_out_2 + idx - lid, buf, 16, 0);
+
+    float v2 = init_buffer_intermediate2;
+
+    wait_group_events(1, &evt);
+
+    buf[lid] = v2;
+
+    evt = async_work_group_copy(buffer_out_3 + idx - lid, buf, 16, 0);
+
+    wait_group_events(1, &evt);
+
+    #endif // TYPE_2
+
+    #define TYPE_3
+    #ifdef TYPE_3
     buffer_out_1[IDX(ix,iy,iz)] = init_buffer_intermediate0;
     buffer_out_2[IDX(ix,iy,iz)] = init_buffer_intermediate1;
     buffer_out_3[IDX(ix,iy,iz)] = init_buffer_intermediate2;
+    #endif // TYPE_3
+
 }
 
 #if 0

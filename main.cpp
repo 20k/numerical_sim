@@ -3975,6 +3975,78 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
         return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
     });
 
+    #if 1
+    {
+        int pad_width = 16;
+
+        std::vector<cl_ushort4> extra_points;
+
+        cl_ushort4 last = cpu_points_1[0];
+
+        int run_count = 1;
+
+        for(int i=1; i < (int)cpu_points_1.size(); i++)
+        {
+            cl_ushort4 current = cpu_points_1[i];
+
+            if(current.s[1] != last.s[1] || current.s[2] != last.s[2])
+            {
+                int remainder = pad_width - (run_count % pad_width);
+
+                if(remainder != pad_width)
+                {
+                    for(int pad=0; pad < remainder; pad++)
+                    {
+                        cl_ushort4 offset = last;
+                        offset.s[0] += pad;
+
+                        extra_points.push_back(offset);
+                    }
+                }
+
+                run_count = 1;
+                last = current;
+                continue;
+            }
+
+            run_count++;
+            last = current;
+        }
+
+        cpu_points_1.insert(cpu_points_1.end(), extra_points.begin(), extra_points.end());
+
+        std::sort(std::execution::par_unseq, cpu_points_1.begin(), cpu_points_1.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
+        {
+            return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
+        });
+    }
+    #endif // 0
+
+    /*{
+        cl_ushort4 last = cpu_points_1[0];
+
+        int run_count = 1;
+
+        for(int i=1; i < (int)cpu_points_1.size(); i++)
+        {
+            cl_ushort4 current = cpu_points_1[i];
+
+            //std::cout << "C " << current.s[0] << " " << current.s[1] << " " << current.s[2] << std::endl;
+
+            if(current.s[1] != last.s[1] || current.s[2] != last.s[2])
+            {
+                std::cout << "RUN " << run_count << std::endl;
+
+                run_count = 1;
+                last = current;
+                continue;
+            }
+
+            run_count++;
+            last = current;
+        }
+    }*/
+
     std::sort(std::execution::par_unseq, cpu_points_2.begin(), cpu_points_2.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
     {
         return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
@@ -3989,7 +4061,7 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
     shrunk_points_2.write(cqueue, cpu_points_2);
 
     evolution_points ret(ctx);
-    ret.first_count = cpu_count_1;
+    ret.first_count = cpu_points_1.size();
     ret.second_count = cpu_count_2;
 
     ret.first_derivative_points = shrunk_points_1;
@@ -4658,7 +4730,7 @@ int main()
                         thin.push_back(scale);
                         thin.push_back(clsize);
 
-                        clctx.cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.first_count}, {128});
+                        clctx.cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.first_count}, {16});
                     };
 
                     std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
