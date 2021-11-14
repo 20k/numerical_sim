@@ -976,7 +976,7 @@ value upwind_differentiate(equation_context& ctx, const value& prefix, const val
 
     return prefix * diff1(ctx, in, idx);
 
-    /*differentiation_context<7> dctx(in, idx, {"0", "0", "0"});
+    /*differentiation_context<7> dctx(in, idx, false);
 
     value scale = "scale";
 
