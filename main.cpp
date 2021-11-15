@@ -4940,6 +4940,10 @@ int main()
 
                 if(i != iterations - 1)
                 {
+                    #ifdef INTERMEDIATE_DISSIPATE
+                    dissipate(base_yn, b2.buffers);
+                    #endif
+
                     enforce_constraints(b2.buffers);
                     std::swap(b2, rk4_scratch);
                 }
