@@ -4800,6 +4800,32 @@ int main()
                 }
             };
 
+            auto dissipate = [&](auto& base_reference, auto& inout)
+            {
+                for(int i=0; i < buffer_set::buffer_count; i++)
+                {
+                    cl::args diss;
+
+                    diss.push_back(points_set.second_derivative_points);
+                    diss.push_back(points_set.second_count);
+
+                    diss.push_back(base_reference[i]);
+                    diss.push_back(inout[i]);
+
+                    float coeff = dissipation_coefficients[i];
+
+                    diss.push_back(coeff);
+                    diss.push_back(scale);
+                    diss.push_back(clsize);
+                    diss.push_back(timestep);
+
+                    if(coeff == 0)
+                        continue;
+
+                    clctx.cqueue.exec("dissipate_single", diss, {points_set.second_count}, {128});
+                }
+            };
+
             ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
             //#define RK4
             #ifdef RK4
@@ -5014,30 +5040,7 @@ int main()
             copy_valid(generic_data[(which_data + 1) % 2].buffers, generic_data[which_data].buffers);
             #endif // DISSIPATE_SELF
 
-            {
-                for(int i=0; i < buffer_set::buffer_count; i++)
-                {
-                    cl::args diss;
-
-                    diss.push_back(points_set.second_derivative_points);
-                    diss.push_back(points_set.second_count);
-
-                    diss.push_back(generic_data[which_data].buffers[i]);
-                    diss.push_back(generic_data[(which_data + 1) % 2].buffers[i]);
-
-                    float coeff = dissipation_coefficients[i];
-
-                    diss.push_back(coeff);
-                    diss.push_back(scale);
-                    diss.push_back(clsize);
-                    diss.push_back(timestep);
-
-                    if(coeff == 0)
-                        continue;
-
-                    clctx.cqueue.exec("dissipate_single", diss, {points_set.second_count}, {128});
-                }
-            }
+            dissipate(generic_data[which_data].buffers, generic_data[(which_data + 1) % 2].buffers);
 
             which_data = (which_data + 1) % 2;
 
