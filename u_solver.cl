@@ -78,6 +78,10 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     if(ix < 1 || iy < 1 || iz < 1 || ix >= dim.x - 1 || iy >= dim.y - 1 || iz >= dim.z - 1)
         return;
 
+    bool x_degenerate = ix < 2 || ix >= dim.x - 2;
+    bool y_degenerate = iy < 2 || iy >= dim.y - 2;
+    bool z_degenerate = iz < 2 || iz >= dim.z - 2;
+
     float3 offset = transform_position(ix, iy, iz, dim, scale);
 
     float ox = offset.x;
@@ -99,35 +103,93 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
     float h2f0 = scale * scale * RHS;
 
-    float uxm1 = u_offset_in[IDX(ix-1, iy, iz)];
-    float uxp1 = u_offset_in[IDX(ix+1, iy, iz)];
-    float uym1 = u_offset_in[IDX(ix, iy-1, iz)];
-    float uyp1 = u_offset_in[IDX(ix, iy+1, iz)];
-    float uzm1 = u_offset_in[IDX(ix, iy, iz-1)];
-    float uzp1 = u_offset_in[IDX(ix, iy, iz+1)];
+    float u0n1 = 0;
 
-    ///so, floating point maths isn't associative
-    ///which means that if we're on the other side of a symmetric boundary about the central plane
-    ///the order of operations will be different
-    ///the if statements correct this, which makes this method numerically symmetric, and implicitly
-    ///converges to a symmetric solution if available
-    float Xs = uxm1 + uxp1;
+    if(x_degenerate || y_degenerate || z_degenerate)
+    {
+        float uxm1 = u_offset_in[IDX(ix-1, iy, iz)];
+        float uxp1 = u_offset_in[IDX(ix+1, iy, iz)];
+        float uym1 = u_offset_in[IDX(ix, iy-1, iz)];
+        float uyp1 = u_offset_in[IDX(ix, iy+1, iz)];
+        float uzm1 = u_offset_in[IDX(ix, iy, iz-1)];
+        float uzp1 = u_offset_in[IDX(ix, iy, iz+1)];
 
-    if(ix > (dim.x - 1)/2)
-        Xs = uxp1 + uxm1;
+        ///so, floating point maths isn't associative
+        ///which means that if we're on the other side of a symmetric boundary about the central plane
+        ///the order of operations will be different
+        ///the if statements correct this, which makes this method numerically symmetric, and implicitly
+        ///converges to a symmetric solution if available
+        float Xs = uxm1 + uxp1;
 
-    float Ys = uyp1 + uym1;
+        if(ix > (dim.x - 1)/2)
+            Xs = uxp1 + uxm1;
 
-    if(iy > (dim.y - 1)/2)
-        Ys = uym1 + uyp1;
+        float Ys = uyp1 + uym1;
 
-    float Zs = uzp1 + uzm1;
+        if(iy > (dim.y - 1)/2)
+            Ys = uym1 + uyp1;
 
-    if(iz > (dim.z - 1)/2)
-        Zs = uzm1 + uzp1;
+        float Zs = uzp1 + uzm1;
 
-    ///-6u0 + the rest of the terms = h^2 f0
-    float u0n1 = (1/6.f) * (Xs + Ys + Zs - h2f0);
+        if(iz > (dim.z - 1)/2)
+            Zs = uzm1 + uzp1;
+
+        ///-6u0 + the rest of the terms = h^2 f0
+        u0n1 = (1/6.f) * (Xs + Ys + Zs - h2f0);
+    }
+    else
+    {
+        float coeff1 = 4.f/3.f;
+        float coeff2 = -1.f/12.f;
+        float coeff_center = -5.f/2.f;
+
+        float uxm1 = coeff1 * u_offset_in[IDX(ix-1, iy, iz)];
+        float uxp1 = coeff1 * u_offset_in[IDX(ix+1, iy, iz)];
+        float uym1 = coeff1 * u_offset_in[IDX(ix, iy-1, iz)];
+        float uyp1 = coeff1 * u_offset_in[IDX(ix, iy+1, iz)];
+        float uzm1 = coeff1 * u_offset_in[IDX(ix, iy, iz-1)];
+        float uzp1 = coeff1 * u_offset_in[IDX(ix, iy, iz+1)];
+
+        float uxm2 = coeff2 * u_offset_in[IDX(ix-2, iy, iz)];
+        float uxp2 = coeff2 * u_offset_in[IDX(ix+2, iy, iz)];
+        float uym2 = coeff2 * u_offset_in[IDX(ix, iy-2, iz)];
+        float uyp2 = coeff2 * u_offset_in[IDX(ix, iy+2, iz)];
+        float uzm2 = coeff2 * u_offset_in[IDX(ix, iy, iz-2)];
+        float uzp2 = coeff2 * u_offset_in[IDX(ix, iy, iz+2)];
+
+        ///so, floating point maths isn't associative
+        ///which means that if we're on the other side of a symmetric boundary about the central plane
+        ///the order of operations will be different
+        ///the if statements correct this, which makes this method numerically symmetric, and implicitly
+        ///converges to a symmetric solution if available
+        float Xs1 = uxm1 + uxp1;
+        float Xs2 = uxm2 + uxp2;
+        float Ys1 = uyp1 + uym1;
+        float Ys2 = uyp2 + uym2;
+        float Zs1 = uzp1 + uzm1;
+        float Zs2 = uzp2 + uzm2;
+
+        if(ix > (dim.x - 1)/2)
+        {
+            Xs1 = uxp1 + uxm1;
+            Xs2 = uxp2 + uxm2;
+        }
+
+        if(iy > (dim.y - 1)/2)
+        {
+            Ys1 = uym1 + uyp1;
+            Ys2 = uym2 + uyp2;
+        }
+
+        if(iz > (dim.z - 1)/2)
+        {
+            Zs1 = uzm1 + uzp1;
+            Zs2 = uzm2 + uzp2;
+        }
+
+        ///3 because 3 dimensions
+        u0n1 = -(1/(3 * coeff_center)) * (Xs1 + Ys1 + Zs1 + Xs2 + Ys2 + Zs2 - h2f0);
+    }
 
     //if(ix == 50 && iy == dim.y/2 && iz == dim.z/2)
     //    printf("hi %.23f\n", u0n1);
