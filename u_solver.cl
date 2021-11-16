@@ -59,6 +59,11 @@ void upscale_u(__global float* u_in, __global float* u_out, int4 in_dim, int4 ou
 ///https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan2008/Workbook33/33_2_elliptic_pde.pdf
 ///https://arxiv.org/pdf/1205.5111v1.pdf 78
 ///https://arxiv.org/pdf/gr-qc/0007085.pdf 76?
+
+///so, the laplacian is the sum of second derivatives in the same direction, ie
+///didix + djdjx + dkdkx = 0
+///so with first order stencil, we get [1, -2, 1] in each direction, which is why we get a central -6
+///todo: this, but second order, because memory reads are heavily cached
 __kernel
 void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out,
                        float scale, int4 dim)
