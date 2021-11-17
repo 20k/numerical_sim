@@ -56,6 +56,19 @@ void upscale_u(__global float* u_in, __global float* u_out, int4 in_dim, int4 ou
     u_out[IDXD(ix, iy, iz, out_dim)] = val;
 }
 
+int get_order(int ix, int iy, int iz, int4 dim)
+{
+    int3 pos = (int3)(ix, iy, iz);
+
+    if(any(pos < 2) || any(pos >= dim.xyz - 2))
+        return 1;
+
+    if(any(pos < 3) || any(pos >= dim.xyz - 3))
+        return 2;
+
+    return 3;
+}
+
 ///https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan2008/Workbook33/33_2_elliptic_pde.pdf
 ///https://arxiv.org/pdf/1205.5111v1.pdf 78
 ///https://arxiv.org/pdf/gr-qc/0007085.pdf 76?
@@ -78,9 +91,7 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     if(ix < 1 || iy < 1 || iz < 1 || ix >= dim.x - 1 || iy >= dim.y - 1 || iz >= dim.z - 1)
         return;
 
-    bool x_degenerate = ix < 2 || ix >= dim.x - 2;
-    bool y_degenerate = iy < 2 || iy >= dim.y - 2;
-    bool z_degenerate = iz < 2 || iz >= dim.z - 2;
+    int order = get_order(ix, iy, iz, dim);
 
     float3 offset = transform_position(ix, iy, iz, dim, scale);
 
@@ -105,7 +116,7 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
     float u0n1 = 0;
 
-    if(x_degenerate || y_degenerate || z_degenerate)
+    if(order == 1)
     {
         float uxm1 = u_offset_in[IDX(ix-1, iy, iz)];
         float uxp1 = u_offset_in[IDX(ix+1, iy, iz)];
@@ -137,7 +148,7 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
         ///-6u0 + the rest of the terms = h^2 f0
         u0n1 = (1/6.f) * (Xs + Ys + Zs - h2f0);
     }
-    else
+    else if(order == 2)
     {
         float coeff1 = 4.f/3.f;
         float coeff2 = -1.f/12.f;
@@ -189,6 +200,73 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
         ///3 because 3 dimensions
         u0n1 = -(1/(3 * coeff_center)) * (Xs1 + Ys1 + Zs1 + Xs2 + Ys2 + Zs2 - h2f0);
+    }
+    else if(order == 3)
+    {
+        float coeff1 = 3.f/2.f;
+        float coeff2 = -3.f/20.f;
+        float coeff3 = 1.f/90.f;
+        float coeff_center = -49.f/18.f;
+
+        float uxm1 = u_offset_in[IDX(ix-1, iy, iz)];
+        float uxp1 = u_offset_in[IDX(ix+1, iy, iz)];
+        float uym1 = u_offset_in[IDX(ix, iy-1, iz)];
+        float uyp1 = u_offset_in[IDX(ix, iy+1, iz)];
+        float uzm1 = u_offset_in[IDX(ix, iy, iz-1)];
+        float uzp1 = u_offset_in[IDX(ix, iy, iz+1)];
+
+        float uxm2 = u_offset_in[IDX(ix-2, iy, iz)];
+        float uxp2 = u_offset_in[IDX(ix+2, iy, iz)];
+        float uym2 = u_offset_in[IDX(ix, iy-2, iz)];
+        float uyp2 = u_offset_in[IDX(ix, iy+2, iz)];
+        float uzm2 = u_offset_in[IDX(ix, iy, iz-2)];
+        float uzp2 = u_offset_in[IDX(ix, iy, iz+2)];
+
+        float uxm3 = u_offset_in[IDX(ix-3, iy, iz)];
+        float uxp3 = u_offset_in[IDX(ix+3, iy, iz)];
+        float uym3 = u_offset_in[IDX(ix, iy-3, iz)];
+        float uyp3 = u_offset_in[IDX(ix, iy+3, iz)];
+        float uzm3 = u_offset_in[IDX(ix, iy, iz-3)];
+        float uzp3 = u_offset_in[IDX(ix, iy, iz+3)];
+
+        ///so, floating point maths isn't associative
+        ///which means that if we're on the other side of a symmetric boundary about the central plane
+        ///the order of operations will be different
+        ///the if statements correct this, which makes this method numerically symmetric, and implicitly
+        ///converges to a symmetric solution if available
+        float Xs1 = uxm1 + uxp1;
+        float Xs2 = uxm2 + uxp2;
+        float Xs3 = uxm3 + uxp3;
+        float Ys1 = uyp1 + uym1;
+        float Ys2 = uyp2 + uym2;
+        float Ys3 = uyp3 + uym3;
+        float Zs1 = uzp1 + uzm1;
+        float Zs2 = uzp2 + uzm2;
+        float Zs3 = uzp3 + uzm3;
+
+        if(ix > (dim.x - 1)/2)
+        {
+            Xs1 = uxp1 + uxm1;
+            Xs2 = uxp2 + uxm2;
+            Xs3 = uxp3 + uxm3;
+        }
+
+        if(iy > (dim.y - 1)/2)
+        {
+            Ys1 = uym1 + uyp1;
+            Ys2 = uym2 + uyp2;
+            Ys3 = uym3 + uyp3;
+        }
+
+        if(iz > (dim.z - 1)/2)
+        {
+            Zs1 = uzm1 + uzp1;
+            Zs2 = uzm2 + uzp2;
+            Zs3 = uzm3 + uzp3;
+        }
+
+        ///3 because 3 dimensions
+        u0n1 = -(1/(3 * coeff_center)) * (coeff1 * (Xs1 + Ys1 + Zs1) + coeff2 * (Xs2 + Ys2 + Zs2) + coeff3 * (Xs3 + Ys3 + Zs3) - h2f0);
     }
 
     //if(ix == 50 && iy == dim.y/2 && iz == dim.z/2)

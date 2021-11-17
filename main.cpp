@@ -4052,7 +4052,7 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
             cl::copy(cqueue, reduced_u_args[1], reduced_u_args[0]);
     }
 
-    int N = 8000;
+    int N = 16000;
 
     #ifdef GPU_PROFILE
     N = 1000;
@@ -4156,7 +4156,7 @@ int main()
 
     std::string argument_string = "-I ./ -O3 -cl-std=CL2.0 -cl-uniform-work-group-size -cl-mad-enable -cl-finite-math-only -cl-denorms-are-zero ";
 
-    std::string u_argument_string = argument_string;
+    std::string u_argument_string = "-I ./ -O3 -cl-std=CL2.0 -cl-uniform-work-group-size ";
 
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
