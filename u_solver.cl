@@ -203,6 +203,12 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     }
     #endif // 0
 
+    if(is_centre)
+    {
+        printf("Next! %f\n", u0n1);
+        //u0n1 = 1;
+    }
+
     //if(ix == 50 && iy == dim.y/2 && iz == dim.z/2)
     //    printf("hi %.23f\n", u0n1);
 

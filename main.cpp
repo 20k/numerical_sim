@@ -1632,7 +1632,7 @@ struct standard_arguments
 };
 
 ///https://arxiv.org/pdf/gr-qc/0610128.pdf initial conditions, see (7)
-tensor<value, 3, 3> calculate_single_bcAij(const vec<3, value>& pos, float black_hole_m, vec3f black_hole_pos, vec3f black_hole_velocity, vec3f black_hole_spin)
+tensor<value, 3, 3> calculate_single_bcAij(const vec<3, value>& pos, float black_hole_m, vec3f black_hole_pos, vec3f black_hole_velocity, vec3f black_hole_spin, value& is_centre)
 {
     tensor<value, 3, 3, 3> eijk = get_eijk();
 
@@ -1660,6 +1660,8 @@ tensor<value, 3, 3> calculate_single_bcAij(const vec<3, value>& pos, float black
             vec<3, value> vri = {bhpos.x(), bhpos.y(), bhpos.z()};
 
             value ra = (pos - vri).length();
+
+            is_centre = dual_types::dual_if(ra <= 1e-6f, [](){return 1;}, [](){return 0;});
 
             ra = max(ra, 1e-6);
 
@@ -1692,13 +1694,13 @@ tensor<value, 3, 3> calculate_single_bcAij(const vec<3, value>& pos, float black
 }
 
 ///this does not return the same kind of conformal cAij as bssn uses, need to reconstruct Kij!
-tensor<value, 3, 3> calculate_bcAij(const vec<3, value>& pos, const std::vector<float>& black_hole_m, const std::vector<vec3f>& black_hole_pos, const std::vector<vec3f>& black_hole_velocity, const std::vector<vec3f>& black_hole_spin)
+tensor<value, 3, 3> calculate_bcAij(const vec<3, value>& pos, const std::vector<float>& black_hole_m, const std::vector<vec3f>& black_hole_pos, const std::vector<vec3f>& black_hole_velocity, const std::vector<vec3f>& black_hole_spin, value& is_centre)
 {
     tensor<value, 3, 3> bcAij;
 
     for(int bh_idx = 0; bh_idx < (int)black_hole_pos.size(); bh_idx++)
     {
-        bcAij += calculate_single_bcAij(pos, black_hole_m[bh_idx], black_hole_pos[bh_idx], black_hole_velocity[bh_idx], black_hole_spin[bh_idx]);
+        bcAij += calculate_single_bcAij(pos, black_hole_m[bh_idx], black_hole_pos[bh_idx], black_hole_velocity[bh_idx], black_hole_spin[bh_idx], is_centre);
     }
 
     return bcAij;
@@ -1780,7 +1782,9 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
         }
     }
 
-    tensor<value, 3, 3> bcAij = calculate_bcAij(pos, black_hole_m, black_hole_pos, black_hole_velocity, black_hole_spin);
+    value is_centre = 0;
+
+    tensor<value, 3, 3> bcAij = calculate_bcAij(pos, black_hole_m, black_hole_pos, black_hole_velocity, black_hole_spin, is_centre);
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     value BL_s = 0;
@@ -1821,6 +1825,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     {
         ctx.add("init_bcA" + std::to_string(i), bcAij.idx(linear_indices[i].x(), linear_indices[i].y()));
     }
+
+    ctx.add("is_centre", is_centre);
 
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 69
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
