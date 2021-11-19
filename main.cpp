@@ -70,6 +70,7 @@ https://arxiv.org/pdf/1410.8607.pdf - haven't read it yet but this promises ever
 
 https://authors.library.caltech.edu/8284/1/RINcqg07.pdf - this gives a conflicting definition of kreiss oliger under B.4/B.5
 https://arxiv.org/pdf/1503.03436.pdf - seems to have a usable radiative boundary condition
+https://arxiv.org/pdf/gr-qc/0212039.pdf - apparent horizon?
 */
 
 ///notes:
