@@ -205,7 +205,7 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
     if(is_centre)
     {
-        printf("Next! %f\n", u0n1);
+        //printf("Next! %f\n", u0n1);
         //u0n1 = 1;
     }
 
