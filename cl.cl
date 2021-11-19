@@ -1173,7 +1173,7 @@ void render(STANDARD_ARGS(),
     }*/
 
     {
-        //float TEMPORARIES12;
+        float TEMPORARIES12;
 
         float m0 = init_momentum0;
         float m1 = init_momentum1;

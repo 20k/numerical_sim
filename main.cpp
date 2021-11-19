@@ -2190,13 +2190,13 @@ void build_momentum_constraint(equation_context& ctx)
     }
 
     //#define BETTERDAMP_DTCAIJ
-    //#define DAMP_DTCAIJ
+    #define DAMP_DTCAIJ
     #if defined(DAMP_DTCAIJ) || defined(BETTERDAMP_DTCAIJ)
     #define CALCULATE_MOMENTUM_CONSTRAINT
     #endif // defined
 
     #ifdef CALCULATE_MOMENTUM_CONSTRAINT
-    #if 1
+    #if 0
     tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, unpinned_icY);
 
     tensor<value, 3, 3> mixed_cAij = raise_index(args.cA, args.cY, unpinned_icY);
@@ -2236,7 +2236,7 @@ void build_momentum_constraint(equation_context& ctx)
     }
     #endif // 0
 
-    /*tensor<value, 3, 3> second_cAij = raise_second_index(args.cA, args.cY, unpinned_icY);
+    tensor<value, 3, 3> second_cAij = raise_second_index(args.cA, args.cY, unpinned_icY);
 
     for(int i=0; i < 3; i++)
     {
@@ -2267,7 +2267,7 @@ void build_momentum_constraint(equation_context& ctx)
         value s4 = -(2.f/3.f) * diff1(ctx, args.K, i);
 
         Mi.idx(i) = s1 + s2 + s3 + s4;
-    }*/
+    }
     #endif // 0
 
     /*tensor<value, 3> Mi;
@@ -2305,7 +2305,7 @@ void build_momentum_constraint(equation_context& ctx)
         Mi.idx(i) = s1 + s2 + s3 + s4;
     }*/
 
-    tensor<value, 3, 3> second_cAij = raise_second_index(args.cA, args.cY, unpinned_icY);
+    /*tensor<value, 3, 3> second_cAij = raise_second_index(args.cA, args.cY, unpinned_icY);
 
     for(int i=0; i < 3; i++)
     {
@@ -2336,14 +2336,14 @@ void build_momentum_constraint(equation_context& ctx)
         value s4 = -(2.f/3.f) * diff1(ctx, args.K, i);
 
         Mi.idx(i) = s1 + s2 + s3 + s4;
-    }
+    }*/
 
     for(int i=0; i < 3; i++)
     {
         ctx.add("init_momentum" + std::to_string(i), Mi.idx(i));
     }
 
-    tensor<value, 3> H;
+    /*tensor<value, 3> H;
 
     for(int i=0; i < 3; i++)
     {
@@ -2368,7 +2368,7 @@ void build_momentum_constraint(equation_context& ctx)
         value H = R + (2/3.f) * args.K * args.K - Amnamn;
 
         //ctx.add("init_H" + std::to_string(i), H);
-    }
+    }*/
 }
 
 inline
@@ -4114,7 +4114,7 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
             cl::copy(cqueue, reduced_u_args[1], reduced_u_args[0]);
     }
 
-    int N = 32000;
+    int N = 8000;
 
     #ifdef GPU_PROFILE
     N = 1000;
