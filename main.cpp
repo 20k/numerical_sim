@@ -1879,8 +1879,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
         }
     }
 
-    //value gA = 1;
-    value gA = 1/(pow(bl_conformal + u, 2));
+    value gA = 1;
+    //value gA = 1/(pow(bl_conformal + u, 2));
     value gB0 = 0;
     value gB1 = 0;
     value gB2 = 0;
@@ -2025,235 +2025,6 @@ void build_intermediate_thin_cY5(equation_context& ctx)
     }
 }
 
-tensor<value, 3, 3, 3> gpu_covariant_derivative_low_tensor(equation_context& ctx, const tensor<value, 3, 3>& mT, const metric<value, 3, 3>& met, const inverse_metric<value, 3, 3>& inverse)
-{
-    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, met, inverse);
-
-    tensor<value, 3, 3, 3> ret;
-
-    for(int a=0; a < 3; a++)
-    {
-        for(int b=0; b < 3; b++)
-        {
-            for(int c=0; c < 3; c++)
-            {
-                value sum = 0;
-
-                for(int d=0; d < 3; d++)
-                {
-                    sum += -christoff2.idx(d, c, a) * mT.idx(d, b) - christoff2.idx(d, c, b) * mT.idx(a, d);
-                }
-
-                ret.idx(c, a, b) = diff1(ctx, mT.idx(a, b), c) + sum;
-            }
-        }
-    }
-
-    return ret;
-}
-
-void build_momentum_constraint(equation_context& ctx)
-{
-    standard_arguments args(ctx);
-
-    inverse_metric<value, 3, 3> icY = args.cY.invert();
-    auto unpinned_icY = icY;
-    ctx.pin(icY);
-
-    /*value X_recip = 0.f;
-
-    {
-        float min_X = 0.001;
-
-        X_recip = dual_if(args.X <= min_X,
-        [&]()
-        {
-            return 1.f / min_X;
-        },
-        [&]()
-        {
-            return 1.f / args.X;
-        });
-    }*/
-
-    value X_clamped = max(args.X, 0.001f);
-
-    tensor<value, 3> Mi;
-
-    for(int i=0; i < 3; i++)
-    {
-        Mi.idx(i) = 0;
-    }
-
-    //#define BETTERDAMP_DTCAIJ
-    //#define DAMP_DTCAIJ
-    #if defined(DAMP_DTCAIJ) || defined(BETTERDAMP_DTCAIJ)
-    #define CALCULATE_MOMENTUM_CONSTRAINT
-    #endif // defined
-
-    #ifdef CALCULATE_MOMENTUM_CONSTRAINT
-    #if 0
-    tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
-
-    tensor<value, 3, 3> mixed_cAij = raise_index(args.cA, args.cY, icY);
-
-    for(int i=0; i < 3; i++)
-    {
-        value s1 = 0;
-
-        for(int m=0; m < 3; m++)
-        {
-            for(int n=0; n < 3; n++)
-            {
-                s1 += icY.idx(m, n) * dmni.idx(m, n, i);
-            }
-        }
-
-        value s2 = -(2.f/3.f) * diff1(ctx, args.K, i);
-
-        value s3 = 0;
-
-        for(int m=0; m < 3; m++)
-        {
-            s3 += -(3.f/2.f) * mixed_cAij.idx(m, i) * diff1(ctx, args.X, m) / X_clamped;
-        }
-
-        /*Mi.idx(i) = dual_if(args.X <= 0.001f,
-        []()
-        {
-            return 0.f;
-        },
-        [&]()
-        {
-            return s1 + s2 + s3;
-        });*/
-
-        Mi.idx(i) = s1 + s2 + s3;
-    }
-    #endif // 0
-
-    tensor<value, 3, 3> second_cAij = raise_second_index(args.cA, args.cY, unpinned_icY);
-
-    for(int i=0; i < 3; i++)
-    {
-        value s1 = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            s1 += diff1(ctx, second_cAij.idx(i, j), j);
-        }
-
-        value s2 = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            for(int k=0; k < 3; k++)
-            {
-                s2 += -0.5f * icY.idx(j, k) * diff1(ctx, args.cA.idx(j, k), i);
-            }
-        }
-
-        value s3 = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            s3 += -0.25f * 6 * (1/X_clamped) * diff1(ctx, args.X, j) * second_cAij.idx(i, j);
-        }
-
-        value s4 = -(2.f/3.f) * diff1(ctx, args.K, i);
-
-        Mi.idx(i) = s1 + s2 + s3 + s4;
-    }
-    #endif // 0
-
-    /*tensor<value, 3> Mi;
-
-    tensor<value, 3, 3> second_cAij = raise_second_index(args.cA, args.cY, unpinned_icY);
-
-    for(int i=0; i < 3; i++)
-    {
-        value s1 = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            s1 += hacky_differentiate(second_cAij.idx(i, j), j);
-        }
-
-        value s2 = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            for(int k=0; k < 3; k++)
-            {
-                s2 += -0.5f * icY.idx(j, k) * hacky_differentiate(args.cA.idx(j, k), i);
-            }
-        }
-
-        value s3 = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            s3 += -0.25f * 6 * X_recip * hacky_differentiate(args.X, j) * second_cAij.idx(i, j);
-        }
-
-        value s4 = -(2.f/3.f) * hacky_differentiate(args.K, i);
-
-        Mi.idx(i) = s1 + s2 + s3 + s4;
-    }*/
-
-    for(int i=0; i < 3; i++)
-    {
-        ctx.add("init_momentum" + std::to_string(i), Mi.idx(i));
-    }
-}
-
-inline
-void build_cY(equation_context& ctx)
-{
-    standard_arguments args(ctx);
-
-    metric<value, 3, 3> unpinned_cY = args.cY;
-
-    ctx.pin(args.cY);
-
-    tensor<value, 3> bigGi_lower = lower_index(args.bigGi, args.cY);
-    tensor<value, 3> gB_lower = lower_index(args.gB, args.cY);
-
-    ctx.pin(bigGi_lower);
-    ctx.pin(gB_lower);
-
-    tensor<value, 3, 3> lie_cYij = gpu_lie_derivative_weight(ctx, args.gB, unpinned_cY);
-
-    ///https://arxiv.org/pdf/gr-qc/0511048.pdf (1)
-    ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.66
-    tensor<value, 3, 3> dtcYij = -2 * args.gA * args.cA + lie_cYij;
-
-    ///makes it to 50 with this enabled
-    #define USE_DTCYIJ_MODIFICATION
-    #ifdef USE_DTCYIJ_MODIFICATION
-    ///https://arxiv.org/pdf/1205.5111v1.pdf 46
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            float sigma = 4/5.f;
-
-            dtcYij.idx(i, j) += sigma * 0.5f * (gB_lower.idx(i) * bigGi_lower.idx(j) + gB_lower.idx(j) * bigGi_lower.idx(i));
-
-            dtcYij.idx(i, j) += -(1.f/5.f) * args.cY.idx(i, j) * sum_multiply(args.gB, bigGi_lower);
-        }
-    }
-    #endif // USE_DTCYIJ_MODIFICATION
-
-    for(int i=0; i < 6; i++)
-    {
-        std::string name = "dtcYij" + std::to_string(i);
-
-        vec2i idx = args.linear_indices[i];
-
-        ctx.add(name, dtcYij.idx(idx.x(), idx.y()));
-    }
-}
 
 inline
 tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& args, const inverse_metric<value, 3, 3>& icY, const tensor<value, 3, 3, 3>& christoff1, const tensor<value, 3, 3, 3>& christoff2)
@@ -2355,6 +2126,297 @@ tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& 
     ctx.pin(xgARij);
 
     return xgARij;
+}
+
+
+tensor<value, 3, 3, 3> gpu_covariant_derivative_low_tensor(equation_context& ctx, const tensor<value, 3, 3>& mT, const metric<value, 3, 3>& met, const inverse_metric<value, 3, 3>& inverse)
+{
+    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, met, inverse);
+
+    tensor<value, 3, 3, 3> ret;
+
+    for(int a=0; a < 3; a++)
+    {
+        for(int b=0; b < 3; b++)
+        {
+            for(int c=0; c < 3; c++)
+            {
+                value sum = 0;
+
+                for(int d=0; d < 3; d++)
+                {
+                    sum += -christoff2.idx(d, c, a) * mT.idx(d, b) - christoff2.idx(d, c, b) * mT.idx(a, d);
+                }
+
+                ret.idx(c, a, b) = diff1(ctx, mT.idx(a, b), c) + sum;
+            }
+        }
+    }
+
+    return ret;
+}
+
+void build_momentum_constraint(equation_context& ctx)
+{
+    standard_arguments args(ctx);
+
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
+    auto unpinned_icY = icY;
+    ctx.pin(icY);
+
+    /*value X_recip = 0.f;
+
+    {
+        float min_X = 0.001;
+
+        X_recip = dual_if(args.X <= min_X,
+        [&]()
+        {
+            return 1.f / min_X;
+        },
+        [&]()
+        {
+            return 1.f / args.X;
+        });
+    }*/
+
+    value X_clamped = max(args.X, 0.001f);
+
+    tensor<value, 3> Mi;
+
+    for(int i=0; i < 3; i++)
+    {
+        Mi.idx(i) = 0;
+    }
+
+    //#define BETTERDAMP_DTCAIJ
+    //#define DAMP_DTCAIJ
+    #if defined(DAMP_DTCAIJ) || defined(BETTERDAMP_DTCAIJ)
+    #define CALCULATE_MOMENTUM_CONSTRAINT
+    #endif // defined
+
+    #ifdef CALCULATE_MOMENTUM_CONSTRAINT
+    #if 1
+    tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, unpinned_icY);
+
+    tensor<value, 3, 3> mixed_cAij = raise_index(args.cA, args.cY, unpinned_icY);
+
+    for(int i=0; i < 3; i++)
+    {
+        value s1 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            for(int n=0; n < 3; n++)
+            {
+                s1 += unpinned_icY.idx(m, n) * dmni.idx(m, n, i);
+            }
+        }
+
+        value s2 = -(2.f/3.f) * diff1(ctx, args.K, i);
+
+        value s3 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            s3 += -(3.f/2.f) * mixed_cAij.idx(m, i) * diff1(ctx, args.X, m) / X_clamped;
+        }
+
+        /*Mi.idx(i) = dual_if(args.X <= 0.001f,
+        []()
+        {
+            return 0.f;
+        },
+        [&]()
+        {
+            return s1 + s2 + s3;
+        });*/
+
+        Mi.idx(i) = s1 + s2 + s3;
+    }
+    #endif // 0
+
+    /*tensor<value, 3, 3> second_cAij = raise_second_index(args.cA, args.cY, unpinned_icY);
+
+    for(int i=0; i < 3; i++)
+    {
+        value s1 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s1 += diff1(ctx, second_cAij.idx(i, j), j);
+        }
+
+        value s2 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                s2 += -0.5f * unpinned_icY.idx(j, k) * diff1(ctx, args.cA.idx(j, k), i);
+            }
+        }
+
+        value s3 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s3 += -0.25f * 6 * (1/X_clamped) * diff1(ctx, args.X, j) * second_cAij.idx(i, j);
+        }
+
+        value s4 = -(2.f/3.f) * diff1(ctx, args.K, i);
+
+        Mi.idx(i) = s1 + s2 + s3 + s4;
+    }*/
+    #endif // 0
+
+    /*tensor<value, 3> Mi;
+
+    tensor<value, 3, 3> second_cAij = raise_second_index(args.cA, args.cY, unpinned_icY);
+
+    for(int i=0; i < 3; i++)
+    {
+        value s1 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s1 += hacky_differentiate(second_cAij.idx(i, j), j);
+        }
+
+        value s2 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                s2 += -0.5f * icY.idx(j, k) * hacky_differentiate(args.cA.idx(j, k), i);
+            }
+        }
+
+        value s3 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s3 += -0.25f * 6 * X_recip * hacky_differentiate(args.X, j) * second_cAij.idx(i, j);
+        }
+
+        value s4 = -(2.f/3.f) * hacky_differentiate(args.K, i);
+
+        Mi.idx(i) = s1 + s2 + s3 + s4;
+    }*/
+
+    /*tensor<value, 3, 3> second_cAij = raise_second_index(args.cA, args.cY, unpinned_icY);
+
+    for(int i=0; i < 3; i++)
+    {
+        value s1 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s1 += diff1(ctx, second_cAij.idx(i, j), j);
+        }
+
+        value s2 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                s2 += -0.5f * unpinned_icY.idx(j, k) * diff1(ctx, args.cA.idx(j, k), i);
+            }
+        }
+
+        value s3 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s3 += -0.25f * 6 * (1/X_clamped) * diff1(ctx, args.X, j) * second_cAij.idx(i, j);
+        }
+
+        value s4 = -(2.f/3.f) * diff1(ctx, args.K, i);
+
+        Mi.idx(i) = s1 + s2 + s3 + s4;
+    }*/
+
+    for(int i=0; i < 3; i++)
+    {
+        ctx.add("init_momentum" + std::to_string(i), Mi.idx(i));
+    }
+
+    tensor<value, 3> H;
+
+    for(int i=0; i < 3; i++)
+    {
+        tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, args.cY);
+        tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, args.cY, unpinned_icY);
+
+        tensor<value, 3, 3> xgARij = calculate_xgARij(ctx, args, unpinned_icY, christoff1, christoff2);
+
+        tensor<value, 3, 3> Rij = xgARij / (args.X * args.gA);
+
+        tensor<value, 3, 3> RIj = raise_index(Rij, args.cY, unpinned_icY);
+
+        value R = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            R += RIj.idx(j, j);
+        }
+
+        value Amnamn = sum_multiply(raise_both(args.cA, args.cY, unpinned_icY), args.cA);
+
+        value H = R + (2/3.f) * args.K * args.K - Amnamn;
+
+        //ctx.add("init_H" + std::to_string(i), H);
+    }
+}
+
+inline
+void build_cY(equation_context& ctx)
+{
+    standard_arguments args(ctx);
+
+    metric<value, 3, 3> unpinned_cY = args.cY;
+
+    ctx.pin(args.cY);
+
+    tensor<value, 3> bigGi_lower = lower_index(args.bigGi, args.cY);
+    tensor<value, 3> gB_lower = lower_index(args.gB, args.cY);
+
+    ctx.pin(bigGi_lower);
+    ctx.pin(gB_lower);
+
+    tensor<value, 3, 3> lie_cYij = gpu_lie_derivative_weight(ctx, args.gB, unpinned_cY);
+
+    ///https://arxiv.org/pdf/gr-qc/0511048.pdf (1)
+    ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.66
+    tensor<value, 3, 3> dtcYij = -2 * args.gA * args.cA + lie_cYij;
+
+    ///makes it to 50 with this enabled
+    #define USE_DTCYIJ_MODIFICATION
+    #ifdef USE_DTCYIJ_MODIFICATION
+    ///https://arxiv.org/pdf/1205.5111v1.pdf 46
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            float sigma = 4/5.f;
+
+            dtcYij.idx(i, j) += sigma * 0.5f * (gB_lower.idx(i) * bigGi_lower.idx(j) + gB_lower.idx(j) * bigGi_lower.idx(i));
+
+            dtcYij.idx(i, j) += -(1.f/5.f) * args.cY.idx(i, j) * sum_multiply(args.gB, bigGi_lower);
+        }
+    }
+    #endif // USE_DTCYIJ_MODIFICATION
+
+    for(int i=0; i < 6; i++)
+    {
+        std::string name = "dtcYij" + std::to_string(i);
+
+        vec2i idx = args.linear_indices[i];
+
+        ctx.add(name, dtcYij.idx(idx.x(), idx.y()));
+    }
 }
 
 inline
@@ -4052,7 +4114,7 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
             cl::copy(cqueue, reduced_u_args[1], reduced_u_args[0]);
     }
 
-    int N = 8000;
+    int N = 32000;
 
     #ifdef GPU_PROFILE
     N = 1000;
@@ -4631,6 +4693,24 @@ int main()
         if(pao && time_elapsed_s > 300)
             step = false;
 
+        {
+            cl::args render;
+
+            for(auto& i : generic_data[which_data].buffers)
+            {
+                render.push_back(i);
+            }
+
+            //render.push_back(bssnok_datas[which_data]);
+            render.push_back(scale);
+            render.push_back(clsize);
+            render.push_back(rtex[which_texture]);
+            render.push_back(time_elapsed_s);
+
+            clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
+
+        }
+
         if(step)
         {
             steps++;
@@ -5014,29 +5094,6 @@ int main()
                     if(!isnanf(v))
                         real_decomp.push_back(v);
                 }
-            }
-
-            {
-                cl::args render;
-
-                for(auto& i : *last_valid_thin_buffer)
-                {
-                    render.push_back(i);
-                }
-
-                for(auto& i : thin_intermediates)
-                {
-                    render.push_back(i);
-                }
-
-                //render.push_back(bssnok_datas[which_data]);
-                render.push_back(scale);
-                render.push_back(clsize);
-                render.push_back(rtex[which_texture]);
-                render.push_back(time_elapsed_s);
-
-                clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
-
             }
 
             //#define DISSIPATE_SELF

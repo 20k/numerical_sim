@@ -95,7 +95,7 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     float u = u_offset_in[IDX(ix, iy, iz)];
 
     ///https://arxiv.org/pdf/gr-qc/0007085.pdf (78) implies that the two formulations are not equivalent
-    float X = 1/init_BL_val;
+    float X = 1/bl_s;
     float B = (1.f/8.f) * pow(X, 7.f) * aij_aIJ;
     float RHS = -B * pow(1 + X * u, -7);
 
@@ -105,7 +105,7 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
     float u0n1 = 0;
 
-    if(x_degenerate || y_degenerate || z_degenerate)
+    //if(x_degenerate || y_degenerate || z_degenerate)
     {
         float uxm1 = u_offset_in[IDX(ix-1, iy, iz)];
         float uxp1 = u_offset_in[IDX(ix+1, iy, iz)];
@@ -137,6 +137,7 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
         ///-6u0 + the rest of the terms = h^2 f0
         u0n1 = (1/6.f) * (Xs + Ys + Zs - h2f0);
     }
+    #if 0
     else
     {
         float coeff1 = 4.f/3.f;
@@ -162,34 +163,45 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
         ///the order of operations will be different
         ///the if statements correct this, which makes this method numerically symmetric, and implicitly
         ///converges to a symmetric solution if available
-        float Xs1 = uxm1 + uxp1;
+        /*float Xs1 = uxm1 + uxp1;
         float Xs2 = uxm2 + uxp2;
         float Ys1 = uyp1 + uym1;
         float Ys2 = uyp2 + uym2;
         float Zs1 = uzp1 + uzm1;
-        float Zs2 = uzp2 + uzm2;
+        float Zs2 = uzp2 + uzm2;*/
+
+        float Xs = (uxm2 + uxp2) + (uxm1 + uxp1);
+        float Ys = (uym2 + uyp2) + (uym1 + uyp1);
+        float Zs = (uzm2 + uzp2) + (uzm1 + uzp1);
 
         if(ix > (dim.x - 1)/2)
         {
-            Xs1 = uxp1 + uxm1;
-            Xs2 = uxp2 + uxm2;
+            /*Xs1 = uxp1 + uxm1;
+            Xs2 = uxp2 + uxm2;*/
+
+            Xs = (uxp2 + uxm2) + (uxp1 + uxm1);
         }
 
         if(iy > (dim.y - 1)/2)
         {
-            Ys1 = uym1 + uyp1;
-            Ys2 = uym2 + uyp2;
+            /*Ys1 = uym1 + uyp1;
+            Ys2 = uym2 + uyp2;*/
+
+            Ys = (uyp2 + uym2) + (uyp1 + uym1);
         }
 
         if(iz > (dim.z - 1)/2)
         {
-            Zs1 = uzm1 + uzp1;
-            Zs2 = uzm2 + uzp2;
+            /*Zs1 = uzm1 + uzp1;
+            Zs2 = uzm2 + uzp2;*/
+
+            Xs = (uzp2 + uzm2) + (uzp1 + uzm1);
         }
 
         ///3 because 3 dimensions
-        u0n1 = -(1/(3 * coeff_center)) * (Xs1 + Ys1 + Zs1 + Xs2 + Ys2 + Zs2 - h2f0);
+        u0n1 = -(1/(3 * coeff_center)) * (Xs + Ys + Zs - h2f0);
     }
+    #endif // 0
 
     //if(ix == 50 && iy == dim.y/2 && iz == dim.z/2)
     //    printf("hi %.23f\n", u0n1);
@@ -204,6 +216,6 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
         }
     }*/
 
-    u_offset_out[IDX(ix, iy, iz)] = mix(u, u0n1, 0.9f);
+    u_offset_out[IDX(ix, iy, iz)] = mix(u, u0n1, 0.6f);
     //u_offset_out[IDX(ix, iy, iz)] = u0n1;
 }

@@ -1113,10 +1113,6 @@ void dissipate_single(__global ushort4* points, int point_count,
 
 __kernel
 void render(STANDARD_ARGS(),
-            __global DERIV_PRECISION* dcYij0, __global DERIV_PRECISION* dcYij1, __global DERIV_PRECISION* dcYij2, __global DERIV_PRECISION* dcYij3, __global DERIV_PRECISION* dcYij4, __global DERIV_PRECISION* dcYij5, __global DERIV_PRECISION* dcYij6, __global DERIV_PRECISION* dcYij7, __global DERIV_PRECISION* dcYij8, __global DERIV_PRECISION* dcYij9, __global DERIV_PRECISION* dcYij10, __global DERIV_PRECISION* dcYij11, __global DERIV_PRECISION* dcYij12, __global DERIV_PRECISION* dcYij13, __global DERIV_PRECISION* dcYij14, __global DERIV_PRECISION* dcYij15, __global DERIV_PRECISION* dcYij16, __global DERIV_PRECISION* dcYij17,
-            __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
-            __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
-            __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
             float scale, int4 dim, __write_only image2d_t screen, float time)
 {
     int ix = get_global_id(0);
@@ -1142,7 +1138,7 @@ void render(STANDARD_ARGS(),
 
     //for(int z = 20; z < dim.z-20; z++)
 
-    {
+    /*{
         float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, time);
 
         if(sponge_factor > 0)
@@ -1174,9 +1170,21 @@ void render(STANDARD_ARGS(),
         float ascalar = fabs(curvature / 1000.f);
 
         max_scalar = max(ascalar, max_scalar);
+    }*/
+
+    {
+        //float TEMPORARIES12;
+
+        float m0 = init_momentum0;
+        float m1 = init_momentum1;
+        float m2 = init_momentum2;
+
+        float ascalar = sqrt(m0 * m0 + m1 * m1 + m2 * m2);
+
+        max_scalar = max(ascalar * 100, max_scalar);
     }
 
-    float real = 0;
+    /*float real = 0;
 
     {
         float TEMPORARIES4;
@@ -1186,7 +1194,7 @@ void render(STANDARD_ARGS(),
         real = fabs(real) * 1000.f;
 
         real = clamp(real, 0.f, 1.f);
-    }
+    }*/
 
     /*if(ix == 125 && iy == 125)
     {
@@ -1197,7 +1205,7 @@ void render(STANDARD_ARGS(),
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 
-    float3 col = {real, max_scalar, max_scalar};
+    float3 col = {max_scalar, max_scalar, max_scalar};
 
     float3 lin_col = srgb_to_lin(col);
 
