@@ -2305,7 +2305,7 @@ void build_momentum_constraint(equation_context& ctx)
         Mi.idx(i) = s1 + s2 + s3 + s4;
     }*/
 
-    /*tensor<value, 3, 3> second_cAij = raise_second_index(args.cA, args.cY, unpinned_icY);
+    tensor<value, 3, 3> second_cAij = raise_second_index(args.cA, args.cY, unpinned_icY);
 
     for(int i=0; i < 3; i++)
     {
@@ -2336,7 +2336,7 @@ void build_momentum_constraint(equation_context& ctx)
         value s4 = -(2.f/3.f) * diff1(ctx, args.K, i);
 
         Mi.idx(i) = s1 + s2 + s3 + s4;
-    }*/
+    }
 
     for(int i=0; i < 3; i++)
     {
