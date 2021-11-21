@@ -403,7 +403,7 @@ void calculate_momentum_constraint(__global ushort4* points, int point_count,
     momentum2[IDX(ix,iy,iz)] = m3;
 }
 
-float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float time)
+float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim)
 {
     float edge_half = scale * ((dim.x - 2)/2.f);
 
@@ -447,7 +447,7 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, 0);
+    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim);
 
     if(sponge_factor <= 0)
         return;
@@ -460,7 +460,7 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
         {
             for(int k=-1; k <= 1; k++)
             {
-                if(sponge_damp_coeff(ix + i, iy + j, iz + k, scale, dim, 0) < 1)
+                if(sponge_damp_coeff(ix + i, iy + j, iz + k, scale, dim) < 1)
                 {
                     all_high = false;
                 }
@@ -494,7 +494,7 @@ bool valid_first_derivative_point(int3 pos, float scale, int4 dim)
             {
                 int3 combo = (int3)(x, y, z) + pos;
 
-                float sponge_local = sponge_damp_coeff(combo.x, combo.y, combo.z, scale, dim, 0);
+                float sponge_local = sponge_damp_coeff(combo.x, combo.y, combo.z, scale, dim);
 
                 ///one of the points is non sponged, so we should calculate first derivatives
                 if(sponge_local < 1)
@@ -570,7 +570,7 @@ __kernel
 void clean_data(__global ushort4* points, int point_count,
                 STANDARD_ARGS(),
                 __global float* u_value,
-                float scale, int4 dim, float time,
+                float scale, int4 dim,
                 float timestep)
 {
     int idx = get_global_id(0);
@@ -589,7 +589,7 @@ void clean_data(__global ushort4* points, int point_count,
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, time);
+    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim);
 
     if(sponge_factor <= 0)
         return;
@@ -718,7 +718,7 @@ void evolve_cY(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep, float time, int current_simulation_boundary)
+            float scale, int4 dim, float timestep)
 {
     int local_idx = get_global_id(0);
 
@@ -773,7 +773,7 @@ void evolve_cA(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep, float time, int current_simulation_boundary)
+            float scale, int4 dim, float timestep)
 {
     int local_idx = get_global_id(0);
 
@@ -830,7 +830,7 @@ void evolve_cGi(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep, float time, int current_simulation_boundary)
+            float scale, int4 dim, float timestep)
 {
     int local_idx = get_global_id(0);
 
@@ -897,7 +897,7 @@ void evolve_K(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep, float time, int current_simulation_boundary)
+            float scale, int4 dim, float timestep)
 {
     int local_idx = get_global_id(0);
 
@@ -938,7 +938,7 @@ void evolve_X(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep, float time, int current_simulation_boundary)
+            float scale, int4 dim, float timestep)
 {
     int local_idx = get_global_id(0);
 
@@ -978,7 +978,7 @@ void evolve_gA(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep, float time, int current_simulation_boundary)
+            float scale, int4 dim, float timestep)
 {
     int local_idx = get_global_id(0);
 
@@ -1019,7 +1019,7 @@ void evolve_gB(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep, float time, int current_simulation_boundary)
+            float scale, int4 dim, float timestep)
 {
     int local_idx = get_global_id(0);
 
@@ -1117,7 +1117,7 @@ void render(STANDARD_ARGS(),
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, __write_only image2d_t screen, float time)
+            float scale, int4 dim, __write_only image2d_t screen)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -1143,7 +1143,7 @@ void render(STANDARD_ARGS(),
     //for(int z = 20; z < dim.z-20; z++)
 
     {
-        float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, time);
+        float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim);
 
         if(sponge_factor > 0)
         {

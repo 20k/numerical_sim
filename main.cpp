@@ -13,6 +13,7 @@
 #include <vec/tensor.hpp>
 #include "gravitational_waves.hpp"
 #include <execution>
+#include "mesh_manager.hpp"
 
 /**
 current paper set
@@ -3874,159 +3875,6 @@ struct lightray
     cl_int x, y;
 };
 
-std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
-{
-    cl::buffer points(ctx);
-    cl::buffer real_count(ctx);
-
-    points.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
-    real_count.alloc(sizeof(cl_int));
-    real_count.set_to_zero(cqueue);
-
-    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
-
-    cl::args args;
-    args.push_back(points);
-    args.push_back(real_count);
-    args.push_back(scale);
-    args.push_back(clsize);
-
-    cqueue.exec("generate_sponge_points", args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
-
-    std::vector<cl_ushort4> cpu_points = points.read<cl_ushort4>(cqueue);
-
-    printf("Original sponge points %i\n", cpu_points.size());
-
-    cl_int count = real_count.read<cl_int>(cqueue).at(0);
-
-    assert(count > 0);
-
-    cpu_points.resize(count);
-
-    std::sort(std::execution::par_unseq, cpu_points.begin(), cpu_points.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
-    {
-        return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
-    });
-
-    cl::buffer real(ctx);
-    real.alloc(cpu_points.size() * sizeof(cl_ushort4));
-    real.write(cqueue, cpu_points);
-
-    printf("Sponge point reduction %i\n", count);
-
-    return {real, count};
-}
-
-struct evolution_points
-{
-    cl::buffer first_derivative_points;
-    cl::buffer second_derivative_points;
-
-    int first_count = 0;
-    int second_count = 0;
-
-    evolution_points(cl::context& ctx) : first_derivative_points(ctx), second_derivative_points(ctx){}
-};
-
-evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
-{
-    cl::buffer points_1(ctx);
-    cl::buffer count_1(ctx);
-
-    cl::buffer points_2(ctx);
-    cl::buffer count_2(ctx);
-
-    points_1.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
-    points_2.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
-
-    count_1.alloc(sizeof(cl_int));
-    count_2.alloc(sizeof(cl_int));
-
-    count_1.set_to_zero(cqueue);
-    count_2.set_to_zero(cqueue);
-
-    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
-
-    cl::args args;
-    args.push_back(points_1);
-    args.push_back(count_1);
-    args.push_back(points_2);
-    args.push_back(count_2);
-    args.push_back(scale);
-    args.push_back(clsize);
-
-    cqueue.exec("generate_evolution_points", args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
-
-    std::vector<cl_ushort4> cpu_points_1 = points_1.read<cl_ushort4>(cqueue);
-    std::vector<cl_ushort4> cpu_points_2 = points_2.read<cl_ushort4>(cqueue);
-
-    printf("Original evolve points %i\n", cpu_points_1.size());
-
-    cl_int cpu_count_1 = count_1.read<cl_int>(cqueue).at(0);
-    cl_int cpu_count_2 = count_2.read<cl_int>(cqueue).at(0);
-
-    assert(cpu_count_1 > 0);
-    assert(cpu_count_2 > 0);
-
-    cpu_points_1.resize(cpu_count_1);
-    cpu_points_2.resize(cpu_count_2);
-
-    std::sort(std::execution::par_unseq, cpu_points_1.begin(), cpu_points_1.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
-    {
-        return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
-    });
-
-    std::sort(std::execution::par_unseq, cpu_points_2.begin(), cpu_points_2.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
-    {
-        return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
-    });
-
-    cl::buffer shrunk_points_1(ctx);
-    shrunk_points_1.alloc(cpu_points_1.size() * sizeof(cl_ushort4));
-    shrunk_points_1.write(cqueue, cpu_points_1);
-
-    cl::buffer shrunk_points_2(ctx);
-    shrunk_points_2.alloc(cpu_points_2.size() * sizeof(cl_ushort4));
-    shrunk_points_2.write(cqueue, cpu_points_2);
-
-    evolution_points ret(ctx);
-    ret.first_count = cpu_count_1;
-    ret.second_count = cpu_count_2;
-
-    ret.first_derivative_points = shrunk_points_1;
-    ret.second_derivative_points = shrunk_points_2;
-
-    printf("Evolve point reduction %i\n", cpu_count_1);
-
-    return ret;
-}
-
-struct buffer_set
-{
-    #ifndef USE_GBB
-    static constexpr int buffer_count = 12+9;
-    #else
-    static constexpr int buffer_count = 12 + 9 + 3;
-    #endif
-
-    std::vector<cl::buffer> buffers;
-
-    buffer_set(cl::context& ctx, vec3i size)
-    {
-        for(int kk=0; kk < buffer_count; kk++)
-        {
-            buffers.emplace_back(ctx);
-            buffers.back().alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
-        }
-    }
-};
-
-template<typename T>
-float calculate_scale(float c_at_max, const T& size)
-{
-    return c_at_max / size.largest_elem();
-}
-
 cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_int> base_size, float c_at_max, int scale_factor, std::optional<cl::buffer> base)
 {
     vec<4, cl_int> reduced_clsize = ((base_size - 1) / scale_factor) + 1;
@@ -4165,7 +4013,7 @@ int main()
     vec3i size = {281, 281, 281};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
-    float c_at_max = 65 * (251/300.f);
+    float c_at_max = get_c_at_max();
     float scale = calculate_scale(c_at_max, size);
     vec3f centre = {size.x()/2.f, size.y()/2.f, size.z()/2.f};
 
@@ -4310,118 +4158,22 @@ int main()
     cl::buffer ray_count_terminated(clctx.ctx);
     ray_count_terminated.alloc(sizeof(cl_int));
 
-    int which_data = 0;
+    cpu_mesh_settings base_settings;
+    base_settings.use_half_intermediates = false;
 
-    std::array<buffer_set, 2> generic_data{buffer_set(clctx.ctx, size), buffer_set(clctx.ctx, size)};
-    //buffer_set rk4_intermediate(clctx.ctx, size);
-    buffer_set rk4_scratch(clctx.ctx, size);
-    //buffer_set rk4_xn(clctx.ctx, size);
+    #ifdef CALCULATE_MOMENTUM_CONSTRAINT
+    base_settings.calculate_momentum_constraint = true;
+    #endif // CALCULATE_MOMENTUM_CONSTRAINT
 
-    std::array<std::string, buffer_set::buffer_count> buffer_names
-    {
-        "cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
-        "cA0", "cA1", "cA2", "cA3", "cA4", "cA5",
-        "cGi0", "cGi1", "cGi2",
-        "K", "X", "gA",
-        "gB0", "gB1", "gB2",
-        #ifdef USE_GBB
-        "gBB0", "gBB1", "gBB2",
-        #endif // USE_GBB
-    };
-
-    auto buffer_to_index = [&](const std::string& name)
-    {
-        for(int idx = 0; idx < buffer_set::buffer_count; idx++)
-        {
-            if(buffer_names[idx] == name)
-                return idx;
-        }
-
-        assert(false);
-    };
-
-    float dissipate_low = 0.25;
-    float dissipate_high = 0.25;
-    float dissipate_gauge = 0.25;
-
-    float dissipate_caijyy = dissipate_high;
-
-    #ifdef NO_CAIJYY
-    dissipate_caijyy = 0;
-    #endif // NO_CAIJYY
-
-    std::array<float, buffer_set::buffer_count> dissipation_coefficients
-    {
-        dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, //cY
-        dissipate_high, dissipate_high, dissipate_high, dissipate_caijyy, dissipate_high, dissipate_high, //cA
-        dissipate_low, dissipate_low, dissipate_low, //cGi
-        dissipate_high, //K
-        dissipate_low, //X
-        dissipate_gauge, //gA
-        dissipate_gauge, dissipate_gauge, dissipate_gauge, //gB
-        #ifdef USE_GBB
-        dissipate_gauge, dissipate_gauge, dissipate_gauge, //gBB
-        #endif // USE_GBB
-    };
+    cpu_mesh base_mesh(clctx.ctx, clctx.cqueue, {0,0,0}, size, base_settings);
 
     cl_float time_elapsed_s = 0;
 
-    auto [sponge_positions, sponge_positions_count] = generate_sponge_points(clctx.ctx, clctx.cqueue, scale, size);
-    evolution_points points_set = generate_evolution_points(clctx.ctx, clctx.cqueue, scale, size);
-
-    std::vector<cl::buffer> thin_intermediates;
-
-    constexpr int thin_intermediate_buffer_count = 18 + 3 + 9 + 3;
-
-    for(int i = 0; i < thin_intermediate_buffer_count; i++)
-    {
-        thin_intermediates.emplace_back(clctx.ctx);
-        thin_intermediates.back().alloc(size.x() * size.y() * size.z() * intermediate_data_size);
-
-        #ifdef USE_HALF_INTERMEDIATE
-        thin_intermediates.back().set_to_zero(clctx.cqueue);
-        #else
-        cl_float nan = std::nanf("");
-
-        thin_intermediates.back().fill(clctx.cqueue, nan);
-        #endif
-    }
-
-    std::array<cl::buffer, 3> momentum_constraint{clctx.ctx, clctx.ctx, clctx.ctx};
-
-    for(auto& i : momentum_constraint)
-    {
-        #ifdef CALCULATE_MOMENTUM_CONSTRAINT
-        i.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
-        i.set_to_zero(clctx.cqueue);
-        #else
-        i.alloc(sizeof(cl_int));
-        #endif
-    }
+    thin_intermediates_pool thin_pool;
 
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
 
-    {
-        cl::args init;
-
-        for(auto& i : generic_data[0].buffers)
-        {
-            init.push_back(i);
-        }
-
-        init.push_back(u_arg);
-        init.push_back(scale);
-        init.push_back(clsize);
-
-        clctx.cqueue.exec("calculate_initial_conditions", init, {size.x(), size.y(), size.z()}, {8, 8, 1});
-    }
-
-    for(int i=0; i < (int)generic_data[0].buffers.size(); i++)
-    {
-        cl::copy(clctx.cqueue, generic_data[0].buffers[i], generic_data[1].buffers[i]);
-        cl::copy(clctx.cqueue, generic_data[0].buffers[i], rk4_scratch.buffers[i]);
-        //cl::copy(clctx.cqueue, generic_data[0].buffers[i], rk4_intermediate.buffers[i]);
-    }
+    base_mesh.init(clctx.cqueue, u_arg);
 
     std::vector<float> real_graph;
     std::vector<float> real_decomp;
@@ -4449,14 +4201,6 @@ int main()
     while(!win.should_close())
     {
         steady_timer frametime;
-
-        if(time_elapsed_s >= 30)
-        {
-            for(auto& i : dissipation_coefficients)
-            {
-                //i = std::min(i, 0.2f);
-            }
-        }
 
         win.poll();
 
@@ -4636,377 +4380,10 @@ int main()
         {
             steps++;
 
-            std::vector<cl::buffer>* last_valid_thin_buffer = &generic_data[which_data].buffers;
-
-            auto& base_yn = generic_data[which_data].buffers;
-
-            auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
-            {
-                last_valid_thin_buffer = &generic_in;
-
-                {
-                    auto differentiate = [&](const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
-                    {
-                        int idx = buffer_to_index(name);
-
-                        cl::args thin;
-                        thin.push_back(points_set.first_derivative_points);
-                        thin.push_back(points_set.first_count);
-                        thin.push_back(generic_in[idx]);
-                        thin.push_back(out1);
-                        thin.push_back(out2);
-                        thin.push_back(out3);
-                        thin.push_back(scale);
-                        thin.push_back(clsize);
-
-                        clctx.cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.first_count}, {128});
-                    };
-
-                    std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
-                                          "gA", "gB0", "gB1", "gB2", "X"};
-
-                    for(int idx = 0; idx < (int)buffers.size(); idx++)
-                    {
-                        int i1 = idx * 3 + 0;
-                        int i2 = idx * 3 + 1;
-                        int i3 = idx * 3 + 2;
-
-                        differentiate(buffers[idx], thin_intermediates[i1], thin_intermediates[i2], thin_intermediates[i3]);
-                    }
-                }
-
-                #ifdef CALCULATE_MOMENTUM_CONSTRAINT
-                {
-                    cl::args momentum_args;
-
-                    momentum_args.push_back(points_set.first_derivative_points);
-                    momentum_args.push_back(points_set.first_count);
-
-                    for(auto& i : generic_in)
-                    {
-                        momentum_args.push_back(i);
-                    }
-
-                    for(auto& i : momentum_constraint)
-                    {
-                        momentum_args.push_back(i);
-                    }
-
-                    momentum_args.push_back(scale);
-                    momentum_args.push_back(clsize);
-                    momentum_args.push_back(time_elapsed_s);
-
-                    clctx.cqueue.exec("calculate_momentum_constraint", momentum_args, {points_set.first_count}, {128});
-                }
-                #endif // CALCULATE_MOMENTUM_CONSTRAINT
-
-                auto step_kernel = [&](const std::string& name)
-                {
-                    cl::args a1;
-
-                    a1.push_back(points_set.second_derivative_points);
-                    a1.push_back(points_set.second_count);
-
-                    for(auto& i : generic_in)
-                    {
-                        a1.push_back(i);
-                    }
-
-                    for(auto& i : generic_out)
-                    {
-                        a1.push_back(i);
-                    }
-
-                    for(auto& i : base_yn)
-                    {
-                        a1.push_back(i);
-                    }
-
-                    for(auto& i : momentum_constraint)
-                    {
-                        a1.push_back(i);
-                    }
-
-                    for(auto& i : thin_intermediates)
-                    {
-                        a1.push_back(i);
-                    }
-
-                    a1.push_back(scale);
-                    a1.push_back(clsize);
-                    a1.push_back(current_timestep);
-                    a1.push_back(time_elapsed_s);
-                    a1.push_back(current_simulation_boundary);
-
-                    clctx.cqueue.exec(name, a1, {points_set.second_count}, {128});
-                };
-
-                step_kernel("evolve_cY");
-                step_kernel("evolve_cA");
-                step_kernel("evolve_cGi");
-                step_kernel("evolve_K");
-                step_kernel("evolve_X");
-                step_kernel("evolve_gA");
-                step_kernel("evolve_gB");
-            };
-
-            auto enforce_constraints = [&](auto& generic_out)
-            {
-                cl::args constraints;
-
-                ///technically this function could work anywhere as it does not need derivatives
-                ///but only the valid second derivative points are used
-                constraints.push_back(points_set.second_derivative_points);
-                constraints.push_back(points_set.second_count);
-
-                for(auto& i : generic_out)
-                {
-                    constraints.push_back(i);
-                }
-
-                constraints.push_back(scale);
-                constraints.push_back(clsize);
-
-                clctx.cqueue.exec("enforce_algebraic_constraints", constraints, {points_set.second_count}, {128});
-            };
-
-            auto diff_to_input = [&](auto& buffer_in, cl_float factor)
-            {
-                for(int i=0; i < (int)buffer_in.size(); i++)
-                {
-                    cl::args accum;
-                    accum.push_back(points_set.second_derivative_points);
-                    accum.push_back(points_set.second_count);
-                    accum.push_back(clsize);
-                    accum.push_back(buffer_in[i]);
-                    accum.push_back(base_yn[i]);
-                    accum.push_back(factor);
-
-                    clctx.cqueue.exec("calculate_rk4_val", accum, {points_set.second_count}, {128});
-                }
-            };
-
-            auto copy_valid = [&](auto& in, auto& out)
-            {
-                for(int i=0; i < (int)in.size(); i++)
-                {
-                    cl::args copy;
-                    copy.push_back(points_set.second_derivative_points);
-                    copy.push_back(points_set.second_count);
-                    copy.push_back(in[i]);
-                    copy.push_back(out[i]);
-                    copy.push_back(clsize);
-
-                    clctx.cqueue.exec("copy_valid", copy, {points_set.second_count}, {128});
-                }
-            };
-
-            auto dissipate = [&](auto& base_reference, auto& inout)
-            {
-                for(int i=0; i < buffer_set::buffer_count; i++)
-                {
-                    cl::args diss;
-
-                    diss.push_back(points_set.second_derivative_points);
-                    diss.push_back(points_set.second_count);
-
-                    diss.push_back(base_reference[i]);
-                    diss.push_back(inout[i]);
-
-                    float coeff = dissipation_coefficients[i];
-
-                    diss.push_back(coeff);
-                    diss.push_back(scale);
-                    diss.push_back(clsize);
-                    diss.push_back(timestep);
-
-                    if(coeff == 0)
-                        continue;
-
-                    clctx.cqueue.exec("dissipate_single", diss, {points_set.second_count}, {128});
-                }
-            };
-
-            ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
-            //#define RK4
-            #ifdef RK4
-            auto& b1 = generic_data[which_data];
-            auto& b2 = generic_data[(which_data + 1) % 2];
-
-            cl_int size_1d = size.x() * size.y() * size.z();
-
-            auto copy_all = [&](auto& in, auto& out)
-            {
-                for(int i=0; i < (int)in.size(); i++)
-                {
-                    cl::args copy;
-                    copy.push_back(in[i]);
-                    copy.push_back(out[i]);
-                    copy.push_back(size_1d);
-
-                    clctx.cqueue.exec("copy_buffer", copy, {size_1d}, {128});
-                }
-            };
-
-            copy_all(b1.buffers, rk4_intermediate.buffers);
-
-            //copy_all(b1.buffers, rk4_xn.buffers);
-
-            auto accumulate_rk4 = [&](auto& buffers, cl_float factor)
-            {
-                for(int i=0; i < (int)buffers.size(); i++)
-                {
-                    cl::args accum;
-                    accum.push_back(evolution_positions);
-                    accum.push_back(evolution_positions_count);
-                    accum.push_back(clsize);
-                    accum.push_back(rk4_intermediate.buffers[i]);
-                    accum.push_back(buffers[i]);
-                    accum.push_back(factor);
-
-                    clctx.cqueue.exec("accumulate_rk4", accum, {size_1d}, {128});
-                }
-            };
-
-            ///the issue is scratch buffers not being populatd with initial conditions
-
-            auto& scratch_2 = generic_data[(which_data + 1) % 2];
-
-            ///gives an
-            step(base_yn, rk4_scratch.buffers, 0.f);
-            ///accumulate an
-            accumulate_rk4(rk4_scratch.buffers, timestep/6.f);
-
-            ///gives xn + h/2 an
-            diff_to_input(rk4_scratch.buffers, timestep/2);
-
-            enforce_constraints(rk4_scratch.buffers);
-
-            ///gives bn
-            step(rk4_scratch.buffers, scratch_2.buffers, 0.f);
-
-            ///accumulate bn
-            accumulate_rk4(scratch_2.buffers, timestep * 2.f / 6.f);
-
-            ///gives xn + h/2 bn
-            diff_to_input(scratch_2.buffers, timestep/2);
-
-            enforce_constraints(scratch_2.buffers);
-
-            ///gives cn
-            step(scratch_2.buffers, rk4_scratch.buffers, 0.f);
-
-            ///accumulate cn
-            accumulate_rk4(rk4_scratch.buffers, timestep * 2.f / 6.f);
-
-            ///gives xn + h * cn
-            diff_to_input(rk4_scratch.buffers, timestep);
-
-            enforce_constraints(rk4_scratch.buffers);
-
-            ///gives dn
-            step(rk4_scratch.buffers, scratch_2.buffers, 0.f);
-
-            ///accumulate dn
-            accumulate_rk4(scratch_2.buffers, timestep/6.f);
-
-            //copy_all(base_yn.buffers, generic_data[which_data].buffers);
-            copy_valid(rk4_intermediate.buffers, generic_data[(which_data + 1) % 2].buffers);
-            //copy_all(rk4_intermediate.buffers, generic_data[(which_data + 1) % 2].buffers);
-
-            #endif // RK4
-
-            //#define FORWARD_EULER
-            #ifdef FORWARD_EULER
-            step(generic_data[which_data].buffers, generic_data[(which_data + 1) % 2].buffers, timestep);
-
-            diff_to_input(generic_data[(which_data + 1) % 2].buffers, timestep);
-            #endif
-
-            #define BACKWARD_EULER
-            #ifdef BACKWARD_EULER
-            auto& b1 = generic_data[which_data];
-            auto& b2 = generic_data[(which_data + 1) % 2];
-
-            int iterations = 2;
-
-            for(int i=0; i < iterations; i++)
-            {
-                if(i != 0)
-                    step(rk4_scratch.buffers, b2.buffers, timestep);
-                else
-                    step(b1.buffers, b2.buffers, timestep);
-
-                //diff_to_input(b2.buffers, timestep);
-
-                if(i != iterations - 1)
-                {
-                    #ifdef INTERMEDIATE_DISSIPATE
-                    dissipate(base_yn, b2.buffers);
-                    #endif
-
-                    enforce_constraints(b2.buffers);
-                    std::swap(b2, rk4_scratch);
-                }
-            }
-            #endif
-
-            //#define TRAPEZOIDAL
-            #ifdef TRAPEZOIDAL
-            auto& b1 = generic_data[which_data];
-            auto& b2 = generic_data[(which_data + 1) % 2];
-
-            auto& f_y1 = rk4_intermediate;
-            auto& f_y2 = rk4_scratch;
-
-            //if(!trapezoidal_init)
-
-            //step(b1.buffers, f_y1.buffers, timestep);
-
-            step(b1.buffers, f_y1.buffers, timestep);
-            diff_to_input(f_y1.buffers, timestep);
-            enforce_constraints(f_y1.buffers);
-
-            step(f_y1.buffers, f_y2.buffers, timestep);
-
-            step(b1.buffers, f_y1.buffers, timestep);
-
-            int iterations = 4;
-
-            for(int i=0; i < iterations; i++)
-            {
-                for(int bidx = 0; bidx < f_y1.buffers.size(); bidx++)
-                {
-                    cl::args trapezoidal;
-                    trapezoidal.push_back(evolution_positions);
-                    trapezoidal.push_back(evolution_positions_count);
-                    trapezoidal.push_back(clsize);
-                    trapezoidal.push_back(b1.buffers[bidx]); ///yn
-                    trapezoidal.push_back(f_y1.buffers[bidx]); ///f(Yn)
-                    trapezoidal.push_back(f_y2.buffers[bidx]); ///f(Yn+1) INPUT OUTPUT ARG, CONTAINS Yn+1
-                    trapezoidal.push_back(timestep);
-
-                    clctx.cqueue.exec("trapezoidal_accumulate", trapezoidal, {evolution_positions_count}, {128});
-                }
-
-
-                //diff_to_input(f_y2.buffers, timestep);
-                std::swap(f_y2, b2);
-
-                if(i != iterations - 1)
-                {
-                    enforce_constraints(b2.buffers);
-                    step(b2.buffers, f_y2.buffers, timestep);
-                }
-            }
-            #endif // TRAPEZOIDAL
-
-            #ifdef DOUBLE_ENFORCEMENT
-            enforce_constraints(generic_data[(which_data + 1) % 2].buffers);
-            #endif // DOUBLE_ENFORCEMENT
+            auto [last_valid_thin_base, last_valid_thin] = base_mesh.full_step(clctx.ctx, clctx.cqueue, timestep, thin_pool, u_arg);
 
             {
-                wave_manager.issue_extraction(clctx.cqueue, *last_valid_thin_buffer, thin_intermediates, scale, clsize);
+                wave_manager.issue_extraction(clctx.cqueue, last_valid_thin_base, last_valid_thin, scale, clsize);
 
                 std::vector<float> values = wave_manager.process();
 
@@ -5020,12 +4397,12 @@ int main()
             {
                 cl::args render;
 
-                for(auto& i : *last_valid_thin_buffer)
+                for(auto& i : last_valid_thin_base)
                 {
                     render.push_back(i);
                 }
 
-                for(auto& i : thin_intermediates)
+                for(auto& i : last_valid_thin)
                 {
                     render.push_back(i);
                 }
@@ -5034,42 +4411,9 @@ int main()
                 render.push_back(scale);
                 render.push_back(clsize);
                 render.push_back(rtex[which_texture]);
-                render.push_back(time_elapsed_s);
 
                 clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
-
             }
-
-            //#define DISSIPATE_SELF
-            #ifdef DISSIPATE_SELF
-            copy_valid(generic_data[(which_data + 1) % 2].buffers, generic_data[which_data].buffers);
-            #endif // DISSIPATE_SELF
-
-            dissipate(generic_data[which_data].buffers, generic_data[(which_data + 1) % 2].buffers);
-
-            which_data = (which_data + 1) % 2;
-
-            {
-                cl::args cleaner;
-                cleaner.push_back(sponge_positions);
-                cleaner.push_back(sponge_positions_count);
-
-                for(auto& i : generic_data[which_data].buffers)
-                {
-                    cleaner.push_back(i);
-                }
-
-                //cleaner.push_back(bssnok_datas[which_data]);
-                cleaner.push_back(u_arg);
-                cleaner.push_back(scale);
-                cleaner.push_back(clsize);
-                cleaner.push_back(time_elapsed_s);
-                cleaner.push_back(timestep);
-
-                clctx.cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
-            }
-
-            enforce_constraints(generic_data[which_data].buffers);
 
             time_elapsed_s += timestep;
             current_simulation_boundary += DIFFERENTIATION_WIDTH;
@@ -5083,7 +4427,9 @@ int main()
             {
                 cl::args render_args;
 
-                for(auto& i : generic_data[which_data].buffers)
+                auto buffers = base_mesh.get_input().buffers;
+
+                for(auto& i : buffers)
                 {
                     render_args.push_back(i);
                 }
@@ -5114,7 +4460,9 @@ int main()
                     init_args.push_back(ray_count[0]);
                     init_args.push_back(ray_count[1]);
 
-                    for(auto& i : generic_data[which_data].buffers)
+                    auto buffers = base_mesh.get_input().buffers;
+
+                    for(auto& i : buffers)
                     {
                         init_args.push_back(i);
                     }
@@ -5143,7 +4491,9 @@ int main()
                         render_args.push_back(ray_count[1]);
                         render_args.push_back(ray_count_terminated);
 
-                        for(auto& i : generic_data[which_data].buffers)
+                        auto buffers = base_mesh.get_input().buffers;
+
+                        for(auto& i : buffers)
                         {
                             render_args.push_back(i);
                         }
@@ -5177,7 +4527,9 @@ int main()
 
             cl::args init_args;
 
-            for(auto& i : generic_data[which_data].buffers)
+            auto buffers = base_mesh.get_input().buffers;
+
+            for(auto& i : buffers)
             {
                 init_args.push_back(i);
             }
@@ -5203,7 +4555,9 @@ int main()
 
             cl::args step_args;
 
-            for(auto& i : generic_data[which_data].buffers)
+            auto buffers = base_mesh.get_input().buffers;
+
+            for(auto& i : buffers)
             {
                 step_args.push_back(i);
             }
