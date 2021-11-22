@@ -3942,8 +3942,6 @@ int main()
 
     cpu_mesh_manager meshes(clctx.ctx, clctx.cqueue, base_settings);
 
-    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
-
     equation_context ctx1;
     get_initial_conditions_eqs(ctx1, centre, scale);
 
@@ -4284,13 +4282,16 @@ int main()
         {
             steps++;
 
-            auto callback = [&](auto buffers, auto thin_buffers, int idx)
+            auto callback = [&](cpu_mesh* mesh, auto buffers, auto thin_buffers, int idx)
             {
                 if(idx != 0)
                     return;
 
+                cl_int4 clsize = {mesh->dim.x(), mesh->dim.y(), mesh->dim.z(), 0};
+                cl_float4 clmeshpos = {mesh->centre.x(), mesh->centre.y(), mesh->centre.z(), 0};
+
                 {
-                    wave_manager.issue_extraction(clctx.cqueue, buffers, thin_buffers, scale, clsize);
+                    wave_manager.issue_extraction(clctx.cqueue, buffers, thin_buffers, scale, mesh->dim, mesh->centre);
 
                     std::vector<float> values = wave_manager.process();
 
@@ -4317,6 +4318,7 @@ int main()
                     //render.push_back(bssnok_datas[which_data]);
                     render.push_back(scale);
                     render.push_back(clsize);
+                    render.push_back(clmeshpos);
                     render.push_back(rtex[which_texture]);
 
                     clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
@@ -4333,7 +4335,7 @@ int main()
 
         if(should_render || snap)
         {
-            if(rendering_method == 0)
+            /*if(rendering_method == 0)
             {
                 cl::args render_args;
 
@@ -4355,7 +4357,7 @@ int main()
                 render_args.push_back(rtex[which_texture]);
 
                 clctx.cqueue.exec("trace_metric", render_args, {width, height}, {16, 16});
-            }
+            }*/
 
             /*if(rendering_method == 1)
             {

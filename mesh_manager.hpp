@@ -407,7 +407,7 @@ struct cpu_mesh_manager
         {
             auto [last_valid_thin_base, last_valid_thin] = meshes[i]->full_step(ctx, cqueue, timestep, pool);
 
-            callback(last_valid_thin_base, last_valid_thin, i);
+            callback(meshes[i], last_valid_thin_base, last_valid_thin, i);
         }
     }
 };

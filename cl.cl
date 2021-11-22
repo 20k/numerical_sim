@@ -139,25 +139,25 @@ void buffer_write(__global float* buffer, int3 position, int4 dim, float value)
     buffer[position.z * dim.x * dim.y + position.y * dim.x + position.x] = value;
 }
 
-float3 voxel_to_world(float3 in, int4 dim, float scale)
+float3 voxel_to_world(float3 in, int4 dim, float4 mesh_position, float scale)
 {
-    return transform_position(in.x, in.y, in.z, dim, scale);
+    return transform_position(in.x, in.y, in.z, mesh_position, dim, scale);
 }
 
-float3 world_to_voxel(float3 world_pos, int4 dim, float scale)
+float3 world_to_voxel(float3 world_pos, int4 dim, float4 mesh_position, float scale)
 {
     float3 centre = {(dim.x - 1)/2, (dim.y - 1)/2, (dim.z - 1)/2};
 
-    return (world_pos / scale) + centre;
+    return (world_pos / scale) + centre + mesh_position.xyz;
 }
 
-float get_distance(int x1, int y1, int z1, int x2, int y2, int z2, int4 dim, float scale)
+/*float get_distance(int x1, int y1, int z1, int x2, int y2, int z2, int4 dim, float scale)
 {
     float3 d1 = transform_position(x1, y1, z1, dim, scale);
     float3 d2 = transform_position(x2, y2, z2, dim, scale);
 
     return fast_length(d2 - d1);
-}
+}*/
 
 #ifndef USE_GBB
 #define STANDARD_ARGS(p) __global float* p##cY0, __global float* p##cY1, __global float* p##cY2, __global float* p##cY3, __global float* p##cY4, __global float* p##cY5, \
@@ -173,7 +173,7 @@ float get_distance(int x1, int y1, int z1, int x2, int y2, int z2, int4 dim, flo
 __kernel
 void calculate_initial_conditions(STANDARD_ARGS(),
                                   __global float* u_value,
-                                  float scale, int4 dim)
+                                  float scale, int4 dim, float4 mesh_position)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -182,7 +182,7 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    float3 offset = transform_position(ix, iy, iz, dim, scale);
+    float3 offset = transform_position(ix, iy, iz, mesh_position, dim, scale);
 
     float ox = offset.x;
     float oy = offset.y;
@@ -570,7 +570,7 @@ __kernel
 void clean_data(__global ushort4* points, int point_count,
                 STANDARD_ARGS(),
                 __global float* u_value,
-                float scale, int4 dim,
+                float scale, int4 dim, float4 mesh_position,
                 float timestep)
 {
     int idx = get_global_id(0);
@@ -594,7 +594,7 @@ void clean_data(__global ushort4* points, int point_count,
     if(sponge_factor <= 0)
         return;
 
-    float3 offset = transform_position(ix, iy, iz, dim, scale);
+    float3 offset = transform_position(ix, iy, iz, mesh_position, dim, scale);
 
     float ox = offset.x;
     float oy = offset.y;
@@ -1117,7 +1117,7 @@ void render(STANDARD_ARGS(),
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, __write_only image2d_t screen)
+            float scale, int4 dim, float4 mesh_position, __write_only image2d_t screen)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -1132,7 +1132,7 @@ void render(STANDARD_ARGS(),
     if(ix <= 4 || ix >= dim.x - 5 || iy <= 4 || iy >= dim.y - 5 || iz <= 4 || iz >= dim.z - 5)
         return;
 
-    float3 offset = transform_position(ix, iy, iz, dim, scale);
+    float3 offset = transform_position(ix, iy, iz, mesh_position, dim, scale);
 
     int index_table[3][3] = {{0, 1, 2},
                              {1, 3, 4},
@@ -1213,7 +1213,7 @@ void extract_waveform(__global ushort4* points, int point_count,
                       __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
                       __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
                       __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-                      float scale, int4 dim, __global float2* waveform_out)
+                      float scale, int4 dim, float4 mesh_position, __global float2* waveform_out)
 {
     int local_idx = get_global_id(0);
 
@@ -1224,7 +1224,7 @@ void extract_waveform(__global ushort4* points, int point_count,
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
 
-    float3 offset = transform_position(ix, iy, iz, dim, scale);
+    float3 offset = transform_position(ix, iy, iz, mesh_position, dim, scale);
 
     float TEMPORARIES4;
 
@@ -1325,7 +1325,7 @@ __kernel
 void init_rays(__global struct lightray_simple* rays, __global int* ray_count0, __global int* ray_count1,
                 STANDARD_ARGS(),
                 float scale, float3 camera_pos, float4 camera_quat,
-                int4 dim, int width, int height)
+                int4 dim, float4 mesh_position, int width, int height)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
@@ -1348,7 +1348,7 @@ void init_rays(__global struct lightray_simple* rays, __global int* ray_count0, 
     {
         float3 world_pos = camera_pos;
 
-        float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
+        float3 voxel_pos = world_to_voxel(world_pos, dim, mesh_position, scale);
 
         float fx = voxel_pos.x;
         float fy = voxel_pos.y;
@@ -1399,7 +1399,7 @@ __kernel
 void trace_rays(__global struct lightray_simple* rays_in, __global struct lightray_simple* rays_out, __global struct lightray_simple* rays_terminated,
                 __global int* ray_count_in, __global int* ray_count_out, __global int* ray_count_terminated,
                 STANDARD_ARGS(),
-                float scale, int4 dim)
+                float scale, int4 dim, float4 mesh_position)
 {
     int idx = get_global_id(0);
 
@@ -1432,7 +1432,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     {
         float3 cpos = {lp1, lp2, lp3};
 
-        float3 voxel_pos = world_to_voxel(cpos, dim, scale);
+        float3 voxel_pos = world_to_voxel(cpos, dim, mesh_position, scale);
 
         voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
@@ -1595,7 +1595,7 @@ struct lightray
 __kernel
 void init_accurate_rays(STANDARD_ARGS(),
                         float scale, float3 camera_pos, float4 camera_quat,
-                        int4 dim, __write_only image2d_t screen,
+                        int4 dim, float4 mesh_position, __write_only image2d_t screen,
                         __global struct lightray* ray)
 {
     int x = get_global_id(0);
@@ -1629,7 +1629,7 @@ void init_accurate_rays(STANDARD_ARGS(),
     {
         float3 world_pos = camera_pos;
 
-        float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
+        float3 voxel_pos = world_to_voxel(world_pos, dim, mesh_position, scale);
 
         float fx = voxel_pos.x;
         float fy = voxel_pos.y;
@@ -1658,7 +1658,7 @@ void init_accurate_rays(STANDARD_ARGS(),
 __kernel
 void step_accurate_rays(STANDARD_ARGS(),
                         float scale, float3 camera_pos, float4 camera_quat,
-                        int4 dim, __write_only image2d_t screen,
+                        int4 dim, float4 mesh_position, __write_only image2d_t screen,
                         __global struct lightray* ray, float timestep)
 {
     float width = get_image_width(screen);
@@ -1679,7 +1679,7 @@ void step_accurate_rays(STANDARD_ARGS(),
 
     float3 cpos = {lp1, lp2, lp3};
 
-    float3 voxel_pos = world_to_voxel(cpos, dim, scale);
+    float3 voxel_pos = world_to_voxel(cpos, dim, mesh_position, scale);
 
     voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
@@ -1763,7 +1763,7 @@ float3 rot_quat(const float3 point, float4 quat)
 __kernel
 void trace_metric(STANDARD_ARGS(),
                   float scale, float3 camera_pos, float4 camera_quat,
-                  int4 dim, __write_only image2d_t screen)
+                  int4 dim, float4 mesh_position, __write_only image2d_t screen)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
@@ -1778,7 +1778,7 @@ void trace_metric(STANDARD_ARGS(),
     float height = get_image_height(screen);
 
     ///ray location
-    float3 pos = world_to_voxel(camera_pos, dim, scale);
+    float3 pos = world_to_voxel(camera_pos, dim, mesh_position, scale);
 
     pos = clamp(pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 

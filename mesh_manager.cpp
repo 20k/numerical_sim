@@ -217,6 +217,7 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& in_u_arg)
     u_arg = in_u_arg;
 
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
+    cl_float4 clmeshpos = {centre.x(), centre.y(), centre.z()};
 
     {
         cl::args init;
@@ -229,6 +230,7 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& in_u_arg)
         init.push_back(u_arg);
         init.push_back(scale);
         init.push_back(clsize);
+        init.push_back(clmeshpos);
 
         cqueue.exec("calculate_initial_conditions", init, {dim.x(), dim.y(), dim.z()}, {8, 8, 1});
     }
@@ -646,6 +648,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     dissipate(get_input().buffers, get_output().buffers);
 
+    cl_float4 clmeshpos = {centre.x(), centre.y(), centre.z()};
+
     {
         cl::args cleaner;
         cleaner.push_back(sponge_positions);
@@ -660,6 +664,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         cleaner.push_back(u_arg);
         cleaner.push_back(scale);
         cleaner.push_back(clsize);
+        cleaner.push_back(clmeshpos);
         cleaner.push_back(timestep);
 
         cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});

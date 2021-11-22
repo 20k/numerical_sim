@@ -38,7 +38,7 @@ struct gravitational_wave_manager
     gravitational_wave_manager(cl::context& ctx, vec3i _simulation_size, float c_at_max, float scale);
 
     static void callback(cl_event event, cl_int event_command_status, void* user_data);
-    void issue_extraction(cl::command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<cl::buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize);
+    void issue_extraction(cl::command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<cl::buffer>& thin_intermediates, float scale, vec3i size, vec3f mesh_position);
     std::vector<float> process();
 };
 
