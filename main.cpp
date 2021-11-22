@@ -4380,7 +4380,7 @@ int main()
         {
             steps++;
 
-            auto [last_valid_thin_base, last_valid_thin] = base_mesh.full_step(clctx.ctx, clctx.cqueue, timestep, thin_pool, u_arg);
+            auto [last_valid_thin_base, last_valid_thin] = base_mesh.full_step(clctx.ctx, clctx.cqueue, timestep, thin_pool);
 
             {
                 wave_manager.issue_extraction(clctx.cqueue, last_valid_thin_base, last_valid_thin, scale, clsize);

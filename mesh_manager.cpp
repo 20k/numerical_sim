@@ -165,7 +165,7 @@ cl::buffer thin_intermediates_pool::request(cl::context& ctx, cl::command_queue&
 
 cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett) :
         data{buffer_set(ctx, _dim), buffer_set(ctx, _dim)}, scratch{ctx, _dim}, points_set{ctx}, sponge_positions{ctx},
-        momentum_constraint{ctx, ctx, ctx}
+        momentum_constraint{ctx, ctx, ctx}, u_arg{ctx}
 {
     centre = _centre;
     dim = _dim;
@@ -211,8 +211,10 @@ buffer_set& cpu_mesh::get_scratch(int which)
     return scratch;
 }
 
-void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg)
+void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& in_u_arg)
 {
+    u_arg = in_u_arg;
+
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
     {
@@ -246,7 +248,7 @@ cl::buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::command_queue& cqueue
 }
 
 ///returns buffers and intermediates
-std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(cl::context& ctx, cl::command_queue& cqueue, float timestep, thin_intermediates_pool& pool, cl::buffer& u_arg)
+std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(cl::context& ctx, cl::command_queue& cqueue, float timestep, thin_intermediates_pool& pool)
 {
     auto buffer_to_index = [&](const std::string& name)
     {

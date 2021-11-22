@@ -91,6 +91,8 @@ struct cpu_mesh
     cl::buffer sponge_positions;
     cl_int sponge_positions_count = 0;
 
+    cl::buffer u_arg;
+
     std::array<cl::buffer, 3> momentum_constraint;
 
     std::array<std::string, buffer_set::buffer_count> buffer_names
@@ -137,12 +139,234 @@ struct cpu_mesh
     buffer_set& get_output();
     buffer_set& get_scratch(int which);
 
-    void init(cl::command_queue& cqueue, cl::buffer& u_arg);
+    void init(cl::command_queue& cqueue, cl::buffer& in_u_arg);
 
     cl::buffer get_thin_buffer(cl::context& ctx, cl::command_queue& cqueue, thin_intermediates_pool& pool, int id);
 
     ///returns buffers and intermediates
-    std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> full_step(cl::context& ctx, cl::command_queue& cqueue, float timestep, thin_intermediates_pool& pool, cl::buffer& u_arg);
+    std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> full_step(cl::context& ctx, cl::command_queue& cqueue, float timestep, thin_intermediates_pool& pool);
+};
+
+struct cpu_topology
+{
+    float resolution_multiplier = 1;
+
+    vec3f world_pos;
+    vec3f world_dim;
+};
+
+struct grid_topology
+{
+    vec3f world_pos;
+    vec3i grid_dim;
+};
+
+struct grid_topology_builder
+{
+    float resolution_multiplier = 1;
+
+    vec3i grid_tl, grid_br;
+    vec3f world_tl, world_br;
+
+    void expand(vec3f direction)
+    {
+        /*vec3f as_float = {direction.x(), direction.y(), direction.z()};
+
+        ///ok so
+        ///if we have a half extents of eg {2,2,2} at position {0,0,0}
+        ///and we expand *upwards* by {2, 0, 0}
+        ///the new size is clearly {4, 2, 2}
+        ///but the position must migrate to compensate, because we want it to stay the same
+
+        world_pos += -(as_float / resolution_multiplier) / 2.f;*/
+
+        vec3f world_displacement = direction / resolution_multiplier;
+
+        if(direction.x() > 0)
+        {
+            grid_br.x() += direction.x();
+            world_br.x() += world_displacement.x();
+        }
+
+        if(direction.y() > 0)
+        {
+            grid_br.y() += direction.y();
+            world_br.y() += world_displacement.y();
+        }
+
+        if(direction.z() > 0)
+        {
+            grid_br.z() += direction.z();
+            world_br.z() += world_displacement.z();
+        }
+
+        if(direction.x() < 0)
+        {
+            grid_tl.x() += direction.x();
+            world_tl.x() += world_displacement.x();
+        }
+
+        if(direction.y() < 0)
+        {
+            grid_tl.y() += direction.y();
+            world_tl.y() += world_displacement.y();
+        }
+
+        if(direction.z() < 0)
+        {
+            grid_tl.z() += direction.z();
+            world_tl.z() += world_displacement.z();
+        }
+    }
+
+    grid_topology build()
+    {
+        vec3f centre = (world_br + world_tl)/2.f;
+        vec3i dim = grid_br - grid_tl;
+
+        grid_topology t;
+        t.world_pos = centre;
+        t.grid_dim = dim;
+
+        return t;
+    }
+};
+
+inline
+vec3i adjacent(const cpu_topology& s1, const cpu_topology& s2)
+{
+    vec3f half_size_1 = s1.world_dim/2.f;
+    vec3f half_size_2 = s2.world_dim/2.f;
+
+    vec3f max_sep = half_size_1 + half_size_2;
+
+    vec3f diff = fabs(s2.world_pos - s1.world_pos);
+
+    vec3i ret;
+
+    if(diff.x() < max_sep.x() * 1.05f)
+    {
+        if(s1.world_pos.x() < s2.world_pos.x())
+            ret.x() = -1;
+        else
+            ret.x() = 1;
+    }
+
+    if(diff.y() < max_sep.y() * 1.05f)
+    {
+        if(s1.world_pos.y() < s2.world_pos.y())
+            ret.y() = -1;
+        else
+            ret.y() = 1;
+    }
+
+    if(diff.z() < max_sep.z() * 1.05f)
+    {
+        if(s1.world_pos.z() < s2.world_pos.z())
+            ret.z() = -1;
+        else
+            ret.z() = 1;
+    }
+
+    return ret;
+}
+
+inline
+std::vector<grid_topology> generate_boundary_topology(const std::vector<cpu_topology>& top_in)
+{
+    int boundary_width = 4 * 2;
+
+    std::vector<grid_topology_builder> tops;
+
+    for(const cpu_topology& ct : top_in)
+    {
+        grid_topology_builder val;
+        val.resolution_multiplier = ct.resolution_multiplier;
+
+        vec3f grid_float = ct.world_dim * ct.resolution_multiplier + (vec3f){1,1,1};
+
+        val.grid_tl = {0,0,0};
+        val.grid_br = {grid_float.x(), grid_float.y(), grid_float.z()};
+
+        val.world_tl = ct.world_pos - ct.world_dim/2.f;
+        val.world_br = ct.world_pos + ct.world_dim/2.f;
+
+        tops.push_back(val);
+    }
+
+    for(int i=0; i < (int)tops.size(); i++)
+    {
+        for(int j=i+1; j < (int)tops.size(); j++)
+        {
+            const cpu_topology& c1 = top_in[i];
+            const cpu_topology& c2 = top_in[j];
+
+            vec3i adj = adjacent(c1, c2);
+
+            if(adj.x() == 0 && adj.y() == 0 && adj.z() == 0)
+                continue;
+
+            grid_topology_builder& g1 = tops[i];
+            grid_topology_builder& g2 = tops[j];
+
+            vec3f dir_as_float = {adj.x(), adj.y(), adj.z()};
+
+            ///so, if adj.x() < 0, then c1 is to the left of c2
+            ///which means c1 needs to expand rightwards, and c2 leftwards
+            ///both by boundary_width
+
+            g1.expand(-dir_as_float * boundary_width);
+            g2.expand(dir_as_float * boundary_width);
+        }
+    }
+
+    std::vector<grid_topology> ret;
+
+    for(auto& i : tops)
+    {
+        ret.push_back(i.build());
+    }
+
+    return ret;
+}
+
+struct cpu_mesh_manager
+{
+    std::vector<cpu_mesh*> meshes;
+    cpu_mesh* centre = nullptr;
+
+    cpu_mesh_manager(cl::context& ctx, cl::command_queue& cqueue, cpu_mesh_settings sett)
+    {
+        vec3i central_dim = {281, 281, 281};
+
+        centre = new cpu_mesh(ctx, cqueue, {0,0,0}, central_dim, sett);
+
+        vec3i left_dim = {31, 281, 281};
+
+        cpu_mesh* test_outer = new cpu_mesh(ctx, cqueue, -(central_dim - 1)/2, left_dim, sett);
+
+        meshes.push_back(centre);
+        meshes.push_back(test_outer);
+    }
+
+    void init(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& u_arg)
+    {
+        centre->init(cqueue, u_arg);
+
+        ///this is kind of crap
+
+        for(cpu_mesh* mesh : meshes)
+        {
+            if(mesh == centre)
+                continue;
+
+            cl::buffer temp_u_arg(ctx);
+            temp_u_arg.alloc(mesh->dim.x() * mesh->dim.y() * mesh->dim.z() * sizeof(cl_float));
+            temp_u_arg.fill(cqueue, 1.f);
+
+            mesh->init(cqueue, temp_u_arg);
+        }
+    }
 };
 
 #endif // MESH_MANAGER_HPP_INCLUDED
