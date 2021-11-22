@@ -13,8 +13,11 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size)
 }
 
 inline
-std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
+std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size, vec3f mesh_position)
 {
+    cl_float4 clmeshpos = {mesh_position.x(), mesh_position.y(), mesh_position.z(), 0};
+    cl_int4 clsize = {size.x(), size.y(), size.z(), 0};
+
     cl::buffer points(ctx);
     cl::buffer real_count(ctx);
 
@@ -22,13 +25,13 @@ std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_
     real_count.alloc(sizeof(cl_int));
     real_count.set_to_zero(cqueue);
 
-    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
     cl::args args;
     args.push_back(points);
     args.push_back(real_count);
     args.push_back(scale);
     args.push_back(clsize);
+    args.push_back(clmeshpos);
 
     cqueue.exec("generate_sponge_points", args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
 
@@ -58,8 +61,11 @@ std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_
 
 
 inline
-evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
+evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size, vec3f mesh_position)
 {
+    cl_int4 clsize = {size.x(), size.y(), size.z(), 0};
+    cl_float4 clmeshpos = {mesh_position.x(), mesh_position.y(), mesh_position.z(), 0};
+
     cl::buffer points_1(ctx);
     cl::buffer count_1(ctx);
 
@@ -75,8 +81,6 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
     count_1.set_to_zero(cqueue);
     count_2.set_to_zero(cqueue);
 
-    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
-
     cl::args args;
     args.push_back(points_1);
     args.push_back(count_1);
@@ -84,6 +88,7 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
     args.push_back(count_2);
     args.push_back(scale);
     args.push_back(clsize);
+    args.push_back(clmeshpos);
 
     cqueue.exec("generate_evolution_points", args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
 
@@ -174,8 +179,8 @@ cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3f _centre, v
 
     scale = calculate_scale(get_c_at_max(), dim);
 
-    points_set = generate_evolution_points(ctx, cqueue, scale, dim);
-    std::tie(sponge_positions, sponge_positions_count) = generate_sponge_points(ctx, cqueue, scale, dim);
+    points_set = generate_evolution_points(ctx, cqueue, scale, dim, centre);
+    std::tie(sponge_positions, sponge_positions_count) = generate_sponge_points(ctx, cqueue, scale, dim, centre);
 
     for(auto& i : momentum_constraint)
     {
