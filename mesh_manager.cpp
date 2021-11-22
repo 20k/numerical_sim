@@ -312,7 +312,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             }
         }
 
-        #ifdef CALCULATE_MOMENTUM_CONSTRAINT
+        if(sett.calculate_momentum_constraint)
         {
             cl::args momentum_args;
 
@@ -331,11 +331,9 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
             momentum_args.push_back(scale);
             momentum_args.push_back(clsize);
-            momentum_args.push_back(time_elapsed_s);
 
             cqueue.exec("calculate_momentum_constraint", momentum_args, {points_set.first_count}, {128});
         }
-        #endif // CALCULATE_MOMENTUM_CONSTRAINT
 
         auto step_kernel = [&](const std::string& name)
         {

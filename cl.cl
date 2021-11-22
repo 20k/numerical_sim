@@ -374,7 +374,7 @@ __kernel
 void calculate_momentum_constraint(__global ushort4* points, int point_count,
                                    STANDARD_ARGS(),
                                    __global float* momentum0, __global float* momentum1, __global float* momentum2,
-                                   float scale, int4 dim, float time)
+                                   float scale, int4 dim)
 {
     int local_idx = get_global_id(0);
 
