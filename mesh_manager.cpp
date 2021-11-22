@@ -134,9 +134,9 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
 
 cl::buffer thin_intermediates_pool::request(cl::context& ctx, cl::command_queue& cqueue, int id, vec3i size, int element_size)
 {
-    for(buffer_descriptor& desc : pool)
+    for(const buffer_descriptor& desc : pool)
     {
-        int my_size = size.x() * size.y() * size.x() * element_size;
+        int my_size = size.x() * size.y() * size.z() * element_size;
         int desc_size = desc.size.x() * desc.size.y() * desc.size.z() * desc.element_size;
 
         if(desc.id == id && desc_size >= my_size)

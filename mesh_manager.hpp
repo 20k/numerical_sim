@@ -357,11 +357,11 @@ struct cpu_mesh_manager
         sett = _sett;
 
         cpu_topology t1;
-        t1.world_dim = {280, 280, 280};
+        t1.world_dim = {250, 250, 250};
         t1.world_pos = {0,0,0};
 
         cpu_topology t2;
-        t2.world_dim = {30, 280, 280};
+        t2.world_dim = {30, 250, 250};
         t2.world_pos = {-(t1.world_dim.x() - 1.f)/2.f - (t2.world_dim.x() - 1.f)/2.f, 0.f, 0.f};
 
         layout = generate_boundary_topology({t1, t2});
