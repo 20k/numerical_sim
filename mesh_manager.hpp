@@ -4,6 +4,7 @@
 #include <cl/cl.h>
 #include <vec/vec.hpp>
 #include <toolkit/opencl.hpp>
+#include <iostream>
 
 template<typename T>
 inline
@@ -244,6 +245,7 @@ vec3i adjacent(const cpu_topology& s1, const cpu_topology& s2)
 
     vec3i ret;
 
+    ///this is all incorrect
     if(diff.x() < max_sep.x() * 1.05f)
     {
         if(s1.world_pos.x() < s2.world_pos.x())
@@ -337,7 +339,7 @@ struct cpu_mesh_manager
 
     cpu_mesh_manager(cl::context& ctx, cl::command_queue& cqueue, cpu_mesh_settings sett)
     {
-        vec3i central_dim = {281, 281, 281};
+        /*vec3i central_dim = {281, 281, 281};
 
         centre = new cpu_mesh(ctx, cqueue, {0,0,0}, central_dim, sett);
 
@@ -346,7 +348,24 @@ struct cpu_mesh_manager
         cpu_mesh* test_outer = new cpu_mesh(ctx, cqueue, -(central_dim - 1)/2, left_dim, sett);
 
         meshes.push_back(centre);
-        meshes.push_back(test_outer);
+        meshes.push_back(test_outer);*/
+
+        cpu_topology t1;
+        t1.world_dim = {281, 281, 281};
+        t1.world_pos = {0,0,0};
+
+        cpu_topology t2;
+        t2.world_dim = {31, 281, 281};
+        t2.world_pos = {-(t1.world_dim.x() - 1.f)/2.f - (t2.world_dim.x() - 1.f)/2.f, 0.f, 0.f};
+
+        std::vector<grid_topology> layed = generate_boundary_topology({t1, t2});
+
+        for(grid_topology& i : layed)
+        {
+            std::cout << "POS " << i.world_pos << std::endl;
+            std::cout << "DIM " << i.grid_dim << std::endl;
+        }
+
     }
 
     void init(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& u_arg)

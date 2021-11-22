@@ -4167,6 +4167,8 @@ int main()
 
     cpu_mesh base_mesh(clctx.ctx, clctx.cqueue, {0,0,0}, size, base_settings);
 
+    cpu_mesh_manager meshes(clctx.ctx, clctx.cqueue, base_settings);
+
     cl_float time_elapsed_s = 0;
 
     thin_intermediates_pool thin_pool;
