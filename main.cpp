@@ -3933,11 +3933,16 @@ int main()
 
     clctx.ctx.register_program(u_program);
 
-    cl::buffer u_arg(clctx.ctx);
+    cpu_mesh_settings base_settings;
+    base_settings.use_half_intermediates = false;
+
+    #ifdef CALCULATE_MOMENTUM_CONSTRAINT
+    base_settings.calculate_momentum_constraint = true;
+    #endif // CALCULATE_MOMENTUM_CONSTRAINT
+
+    cpu_mesh_manager meshes(clctx.ctx, clctx.cqueue, base_settings);
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
-
-    u_arg = iterate_u(clctx.ctx, clctx.cqueue, size, c_at_max);
 
     equation_context ctx1;
     get_initial_conditions_eqs(ctx1, centre, scale);
@@ -4064,24 +4069,13 @@ int main()
     cl::buffer ray_count_terminated(clctx.ctx);
     ray_count_terminated.alloc(sizeof(cl_int));
 
-    cpu_mesh_settings base_settings;
-    base_settings.use_half_intermediates = false;
-
-    #ifdef CALCULATE_MOMENTUM_CONSTRAINT
-    base_settings.calculate_momentum_constraint = true;
-    #endif // CALCULATE_MOMENTUM_CONSTRAINT
-
-    cpu_mesh base_mesh(clctx.ctx, clctx.cqueue, {0,0,0}, size, base_settings);
-
-    cpu_mesh_manager meshes(clctx.ctx, clctx.cqueue, base_settings);
-
     cl_float time_elapsed_s = 0;
 
     thin_intermediates_pool thin_pool;
 
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
 
-    base_mesh.init(clctx.cqueue, u_arg);
+    //base_mesh.init(clctx.cqueue, u_arg);
 
     std::vector<float> real_graph;
     std::vector<float> real_decomp;
@@ -4288,40 +4282,46 @@ int main()
         {
             steps++;
 
-            auto [last_valid_thin_base, last_valid_thin] = base_mesh.full_step(clctx.ctx, clctx.cqueue, timestep, thin_pool);
-
+            auto callback = [&](auto buffers, auto thin_buffers, int idx)
             {
-                wave_manager.issue_extraction(clctx.cqueue, last_valid_thin_base, last_valid_thin, scale, clsize);
+                if(idx != 0)
+                    return;
 
-                std::vector<float> values = wave_manager.process();
-
-                for(float v : values)
                 {
-                    if(!isnanf(v))
-                        real_decomp.push_back(v);
-                }
-            }
+                    wave_manager.issue_extraction(clctx.cqueue, buffers, thin_buffers, scale, clsize);
 
-            {
-                cl::args render;
+                    std::vector<float> values = wave_manager.process();
 
-                for(auto& i : last_valid_thin_base)
-                {
-                    render.push_back(i);
+                    for(float v : values)
+                    {
+                        if(!isnanf(v))
+                            real_decomp.push_back(v);
+                    }
                 }
 
-                for(auto& i : last_valid_thin)
                 {
-                    render.push_back(i);
+                    cl::args render;
+
+                    for(auto& i : buffers)
+                    {
+                        render.push_back(i);
+                    }
+
+                    for(auto& i : thin_buffers)
+                    {
+                        render.push_back(i);
+                    }
+
+                    //render.push_back(bssnok_datas[which_data]);
+                    render.push_back(scale);
+                    render.push_back(clsize);
+                    render.push_back(rtex[which_texture]);
+
+                    clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
                 }
+            };
 
-                //render.push_back(bssnok_datas[which_data]);
-                render.push_back(scale);
-                render.push_back(clsize);
-                render.push_back(rtex[which_texture]);
-
-                clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
-            }
+            meshes.full_step_all(clctx.ctx, clctx.cqueue, timestep, thin_pool, callback);
 
             time_elapsed_s += timestep;
             current_simulation_boundary += DIFFERENTIATION_WIDTH;
@@ -4335,7 +4335,8 @@ int main()
             {
                 cl::args render_args;
 
-                auto buffers = base_mesh.get_input().buffers;
+                auto buffers = meshes.meshes[0]->get_input().buffers;
+                //auto buffers = base_mesh.get_input().buffers;
 
                 for(auto& i : buffers)
                 {
@@ -4354,7 +4355,7 @@ int main()
                 clctx.cqueue.exec("trace_metric", render_args, {width, height}, {16, 16});
             }
 
-            if(rendering_method == 1)
+            /*if(rendering_method == 1)
             {
                 cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
                 cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
@@ -4425,10 +4426,10 @@ int main()
 
                     clctx.cqueue.exec("render_rays", render_args, {width * height}, {128});
                 }
-            }
+            }*/
         }
 
-        if(rendering_method == 2 && snap)
+        /*if(rendering_method == 2 && snap)
         {
             cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
             cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
@@ -4479,7 +4480,7 @@ int main()
             step_args.push_back(timestep);
 
             clctx.cqueue.exec("step_accurate_rays", step_args, {width * height}, {128});
-        }
+        }*/
 
         cl::event next_event = rtex[which_texture].unacquire(clctx.cqueue);
 

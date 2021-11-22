@@ -408,22 +408,17 @@ struct cpu_mesh_manager
 
             mesh->init(cqueue, temp_u_arg);
         }
+    }
 
-        ///this is kind of crap
-
-        /*for(cpu_mesh* mesh : meshes)
+    template<typename T>
+    void full_step_all(cl::context& ctx, cl::command_queue& cqueue, float timestep, thin_intermediates_pool& pool, T&& callback)
+    {
+        for(int i=0; i < (int)meshes.size(); i++)
         {
-            if(mesh == centre)
-                continue;
+            auto [last_valid_thin_base, last_valid_thin] = meshes[i]->full_step(ctx, cqueue, timestep, pool);
 
-            cl::buffer temp_u_arg(ctx);
-            temp_u_arg.alloc(mesh->dim.x() * mesh->dim.y() * mesh->dim.z() * sizeof(cl_float));
-            temp_u_arg.fill(cqueue, 1.f);
-
-            mesh->init()
-
-            //mesh->init(cqueue, temp_u_arg);
-        }*/
+            callback(last_valid_thin_base, last_valid_thin, i);
+        }
     }
 };
 
