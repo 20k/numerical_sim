@@ -44,12 +44,12 @@ float polynomial(float x)
 
 #define BULGE_AMOUNT 1
 
-float3 transform_position(float x, float y, float z, int4 dim, float scale)
+float3 transform_position(float x, float y, float z, float4 mesh_position, int4 dim, float scale)
 {
     float3 centre = {(dim.x - 1)/2.f, (dim.y - 1)/2.f, (dim.z - 1)/2.f};
     float3 pos = {x, y, z};
 
-    float3 diff = pos - centre;
+    float3 diff = pos - centre - mesh_position.xyz;
 
     diff = round(diff * 2) / 2.f;
 

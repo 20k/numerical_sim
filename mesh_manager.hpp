@@ -76,7 +76,7 @@ struct cpu_mesh
 {
     cpu_mesh_settings sett;
 
-    vec3i centre;
+    vec3f centre;
     vec3i dim;
 
     int resolution_scale = 1;
@@ -132,7 +132,7 @@ struct cpu_mesh
         #endif // USE_GBB
     };
 
-    cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett);
+    cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3f _centre, vec3i _dim, cpu_mesh_settings _sett);
 
     void flip();
 
@@ -243,10 +243,14 @@ vec3i adjacent(const cpu_topology& s1, const cpu_topology& s2)
 
     vec3f diff = fabs(s2.world_pos - s1.world_pos);
 
+    auto approx_same = [](float v1, float v2)
+    {
+        return v1 < v2 * 1.05f && v1 >= v2 * 0.95f;
+    };
+
     vec3i ret;
 
-    ///this is all incorrect
-    if(diff.x() < max_sep.x() * 1.05f)
+    if(approx_same(diff.x(), max_sep.x()))
     {
         if(s1.world_pos.x() < s2.world_pos.x())
             ret.x() = -1;
@@ -254,7 +258,7 @@ vec3i adjacent(const cpu_topology& s1, const cpu_topology& s2)
             ret.x() = 1;
     }
 
-    if(diff.y() < max_sep.y() * 1.05f)
+    if(approx_same(diff.y(), max_sep.y()))
     {
         if(s1.world_pos.y() < s2.world_pos.y())
             ret.y() = -1;
@@ -262,7 +266,7 @@ vec3i adjacent(const cpu_topology& s1, const cpu_topology& s2)
             ret.y() = 1;
     }
 
-    if(diff.z() < max_sep.z() * 1.05f)
+    if(approx_same(diff.z(), max_sep.z()))
     {
         if(s1.world_pos.z() < s2.world_pos.z())
             ret.z() = -1;
@@ -313,6 +317,8 @@ std::vector<grid_topology> generate_boundary_topology(const std::vector<cpu_topo
 
             vec3f dir_as_float = {adj.x(), adj.y(), adj.z()};
 
+            std::cout << "ADJ " << dir_as_float << std::endl;
+
             ///so, if adj.x() < 0, then c1 is to the left of c2
             ///which means c1 needs to expand rightwards, and c2 leftwards
             ///both by boundary_width
@@ -332,13 +338,22 @@ std::vector<grid_topology> generate_boundary_topology(const std::vector<cpu_topo
     return ret;
 }
 
+cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, float c_at_max);
+
 struct cpu_mesh_manager
 {
+    cpu_mesh_settings sett;
+
+    std::vector<grid_topology> layout;
+    grid_topology centre_layout;
+
     std::vector<cpu_mesh*> meshes;
     cpu_mesh* centre = nullptr;
 
-    cpu_mesh_manager(cl::context& ctx, cl::command_queue& cqueue, cpu_mesh_settings sett)
+    cpu_mesh_manager(cl::context& ctx, cl::command_queue& cqueue, cpu_mesh_settings _sett)
     {
+        sett = _sett;
+
         /*vec3i central_dim = {281, 281, 281};
 
         centre = new cpu_mesh(ctx, cqueue, {0,0,0}, central_dim, sett);
@@ -351,16 +366,17 @@ struct cpu_mesh_manager
         meshes.push_back(test_outer);*/
 
         cpu_topology t1;
-        t1.world_dim = {281, 281, 281};
+        t1.world_dim = {280, 280, 280};
         t1.world_pos = {0,0,0};
 
         cpu_topology t2;
-        t2.world_dim = {31, 281, 281};
+        t2.world_dim = {30, 280, 280};
         t2.world_pos = {-(t1.world_dim.x() - 1.f)/2.f - (t2.world_dim.x() - 1.f)/2.f, 0.f, 0.f};
 
-        std::vector<grid_topology> layed = generate_boundary_topology({t1, t2});
+        layout = generate_boundary_topology({t1, t2});
+        centre_layout = layout[0];
 
-        for(grid_topology& i : layed)
+        for(grid_topology& i : layout)
         {
             std::cout << "POS " << i.world_pos << std::endl;
             std::cout << "DIM " << i.grid_dim << std::endl;
@@ -368,13 +384,34 @@ struct cpu_mesh_manager
 
     }
 
-    void init(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& u_arg)
+    void init(cl::context& ctx, cl::command_queue& cqueue)
     {
+        cl::buffer u_arg = iterate_u(ctx, cqueue, centre_layout.grid_dim, get_c_at_max());
+
+        centre = new cpu_mesh(ctx, cqueue, centre_layout.world_pos, centre_layout.grid_dim, sett);
+
         centre->init(cqueue, u_arg);
+
+        meshes.push_back(centre);
+
+        for(int i=1; i < (int)layout.size(); i++)
+        {
+            const grid_topology& top = layout[i];
+
+            cpu_mesh* mesh = new cpu_mesh(ctx, cqueue, top.world_pos, top.grid_dim, sett);
+
+            meshes.push_back(mesh);
+
+            cl::buffer temp_u_arg(ctx);
+            temp_u_arg.alloc(mesh->dim.x() * mesh->dim.y() * mesh->dim.z() * sizeof(cl_float));
+            temp_u_arg.fill(cqueue, 1.f);
+
+            mesh->init(cqueue, temp_u_arg);
+        }
 
         ///this is kind of crap
 
-        for(cpu_mesh* mesh : meshes)
+        /*for(cpu_mesh* mesh : meshes)
         {
             if(mesh == centre)
                 continue;
@@ -383,8 +420,10 @@ struct cpu_mesh_manager
             temp_u_arg.alloc(mesh->dim.x() * mesh->dim.y() * mesh->dim.z() * sizeof(cl_float));
             temp_u_arg.fill(cqueue, 1.f);
 
-            mesh->init(cqueue, temp_u_arg);
-        }
+            mesh->init()
+
+            //mesh->init(cqueue, temp_u_arg);
+        }*/
     }
 };
 

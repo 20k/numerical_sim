@@ -1,6 +1,7 @@
 #include "mesh_manager.hpp"
 #include <toolkit/opencl.hpp>
 #include <execution>
+#include <optional>
 
 buffer_set::buffer_set(cl::context& ctx, vec3i size)
 {
@@ -163,7 +164,7 @@ cl::buffer thin_intermediates_pool::request(cl::context& ctx, cl::command_queue&
     return next;
 }
 
-cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett) :
+cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3f _centre, vec3i _dim, cpu_mesh_settings _sett) :
         data{buffer_set(ctx, _dim), buffer_set(ctx, _dim)}, scratch{ctx, _dim}, points_set{ctx}, sponge_positions{ctx},
         momentum_constraint{ctx, ctx, ctx}, u_arg{ctx}
 {
@@ -669,4 +670,99 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
     flip();
 
     return {*last_valid_thin_buffer, intermediates};
+}
+
+
+cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_int> base_size, float c_at_max, int scale_factor, std::optional<cl::buffer> base)
+{
+    vec<4, cl_int> reduced_clsize = ((base_size - 1) / scale_factor) + 1;
+
+    std::array<cl::buffer, 2> reduced_u_args{ctx, ctx};
+
+    if(base.has_value())
+        reduced_u_args[0] = base.value();
+    else
+        reduced_u_args[0].alloc(reduced_clsize.x() * reduced_clsize.y() * reduced_clsize.z() * sizeof(cl_float));
+
+    reduced_u_args[1].alloc(reduced_clsize.x() * reduced_clsize.y() * reduced_clsize.z() * sizeof(cl_float));
+
+    int which_reduced = 0;
+
+    {
+        cl::args initial_u_args;
+        initial_u_args.push_back(reduced_u_args[1]);
+        initial_u_args.push_back(reduced_clsize);
+
+        cqueue.exec("setup_u_offset", initial_u_args, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1});
+
+        if(!base.has_value())
+            cl::copy(cqueue, reduced_u_args[1], reduced_u_args[0]);
+    }
+
+    int N = 8000;
+
+    #ifdef GPU_PROFILE
+    N = 1000;
+    #endif // GPU_PROFILE
+
+    #ifdef QUICKSTART
+    N = 200;
+    #endif // QUICKSTART
+
+    for(int i=0; i < N; i++)
+    {
+        float local_scale = calculate_scale(c_at_max, reduced_clsize);
+
+        cl::args iterate_u_args;
+        iterate_u_args.push_back(reduced_u_args[which_reduced]);
+        iterate_u_args.push_back(reduced_u_args[(which_reduced + 1) % 2]);
+        iterate_u_args.push_back(local_scale);
+        iterate_u_args.push_back(reduced_clsize);
+
+        cqueue.exec("iterative_u_solve", iterate_u_args, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1});
+
+        which_reduced = (which_reduced + 1) % 2;
+    }
+
+    return reduced_u_args[which_reduced];
+}
+
+cl::buffer upscale_u(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& source_buffer, vec<4, cl_int> base_size, int upscale_scale, int source_scale)
+{
+    vec<4, cl_int> reduced_clsize = ((base_size - 1) / source_scale) + 1;
+    vec<4, cl_int> upper_clsize = ((base_size - 1) / upscale_scale) + 1;
+
+    cl::buffer u_arg(ctx);
+    u_arg.alloc(upper_clsize.x() * upper_clsize.y() * upper_clsize.z() * sizeof(cl_float));
+
+    cl::args upscale_args;
+    upscale_args.push_back(source_buffer);
+    upscale_args.push_back(u_arg);
+    upscale_args.push_back(reduced_clsize);
+    upscale_args.push_back(upper_clsize);
+
+    cqueue.exec("upscale_u", upscale_args, {upper_clsize.x(), upper_clsize.y(), upper_clsize.z()}, {8, 8, 1});
+
+    return u_arg;
+}
+
+cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, float c_at_max)
+{
+    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
+
+    std::optional<cl::buffer> last;
+
+    for(int i=2; i >= 0; i--)
+    {
+        int up_size = pow(2, i+1);
+        int current_size = pow(2, i);
+
+        cl::buffer reduced = solve_for_u(ctx, cqueue, clsize, c_at_max, up_size, last);
+
+        cl::buffer upscaled = upscale_u(ctx, cqueue, reduced, clsize, current_size, up_size);
+
+        last = upscaled;
+    }
+
+    return solve_for_u(ctx, cqueue, clsize, c_at_max, 1, last);
 }

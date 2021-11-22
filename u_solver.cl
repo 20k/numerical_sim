@@ -66,7 +66,7 @@ void upscale_u(__global float* u_in, __global float* u_out, int4 in_dim, int4 ou
 ///todo: this, but second order, because memory reads are heavily cached
 __kernel
 void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out,
-                       float scale, int4 dim)
+                       float scale, int4 dim, float4 mesh_position)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -82,7 +82,7 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     bool y_degenerate = iy < 2 || iy >= dim.y - 2;
     bool z_degenerate = iz < 2 || iz >= dim.z - 2;
 
-    float3 offset = transform_position(ix, iy, iz, dim, scale);
+    float3 offset = transform_position(ix, iy, iz, mesh_position, dim, scale);
 
     float ox = offset.x;
     float oy = offset.y;
