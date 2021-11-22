@@ -672,8 +672,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
     return {*last_valid_thin_buffer, intermediates};
 }
 
-
-cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_int> base_size, float c_at_max, int scale_factor, std::optional<cl::buffer> base)
+cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_int> base_size, vec3f mesh_position, float c_at_max, int scale_factor, std::optional<cl::buffer> base)
 {
     vec<4, cl_int> reduced_clsize = ((base_size - 1) / scale_factor) + 1;
 
@@ -709,6 +708,8 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
     N = 200;
     #endif // QUICKSTART
 
+    vec<4, cl_float> clmeshpos = {mesh_position.x(), mesh_position.y(), mesh_position.z(), 0.f};
+
     for(int i=0; i < N; i++)
     {
         float local_scale = calculate_scale(c_at_max, reduced_clsize);
@@ -718,6 +719,7 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
         iterate_u_args.push_back(reduced_u_args[(which_reduced + 1) % 2]);
         iterate_u_args.push_back(local_scale);
         iterate_u_args.push_back(reduced_clsize);
+        iterate_u_args.push_back(clmeshpos);
 
         cqueue.exec("iterative_u_solve", iterate_u_args, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1});
 
@@ -746,7 +748,7 @@ cl::buffer upscale_u(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& so
     return u_arg;
 }
 
-cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, float c_at_max)
+cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, vec3f mesh_position, float c_at_max)
 {
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
@@ -757,12 +759,12 @@ cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, fl
         int up_size = pow(2, i+1);
         int current_size = pow(2, i);
 
-        cl::buffer reduced = solve_for_u(ctx, cqueue, clsize, c_at_max, up_size, last);
+        cl::buffer reduced = solve_for_u(ctx, cqueue, clsize, mesh_position, c_at_max, up_size, last);
 
         cl::buffer upscaled = upscale_u(ctx, cqueue, reduced, clsize, current_size, up_size);
 
         last = upscaled;
     }
 
-    return solve_for_u(ctx, cqueue, clsize, c_at_max, 1, last);
+    return solve_for_u(ctx, cqueue, clsize, mesh_position, c_at_max, 1, last);
 }

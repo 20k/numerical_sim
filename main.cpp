@@ -4075,6 +4075,8 @@ int main()
 
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
 
+    meshes.init(clctx.ctx, clctx.cqueue);
+
     //base_mesh.init(clctx.cqueue, u_arg);
 
     std::vector<float> real_graph;

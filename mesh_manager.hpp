@@ -338,7 +338,7 @@ std::vector<grid_topology> generate_boundary_topology(const std::vector<cpu_topo
     return ret;
 }
 
-cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, float c_at_max);
+cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, vec3f mesh_position, float c_at_max);
 
 struct cpu_mesh_manager
 {
@@ -350,20 +350,11 @@ struct cpu_mesh_manager
     std::vector<cpu_mesh*> meshes;
     cpu_mesh* centre = nullptr;
 
-    cpu_mesh_manager(cl::context& ctx, cl::command_queue& cqueue, cpu_mesh_settings _sett)
+    cl::buffer central_u;
+
+    cpu_mesh_manager(cl::context& ctx, cl::command_queue& cqueue, cpu_mesh_settings _sett) : central_u(ctx)
     {
         sett = _sett;
-
-        /*vec3i central_dim = {281, 281, 281};
-
-        centre = new cpu_mesh(ctx, cqueue, {0,0,0}, central_dim, sett);
-
-        vec3i left_dim = {31, 281, 281};
-
-        cpu_mesh* test_outer = new cpu_mesh(ctx, cqueue, -(central_dim - 1)/2, left_dim, sett);
-
-        meshes.push_back(centre);
-        meshes.push_back(test_outer);*/
 
         cpu_topology t1;
         t1.world_dim = {280, 280, 280};
@@ -382,15 +373,14 @@ struct cpu_mesh_manager
             std::cout << "DIM " << i.grid_dim << std::endl;
         }
 
+        central_u = iterate_u(ctx, cqueue, centre_layout.grid_dim, centre_layout.world_pos, get_c_at_max());
     }
 
     void init(cl::context& ctx, cl::command_queue& cqueue)
     {
-        cl::buffer u_arg = iterate_u(ctx, cqueue, centre_layout.grid_dim, get_c_at_max());
-
         centre = new cpu_mesh(ctx, cqueue, centre_layout.world_pos, centre_layout.grid_dim, sett);
 
-        centre->init(cqueue, u_arg);
+        centre->init(cqueue, central_u);
 
         meshes.push_back(centre);
 
