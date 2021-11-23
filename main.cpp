@@ -4287,8 +4287,13 @@ int main()
                 if(idx != 0)
                     return;
 
+                vec3f full_world_tl = mesh->full_world_tl;
+                vec3f full_world_br = mesh->full_world_br;
+
                 cl_int4 clsize = {mesh->dim.x(), mesh->dim.y(), mesh->dim.z(), 0};
                 cl_float4 clmeshpos = {mesh->centre.x(), mesh->centre.y(), mesh->centre.z(), 0};
+                cl_float4 clworldtl = {full_world_tl.x(), full_world_tl.y(), full_world_tl.z(), 0};
+                cl_float4 clworldbr = {full_world_br.x(), full_world_br.y(), full_world_br.z(), 0};
 
                 {
                     wave_manager.issue_extraction(clctx.cqueue, buffers, thin_buffers, scale, mesh->dim, mesh->centre);
@@ -4319,6 +4324,8 @@ int main()
                     render.push_back(scale);
                     render.push_back(clsize);
                     render.push_back(clmeshpos);
+                    render.push_back(clworldtl);
+                    render.push_back(clworldbr);
                     render.push_back(rtex[which_texture]);
 
                     clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
