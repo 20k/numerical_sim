@@ -161,6 +161,9 @@ struct cpu_topology
 
 struct grid_topology
 {
+    vec3f world_tl;
+    vec3f world_br;
+
     vec3f world_pos;
     vec3i grid_dim;
 };
@@ -231,6 +234,8 @@ struct grid_topology_builder
         grid_topology t;
         t.world_pos = centre;
         t.grid_dim = dim;
+        t.world_tl = world_tl;
+        t.world_br = world_br;
 
         return t;
     }
@@ -372,13 +377,14 @@ struct cpu_mesh_manager
         layout = generate_boundary_topology({t1, t2});
         centre_layout = layout[0];
 
-        vec3i grid_tl = {INT_MAX,INT_MAX,INT_MAX};
-        vec3i grid_br = {-INT_MAX,-INT_MAX,-INT_MAX};
+        vec3f world_tl = {INT_MAX,INT_MAX,INT_MAX};
+        vec3f world_br = {-INT_MAX,-INT_MAX,-INT_MAX};
 
-        /*for(grid_topology& i : layout)
+        for(grid_topology& i : layout)
         {
-            grid_tl = min(grid_tl, i.)
-        }*/
+            world_tl = min(world_tl, i.world_tl);
+            world_br = max(world_br, i.world_br);
+        }
 
         for(grid_topology& i : layout)
         {
