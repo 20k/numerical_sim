@@ -403,7 +403,7 @@ void calculate_momentum_constraint(__global ushort4* points, int point_count,
     momentum2[IDX(ix,iy,iz)] = m3;
 }
 
-float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float4 mesh_position)
+float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float4 mesh_position, float4 world_tl, float4 world_br)
 {
     float edge_half = scale * ((dim.x - 2)/2.f);
 
@@ -438,7 +438,7 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float4
 }
 
 __kernel
-void generate_sponge_points(__global ushort4* points, __global int* point_count, float scale, int4 dim, float4 mesh_position)
+void generate_sponge_points(__global ushort4* points, __global int* point_count, float scale, int4 dim, float4 mesh_position, float4 world_tl, float4 world_br)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -447,7 +447,7 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, mesh_position);
+    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, mesh_position, world_tl, world_br);
 
     if(sponge_factor <= 0)
         return;
@@ -460,7 +460,7 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
         {
             for(int k=-1; k <= 1; k++)
             {
-                if(sponge_damp_coeff(ix + i, iy + j, iz + k, scale, dim, mesh_position) < 1)
+                if(sponge_damp_coeff(ix + i, iy + j, iz + k, scale, dim, mesh_position, world_tl, world_br) < 1)
                 {
                     all_high = false;
                 }
@@ -478,7 +478,7 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
 
 ///could try this function also where it only calculates derivatives for dynamic fields
 ///aka do not calculate derivatives across the maximal sponge point
-bool valid_first_derivative_point(int3 pos, float scale, int4 dim, float4 mesh_position)
+bool valid_first_derivative_point(int3 pos, float scale, int4 dim, float4 mesh_position, float4 world_tl, float4 world_br)
 {
     ///one of the points would lie outside the boundary
     if(invalid_first(pos.x, pos.y, pos.z, dim))
@@ -494,7 +494,7 @@ bool valid_first_derivative_point(int3 pos, float scale, int4 dim, float4 mesh_p
             {
                 int3 combo = (int3)(x, y, z) + pos;
 
-                float sponge_local = sponge_damp_coeff(combo.x, combo.y, combo.z, scale, dim, mesh_position);
+                float sponge_local = sponge_damp_coeff(combo.x, combo.y, combo.z, scale, dim, mesh_position, world_tl, world_br);
 
                 ///one of the points is non sponged, so we should calculate first derivatives
                 if(sponge_local < 1)
@@ -508,7 +508,7 @@ bool valid_first_derivative_point(int3 pos, float scale, int4 dim, float4 mesh_p
 }
 
 ///if any point is not a valid first derivative point, we can't evolve this correctly
-bool valid_second_derivative_point(int3 pos, float scale, int4 dim, float4 mesh_position)
+bool valid_second_derivative_point(int3 pos, float scale, int4 dim, float4 mesh_position, float4 world_tl, float4 world_br)
 {
     ///out of boundaries for the below loop
     if(invalid_first(pos.x, pos.y, pos.z, dim))
@@ -525,7 +525,7 @@ bool valid_second_derivative_point(int3 pos, float scale, int4 dim, float4 mesh_
                 int3 combo = (int3)(x, y, z) + pos;
 
                 ///one of the underlying first derivatives would be invalid
-                if(!valid_first_derivative_point(combo, scale, dim, mesh_position))
+                if(!valid_first_derivative_point(combo, scale, dim, mesh_position, world_tl, world_br))
                     return false;
             }
         }
@@ -537,7 +537,7 @@ bool valid_second_derivative_point(int3 pos, float scale, int4 dim, float4 mesh_
 __kernel
 void generate_evolution_points(__global ushort4* points_1st, __global int* point_count_1st,
                                __global ushort4* points_2nd, __global int* point_count_2nd,
-                               float scale, int4 dim, float4 mesh_position)
+                               float scale, int4 dim, float4 mesh_position, float4 world_tl, float4 world_br)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -548,14 +548,14 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
 
     int3 pos = (int3)(ix, iy, iz);
 
-    if(valid_first_derivative_point(pos, scale, dim, mesh_position))
+    if(valid_first_derivative_point(pos, scale, dim, mesh_position, world_tl, world_br))
     {
         int idx = atomic_inc(point_count_1st);
 
         points_1st[idx].xyz = (ushort3)(ix, iy, iz);
     }
 
-    if(valid_second_derivative_point(pos, scale, dim, mesh_position))
+    if(valid_second_derivative_point(pos, scale, dim, mesh_position, world_tl, world_br))
     {
         int idx = atomic_inc(point_count_2nd);
 
@@ -571,7 +571,7 @@ void clean_data(__global ushort4* points, int point_count,
                 STANDARD_ARGS(),
                 __global float* u_value,
                 float scale, int4 dim, float4 mesh_position,
-                float timestep)
+                float4 world_tl, float4 world_br, float timestep)
 {
     int idx = get_global_id(0);
 
@@ -589,7 +589,7 @@ void clean_data(__global ushort4* points, int point_count,
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, mesh_position);
+    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, mesh_position, world_tl, world_br);
 
     if(sponge_factor <= 0)
         return;
@@ -1117,7 +1117,7 @@ void render(STANDARD_ARGS(),
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float4 mesh_position, __write_only image2d_t screen)
+            float scale, int4 dim, float4 mesh_position, float4 world_tl, float4 world_br, __write_only image2d_t screen)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -1143,7 +1143,7 @@ void render(STANDARD_ARGS(),
     //for(int z = 20; z < dim.z-20; z++)
 
     {
-        float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, mesh_position);
+        float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, mesh_position, world_tl, world_br);
 
         if(sponge_factor > 0)
         {

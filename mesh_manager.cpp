@@ -13,8 +13,10 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size)
 }
 
 inline
-std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size, vec3f mesh_position)
+std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size, vec3f mesh_position, vec3f full_world_tl, vec3f full_world_br)
 {
+    cl_float4 clworldtl = {full_world_tl.x(), full_world_tl.y(), full_world_tl.z(), 0};
+    cl_float4 clworldbr = {full_world_br.x(), full_world_br.y(), full_world_br.z(), 0};
     cl_float4 clmeshpos = {mesh_position.x(), mesh_position.y(), mesh_position.z(), 0};
     cl_int4 clsize = {size.x(), size.y(), size.z(), 0};
 
@@ -32,6 +34,8 @@ std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_
     args.push_back(scale);
     args.push_back(clsize);
     args.push_back(clmeshpos);
+    args.push_back(clworldtl);
+    args.push_back(clworldbr);
 
     cqueue.exec("generate_sponge_points", args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
 
@@ -61,8 +65,10 @@ std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_
 
 
 inline
-evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size, vec3f mesh_position)
+evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size, vec3f mesh_position, vec3f full_world_tl, vec3f full_world_br)
 {
+    cl_float4 clworldtl = {full_world_tl.x(), full_world_tl.y(), full_world_tl.z(), 0};
+    cl_float4 clworldbr = {full_world_br.x(), full_world_br.y(), full_world_br.z(), 0};
     cl_int4 clsize = {size.x(), size.y(), size.z(), 0};
     cl_float4 clmeshpos = {mesh_position.x(), mesh_position.y(), mesh_position.z(), 0};
 
@@ -89,6 +95,8 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
     args.push_back(scale);
     args.push_back(clsize);
     args.push_back(clmeshpos);
+    args.push_back(clworldtl);
+    args.push_back(clworldbr);
 
     cqueue.exec("generate_evolution_points", args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
 
@@ -169,7 +177,7 @@ cl::buffer thin_intermediates_pool::request(cl::context& ctx, cl::command_queue&
     return next;
 }
 
-cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3f _centre, vec3i _dim, cpu_mesh_settings _sett) :
+cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3f _centre, vec3i _dim, vec3f world_tl, vec3f world_br, cpu_mesh_settings _sett) :
         data{buffer_set(ctx, _dim), buffer_set(ctx, _dim)}, scratch{ctx, _dim}, points_set{ctx}, sponge_positions{ctx},
         momentum_constraint{ctx, ctx, ctx}, u_arg{ctx}
 {
@@ -177,10 +185,13 @@ cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3f _centre, v
     dim = _dim;
     sett = _sett;
 
+    full_world_tl = world_tl;
+    full_world_br = world_br;
+
     scale = calculate_scale(get_c_at_max(), dim);
 
-    points_set = generate_evolution_points(ctx, cqueue, scale, dim, centre);
-    std::tie(sponge_positions, sponge_positions_count) = generate_sponge_points(ctx, cqueue, scale, dim, centre);
+    points_set = generate_evolution_points(ctx, cqueue, scale, dim, centre, full_world_tl, full_world_br);
+    std::tie(sponge_positions, sponge_positions_count) = generate_sponge_points(ctx, cqueue, scale, dim, centre, full_world_tl, full_world_br);
 
     for(auto& i : momentum_constraint)
     {
@@ -269,6 +280,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         assert(false);
     };
 
+    cl_float4 clworldtl = {full_world_tl.x(), full_world_tl.y(), full_world_tl.z(), 0};
+    cl_float4 clworldbr = {full_world_br.x(), full_world_br.y(), full_world_br.z(), 0};
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
     std::vector<cl::buffer>* last_valid_thin_buffer = &get_input().buffers;
@@ -670,6 +683,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         cleaner.push_back(scale);
         cleaner.push_back(clsize);
         cleaner.push_back(clmeshpos);
+        cleaner.push_back(clworldtl);
+        cleaner.push_back(clworldbr);
         cleaner.push_back(timestep);
 
         cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});

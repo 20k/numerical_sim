@@ -79,6 +79,9 @@ struct cpu_mesh
     vec3f centre;
     vec3i dim;
 
+    vec3f full_world_tl;
+    vec3f full_world_br;
+
     int resolution_scale = 1;
     float scale = 1;
 
@@ -132,7 +135,7 @@ struct cpu_mesh
         #endif // USE_GBB
     };
 
-    cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3f _centre, vec3i _dim, cpu_mesh_settings _sett);
+    cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3f _centre, vec3i _dim, vec3f world_tl, vec3f world_br, cpu_mesh_settings _sett);
 
     void flip();
 
@@ -350,6 +353,8 @@ struct cpu_mesh_manager
     std::vector<cpu_mesh*> meshes;
     cpu_mesh* centre = nullptr;
 
+    vec3i full_dim;
+
     cl::buffer central_u;
 
     cpu_mesh_manager(cl::context& ctx, cl::command_queue& cqueue, cpu_mesh_settings _sett) : central_u(ctx)
@@ -367,6 +372,14 @@ struct cpu_mesh_manager
         layout = generate_boundary_topology({t1, t2});
         centre_layout = layout[0];
 
+        vec3i grid_tl = {INT_MAX,INT_MAX,INT_MAX};
+        vec3i grid_br = {-INT_MAX,-INT_MAX,-INT_MAX};
+
+        /*for(grid_topology& i : layout)
+        {
+            grid_tl = min(grid_tl, i.)
+        }*/
+
         for(grid_topology& i : layout)
         {
             std::cout << "POS " << i.world_pos << std::endl;
@@ -378,7 +391,10 @@ struct cpu_mesh_manager
 
     void init(cl::context& ctx, cl::command_queue& cqueue)
     {
-        centre = new cpu_mesh(ctx, cqueue, centre_layout.world_pos, centre_layout.grid_dim, sett);
+        vec3f world_tl;
+        vec3f world_br;
+
+        centre = new cpu_mesh(ctx, cqueue, centre_layout.world_pos, centre_layout.grid_dim, world_tl, world_br, sett);
 
         centre->init(cqueue, central_u);
 
@@ -388,7 +404,7 @@ struct cpu_mesh_manager
         {
             const grid_topology& top = layout[i];
 
-            cpu_mesh* mesh = new cpu_mesh(ctx, cqueue, top.world_pos, top.grid_dim, sett);
+            cpu_mesh* mesh = new cpu_mesh(ctx, cqueue, top.world_pos, top.grid_dim, world_tl, world_br, sett);
 
             meshes.push_back(mesh);
 
