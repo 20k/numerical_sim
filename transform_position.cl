@@ -49,12 +49,19 @@ float3 transform_position(float x, float y, float z, float4 mesh_position, int4 
     float3 centre = {(dim.x - 1)/2.f, (dim.y - 1)/2.f, (dim.z - 1)/2.f};
     float3 pos = {x, y, z};
 
-    float3 diff = pos - centre - mesh_position.xyz;
+    //float3 diff = pos - centre - mesh_position.xyz;
 
-    diff = round(diff * 2) / 2.f;
+    float3 offset_from_grid = pos - centre;
 
-    return diff * scale;
+    offset_from_grid = round(offset_from_grid * 2) / 2.f;
 
+    float resolution_multiplier = 1;
+
+    float3 world_offset = offset_from_grid * scale * resolution_multiplier;
+
+    return world_offset + mesh_position.xyz;
+
+    #if 0
     float len = length(diff);
 
     if(len == 0)
@@ -121,4 +128,5 @@ float3 transform_position(float x, float y, float z, float4 mesh_position, int4 
     {
         return norm * real_len;
     }
+    #endif // 0
 }
