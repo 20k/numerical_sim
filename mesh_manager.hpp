@@ -19,6 +19,36 @@ float get_c_at_max()
     return 65.f * (251.f/300.f);
 }
 
+inline
+vec3f voxel_to_world(vec3i in, vec3f mesh_position, vec3i dim, float full_scale, float resolution_multiplier)
+{
+    vec3f pos = {in.x(), in.y(), in.z()};
+
+    vec3f dim_as_float = {dim.x(), dim.y(), dim.z()};
+    vec3f grid_centre = (dim_as_float - 1) / 2;
+    float adjusted_scale = full_scale * resolution_multiplier;
+
+    vec3f offset_from_grid = pos - grid_centre;
+
+    vec3f world_offset = offset_from_grid * adjusted_scale;
+
+    return world_offset + mesh_position;
+}
+
+inline
+vec3f world_to_voxel(vec3f in, vec3f mesh_position, vec3i dim, float full_scale, float resolution_multiplier)
+{
+    vec3f dim_as_float = {dim.x(), dim.y(), dim.z()};
+    vec3f grid_centre = (dim_as_float - 1) / 2;
+    float adjusted_scale = full_scale * resolution_multiplier;
+
+    vec3f world_offset = in - mesh_position;
+
+    vec3f offset_from_grid = world_offset / adjusted_scale;
+
+    return offset_from_grid + grid_centre;
+}
+
 struct buffer_set
 {
     #ifndef USE_GBB
