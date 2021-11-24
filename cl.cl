@@ -148,7 +148,9 @@ float3 world_to_voxel(float3 world_pos, int4 dim, float4 mesh_position, float sc
 {
     float3 centre = {(dim.x - 1)/2, (dim.y - 1)/2, (dim.z - 1)/2};
 
-    return (world_pos / scale) + centre + mesh_position.xyz;
+    float resolution_multiplier = 1;
+
+    return ((world_pos - mesh_position.xyz) / (scale * resolution_multiplier)) + centre;
 }
 
 /*float get_distance(int x1, int y1, int z1, int x2, int y2, int z2, int4 dim, float scale)
