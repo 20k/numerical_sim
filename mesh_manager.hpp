@@ -36,6 +36,24 @@ vec3f voxel_to_world(vec3i in, vec3f mesh_position, vec3i dim, float full_scale,
 }
 
 inline
+vec3f voxel_offset_to_world_offset(vec3i offseti, float full_scale, float resolution_multiplier)
+{
+    vec3f offset = {offseti.x(), offseti.y(), offseti.z()};
+
+    float adjusted_scale = full_scale * resolution_multiplier;
+
+    return offset * adjusted_scale;
+}
+
+inline
+vec3f world_offset_to_voxel_offset(vec3f offset, float full_scale, float resolution_multiplier)
+{
+    float adjusted_scale = full_scale * resolution_multiplier;
+
+    return offset / adjusted_scale;
+}
+
+inline
 vec3f world_to_voxel(vec3f in, vec3f mesh_position, vec3i dim, float full_scale, float resolution_multiplier)
 {
     vec3f dim_as_float = {dim.x(), dim.y(), dim.z()};
@@ -48,6 +66,29 @@ vec3f world_to_voxel(vec3f in, vec3f mesh_position, vec3i dim, float full_scale,
 
     return offset_from_grid + grid_centre;
 }
+
+struct mesh_descriptor
+{
+    vec3f centre;
+    vec3i dim;
+    float full_scale = 0;
+    float resolution_multiplier = 1;
+
+    vec3f voxel_to_world(vec3i in)
+    {
+        return ::voxel_to_world(in, centre, dim, full_scale, resolution_multiplier);
+    }
+
+    vec3f voxel_offset_to_world_offset(vec3i in)
+    {
+        return ::voxel_offset_to_world_offset(in, full_scale, resolution_multiplier);
+    }
+
+    vec3f world_to_voxel(vec3f in)
+    {
+        return ::world_to_voxel(in, centre, dim, full_scale, resolution_multiplier);
+    }
+};
 
 struct buffer_set
 {
@@ -200,6 +241,7 @@ struct grid_topology
 
 struct grid_topology_builder
 {
+    float scale = 1;
     float resolution_multiplier = 1;
 
     vec3i grid_tl, grid_br;
@@ -217,7 +259,7 @@ struct grid_topology_builder
 
         world_pos += -(as_float / resolution_multiplier) / 2.f;*/
 
-        vec3f world_displacement = direction / resolution_multiplier;
+        vec3f world_displacement = voxel_offset_to_world_offset({direction.x(), direction.y(), direction.z()}, scale, resolution_multiplier);
 
         if(direction.x() > 0)
         {
@@ -316,7 +358,7 @@ vec3i adjacent(const cpu_topology& s1, const cpu_topology& s2)
 }
 
 inline
-std::vector<grid_topology> generate_boundary_topology(const std::vector<cpu_topology>& top_in)
+std::vector<grid_topology> generate_boundary_topology(const std::vector<cpu_topology>& top_in, float scale)
 {
     int boundary_width = 4 * 2;
 
@@ -326,8 +368,9 @@ std::vector<grid_topology> generate_boundary_topology(const std::vector<cpu_topo
     {
         grid_topology_builder val;
         val.resolution_multiplier = ct.resolution_multiplier;
+        val.scale = scale;
 
-        vec3f grid_float = ct.world_dim * ct.resolution_multiplier + (vec3f){1,1,1};
+        vec3f grid_float = world_offset_to_voxel_offset(ct.world_dim, scale, ct.resolution_multiplier) + (vec3f){1,1,1};
 
         val.grid_tl = {0,0,0};
         val.grid_br = {grid_float.x(), grid_float.y(), grid_float.z()};
@@ -394,17 +437,21 @@ struct cpu_mesh_manager
 
     cpu_mesh_manager(cl::context& ctx, cl::command_queue& cqueue, cpu_mesh_settings _sett) : central_u(ctx)
     {
+        float base_scale = calculate_scale(get_c_at_max(), (vec3i){281, 281, 281});
+
         sett = _sett;
 
         cpu_topology t1;
-        t1.world_dim = {250, 250, 250};
+        t1.world_dim = voxel_offset_to_world_offset({250, 250, 250}, base_scale, 1.f);
         t1.world_pos = {0,0,0};
+        t1.resolution_multiplier = 1;
 
         cpu_topology t2;
-        t2.world_dim = {30, 250, 250};
-        t2.world_pos = {-(t1.world_dim.x() - 1.f)/2.f - (t2.world_dim.x() - 1.f)/2.f, 0.f, 0.f};
+        t2.world_dim = voxel_offset_to_world_offset({30, 250, 250}, base_scale, 1.f);
+        t2.world_pos = {-t1.world_dim.x()/2.f - t2.world_dim.x()/2.f, 0.f, 0.f};
+        t2.resolution_multiplier = 1;
 
-        layout = generate_boundary_topology({t1, t2});
+        layout = generate_boundary_topology({t1, t2}, base_scale);
         centre_layout = layout[0];
 
         vec3f world_tl = {INT_MAX,INT_MAX,INT_MAX};
