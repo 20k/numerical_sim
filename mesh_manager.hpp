@@ -372,6 +372,8 @@ std::vector<grid_topology> generate_boundary_topology(const std::vector<cpu_topo
 
         vec3f grid_float = world_offset_to_voxel_offset(ct.world_dim, scale, ct.resolution_multiplier) + (vec3f){1,1,1};
 
+        grid_float = round(grid_float);
+
         val.grid_tl = {0,0,0};
         val.grid_br = {grid_float.x(), grid_float.y(), grid_float.z()};
 
