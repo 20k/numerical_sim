@@ -1,3 +1,11 @@
+struct mesh
+{
+    float4 position;
+    int4 dim;
+    float scale;
+    int resolution;
+};
+
 float r_to_phys(float r)
 {
     float a = 3;
@@ -44,8 +52,10 @@ float polynomial(float x)
 
 #define BULGE_AMOUNT 1
 
-float3 transform_position(float x, float y, float z, float4 mesh_position, int4 dim, float scale)
+float3 transform_position(float x, float y, float z, struct mesh* m)
 {
+    int4 dim = m->dim;
+
     float3 centre = {(dim.x - 1)/2.f, (dim.y - 1)/2.f, (dim.z - 1)/2.f};
     float3 pos = {x, y, z};
 
@@ -55,11 +65,9 @@ float3 transform_position(float x, float y, float z, float4 mesh_position, int4 
 
     offset_from_grid = round(offset_from_grid * 2) / 2.f;
 
-    float resolution_multiplier = 1;
+    float3 world_offset = offset_from_grid * m->scale * m->resolution;
 
-    float3 world_offset = offset_from_grid * scale * resolution_multiplier;
-
-    return world_offset + mesh_position.xyz;
+    return world_offset + m->position.xyz;
 
     #if 0
     float len = length(diff);

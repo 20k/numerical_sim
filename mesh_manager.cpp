@@ -3,6 +3,17 @@
 #include <execution>
 #include <optional>
 
+gpu_mesh cpu_mesh::get_gpu_mesh()
+{
+    gpu_mesh mesh;
+    mesh.dim = {dim.x(), dim.y(), dim.z(), 0};
+    mesh.position = {centre.x(), centre.y(), centre.z(), 0};
+    mesh.scale = scale;
+    mesh.resolution = resolution_scale;
+
+    return mesh;
+}
+
 buffer_set::buffer_set(cl::context& ctx, vec3i size)
 {
     for(int kk=0; kk < buffer_count; kk++)
@@ -697,8 +708,10 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
     return {*last_valid_thin_buffer, intermediates};
 }
 
-cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_int> base_size, vec3f mesh_position, float c_at_max, int scale_factor, std::optional<cl::buffer> base)
+cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, const gpu_mesh& m, float c_at_max, int scale_factor, std::optional<cl::buffer> base)
 {
+    vec<4, cl_int> base_size = {m.dim.s[0], m.dim.s[1], m.dim.s[2], 0};
+
     vec<4, cl_int> reduced_clsize = ((base_size - 1) / scale_factor) + 1;
 
     std::array<cl::buffer, 2> reduced_u_args{ctx, ctx};
@@ -733,18 +746,18 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
     N = 200;
     #endif // QUICKSTART
 
-    vec<4, cl_float> clmeshpos = {mesh_position.x(), mesh_position.y(), mesh_position.z(), 0.f};
+    gpu_mesh lower_mesh;
+    lower_mesh.dim = {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z(), 0};
+    lower_mesh.position = m.position;
+    lower_mesh.scale = calculate_scale(c_at_max, reduced_clsize);
+    lower_mesh.resolution = m.resolution;
 
     for(int i=0; i < N; i++)
     {
-        float local_scale = calculate_scale(c_at_max, reduced_clsize);
-
         cl::args iterate_u_args;
         iterate_u_args.push_back(reduced_u_args[which_reduced]);
         iterate_u_args.push_back(reduced_u_args[(which_reduced + 1) % 2]);
-        iterate_u_args.push_back(local_scale);
-        iterate_u_args.push_back(reduced_clsize);
-        iterate_u_args.push_back(clmeshpos);
+        iterate_u_args.push_back(lower_mesh);
 
         cqueue.exec("iterative_u_solve", iterate_u_args, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1});
 
@@ -773,9 +786,9 @@ cl::buffer upscale_u(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& so
     return u_arg;
 }
 
-cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, vec3f mesh_position, float c_at_max)
+cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, const gpu_mesh& m, float c_at_max)
 {
-    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
+    vec<4, cl_int> clsize = {m.dim.s[0], m.dim.s[1], m.dim.s[2], 0};
 
     std::optional<cl::buffer> last;
 
@@ -784,12 +797,12 @@ cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, ve
         int up_size = pow(2, i+1);
         int current_size = pow(2, i);
 
-        cl::buffer reduced = solve_for_u(ctx, cqueue, clsize, mesh_position, c_at_max, up_size, last);
+        cl::buffer reduced = solve_for_u(ctx, cqueue, m, c_at_max, up_size, last);
 
         cl::buffer upscaled = upscale_u(ctx, cqueue, reduced, clsize, current_size, up_size);
 
         last = upscaled;
     }
 
-    return solve_for_u(ctx, cqueue, clsize, mesh_position, c_at_max, 1, last);
+    return solve_for_u(ctx, cqueue, m, c_at_max, 1, last);
 }

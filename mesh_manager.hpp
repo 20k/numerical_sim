@@ -67,6 +67,14 @@ vec3f world_to_voxel(vec3f in, vec3f mesh_position, vec3i dim, float full_scale,
     return offset_from_grid + grid_centre;
 }
 
+struct gpu_mesh
+{
+    cl_float4 position = {0,0,0,0};
+    cl_int4 dim = {0,0,0,0};
+    cl_float scale = 0;
+    cl_int resolution = 0;
+};
+
 struct mesh_descriptor
 {
     vec3f centre;
@@ -101,12 +109,6 @@ struct buffer_set
     std::vector<cl::buffer> buffers;
 
     buffer_set(cl::context& ctx, vec3i size);
-};
-
-struct gpu_mesh
-{
-    cl_int4 centre;
-    cl_int4 dim;
 };
 
 struct evolution_points
@@ -220,6 +222,8 @@ struct cpu_mesh
 
     ///returns buffers and intermediates
     std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> full_step(cl::context& ctx, cl::command_queue& cqueue, float timestep, thin_intermediates_pool& pool);
+
+    gpu_mesh get_gpu_mesh();
 };
 
 struct cpu_topology
@@ -421,7 +425,7 @@ std::vector<grid_topology> generate_boundary_topology(const std::vector<cpu_topo
     return ret;
 }
 
-cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, vec3f mesh_position, float c_at_max);
+cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, const gpu_mesh& m, float c_at_max);
 
 struct cpu_mesh_manager
 {
@@ -481,7 +485,13 @@ struct cpu_mesh_manager
             std::cout << "DIM " << i.grid_dim << std::endl;
         }
 
-        central_u = iterate_u(ctx, cqueue, centre_layout.grid_dim, centre_layout.world_pos, get_c_at_max());
+        gpu_mesh central_mesh;
+        central_mesh.dim = {centre_layout.grid_dim.x(), centre_layout.grid_dim.y(), centre_layout.grid_dim.z(), 0};
+        central_mesh.position = {centre_layout.world_pos.x(), centre_layout.world_pos.y(), centre_layout.world_pos.z(), 0};
+        central_mesh.resolution = 1;
+        central_mesh.scale = base_scale;
+
+        central_u = iterate_u(ctx, cqueue, central_mesh, get_c_at_max());
     }
 
     void init(cl::context& ctx, cl::command_queue& cqueue)
