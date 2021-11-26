@@ -435,6 +435,9 @@ struct cpu_mesh_manager
 
     cl::buffer central_u;
 
+    vec3f world_tl;
+    vec3f world_br;
+
     cpu_mesh_manager(cl::context& ctx, cl::command_queue& cqueue, cpu_mesh_settings _sett) : central_u(ctx)
     {
         float base_scale = calculate_scale(get_c_at_max(), (vec3i){281, 281, 281});
@@ -442,26 +445,28 @@ struct cpu_mesh_manager
         sett = _sett;
 
         cpu_topology t1;
-        t1.world_dim = voxel_offset_to_world_offset({250, 250, 250}, base_scale, 1.f);
+        t1.world_dim = voxel_offset_to_world_offset({250, 280, 280}, base_scale, 1.f);
         t1.world_pos = {0,0,0};
         t1.resolution_multiplier = 1;
 
         cpu_topology t2;
-        t2.world_dim = voxel_offset_to_world_offset({30, 250, 250}, base_scale, 1.f);
+        t2.world_dim = voxel_offset_to_world_offset({30, 280, 280}, base_scale, 1.f);
         t2.world_pos = {-t1.world_dim.x()/2.f - t2.world_dim.x()/2.f, 0.f, 0.f};
         t2.resolution_multiplier = 1;
 
         layout = generate_boundary_topology({t1, t2}, base_scale);
         centre_layout = layout[0];
 
-        vec3f world_tl = {INT_MAX,INT_MAX,INT_MAX};
-        vec3f world_br = {-INT_MAX,-INT_MAX,-INT_MAX};
+        world_tl = {INT_MAX,INT_MAX,INT_MAX};
+        world_br = {-INT_MAX,-INT_MAX,-INT_MAX};
 
         for(grid_topology& i : layout)
         {
             world_tl = min(world_tl, i.world_tl);
             world_br = max(world_br, i.world_br);
         }
+
+        std::cout << "world bounds " << world_tl << " bl " << world_br << std::endl;
 
         for(grid_topology& i : layout)
         {
@@ -474,9 +479,6 @@ struct cpu_mesh_manager
 
     void init(cl::context& ctx, cl::command_queue& cqueue)
     {
-        vec3f world_tl;
-        vec3f world_br;
-
         centre = new cpu_mesh(ctx, cqueue, centre_layout.world_pos, centre_layout.grid_dim, world_tl, world_br, sett);
 
         centre->init(cqueue, central_u);

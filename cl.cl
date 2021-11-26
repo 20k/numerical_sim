@@ -407,6 +407,47 @@ void calculate_momentum_constraint(__global ushort4* points, int point_count,
 
 float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float4 mesh_position, float4 world_tl, float4 world_br)
 {
+    int resolution_multiplier = 1;
+
+    float ellipse_width = world_br.x - world_tl.x;
+    float ellipse_height = world_br.y - world_tl.y;
+
+    ///now, ideally you'd use the distance to the edge of the ellipse
+    ///but turns out that's hard to solve
+
+    float circle_radius = min(ellipse_width, ellipse_height) / 2.f;
+
+    if(x == 128 && y == 128 && z == 128)
+        printf("Circle rad %f\n", circle_radius);
+
+    ///make slightly janky adjustment
+
+    circle_radius -= (4.f * scale * resolution_multiplier);
+
+    float inner_radius = circle_radius - (48 * scale * resolution_multiplier);
+
+    float3 world_position = transform_position(x, y, z, mesh_position, dim, scale);
+
+    float r = fast_length(world_position);
+
+    float sponge_r0 = inner_radius;
+    float sponge_r1 = circle_radius;
+
+    if(r <= sponge_r0)
+        return 0.f;
+
+    if(r >= sponge_r1)
+        return 1.f;
+
+    r = clamp(r, sponge_r0, sponge_r1);
+
+    //return (r - sponge_r0) / (sponge_r1 - sponge_r0);
+
+    float sigma = (sponge_r1 - sponge_r0) / 2;
+
+    return native_exp(-pow((r - sponge_r1) / sigma, 2));
+
+    #if 0
     float edge_half = scale * ((dim.x - 2)/2.f);
 
     //float sponge_r0 = scale * ((dim.x/2) - 48);
@@ -437,6 +478,7 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float4
 
     float sigma = (sponge_r1 - sponge_r0) / 2;
     return native_exp(-pow((r - sponge_r1) / sigma, 2));
+    #endif // 0
 }
 
 __kernel
