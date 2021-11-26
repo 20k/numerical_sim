@@ -417,11 +417,7 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float4
 
     float circle_radius = min(ellipse_width, ellipse_height) / 2.f;
 
-    if(x == 128 && y == 128 && z == 128)
-        printf("Circle rad %f\n", circle_radius);
-
     ///make slightly janky adjustment
-
     circle_radius -= (4.f * scale * resolution_multiplier);
 
     float inner_radius = circle_radius - (48 * scale * resolution_multiplier);
