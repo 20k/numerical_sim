@@ -447,7 +447,7 @@ struct cpu_mesh_manager
         sett = _sett;
 
         cpu_topology t1;
-        t1.world_dim = voxel_offset_to_world_offset({250, 280, 280}, base_scale, 1.f);
+        t1.world_dim = voxel_offset_to_world_offset({220, 280, 280}, base_scale, 1.f);
         t1.world_pos = {0,0,0};
         t1.resolution_multiplier = 1;
 
@@ -456,7 +456,12 @@ struct cpu_mesh_manager
         t2.world_pos = {-t1.world_dim.x()/2.f - t2.world_dim.x()/2.f, 0.f, 0.f};
         t2.resolution_multiplier = 1;
 
-        layout = generate_boundary_topology({t1, t2}, base_scale);
+        cpu_topology t3;
+        t3.world_dim = voxel_offset_to_world_offset({30, 280, 280}, base_scale, 1.f);
+        t3.world_pos = {t1.world_dim.x()/2.f + t3.world_dim.x()/2.f, 0.f, 0.f};
+        t3.resolution_multiplier = 1;
+
+        layout = generate_boundary_topology({t1, t2, t3}, base_scale);
         centre_layout = layout[0];
 
         world_tl = {INT_MAX,INT_MAX,INT_MAX};
