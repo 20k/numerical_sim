@@ -2,6 +2,7 @@
 #include <geodesic/dual_value.hpp>
 #include "legendre_nodes.h"
 #include "legendre_weights.h"
+#include "mesh_manager.hpp"
 
 int64_t factorial(int i)
 {
@@ -345,11 +346,8 @@ void gravitational_wave_manager::callback(cl_event event, cl_int event_command_s
     delete ((callback_data*)user_data);
 }
 
-void gravitational_wave_manager::issue_extraction(cl::command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<cl::buffer>& thin_intermediates, float scale, vec3i size, vec3f mesh_position)
+void gravitational_wave_manager::issue_extraction(cl::command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<cl::buffer>& thin_intermediates, const gpu_mesh& mesh)
 {
-    cl_float4 clmeshpos = {mesh_position.x(), mesh_position.y(), mesh_position.z()};
-    cl_int4 clsize = {size.x(), size.y(), size.z(), 0};
-
     cl::args waveform_args;
 
     cl_int point_count = raw_harmonic_points.size();
@@ -370,9 +368,7 @@ void gravitational_wave_manager::issue_extraction(cl::command_queue& cqueue, std
     cl::buffer& next = wave_buffers[(next_buffer % 3)];
     next_buffer++;
 
-    waveform_args.push_back(scale);
-    waveform_args.push_back(clsize);
-    waveform_args.push_back(clmeshpos);
+    waveform_args.push_back(mesh);
     waveform_args.push_back(next);
 
     cl::event kernel_event = cqueue.exec("extract_waveform", waveform_args, {point_count}, {128});

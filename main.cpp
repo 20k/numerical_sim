@@ -4287,6 +4287,8 @@ int main()
                 if(idx != 0)
                     return;
 
+                gpu_mesh gmesh = mesh->get_gpu_mesh();
+
                 vec3f full_world_tl = mesh->full_world_tl;
                 vec3f full_world_br = mesh->full_world_br;
 
@@ -4296,7 +4298,7 @@ int main()
                 cl_float4 clworldbr = {full_world_br.x(), full_world_br.y(), full_world_br.z(), 0};
 
                 {
-                    wave_manager.issue_extraction(clctx.cqueue, buffers, thin_buffers, scale, mesh->dim, mesh->centre);
+                    wave_manager.issue_extraction(clctx.cqueue, buffers, thin_buffers, gmesh);
 
                     std::vector<float> values = wave_manager.process();
 
@@ -4320,10 +4322,7 @@ int main()
                         render.push_back(i);
                     }
 
-                    //render.push_back(bssnok_datas[which_data]);
-                    render.push_back(scale);
-                    render.push_back(clsize);
-                    render.push_back(clmeshpos);
+                    render.push_back(gmesh);
                     render.push_back(clworldtl);
                     render.push_back(clworldbr);
                     render.push_back(rtex[which_texture]);

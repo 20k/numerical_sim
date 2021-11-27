@@ -24,12 +24,12 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size)
 }
 
 inline
-std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size, vec3f mesh_position, vec3f full_world_tl, vec3f full_world_br)
+std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_queue& cqueue, const gpu_mesh& m, vec3f full_world_tl, vec3f full_world_br)
 {
     cl_float4 clworldtl = {full_world_tl.x(), full_world_tl.y(), full_world_tl.z(), 0};
     cl_float4 clworldbr = {full_world_br.x(), full_world_br.y(), full_world_br.z(), 0};
-    cl_float4 clmeshpos = {mesh_position.x(), mesh_position.y(), mesh_position.z(), 0};
-    cl_int4 clsize = {size.x(), size.y(), size.z(), 0};
+
+    vec3i size = {m.dim.s[0], m.dim.s[1], m.dim.s[2]};
 
     cl::buffer points(ctx);
     cl::buffer real_count(ctx);
@@ -38,17 +38,14 @@ std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_
     real_count.alloc(sizeof(cl_int));
     real_count.set_to_zero(cqueue);
 
-
     cl::args args;
     args.push_back(points);
     args.push_back(real_count);
-    args.push_back(scale);
-    args.push_back(clsize);
-    args.push_back(clmeshpos);
+    args.push_back(m);
     args.push_back(clworldtl);
     args.push_back(clworldbr);
 
-    cqueue.exec("generate_sponge_points", args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
+    cqueue.exec("generate_sponge_points", args, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
     std::vector<cl_ushort4> cpu_points = points.read<cl_ushort4>(cqueue);
 
@@ -76,12 +73,12 @@ std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_
 
 
 inline
-evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size, vec3f mesh_position, vec3f full_world_tl, vec3f full_world_br)
+evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& cqueue, const gpu_mesh& m, vec3f full_world_tl, vec3f full_world_br)
 {
     cl_float4 clworldtl = {full_world_tl.x(), full_world_tl.y(), full_world_tl.z(), 0};
     cl_float4 clworldbr = {full_world_br.x(), full_world_br.y(), full_world_br.z(), 0};
-    cl_int4 clsize = {size.x(), size.y(), size.z(), 0};
-    cl_float4 clmeshpos = {mesh_position.x(), mesh_position.y(), mesh_position.z(), 0};
+
+    vec3i size = {m.dim.s[0], m.dim.s[1], m.dim.s[2]};
 
     cl::buffer points_1(ctx);
     cl::buffer count_1(ctx);
@@ -103,13 +100,11 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
     args.push_back(count_1);
     args.push_back(points_2);
     args.push_back(count_2);
-    args.push_back(scale);
-    args.push_back(clsize);
-    args.push_back(clmeshpos);
+    args.push_back(m);
     args.push_back(clworldtl);
     args.push_back(clworldbr);
 
-    cqueue.exec("generate_evolution_points", args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
+    cqueue.exec("generate_evolution_points", args, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
     std::vector<cl_ushort4> cpu_points_1 = points_1.read<cl_ushort4>(cqueue);
     std::vector<cl_ushort4> cpu_points_2 = points_2.read<cl_ushort4>(cqueue);
@@ -201,8 +196,10 @@ cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3f _centre, v
 
     scale = calculate_scale(get_c_at_max(), dim);
 
-    points_set = generate_evolution_points(ctx, cqueue, scale, dim, centre, full_world_tl, full_world_br);
-    std::tie(sponge_positions, sponge_positions_count) = generate_sponge_points(ctx, cqueue, scale, dim, centre, full_world_tl, full_world_br);
+    gpu_mesh mesh = get_gpu_mesh();
+
+    points_set = generate_evolution_points(ctx, cqueue, mesh, full_world_tl, full_world_br);
+    std::tie(sponge_positions, sponge_positions_count) = generate_sponge_points(ctx, cqueue, mesh, full_world_tl, full_world_br);
 
     for(auto& i : momentum_constraint)
     {
@@ -243,8 +240,7 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& in_u_arg)
 {
     u_arg = in_u_arg;
 
-    cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
-    cl_float4 clmeshpos = {centre.x(), centre.y(), centre.z()};
+    gpu_mesh m = get_gpu_mesh();
 
     {
         cl::args init;
@@ -255,9 +251,7 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& in_u_arg)
         }
 
         init.push_back(u_arg);
-        init.push_back(scale);
-        init.push_back(clsize);
-        init.push_back(clmeshpos);
+        init.push_back(m);
 
         cqueue.exec("calculate_initial_conditions", init, {dim.x(), dim.y(), dim.z()}, {8, 8, 1});
     }
@@ -280,6 +274,8 @@ cl::buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::command_queue& cqueue
 ///returns buffers and intermediates
 std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(cl::context& ctx, cl::command_queue& cqueue, float timestep, thin_intermediates_pool& pool)
 {
+    gpu_mesh mesh = get_gpu_mesh();
+
     auto buffer_to_index = [&](const std::string& name)
     {
         for(int idx = 0; idx < buffer_set::buffer_count; idx++)
@@ -319,8 +315,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 thin.push_back(out1);
                 thin.push_back(out2);
                 thin.push_back(out3);
-                thin.push_back(scale);
-                thin.push_back(clsize);
+                thin.push_back(mesh);
 
                 cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.first_count}, {128});
             };
@@ -363,8 +358,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 momentum_args.push_back(i);
             }
 
-            momentum_args.push_back(scale);
-            momentum_args.push_back(clsize);
+            momentum_args.push_back(mesh);
 
             cqueue.exec("calculate_momentum_constraint", momentum_args, {points_set.first_count}, {128});
         }
@@ -431,8 +425,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             constraints.push_back(i);
         }
 
-        constraints.push_back(scale);
-        constraints.push_back(clsize);
+        constraints.push_back(mesh);
 
         cqueue.exec("enforce_algebraic_constraints", constraints, {points_set.second_count}, {128});
     };
@@ -691,9 +684,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
         //cleaner.push_back(bssnok_datas[which_data]);
         cleaner.push_back(u_arg);
-        cleaner.push_back(scale);
-        cleaner.push_back(clsize);
-        cleaner.push_back(clmeshpos);
+        cleaner.push_back(mesh);
         cleaner.push_back(clworldtl);
         cleaner.push_back(clworldbr);
         cleaner.push_back(timestep);

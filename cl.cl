@@ -9,12 +9,12 @@
 #include "transform_position.cl"
 #include "common.cl"
 
-bool invalid_first(int ix, int iy, int iz, int4 dim)
+bool invalid_first(int ix, int iy, int iz, int3 dim)
 {
     return ix < BORDER_WIDTH || iy < BORDER_WIDTH || iz < BORDER_WIDTH || ix >= dim.x - BORDER_WIDTH || iy >= dim.y - BORDER_WIDTH || iz >= dim.z - BORDER_WIDTH;
 }
 
-bool invalid_second(int ix, int iy, int iz, int4 dim)
+bool invalid_second(int ix, int iy, int iz, int3 dim)
 {
     return ix < BORDER_WIDTH * 2 || iy < BORDER_WIDTH * 2 || iz < BORDER_WIDTH * 2 || ix >= dim.x - BORDER_WIDTH * 2 || iy >= dim.y - BORDER_WIDTH * 2 || iz >= dim.z - BORDER_WIDTH * 2;
 }
@@ -35,7 +35,7 @@ void trapezoidal_accumulate(__global ushort4* points, int point_count, int4 dim,
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
+    if(invalid_second(ix, iy, iz, dim.xyz))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -62,7 +62,7 @@ void accumulate_rk4(__global ushort4* points, int point_count, int4 dim, __globa
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
+    if(invalid_second(ix, iy, iz, dim.xyz))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -98,7 +98,7 @@ void copy_valid(__global ushort4* points, int point_count, __global float* in, _
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
+    if(invalid_second(ix, iy, iz, dim.xyz))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -123,7 +123,7 @@ void calculate_rk4_val(__global ushort4* points, int point_count, int4 dim, __gl
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
+    if(invalid_second(ix, iy, iz, dim.xyz))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -139,18 +139,21 @@ void buffer_write(__global float* buffer, int3 position, int4 dim, float value)
     buffer[position.z * dim.x * dim.y + position.y * dim.x + position.x] = value;
 }
 
-float3 voxel_to_world(float3 in, int4 dim, float4 mesh_position, float scale)
+float3 voxel_to_world(float3 in, struct mesh* m)
 {
-    return transform_position(in.x, in.y, in.z, mesh_position, dim, scale);
+    return transform_position(in.x, in.y, in.z, m);
 }
 
-float3 world_to_voxel(float3 world_pos, int4 dim, float4 mesh_position, float scale)
+float3 world_to_voxel(float3 world_pos, struct mesh* m)
 {
+    int3 dim = m->dim.xyz;
+
     float3 centre = {(dim.x - 1)/2, (dim.y - 1)/2, (dim.z - 1)/2};
 
-    float resolution_multiplier = 1;
+    float resolution_multiplier = m->resolution;
+    float scale = m->scale;
 
-    return ((world_pos - mesh_position.xyz) / (scale * resolution_multiplier)) + centre;
+    return ((world_pos - m->position.xyz) / (scale * resolution_multiplier)) + centre;
 }
 
 /*float get_distance(int x1, int y1, int z1, int x2, int y2, int z2, int4 dim, float scale)
@@ -175,16 +178,18 @@ float3 world_to_voxel(float3 world_pos, int4 dim, float4 mesh_position, float sc
 __kernel
 void calculate_initial_conditions(STANDARD_ARGS(),
                                   __global float* u_value,
-                                  float scale, int4 dim, float4 mesh_position)
+                                  struct mesh m)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
     int iz = get_global_id(2);
 
+    int3 dim = m.dim.xyz;
+
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    float3 offset = transform_position(ix, iy, iz, mesh_position, dim, scale);
+    float3 offset = transform_position(ix, iy, iz, &m);
 
     float ox = offset.x;
     float oy = offset.y;
@@ -256,12 +261,15 @@ void calculate_initial_conditions(STANDARD_ARGS(),
 __kernel
 void enforce_algebraic_constraints(__global ushort4* points, int point_count,
                                    STANDARD_ARGS(),
-                                   float scale, int4 dim)
+                                   struct mesh m)
 {
     int idx = get_global_id(0);
 
     if(idx >= point_count)
         return;
+
+    int3 dim = m.dim.xyz;
+    float scale = m.scale;
 
     int ix = points[idx].x;
     int iy = points[idx].y;
@@ -310,12 +318,15 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
 __kernel
 void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
                                       __global float* buffer, __global DERIV_PRECISION* buffer_out_1, __global DERIV_PRECISION* buffer_out_2, __global DERIV_PRECISION* buffer_out_3,
-                                      float scale, int4 dim)
+                                      struct mesh m)
 {
     int local_idx = get_global_id(0);
 
     if(local_idx >= point_count)
         return;
+
+    float scale = m.scale;
+    int3 dim = m.dim.xyz;
 
     int ix = points[local_idx].x;
     int iy = points[local_idx].y;
@@ -376,12 +387,15 @@ __kernel
 void calculate_momentum_constraint(__global ushort4* points, int point_count,
                                    STANDARD_ARGS(),
                                    __global float* momentum0, __global float* momentum1, __global float* momentum2,
-                                   float scale, int4 dim)
+                                   struct mesh m)
 {
     int local_idx = get_global_id(0);
 
     if(local_idx >= point_count)
         return;
+
+    float scale = m.scale;
+    int3 dim = m.dim.xyz;
 
     int ix = points[local_idx].x;
     int iy = points[local_idx].y;
@@ -389,6 +403,7 @@ void calculate_momentum_constraint(__global ushort4* points, int point_count,
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
+
     #ifndef SYMMETRY_BOUNDARY
     if(invalid_second(ix, iy, iz, dim))
         return;
@@ -405,9 +420,11 @@ void calculate_momentum_constraint(__global ushort4* points, int point_count,
     momentum2[IDX(ix,iy,iz)] = m3;
 }
 
-float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float4 mesh_position, float4 world_tl, float4 world_br)
+float sponge_damp_coeff(float x, float y, float z, struct mesh* m, float4 world_tl, float4 world_br)
 {
-    int resolution_multiplier = 1;
+    int resolution_multiplier = m->resolution;
+    float scale = m->scale;
+    int3 dim = m->dim.xyz;
 
     float ellipse_width = world_br.x - world_tl.x;
     float ellipse_height = world_br.y - world_tl.y;
@@ -422,7 +439,7 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float4
 
     float inner_radius = circle_radius - (48 * scale * resolution_multiplier);
 
-    float3 world_position = transform_position(x, y, z, mesh_position, dim, scale);
+    float3 world_position = transform_position(x, y, z, m);
 
     float r = fast_length(world_position);
 
@@ -478,16 +495,18 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim, float4
 }
 
 __kernel
-void generate_sponge_points(__global ushort4* points, __global int* point_count, float scale, int4 dim, float4 mesh_position, float4 world_tl, float4 world_br)
+void generate_sponge_points(__global ushort4* points, __global int* point_count, struct mesh m, float4 world_tl, float4 world_br)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
     int iz = get_global_id(2);
 
+    int3 dim = m.dim.xyz;
+
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, mesh_position, world_tl, world_br);
+    float sponge_factor = sponge_damp_coeff(ix, iy, iz, &m, world_tl, world_br);
 
     if(sponge_factor <= 0)
         return;
@@ -500,7 +519,7 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
         {
             for(int k=-1; k <= 1; k++)
             {
-                if(sponge_damp_coeff(ix + i, iy + j, iz + k, scale, dim, mesh_position, world_tl, world_br) < 1)
+                if(sponge_damp_coeff(ix + i, iy + j, iz + k, &m, world_tl, world_br) < 1)
                 {
                     all_high = false;
                 }
@@ -518,10 +537,10 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
 
 ///could try this function also where it only calculates derivatives for dynamic fields
 ///aka do not calculate derivatives across the maximal sponge point
-bool valid_first_derivative_point(int3 pos, float scale, int4 dim, float4 mesh_position, float4 world_tl, float4 world_br)
+bool valid_first_derivative_point(int3 pos, struct mesh* m, float4 world_tl, float4 world_br)
 {
     ///one of the points would lie outside the boundary
-    if(invalid_first(pos.x, pos.y, pos.z, dim))
+    if(invalid_first(pos.x, pos.y, pos.z, m->dim.xyz))
         return false;
 
     int width = BORDER_WIDTH;
@@ -534,7 +553,7 @@ bool valid_first_derivative_point(int3 pos, float scale, int4 dim, float4 mesh_p
             {
                 int3 combo = (int3)(x, y, z) + pos;
 
-                float sponge_local = sponge_damp_coeff(combo.x, combo.y, combo.z, scale, dim, mesh_position, world_tl, world_br);
+                float sponge_local = sponge_damp_coeff(combo.x, combo.y, combo.z, m, world_tl, world_br);
 
                 ///one of the points is non sponged, so we should calculate first derivatives
                 if(sponge_local < 1)
@@ -548,10 +567,10 @@ bool valid_first_derivative_point(int3 pos, float scale, int4 dim, float4 mesh_p
 }
 
 ///if any point is not a valid first derivative point, we can't evolve this correctly
-bool valid_second_derivative_point(int3 pos, float scale, int4 dim, float4 mesh_position, float4 world_tl, float4 world_br)
+bool valid_second_derivative_point(int3 pos, struct mesh* m, float4 world_tl, float4 world_br)
 {
     ///out of boundaries for the below loop
-    if(invalid_first(pos.x, pos.y, pos.z, dim))
+    if(invalid_first(pos.x, pos.y, pos.z, m->dim.xyz))
         return false;
 
     int width = BORDER_WIDTH;
@@ -565,7 +584,7 @@ bool valid_second_derivative_point(int3 pos, float scale, int4 dim, float4 mesh_
                 int3 combo = (int3)(x, y, z) + pos;
 
                 ///one of the underlying first derivatives would be invalid
-                if(!valid_first_derivative_point(combo, scale, dim, mesh_position, world_tl, world_br))
+                if(!valid_first_derivative_point(combo, m, world_tl, world_br))
                     return false;
             }
         }
@@ -577,25 +596,27 @@ bool valid_second_derivative_point(int3 pos, float scale, int4 dim, float4 mesh_
 __kernel
 void generate_evolution_points(__global ushort4* points_1st, __global int* point_count_1st,
                                __global ushort4* points_2nd, __global int* point_count_2nd,
-                               float scale, int4 dim, float4 mesh_position, float4 world_tl, float4 world_br)
+                               struct mesh m, float4 world_tl, float4 world_br)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
     int iz = get_global_id(2);
+
+    int3 dim = m.dim.xyz;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
     int3 pos = (int3)(ix, iy, iz);
 
-    if(valid_first_derivative_point(pos, scale, dim, mesh_position, world_tl, world_br))
+    if(valid_first_derivative_point(pos, &m, world_tl, world_br))
     {
         int idx = atomic_inc(point_count_1st);
 
         points_1st[idx].xyz = (ushort3)(ix, iy, iz);
     }
 
-    if(valid_second_derivative_point(pos, scale, dim, mesh_position, world_tl, world_br))
+    if(valid_second_derivative_point(pos, &m, world_tl, world_br))
     {
         int idx = atomic_inc(point_count_2nd);
 
@@ -610,13 +631,16 @@ __kernel
 void clean_data(__global ushort4* points, int point_count,
                 STANDARD_ARGS(),
                 __global float* u_value,
-                float scale, int4 dim, float4 mesh_position,
+                struct mesh m,
                 float4 world_tl, float4 world_br, float timestep)
 {
     int idx = get_global_id(0);
 
     if(idx >= point_count)
         return;
+
+    int3 dim = m.dim.xyz;
+    float scale = m.scale;
 
     int ix = points[idx].x;
     int iy = points[idx].y;
@@ -629,12 +653,12 @@ void clean_data(__global ushort4* points, int point_count,
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, mesh_position, world_tl, world_br);
+    float sponge_factor = sponge_damp_coeff(ix, iy, iz, &m, world_tl, world_br);
 
     if(sponge_factor <= 0)
         return;
 
-    float3 offset = transform_position(ix, iy, iz, mesh_position, dim, scale);
+    float3 offset = transform_position(ix, iy, iz, &m);
 
     float ox = offset.x;
     float oy = offset.y;
@@ -773,7 +797,7 @@ void evolve_cY(__global ushort4* points, int point_count,
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
+    if(invalid_second(ix, iy, iz, dim.xyz))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -828,7 +852,7 @@ void evolve_cA(__global ushort4* points, int point_count,
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
+    if(invalid_second(ix, iy, iz, dim.xyz))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -885,7 +909,7 @@ void evolve_cGi(__global ushort4* points, int point_count,
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
+    if(invalid_second(ix, iy, iz, dim.xyz))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -952,7 +976,7 @@ void evolve_K(__global ushort4* points, int point_count,
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
+    if(invalid_second(ix, iy, iz, dim.xyz))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -993,7 +1017,7 @@ void evolve_X(__global ushort4* points, int point_count,
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
+    if(invalid_second(ix, iy, iz, dim.xyz))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -1033,7 +1057,7 @@ void evolve_gA(__global ushort4* points, int point_count,
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
+    if(invalid_second(ix, iy, iz, dim.xyz))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -1074,7 +1098,7 @@ void evolve_gB(__global ushort4* points, int point_count,
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
+    if(invalid_second(ix, iy, iz, dim.xyz))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -1114,7 +1138,7 @@ void dissipate_single(__global ushort4* points, int point_count,
         return;
 
     #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
+    if(invalid_second(ix, iy, iz, dim.xyz))
         return;
     #endif // SYMMETRY_BOUNDARY
 
@@ -1157,14 +1181,17 @@ void render(STANDARD_ARGS(),
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float4 mesh_position, float4 world_tl, float4 world_br, __write_only image2d_t screen)
+            struct mesh m, float4 world_tl, float4 world_br, __write_only image2d_t screen)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
     //int iz = dim.z/2;
     //int iy = (dim.y - 1)/2;
     //int iz = get_global_id(1);
-    int iz = (dim.z - 1)/2;
+    int iz = (m.dim.z - 1)/2;
+
+    int3 dim = m.dim.xyz;
+    float scale = m.scale;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
@@ -1172,7 +1199,7 @@ void render(STANDARD_ARGS(),
     if(ix <= 4 || ix >= dim.x - 5 || iy <= 4 || iy >= dim.y - 5 || iz <= 4 || iz >= dim.z - 5)
         return;
 
-    float3 offset = transform_position(ix, iy, iz, mesh_position, dim, scale);
+    float3 offset = transform_position(ix, iy, iz, &m);
 
     int index_table[3][3] = {{0, 1, 2},
                              {1, 3, 4},
@@ -1183,7 +1210,7 @@ void render(STANDARD_ARGS(),
     //for(int z = 20; z < dim.z-20; z++)
 
     {
-        float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim, mesh_position, world_tl, world_br);
+        float sponge_factor = sponge_damp_coeff(ix, iy, iz, &m, world_tl, world_br);
 
         if(sponge_factor > 0)
         {
@@ -1253,18 +1280,21 @@ void extract_waveform(__global ushort4* points, int point_count,
                       __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
                       __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
                       __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-                      float scale, int4 dim, float4 mesh_position, __global float2* waveform_out)
+                      struct mesh m, __global float2* waveform_out)
 {
     int local_idx = get_global_id(0);
 
     if(local_idx >= point_count)
         return;
 
+    float scale = m.scale;
+    int3 dim = m.dim.xyz;
+
     int ix = points[local_idx].x;
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
 
-    float3 offset = transform_position(ix, iy, iz, mesh_position, dim, scale);
+    float3 offset = transform_position(ix, iy, iz, &m);
 
     float TEMPORARIES4;
 
@@ -1318,6 +1348,7 @@ void init_rays(__global float* cY0, __global float* cY1, __global float* cY2, __
     int iz = fipos.z;
 }*/
 
+#if 0
 struct lightray_simple
 {
     float lp1;
@@ -1905,3 +1936,4 @@ void trace_metric(STANDARD_ARGS(),
 
     write_imagef(screen, (int2)(x, y), (float4)(max_scalar, max_scalar, max_scalar, 1));
 }
+#endif // 0
