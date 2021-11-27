@@ -1181,7 +1181,7 @@ void render(STANDARD_ARGS(),
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            struct mesh m, float4 world_tl, float4 world_br, __write_only image2d_t screen)
+            struct mesh m, float4 world_tl, float4 world_br, __write_only image2d_t screen, int idx)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -1198,6 +1198,11 @@ void render(STANDARD_ARGS(),
 
     if(ix <= 4 || ix >= dim.x - 5 || iy <= 4 || iy >= dim.y - 5 || iz <= 4 || iz >= dim.z - 5)
         return;
+
+    int rx = get_global_id(0);
+    int ry = get_global_id(1);
+
+    rx = rx + idx * 300;
 
     float3 offset = transform_position(ix, iy, iz, &m);
 
@@ -1216,7 +1221,7 @@ void render(STANDARD_ARGS(),
         {
             float3 sponge_col = {sponge_factor, 0, 0};
 
-            write_imagef(screen, (int2){get_global_id(0), get_global_id(1)}, (float4)(srgb_to_lin(sponge_col), 1));
+            write_imagef(screen, (int2){rx, ry}, (float4)(srgb_to_lin(sponge_col), 1));
             return;
         }
 
@@ -1268,7 +1273,7 @@ void render(STANDARD_ARGS(),
 
     float3 lin_col = srgb_to_lin(col);
 
-    write_imagef(screen, (int2){get_global_id(0), get_global_id(1)}, (float4)(lin_col.xyz, 1));
+    write_imagef(screen, (int2){rx, ry}, (float4)(lin_col.xyz, 1));
     //write_imagef(screen, (int2){ix, iy}, (float4){max_sca1lar, max_scalar, max_scalar, 1});
 }
 

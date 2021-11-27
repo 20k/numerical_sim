@@ -4284,9 +4284,6 @@ int main()
 
             auto callback = [&](cpu_mesh* mesh, auto buffers, auto thin_buffers, int idx)
             {
-                if(idx != 0)
-                    return;
-
                 gpu_mesh gmesh = mesh->get_gpu_mesh();
 
                 vec3f full_world_tl = mesh->full_world_tl;
@@ -4297,6 +4294,7 @@ int main()
                 cl_float4 clworldtl = {full_world_tl.x(), full_world_tl.y(), full_world_tl.z(), 0};
                 cl_float4 clworldbr = {full_world_br.x(), full_world_br.y(), full_world_br.z(), 0};
 
+                if(idx == 0)
                 {
                     wave_manager.issue_extraction(clctx.cqueue, buffers, thin_buffers, gmesh);
 
@@ -4326,8 +4324,9 @@ int main()
                     render.push_back(clworldtl);
                     render.push_back(clworldbr);
                     render.push_back(rtex[which_texture]);
+                    render.push_back(idx);
 
-                    clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
+                    clctx.cqueue.exec("render", render, {mesh->dim.x(), mesh->dim.y()}, {16, 16});
                 }
             };
 
