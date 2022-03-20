@@ -61,67 +61,12 @@ void upscale_u(__global float* u_in, __global float* u_out, int4 in_dim, int4 ou
     if(ix >= out_dim.x || iy >= out_dim.y || iz >= out_dim.z)
         return;
 
-        #if 0
-    int3 upper_pos = (int3)(ix, iy, iz);
-
-    /*float3 normed = upper_pos / (float3)(out_dim.x - 1, out_dim.y - 1, out_dim.z - 1);
-
-    float3 lower_pos = normed * (float3)(in_dim.x - 1, in_dim.y - 1, in_dim.z - 1);
-
-    float3 lower_rounded = round(lower_pos);*/
-
-    int3 upper_centre = (out_dim.xyz - 1) / 2;
-
-    int3 upper_offset = upper_pos - upper_centre;
-
-    float scale = (out_dim.x - 1) / (in_dim.x - 1);
-
-    float3 lower_offset = convert_float3(upper_offset) / scale;
-
-    ///symmetric, rounds away from 0
-    float3 lower_pos = round_away_from_zero_vec(lower_offset + 0.5f) + convert_float3((in_dim.xyz - 1) / 2);
-    #endif // 0
-
     float3 lower_pos = get_scaled_coordinate_vec((int3){ix, iy, iz}, out_dim.xyz, in_dim.xyz);
 
-    //float val = buffer_read_linear(u_in, lower_pos, in_dim);
+    float val = buffer_read_linear(u_in, lower_pos, in_dim);
 
-    int3 half_lower = (in_dim.xyz - 1) / 2;
-
-    float val = buffer_read_nearest(u_in, convert_int3(round_away_from_vec(lower_pos, convert_float3(half_lower))), in_dim);
-
-    /*if((ix == 0 && iy == 0 && iz == 0) || (ix == out_dim.x-1 && iy == out_dim.y-1 && iz == out_dim.z-1))
-    {
-        printf("Ppos %i %i %i %f %f %f\n", ix, iy, iz, lower_pos.x, lower_pos.y, lower_pos.z);
-    }*/
-
-    int3 debug_1 = {88, 104, 1};
-    int3 debug_2 = {88, 104, 139};
-
-    ///24 4 1 vs 24 4 69
-    /*if(ix == debug_1.x && iy == debug_1.y && iz == debug_1.z)
-    {
-        printf("Lower dim %i\n", in_dim.z);
-
-        printf("P1 offset %i %i %i\n", upper_offset.x, upper_offset.y, upper_offset.z);
-
-        printf("P1 low %f %f %f\n", lower_offset.x, lower_offset.y, lower_offset.z);
-
-        int3 as_int = convert_int3(lower_pos);
-
-        printf("p1 %f from %f %f %f %i %i %i\n", val, lower_pos.x, lower_pos.y, lower_pos.z, as_int.x, as_int.y, as_int.z);
-    }
-
-    if(ix == debug_2.x && iy == debug_2.y && iz == debug_2.z)
-    {
-        int3 as_int = convert_int3(lower_pos);
-
-        printf("P2 offset %i %i %i\n", upper_offset.x, upper_offset.y, upper_offset.z);
-
-        printf("P2 low %f %f %f\n", lower_offset.x, lower_offset.y, lower_offset.z);
-
-        printf("p2 %f from %f %f %f %i %i %i\n", val, lower_pos.x, lower_pos.y, lower_pos.z, as_int.x, as_int.y, as_int.z);
-    }*/
+    //int3 half_lower = (in_dim.xyz - 1) / 2;
+    //float val = buffer_read_nearest(u_in, convert_int3(round_away_from_vec(lower_pos, convert_float3(half_lower))), in_dim);
 
     if(ix == 0 || iy == 0 || iz == 0 || ix == out_dim.x - 1 || iy == out_dim.y - 1 || iz == out_dim.z - 1)
         val = 1;

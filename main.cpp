@@ -3879,6 +3879,7 @@ struct lightray
 
 void check_symmetry(const std::string& debug_name, cl::command_queue& cqueue, cl::buffer& arg, vec<4, cl_int> size)
 {
+    #ifdef CHECK_SYMMETRY
     std::cout << debug_name << std::endl;
 
     cl::args check;
@@ -3888,6 +3889,7 @@ void check_symmetry(const std::string& debug_name, cl::command_queue& cqueue, cl
     cqueue.exec("check_z_symmetry", check, {size.x(), size.y(), size.z()}, {8, 8, 1});
 
     cqueue.block();
+    #endif // CHECK_SYMMETRY
 }
 
 cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_int> base_size, float c_at_max, int scale_factor, std::optional<cl::buffer> base)
