@@ -72,6 +72,8 @@ https://arxiv.org/pdf/1410.8607.pdf - haven't read it yet but this promises ever
 https://authors.library.caltech.edu/8284/1/RINcqg07.pdf - this gives a conflicting definition of kreiss oliger under B.4/B.5
 https://arxiv.org/pdf/1503.03436.pdf - seems to have a usable radiative boundary condition
 https://arxiv.org/pdf/gr-qc/0212039.pdf - apparent horizon?
+
+https://iopscience.iop.org/article/10.1088/1361-6633/80/2/026901/ampdf - defines adm mass
 */
 
 ///notes:
@@ -3875,6 +3877,19 @@ struct lightray
     cl_int x, y;
 };
 
+void check_symmetry(const std::string& debug_name, cl::command_queue& cqueue, cl::buffer& arg, vec<4, cl_int> size)
+{
+    std::cout << debug_name << std::endl;
+
+    cl::args check;
+    check.push_back(arg);
+    check.push_back(size);
+
+    cqueue.exec("check_z_symmetry", check, {size.x(), size.y(), size.z()}, {8, 8, 1});
+
+    cqueue.block();
+}
+
 cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_int> base_size, float c_at_max, int scale_factor, std::optional<cl::buffer> base)
 {
     vec<4, cl_int> reduced_clsize = ((base_size - 1) / scale_factor) + 1;
@@ -3926,6 +3941,8 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
         which_reduced = (which_reduced + 1) % 2;
     }
 
+    check_symmetry("post_iterate", cqueue, reduced_u_args[which_reduced], reduced_clsize);
+
     return reduced_u_args[which_reduced];
 }
 
@@ -3933,6 +3950,8 @@ cl::buffer upscale_u(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& so
 {
     vec<4, cl_int> reduced_clsize = ((base_size - 1) / source_scale) + 1;
     vec<4, cl_int> upper_clsize = ((base_size - 1) / upscale_scale) + 1;
+
+    check_symmetry("pre_iterate", cqueue, source_buffer, reduced_clsize);
 
     cl::buffer u_arg(ctx);
     u_arg.alloc(upper_clsize.x() * upper_clsize.y() * upper_clsize.z() * sizeof(cl_float));
@@ -3944,6 +3963,8 @@ cl::buffer upscale_u(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& so
     upscale_args.push_back(upper_clsize);
 
     cqueue.exec("upscale_u", upscale_args, {upper_clsize.x(), upper_clsize.y(), upper_clsize.z()}, {8, 8, 1});
+
+    check_symmetry("post_upscale", cqueue, u_arg, upper_clsize);
 
     return u_arg;
 }
