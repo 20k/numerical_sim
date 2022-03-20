@@ -75,6 +75,34 @@ void upscale_u(__global float* u_in, __global float* u_out, int4 in_dim, int4 ou
     u_out[IDXD(ix, iy, iz, out_dim)] = val;
 }
 
+///extracts an area from a larger volume, where both are the same grid size
+__kernel
+void extract_u_region(__global float* u_in, __global float* u_out, float c_at_max_in, float c_at_max_out, int4 dim)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    ///eg 0.25f
+    float grid_fraction = c_at_max_out / c_at_max_in;
+
+    float3 fpos = (float3)(ix, iy, iz);
+    float3 half_dim = convert_float3(dim.xyz) / 2.f;
+
+    float3 offset = fpos - half_dim;
+
+    float3 scaled_offset = offset * grid_fraction;
+
+    float3 new_pos = scaled_offset + half_dim;
+
+    float val = buffer_read_linear(u_in, new_pos, dim);
+
+    u_out[IDX(ix, iy, iz)] = val;
+}
+
 ///https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan2008/Workbook33/33_2_elliptic_pde.pdf
 ///https://arxiv.org/pdf/1205.5111v1.pdf 78
 ///https://arxiv.org/pdf/gr-qc/0007085.pdf 76?

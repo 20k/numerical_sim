@@ -3907,16 +3907,16 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
 
     int which_reduced = 0;
 
+    if(!base.has_value())
     {
         cl::args initial_u_args;
-        initial_u_args.push_back(reduced_u_args[1]);
+        initial_u_args.push_back(reduced_u_args[0]);
         initial_u_args.push_back(reduced_clsize);
 
         cqueue.exec("setup_u_offset", initial_u_args, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1});
-
-        if(!base.has_value())
-            cl::copy(cqueue, reduced_u_args[1], reduced_u_args[0]);
     }
+
+    cl::copy(cqueue, reduced_u_args[0], reduced_u_args[1]);
 
     int N = 8000;
 
@@ -3947,7 +3947,7 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
 
     return reduced_u_args[which_reduced];
 }
-
+#ifdef OLD_FAST_U
 cl::buffer upscale_u(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& source_buffer, vec<4, cl_int> base_size, int upscale_scale, int source_scale)
 {
     vec<4, cl_int> reduced_clsize = ((base_size - 1) / source_scale) + 1;
@@ -3987,6 +3987,47 @@ cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, fl
         cl::buffer upscaled = upscale_u(ctx, cqueue, reduced, clsize, current_size, up_size);
 
         last = upscaled;
+    }
+
+    return solve_for_u(ctx, cqueue, clsize, c_at_max, 1, last);
+}
+#endif // OLD_FAST_U
+
+cl::buffer extract_u_region(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& in, float c_at_max_in, float c_at_max_out, vec<4, cl_int> clsize)
+{
+    cl::buffer out(ctx);
+    out.alloc(in.alloc_size);
+
+    cl::args upscale_args;
+    upscale_args.push_back(in);
+    upscale_args.push_back(out);
+    upscale_args.push_back(c_at_max_in);
+    upscale_args.push_back(c_at_max_out);
+    upscale_args.push_back(clsize);
+
+    cqueue.exec("extract_u_region", upscale_args, {clsize.x(), clsize.y(), clsize.z()}, {8, 8, 1});
+
+    return out;
+}
+
+cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, float c_at_max)
+{
+    float boundaries[4] = {c_at_max, c_at_max * 4, c_at_max * 8, c_at_max * 16};
+
+    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
+
+    std::optional<cl::buffer> last;
+
+    for(int i=2; i >= 0; i--)
+    {
+        float current_boundary = boundaries[i + 1];
+        float next_boundary = boundaries[i];
+
+        cl::buffer reduced = solve_for_u(ctx, cqueue, clsize, current_boundary, 1, last);
+
+        cl::buffer extracted = extract_u_region(ctx, cqueue, reduced, current_boundary, next_boundary, clsize);
+
+        last = extracted;
     }
 
     return solve_for_u(ctx, cqueue, clsize, c_at_max, 1, last);
