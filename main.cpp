@@ -3879,6 +3879,7 @@ struct lightray
 
 void check_symmetry(const std::string& debug_name, cl::command_queue& cqueue, cl::buffer& arg, vec<4, cl_int> size)
 {
+    #define CHECK_SYMMETRY
     #ifdef CHECK_SYMMETRY
     std::cout << debug_name << std::endl;
 
@@ -4029,6 +4030,8 @@ cl::buffer extract_u_region(cl::context& ctx, cl::command_queue& cqueue, cl::buf
 
     cqueue.exec("extract_u_region", upscale_args, {clsize.x(), clsize.y(), clsize.z()}, {8, 8, 1});
 
+    check_symmetry("extract_u_region", cqueue, out, clsize);
+
     return out;
 }
 
@@ -4089,6 +4092,8 @@ int main()
 
     opencl_context& clctx = *win.clctx;
 
+    std::cout << "EXT " << cl::get_extensions(clctx.ctx) << std::endl;
+
     std::string argument_string = "-I ./ -O3 -cl-std=CL2.0 -cl-uniform-work-group-size -cl-mad-enable -cl-finite-math-only -cl-denorms-are-zero ";
 
     std::string u_argument_string = argument_string;
@@ -4105,19 +4110,29 @@ int main()
 
     equation_context setup_initial;
     setup_initial_conditions(setup_initial, centre, scale);
-
     setup_initial.build(u_argument_string, 8);
 
-    cl::program u_program(clctx.ctx, "u_solver.cl");
-    u_program.build(clctx.ctx, u_argument_string);
+    {
+        cl::program u_program(clctx.ctx, "u_solver.cl");
+        u_program.build(clctx.ctx, u_argument_string);
 
-    clctx.ctx.register_program(u_program);
+        clctx.ctx.register_program(u_program);
+    }
 
     cl::buffer u_arg(clctx.ctx);
 
-    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
+    auto u_thread = [c_at_max, size, &clctx, &u_arg]()
+    {
+        cl::command_queue cqueue(clctx.ctx);
 
-    u_arg = iterate_u(clctx.ctx, clctx.cqueue, size, c_at_max);
+        u_arg = iterate_u(clctx.ctx, cqueue, size, c_at_max);
+
+        cqueue.block();
+    };
+
+    std::thread async_u(u_thread);
+
+    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
     equation_context ctx1;
     get_initial_conditions_eqs(ctx1, centre, scale);
@@ -4214,8 +4229,9 @@ int main()
     cl::program prog(clctx.ctx, "cl.cl");
     prog.build(clctx.ctx, argument_string);
 
-    printf("hi\n");
+    async_u.join();
 
+    ///this is not thread safe
     clctx.ctx.register_program(prog);
 
     texture_settings tsett;

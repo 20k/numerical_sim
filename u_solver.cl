@@ -87,16 +87,29 @@ void extract_u_region(__global float* u_in, __global float* u_out, float c_at_ma
         return;
 
     ///eg 0.25f
-    float grid_fraction = c_at_max_out / c_at_max_in;
+    //float grid_fraction = c_at_max_out / c_at_max_in;
 
-    float3 fpos = (float3)(ix, iy, iz);
-    float3 half_dim = convert_float3(dim.xyz) / 2.f;
+    int inverse_grid_fraction = round(c_at_max_in / c_at_max_out);
 
-    float3 offset = fpos - half_dim;
+    int3 fpos = (int3)(ix, iy, iz);
+    int3 half_dim = (dim.xyz - 1) / 2;
 
-    float3 scaled_offset = offset * grid_fraction;
+    int3 offset = fpos - half_dim;
 
-    float3 new_pos = scaled_offset + half_dim;
+    float3 scaled_offset = convert_float3(offset) / inverse_grid_fraction;
+
+    float3 new_pos = scaled_offset + convert_float3(half_dim);
+
+    ///93 0 0 against 1.00001239776611328125000 93 0 280
+    /// 162 5 1 against 1.00001263618469238281250 162 5 279
+
+    //if((ix == 93 && iy == 0 && iz == 0) || (ix == 93 && iy == 0 && iz == 280))
+    /*if((ix == 162 && iy == 5 && iz == 1) || (ix == 162 && iy == 5 && iz == 279))
+    {
+        printf("WTF %f %f\n", c_at_max_in, c_at_max_out);
+
+        printf("Test %i %f %f %.23f with pos %f %f %.23f\n", inverse_grid_fraction, scaled_offset.x, scaled_offset.y, scaled_offset.z, new_pos.x, new_pos.y, new_pos.z);
+    }*/
 
     float val = buffer_read_linear(u_in, new_pos, dim);
 
