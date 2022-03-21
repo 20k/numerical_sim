@@ -3879,7 +3879,7 @@ struct lightray
 
 void check_symmetry(const std::string& debug_name, cl::command_queue& cqueue, cl::buffer& arg, vec<4, cl_int> size)
 {
-    #define CHECK_SYMMETRY
+    //#define CHECK_SYMMETRY
     #ifdef CHECK_SYMMETRY
     std::cout << debug_name << std::endl;
 
