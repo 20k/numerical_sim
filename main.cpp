@@ -3928,6 +3928,20 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
     N = 200;
     #endif // QUICKSTART
 
+    //cl_int still_going = 0;
+
+    std::array<cl::buffer, 2> still_going{ctx, ctx};
+
+    cl_int one = 1;
+
+    for(int i=0; i < 2; i++)
+    {
+        still_going[i].alloc(sizeof(cl_int));
+        still_going[i].fill(cqueue, one);
+    }
+
+    int which_still_going = 0;
+
     for(int i=0; i < N; i++)
     {
         float local_scale = calculate_scale(c_at_max, reduced_clsize);
@@ -3937,10 +3951,15 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
         iterate_u_args.push_back(reduced_u_args[(which_reduced + 1) % 2]);
         iterate_u_args.push_back(local_scale);
         iterate_u_args.push_back(reduced_clsize);
+        iterate_u_args.push_back(still_going[which_still_going]);
+        iterate_u_args.push_back(still_going[(which_still_going + 1) % 2]);
 
         cqueue.exec("iterative_u_solve", iterate_u_args, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1});
 
+        still_going[which_still_going].set_to_zero(cqueue);
+
         which_reduced = (which_reduced + 1) % 2;
+        which_still_going = (which_still_going + 1) % 2;
     }
 
     check_symmetry("post_iterate", cqueue, reduced_u_args[which_reduced], reduced_clsize);
@@ -4192,6 +4211,8 @@ int main()
     cl::program prog(clctx.ctx, "cl.cl");
     prog.build(clctx.ctx, argument_string);
 
+    printf("hi\n");
+
     clctx.ctx.register_program(prog);
 
     texture_settings tsett;
@@ -4437,7 +4458,7 @@ int main()
         if(steps < 10)
             timestep = 0.0001;
 
-        if(pao && time_elapsed_s > 300)
+        if(pao && time_elapsed_s > 200)
             step = false;
 
         if(step)

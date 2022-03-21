@@ -113,14 +113,22 @@ void extract_u_region(__global float* u_in, __global float* u_out, float c_at_ma
 ///todo: this, but second order, because memory reads are heavily cached
 __kernel
 void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out,
-                       float scale, int4 dim)
+                       float scale, int4 dim, __constant int* last_still_going, __global int* still_going)
 {
+    if(*last_still_going == 0)
+        return;
+
     int ix = get_global_id(0);
     int iy = get_global_id(1);
     int iz = get_global_id(2);
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
+
+    /*if(ix == 0 && iy == 0 && iz == 0)
+    {
+        printf("Val %f\n", u_offset_in[IDX(ix, iy, iz)]);
+    }*/
 
     if(ix < 1 || iy < 1 || iz < 1 || ix >= dim.x - 1 || iy >= dim.y - 1 || iz >= dim.z - 1)
         return;
@@ -250,6 +258,14 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
             printf("Val %.24f %i\n", u0n1, iz);
         }
     }*/
+
+    float err = u0n1 - u;
+
+    if(fabs(err) > 0.000001)
+    {
+        atomic_xchg(still_going, 1);
+        //*still_going = 1;
+    }
 
     u_offset_out[IDX(ix, iy, iz)] = mix(u, u0n1, 0.9f);
     //u_offset_out[IDX(ix, iy, iz)] = u0n1;
