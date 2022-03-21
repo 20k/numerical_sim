@@ -104,12 +104,12 @@ void extract_u_region(__global float* u_in, __global float* u_out, float c_at_ma
     /// 162 5 1 against 1.00001263618469238281250 162 5 279
 
     //if((ix == 93 && iy == 0 && iz == 0) || (ix == 93 && iy == 0 && iz == 280))
-    /*if((ix == 162 && iy == 5 && iz == 1) || (ix == 162 && iy == 5 && iz == 279))
+    if((ix == 162 && iy == 5 && iz == 1) || (ix == 162 && iy == 5 && iz == 279))
     {
         printf("WTF %f %f\n", c_at_max_in, c_at_max_out);
 
         printf("Test %i %f %f %.23f with pos %f %f %.23f\n", inverse_grid_fraction, scaled_offset.x, scaled_offset.y, scaled_offset.z, new_pos.x, new_pos.y, new_pos.z);
-    }*/
+    }
 
     float val = buffer_read_linear(u_in, new_pos, dim);
 

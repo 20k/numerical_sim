@@ -39,7 +39,7 @@ float buffer_read_linear(__global const float* const buffer, float3 position, in
 
     float3 frac = position - floored;
 
-    float c00 = c000 * (1 - frac.x) + c100 * frac.x;
+    /*float c00 = c000 * (1 - frac.x) + c100 * frac.x;
     float c01 = c001 * (1 - frac.x) + c101 * frac.x;
 
     float c10 = c010 * (1 - frac.x) + c110 * frac.x;
@@ -48,5 +48,17 @@ float buffer_read_linear(__global const float* const buffer, float3 position, in
     float c0 = c00 * (1 - frac.y) + c10 * frac.y;
     float c1 = c01 * (1 - frac.y) + c11 * frac.y;
 
-    return c0 * (1 - frac.z) + c1 * frac.z;
+    return c0 * (1 - frac.z) + c1 * frac.z;*/
+
+    ///numerically symmetric across the centre of dim
+    float c00 = c000 - frac.x * (c000 - c100);
+    float c01 = c001 - frac.x * (c001 - c101);
+
+    float c10 = c010 - frac.x * (c010 - c110);
+    float c11 = c011 - frac.x * (c011 - c111);
+
+    float c0 = c00 - frac.y * (c00 - c10);
+    float c1 = c01 - frac.y * (c01 - c11);
+
+    return c0 - frac.z * (c0 - c1);
 }
