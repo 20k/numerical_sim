@@ -1884,6 +1884,9 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     }
 
     //value gA = 1;
+    ///https://arxiv.org/pdf/gr-qc/0206072.pdf (95)
+    //value gA = 1/(pow(bl_conformal + 1, 2));
+
     value gA = 1/(pow(bl_conformal + u, 2));
     value gB0 = 0;
     value gB1 = 0;
@@ -2791,6 +2794,14 @@ inline
 void build_gA(equation_context& ctx)
 {
     standard_arguments args(ctx);
+
+    //value bl_s = "(init_BL_val)";
+    //value bl = bl_s + 1;
+
+    ///https://arxiv.org/pdf/gr-qc/0206072.pdf (94)
+    ///this breaks immediately
+    //int m = 4;
+    //value dtgA = lie_derivative(ctx, args.gB, args.gA) - 2 * args.gA * args.K * pow(bl, m);
 
     value dtgA = lie_derivative(ctx, args.gB, args.gA) - 2 * args.gA * args.K;
 
