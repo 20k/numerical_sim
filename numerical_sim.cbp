@@ -151,6 +151,7 @@
 		<Unit filename="legendre_nodes.h" />
 		<Unit filename="legendre_weights.h" />
 		<Unit filename="main.cpp" />
+		<Unit filename="mesh_manager.cpp" />
 		<Unit filename="mesh_manager.hpp" />
 		<Unit filename="u_solver.cl" />
 		<Extensions>
