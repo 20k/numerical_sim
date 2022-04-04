@@ -142,7 +142,7 @@ struct cpu_mesh
     cl::buffer get_thin_buffer(cl::context& ctx, cl::command_queue& cqueue, thin_intermediates_pool& pool, int id);
 
     ///returns buffers and intermediates
-    std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> full_step(cl::context& ctx, cl::command_queue& cqueue, float timestep, thin_intermediates_pool& pool, cl::buffer& u_arg);
+    std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> full_step(cl::context& ctx, cl::command_queue& cqueue, cl::command_queue& cqueue2, float timestep, thin_intermediates_pool& pool, cl::buffer& u_arg);
 };
 
 #endif // MESH_MANAGER_HPP_INCLUDED

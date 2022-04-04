@@ -246,7 +246,7 @@ cl::buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::command_queue& cqueue
 }
 
 ///returns buffers and intermediates
-std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(cl::context& ctx, cl::command_queue& cqueue, float timestep, thin_intermediates_pool& pool, cl::buffer& u_arg)
+std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(cl::context& ctx, cl::command_queue& cqueue, cl::command_queue& cqueue2, float timestep, thin_intermediates_pool& pool, cl::buffer& u_arg)
 {
     auto buffer_to_index = [&](const std::string& name)
     {
@@ -267,6 +267,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     std::vector<cl::buffer> intermediates;
 
+    std::vector<cl::event> events;
+
     auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
     {
         intermediates.clear();
@@ -274,7 +276,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         last_valid_thin_buffer = &generic_in;
 
         {
-            auto differentiate = [&](const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
+            /*auto differentiate = [&](const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
             {
                 int idx = buffer_to_index(name);
 
@@ -288,16 +290,18 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 thin.push_back(scale);
                 thin.push_back(clsize);
 
-                cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.first_count}, {128});
-            };
+                events.push_back(cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.first_count}, {128}));
+            };*/
 
             std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
                                   "gA", "gB0", "gB1", "gB2", "X"};
 
             for(int idx = 0; idx < (int)buffers.size(); idx++)
             {
-                if(idx + 1 < buffers.size())
+                /*if(idx + 1 < buffers.size())
                 {
+                    cl::command_queue& equeue = ((idx % 2) == 0) ? cqueue : cqueue2;
+
                     int i11 = idx * 3 + 0;
                     int i21 = idx * 3 + 1;
                     int i31 = idx * 3 + 2;
@@ -331,7 +335,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                     thin.push_back(scale);
                     thin.push_back(clsize);
 
-                    cqueue.exec("calculate_intermediate_data_thin2", thin, {points_set.first_count}, {128});
+                    events.push_back(equeue.exec("calculate_intermediate_data_thin2", thin, {points_set.first_count}, {128}));
 
                     intermediates.push_back(b11);
                     intermediates.push_back(b21);
@@ -342,8 +346,10 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                     intermediates.push_back(b32);
                     idx++;
                 }
-                else
+                else*/
                 {
+
+                    cl::command_queue& equeue = ((idx % 2) == 0) ? cqueue : cqueue2;
 
                     int i1 = idx * 3 + 0;
                     int i2 = idx * 3 + 1;
@@ -353,7 +359,19 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                     cl::buffer b2 = get_thin_buffer(ctx, cqueue, pool, i2);
                     cl::buffer b3 = get_thin_buffer(ctx, cqueue, pool, i3);
 
-                    differentiate(buffers[idx], b1, b2, b3);
+                    int bidx = buffer_to_index(buffers[idx]);
+
+                    cl::args thin;
+                    thin.push_back(points_set.first_derivative_points);
+                    thin.push_back(points_set.first_count);
+                    thin.push_back(generic_in[bidx]);
+                    thin.push_back(b1);
+                    thin.push_back(b2);
+                    thin.push_back(b3);
+                    thin.push_back(scale);
+                    thin.push_back(clsize);
+
+                    events.push_back(equeue.exec("calculate_intermediate_data_thin", thin, {points_set.first_count}, {128}));
 
                     intermediates.push_back(b1);
                     intermediates.push_back(b2);
@@ -421,7 +439,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             a1.push_back(clsize);
             a1.push_back(current_timestep);
 
-            cqueue.exec(name, a1, {points_set.second_count}, {128});
+            cqueue.exec(name, a1, {points_set.second_count}, {128}, events);
         };
 
         step_kernel("evolve_cY");
@@ -484,6 +502,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         }
     };
 
+    std::vector<cl::event> diss_events;
+
     auto dissipate = [&](auto& base_reference, auto& inout)
     {
         /*for(int i=0; i < buffer_set::buffer_count; i++)
@@ -537,7 +557,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 cqueue.exec("dissipate_4", diss, {points_set.second_count}, {128});
                 i+=3;
             }
-            else*/ if(i + 1 < buffer_set::buffer_count)
+            else*/
+            /*if(i + 1 < buffer_set::buffer_count)
             {
                 cl::args diss;
 
@@ -563,8 +584,10 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 cqueue.exec("dissipate_2", diss, {points_set.second_count}, {128});
                 i++;
             }
-            else
+            else*/
             {
+                cl::command_queue& mqueue = ((i % 2) == 0) ? cqueue : cqueue2;
+
                 cl::args diss;
 
                 diss.push_back(points_set.second_derivative_points);
@@ -583,11 +606,13 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 if(coeff == 0)
                     continue;
 
-                cqueue.exec("dissipate_single", diss, {points_set.second_count}, {128});
+                diss_events.push_back(mqueue.exec("dissipate_single", diss, {points_set.second_count}, {128}));
             }
 
         }
     };
+
+    cqueue.enqueue_marker(diss_events);
 
     ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
     //#define RK4
