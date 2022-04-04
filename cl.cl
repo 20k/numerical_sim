@@ -334,6 +334,52 @@ void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
     buffer_out_3[IDX(ix,iy,iz)] = init_buffer_intermediate2;
 }
 
+__kernel
+void calculate_intermediate_data_thin2(__global ushort4* points, int point_count,
+                                      __global float* b1,
+                                      __global DERIV_PRECISION* ob11, __global DERIV_PRECISION* ob21, __global DERIV_PRECISION* ob31,
+                                      __global float* b2,
+                                      __global DERIV_PRECISION* ob12, __global DERIV_PRECISION* ob22, __global DERIV_PRECISION* ob32,
+                                      float scale, int4 dim)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    #ifndef SYMMETRY_BOUNDARY
+    if(invalid_first(ix, iy, iz, dim))
+        return;
+    #endif // SYMMETRY_BOUNDARY
+
+    {
+        __global float* buffer = b1;
+
+        float TEMPORARIES10;
+
+        ob11[IDX(ix,iy,iz)] = init_buffer_intermediate0;
+        ob21[IDX(ix,iy,iz)] = init_buffer_intermediate1;
+        ob31[IDX(ix,iy,iz)] = init_buffer_intermediate2;
+    }
+
+    {
+        __global float* buffer = b2;
+
+        float TEMPORARIES10;
+
+        ob12[IDX(ix,iy,iz)] = init_buffer_intermediate0;
+        ob22[IDX(ix,iy,iz)] = init_buffer_intermediate1;
+        ob32[IDX(ix,iy,iz)] = init_buffer_intermediate2;
+    }
+}
+
 #if 0
 __kernel
 void calculate_intermediate_data_thin_cY5(__global ushort4* points, int point_count,
@@ -1109,6 +1155,122 @@ void dissipate_single(__global ushort4* points, int point_count,
     float dissipate_single = KREISS_DISSIPATE_SINGULAR;
 
     obuffer[index] += damp * dissipate_single * timestep;
+}
+
+__kernel
+void dissipate_2(__global ushort4* points, int point_count,
+                      __global float* b1, __global float* ob1,
+                      __global float* b2, __global float* ob2,
+                      float coefficient,
+                      float scale, int4 dim, float timestep)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    #ifndef SYMMETRY_BOUNDARY
+    if(invalid_second(ix, iy, iz, dim))
+        return;
+    #endif // SYMMETRY_BOUNDARY
+
+    int index = IDX(ix, iy, iz);
+
+    {
+        __global float* buffer = b1;
+
+        float TEMPORARIES9;
+
+        float dissipate_single = KREISS_DISSIPATE_SINGULAR;
+
+        ob1[index] += dissipate_single * timestep;
+    }
+
+    {
+        __global float* buffer = b2;
+
+        float TEMPORARIES9;
+
+        float dissipate_single = KREISS_DISSIPATE_SINGULAR;
+
+        ob2[index] += dissipate_single * timestep;
+    }
+}
+
+__kernel
+void dissipate_4(__global ushort4* points, int point_count,
+                      __global float* b1, __global float* ob1,
+                      __global float* b2, __global float* ob2,
+                      __global float* b3, __global float* ob3,
+                      __global float* b4, __global float* ob4,
+                      float coefficient,
+                      float scale, int4 dim, float timestep)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    #ifndef SYMMETRY_BOUNDARY
+    if(invalid_second(ix, iy, iz, dim))
+        return;
+    #endif // SYMMETRY_BOUNDARY
+
+    int index = IDX(ix, iy, iz);
+
+    {
+        __global float* buffer = b1;
+
+        float TEMPORARIES9;
+
+        float dissipate_single = KREISS_DISSIPATE_SINGULAR;
+
+        ob1[index] += dissipate_single * timestep;
+    }
+
+    {
+        __global float* buffer = b2;
+
+        float TEMPORARIES9;
+
+        float dissipate_single = KREISS_DISSIPATE_SINGULAR;
+
+        ob2[index] += dissipate_single * timestep;
+
+    }
+    {
+        __global float* buffer = b3;
+
+        float TEMPORARIES9;
+
+        float dissipate_single = KREISS_DISSIPATE_SINGULAR;
+
+        ob3[index] += dissipate_single * timestep;
+    }
+
+    {
+        __global float* buffer = b4;
+
+        float TEMPORARIES9;
+
+        float dissipate_single = KREISS_DISSIPATE_SINGULAR;
+
+        ob4[index] += dissipate_single * timestep;
+    }
 }
 
 __kernel

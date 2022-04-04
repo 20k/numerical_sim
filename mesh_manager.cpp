@@ -296,19 +296,69 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
             for(int idx = 0; idx < (int)buffers.size(); idx++)
             {
-                int i1 = idx * 3 + 0;
-                int i2 = idx * 3 + 1;
-                int i3 = idx * 3 + 2;
+                if(idx + 1 < buffers.size())
+                {
+                    int i11 = idx * 3 + 0;
+                    int i21 = idx * 3 + 1;
+                    int i31 = idx * 3 + 2;
 
-                cl::buffer b1 = get_thin_buffer(ctx, cqueue, pool, i1);
-                cl::buffer b2 = get_thin_buffer(ctx, cqueue, pool, i2);
-                cl::buffer b3 = get_thin_buffer(ctx, cqueue, pool, i3);
+                    int i12 = (idx + 1) * 3 + 0;
+                    int i22 = (idx + 1) * 3 + 1;
+                    int i32 = (idx + 1) * 3 + 2;
 
-                differentiate(buffers[idx], b1, b2, b3);
+                    cl::buffer b11 = get_thin_buffer(ctx, cqueue, pool, i11);
+                    cl::buffer b21 = get_thin_buffer(ctx, cqueue, pool, i21);
+                    cl::buffer b31 = get_thin_buffer(ctx, cqueue, pool, i31);
 
-                intermediates.push_back(b1);
-                intermediates.push_back(b2);
-                intermediates.push_back(b3);
+                    cl::buffer b12 = get_thin_buffer(ctx, cqueue, pool, i12);
+                    cl::buffer b22 = get_thin_buffer(ctx, cqueue, pool, i22);
+                    cl::buffer b32 = get_thin_buffer(ctx, cqueue, pool, i32);
+
+                    cl::args thin;
+                    thin.push_back(points_set.first_derivative_points);
+                    thin.push_back(points_set.first_count);
+
+                    thin.push_back(generic_in[buffer_to_index(buffers[idx])]);
+                    thin.push_back(b11);
+                    thin.push_back(b21);
+                    thin.push_back(b31);
+
+                    thin.push_back(generic_in[buffer_to_index(buffers[idx + 1])]);
+                    thin.push_back(b12);
+                    thin.push_back(b22);
+                    thin.push_back(b32);
+
+                    thin.push_back(scale);
+                    thin.push_back(clsize);
+
+                    cqueue.exec("calculate_intermediate_data_thin2", thin, {points_set.first_count}, {128});
+
+                    intermediates.push_back(b11);
+                    intermediates.push_back(b21);
+                    intermediates.push_back(b31);
+
+                    intermediates.push_back(b12);
+                    intermediates.push_back(b22);
+                    intermediates.push_back(b32);
+                    idx++;
+                }
+                else
+                {
+
+                    int i1 = idx * 3 + 0;
+                    int i2 = idx * 3 + 1;
+                    int i3 = idx * 3 + 2;
+
+                    cl::buffer b1 = get_thin_buffer(ctx, cqueue, pool, i1);
+                    cl::buffer b2 = get_thin_buffer(ctx, cqueue, pool, i2);
+                    cl::buffer b3 = get_thin_buffer(ctx, cqueue, pool, i3);
+
+                    differentiate(buffers[idx], b1, b2, b3);
+
+                    intermediates.push_back(b1);
+                    intermediates.push_back(b2);
+                    intermediates.push_back(b3);
+                }
             }
         }
 
@@ -436,7 +486,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     auto dissipate = [&](auto& base_reference, auto& inout)
     {
-        for(int i=0; i < buffer_set::buffer_count; i++)
+        /*for(int i=0; i < buffer_set::buffer_count; i++)
         {
             cl::args diss;
 
@@ -457,6 +507,85 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 continue;
 
             cqueue.exec("dissipate_single", diss, {points_set.second_count}, {128});
+        }*/
+
+        for(int i=0; i < buffer_set::buffer_count; i++)
+        {
+            /*if(i + 3 < buffer_set::buffer_count)
+            {
+                cl::args diss;
+
+                diss.push_back(points_set.second_derivative_points);
+                diss.push_back(points_set.second_count);
+
+                for(int kk=0; kk < 4; kk++)
+                {
+                    diss.push_back(base_reference[i + kk]);
+                    diss.push_back(inout[i + kk]);
+                }
+
+                float coeff = dissipation_coefficients[i];
+
+                diss.push_back(coeff);
+                diss.push_back(scale);
+                diss.push_back(clsize);
+                diss.push_back(timestep);
+
+                if(coeff == 0)
+                    continue;
+
+                cqueue.exec("dissipate_4", diss, {points_set.second_count}, {128});
+                i+=3;
+            }
+            else*/ if(i + 1 < buffer_set::buffer_count)
+            {
+                cl::args diss;
+
+                diss.push_back(points_set.second_derivative_points);
+                diss.push_back(points_set.second_count);
+
+                diss.push_back(base_reference[i]);
+                diss.push_back(inout[i]);
+
+                diss.push_back(base_reference[i+1]);
+                diss.push_back(inout[i+1]);
+
+                float coeff = dissipation_coefficients[i];
+
+                diss.push_back(coeff);
+                diss.push_back(scale);
+                diss.push_back(clsize);
+                diss.push_back(timestep);
+
+                if(coeff == 0)
+                    continue;
+
+                cqueue.exec("dissipate_2", diss, {points_set.second_count}, {128});
+                i++;
+            }
+            else
+            {
+                cl::args diss;
+
+                diss.push_back(points_set.second_derivative_points);
+                diss.push_back(points_set.second_count);
+
+                diss.push_back(base_reference[i]);
+                diss.push_back(inout[i]);
+
+                float coeff = dissipation_coefficients[i];
+
+                diss.push_back(coeff);
+                diss.push_back(scale);
+                diss.push_back(clsize);
+                diss.push_back(timestep);
+
+                if(coeff == 0)
+                    continue;
+
+                cqueue.exec("dissipate_single", diss, {points_set.second_count}, {128});
+            }
+
         }
     };
 
