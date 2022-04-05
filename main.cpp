@@ -13,6 +13,7 @@
 #include <vec/tensor.hpp>
 #include "gravitational_waves.hpp"
 #include <execution>
+#include <thread>
 #include "mesh_manager.hpp"
 
 /**
