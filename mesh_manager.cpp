@@ -150,7 +150,8 @@ cl::buffer thin_intermediates_pool::request(cl::context& ctx, cl::managed_comman
 
     #ifdef NANFILL
     cl_float nan = std::nanf("");
-    next.fill(cqueue, nan);
+    cl::event evt = next.fill(cqueue, nan);
+    cqueue.getting_value_depends_on(next, evt);
     #else
     cl::event evt = next.set_to_zero(cqueue.mqueue.next());
     cqueue.getting_value_depends_on(next, evt);
