@@ -246,7 +246,7 @@ cl::buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::command_queue& cqueue
 }
 
 ///returns buffers and intermediates
-std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(cl::context& ctx, cl::command_queue& cqueue, float timestep, thin_intermediates_pool& pool, cl::buffer& u_arg)
+std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::multi_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, cl::buffer& u_arg)
 {
     auto buffer_to_index = [&](const std::string& name)
     {
@@ -259,6 +259,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         assert(false);
     };
 
+    std::vector<cl::event> intermediate_events;
+
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
     std::vector<cl::buffer>* last_valid_thin_buffer = &get_input().buffers;
@@ -267,6 +269,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     std::vector<cl::buffer> intermediates;
 
+    std::vector<cl::event> diff_events;
+
     auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
     {
         intermediates.clear();
@@ -274,7 +278,14 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         last_valid_thin_buffer = &generic_in;
 
         {
-            auto differentiate = [&](const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
+            cl::event evt = main_queue.enqueue_marker({});
+            mqueue.cqueue.enqueue_marker({evt});
+        }
+
+        mqueue.presync();
+
+        {
+            auto differentiate = [&](cl::command_queue& cqueue, const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
             {
                 int idx = buffer_to_index(name);
 
@@ -288,7 +299,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 thin.push_back(scale);
                 thin.push_back(clsize);
 
-                cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.first_count}, {128});
+                diff_events.push_back(cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.first_count}, {128}));
             };
 
             std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
@@ -300,17 +311,22 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 int i2 = idx * 3 + 1;
                 int i3 = idx * 3 + 2;
 
-                cl::buffer b1 = get_thin_buffer(ctx, cqueue, pool, i1);
-                cl::buffer b2 = get_thin_buffer(ctx, cqueue, pool, i2);
-                cl::buffer b3 = get_thin_buffer(ctx, cqueue, pool, i3);
+                cl::command_queue& next = mqueue.next();
 
-                differentiate(buffers[idx], b1, b2, b3);
+                cl::buffer b1 = get_thin_buffer(ctx, next, pool, i1);
+                cl::buffer b2 = get_thin_buffer(ctx, next, pool, i2);
+                cl::buffer b3 = get_thin_buffer(ctx, next, pool, i3);
+
+                differentiate(next, buffers[idx], b1, b2, b3);
 
                 intermediates.push_back(b1);
                 intermediates.push_back(b2);
                 intermediates.push_back(b3);
             }
         }
+
+        mqueue.postsync();
+        mqueue.presync();
 
         if(sett.calculate_momentum_constraint)
         {
@@ -332,7 +348,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             momentum_args.push_back(scale);
             momentum_args.push_back(clsize);
 
-            cqueue.exec("calculate_momentum_constraint", momentum_args, {points_set.first_count}, {128});
+            main_queue.exec("calculate_momentum_constraint", momentum_args, {points_set.first_count}, {128});
         }
 
         auto step_kernel = [&](const std::string& name)
@@ -371,7 +387,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             a1.push_back(clsize);
             a1.push_back(current_timestep);
 
-            cqueue.exec(name, a1, {points_set.second_count}, {128});
+            mqueue.next().exec(name, a1, {points_set.second_count}, {128});
         };
 
         step_kernel("evolve_cY");
@@ -381,6 +397,14 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         step_kernel("evolve_X");
         step_kernel("evolve_gA");
         step_kernel("evolve_gB");
+
+        mqueue.postsync();
+
+        {
+            cl::event evt = mqueue.cqueue.enqueue_marker({});
+
+            main_queue.enqueue_marker({evt});
+        }
     };
 
     auto enforce_constraints = [&](auto& generic_out)
@@ -400,7 +424,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         constraints.push_back(scale);
         constraints.push_back(clsize);
 
-        cqueue.exec("enforce_algebraic_constraints", constraints, {points_set.second_count}, {128});
+        main_queue.exec("enforce_algebraic_constraints", constraints, {points_set.second_count}, {128});
     };
 
     auto diff_to_input = [&](auto& buffer_in, cl_float factor)
@@ -415,7 +439,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             accum.push_back(base_yn[i]);
             accum.push_back(factor);
 
-            cqueue.exec("calculate_rk4_val", accum, {points_set.second_count}, {128});
+            main_queue.exec("calculate_rk4_val", accum, {points_set.second_count}, {128});
         }
     };
 
@@ -430,12 +454,19 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             copy.push_back(out[i]);
             copy.push_back(clsize);
 
-            cqueue.exec("copy_valid", copy, {points_set.second_count}, {128});
+            main_queue.exec("copy_valid", copy, {points_set.second_count}, {128});
         }
     };
 
     auto dissipate = [&](auto& base_reference, auto& inout)
     {
+        {
+            cl::event evt = main_queue.enqueue_marker({});
+            mqueue.cqueue.enqueue_marker({evt});
+        }
+
+        mqueue.presync();
+
         for(int i=0; i < buffer_set::buffer_count; i++)
         {
             cl::args diss;
@@ -456,7 +487,15 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             if(coeff == 0)
                 continue;
 
-            cqueue.exec("dissipate_single", diss, {points_set.second_count}, {128});
+            mqueue.next().exec("dissipate_single", diss, {points_set.second_count}, {128});
+        }
+
+        mqueue.postsync();
+
+        {
+            cl::event evt = mqueue.cqueue.enqueue_marker({});
+
+            main_queue.enqueue_marker({evt});
         }
     };
 
@@ -659,7 +698,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         cleaner.push_back(clsize);
         cleaner.push_back(timestep);
 
-        cqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
+        main_queue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
     }
 
     enforce_constraints(get_output().buffers);

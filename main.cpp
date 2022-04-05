@@ -4103,6 +4103,8 @@ int main()
 
     opencl_context& clctx = *win.clctx;
 
+    cl::multi_command_queue mqueue(clctx.ctx, 0, 16);
+
     std::cout << "EXT " << cl::get_extensions(clctx.ctx) << std::endl;
 
     std::string argument_string = "-I ./ -O3 -cl-std=CL2.0 -cl-uniform-work-group-size -cl-mad-enable -cl-finite-math-only -cl-denorms-are-zero ";
@@ -4495,7 +4497,7 @@ int main()
         {
             steps++;
 
-            auto [last_valid_thin_base, last_valid_thin] = base_mesh.full_step(clctx.ctx, clctx.cqueue, timestep, thin_pool, u_arg);
+            auto [last_valid_thin_base, last_valid_thin] = base_mesh.full_step(clctx.ctx, clctx.cqueue, mqueue, timestep, thin_pool, u_arg);
 
             {
                 wave_manager.issue_extraction(clctx.cqueue, last_valid_thin_base, last_valid_thin, scale, clsize);
