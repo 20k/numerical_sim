@@ -277,12 +277,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
         last_valid_thin_buffer = &generic_in;
 
-        {
-            cl::event evt = main_queue.enqueue_marker({});
-            mqueue.cqueue.enqueue_marker({evt});
-        }
-
-        mqueue.presync();
+        mqueue.begin_splice(main_queue);
 
         {
             auto differentiate = [&](cl::command_queue& cqueue, const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
@@ -325,8 +320,9 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             }
         }
 
-        mqueue.postsync();
-        mqueue.presync();
+        ///end all the differentiation work before we move on
+        mqueue.end_splice(main_queue);
+        mqueue.begin_splice(main_queue);
 
         if(sett.calculate_momentum_constraint)
         {
@@ -398,13 +394,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         step_kernel("evolve_gA");
         step_kernel("evolve_gB");
 
-        mqueue.postsync();
-
-        {
-            cl::event evt = mqueue.cqueue.enqueue_marker({});
-
-            main_queue.enqueue_marker({evt});
-        }
+        mqueue.end_splice(main_queue);
     };
 
     auto enforce_constraints = [&](auto& generic_out)
@@ -460,12 +450,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     auto dissipate = [&](auto& base_reference, auto& inout)
     {
-        {
-            cl::event evt = main_queue.enqueue_marker({});
-            mqueue.cqueue.enqueue_marker({evt});
-        }
-
-        mqueue.presync();
+        mqueue.begin_splice(main_queue);
 
         for(int i=0; i < buffer_set::buffer_count; i++)
         {
@@ -490,13 +475,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             mqueue.next().exec("dissipate_single", diss, {points_set.second_count}, {128});
         }
 
-        mqueue.postsync();
-
-        {
-            cl::event evt = mqueue.cqueue.enqueue_marker({});
-
-            main_queue.enqueue_marker({evt});
-        }
+        mqueue.end_splice(main_queue);
     };
 
     ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
