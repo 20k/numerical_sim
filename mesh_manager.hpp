@@ -62,7 +62,7 @@ struct thin_intermediates_pool
 
     std::vector<buffer_descriptor> pool;
 
-    cl::buffer request(cl::context& ctx, cl::command_queue& cqueue, int id, vec3i size, int element_size);
+    cl::buffer request(cl::context& ctx, cl::managed_command_queue& cqueue, int id, vec3i size, int element_size);
 };
 
 struct cpu_mesh_settings
@@ -139,10 +139,10 @@ struct cpu_mesh
 
     void init(cl::command_queue& cqueue, cl::buffer& u_arg);
 
-    cl::buffer get_thin_buffer(cl::context& ctx, cl::command_queue& cqueue, thin_intermediates_pool& pool, int id);
+    cl::buffer get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, int id);
 
     ///returns buffers and intermediates
-    std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> full_step(cl::context& ctx, cl::command_queue& main_queue, cl::multi_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, cl::buffer& u_arg);
+    std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, cl::buffer& u_arg);
 };
 
 #endif // MESH_MANAGER_HPP_INCLUDED

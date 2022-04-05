@@ -4104,7 +4104,7 @@ int main()
 
     opencl_context& clctx = *win.clctx;
 
-    cl::multi_command_queue mqueue(clctx.ctx, 0, 16);
+    cl::managed_command_queue mqueue(clctx.ctx, 0, 16);
 
     std::cout << "EXT " << cl::get_extensions(clctx.ctx) << std::endl;
 
