@@ -397,7 +397,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 if(modified_by[kk] == name)
                     a1.push_back(generic_out[kk]);
                 else
-                    a1.push_back_noaccess(generic_out[kk]);
+                    a1.push_back(generic_out[kk].as_device_inaccessible());
             }
 
             for(auto& i : base_yn)
