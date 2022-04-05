@@ -259,8 +259,6 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         assert(false);
     };
 
-    std::vector<cl::event> intermediate_events;
-
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
     std::vector<cl::buffer>* last_valid_thin_buffer = &get_input().buffers;
@@ -268,8 +266,6 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
     auto& base_yn = get_input().buffers;
 
     std::vector<cl::buffer> intermediates;
-
-    std::vector<cl::event> diff_events;
 
     auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
     {
@@ -294,7 +290,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 thin.push_back(scale);
                 thin.push_back(clsize);
 
-                diff_events.push_back(cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.first_count}, {128}));
+                cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.first_count}, {128});
             };
 
             std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
