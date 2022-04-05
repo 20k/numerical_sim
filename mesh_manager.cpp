@@ -291,6 +291,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 thin.push_back(clsize);
 
                 cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.first_count}, {128});
+
+                cqueue.flush();
             };
 
             std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
@@ -379,7 +381,10 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             a1.push_back(clsize);
             a1.push_back(current_timestep);
 
-            mqueue.next().exec(name, a1, {points_set.second_count}, {128});
+            cl::command_queue& cqueue = mqueue.next();
+
+            cqueue.exec(name, a1, {points_set.second_count}, {128});
+            cqueue.flush();
         };
 
         step_kernel("evolve_cY");
@@ -468,7 +473,10 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             if(coeff == 0)
                 continue;
 
-            mqueue.next().exec("dissipate_single", diss, {points_set.second_count}, {128});
+            cl::command_queue& cqueue = mqueue.next();
+
+            cqueue.exec("dissipate_single", diss, {points_set.second_count}, {128});
+            cqueue.flush();
         }
 
         mqueue.end_splice(main_queue);
