@@ -4139,7 +4139,7 @@ int main()
     {
         cl::command_queue cqueue(clctx.ctx);
 
-        u_arg = iterate_u(clctx.ctx, cqueue, size, c_at_max);
+        u_arg = iterate_u(clctx.ctx, cqueue, size, c_at_max).as_device_read_only();
 
         cqueue.block();
     };

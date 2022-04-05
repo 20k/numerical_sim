@@ -53,7 +53,7 @@ std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_
 
     printf("Sponge point reduction %i\n", count);
 
-    return {real, count};
+    return {real.as_device_read_only(), count};
 }
 
 
