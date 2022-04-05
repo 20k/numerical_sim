@@ -320,7 +320,6 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
         ///end all the differentiation work before we move on
         mqueue.end_splice(main_queue);
-        mqueue.begin_splice(main_queue);
 
         if(sett.calculate_momentum_constraint)
         {
@@ -344,6 +343,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
             main_queue.exec("calculate_momentum_constraint", momentum_args, {points_set.first_count}, {128});
         }
+
+        mqueue.begin_splice(main_queue);
 
         auto step_kernel = [&](const std::string& name)
         {
