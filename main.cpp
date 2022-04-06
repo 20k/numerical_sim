@@ -3673,7 +3673,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
     vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
 
-    tensor<value, 3, 3> digB;
+    /*tensor<value, 3, 3> digB;
 
     ///derivative
     for(int i=0; i < 3; i++)
@@ -3690,7 +3690,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     for(int i=0; i < 3; i++)
     {
         digA.idx(i) = diff1(ctx, args.gA, i);
-    }
+    }*/
 
     float universe_length = (dim/2.f).max_elem();
 
@@ -3698,8 +3698,12 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     ctx.add("universe_size", universe_length * scale);
 
+
+
     tensor<value, 3> X_upper = {"lp1", "lp2", "lp3"};
     tensor<value, 3> V_upper = {"V0", "V1", "V2"};
+
+    tensor<value, 3> V_lower = lower_index(V_upper, args.Yij);
 
     /*inverse_metric<value, 3, 3> iYij = args.Yij.invert();
 
@@ -3744,7 +3748,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     V_upper = (V_upper * 1 / length);
 
     ///https://arxiv.org/pdf/1208.3927.pdf (28a)
-    #define PAPER_1
+    //#define PAPER_1
     #ifdef PAPER_1
     tensor<value, 3> dx = args.gA * V_upper - args.gB;
 
@@ -3776,6 +3780,75 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         }
     }
     #endif // PAPER_1
+
+    ///https://artscimedia.case.edu/wp-content/uploads/sites/213/2018/08/18010345/Mertens_SestoGR18.pdf
+    #define PAPER_3
+    #ifdef PAPER_3
+
+    value au0 = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            au0 += iYij.idx(i, j) * V_lower.idx(i) * V_lower.idx(j);
+        }
+    }
+
+    au0 = sqrt(1 + au0);
+
+    value u0 = au0 / args.gA;
+
+    tensor<value, 3> dx;
+
+    for(int j=0; j < 3; j++)
+    {
+        dx.idx(j) = -args.gB.idx(j);
+    }
+
+    for(int j=0; j < 3; j++)
+    {
+        value sum = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            sum += iYij.idx(j, k) * (V_lower.idx(k) / u0);
+        }
+
+        dx.idx(j) = sum;
+    }
+
+
+    tensor<value, 3> V_lower_diff = {0, 0, 0};
+
+    for(int i=0; i < 3; i++)
+    {
+        value s1 = -au0 * diff1(ctx, args.gA, i);
+
+        value s2 = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            s2 += diff1(ctx, args.gB.idx(k), i) * V_lower.idx(k);
+        }
+
+        value s3 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int m=0; m < 3; m++)
+            {
+                s3 += -(1 / (2 * u0)) * diff1(ctx, iYij.idx(j, m), i) * V_lower.idx(j) * V_lower.idx(m);
+            }
+        }
+
+        V_lower_diff.idx(i) = s1 + s2 + s3;
+    }
+
+    tensor<value, 3> V_upper_diff = raise_index(V_lower_diff, args.Yij, iYij);
+
+    #endif // PAPER_3
+
 
     /*value length_sq = dot_metric(V_upper, V_upper, args.Yij);
 
@@ -4426,9 +4499,9 @@ int main()
             rtex[0].create_from_texture(tex[0].handle);
             rtex[1].create_from_texture(tex[1].handle);
 
-            ray_buffer[0].alloc(sizeof(cl_float) * 10 * width * height);
-            ray_buffer[1].alloc(sizeof(cl_float) * 10 * width * height);
-            ray_count_terminated.alloc(sizeof(cl_float) * 10 * width * height);
+            ray_buffer[0].alloc(sizeof(cl_float) * 16 * width * height);
+            ray_buffer[1].alloc(sizeof(cl_float) * 16 * width * height);
+            ray_count_terminated.alloc(sizeof(cl_float) * 16 * width * height);
         }
 
         rtex[which_texture].acquire(clctx.cqueue);
