@@ -1410,7 +1410,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
     int fetch_count = 1;
 
-    int work_size = 64 * fetch_count;
+    int work_size = 32 * fetch_count;
 
     int local_id = get_local_id(0);
 
@@ -1427,7 +1427,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         {
             //int idx = atomic_inc(ray_count_out);
 
-            int idx = local_id + work_loop * 64 + work_start;
+            int idx = local_id + work_loop * 32 + work_start;
 
             if(idx >= count_in)
                 return;

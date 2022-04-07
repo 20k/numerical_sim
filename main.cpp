@@ -4690,7 +4690,7 @@ int main()
                         render_args.push_back(scale);
                         render_args.push_back(clsize);
 
-                        clctx.cqueue.exec("trace_rays", render_args, {64 * 256}, {64});
+                        clctx.cqueue.exec("trace_rays", render_args, {32 * 512}, {32});
 
                         std::swap(ray_count[0], ray_count[1]);
                         std::swap(ray_buffer[0], ray_buffer[1]);
