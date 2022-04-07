@@ -3709,7 +3709,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     inverse_metric<value, 3, 3> iYij = args.X * args.cY.invert();
 
-    /*inverse_metric<value, 3, 3> icY = args.cY.invert();
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
 
     tensor<value, 3, 3, 3> conformal_christoff2 = gpu_christoffel_symbols_2(ctx, args.cY, icY);
 
@@ -3735,7 +3735,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
                                                  (1.f/(2.f * max(args.X, 0.001f))) * (kronecker_ik * diff1(ctx, args.X, j) + kronecker_ij * diff1(ctx, args.X, k) - args.cY.idx(j, k) * sm);
             }
         }
-    }*/
+    }
 
     //tensor<value, 3, 3, 3> full_christoffel2 = gpu_christoffel_symbols_2(ctx, args.Yij, iYij);
 
@@ -4690,7 +4690,7 @@ int main()
                         render_args.push_back(scale);
                         render_args.push_back(clsize);
 
-                        clctx.cqueue.exec("trace_rays", render_args, {width * height}, {64});
+                        clctx.cqueue.exec("trace_rays", render_args, {64 * 256}, {64});
 
                         std::swap(ray_count[0], ray_count[1]);
                         std::swap(ray_buffer[0], ray_buffer[1]);
