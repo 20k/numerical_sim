@@ -1401,129 +1401,160 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
                 STANDARD_ARGS(),
                 float scale, int4 dim)
 {
-    int idx = get_global_id(0);
+    int start_id = get_global_id(0);
 
     int count_in = *ray_count_in;
 
-    if(idx >= count_in)
-        return;
+    __local int work_start;
+    //__local int work_counter = 0;
 
-    struct lightray_simple ray_in = rays_in[idx];
+    int fetch_count = 1;
 
-    float lp1 = ray_in.lp1;
-    float lp2 = ray_in.lp2;
-    float lp3 = ray_in.lp3;
+    int work_size = 64 * fetch_count;
 
-    float V0 = ray_in.V0;
-    float V1 = ray_in.V1;
-    float V2 = ray_in.V2;
+    int local_id = get_local_id(0);
 
-    int x = ray_in.x;
-    int y = ray_in.y;
+    //barrier(CLK_LOCAL_MEM_FENCE);
 
-    ///ray location
-    ///temporary while i don't do interpolation
-    float next_ds = 0.1f;
-
-    bool deliberate_termination = false;
-    bool last_skipped = false;
-
-    for(int iteration=0; iteration < 65000; iteration++)
+    while(1)
     {
-        float3 cpos = {lp1, lp2, lp3};
+        if(local_id == 0)
+            work_start = atomic_add(ray_count_out, work_size);
 
-        float3 voxel_pos = world_to_voxel(cpos, dim, scale);
+        barrier(CLK_LOCAL_MEM_FENCE);
 
-        voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
-
-        float fx = voxel_pos.x;
-        float fy = voxel_pos.y;
-        float fz = voxel_pos.z;
-
-        float TEMPORARIES6;
-
-        float terminate_length = fast_length(cpos);
-
-        if(terminate_length >= universe_size / 1.01f)
+        for(int work_loop = 0; work_loop < fetch_count; work_loop++)
         {
-            deliberate_termination = true;
-            break;
+            //int idx = atomic_inc(ray_count_out);
+
+            int idx = local_id + work_loop * 64 + work_start;
+
+            if(idx >= count_in)
+                return;
+
+            struct lightray_simple ray_in = rays_in[idx];
+
+            float lp1 = ray_in.lp1;
+            float lp2 = ray_in.lp2;
+            float lp3 = ray_in.lp3;
+
+            float V0 = ray_in.V0;
+            float V1 = ray_in.V1;
+            float V2 = ray_in.V2;
+
+            int x = ray_in.x;
+            int y = ray_in.y;
+
+            ///ray location
+            ///temporary while i don't do interpolation
+            float next_ds = 0.1f;
+
+            bool deliberate_termination = false;
+            bool last_skipped = false;
+
+            for(int iteration=0; iteration < 65000; iteration++)
+            {
+                float3 cpos = {lp1, lp2, lp3};
+
+                float3 voxel_pos = world_to_voxel(cpos, dim, scale);
+
+                voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+                float fx = voxel_pos.x;
+                float fy = voxel_pos.y;
+                float fz = voxel_pos.z;
+
+                float TEMPORARIES6;
+
+                float terminate_length = fast_length(cpos);
+
+                if(terminate_length >= universe_size / 1.01f)
+                {
+                    deliberate_termination = true;
+                    break;
+                }
+
+                float ds = next_ds;
+
+                float dX0 = X0Diff;
+                float dX1 = X1Diff;
+                float dX2 = X2Diff;
+
+                float dV0 = V0Diff;
+                float dV1 = V1Diff;
+                float dV2 = V2Diff;
+
+                float3 next_acceleration = {dV0, dV1, dV2};
+
+                int res = calculate_ds_error(ds, next_acceleration, &next_ds);
+
+                if(res == DS_RETURN)
+                {
+                    deliberate_termination = true;
+                    break;
+                }
+
+                if(res == DS_SKIP)
+                {
+                    last_skipped = true;
+                    continue;
+                }
+
+                last_skipped = false;
+
+                /*ds = 0.025f * 1/fast_length(next_acceleration);
+                ds = min(ds, 2.f);
+                ds = max(ds, 0.5f);*/
+
+                V0 += dV0 * ds;
+                V1 += dV1 * ds;
+                V2 += dV2 * ds;
+
+                lp1 += dX0 * ds;
+                lp2 += dX1 * ds;
+                lp3 += dX2 * ds;
+
+                /*if(x == (int)width/2 && y == (int)height/2)
+                {
+                    printf("%f %f %f  %f %f %f\n", V0, V1, V2, lp1, lp2, lp3);
+                }*/
+
+                if(fast_length((float3){dX0, dX1, dX2}) < 0.2f)
+                {
+                    deliberate_termination = true;
+                    break;
+                }
+            }
+
+
+            struct lightray_simple ray_out;
+            ray_out.x = x;
+            ray_out.y = y;
+
+            ray_out.lp1 = lp1;
+            ray_out.lp2 = lp2;
+            ray_out.lp3 = lp3;
+
+            ray_out.V0 = V0;
+            ray_out.V1 = V1;
+            ray_out.V2 = V2;
+
+            if(!deliberate_termination)
+            {
+                //int next_idx = atomic_inc(ray_count_out);
+                //rays_out[idx] = ray_out;
+            }
+            else
+            {
+                int next_idx = atomic_inc(ray_count_terminated);
+                rays_terminated[next_idx] = ray_out;
+            }
         }
-
-        float ds = next_ds;
-
-        float dX0 = X0Diff;
-        float dX1 = X1Diff;
-        float dX2 = X2Diff;
-
-        float dV0 = V0Diff;
-        float dV1 = V1Diff;
-        float dV2 = V2Diff;
-
-        float3 next_acceleration = {dV0, dV1, dV2};
-
-        int res = calculate_ds_error(ds, next_acceleration, &next_ds);
-
-        if(res == DS_RETURN)
+        /*else
         {
-            deliberate_termination = true;
-            break;
-        }
-
-        if(res == DS_SKIP)
-        {
-            last_skipped = true;
-            continue;
-        }
-
-        last_skipped = false;
-
-        /*ds = 0.025f * 1/fast_length(next_acceleration);
-        ds = min(ds, 2.f);
-        ds = max(ds, 0.5f);*/
-
-        V0 += dV0 * ds;
-        V1 += dV1 * ds;
-        V2 += dV2 * ds;
-
-        lp1 += dX0 * ds;
-        lp2 += dX1 * ds;
-        lp3 += dX2 * ds;
-
-        /*if(x == (int)width/2 && y == (int)height/2)
-        {
-            printf("%f %f %f  %f %f %f\n", V0, V1, V2, lp1, lp2, lp3);
+            int next_idx = atomic_inc(ray_count_terminated);
+            rays_terminated[next_idx] = ray_out;
         }*/
-
-        if(fast_length((float3){dX0, dX1, dX2}) < 0.2f)
-        {
-            deliberate_termination = true;
-            break;
-        }
-    }
-
-
-    struct lightray_simple ray_out;
-    ray_out.x = x;
-    ray_out.y = y;
-
-    ray_out.lp1 = lp1;
-    ray_out.lp2 = lp2;
-    ray_out.lp3 = lp3;
-
-    ray_out.V0 = V0;
-    ray_out.V1 = V1;
-    ray_out.V2 = V2;
-
-    if(!deliberate_termination)
-    {
-        int next_idx = atomic_inc(ray_count_out);
-        rays_out[next_idx] = ray_out;
-    }
-    else
-    {
-        int next_idx = atomic_inc(ray_count_terminated);
-        rays_terminated[next_idx] = ray_out;
     }
 }
 
