@@ -1301,21 +1301,22 @@ enum ds_result
 int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_ds_out)
 {
     #define MIN_STEP 0.5f
+    #define MAX_STEP 4.f
 
-    float next_ds = 0.01f * 1/fast_length(next_acceleration);
+    float next_ds = 0.05f * 1/fast_length(next_acceleration);
 
     ///produces strictly worse results for kerr
     next_ds = 0.99f * current_ds * clamp(next_ds / current_ds, 0.1f, 4.f);
 
     next_ds = max(next_ds, MIN_STEP);
-    next_ds = min(next_ds, 1.f);
+    next_ds = min(next_ds, MAX_STEP);
 
     *next_ds_out = next_ds;
 
     //if(next_ds == MIN_STEP)
     //    return DS_RETURN;
 
-    if(next_ds < current_ds/1.95f)
+    if(next_ds < current_ds/1.5f)
         return DS_SKIP;
 
     return DS_NONE;
@@ -1428,11 +1429,18 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     bool deliberate_termination = false;
     bool last_skipped = false;
 
+    bool debug = (y == 300 && x == 400);
+
     for(int iteration=0; iteration < 65000; iteration++)
     {
         float3 cpos = {lp1, lp2, lp3};
 
         float3 voxel_pos = world_to_voxel(cpos, dim, scale);
+
+        if(debug)
+        {
+            //printf("Pos %f %f %f ds %f\n", voxel_pos.x, voxel_pos.y, voxel_pos.z, next_ds);
+        }
 
         voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
@@ -1497,6 +1505,11 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         if(fast_length((float3){dX0, dX1, dX2}) < 0.2f)
         {
+            if(debug)
+            {
+                //printf("Singular\n");
+            }
+
             deliberate_termination = true;
             break;
         }

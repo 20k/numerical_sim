@@ -3748,7 +3748,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     V_upper = (V_upper * 1 / length);
 
     ///https://arxiv.org/pdf/1208.3927.pdf (28a)
-    //#define PAPER_1
+    #define PAPER_1
     #ifdef PAPER_1
     tensor<value, 3> dx = args.gA * V_upper - args.gB;
 
@@ -3782,7 +3782,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     #endif // PAPER_1
 
     ///https://artscimedia.case.edu/wp-content/uploads/sites/213/2018/08/18010345/Mertens_SestoGR18.pdf
-    #define PAPER_3
+    //#define PAPER_3
     #ifdef PAPER_3
 
     value au0 = 0;
@@ -4177,6 +4177,8 @@ int main()
 
     opencl_context& clctx = *win.clctx;
 
+    std::cout << "Texture pixel align " << cl::get_device_info<cl_uint>(clctx.ctx.selected_device, CL_DEVICE_IMAGE_PITCH_ALIGNMENT_KHR) << std::endl;
+
     cl::managed_command_queue mqueue(clctx.ctx, 0, 16);
 
     std::cout << "EXT " << cl::get_extensions(clctx.ctx) << std::endl;
@@ -4188,7 +4190,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {281, 281, 281};
+    vec3i size = {211, 211, 211};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
