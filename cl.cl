@@ -1301,7 +1301,7 @@ enum ds_result
 int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_ds_out)
 {
     #define MIN_STEP 0.5f
-    #define MAX_STEP 4.f
+    #define MAX_STEP 2.f
 
     float next_ds = 0.01f * 1/fast_length(next_acceleration);
 
