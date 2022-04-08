@@ -485,12 +485,16 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     auto dissipate = [&](auto& base_reference, auto& inout)
     {
+        cl::buffer X = base_reference[buffer_to_index("X")].as_device_read_only();
+
         for(int i=0; i < buffer_set::buffer_count; i++)
         {
             cl::args diss;
 
             diss.push_back(points_set.second_derivative_points);
             diss.push_back(points_set.second_count);
+
+            diss.push_back(X);
 
             diss.push_back(base_reference[i].as_device_read_only());
             diss.push_back(inout[i]);

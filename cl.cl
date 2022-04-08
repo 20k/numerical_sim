@@ -1055,8 +1055,10 @@ void evolve_gB(__global ushort4* points, int point_count,
     ogB2[index] = f_dtgB2 * timestep + b2;
 }
 
+#define XVDAMP_X_BOUND 0.5f
+
 __kernel
-void dissipate_single(__global ushort4* points, int point_count,
+void dissipate_single(__global ushort4* points, int point_count, __global float* X,
                       __global float* buffer, __global float* obuffer,
                       float coefficient,
                       float scale, int4 dim, float timestep)
@@ -1103,6 +1105,28 @@ void dissipate_single(__global ushort4* points, int point_count,
     #else
     float damp = 1;
     #endif
+
+    //#define X_VDAMP
+    #ifdef X_VDAMP
+    float boundary = XVDAMP_X_BOUND;
+    float min_boundary = 0.1;
+
+    float x_val = X[index];
+
+    if(x_val <= boundary)
+    {
+        x_val = clamp(x_val, min_boundary, boundary);
+
+        float fraction = (x_val - min_boundary) / (boundary - min_boundary);
+
+        fraction = clamp(fraction, 0.f, 1.f);
+
+        float mult = 1.25f;
+
+        damp = mult;
+        //damp = mix(1.f, mult, 1 - fraction);
+    }
+    #endif // X_VDAMP
 
     float TEMPORARIES9;
 
@@ -1198,6 +1222,15 @@ void render(STANDARD_ARGS(),
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 
     float3 col = {real, max_scalar, max_scalar};
+
+    #ifdef X_VDAMP
+    float x_bound = XVDAMP_X_BOUND;
+
+    if(X[IDX(ix, iy, iz)] < x_bound)
+    {
+        col = (float3)(1, 0, 1);
+    }
+    #endif // X_VDAMP
 
     float3 lin_col = srgb_to_lin(col);
 
