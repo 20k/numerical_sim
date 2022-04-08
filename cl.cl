@@ -1301,7 +1301,7 @@ enum ds_result
 int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_ds_out)
 {
     #define MIN_STEP 0.5f
-    #define MAX_STEP 1.f
+    #define MAX_STEP 4.f
 
     float next_ds = 0.01f * 1/fast_length(next_acceleration);
 
@@ -1315,7 +1315,7 @@ int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_d
     //if(next_ds == MIN_STEP)
     //    return DS_RETURN;
 
-    if(next_ds < current_ds/1.95f)
+    if(next_ds < current_ds/1.2f)
         return DS_SKIP;
 
     return DS_NONE;
@@ -1421,6 +1421,10 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     int x = ray_in.x;
     int y = ray_in.y;
 
+    float final_dX0 = 0;
+    float final_dX1 = 0;
+    float final_dX2 = 0;
+
     ///ray location
     ///temporary while i don't do interpolation
     float next_ds = 0.1f;
@@ -1442,19 +1446,23 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         float TEMPORARIES6;
 
+        float dX0 = X0Diff;
+        float dX1 = X1Diff;
+        float dX2 = X2Diff;
+
         float terminate_length = fast_length(cpos);
 
         if(terminate_length >= universe_size / 1.01f)
         {
+            final_dX0 = dX0;
+            final_dX1 = dX1;
+            final_dX2 = dX2;
+
             deliberate_termination = true;
             break;
         }
 
         float ds = next_ds;
-
-        float dX0 = X0Diff;
-        float dX1 = X1Diff;
-        float dX2 = X2Diff;
 
         float dV0 = V0Diff;
         float dV1 = V1Diff;
@@ -1511,9 +1519,9 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     ray_out.lp2 = lp2;
     ray_out.lp3 = lp3;
 
-    ray_out.V0 = V0;
-    ray_out.V1 = V1;
-    ray_out.V2 = V2;
+    ray_out.V0 = final_dX0;
+    ray_out.V1 = final_dX1;
+    ray_out.V2 = final_dX2;
 
     if(!deliberate_termination)
     {
@@ -1525,6 +1533,35 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         int next_idx = atomic_inc(ray_count_terminated);
         rays_terminated[next_idx] = ray_out;
     }
+}
+
+///https://www.ccs.neu.edu/home/fell/CS4300/Lectures/Ray-TracingFormulas.pdf
+float3 fix_ray_position(float3 cartesian_pos, float3 cartesian_velocity, float sphere_radius)
+{
+    cartesian_velocity = fast_normalize(cartesian_velocity);
+
+    float3 C = (float3){0,0,0};
+
+    float a = 1;
+    float b = 2 * dot(cartesian_velocity, (cartesian_pos - C));
+    float c = dot(C, C) + dot(cartesian_pos, cartesian_pos) - 2 * (dot(cartesian_pos, C)) - sphere_radius * sphere_radius;
+
+    float discrim = b*b - 4 * a * c;
+
+    if(discrim < 0)
+        return cartesian_pos;
+
+    float t0 = (-b - native_sqrt(discrim)) / (2 * a);
+    float t1 = (-b + native_sqrt(discrim)) / (2 * a);
+
+    float my_t = 0;
+
+    if(fabs(t0) < fabs(t1))
+        my_t = t0;
+    else
+        my_t = t1;
+
+    return cartesian_pos + my_t * cartesian_velocity;
 }
 
 __kernel void render_rays(__global struct lightray_simple* rays_in, __global int* ray_count, __write_only image2d_t screen, float scale)
@@ -1548,10 +1585,15 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
     int y = ray_in.y;
 
     float3 cpos = {lp1, lp2, lp3};
+    float3 cvel = {V0, V1, V2};
 
-    float terminate_length = fast_length(cpos);
+    float uni_size = universe_size;
 
-    if(terminate_length >= universe_size / 1.01f)
+    cpos = fix_ray_position(cpos, cvel, uni_size * 1.03f);
+  );
+    float terminate_length = length(cpos);
+
+    if(terminate_length >= uni_size / 1.01f)
     {
         float fr = fast_length(cpos);
         float theta = acos(cpos.z / fr);
