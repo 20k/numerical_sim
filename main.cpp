@@ -1769,11 +1769,24 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     #define PAPER_0610128
     #ifdef PAPER_0610128
     black_hole_m = {0.483, 0.483};
-    black_hole_pos = {san_black_hole_pos({-3.257, 0.f, 0.f}), san_black_hole_pos({3.257, 0, 0})};
+    black_hole_pos = {{-3.257, 0.f, 0.f}, {3.257, 0, 0}};
     black_hole_velocity = {{0, 0.983 * 0.133 / black_hole_m[0], 0}, {0, 0.983 * -0.133 / black_hole_m[1], 0}};
     black_hole_spin = {{0,0,0}, {0,0,0}};
 
     #endif // PAPER_0610128
+
+    //#define TRIPLEHOLES
+    #ifdef TRIPLEHOLES
+    black_hole_m = {0.5, 0.4, 0.4};
+    black_hole_pos = {{0, 3.f, 0.f}, {6, 0, 0}, {-5, 0, 0}};
+    black_hole_velocity = {{0, 0, 0}, {0, -0.2, 0}, {0, 0.2, 0}};
+    black_hole_spin = {{0,0,0}, {0,0,0}, {0,0,0}};
+    #endif // TRIPLEHOLES
+
+    for(vec3f& v : black_hole_pos)
+    {
+        v = san_black_hole_pos(v);
+    }
 
     metric<value, 3, 3> flat_metric;
 
