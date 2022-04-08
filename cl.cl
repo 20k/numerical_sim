@@ -1301,14 +1301,14 @@ enum ds_result
 int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_ds_out)
 {
     #define MIN_STEP 0.5f
+    #define MAX_STEP 1.f
 
     float next_ds = 0.01f * 1/fast_length(next_acceleration);
 
     ///produces strictly worse results for kerr
     next_ds = 0.99f * current_ds * clamp(next_ds / current_ds, 0.1f, 4.f);
 
-    next_ds = max(next_ds, MIN_STEP);
-    next_ds = min(next_ds, 1.f);
+    next_ds = clamp(next_ds, MIN_STEP, MAX_STEP);
 
     *next_ds_out = next_ds;
 
