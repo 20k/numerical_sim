@@ -4427,11 +4427,19 @@ int main()
             width = win.get_window_size().x();
             height = win.get_window_size().y();
 
+            if(width < 4)
+                width = 4;
+
+            if(height < 4)
+                height = 4;
+
             texture_settings new_sett;
             new_sett.width = width;
             new_sett.height = height;
             new_sett.is_srgb = false;
             new_sett.generate_mipmaps = false;
+
+            std::cout << "DIMS " << width << " " << height << std::endl;
 
             tex[0].load_from_memory(new_sett, nullptr);
             tex[1].load_from_memory(new_sett, nullptr);
@@ -4441,7 +4449,7 @@ int main()
 
             ray_buffer[0].alloc(sizeof(cl_float) * 10 * width * height);
             ray_buffer[1].alloc(sizeof(cl_float) * 10 * width * height);
-            ray_count_terminated.alloc(sizeof(cl_float) * 10 * width * height);
+            rays_terminated.alloc(sizeof(cl_float) * 10 * width * height);
         }
 
         rtex[which_texture].acquire(clctx.cqueue);
@@ -4631,8 +4639,10 @@ int main()
 
                         render_args.push_back(scale);
                         render_args.push_back(clsize);
+                        render_args.push_back(width);
+                        render_args.push_back(height);
 
-                        clctx.cqueue.exec("trace_rays", render_args, {width * height}, {64});
+                        clctx.cqueue.exec("trace_rays", render_args, {width, height}, {8, 8});
 
                         std::swap(ray_count[0], ray_count[1]);
                         std::swap(ray_buffer[0], ray_buffer[1]);

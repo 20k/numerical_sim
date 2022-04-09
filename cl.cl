@@ -1378,18 +1378,7 @@ void init_rays(__global struct lightray_simple* rays, __global int* ray_count0, 
     out.x = x;
     out.y = y;
 
-    int linear_local_idx = get_local_linear_id();
-
-    int block_size = get_local_size(0) * get_local_size(1);
-
-    int group_idx = get_group_id(0);
-    int group_idy = get_group_id(1);
-
-    int group_width = get_num_groups(0);
-
-    int group_linear = group_idy * group_width + group_idx;
-
-    rays[group_linear * block_size + linear_local_idx] = out;
+    rays[y * width + x] = out;
 
     *ray_count0 = width * height;
     *ray_count1 = 0;
@@ -1399,16 +1388,15 @@ __kernel
 void trace_rays(__global struct lightray_simple* rays_in, __global struct lightray_simple* rays_out, __global struct lightray_simple* rays_terminated,
                 __global int* ray_count_in, __global int* ray_count_out, __global int* ray_count_terminated,
                 STANDARD_ARGS(),
-                float scale, int4 dim)
+                float scale, int4 dim, int width, int height)
 {
-    int idx = get_global_id(0);
+    int x = get_global_id(0);
+    int y = get_global_id(1);
 
-    int count_in = *ray_count_in;
-
-    if(idx >= count_in)
+    if(x >= width || y >= height)
         return;
 
-    struct lightray_simple ray_in = rays_in[idx];
+    struct lightray_simple ray_in = rays_in[y * width + x];
 
     float lp1 = ray_in.lp1;
     float lp2 = ray_in.lp2;
@@ -1417,9 +1405,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     float V0 = ray_in.V0;
     float V1 = ray_in.V1;
     float V2 = ray_in.V2;
-
-    int x = ray_in.x;
-    int y = ray_in.y;
 
     float final_dX0 = 0;
     float final_dX1 = 0;
