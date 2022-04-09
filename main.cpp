@@ -4128,7 +4128,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {251, 251, 251};
+    vec3i size = {291, 291, 291};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -4494,7 +4494,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.035;
+        float timestep = 0.025;
 
         //timestep = 0.04;
 
