@@ -1766,7 +1766,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     #endif // KEPLER
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
-    #define PAPER_0610128
+    //#define PAPER_0610128
     #ifdef PAPER_0610128
     black_hole_m = {0.483, 0.483};
     black_hole_pos = {{-3.257, 0.f, 0.f}, {3.257, 0, 0}};
@@ -1782,6 +1782,14 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     black_hole_velocity = {{0, 0, 0}, {0, -0.2, 0}, {0, 0.2, 0}};
     black_hole_spin = {{0,0,0}, {0,0,0}, {0,0,0}};
     #endif // TRIPLEHOLES
+
+    #define SINGLEHOLE
+    #ifdef SINGLEHOLE
+    black_hole_m = {0.5};
+    black_hole_pos = {{-3, 0.f, 0.f}};
+    black_hole_velocity = {{0.4f, 0, 0}};
+    black_hole_spin = {{0,0,0}};
+    #endif // SINGLEHOLE
 
     for(vec3f& v : black_hole_pos)
     {
@@ -4128,7 +4136,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {281, 281, 281};
+    vec3i size = {211, 211, 211};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
