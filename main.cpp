@@ -2438,7 +2438,7 @@ tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& 
         }
     }
 
-    tensor<value, 3, 3> cov_div_X = gpu_double_covariant_derivative(ctx, args.X, args.dX, args.cY, icY, args.christoff2);
+    tensor<value, 3, 3> cov_div_X = gpu_double_covariant_derivative(ctx, args.X, args.dX, args.cY, icY, christoff2);
     ctx.pin(cov_div_X);
 
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf
