@@ -1429,6 +1429,8 @@ struct standard_arguments
     tensor<value, 3> bigGi;
     tensor<value, 3> derived_cGi;
 
+    tensor<value, 3, 3, 3> christoff2;
+
     standard_arguments(equation_context& ctx)
     {
         bool interpolate = ctx.uses_linear;
@@ -1508,7 +1510,6 @@ struct standard_arguments
         momentum_constraint.idx(1).make_value(bidx("momentum1", interpolate));
         momentum_constraint.idx(2).make_value(bidx("momentum2", interpolate));
 
-
         for(int k=0; k < 3; k++)
         {
             for(int i=0; i < 3; i++)
@@ -1548,7 +1549,7 @@ struct standard_arguments
             }
         }
 
-        tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, cY, icY);
+        /*tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, cY, icY);
 
         auto pinned_christoff2 = christoff2;
         ctx.pin(pinned_christoff2);
@@ -1556,7 +1557,7 @@ struct standard_arguments
         auto pinned_icY = icY;
         //ctx.pin(pinned_icY);
 
-        tensor<value, 3> cGi_G;
+        tensor<value, 3> cGi_G;*/
 
         /*for(int i=0; i < 3; i++)
         {
@@ -1572,6 +1573,8 @@ struct standard_arguments
 
             cGi_G.idx(i) = sum;
         }*/
+
+        tensor<value, 3> cGi_G;
 
         for(int i=0; i < 3; i++)
         {
@@ -1599,6 +1602,93 @@ struct standard_arguments
         #else
         derived_cGi = cGi;
         #endif
+
+        /// https://arxiv.org/pdf/1507.00570.pdf (1)
+        #define MODIFIED_CHRISTOFFEL
+        #ifdef MODIFIED_CHRISTOFFEL
+        tensor<value, 3> bigGi_lower = lower_index(bigGi, cY);
+
+        tensor<value, 3, 3, 3> raw_christoff2 = gpu_christoffel_symbols_2(ctx, cY, icY);
+
+        tensor<value, 3> Tk;
+
+        for(int i=0; i < 3; i++)
+        {
+            value sum = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                sum += raw_christoff2.idx(k, k, i);
+            }
+
+            Tk.idx(i) = sum;
+        }
+
+        tensor<value, 3, 3, 3> djtk;
+        tensor<value, 3, 3, 3> djgk;
+        tensor<value, 3, 3, 3> yjkGi;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                for(int k=0; k < 3; k++)
+                {
+                    float kroneck = (i == j) ? 1 : 0;
+
+                    djtk.idx(i, j, k) = (-3.f/5.f) * kroneck * Tk.idx(k);
+                    djgk.idx(i, j, k) = (-1.f/5.f) * kroneck * bigGi_lower.idx(k);
+                    yjkGi.idx(i, j, k) = (1.f/3.f) * cY.idx(j, k) * bigGi.idx(i);
+                }
+            }
+        }
+
+
+        ///Qab_TF = Qab - (1/3) Q * met
+        ///where Q = iMet * Qab
+
+        tensor<value, 3, 3, 3> djtk_TF;
+        tensor<value, 3, 3, 3> djgk_TF;
+
+        for(int k=0; k < 3; k++)
+        {
+            value T1 = 0;
+            value T2 = 0;
+
+            for(int i=0; i < 3; i++)
+            {
+                for(int j=0; j < 3; j++)
+                {
+                    T1 += icY.idx(i, j) * djtk.idx(k, i, j);
+                    T2 += icY.idx(i, j) * djgk.idx(k, i, j);
+                }
+            }
+
+            for(int i=0; i < 3; i++)
+            {
+                for(int j=0; j < 3; j++)
+                {
+                    djtk_TF.idx(k, i, j) = djtk.idx(k, i, j) - (1.f/3.f) * T1 * cY.idx(i, j);
+                    djgk_TF.idx(k, i, j) = djgk.idx(k, i, j) - (1.f/3.f) * T2 * cY.idx(i, j);
+                }
+            }
+        }
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                for(int k=0; k < 3; k++)
+                {
+                    christoff2.idx(i, j, k) = raw_christoff2.idx(i, j, k) + djtk_TF.idx(i, j, k) + djgk_TF.idx(i, j, k) + yjkGi.idx(i, j, k);
+                }
+            }
+        }
+
+        #else
+        christoff2 = gpu_christoffel_symbols_2(ctx, cY, icY);
+        #endif
+
 
         /*
         ///dcgA alias
@@ -1787,7 +1877,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     #ifdef SINGLEHOLE
     black_hole_m = {0.5};
     black_hole_pos = {{-2, 0.f, 0.f}};
-    black_hole_velocity = {{0.4f, 0, 0}};
+    black_hole_velocity = {{0.5f, 0, 0}};
     black_hole_spin = {{0,0,0}};
     #endif // SINGLEHOLE
 
