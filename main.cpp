@@ -76,6 +76,8 @@ https://arxiv.org/pdf/gr-qc/0212039.pdf - apparent horizon?
 
 https://iopscience.iop.org/article/10.1088/1361-6633/80/2/026901/ampdf - defines adm mass
 https://arxiv.org/pdf/0707.0339.pdf - interesting paper analysing stability of bssn, has good links
+https://arxiv.org/pdf/gr-qc/0209102.pdf - neutron stars, boundary conditions, hamiltonian constraints
+https://arxiv.org/pdf/gr-qc/0501043.pdf - hamiltonian constraint
 */
 
 ///notes:
