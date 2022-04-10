@@ -1210,10 +1210,10 @@ tensor<T, N, N> gpu_covariant_derivative_low_vec(equation_context& ctx, const te
 
 template<typename T, int N>
 inline
-tensor<T, N, N> gpu_double_covariant_derivative(equation_context& ctx, const T& in, const tensor<T, N>& first_derivatives, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
+tensor<T, N, N> gpu_double_covariant_derivative(equation_context& ctx, const T& in, const tensor<T, N>& first_derivatives,
+                                                const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse,
+                                                const tensor<T, N, N, N>& christoff2)
 {
-    auto christoff = gpu_christoffel_symbols_2(ctx, met, inverse);
-
     tensor<T, N, N> lac;
 
     for(int a=0; a < N; a++)
@@ -1224,7 +1224,7 @@ tensor<T, N, N> gpu_double_covariant_derivative(equation_context& ctx, const T& 
 
             for(int b=0; b < N; b++)
             {
-                sum += christoff.idx(b, c, a) * diff1(ctx, in, b);
+                sum += christoff2.idx(b, c, a) * diff1(ctx, in, b);
             }
 
             lac.idx(a, c) = diff2(ctx, in, a, c, first_derivatives.idx(a), first_derivatives.idx(c)) - sum;
@@ -2438,7 +2438,7 @@ tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& 
         }
     }
 
-    tensor<value, 3, 3> cov_div_X = gpu_double_covariant_derivative(ctx, args.X, args.dX, args.cY, icY);
+    tensor<value, 3, 3> cov_div_X = gpu_double_covariant_derivative(ctx, args.X, args.dX, args.cY, icY, args.christoff2);
     ctx.pin(cov_div_X);
 
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf
@@ -2487,8 +2487,29 @@ void build_cA(equation_context& ctx)
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-    tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, args.cY);
-    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, args.cY, icY);
+    //tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, args.cY);
+    tensor<value, 3, 3, 3> christoff2 = args.christoff2;
+
+    tensor<value, 3, 3, 3> christoff1;
+
+    ///Gak Ckbc
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                value sum = 0;
+
+                for(int d = 0; d < 3; d++)
+                {
+                    sum += args.cY.idx(i, d) * christoff2.idx(d, j, k);
+                }
+
+                christoff1.idx(i, j, k) = sum;
+            }
+        }
+    }
 
     ctx.pin(christoff1);
     ctx.pin(christoff2);
@@ -2528,7 +2549,7 @@ void build_cA(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            value Xderiv = X * gpu_double_covariant_derivative(ctx, args.gA, args.digA, cY, icY).idx(j, i);
+            value Xderiv = X * gpu_double_covariant_derivative(ctx, args.gA, args.digA, cY, icY, args.christoff2).idx(j, i);
             //value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, args.digA, cY, icY).idx(j, i);
 
             value s2 = 0.5f * (diff1(ctx, X, i) * diff1(ctx, gA, j) + diff1(ctx, X, j) * diff1(ctx, gA, i));
@@ -2673,7 +2694,7 @@ void build_cGi(equation_context& ctx)
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, args.cY, icY);
+    tensor<value, 3, 3, 3> christoff2 = args.christoff2;
 
     ctx.pin(christoff2);
 
@@ -2857,7 +2878,7 @@ void build_K(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            value Xderiv = X * gpu_double_covariant_derivative(ctx, args.gA, args.digA, cY, icY).idx(j, i);
+            value Xderiv = X * gpu_double_covariant_derivative(ctx, args.gA, args.digA, cY, icY, args.christoff2).idx(j, i);
             //value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, args.digA, cY, icY).idx(j, i);
 
             value s2 = 0.5f * (diff1(ctx, X, i) * diff1(ctx, gA, j) + diff1(ctx, X, j) * diff1(ctx, gA, i));
