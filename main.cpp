@@ -1786,7 +1786,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     #define SINGLEHOLE
     #ifdef SINGLEHOLE
     black_hole_m = {0.5};
-    black_hole_pos = {{-3, 0.f, 0.f}};
+    black_hole_pos = {{-2, 0.f, 0.f}};
     black_hole_velocity = {{0.4f, 0, 0}};
     black_hole_spin = {{0,0,0}};
     #endif // SINGLEHOLE
@@ -4136,7 +4136,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {211, 211, 211};
+    vec3i size = {281, 281, 281};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -4510,7 +4510,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.035;
+        float timestep = 0.02;
 
         //timestep = 0.04;
 
