@@ -1870,7 +1870,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
     #endif // PAPER_0610128
 
-    //#define TRIPLEHOLES
+    #define TRIPLEHOLES
     #ifdef TRIPLEHOLES
     black_hole_m = {0.5, 0.4, 0.4};
     black_hole_pos = {{0, 3.f, 0.f}, {6, 0, 0}, {-5, 0, 0}};
@@ -1878,7 +1878,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     black_hole_spin = {{0,0,0}, {0,0,0}, {0,0,0}};
     #endif // TRIPLEHOLES
 
-    #define SINGLEHOLE
+    //#define SINGLEHOLE
     #ifdef SINGLEHOLE
     black_hole_m = {0.5};
     black_hole_pos = {{-2, 0.f, 0.f}};
