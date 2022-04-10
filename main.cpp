@@ -1604,7 +1604,7 @@ struct standard_arguments
         #endif
 
         /// https://arxiv.org/pdf/1507.00570.pdf (1)
-        #define MODIFIED_CHRISTOFFEL
+        //#define MODIFIED_CHRISTOFFEL
         #ifdef MODIFIED_CHRISTOFFEL
         tensor<value, 3> bigGi_lower = lower_index(bigGi, cY);
 
