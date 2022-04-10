@@ -80,6 +80,7 @@ https://arxiv.org/pdf/gr-qc/0209102.pdf - neutron stars, boundary conditions, ha
 https://arxiv.org/pdf/gr-qc/0501043.pdf - hamiltonian constraint
 https://orca.cardiff.ac.uk/114952/1/PhysRevD.98.044014.pdf - this paper states that bowen-york suffers hamiltonian constraint violations, which... explains a lot
 https://arxiv.org/pdf/0908.1063.pdf - gives an estimate of black hole mass from apparent horizon. Analysis of trumpet initial conditions shows they're unfortunately the same as non trumpet
+https://arxiv.org/pdf/0912.2920.pdf - z4c
 */
 
 ///notes:
