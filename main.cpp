@@ -1821,6 +1821,7 @@ vec3f world_to_voxel(vec3f world_pos, vec3i dim, float scale)
     return (world_pos / scale) + centre;
 }
 
+//https://arxiv.org/pdf/gr-qc/0610128.pdf (6)
 float get_nonspinning_adm_mass(cl::command_queue& cqueue, int idx, const std::vector<black_hole>& holes, vec3i dim, float scale, cl::buffer& u_buffer)
 {
     assert(idx >= 0 && idx < holes.size());
@@ -1831,14 +1832,27 @@ float get_nonspinning_adm_mass(cl::command_queue& cqueue, int idx, const std::ve
 
     int read_idx = (int)voxel_pos.z() * dim.x() * dim.y() + (int)voxel_pos.y() * dim.x() + (int)voxel_pos.x();
 
-    float u_read = 0;
+    cl_float u_read = 0;
 
-    u_buffer.read(cqueue, (char*)&u_read, sizeof(float), read_idx);
+    u_buffer.read(cqueue, (char*)&u_read, sizeof(cl_float), read_idx * sizeof(cl_float));
 
     ///should be integer
     printf("VXP %f %f %f\n", voxel_pos.x(), voxel_pos.y(), voxel_pos.z());
 
-    return 0.f;
+    printf("Got u %f\n", u_read);
+
+    float sum = 0;
+
+    for(int i=0; i < (int)holes.size(); i++)
+    {
+        if(i == idx)
+            continue;
+
+        sum += holes[i].bare_mass / (2 * (holes[idx].position - holes[i].position).length());
+    }
+
+    ///the reason this isn't 1+ is the differences in definition of u
+    return holes[idx].bare_mass * (u_read + sum);
 }
 
 inline
@@ -4326,7 +4340,7 @@ int main()
     {
         cl::command_queue cqueue(clctx.ctx);
 
-        u_arg = iterate_u(clctx.ctx, cqueue, size, c_at_max).as_device_read_only();
+        u_arg = iterate_u(clctx.ctx, cqueue, size, c_at_max).as_read_only();
 
         cqueue.block();
     };
@@ -4481,8 +4495,6 @@ int main()
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
 
     base_mesh.init(clctx.cqueue, u_arg);
-
-
 
     std::vector<float> real_graph;
     std::vector<float> real_decomp;
