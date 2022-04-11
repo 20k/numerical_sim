@@ -1862,7 +1862,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     #endif // KEPLER
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
-    //#define PAPER_0610128
+    #define PAPER_0610128
     #ifdef PAPER_0610128
     black_hole_m = {0.483, 0.483};
     black_hole_pos = {{-3.257, 0.f, 0.f}, {3.257, 0, 0}};
@@ -1871,7 +1871,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 
     #endif // PAPER_0610128
 
-    #define TRIPLEHOLES
+    //#define TRIPLEHOLES
     #ifdef TRIPLEHOLES
     black_hole_m = {0.5, 0.4, 0.4};
     black_hole_pos = {{0, 3.f, 0.f}, {6, 0, 0}, {-5, 0, 0}};
