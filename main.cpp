@@ -1732,8 +1732,18 @@ struct standard_arguments
     }
 };
 
+struct black_hole
+{
+    ///in world coordinates
+    vec3f position;
+    ///this is not a parameter that maps to any straightforward concept of mass
+    float bare_mass = 0;
+    vec3f momentum;
+    vec3f angular_momentum;
+};
+
 ///https://arxiv.org/pdf/gr-qc/0610128.pdf initial conditions, see (7)
-tensor<value, 3, 3> calculate_single_bcAij(const vec<3, value>& pos, float black_hole_m, vec3f black_hole_pos, vec3f black_hole_velocity, vec3f black_hole_spin)
+tensor<value, 3, 3> calculate_single_bcAij(const vec<3, value>& pos, const black_hole& hole)
 {
     tensor<value, 3, 3, 3> eijk = get_eijk();
 
@@ -1754,11 +1764,9 @@ tensor<value, 3, 3> calculate_single_bcAij(const vec<3, value>& pos, float black
     {
         for(int j=0; j < 3; j++)
         {
-            vec3f bhpos = black_hole_pos;
-            vec3f momentum = black_hole_velocity * black_hole_m;
-            tensor<value, 3> momentum_tensor = {momentum.x(), momentum.y(), momentum.z()};
+            tensor<value, 3> momentum_tensor = {hole.momentum.x(), hole.momentum.y(), hole.momentum.z()};
 
-            vec<3, value> vri = {bhpos.x(), bhpos.y(), bhpos.z()};
+            vec<3, value> vri = {hole.position.x(), hole.position.y(), hole.position.z()};
 
             value ra = (pos - vri).length();
 
@@ -1780,8 +1788,8 @@ tensor<value, 3, 3> calculate_single_bcAij(const vec<3, value>& pos, float black
             {
                 for(int l=0; l < 3; l++)
                 {
-                    s1 += eijk.idx(k, i, l) * black_hole_spin[l] * nia[k] * nia_lower.idx(j);
-                    s2 += eijk.idx(k, j, l) * black_hole_spin[l] * nia[k] * nia_lower.idx(i);
+                    s1 += eijk.idx(k, i, l) * hole.angular_momentum[l] * nia[k] * nia_lower.idx(j);
+                    s2 += eijk.idx(k, j, l) * hole.angular_momentum[l] * nia[k] * nia_lower.idx(i);
                 }
             }
 
@@ -1793,13 +1801,14 @@ tensor<value, 3, 3> calculate_single_bcAij(const vec<3, value>& pos, float black
 }
 
 ///this does not return the same kind of conformal cAij as bssn uses, need to reconstruct Kij!
-tensor<value, 3, 3> calculate_bcAij(const vec<3, value>& pos, const std::vector<float>& black_hole_m, const std::vector<vec3f>& black_hole_pos, const std::vector<vec3f>& black_hole_velocity, const std::vector<vec3f>& black_hole_spin)
+tensor<value, 3, 3> calculate_bcAij(const vec<3, value>& pos, const std::vector<black_hole>& holes)
 {
     tensor<value, 3, 3> bcAij;
 
-    for(int bh_idx = 0; bh_idx < (int)black_hole_pos.size(); bh_idx++)
+    for(const black_hole& hole : holes)
     {
-        bcAij += calculate_single_bcAij(pos, black_hole_m[bh_idx], black_hole_pos[bh_idx], black_hole_velocity[bh_idx], black_hole_spin[bh_idx]);
+        bcAij += calculate_single_bcAij(pos, hole);
+
     }
 
     return bcAij;
@@ -1825,6 +1834,7 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
         return scaled * scale / bulge;
     };
 
+    #if 0
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
     ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
     std::vector<float> black_hole_m{0.5, 0.5};
@@ -1856,20 +1866,10 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
         float r0 = m1 * R / M;
         float r1 = m0 * R / M;
 
-        black_hole_pos[0] = san_black_hole_pos({-r0, 0, 0});
-        black_hole_pos[1] = san_black_hole_pos({r1, 0, 0});
+        black_hole_pos[0] = {-r0, 0, 0};
+        black_hole_pos[1] = {r1, 0, 0};
     }
     #endif // KEPLER
-
-    ///https://arxiv.org/pdf/gr-qc/0610128.pdf
-    #define PAPER_0610128
-    #ifdef PAPER_0610128
-    black_hole_m = {0.483, 0.483};
-    black_hole_pos = {{-3.257, 0.f, 0.f}, {3.257, 0, 0}};
-    black_hole_velocity = {{0, 0.983 * 0.133 / black_hole_m[0], 0}, {0, 0.983 * -0.133 / black_hole_m[1], 0}};
-    black_hole_spin = {{0,0,0}, {0,0,0}};
-
-    #endif // PAPER_0610128
 
     //#define TRIPLEHOLES
     #ifdef TRIPLEHOLES
@@ -1886,10 +1886,30 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     black_hole_velocity = {{0.5f, 0, 0}};
     black_hole_spin = {{0,0,0}};
     #endif // SINGLEHOLE
+    #endif // 0
 
-    for(vec3f& v : black_hole_pos)
+    std::vector<black_hole> holes;
+
+    ///https://arxiv.org/pdf/gr-qc/0610128.pdf
+    #define PAPER_0610128
+    #ifdef PAPER_0610128
+    black_hole h1;
+    h1.bare_mass = 0.483;
+    h1.momentum = {0, 0.983 * 0.133, 0};
+    h1.position = {-3.257, 0.f, 0.f};
+
+    black_hole h2;
+    h2.bare_mass = 0.483;
+    h2.momentum = {0, -0.983 * 0.133, 0};
+    h2.position = {3.257, 0.f, 0.f};
+
+    holes.push_back(h1);
+    holes.push_back(h2);
+    #endif // PAPER_0610128
+
+    for(black_hole& hole : holes)
     {
-        v = san_black_hole_pos(v);
+        hole.position = san_black_hole_pos(hole.position);
     }
 
     metric<value, 3, 3> flat_metric;
@@ -1902,15 +1922,15 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
         }
     }
 
-    tensor<value, 3, 3> bcAij = calculate_bcAij(pos, black_hole_m, black_hole_pos, black_hole_velocity, black_hole_spin);
+    tensor<value, 3, 3> bcAij = calculate_bcAij(pos, holes);
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     value BL_s = 0;
 
-    for(int i=0; i < (int)black_hole_m.size(); i++)
+    for(const black_hole& hole : holes)
     {
-        float Mi = black_hole_m[i];
-        vec3f ri = black_hole_pos[i];
+        float Mi = hole.bare_mass;
+        vec3f ri = hole.position;
 
         vec<3, value> vri = {ri.x(), ri.y(), ri.z()};
 
