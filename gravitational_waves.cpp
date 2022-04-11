@@ -114,7 +114,7 @@ auto integrate_1d(const T& func, int n, float upper, float lower)
         sum = sum + func_eval;
     }
 
-    return sum;
+    return ((upper - lower) / 2.f) * sum;
 }
 
 template<typename T>
@@ -146,7 +146,7 @@ auto spherical_integrate(const T& f_theta_phi, int n)
         sum = sum + weights[i] * lsum;
     }
 
-    return ((iupper - ilower) / 2.f) * ((jupper - jlower) / 2.f) * sum;
+    return ((iupper - ilower) / 2.f) * sum;
 }
 
 ///this isn't correct at all. The integration might be fine, but we can't take the spherical harmonics of a constant
