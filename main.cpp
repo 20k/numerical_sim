@@ -1821,13 +1821,19 @@ vec3f world_to_voxel(vec3f world_pos, vec3i dim, float scale)
     return (world_pos / scale) + centre;
 }
 
-float get_nonspinning_adm_mass(int idx, const std::vector<black_hole>& holes, vec3i dim, float scale, cl::buffer& u_buffer)
+float get_nonspinning_adm_mass(cl::command_queue& cqueue, int idx, const std::vector<black_hole>& holes, vec3i dim, float scale, cl::buffer& u_buffer)
 {
     assert(idx >= 0 && idx < holes.size());
 
     const black_hole& my_hole = holes[idx];
 
     vec3f voxel_pos = world_to_voxel(my_hole.position, dim, scale);
+
+    int read_idx = (int)voxel_pos.z() * dim.x() * dim.y() + (int)voxel_pos.y() * dim.x() + (int)voxel_pos.x();
+
+    float u_read = 0;
+
+    u_buffer.read(cqueue, (char*)&u_read, sizeof(float), read_idx);
 
     ///should be integer
     printf("VXP %f %f %f\n", voxel_pos.x(), voxel_pos.y(), voxel_pos.z());
@@ -4426,7 +4432,7 @@ int main()
 
     async_u.join();
 
-    printf("Black hole test mass %f\n", get_nonspinning_adm_mass(0, holes, size, scale, u_arg));
+    printf("Black hole test mass %f\n", get_nonspinning_adm_mass(clctx.cqueue, 0, holes, size, scale, u_arg));
 
     ///this is not thread safe
     clctx.ctx.register_program(prog);
