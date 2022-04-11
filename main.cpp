@@ -1814,8 +1814,29 @@ tensor<value, 3, 3> calculate_bcAij(const vec<3, value>& pos, const std::vector<
     return bcAij;
 }
 
+vec3f world_to_voxel(vec3f world_pos, vec3i dim, float scale)
+{
+    vec3f centre = {(dim.x() - 1)/2, (dim.y() - 1)/2, (dim.z() - 1)/2};
+
+    return (world_pos / scale) + centre;
+}
+
+float get_nonspinning_adm_mass(int idx, const std::vector<black_hole>& holes, vec3i dim, float scale, cl::buffer& u_buffer)
+{
+    assert(idx >= 0 && idx < holes.size());
+
+    const black_hole& my_hole = holes[idx];
+
+    vec3f voxel_pos = world_to_voxel(my_hole.position, dim, scale);
+
+    ///should be integer
+    printf("VXP %f %f %f\n", voxel_pos.x(), voxel_pos.y(), voxel_pos.z());
+
+    return 0.f;
+}
+
 inline
-void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
+std::vector<black_hole> setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
 {
     vec<3, value> pos;
 
@@ -1967,6 +1988,8 @@ void setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 69
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
     ///phi
+
+    return holes;
 }
 
 ///https://arxiv.org/pdf/gr-qc/0206072.pdf alternative initial conditions
@@ -4281,7 +4304,7 @@ int main()
     vec3f centre = {size.x()/2.f, size.y()/2.f, size.z()/2.f};
 
     equation_context setup_initial;
-    setup_initial_conditions(setup_initial, centre, scale);
+    std::vector<black_hole> holes = setup_initial_conditions(setup_initial, centre, scale);
     setup_initial.build(u_argument_string, 8);
 
     {
@@ -4403,6 +4426,8 @@ int main()
 
     async_u.join();
 
+    printf("Black hole test mass %f\n", get_nonspinning_adm_mass(0, holes, size, scale, u_arg));
+
     ///this is not thread safe
     clctx.ctx.register_program(prog);
 
@@ -4450,6 +4475,8 @@ int main()
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
 
     base_mesh.init(clctx.cqueue, u_arg);
+
+
 
     std::vector<float> real_graph;
     std::vector<float> real_decomp;
