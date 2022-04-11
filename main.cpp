@@ -1936,12 +1936,12 @@ std::vector<black_hole> setup_initial_conditions(equation_context& ctx, vec3f ce
     #ifdef PAPER_0610128
     black_hole h1;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133, 0};
+    h1.momentum = {0, 0.133 * 0.95, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     black_hole h2;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133, 0};
+    h2.momentum = {0, -0.133 * 0.95, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     holes.push_back(h1);
@@ -4425,7 +4425,7 @@ int main()
     #endif // USE_GBB
 
     ///seems to make 0 difference to instability time
-    //#define USE_HALF_INTERMEDIATE
+    #define USE_HALF_INTERMEDIATE
     #ifdef USE_HALF_INTERMEDIATE
     int intermediate_data_size = sizeof(cl_half);
     argument_string += "-DDERIV_PRECISION=half ";
@@ -4480,7 +4480,12 @@ int main()
     ray_count_terminated.alloc(sizeof(cl_int));
 
     cpu_mesh_settings base_settings;
+
+    #ifdef USE_HALF_INTERMEDIATE
+    base_settings.use_half_intermediates = true;
+    #else
     base_settings.use_half_intermediates = false;
+    #endif // USE_HALF_INTERMEDIATE
 
     #ifdef CALCULATE_MOMENTUM_CONSTRAINT
     base_settings.calculate_momentum_constraint = true;
@@ -4692,7 +4697,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.02;
+        float timestep = 0.035;
 
         //timestep = 0.04;
 
@@ -4702,7 +4707,7 @@ int main()
         if(steps < 10)
             timestep = 0.0001;
 
-        if(pao && time_elapsed_s > 200)
+        if(pao && time_elapsed_s > 250)
             step = false;
 
         if(step)

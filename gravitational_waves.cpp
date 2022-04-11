@@ -25,7 +25,7 @@ dual_types::complex<float> expi(float val)
 template<typename T>
 dual_types::complex<T> sYlm_2(int s, int l, int m, T theta, T phi)
 {
-    static std::map<std::tuple<int, int, int, T, T>, dual_types::complex<T>> cache;
+    thread_local std::map<std::tuple<int, int, int, T, T>, dual_types::complex<T>> cache;
 
     if(auto found_it = cache.find(std::tuple{s, l, m, theta, phi}); found_it != cache.end())
         return found_it->second;
@@ -93,7 +93,7 @@ auto integrate(float lowerbound, float upperbound, const T& f_x, int n)
 
 template<typename T>
 inline
-auto integrate_1d(const T& func, int n, float upper, float lower)
+auto integrate_1d_raw(const T& func, int n, float upper, float lower)
 {
     std::vector<float> weights = get_legendre_weights(n);
     std::vector<float> nodes = get_legendre_nodes(n);
@@ -118,6 +118,24 @@ auto integrate_1d(const T& func, int n, float upper, float lower)
 }
 
 template<typename T>
+inline
+auto integrate_1d(const T& func, int n, float upper, float lower)
+{
+    using variable_type = decltype(func(0.f));
+    variable_type sum =  0;
+
+    int pieces = 4;
+    float step = (upper - lower) / pieces;
+
+    for(int i=0; i < pieces; i++)
+    {
+        sum += integrate_1d_raw(func, n, i * step + lower, (i + 1) * step + lower);
+    }
+
+    return sum;
+}
+
+template<typename T>
 auto spherical_integrate(const T& f_theta_phi, int n)
 {
     using variable_type = decltype(f_theta_phi(0.f, 0.f));
@@ -137,10 +155,10 @@ auto spherical_integrate(const T& f_theta_phi, int n)
     ///0 -> 2pi, phi
     auto outer_integral = [&](float phi)
     {
-        auto inner_integral = [&](float theta){return f_theta_phi(theta, phi);}
+        auto inner_integral = [&](float theta){return f_theta_phi(theta, phi);};
 
         return integrate_1d(inner_integral, n, jupper, jlower);
-    }
+    };
 
     return integrate_1d(outer_integral, n, iupper, ilower);
 }
