@@ -135,18 +135,14 @@ auto spherical_integrate(const T& f_theta_phi, int n)
 
     ///https://cbeentjes.github.io/files/Ramblings/QuadratureSphere.pdf7 7
     ///0 -> 2pi, phi
-    for(int i=0; i < n; i++)
+    auto outer_integral = [&](float phi)
     {
-        float xi = nodes[i];
-        float final_valphi = ((iupper - ilower)/2.f) * xi + (iupper + ilower) / 2.f;
+        auto inner_integral = [&](float theta){return f_theta_phi(theta, phi);}
 
-        ///theta
-        auto lsum = integrate_1d([&](float theta){return f_theta_phi(theta, final_valphi);}, n, jupper, jlower);
-
-        sum = sum + weights[i] * lsum;
+        return integrate_1d(inner_integral, n, jupper, jlower);
     }
 
-    return ((iupper - ilower) / 2.f) * sum;
+    return integrate_1d(outer_integral, n, iupper, ilower);
 }
 
 ///this isn't correct at all. The integration might be fine, but we can't take the spherical harmonics of a constant
