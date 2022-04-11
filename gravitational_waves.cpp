@@ -113,14 +113,16 @@ auto spherical_integrate(const T& f_theta_phi, int n)
     {
         variable_type lsum = 0;
         float xi = nodes[i];
+        float final_valphi = ((iupper - ilower)/2.f) * xi + (iupper + ilower) / 2.f;
 
         ///theta
+        ///ok so, this is a complete integration step for theta, with constant phi
+        ///break this up into smaller integrals, and sum them together
         for(int j=0; j < n; j++)
         {
             float w = weights[j];
             float xj = nodes[j];
 
-            float final_valphi = ((iupper - ilower)/2.f) * xi + (iupper + ilower) / 2.f;
             float final_valtheta = ((jupper - jlower)/2.f) * xj + (jupper + jlower) / 2.f;
 
             auto func_eval = w * f_theta_phi(final_valtheta, final_valphi);
