@@ -1213,7 +1213,7 @@ void extract_waveform(__global ushort4* points, int point_count,
                       __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
                       __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
                       __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-                      float scale, int4 dim, __global float2* waveform_out)
+                      float scale, int4 dim, __global float2* waveform_out, __write_only image2d_t screen)
 {
     int local_idx = get_global_id(0);
 
@@ -1230,6 +1230,11 @@ void extract_waveform(__global ushort4* points, int point_count,
 
     waveform_out[local_idx].x = w4_real;
     waveform_out[local_idx].y = w4_complex;
+
+    float zfrac = (float)iz / dim.z;
+
+    if(iz == (dim.z-1)/2)
+        write_imagef(screen, (int2){ix, iy}, (float4)(zfrac, zfrac, zfrac, 1));
 
     #ifdef w4_debugr
     printf("Debugw4r %f\n", w4_debugr);

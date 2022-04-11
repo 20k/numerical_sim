@@ -371,7 +371,7 @@ void gravitational_wave_manager::callback(cl_event event, cl_int event_command_s
     delete ((callback_data*)user_data);
 }
 
-void gravitational_wave_manager::issue_extraction(cl::command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<cl::buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize)
+void gravitational_wave_manager::issue_extraction(cl::command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<cl::buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize, cl::gl_rendertexture& tex)
 {
     cl::args waveform_args;
 
@@ -396,6 +396,7 @@ void gravitational_wave_manager::issue_extraction(cl::command_queue& cqueue, std
     waveform_args.push_back(scale);
     waveform_args.push_back(clsize);
     waveform_args.push_back(next);
+    waveform_args.push_back(tex);
 
     cl::event kernel_event = cqueue.exec("extract_waveform", waveform_args, {point_count}, {128});
 

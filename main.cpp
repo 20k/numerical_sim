@@ -4717,18 +4717,6 @@ int main()
             auto [last_valid_thin_base, last_valid_thin] = base_mesh.full_step(clctx.ctx, clctx.cqueue, mqueue, timestep, thin_pool, u_arg);
 
             {
-                wave_manager.issue_extraction(clctx.cqueue, last_valid_thin_base, last_valid_thin, scale, clsize);
-
-                std::vector<float> values = wave_manager.process();
-
-                for(float v : values)
-                {
-                    if(!isnanf(v))
-                        real_decomp.push_back(v);
-                }
-            }
-
-            {
                 cl::args render;
 
                 for(auto& i : last_valid_thin_base)
@@ -4747,6 +4735,18 @@ int main()
                 render.push_back(rtex[which_texture]);
 
                 clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
+            }
+
+            {
+                wave_manager.issue_extraction(clctx.cqueue, last_valid_thin_base, last_valid_thin, scale, clsize, rtex[which_texture]);
+
+                std::vector<float> values = wave_manager.process();
+
+                for(float v : values)
+                {
+                    if(!isnanf(v))
+                        real_decomp.push_back(v);
+                }
             }
 
             time_elapsed_s += timestep;
