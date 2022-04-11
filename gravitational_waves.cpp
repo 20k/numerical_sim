@@ -92,6 +92,32 @@ auto integrate(float lowerbound, float upperbound, const T& f_x, int n)
 }
 
 template<typename T>
+inline
+auto integrate_1d(const T& func, int n, float upper, float lower)
+{
+    std::vector<float> weights = get_legendre_weights(n);
+    std::vector<float> nodes = get_legendre_nodes(n);
+
+    using variable_type = decltype(func(0.f));
+
+    variable_type sum = 0;
+
+    for(int j=0; j < n; j++)
+    {
+        float w = weights[j];
+        float xj = nodes[j];
+
+        float value = ((upper - lower)/2.f) * xj + (upper + lower) / 2.f;
+
+        auto func_eval = w * func(value);
+
+        sum = sum + func_eval;
+    }
+
+    return sum;
+}
+
+template<typename T>
 auto spherical_integrate(const T& f_theta_phi, int n)
 {
     using variable_type = decltype(f_theta_phi(0.f, 0.f));
@@ -111,27 +137,11 @@ auto spherical_integrate(const T& f_theta_phi, int n)
     ///0 -> 2pi, phi
     for(int i=0; i < n; i++)
     {
-        variable_type lsum = 0;
         float xi = nodes[i];
         float final_valphi = ((iupper - ilower)/2.f) * xi + (iupper + ilower) / 2.f;
 
         ///theta
-        ///ok so, this is a complete integration step for theta, with constant phi
-        ///break this up into smaller integrals, and sum them together
-        for(int j=0; j < n; j++)
-        {
-            float w = weights[j];
-            float xj = nodes[j];
-
-            float final_valtheta = ((jupper - jlower)/2.f) * xj + (jupper + jlower) / 2.f;
-
-            auto func_eval = w * f_theta_phi(final_valtheta, final_valphi);
-
-            //printf("VPhi %f %f\n", final_valtheta, final_valphi);
-            //printf("Gval %f\n", func_eval.real);
-
-            lsum = lsum + func_eval;
-        }
+        auto lsum = integrate_1d([&](float theta){return f_theta_phi(theta, final_valphi);}, n, jupper, jlower);
 
         sum = sum + weights[i] * lsum;
     }
