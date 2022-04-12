@@ -117,7 +117,7 @@ struct equation_context
     std::vector<std::pair<value, value>> aliases;
     bool uses_linear = false;
 
-    int order = 2;
+    int order = 3;
 
     void pin(value& v)
     {
@@ -1936,12 +1936,12 @@ std::vector<black_hole> setup_initial_conditions(equation_context& ctx, vec3f ce
     #ifdef PAPER_0610128
     black_hole h1;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.95, 0};
+    h1.momentum = {0, 0.133 * 0.7, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     black_hole h2;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.95, 0};
+    h2.momentum = {0, -0.133 * 0.7, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     holes.push_back(h1);
@@ -3383,7 +3383,7 @@ void extract_waveforms(equation_context& ctx)
     ///l, j, k
     ///aka: i, j, covariant derivative
     ///or a, b; c in wikipedia notation
-    tensor<value, 3, 3, 3> cdKij;
+    /*tensor<value, 3, 3, 3> cdKij;
 
     for(int c=0; c < 3; c++)
     {
@@ -3403,7 +3403,9 @@ void extract_waveforms(equation_context& ctx)
                 cdKij.idx(a, b, c) = deriv + sum;
             }
         }
-    }
+    }*/
+
+    tensor<value, 3, 3, 3> cdKij = gpu_covariant_derivative_low_tensor(ctx, unpinned_Kij, args.Yij, iYij);
 
     ctx.pin(cdKij);
 
@@ -3540,7 +3542,7 @@ void extract_waveforms(equation_context& ctx)
                 {
                     for(int l=0; l < 3; l++)
                     {
-                        k_sum_2 += unit_i * raised_eijk.idx(i, k, l) * cdKij.idx(l, j, k);
+                        k_sum_2 += unit_i * raised_eijk.idx(i, k, l) * cdKij.idx(k, l, j);
                     }
 
                     k_sum_1 += Kij.idx(i, k) * raise_index_generic(Kij, iYij, 0).idx(k, j);
@@ -4316,7 +4318,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {281, 281, 281};
+    vec3i size = {311, 311, 311};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -4697,7 +4699,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.035;
+        float timestep = 0.02;
 
         //timestep = 0.04;
 
