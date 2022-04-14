@@ -3610,6 +3610,7 @@ metric<value, 4, 4> calculate_real_metric(const metric<value, 3, 3>& adm, const 
     return ret;
 }
 
+///? think this is raised
 tensor<value, 4> get_adm_hypersurface_normal(const value& gA, const tensor<value, 3>& gB)
 {
     return {1/gA, -gB.idx(0)/gA, -gB.idx(1)/gA, -gB.idx(2)/gA};
@@ -3620,7 +3621,13 @@ tensor<value, 4> get_adm_hypersurface_normal(const value& gA, const tensor<value
 metric<value, 4, 4> calculate_induced_metric(const metric<value, 3, 3>& adm, const value& gA, const tensor<value, 3>& gB)
 {
     metric<value, 4, 4> spacetime = calculate_real_metric(adm, gA, gB);
-    tensor<value, 4> nu = get_adm_hypersurface_normal(gA, gB);
+
+    tensor<value, 4> nu;
+
+    nu.idx(0) = -gA;
+    nu.idx(1) = 0;
+    nu.idx(2) = 0;
+    nu.idx(3) = 0;
 
     metric<value, 4, 4> induced;
 
