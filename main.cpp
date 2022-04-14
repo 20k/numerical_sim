@@ -1932,7 +1932,7 @@ std::vector<black_hole> setup_initial_conditions(equation_context& ctx, vec3f ce
     std::vector<black_hole> holes;
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
-    #define PAPER_0610128
+    //#define PAPER_0610128
     #ifdef PAPER_0610128
     black_hole h1;
     h1.bare_mass = 0.483;
@@ -1947,6 +1947,23 @@ std::vector<black_hole> setup_initial_conditions(equation_context& ctx, vec3f ce
     holes.push_back(h1);
     holes.push_back(h2);
     #endif // PAPER_0610128
+
+    ///https://arxiv.org/pdf/gr-qc/0505055.pdf
+    #define PAPER_0505055
+    #ifdef PAPER_0505055
+    black_hole h1;
+    h1.bare_mass = 0.5;
+    h1.momentum = {0, 0, 0};
+    h1.position = {-1.1515, 0.f, 0.f};
+
+    black_hole h2;
+    h2.bare_mass = 0.5;
+    h2.momentum = {0, -0, 0};
+    h2.position = {1.1515, 0.f, 0.f};
+
+    holes.push_back(h1);
+    holes.push_back(h2);
+    #endif // PAPER_0505055
 
     for(black_hole& hole : holes)
     {
@@ -3583,9 +3600,9 @@ void extract_waveforms(equation_context& ctx)
 
     ///gab is their spatial metric in lazarus
 
-    pos.x() += 0.05f;
-    pos.y() += 0.05f;
-    pos.z() += 0.05f;
+    pos.x() += 0.0005f;
+    pos.y() += 0.0005f;
+    pos.z() += 0.0005f;
 
     vec<3, value> v1ai = {-pos.y(), pos.x(), 0};
     vec<3, value> v2ai = {pos.x(), pos.y(), pos.z()};
@@ -4417,7 +4434,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {281, 281, 281};
+    vec3i size = {311, 311, 311};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -4798,7 +4815,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.035;
+        float timestep = 0.03;
 
         //timestep = 0.04;
 

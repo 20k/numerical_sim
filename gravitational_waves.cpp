@@ -440,7 +440,7 @@ std::vector<float> gravitational_wave_manager::process()
             as_vector.push_back({vec[i].s[0], vec[i].s[1]});
         }
 
-        float harmonic = get_harmonic(raw_harmonic_points, as_vector, simulation_size, extract_pixel, 2, 2);
+        float harmonic = get_harmonic(raw_harmonic_points, as_vector, simulation_size, extract_pixel, 2, 0);
 
         if(!isnanf(harmonic))
             real_harmonic.push_back(harmonic);
