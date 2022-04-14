@@ -1233,6 +1233,12 @@ void extract_waveform(__global ushort4* points, int point_count,
 
     float zfrac = (float)iz / dim.z;
 
+    #ifdef WAVE_DBG1
+    float dbg_val = WAVE_DBG1;
+
+    printf("Dval %f\n", dbg_val);
+    #endif // WAVE_DBG1
+
     if(iz == (dim.z-1)/2)
         write_imagef(screen, (int2){ix, iy}, (float4)(zfrac, zfrac, zfrac, 1));
 

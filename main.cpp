@@ -1936,12 +1936,12 @@ std::vector<black_hole> setup_initial_conditions(equation_context& ctx, vec3f ce
     #ifdef PAPER_0610128
     black_hole h1;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.95, 0};
+    h1.momentum = {0, 0.133 * 0.85, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     black_hole h2;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.95, 0};
+    h2.momentum = {0, -0.133 * 0.85, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     holes.push_back(h1);
@@ -3450,8 +3450,14 @@ void extract_waveforms(equation_context& ctx)
 
     ///gab is their spatial metric in lazarus
 
-    vec<3, value> v1ai = {-pos.y(), pos.x() + 1e-6f, 0};
-    vec<3, value> v2ai = {pos.x() + 1e-6f, pos.y(), pos.z()};
+    pos.x() += 0.05f;
+    pos.y() += 0.05f;
+    pos.z() += 0.05f;
+
+    vec<3, value> v1ai = {-pos.y(), pos.x(), 0};
+    vec<3, value> v2ai = {pos.x(), pos.y(), pos.z()};
+    //vec<3, value> v1ai = {pos.x(), pos.y(), pos.z()};
+    //vec<3, value> v2ai = {pos.x() * pos.z(), pos.y() * pos.z(), -pos.x() * pos.x() - pos.y() * pos.y()};
     vec<3, value> v3ai;
 
     for(int a=0; a < 3; a++)
@@ -3464,12 +3470,12 @@ void extract_waveforms(equation_context& ctx)
             {
                 for(int b=0; b < 3; b++)
                 {
-                    sum += iYij.idx(a, d) * eijk.idx(d, b, c) * v1ai[b] * v2ai[c];
+                    sum += iYij.idx(a, d) * eijk_tensor.idx(d, b, c) * v1ai[b] * v2ai[c];
                 }
             }
         }
 
-        v3ai[a] = sqrt(Yij.det()) * sum;
+        v3ai[a] = sum;
     }
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
@@ -3509,7 +3515,6 @@ void extract_waveforms(equation_context& ctx)
         ctx.pin(mu.idx(i).real);
         ctx.pin(mu.idx(i).imaginary);
     }
-
 
     ///https://en.wikipedia.org/wiki/Newman%E2%80%93Penrose_formalism
     tensor<dual_types::complex<value>, 4> mu_dash;
@@ -3569,6 +3574,7 @@ void extract_waveforms(equation_context& ctx)
 }
 #endif // 0
 
+///https://arxiv.org/pdf/1503.08455.pdf (8)
 metric<value, 4, 4> calculate_real_metric(const metric<value, 3, 3>& adm, const value& gA, const tensor<value, 3>& gB)
 {
     tensor<value, 3> lower_gB = lower_index(gB, adm);
@@ -3602,6 +3608,31 @@ metric<value, 4, 4> calculate_real_metric(const metric<value, 3, 3>& adm, const 
     }
 
     return ret;
+}
+
+tensor<value, 4> get_adm_hypersurface_normal(const value& gA, const tensor<value, 3>& gB)
+{
+    return {1/gA, -gB.idx(0)/gA, -gB.idx(1)/gA, -gB.idx(2)/gA};
+}
+
+///https://arxiv.org/pdf/1503.08455.pdf (10)
+///also the projection tensor
+metric<value, 4, 4> calculate_induced_metric(const metric<value, 3, 3>& adm, const value& gA, const tensor<value, 3>& gB)
+{
+    metric<value, 4, 4> spacetime = calculate_real_metric(adm, gA, gB);
+    tensor<value, 4> nu = get_adm_hypersurface_normal(gA, gB);
+
+    metric<value, 4, 4> induced;
+
+    for(int i=0; i < 4; i++)
+    {
+        for(int j=0; j < 4; j++)
+        {
+            induced.idx(i, j) = spacetime.idx(i, j) + nu.idx(i) * nu.idx(j);
+        }
+    }
+
+    return induced;
 }
 
 struct frame_basis
@@ -3680,11 +3711,6 @@ frame_basis calculate_frame_basis(equation_context& ctx, const metric<value, 4, 
     ret.v4 = u4;
 
     return ret;
-}
-
-tensor<value, 4> get_adm_hypersurface_normal(const value& gA, const tensor<value, 3>& gB)
-{
-    return {1/gA, -gB.idx(0)/gA, -gB.idx(1)/gA, -gB.idx(2)/gA};
 }
 
 vec<3, value> rotate_vector(const vec<3, value>& bx, const vec<3, value>& by, const vec<3, value>& bz, const vec<3, value>& v)
