@@ -3290,6 +3290,139 @@ std::array<vec<3, value>, 3> orthonormalise(equation_context& ctx, const vec<3, 
 }
 
 
+///https://arxiv.org/pdf/1503.08455.pdf (8)
+metric<value, 4, 4> calculate_real_metric(const metric<value, 3, 3>& adm, const value& gA, const tensor<value, 3>& gB)
+{
+    tensor<value, 3> lower_gB = lower_index(gB, adm);
+
+    metric<value, 4, 4> ret;
+
+    value gB_sum = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        gB_sum = gB_sum + lower_gB.idx(i) * gB.idx(i);
+    }
+
+    ///https://arxiv.org/pdf/gr-qc/0703035.pdf 4.43
+    ret.idx(0, 0) = -gA * gA + gB_sum;
+
+    ///latin indices really run from 1-4
+    for(int i=1; i < 4; i++)
+    {
+        ///https://arxiv.org/pdf/gr-qc/0703035.pdf 4.45
+        ret.idx(i, 0) = lower_gB.idx(i - 1);
+        ret.idx(0, i) = ret.idx(i, 0); ///symmetry
+    }
+
+    for(int i=1; i < 4; i++)
+    {
+        for(int j=1; j < 4; j++)
+        {
+            ret.idx(i, j) = adm.idx(i - 1, j - 1);
+        }
+    }
+
+    return ret;
+}
+
+///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses (3.33)
+tensor<value, 4> get_adm_hypersurface_normal_raised(const value& gA, const tensor<value, 3>& gB)
+{
+    return {1/gA, -gB.idx(0)/gA, -gB.idx(1)/gA, -gB.idx(2)/gA};
+}
+
+tensor<value, 4> get_adm_hypersurface_normal_lowered(const value& gA)
+{
+    return {-gA, 0, 0, 0};
+}
+
+///https://arxiv.org/pdf/1503.08455.pdf (10)
+///also the projection tensor
+metric<value, 4, 4> calculate_induced_metric(const metric<value, 3, 3>& adm, const value& gA, const tensor<value, 3>& gB)
+{
+    metric<value, 4, 4> spacetime = calculate_real_metric(adm, gA, gB);
+
+    tensor<value, 4> nu = get_adm_hypersurface_normal_lowered(gA);
+
+    metric<value, 4, 4> induced;
+
+    for(int i=0; i < 4; i++)
+    {
+        for(int j=0; j < 4; j++)
+        {
+            induced.idx(i, j) = spacetime.idx(i, j) + nu.idx(i) * nu.idx(j);
+        }
+    }
+
+    return induced;
+}
+
+///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf 28
+tensor<value, 4, 4> calculate_projector(const value& gA, const tensor<value, 3>& gB)
+{
+    tensor<value, 4> nu_u = get_adm_hypersurface_normal_raised(gA, gB);
+    tensor<value, 4> nu_l = get_adm_hypersurface_normal_lowered(gA);
+
+    tensor<value, 4, 4> proj;
+
+    for(int i=0; i < 4; i++)
+    {
+        for(int j=0; j < 4; j++)
+        {
+            value kronecker = (i == j) ? 1 : 0;
+
+            proj.idx(i, j) = kronecker + nu_u.idx(i) * nu_l.idx(j);
+        }
+    }
+
+    return proj;
+}
+
+template<typename T>
+tensor<T, 4> tensor_project_lower(const tensor<T, 4>& in, const value& gA, const tensor<value, 3>& gB)
+{
+    tensor<value, 4, 4> projector = calculate_projector(gA, gB);
+
+    tensor<T, 4> full_ret;
+
+    for(int i=0; i < 4; i++)
+    {
+        T sum = 0;
+
+        for(int j=0; j < 4; j++)
+        {
+            sum += projector.idx(j, i) * in.idx(j);
+        }
+
+        full_ret.idx(i) = sum;
+    }
+
+    return full_ret;
+}
+
+template<typename T>
+tensor<T, 4> tensor_project_upper(const tensor<T, 4>& in, const value& gA, const tensor<value, 3>& gB)
+{
+    tensor<value, 4, 4> projector = calculate_projector(gA, gB);
+
+    tensor<T, 4> full_ret;
+
+    for(int i=0; i < 4; i++)
+    {
+        T sum = 0;
+
+        for(int j=0; j < 4; j++)
+        {
+            sum += projector.idx(i, j) * in.idx(j);
+        }
+
+        full_ret.idx(i) = sum;
+    }
+
+    return full_ret;
+}
+
 ///https://scc.ustc.edu.cn/zlsc/sugon/intel/ipp/ipp_manual/IPPM/ippm_ch9/ch9_SHT.htm this states you can approximate
 ///a spherical harmonic transform integral with simple summation
 ///assumes unigrid
@@ -3524,6 +3657,8 @@ void extract_waveforms(equation_context& ctx)
         mu_dash.idx(i) = dual_types::conjugate(mu.idx(i));
     }
 
+    tensor<dual_types::complex<value>, 4> mu_dash_p = tensor_project_upper(mu_dash, args.gA, args.gB);
+
     tensor<value, 3, 3, 3> raised_eijk = raise_index_generic(raise_index_generic(eijk_tensor, iYij, 1), iYij, 2);
 
     ctx.pin(raised_eijk);
@@ -3555,7 +3690,7 @@ void extract_waveforms(equation_context& ctx)
 
                 ///mu is a 4 vector, but we use it spatially
                 ///this exposes the fact that i really runs from 1-4 instead of 0-3
-                sum += inner_sum * mu_dash.idx(i + 1) * mu_dash.idx(j + 1);
+                sum += inner_sum * mu_dash_p.idx(i + 1) * mu_dash_p.idx(j + 1);
             }
         }
 
@@ -3574,73 +3709,6 @@ void extract_waveforms(equation_context& ctx)
 }
 #endif // 0
 
-///https://arxiv.org/pdf/1503.08455.pdf (8)
-metric<value, 4, 4> calculate_real_metric(const metric<value, 3, 3>& adm, const value& gA, const tensor<value, 3>& gB)
-{
-    tensor<value, 3> lower_gB = lower_index(gB, adm);
-
-    metric<value, 4, 4> ret;
-
-    value gB_sum = 0;
-
-    for(int i=0; i < 3; i++)
-    {
-        gB_sum = gB_sum + lower_gB.idx(i) * gB.idx(i);
-    }
-
-    ///https://arxiv.org/pdf/gr-qc/0703035.pdf 4.43
-    ret.idx(0, 0) = -gA * gA + gB_sum;
-
-    ///latin indices really run from 1-4
-    for(int i=1; i < 4; i++)
-    {
-        ///https://arxiv.org/pdf/gr-qc/0703035.pdf 4.45
-        ret.idx(i, 0) = lower_gB.idx(i - 1);
-        ret.idx(0, i) = ret.idx(i, 0); ///symmetry
-    }
-
-    for(int i=1; i < 4; i++)
-    {
-        for(int j=1; j < 4; j++)
-        {
-            ret.idx(i, j) = adm.idx(i - 1, j - 1);
-        }
-    }
-
-    return ret;
-}
-
-///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses (3.33)
-tensor<value, 4> get_adm_hypersurface_normal_raised(const value& gA, const tensor<value, 3>& gB)
-{
-    return {1/gA, -gB.idx(0)/gA, -gB.idx(1)/gA, -gB.idx(2)/gA};
-}
-
-tensor<value, 4> get_adm_hypersurface_normal_lowered(const value& gA)
-{
-    return {-gA, 0, 0, 0};
-}
-
-///https://arxiv.org/pdf/1503.08455.pdf (10)
-///also the projection tensor
-metric<value, 4, 4> calculate_induced_metric(const metric<value, 3, 3>& adm, const value& gA, const tensor<value, 3>& gB)
-{
-    metric<value, 4, 4> spacetime = calculate_real_metric(adm, gA, gB);
-
-    tensor<value, 4> nu = get_adm_hypersurface_normal_lowered(gA);
-
-    metric<value, 4, 4> induced;
-
-    for(int i=0; i < 4; i++)
-    {
-        for(int j=0; j < 4; j++)
-        {
-            induced.idx(i, j) = spacetime.idx(i, j) + nu.idx(i) * nu.idx(j);
-        }
-    }
-
-    return induced;
-}
 
 struct frame_basis
 {
