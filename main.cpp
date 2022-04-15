@@ -16,6 +16,7 @@
 #include <thread>
 #include "mesh_manager.hpp"
 #include "spherical_harmonics.hpp"
+#include "spherical_integration.hpp"
 
 /**
 current paper set
@@ -4380,6 +4381,7 @@ int main()
     steady_timer time_to_main;
 
     test_harmonics();
+    test_integration();
 
     int width = 800;
     int height = 600;

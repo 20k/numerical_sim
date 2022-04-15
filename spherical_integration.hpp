@@ -82,4 +82,42 @@ auto spherical_integrate(const T& f_theta_phi, int n)
     return integrate_1d(outer_integral, n, iupper, ilower);
 }
 
+///https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.728.5478&rep=rep1&type=pdf
+inline
+void test_integration()
+{
+    {
+        auto f1_xyz = [](float x, float y, float z)
+        {
+            return (1 + tanh(-9 * x - 9 * y - 9 * z)) / 9;
+        };
+
+        auto f1_theta_phi = [&](float theta, float phi)
+        {
+            return f1_xyz(cos(phi) * sin(theta), sin(phi) * sin(theta), cos(theta));
+        };
+
+        float integral = spherical_integrate(f1_theta_phi, 64);
+
+        assert(approx_equal(integral, 4 * M_PI/9, 0.0001f));
+    }
+
+    {
+        auto f3_xyz = [](float x, float y, float z)
+        {
+            return (M_PI/2 + atan(300 * (z - 9999.f/10000.f))) / M_PI;
+        };
+
+        auto f3_theta_phi = [&](float theta, float phi)
+        {
+            return f3_xyz(cos(phi) * sin(theta), sin(phi) * sin(theta), cos(theta));
+        };
+
+        float integral = spherical_integrate(f3_theta_phi, 64);
+
+        assert(approx_equal(integral, 0.049629692928687f, 0.0001f));
+    }
+
+}
+
 #endif // SPHERICAL_INTEGRATION_HPP_INCLUDED
