@@ -117,7 +117,7 @@ struct equation_context
     std::vector<std::pair<value, value>> aliases;
     bool uses_linear = false;
 
-    int order = 3;
+    int order = 2;
 
     void pin(value& v)
     {
@@ -1932,16 +1932,16 @@ std::vector<black_hole> setup_initial_conditions(equation_context& ctx, vec3f ce
     std::vector<black_hole> holes;
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
-    //#define PAPER_0610128
+    #define PAPER_0610128
     #ifdef PAPER_0610128
     black_hole h1;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.85, 0};
+    h1.momentum = {0, 0.133 * 0.75, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     black_hole h2;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.85, 0};
+    h2.momentum = {0, -0.133 * 0.75, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     holes.push_back(h1);
@@ -1949,7 +1949,7 @@ std::vector<black_hole> setup_initial_conditions(equation_context& ctx, vec3f ce
     #endif // PAPER_0610128
 
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
-    #define PAPER_0505055
+    //#define PAPER_0505055
     #ifdef PAPER_0505055
     black_hole h1;
     h1.bare_mass = 0.5;
@@ -2441,7 +2441,7 @@ void build_cY(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            float sigma = 3.f/5.f;
+            float sigma = 4.f/5.f;
 
             dtcYij.idx(i, j) += sigma * 0.5f * (gB_lower.idx(i) * bigGi_lower.idx(j) + gB_lower.idx(j) * bigGi_lower.idx(i));
 
@@ -4585,7 +4585,7 @@ int main()
     #endif // USE_GBB
 
     ///seems to make 0 difference to instability time
-    //#define USE_HALF_INTERMEDIATE
+    #define USE_HALF_INTERMEDIATE
     #ifdef USE_HALF_INTERMEDIATE
     int intermediate_data_size = sizeof(cl_half);
     argument_string += "-DDERIV_PRECISION=half ";
@@ -4857,7 +4857,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.03;
+        float timestep = 0.02;
 
         //timestep = 0.04;
 

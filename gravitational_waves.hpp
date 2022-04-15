@@ -17,7 +17,7 @@ struct gravitational_wave_manager
         cl_float2* read = nullptr;
     };
 
-    int extract_pixel = 45;
+    int extract_pixel = 70;
     cl_int4 wave_pos;
     vec3i simulation_size;
 
