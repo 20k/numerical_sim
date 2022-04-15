@@ -117,7 +117,7 @@ struct equation_context
     std::vector<std::pair<value, value>> aliases;
     bool uses_linear = false;
 
-    int order = 2;
+    int order = 3;
 
     void pin(value& v)
     {
@@ -1602,7 +1602,7 @@ struct standard_arguments
             bigGi.idx(i) = cGi.idx(i) - cGi_G.idx(i);
         }
 
-        //#define USE_DERIVED_CGI
+        #define USE_DERIVED_CGI
         #ifdef USE_DERIVED_CGI
         derived_cGi = cGi_G;
         #else
@@ -1610,7 +1610,7 @@ struct standard_arguments
         #endif
 
         /// https://arxiv.org/pdf/1507.00570.pdf (1)
-        //#define MODIFIED_CHRISTOFFEL
+        #define MODIFIED_CHRISTOFFEL
         #ifdef MODIFIED_CHRISTOFFEL
         tensor<value, 3> bigGi_lower = lower_index(bigGi, cY);
 
@@ -4476,7 +4476,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {281, 281, 281};
+    vec3i size = {311, 311, 311};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
