@@ -2845,16 +2845,7 @@ void build_cGi(equation_context& ctx)
             }
         }
 
-        #if 0
         value s2 = 2 * gA * -(2.f/3.f) * Yij_Kj.idx(i);
-        #endif // 0
-
-        value s2 = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            s2 += 2 * gA * -(2.f/3.f) * diff1(ctx, littlekij.idx(i, j), j);
-        }
 
         value s3 = 0;
 
@@ -2916,7 +2907,7 @@ void build_cGi(equation_context& ctx)
         ///this is the only instanced of derived_cGi that might want to be regular cGi
         //value s10 = (2.f/3.f) * -2 * gA * K * derived_cGi.idx(i);
 
-        dtcGi.idx(i) = s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8 + s9 + s10;
+        dtcGi.idx(i) = s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8 + s9;
 
         ///https://arxiv.org/pdf/1205.5111v1.pdf 50
         ///made it to 70+ and then i got bored, but the simulation was meaningfully different
