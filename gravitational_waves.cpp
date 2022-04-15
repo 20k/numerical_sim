@@ -124,7 +124,7 @@ auto integrate_1d(const T& func, int n, float upper, float lower)
     using variable_type = decltype(func(0.f));
     variable_type sum =  0;
 
-    int pieces = 4;
+    int pieces = 1;
     float step = (upper - lower) / pieces;
 
     for(int i=0; i < pieces; i++)
