@@ -2821,6 +2821,7 @@ void build_cGi(equation_context& ctx)
 
     tensor<value, 3> Yij_Kj;
 
+    #ifdef PAPER_1205_5111
     for(int i=0; i < 3; i++)
     {
         value sum = 0;
@@ -2832,6 +2833,19 @@ void build_cGi(equation_context& ctx)
 
         Yij_Kj.idx(i) = sum + args.K * derived_cGi.idx(i);
     }
+    #else
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            sum += icY.idx(i, j) * diff1(ctx, args.K, j);
+        }
+
+        Yij_Kj.idx(i) = sum;
+    }
+    #endif // PAPER_1205_5111
 
     for(int i=0; i < 3; i++)
     {
@@ -2911,7 +2925,7 @@ void build_cGi(equation_context& ctx)
 
         ///https://arxiv.org/pdf/1205.5111v1.pdf 50
         ///made it to 70+ and then i got bored, but the simulation was meaningfully different
-        #define EQ_50
+        //#define EQ_50
         #ifdef EQ_50
         auto step = [](const value& in)
         {
