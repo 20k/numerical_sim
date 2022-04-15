@@ -11,9 +11,10 @@ int64_t factorial(int i)
     return i * factorial(i - 1);
 }
 
-dual_types::complex<float> expi(float val)
+template<typename T>
+dual_types::complex<T> d_expi(T val)
 {
-    return dual_types::complex<float>(cos(val), sin(val));
+    return dual_types::complex<T>(cos(val), sin(val));
 }
 
 ///https://arxiv.org/pdf/1906.03877.pdf 8
@@ -39,7 +40,7 @@ dual_types::complex<T> sYlm_2(int s, int l, int m, T theta, T phi)
 
         for(int k=k1; k <= k2; k++)
         {
-            float cp1 = (double)(pow(-1, k) * sqrt((double)(factorial(l + m) * factorial(l - m) * factorial(l + s) * factorial(l - s)))) /
+            double cp1 = (double)(pow(-1, k) * sqrt((double)(factorial(l + m) * factorial(l - m) * factorial(l + s) * factorial(l - s)))) /
                         ((double)(factorial(l + m - k) * factorial(l - s - k) * factorial(k) * factorial(k + s - m)));
 
             assert(isfinite(cp1));
@@ -55,7 +56,7 @@ dual_types::complex<T> sYlm_2(int s, int l, int m, T theta, T phi)
 
     T coeff = pow(-1, s) * sqrt((2 * l + 1) / (4 * M_PI));
 
-    dual_types::complex<T> ret = coeff * dlms(theta, l, m, -s) * expi(m * phi);
+    dual_types::complex<T> ret = coeff * dlms(theta, l, m, -s) * d_expi(m * phi);
 
     cache[std::tuple{s, l, m, theta, phi}] = ret;
 
@@ -124,7 +125,7 @@ auto integrate_1d(const T& func, int n, float upper, float lower)
     using variable_type = decltype(func(0.f));
     variable_type sum =  0;
 
-    int pieces = 4;
+    int pieces = 1;
     float step = (upper - lower) / pieces;
 
     for(int i=0; i < pieces; i++)
@@ -153,9 +154,9 @@ auto spherical_integrate(const T& f_theta_phi, int n)
 
     ///https://cbeentjes.github.io/files/Ramblings/QuadratureSphere.pdf7 7
     ///0 -> 2pi, phi
-    auto outer_integral = [&](float phi)
+    auto outer_integral = [&](double phi)
     {
-        auto inner_integral = [&](float theta){return f_theta_phi(theta, phi);};
+        auto inner_integral = [&](double theta){return f_theta_phi(theta, phi);};
 
         return integrate_1d(inner_integral, n, jupper, jlower);
     };
@@ -245,7 +246,7 @@ std::vector<cl_ushort4> get_harmonic_extraction_points(vec3i dim, int extract_pi
     float rad = get_harmonic_extraction_radius(extract_pixel);
     vec3f centre = dim_to_centre(dim);
 
-    auto func = [&](float theta, float phi)
+    auto func = [&](double theta, double phi)
     {
         vec3f pos = {rad * cos(phi) * sin(theta), rad * sin(phi) * sin(theta), rad * cos(theta)};
 
@@ -269,7 +270,7 @@ std::vector<cl_ushort4> get_harmonic_extraction_points(vec3i dim, int extract_pi
         return 0.f;
     };
 
-    int n = 64;
+    int n = 32;
 
     (void)spherical_integrate(func, n);
 
@@ -288,7 +289,7 @@ std::vector<cl_ushort4> get_harmonic_extraction_points(vec3i dim, int extract_pi
     return ret;
 }
 
-float get_harmonic(const std::vector<cl_ushort4>& points, const std::vector<dual_types::complex<float>>& vals, vec3i dim, int extract_pixel, int l, int m)
+double get_harmonic(const std::vector<cl_ushort4>& points, const std::vector<dual_types::complex<float>>& vals, vec3i dim, int extract_pixel, int l, int m)
 {
     std::map<int, std::map<int, std::map<int, float>>> real_value_map;
     std::map<int, std::map<int, std::map<int, float>>> imaginary_value_map;
@@ -307,11 +308,11 @@ float get_harmonic(const std::vector<cl_ushort4>& points, const std::vector<dual
 
     vec3f centre = dim_to_centre(dim);
 
-    auto func = [&](float theta, float phi)
+    auto func = [&](double theta, double phi)
     {
-        dual_types::complex<float> harmonic = sYlm_2(-2, l, m, theta, phi);
+        dual_types::complex<double> harmonic = sYlm_2(-2, l, m, theta, phi);
 
-        dual_types::complex<float> conj = conjugate(harmonic);
+        dual_types::complex<double> conj = conjugate(harmonic);
 
         //printf("Hreal %f\n", harmonic.real);
 
@@ -319,19 +320,19 @@ float get_harmonic(const std::vector<cl_ushort4>& points, const std::vector<dual
 
         pos += centre;
 
-        float interpolated_real = linear_interpolate(real_value_map, pos, dim);
-        float interpolated_imaginary = linear_interpolate(imaginary_value_map, pos, dim);
+        double interpolated_real = linear_interpolate(real_value_map, pos, dim);
+        double interpolated_imaginary = linear_interpolate(imaginary_value_map, pos, dim);
 
         //printf("interpolated %f %f\n", interpolated.real, interpolated.imaginary);
 
-        float scalar_product = interpolated_real * conj.real + interpolated_imaginary * conj.imaginary;
+        double scalar_product = interpolated_real * conj.real + interpolated_imaginary * conj.imaginary;
 
         return scalar_product;
     };
 
-    int n = 64;
+    int n = 32;
 
-    float harmonic = spherical_integrate(func, n);
+    double harmonic = spherical_integrate(func, n);
 
     //printf("Harmonic %f\n", harmonic);
 
