@@ -117,7 +117,7 @@ struct equation_context
     std::vector<std::pair<value, value>> aliases;
     bool uses_linear = false;
 
-    int order = 3;
+    int order = 2;
 
     void pin(value& v)
     {
@@ -1602,7 +1602,7 @@ struct standard_arguments
             bigGi.idx(i) = cGi.idx(i) - cGi_G.idx(i);
         }
 
-        #define USE_DERIVED_CGI
+        //#define USE_DERIVED_CGI
         #ifdef USE_DERIVED_CGI
         derived_cGi = cGi_G;
         #else
@@ -1610,7 +1610,7 @@ struct standard_arguments
         #endif
 
         /// https://arxiv.org/pdf/1507.00570.pdf (1)
-        #define MODIFIED_CHRISTOFFEL
+        //#define MODIFIED_CHRISTOFFEL
         #ifdef MODIFIED_CHRISTOFFEL
         tensor<value, 3> bigGi_lower = lower_index(bigGi, cY);
 
@@ -2821,7 +2821,7 @@ void build_cGi(equation_context& ctx)
 
     tensor<value, 3> Yij_Kj;
 
-    //#define PAPER_1205_5111
+    #define PAPER_1205_5111
     #ifdef PAPER_1205_5111
     for(int i=0; i < 3; i++)
     {
@@ -2926,7 +2926,7 @@ void build_cGi(equation_context& ctx)
 
         ///https://arxiv.org/pdf/1205.5111v1.pdf 50
         ///made it to 70+ and then i got bored, but the simulation was meaningfully different
-        //#define EQ_50
+        #define EQ_50
         #ifdef EQ_50
         auto step = [](const value& in)
         {
@@ -2942,7 +2942,7 @@ void build_cGi(equation_context& ctx)
             bkk += args.digB.idx(k, k);
         }
 
-        float E = 1;
+        float E = 1.f;
 
         value lambdai = (2.f/3.f) * (bkk - 2 * gA * K)
                         - args.digB.idx(i, i)
@@ -2951,7 +2951,7 @@ void build_cGi(equation_context& ctx)
         dtcGi.idx(i) += -(1 + E) * step(lambdai) * lambdai * args.bigGi.idx(i);
         #endif // EQ_50
 
-        #define YBS
+        //#define YBS
         #ifdef YBS
         value E = 1;
 
@@ -4476,7 +4476,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {311, 311, 311};
+    vec3i size = {281, 281, 281};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
