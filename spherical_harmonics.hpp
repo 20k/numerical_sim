@@ -68,5 +68,26 @@ dual_types::complex<T> sYlm_2(int s, int l, int m, T theta, T phi)
     return ret;
 }
 
+inline
+void test_harmonics()
+{
+    float tol = 0.000001f;
+
+    {
+        for(float theta = 0; theta <= M_PI; theta += M_PI/8)
+        {
+            for(float phi = 0; phi <= 2 * M_PI; phi += M_PI/16)
+            {
+                dual_types::complex<float> ym222 = sqrt(5 / (64 * M_PI)) * (1 - cos(theta)) * (1 - cos(theta)) * expi_s(-2 * phi);
+
+                dual_types::complex<float> ym222_c = sYlm_2(-2, 2, -2, theta, phi);
+
+                assert(fabs(ym222.real - ym222_c.real) < tol);
+                assert(fabs(ym222.imaginary - ym222_c.imaginary) < tol);
+            }
+        }
+    }
+}
+
 
 #endif // SPHERICAL_HARMONICS_HPP_INCLUDED

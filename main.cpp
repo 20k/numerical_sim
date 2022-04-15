@@ -15,6 +15,7 @@
 #include <execution>
 #include <thread>
 #include "mesh_manager.hpp"
+#include "spherical_harmonics.hpp"
 
 /**
 current paper set
@@ -4377,6 +4378,8 @@ cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, fl
 int main()
 {
     steady_timer time_to_main;
+
+    test_harmonics();
 
     int width = 800;
     int height = 600;
