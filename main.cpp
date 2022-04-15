@@ -2441,7 +2441,7 @@ void build_cY(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            float sigma = 0.5f/5.f;
+            float sigma = 3.f/5.f;
 
             dtcYij.idx(i, j) += sigma * 0.5f * (gB_lower.idx(i) * bigGi_lower.idx(j) + gB_lower.idx(j) * bigGi_lower.idx(i));
 
@@ -2821,6 +2821,7 @@ void build_cGi(equation_context& ctx)
 
     tensor<value, 3> Yij_Kj;
 
+    //#define PAPER_1205_5111
     #ifdef PAPER_1205_5111
     for(int i=0; i < 3; i++)
     {
