@@ -2949,6 +2949,22 @@ void build_cGi(equation_context& ctx)
 
         dtcGi.idx(i) += -(1 + E) * step(lambdai) * lambdai * args.bigGi.idx(i);
         #endif // EQ_50
+
+        #define YBS
+        #ifdef YBS
+        value E = 1;
+
+        {
+            value sum = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                sum += diff1(ctx, args.gB.idx(k), k);
+            }
+
+            dtcGi.idx(i) += (-2.f/3.f) * (E + 1) * args.bigGi.idx(i) * sum;
+        }
+        #endif // YBS
     }
     #endif // CHRISTOFFEL_49
 
