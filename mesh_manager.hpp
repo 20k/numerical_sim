@@ -15,7 +15,7 @@ float calculate_scale(float c_at_max, const T& size)
 inline
 float get_c_at_max()
 {
-    return 70;
+    return 100;
 }
 
 struct buffer_set
