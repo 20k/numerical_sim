@@ -2441,7 +2441,7 @@ void build_cY(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            float sigma = 1/5.f;
+            float sigma = 0.5f/5.f;
 
             dtcYij.idx(i, j) += sigma * 0.5f * (gB_lower.idx(i) * bigGi_lower.idx(j) + gB_lower.idx(j) * bigGi_lower.idx(i));
 
@@ -2817,6 +2817,22 @@ void build_cGi(equation_context& ctx)
     #ifdef CHRISTOFFEL_49
     tensor<value, 3, 3> littlekij = unpinned_icY.to_tensor() * K;
 
+    ///PAPER_12055111_SUBST
+
+    tensor<value, 3> Yij_Kj;
+
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            sum += diff1(ctx, littlekij.idx(i, j), j);
+        }
+
+        Yij_Kj.idx(i) = sum + args.K * derived_cGi.idx(i);
+    }
+
     for(int i=0; i < 3; i++)
     {
         value s1 = 0;
@@ -2828,6 +2844,10 @@ void build_cGi(equation_context& ctx)
                 s1 += 2 * gA * christoff2.idx(i, j, k) * icAij.idx(j, k);
             }
         }
+
+        #if 0
+        value s2 = 2 * gA * -(2.f/3.f) * Yij_Kj.idx(i);
+        #endif // 0
 
         value s2 = 0;
 
@@ -2894,7 +2914,7 @@ void build_cGi(equation_context& ctx)
         }
 
         ///this is the only instanced of derived_cGi that might want to be regular cGi
-        value s10 = (2.f/3.f) * -2 * gA * K * derived_cGi.idx(i);
+        //value s10 = (2.f/3.f) * -2 * gA * K * derived_cGi.idx(i);
 
         dtcGi.idx(i) = s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8 + s9 + s10;
 
