@@ -74,7 +74,7 @@ auto spherical_integrate(const T& f_theta_phi, int n)
     ///0 -> 2pi, phi
     auto outer_integral = [&](float phi)
     {
-        auto inner_integral = [&](float theta){return f_theta_phi(theta, phi);};
+        auto inner_integral = [&](float theta){return sin(theta) * f_theta_phi(theta, phi);};
 
         return integrate_1d(inner_integral, n, jupper, jlower);
     };
