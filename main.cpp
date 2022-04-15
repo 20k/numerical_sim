@@ -117,7 +117,7 @@ struct equation_context
     std::vector<std::pair<value, value>> aliases;
     bool uses_linear = false;
 
-    int order = 2;
+    int order = 3;
 
     void pin(value& v)
     {
