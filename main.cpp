@@ -1938,12 +1938,12 @@ std::vector<black_hole> setup_initial_conditions(equation_context& ctx, vec3f ce
     #ifdef PAPER_0610128
     black_hole h1;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.85, 0};
+    h1.momentum = {0, 0.133 * 0.94, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     black_hole h2;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.85, 0};
+    h2.momentum = {0, -0.133 * 0.94, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     holes.push_back(h1);
@@ -4422,7 +4422,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {281, 281, 281};
+    vec3i size = {211, 211, 211};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
