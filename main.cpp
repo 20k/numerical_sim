@@ -4628,6 +4628,10 @@ int main()
 
     bool pao = false;
 
+    bool render_skipping = true;
+    int skip_frames = 4;
+    int current_skip_frame = 0;
+
     std::cout << "Init time " << time_to_main.get_elapsed_time_s() << std::endl;
 
     while(!win.should_close())
@@ -4822,6 +4826,7 @@ int main()
 
             auto [last_valid_thin_base, last_valid_thin] = base_mesh.full_step(clctx.ctx, clctx.cqueue, mqueue, timestep, thin_pool, u_arg);
 
+            if(!should_render)
             {
                 cl::args render;
 
@@ -4886,7 +4891,13 @@ int main()
                 clctx.cqueue.exec("trace_metric", render_args, {width, height}, {16, 16});
             }
 
-            if(rendering_method == 1)
+            bool not_skipped = render_skipping ? ((current_skip_frame % skip_frames) == 0) : true;
+
+            not_skipped = not_skipped || snap;
+
+            current_skip_frame = (current_skip_frame + 1) % skip_frames;
+
+            if(rendering_method == 1 && not_skipped)
             {
                 cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
                 cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
