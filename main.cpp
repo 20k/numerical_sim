@@ -4829,7 +4829,7 @@ int main()
             if(ImGui::IsKeyPressed(GLFW_KEY_1))
                 rendering_method = 1;
 
-            ImGui::InputFloat("Rendering Error", &rendering_err, 0.001f, 0.01f, "%.5f");
+            ImGui::InputFloat("Rendering Error", &rendering_err, 0.0001f, 0.01f, "%.5f");
 
             ImGui::Checkbox("Render Skipping", &render_skipping);
 
