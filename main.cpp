@@ -4422,7 +4422,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {211, 211, 211};
+    vec3i size = {251, 251, 251};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -4632,6 +4632,8 @@ int main()
     int skip_frames = 4;
     int current_skip_frame = 0;
 
+    clctx.cqueue.block();
+
     std::cout << "Init time " << time_to_main.get_elapsed_time_s() << std::endl;
 
     while(!win.should_close())
@@ -4757,7 +4759,7 @@ int main()
             rays_terminated.alloc(sizeof(cl_float) * 10 * width * height);
         }
 
-        rtex[which_texture].acquire(clctx.cqueue);
+        rtex[which_texture].acquire(mqueue);
 
         bool step = false;
 
@@ -4845,10 +4847,10 @@ int main()
                 render.push_back(clsize);
                 render.push_back(rtex[which_texture]);
 
-                clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
+                mqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
             }
 
-            {
+            /*{
                 wave_manager.issue_extraction(clctx.cqueue, last_valid_thin_base, last_valid_thin, scale, clsize, rtex[which_texture]);
 
                 std::vector<float> values = wave_manager.process();
@@ -4858,7 +4860,7 @@ int main()
                     if(!isnanf(v))
                         real_decomp.push_back(v);
                 }
-            }
+            }*/
 
             time_elapsed_s += timestep;
             current_simulation_boundary += DIFFERENTIATION_WIDTH;
@@ -4888,7 +4890,7 @@ int main()
                 render_args.push_back(clsize);
                 render_args.push_back(rtex[which_texture]);
 
-                clctx.cqueue.exec("trace_metric", render_args, {width, height}, {16, 16});
+                mqueue.exec("trace_metric", render_args, {width, height}, {16, 16});
             }
 
             bool not_skipped = render_skipping ? ((current_skip_frame % skip_frames) == 0) : true;
@@ -4902,7 +4904,7 @@ int main()
                 cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
                 cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
 
-                ray_count_terminated.set_to_zero(clctx.cqueue);
+                ray_count_terminated.set_to_zero(mqueue);
 
                 {
                     cl::args init_args;
@@ -4925,13 +4927,13 @@ int main()
                     init_args.push_back(width);
                     init_args.push_back(height);
 
-                    clctx.cqueue.exec("init_rays", init_args, {width, height}, {8, 8});
+                    mqueue.exec("init_rays", init_args, {width, height}, {8, 8});
                 }
 
                 {
                     for(int i=0; i < 1; i++)
                     {
-                        ray_count[1].set_to_zero(clctx.cqueue);
+                        ray_count[1].set_to_zero(mqueue);
 
                         cl::args render_args;
 
@@ -4954,7 +4956,7 @@ int main()
                         render_args.push_back(width);
                         render_args.push_back(height);
 
-                        clctx.cqueue.exec("trace_rays", render_args, {width, height}, {8, 8});
+                        mqueue.exec("trace_rays", render_args, {width, height}, {8, 8});
 
                         std::swap(ray_count[0], ray_count[1]);
                         std::swap(ray_buffer[0], ray_buffer[1]);
@@ -4968,7 +4970,7 @@ int main()
                     render_args.push_back(rtex[which_texture]);
                     render_args.push_back(scale);
 
-                    clctx.cqueue.exec("render_rays", render_args, {width * height}, {128});
+                    mqueue.exec("render_rays", render_args, {width * height}, {128});
                 }
             }
         }
@@ -4994,7 +4996,7 @@ int main()
             init_args.push_back(rtex[which_texture]);
             init_args.push_back(ray_buffer);
 
-            clctx.cqueue.exec("init_accurate_rays", init_args, {width, height}, {8, 8});
+            mqueue.exec("init_accurate_rays", init_args, {width, height}, {8, 8});
 
             printf("Init\n");
         }
@@ -5023,10 +5025,10 @@ int main()
             step_args.push_back(ray_buffer);
             step_args.push_back(timestep);
 
-            clctx.cqueue.exec("step_accurate_rays", step_args, {width * height}, {128});
+            mqueue.exec("step_accurate_rays", step_args, {width * height}, {128});
         }
 
-        cl::event next_event = rtex[which_texture].unacquire(clctx.cqueue);
+        cl::event next_event = rtex[which_texture].unacquire(mqueue);
 
         if(last_event.has_value())
             last_event.value().block();
