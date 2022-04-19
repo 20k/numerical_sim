@@ -4834,12 +4834,12 @@ int main()
 
                 for(auto& i : last_valid_thin_base)
                 {
-                    render.push_back(i);
+                    render.push_back(i.as_device_read_only());
                 }
 
                 for(auto& i : last_valid_thin)
                 {
-                    render.push_back(i);
+                    render.push_back(i.as_device_read_only());
                 }
 
                 //render.push_back(bssnok_datas[which_data]);
@@ -4878,7 +4878,7 @@ int main()
 
                 for(auto& i : buffers)
                 {
-                    render_args.push_back(i);
+                    render_args.push_back(i.as_device_read_only());
                 }
 
                 cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
@@ -4917,7 +4917,7 @@ int main()
 
                     for(auto& i : buffers)
                     {
-                        init_args.push_back(i);
+                        init_args.push_back(i.as_device_read_only());
                     }
 
                     init_args.push_back(scale);
@@ -4948,7 +4948,7 @@ int main()
 
                         for(auto& i : buffers)
                         {
-                            render_args.push_back(i);
+                            render_args.push_back(i.as_device_read_only());
                         }
 
                         render_args.push_back(scale);
@@ -4965,8 +4965,8 @@ int main()
 
                 {
                     cl::args render_args;
-                    render_args.push_back(rays_terminated);
-                    render_args.push_back(ray_count_terminated);
+                    render_args.push_back(rays_terminated.as_device_read_only());
+                    render_args.push_back(ray_count_terminated.as_device_read_only());
                     render_args.push_back(rtex[which_texture]);
                     render_args.push_back(scale);
 
