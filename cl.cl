@@ -1173,6 +1173,11 @@ void render(STANDARD_ARGS(),
 
         float ascalar = fabs(curvature / 1000.f);
 
+        /*if(cX < 0.7)
+            ascalar = 1;
+        else
+            ascalar = 0;*/
+
         max_scalar = max(ascalar, max_scalar);
     }
 
@@ -1449,6 +1454,8 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
+        float BH_X = buffer_read_linear(X, voxel_pos, dim);
+
         float fx = voxel_pos.x;
         float fy = voxel_pos.y;
         float fz = voxel_pos.z;
@@ -1484,6 +1491,20 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         float3 next_acceleration = {dV0, dV1, dV2};
 
         int res = calculate_ds_error(err_in, ds, next_acceleration, &next_ds);
+
+        /*if(BH_X < 0.8f)
+        {
+            ds = min(ds, 0.5f);
+        }*/
+
+        float X_far = 0.9f;
+        float X_near = 0.6f;
+
+        float my_fraction = (clamp(BH_X, X_near, X_far) - X_near) / (X_far - X_near);
+
+        my_fraction = clamp(my_fraction, 0.f, 1.f);
+
+        ds = mix(0.1f, 2.f, my_fraction);
 
         if(res == DS_RETURN)
         {

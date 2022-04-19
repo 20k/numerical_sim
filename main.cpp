@@ -4664,7 +4664,7 @@ int main()
 
     std::optional<cl::event> last_event;
 
-    int rendering_method = 0;
+    int rendering_method = 1;
 
     bool trapezoidal_init = false;
 
