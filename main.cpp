@@ -3960,7 +3960,6 @@ value dot_metric(const tensor<value, N>& v1_upper, const tensor<value, N>& v2_up
 void loop_geodesics(equation_context& ctx, vec3f dim)
 {
     ctx.order = 1;
-    ctx.debug = true;
 
     standard_arguments args(ctx);
 
@@ -4115,7 +4114,9 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
                 christoffel_sum += full_christoffel2.idx(i, j, k) * V_upper.idx(k);
             }
 
-            V_upper_diff.idx(i) += args.gA * V_upper.idx(j) * (V_upper.idx(i) * (diff1(ctx, log(max(args.gA, 0.0001f)), j) - kjvk) + 2 * raise_index(args.Kij, args.Yij, iYij).idx(i, j) - christoffel_sum)
+            value dlog_gA = diff1(ctx, args.gA, j) / args.gA;
+
+            V_upper_diff.idx(i) += args.gA * V_upper.idx(j) * (V_upper.idx(i) * (dlog_gA - kjvk) + 2 * raise_index(args.Kij, args.Yij, iYij).idx(i, j) - christoffel_sum)
                                    - iYij.idx(i, j) * diff1(ctx, args.gA, j) - V_upper.idx(j) * diff1(ctx, args.gB.idx(i), j);
 
         }
