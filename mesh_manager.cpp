@@ -270,7 +270,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     std::vector<cl::buffer> intermediates;
 
-    //mqueue.begin_splice(main_queue);
+    mqueue.begin_splice(main_queue);
 
     auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
     {
@@ -714,7 +714,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     enforce_constraints(get_output().buffers);
 
-    //mqueue.end_splice(main_queue);
+    mqueue.end_splice(main_queue);
 
     flip();
 
