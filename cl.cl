@@ -1300,6 +1300,8 @@ struct lightray_simple
     float V2;
 
     int x, y;
+
+    float iter_frac;
 };
 
 enum ds_result
@@ -1335,6 +1337,10 @@ int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_d
 __kernel
 void init_rays(__global struct lightray_simple* rays, __global int* ray_count0, __global int* ray_count1,
                 STANDARD_ARGS(),
+                __global DERIV_PRECISION* dcYij0, __global DERIV_PRECISION* dcYij1, __global DERIV_PRECISION* dcYij2, __global DERIV_PRECISION* dcYij3, __global DERIV_PRECISION* dcYij4, __global DERIV_PRECISION* dcYij5, __global DERIV_PRECISION* dcYij6, __global DERIV_PRECISION* dcYij7, __global DERIV_PRECISION* dcYij8, __global DERIV_PRECISION* dcYij9, __global DERIV_PRECISION* dcYij10, __global DERIV_PRECISION* dcYij11, __global DERIV_PRECISION* dcYij12, __global DERIV_PRECISION* dcYij13, __global DERIV_PRECISION* dcYij14, __global DERIV_PRECISION* dcYij15, __global DERIV_PRECISION* dcYij16, __global DERIV_PRECISION* dcYij17,
+                __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
+                __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
+                __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
                 float scale, float3 camera_pos, float4 camera_quat,
                 int4 dim, int width, int height)
 {
@@ -1388,6 +1394,7 @@ void init_rays(__global struct lightray_simple* rays, __global int* ray_count0, 
 
     out.x = x;
     out.y = y;
+    out.iter_frac = 0;
 
     rays[y * width + x] = out;
 
@@ -1399,6 +1406,10 @@ __kernel
 void trace_rays(__global struct lightray_simple* rays_in, __global struct lightray_simple* rays_out, __global struct lightray_simple* rays_terminated,
                 __global int* ray_count_in, __global int* ray_count_out, __global int* ray_count_terminated,
                 STANDARD_ARGS(),
+                __global DERIV_PRECISION* dcYij0, __global DERIV_PRECISION* dcYij1, __global DERIV_PRECISION* dcYij2, __global DERIV_PRECISION* dcYij3, __global DERIV_PRECISION* dcYij4, __global DERIV_PRECISION* dcYij5, __global DERIV_PRECISION* dcYij6, __global DERIV_PRECISION* dcYij7, __global DERIV_PRECISION* dcYij8, __global DERIV_PRECISION* dcYij9, __global DERIV_PRECISION* dcYij10, __global DERIV_PRECISION* dcYij11, __global DERIV_PRECISION* dcYij12, __global DERIV_PRECISION* dcYij13, __global DERIV_PRECISION* dcYij14, __global DERIV_PRECISION* dcYij15, __global DERIV_PRECISION* dcYij16, __global DERIV_PRECISION* dcYij17,
+                __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
+                __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
+                __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
                 float scale, int4 dim, int width, int height)
 {
     int x = get_global_id(0);
@@ -1428,7 +1439,9 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     bool deliberate_termination = false;
     bool last_skipped = false;
 
-    for(int iteration=0; iteration < 65000; iteration++)
+    int iteration = 0;
+
+    for(iteration=0; iteration < 65000; iteration++)
     {
         float3 cpos = {lp1, lp2, lp3};
 
@@ -1440,19 +1453,23 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         float fy = voxel_pos.y;
         float fz = voxel_pos.z;
 
+        /*int ix = floor(fx);
+        int iy = floor(fy);
+        int iz = floor(fz);*/
+
         float TEMPORARIES6;
 
-        float dX0 = X0Diff;
-        float dX1 = X1Diff;
-        float dX2 = X2Diff;
+        float ldX0 = X0Diff;
+        float ldX1 = X1Diff;
+        float ldX2 = X2Diff;
 
         float terminate_length = fast_length(cpos);
 
         if(terminate_length >= universe_size / 1.01f)
         {
-            final_dX0 = dX0;
-            final_dX1 = dX1;
-            final_dX2 = dX2;
+            final_dX0 = ldX0;
+            final_dX1 = ldX1;
+            final_dX2 = ldX2;
 
             deliberate_termination = true;
             break;
@@ -1490,22 +1507,21 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         V1 += dV1 * ds;
         V2 += dV2 * ds;
 
-        lp1 += dX0 * ds;
-        lp2 += dX1 * ds;
-        lp3 += dX2 * ds;
+        lp1 += ldX0 * ds;
+        lp2 += ldX1 * ds;
+        lp3 += ldX2 * ds;
 
         /*if(x == (int)width/2 && y == (int)height/2)
         {
             printf("%f %f %f  %f %f %f\n", V0, V1, V2, lp1, lp2, lp3);
         }*/
 
-        if(fast_length((float3){dX0, dX1, dX2}) < 0.2f)
+        if(fast_length((float3){ldX0, ldX1, ldX2}) < 0.2f)
         {
             deliberate_termination = true;
             break;
         }
     }
-
 
     struct lightray_simple ray_out;
     ray_out.x = x;
@@ -1518,6 +1534,8 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     ray_out.V0 = final_dX0;
     ray_out.V1 = final_dX1;
     ray_out.V2 = final_dX2;
+
+    ray_out.iter_frac = iteration / 128.f;
 
     if(!deliberate_termination)
     {
@@ -1613,14 +1631,21 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
             val.z = 1;
         }
 
+        //val.xyz = clamp(ray_in.iter_frac, 0.f, 1.f);
+
         write_imagef(screen, (int2){x, y}, val);
     }
     else
     {
-        write_imagef(screen, (int2){x, y}, (float4)(0,0,0,1));
+        float3 val;
+
+        //val.xyz = clamp(ray_in.iter_frac, 0.f, 1.f);
+
+        write_imagef(screen, (int2){x, y}, (float4)(val.xyz,1));
     }
 }
 
+#if 0
 struct lightray
 {
     float4 pos;
@@ -1788,6 +1813,7 @@ void step_accurate_rays(STANDARD_ARGS(),
         write_imagef(screen, (int2){x, y}, (float4)(0, 0, 0, 1));
     }
 }
+#endif // 0
 
 float3 rot_quat(const float3 point, float4 quat)
 {

@@ -118,6 +118,7 @@ struct equation_context
     std::vector<std::pair<std::string, value>> temporaries;
     std::vector<std::pair<value, value>> aliases;
     bool uses_linear = false;
+    bool debug = false;
 
     int order = 2;
 
@@ -1528,7 +1529,7 @@ struct standard_arguments
 
                     int final_index = k + symmetric_index * 3;
 
-                    std::string name = "dcYij" + std::to_string(final_index) + "[IDX(ix,iy,iz)]";
+                    std::string name = bidx("dcYij" + std::to_string(final_index), interpolate);
 
                     dcYij.idx(k, i, j) = name;
                 }
@@ -3959,6 +3960,7 @@ value dot_metric(const tensor<value, N>& v1_upper, const tensor<value, N>& v2_up
 void loop_geodesics(equation_context& ctx, vec3f dim)
 {
     ctx.order = 1;
+    ctx.debug = true;
 
     standard_arguments args(ctx);
 
@@ -3976,6 +3978,45 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     ///upper index, aka contravariant
     vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
     vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
+
+    for(int i=0; i < 3; i++)
+    {
+        value v = diff1(ctx, args.gA, i);
+
+        ctx.alias(v, args.digA.idx(i));
+    }
+
+    ///dcgB alias
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value v = diff1(ctx, args.gB.idx(j), i);
+
+            ctx.alias(v, args.digB.idx(i, j));
+        }
+    }
+
+    ///dcYij alias
+    for(int k=0; k < 3; k++)
+    {
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                value v = diff1(ctx, args.cY.idx(i, j), k);
+
+                ctx.alias(v, args.dcYij.idx(k, i, j));
+            }
+        }
+    }
+
+    for(int i=0; i < 3; i++)
+    {
+        value v = diff1(ctx, args.X, i);
+
+        ctx.alias(v, args.dX.idx(i));
+    }
 
     tensor<value, 3, 3> digB;
 
@@ -4531,7 +4572,7 @@ int main()
     #endif // USE_GBB
 
     ///seems to make 0 difference to instability time
-    #define USE_HALF_INTERMEDIATE
+    //#define USE_HALF_INTERMEDIATE
     #ifdef USE_HALF_INTERMEDIATE
     int intermediate_data_size = sizeof(cl_half);
     argument_string += "-DDERIV_PRECISION=half ";
@@ -4634,7 +4675,12 @@ int main()
 
     clctx.cqueue.block();
 
+    bool ever_stepped = false;
+
     std::cout << "Init time " << time_to_main.get_elapsed_time_s() << std::endl;
+
+    std::vector<cl::buffer> last_valid_thin;
+    std::vector<cl::buffer> last_valid_buffer;
 
     while(!win.should_close())
     {
@@ -4822,17 +4868,19 @@ int main()
         if(pao && time_elapsed_s > 250)
             step = false;
 
-        if(step)
+        if(step || !ever_stepped)
         {
+            ever_stepped = true;
+
             steps++;
 
-            auto [last_valid_thin_base, last_valid_thin] = base_mesh.full_step(clctx.ctx, clctx.cqueue, mqueue, timestep, thin_pool, u_arg);
+            std::tie(last_valid_buffer, last_valid_thin) = base_mesh.full_step(clctx.ctx, clctx.cqueue, mqueue, timestep, thin_pool, u_arg);
 
             if(!should_render)
             {
                 cl::args render;
 
-                for(auto& i : last_valid_thin_base)
+                for(auto& i : last_valid_buffer)
                 {
                     render.push_back(i.as_device_read_only());
                 }
@@ -4851,7 +4899,7 @@ int main()
             }
 
             /*{
-                wave_manager.issue_extraction(clctx.cqueue, last_valid_thin_base, last_valid_thin, scale, clsize, rtex[which_texture]);
+                wave_manager.issue_extraction(clctx.cqueue, last_valid_buffer, last_valid_thin, scale, clsize, rtex[which_texture]);
 
                 std::vector<float> values = wave_manager.process();
 
@@ -4874,7 +4922,7 @@ int main()
             {
                 cl::args render_args;
 
-                auto buffers = base_mesh.get_input().buffers;
+                auto buffers = last_valid_buffer;
 
                 for(auto& i : buffers)
                 {
@@ -4913,9 +4961,12 @@ int main()
                     init_args.push_back(ray_count[0]);
                     init_args.push_back(ray_count[1]);
 
-                    auto buffers = base_mesh.get_input().buffers;
+                    for(auto& i : last_valid_buffer)
+                    {
+                        init_args.push_back(i.as_device_read_only());
+                    }
 
-                    for(auto& i : buffers)
+                    for(auto& i : last_valid_thin)
                     {
                         init_args.push_back(i.as_device_read_only());
                     }
@@ -4944,9 +4995,12 @@ int main()
                         render_args.push_back(ray_count[1]);
                         render_args.push_back(ray_count_terminated);
 
-                        auto buffers = base_mesh.get_input().buffers;
+                        for(auto& i : last_valid_buffer)
+                        {
+                            render_args.push_back(i.as_device_read_only());
+                        }
 
-                        for(auto& i : buffers)
+                        for(auto& i : last_valid_thin)
                         {
                             render_args.push_back(i.as_device_read_only());
                         }
