@@ -1624,11 +1624,11 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
 
     float uni_size = universe_size;
 
-    cpos = fix_ray_position(cpos, cvel, uni_size * 1.03f);
+    cpos = fix_ray_position(cpos, cvel, uni_size * 1.01f);
 
     float terminate_length = length(cpos);
 
-    if(terminate_length >= uni_size / 1.01f)
+    if(terminate_length >= uni_size)
     {
         float fr = fast_length(cpos);
         float theta = acos(cpos.z / fr);
