@@ -4683,6 +4683,8 @@ int main()
     std::vector<cl::buffer> last_valid_thin;
     std::vector<cl::buffer> last_valid_buffer;
 
+    float rendering_err = 0.01f;
+
     while(!win.should_close())
     {
         steady_timer frametime;
@@ -4823,6 +4825,13 @@ int main()
             bool snap = ImGui::Button("Snapshot");
 
             ImGui::InputInt("Render Method", &rendering_method, 1);
+
+            if(ImGui::IsKeyPressed(GLFW_KEY_1))
+                rendering_method = 1;
+
+            ImGui::InputFloat("Rendering Error", &rendering_err, 0.001f, 0.01f, "%.5f");
+
+            ImGui::Checkbox("Render Skipping", &render_skipping);
 
             if(real_graph.size() > 0)
             {
@@ -5010,6 +5019,7 @@ int main()
                         render_args.push_back(clsize);
                         render_args.push_back(width);
                         render_args.push_back(height);
+                        render_args.push_back(rendering_err);
 
                         clctx.cqueue.exec("trace_rays", render_args, {width, height}, {8, 8});
 

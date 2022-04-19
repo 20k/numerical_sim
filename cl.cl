@@ -1311,15 +1311,15 @@ enum ds_result
     DS_RETURN,
 };
 
-int calculate_ds_error(float current_ds, float3 next_acceleration, float* next_ds_out)
+int calculate_ds_error(float err, float current_ds, float3 next_acceleration, float* next_ds_out)
 {
     #define MIN_STEP 0.5f
     #define MAX_STEP 2.f
 
-    float next_ds = 0.01f * 1/fast_length(next_acceleration);
+    float next_ds = err * 1/fast_length(next_acceleration);
 
     ///produces strictly worse results for kerr
-    next_ds = 0.99f * current_ds * clamp(next_ds / current_ds, 0.1f, 4.f);
+    //next_ds = 0.99f * current_ds * clamp(next_ds / current_ds, 0.1f, 4.f);
 
     next_ds = clamp(next_ds, MIN_STEP, MAX_STEP);
 
@@ -1410,7 +1410,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
                 __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
                 __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
                 __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-                float scale, int4 dim, int width, int height)
+                float scale, int4 dim, int width, int height, float err_in)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
@@ -1483,7 +1483,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         float3 next_acceleration = {dV0, dV1, dV2};
 
-        int res = calculate_ds_error(ds, next_acceleration, &next_ds);
+        int res = calculate_ds_error(err_in, ds, next_acceleration, &next_ds);
 
         if(res == DS_RETURN)
         {
