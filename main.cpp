@@ -398,21 +398,15 @@ std::string strip_variable(std::string in)
     return valid;
 }
 
-inline
-std::tuple<std::string, std::string> decompose_variable(std::string str)
+struct variable
 {
-    std::string buffer;
-    std::string val;
+    std::string name;
+    bool is_derivative = false;
+};
 
-    if(str.ends_with(")]"))
-    {
-        if(!str.ends_with("[IDX(ix,iy,iz)]"))
-        {
-            std::cout << "Got bad string " << str << std::endl;
-            assert(false);
-        }
-    }
-
+inline
+std::vector<variable> get_variables()
+{
     std::array variables
     {
         "cY0",
@@ -440,6 +434,13 @@ std::tuple<std::string, std::string> decompose_variable(std::string str)
         "gBB1",
         "gBB2",
 
+        "momentum0",
+        "momentum1",
+        "momentum2",
+    };
+
+    std::array derivatives
+    {
         "dcYij0",
         "dcYij1",
         "dcYij2",
@@ -476,11 +477,47 @@ std::tuple<std::string, std::string> decompose_variable(std::string str)
         "dX0",
         "dX1",
         "dX2",
-
-        "momentum0",
-        "momentum1",
-        "momentum2",
     };
+
+    std::vector<variable> ret;
+
+    for(auto& i : variables)
+    {
+        variable v;
+        v.name = i;
+        v.is_derivative = false;
+
+        ret.push_back(v);
+    }
+
+    for(auto& i : derivatives)
+    {
+        variable v;
+        v.name = i;
+        v.is_derivative = true;
+
+        ret.push_back(v);
+    }
+
+    return ret;
+}
+
+inline
+std::tuple<std::string, std::string> decompose_variable(std::string str)
+{
+    std::string buffer;
+    std::string val;
+
+    if(str.ends_with(")]"))
+    {
+        if(!str.ends_with("[IDX(ix,iy,iz)]"))
+        {
+            std::cout << "Got bad string " << str << std::endl;
+            assert(false);
+        }
+    }
+
+    std::vector<variable> variables = get_variables();
 
     if(str.starts_with("buffer_read_linear("))
     {
@@ -524,7 +561,7 @@ std::tuple<std::string, std::string> decompose_variable(std::string str)
 
         for(auto& i : variables)
         {
-            if(i == stripped)
+            if(i.name == stripped)
             {
                 any_found = true;
                 break;
