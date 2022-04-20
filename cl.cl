@@ -1545,8 +1545,8 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     }
 
     struct lightray_simple ray_out;
-    ray_out.x = x;
-    ray_out.y = y;
+    ray_out.x = ray_in.x;
+    ray_out.y = ray_in.y;
 
     ray_out.lp1 = lp1;
     ray_out.lp2 = lp2;

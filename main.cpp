@@ -482,7 +482,7 @@ std::tuple<std::string, std::string> decompose_variable(std::string str)
         "momentum2",
     };
 
-    if(str.starts_with("buffer_read_linear"))
+    if(str.starts_with("buffer_read_linear("))
     {
         std::string_view sview = str;
         sview.remove_prefix(strlen("buffer_read_linear("));
