@@ -495,6 +495,19 @@ std::tuple<std::string, std::string> decompose_variable(std::string str)
         val = buffer;
     }
 
+    else if(str.starts_with("buffer_read_linearh("))
+    {
+        std::string_view sview = str;
+        sview.remove_prefix(strlen("buffer_read_linearh("));
+
+        int len = sview.find_first_of(',');
+
+        assert(len != std::string_view::npos);
+
+        buffer = std::string(sview.begin(), sview.begin() + len);
+        val = buffer;
+    }
+
     else if(str.starts_with("buffer"))
     {
         buffer = "buffer";
