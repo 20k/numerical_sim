@@ -503,6 +503,20 @@ std::vector<variable> get_variables()
 }
 
 inline
+variable fetch_variable(const std::string& name)
+{
+    std::vector<variable> ret = get_variables();
+
+    for(variable& v : ret)
+    {
+        if(v.name == name)
+            return v;
+    }
+
+    throw std::runtime_error("Err in fetch variable for name " + name);
+}
+
+inline
 std::tuple<std::string, std::string> decompose_variable(std::string str)
 {
     std::string buffer;
@@ -601,7 +615,11 @@ struct differentiation_context
 
         auto fetch_linear = [](const std::string& buffer, const value& x, const value& y, const value& z)
         {
-            return "buffer_read_linear(" + buffer + ",(float3)(" + type_to_string(x, false) + "," + type_to_string(y, false) + "," + type_to_string(z, false) + "),dim)";
+            variable v = fetch_variable(buffer);
+
+            std::string func = v.is_derivative ? "buffer_read_linearh" : "buffer_read_linear";
+
+            return func + "(" + buffer + ",(float3)(" + type_to_string(x, false) + "," + type_to_string(y, false) + "," + type_to_string(z, false) + "),dim)";
         };
 
         auto index_without_extension = [](const std::string& buffer, const std::string& with_what)
@@ -1447,7 +1465,13 @@ tensor<T, N, N> lower_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met
 std::string bidx(const std::string& buf, bool interpolate)
 {
     if(interpolate)
-        return "buffer_read_linear(" + buf + ",(float3)(fx,fy,fz),dim)";
+    {
+        variable v = fetch_variable(buf);
+
+        std::string func = v.is_derivative ? "buffer_read_linearh" : "buffer_read_linear";
+
+        return func + "(" + buf + ",(float3)(fx,fy,fz),dim)";
+    }
     else
         return buf + "[IDX(ix,iy,iz)]";
 }
@@ -4623,7 +4647,7 @@ int main()
     #endif // USE_GBB
 
     ///seems to make 0 difference to instability time
-    //#define USE_HALF_INTERMEDIATE
+    #define USE_HALF_INTERMEDIATE
     #ifdef USE_HALF_INTERMEDIATE
     int intermediate_data_size = sizeof(cl_half);
     argument_string += "-DDERIV_PRECISION=half ";
