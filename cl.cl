@@ -1347,6 +1347,7 @@ struct lightray_simple
     int x, y;
 
     float iter_frac;
+    int hit_singularity;
 };
 
 enum ds_result
@@ -1380,7 +1381,7 @@ int calculate_ds_error(float err, float current_ds, float3 next_acceleration, fl
 }
 
 __kernel
-void init_rays(__global struct lightray_simple* rays, __global int* ray_count0, __global int* ray_count1,
+void init_rays(__global struct lightray_simple* rays, __global int* ray_count0,
                 STANDARD_ARGS(),
                 __global DERIV_PRECISION* dcYij0, __global DERIV_PRECISION* dcYij1, __global DERIV_PRECISION* dcYij2, __global DERIV_PRECISION* dcYij3, __global DERIV_PRECISION* dcYij4, __global DERIV_PRECISION* dcYij5, __global DERIV_PRECISION* dcYij6, __global DERIV_PRECISION* dcYij7, __global DERIV_PRECISION* dcYij8, __global DERIV_PRECISION* dcYij9, __global DERIV_PRECISION* dcYij10, __global DERIV_PRECISION* dcYij11, __global DERIV_PRECISION* dcYij12, __global DERIV_PRECISION* dcYij13, __global DERIV_PRECISION* dcYij14, __global DERIV_PRECISION* dcYij15, __global DERIV_PRECISION* dcYij16, __global DERIV_PRECISION* dcYij17,
                 __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
@@ -1440,16 +1441,16 @@ void init_rays(__global struct lightray_simple* rays, __global int* ray_count0, 
     out.x = x;
     out.y = y;
     out.iter_frac = 0;
+    out.hit_singularity = 0;
 
     rays[y * width + x] = out;
 
-    *ray_count0 = width * height;
-    *ray_count1 = 0;
+    if(x == 0 && y == 0)
+        *ray_count0 = width * height;
 }
 
 __kernel
-void trace_rays(__global struct lightray_simple* rays_in, __global struct lightray_simple* rays_out, __global struct lightray_simple* rays_terminated,
-                __global int* ray_count_in, __global int* ray_count_out, __global int* ray_count_terminated,
+void trace_rays(__global struct lightray_simple* rays_in, __global struct lightray_simple* rays_terminated,
                 STANDARD_ARGS(),
                 __global DERIV_PRECISION* dcYij0, __global DERIV_PRECISION* dcYij1, __global DERIV_PRECISION* dcYij2, __global DERIV_PRECISION* dcYij3, __global DERIV_PRECISION* dcYij4, __global DERIV_PRECISION* dcYij5, __global DERIV_PRECISION* dcYij6, __global DERIV_PRECISION* dcYij7, __global DERIV_PRECISION* dcYij8, __global DERIV_PRECISION* dcYij9, __global DERIV_PRECISION* dcYij10, __global DERIV_PRECISION* dcYij11, __global DERIV_PRECISION* dcYij12, __global DERIV_PRECISION* dcYij13, __global DERIV_PRECISION* dcYij14, __global DERIV_PRECISION* dcYij15, __global DERIV_PRECISION* dcYij16, __global DERIV_PRECISION* dcYij17,
                 __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
@@ -1477,11 +1478,12 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     float final_dX1 = 0;
     float final_dX2 = 0;
 
+    bool hit_singularity = false;
+
     ///ray location
     ///temporary while i don't do interpolation
     float next_ds = 0.1f;
 
-    bool deliberate_termination = false;
     bool last_skipped = false;
 
     int iteration = 0;
@@ -1518,7 +1520,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
             final_dX1 = ldX1;
             final_dX2 = ldX2;
 
-            deliberate_termination = true;
             break;
         }
 
@@ -1547,10 +1548,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         ds = mix(0.1f, 2.f, my_fraction);
 
         if(res == DS_RETURN)
-        {
-            deliberate_termination = true;
             break;
-        }
 
         if(res == DS_SKIP)
         {
@@ -1559,10 +1557,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         }
 
         last_skipped = false;
-
-        /*ds = 0.025f * 1/fast_length(next_acceleration);
-        ds = min(ds, 2.f);
-        ds = max(ds, 0.5f);*/
 
         V0 += dV0 * ds;
         V1 += dV1 * ds;
@@ -1579,14 +1573,14 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         if(fast_length((float3){ldX0, ldX1, ldX2}) < 0.2f)
         {
-            deliberate_termination = true;
+            hit_singularity = true;
             break;
         }
     }
 
     struct lightray_simple ray_out;
-    ray_out.x = ray_in.x;
-    ray_out.y = ray_in.y;
+    ray_out.x = x;
+    ray_out.y = y;
 
     ray_out.lp1 = lp1;
     ray_out.lp2 = lp2;
@@ -1597,17 +1591,9 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     ray_out.V2 = final_dX2;
 
     ray_out.iter_frac = iteration / 128.f;
+    ray_out.hit_singularity = hit_singularity;
 
-    if(!deliberate_termination)
-    {
-        int next_idx = atomic_inc(ray_count_out);
-        rays_out[next_idx] = ray_out;
-    }
-    else
-    {
-        int next_idx = atomic_inc(ray_count_terminated);
-        rays_terminated[next_idx] = ray_out;
-    }
+    rays_terminated[y * width + x] = ray_out;
 }
 
 ///https://www.ccs.neu.edu/home/fell/CS4300/Lectures/Ray-TracingFormulas.pdf
@@ -1639,11 +1625,14 @@ float3 fix_ray_position(float3 cartesian_pos, float3 cartesian_velocity, float s
     return cartesian_pos + my_t * cartesian_velocity;
 }
 
-__kernel void render_rays(__global struct lightray_simple* rays_in, __global int* ray_count, __write_only image2d_t screen, float scale)
+__kernel void render_rays(__global struct lightray_simple* rays_in, __global int* ray_count, __write_only image2d_t screen, float scale, int width, int height)
 {
     int idx = get_global_id(0);
 
-    if(idx >= *ray_count)
+    //if(idx >= *ray_count)
+    //    return;
+
+    if(idx >= width * height)
         return;
 
     struct lightray_simple ray_in = rays_in[idx];
@@ -1664,12 +1653,10 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
 
     float uni_size = universe_size;
 
-    cpos = fix_ray_position(cpos, cvel, uni_size * 1.01f);
-
-    float terminate_length = length(cpos);
-
-    if(terminate_length >= uni_size)
+    if(!ray_in.hit_singularity)
     {
+        cpos = fix_ray_position(cpos, cvel, uni_size * 1.01f);
+
         float fr = fast_length(cpos);
         float theta = acos(cpos.z / fr);
         float phi = atan2(cpos.y, cpos.x);

@@ -5039,7 +5039,6 @@ int main()
 
                     init_args.push_back(ray_buffer[0]);
                     init_args.push_back(ray_count[0]);
-                    init_args.push_back(ray_count[1]);
 
                     for(auto& i : last_valid_buffer)
                     {
@@ -5062,40 +5061,28 @@ int main()
                 }
 
                 {
-                    for(int i=0; i < 1; i++)
+                    cl::args render_args;
+
+                    render_args.push_back(ray_buffer[0]);
+                    render_args.push_back(rays_terminated);
+
+                    for(auto& i : last_valid_buffer)
                     {
-                        ray_count[1].set_to_zero(clctx.cqueue);
-
-                        cl::args render_args;
-
-                        render_args.push_back(ray_buffer[0]);
-                        render_args.push_back(ray_buffer[1]);
-                        render_args.push_back(rays_terminated);
-                        render_args.push_back(ray_count[0]);
-                        render_args.push_back(ray_count[1]);
-                        render_args.push_back(ray_count_terminated);
-
-                        for(auto& i : last_valid_buffer)
-                        {
-                            render_args.push_back(i.as_device_read_only());
-                        }
-
-                        for(auto& i : last_valid_thin)
-                        {
-                            render_args.push_back(i.as_device_read_only());
-                        }
-
-                        render_args.push_back(scale);
-                        render_args.push_back(clsize);
-                        render_args.push_back(width);
-                        render_args.push_back(height);
-                        render_args.push_back(rendering_err);
-
-                        clctx.cqueue.exec("trace_rays", render_args, {width, height}, {8, 8});
-
-                        std::swap(ray_count[0], ray_count[1]);
-                        std::swap(ray_buffer[0], ray_buffer[1]);
+                        render_args.push_back(i.as_device_read_only());
                     }
+
+                    for(auto& i : last_valid_thin)
+                    {
+                        render_args.push_back(i.as_device_read_only());
+                    }
+
+                    render_args.push_back(scale);
+                    render_args.push_back(clsize);
+                    render_args.push_back(width);
+                    render_args.push_back(height);
+                    render_args.push_back(rendering_err);
+
+                    clctx.cqueue.exec("trace_rays", render_args, {width, height}, {8, 8});
                 }
 
                 {
@@ -5104,6 +5091,8 @@ int main()
                     render_args.push_back(ray_count_terminated.as_device_read_only());
                     render_args.push_back(rtex[which_texture]);
                     render_args.push_back(scale);
+                    render_args.push_back(width);
+                    render_args.push_back(height);
 
                     clctx.cqueue.exec("render_rays", render_args, {width * height}, {128});
                 }
