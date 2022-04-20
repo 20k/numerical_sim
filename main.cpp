@@ -517,7 +517,7 @@ variable fetch_variable(const std::string& name)
 }
 
 inline
-std::tuple<std::string, std::string> decompose_variable(std::string str)
+std::string decompose_variable(std::string str)
 {
     std::string buffer;
     std::string val;
@@ -543,7 +543,6 @@ std::tuple<std::string, std::string> decompose_variable(std::string str)
         assert(len != std::string_view::npos);
 
         buffer = std::string(sview.begin(), sview.begin() + len);
-        val = buffer;
     }
 
     else if(str.starts_with("buffer_read_linearh("))
@@ -556,20 +555,17 @@ std::tuple<std::string, std::string> decompose_variable(std::string str)
         assert(len != std::string_view::npos);
 
         buffer = std::string(sview.begin(), sview.begin() + len);
-        val = buffer;
     }
 
     else if(str.starts_with("buffer"))
     {
         buffer = "buffer";
-        val = "buffer";
     }
     else
     {
         std::string stripped = strip_variable(str);
 
         buffer = stripped;
-        val = stripped;
 
         bool any_found = false;
 
@@ -590,7 +586,7 @@ std::tuple<std::string, std::string> decompose_variable(std::string str)
         assert(any_found);
     }
 
-    return {buffer, val};
+    return buffer;
 }
 
 template<int elements = 5>
@@ -627,7 +623,7 @@ struct differentiation_context
             return buffer + "[" + with_what + "]";
         };
 
-        auto index = [index_without_extension, index_raw, fetch_linear, linear_interpolation](const std::string& val, const std::string& buffer, const value& x, const value& y, const value& z)
+        auto index = [index_without_extension, index_raw, fetch_linear, linear_interpolation](const std::string& buffer, const value& x, const value& y, const value& z)
         {
             if(linear_interpolation)
             {
@@ -671,11 +667,11 @@ struct differentiation_context
 
         for(auto& i : variables)
         {
-            std::tuple<std::string, std::string> decomp = decompose_variable(i);
+            std::string decomp = decompose_variable(i);
 
             for(int kk=0; kk < elements; kk++)
             {
-                value to_sub = index(std::get<1>(decomp), std::get<0>(decomp), xs[kk], ys[kk], zs[kk]);
+                value to_sub = index(decomp, xs[kk], ys[kk], zs[kk]);
 
                 substitutions[kk][i] = type_to_string(to_sub);
             }
