@@ -1531,7 +1531,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         float3 next_acceleration = {dV0, dV1, dV2};
 
-        int res = calculate_ds_error(err_in, ds, next_acceleration, &next_ds);
+        //int res = calculate_ds_error(err_in, ds, next_acceleration, &next_ds);
 
         /*if(BH_X < 0.8f)
         {
@@ -1547,16 +1547,16 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         ds = mix(0.1f, 2.f, my_fraction);
 
-        if(res == DS_RETURN)
-            break;
+        //if(res == DS_RETURN)
+        //    break;
 
-        if(res == DS_SKIP)
+        /*if(res == DS_SKIP)
         {
             last_skipped = true;
             continue;
-        }
+        }*/
 
-        last_skipped = false;
+        //last_skipped = false;
 
         V0 += dV0 * ds;
         V1 += dV1 * ds;

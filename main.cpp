@@ -4740,7 +4740,7 @@ int main()
 
     bool pao = false;
 
-    bool render_skipping = true;
+    bool render_skipping = false;
     int skip_frames = 4;
     int current_skip_frame = 0;
 
