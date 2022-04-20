@@ -1698,7 +1698,7 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
     }
     else
     {
-        float3 val;
+        float3 val = (float3)(0,0,0);
 
         //val.xyz = clamp(ray_in.iter_frac, 0.f, 1.f);
 
