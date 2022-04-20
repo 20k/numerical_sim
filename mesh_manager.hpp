@@ -65,6 +65,23 @@ struct thin_intermediates_pool
     cl::buffer request(cl::context& ctx, cl::managed_command_queue& cqueue, int id, vec3i size, int element_size);
 };
 
+struct equation_info
+{
+    std::string name;
+    std::vector<std::string> input_variables;
+
+    bool uses(const std::string& var)
+    {
+        for(const auto& i : input_variables)
+        {
+            if(i == var)
+                return true;
+        }
+
+        return false;
+    }
+};
+
 struct cpu_mesh_settings
 {
     bool use_half_intermediates = false;
@@ -137,12 +154,14 @@ struct cpu_mesh
     buffer_set& get_output();
     buffer_set& get_scratch(int which);
 
-    void init(cl::command_queue& cqueue, cl::buffer& u_arg);
+    void init(cl::command_queue& cqueue, cl::buffer& u_arg, const std::vector<equation_info>& eqs);
 
     cl::buffer get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, int id);
 
     ///returns buffers and intermediates
     std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, cl::buffer& u_arg);
+
+    std::vector<equation_info> equations;
 };
 
 #endif // MESH_MANAGER_HPP_INCLUDED

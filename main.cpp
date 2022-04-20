@@ -112,6 +112,8 @@ T gpu_trace(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse
     return ret;
 }
 
+std::optional<std::string> decompose_variable(std::string str, bool permissive);
+
 struct equation_context
 {
     std::vector<std::pair<std::string, value>> values;
@@ -374,6 +376,46 @@ struct equation_context
     {
         build(argument_string, std::to_string(idx));
     }
+
+    std::vector<std::string> get_extracted_raw_variables()
+    {
+        std::vector<std::string> var;
+
+        for(auto& [_, v] : values)
+        {
+            auto next_var = v.get_all_variables();
+
+            var.insert(var.end(), next_var.begin(), next_var.end());
+        }
+
+        for(auto& [_, v] : temporaries)
+        {
+            auto next_var = v.get_all_variables();
+
+            var.insert(var.end(), next_var.begin(), next_var.end());
+        }
+
+        std::set<std::string> decomp;
+
+        for(const std::string& name : var)
+        {
+            std::optional<std::string> val = decompose_variable(name, true);
+
+            if(val == std::nullopt)
+                continue;
+
+            decomp.insert(val.value());
+        }
+
+        std::vector<std::string> out;
+
+        for(const std::string& as_name : decomp)
+        {
+            out.push_back(as_name);
+        }
+
+        return out;
+    }
 };
 
 //#define SYMMETRY_BOUNDARY
@@ -517,12 +559,11 @@ variable fetch_variable(const std::string& name)
 }
 
 inline
-std::tuple<std::string, std::string> decompose_variable(std::string str)
+std::optional<std::string> decompose_variable(std::string str, bool permissive)
 {
     std::string buffer;
-    std::string val;
 
-    if(str.ends_with(")]"))
+    if(str.ends_with(")]") && !permissive)
     {
         if(!str.ends_with("[IDX(ix,iy,iz)]"))
         {
@@ -543,7 +584,6 @@ std::tuple<std::string, std::string> decompose_variable(std::string str)
         assert(len != std::string_view::npos);
 
         buffer = std::string(sview.begin(), sview.begin() + len);
-        val = buffer;
     }
 
     else if(str.starts_with("buffer_read_linearh("))
@@ -556,20 +596,17 @@ std::tuple<std::string, std::string> decompose_variable(std::string str)
         assert(len != std::string_view::npos);
 
         buffer = std::string(sview.begin(), sview.begin() + len);
-        val = buffer;
     }
 
     else if(str.starts_with("buffer"))
     {
         buffer = "buffer";
-        val = "buffer";
     }
     else
     {
         std::string stripped = strip_variable(str);
 
         buffer = stripped;
-        val = stripped;
 
         bool any_found = false;
 
@@ -584,13 +621,17 @@ std::tuple<std::string, std::string> decompose_variable(std::string str)
 
         if(!any_found)
         {
-            std::cout << "None for " << stripped << std::endl;
-        }
+            if(!permissive)
+            {
+                std::cout << "None for " << stripped << std::endl;
+                assert(false);
+            }
 
-        assert(any_found);
+            return std::nullopt;
+        }
     }
 
-    return {buffer, val};
+    return buffer;
 }
 
 template<int elements = 5>
@@ -627,7 +668,7 @@ struct differentiation_context
             return buffer + "[" + with_what + "]";
         };
 
-        auto index = [index_without_extension, index_raw, fetch_linear, linear_interpolation](const std::string& val, const std::string& buffer, const value& x, const value& y, const value& z)
+        auto index = [index_without_extension, index_raw, fetch_linear, linear_interpolation](const std::string& buffer, const value& x, const value& y, const value& z)
         {
             if(linear_interpolation)
             {
@@ -671,11 +712,11 @@ struct differentiation_context
 
         for(auto& i : variables)
         {
-            std::tuple<std::string, std::string> decomp = decompose_variable(i);
+            std::string decomp = decompose_variable(i, false).value();
 
             for(int kk=0; kk < elements; kk++)
             {
-                value to_sub = index(std::get<1>(decomp), std::get<0>(decomp), xs[kk], ys[kk], zs[kk]);
+                value to_sub = index(decomp, xs[kk], ys[kk], zs[kk]);
 
                 substitutions[kk][i] = type_to_string(to_sub);
             }
@@ -4595,6 +4636,16 @@ int main()
     equation_context dtgB;
     build_gB(dtgB);
 
+    std::vector<equation_info> inf;
+
+    inf.push_back({"evolve_cY", dtcY.get_extracted_raw_variables()});
+    inf.push_back({"evolve_cA", dtcA.get_extracted_raw_variables()});
+    inf.push_back({"evolve_cGi", dtcGi.get_extracted_raw_variables()});
+    inf.push_back({"evolve_K", dtK.get_extracted_raw_variables()});
+    inf.push_back({"evolve_X", dtX.get_extracted_raw_variables()});
+    inf.push_back({"evolve_gA", dtgA.get_extracted_raw_variables()});
+    inf.push_back({"evolve_gB", dtgB.get_extracted_raw_variables()});
+
     equation_context ctx4;
     build_constraints(ctx4);
 
@@ -4721,7 +4772,7 @@ int main()
 
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
 
-    base_mesh.init(clctx.cqueue, u_arg);
+    base_mesh.init(clctx.cqueue, u_arg, inf);
 
     std::vector<float> real_graph;
     std::vector<float> real_decomp;
