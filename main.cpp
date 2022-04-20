@@ -2009,12 +2009,12 @@ std::vector<black_hole> setup_initial_conditions(equation_context& ctx, vec3f ce
     #ifdef PAPER_0610128
     black_hole h1;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.94, 0};
+    h1.momentum = {0, 0.133 * 0.91, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     black_hole h2;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.94, 0};
+    h2.momentum = {0, -0.133 * 0.91, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     holes.push_back(h1);
@@ -4534,7 +4534,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {251, 251, 251};
+    vec3i size = {211, 211, 211};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -4689,6 +4689,12 @@ int main()
 
     cl::buffer rays_terminated(clctx.ctx);
     rays_terminated.alloc(sizeof(cl_float) * 10 * width * height);
+
+    cl::buffer termination_buffer(clctx.ctx);
+    termination_buffer.alloc(sizeof(cl_int) * width * height);
+    termination_buffer.set_to_zero(clctx.cqueue);
+
+    int prepass_factor = 16;
 
     std::array<cl::buffer, 2> ray_count{clctx.ctx, clctx.ctx};
     ray_count[0].alloc(sizeof(cl_int));
@@ -5032,6 +5038,89 @@ int main()
                 cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
                 cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
 
+                cl_int prepass_width = width / prepass_factor;
+                cl_int prepass_height = height / prepass_factor;
+
+                #define PREPASS
+                #ifdef PREPASS
+
+                termination_buffer.set_to_zero(clctx.cqueue);
+                ray_count_terminated.set_to_zero(clctx.cqueue);
+
+                {
+                    cl::args init_args;
+
+                    init_args.push_back(ray_buffer[0]);
+                    init_args.push_back(ray_count[0]);
+                    init_args.push_back(ray_count[1]);
+
+                    for(auto& i : last_valid_buffer)
+                    {
+                        init_args.push_back(i.as_device_read_only());
+                    }
+
+                    for(auto& i : last_valid_thin)
+                    {
+                        init_args.push_back(i.as_device_read_only());
+                    }
+
+                    init_args.push_back(scale);
+                    init_args.push_back(ccamera_pos);
+                    init_args.push_back(ccamera_quat);
+                    init_args.push_back(clsize);
+                    init_args.push_back(prepass_width);
+                    init_args.push_back(prepass_height);
+                    init_args.push_back(termination_buffer);
+                    init_args.push_back(prepass_width);
+                    init_args.push_back(prepass_height);
+
+                    clctx.cqueue.exec("init_rays", init_args, {prepass_width, prepass_height}, {8, 8});
+
+                    {
+                        ray_count[1].set_to_zero(clctx.cqueue);
+
+                        cl::args render_args;
+
+                        render_args.push_back(ray_buffer[0]);
+                        render_args.push_back(ray_buffer[1]);
+                        render_args.push_back(rays_terminated);
+                        render_args.push_back(ray_count[0]);
+                        render_args.push_back(ray_count[1]);
+                        render_args.push_back(ray_count_terminated);
+
+                        for(auto& i : last_valid_buffer)
+                        {
+                            render_args.push_back(i.as_device_read_only());
+                        }
+
+                        for(auto& i : last_valid_thin)
+                        {
+                            render_args.push_back(i.as_device_read_only());
+                        }
+
+                        render_args.push_back(scale);
+                        render_args.push_back(clsize);
+                        render_args.push_back(prepass_width);
+                        render_args.push_back(prepass_height);
+                        render_args.push_back(rendering_err);
+
+                        clctx.cqueue.exec("trace_rays", render_args, {prepass_width, prepass_height}, {8, 8});
+                    }
+
+                    {
+                        cl::args singularity_args;
+                        singularity_args.push_back(rays_terminated);
+                        singularity_args.push_back(ray_count_terminated);
+                        singularity_args.push_back(termination_buffer);
+                        singularity_args.push_back(prepass_width);
+                        singularity_args.push_back(prepass_height);
+
+                        clctx.cqueue.exec("calculate_singularities", singularity_args, {prepass_width * prepass_height}, {64});
+                    }
+                }
+
+                #endif // PREPASS
+
                 ray_count_terminated.set_to_zero(clctx.cqueue);
 
                 {
@@ -5057,6 +5146,9 @@ int main()
                     init_args.push_back(clsize);
                     init_args.push_back(width);
                     init_args.push_back(height);
+                    init_args.push_back(termination_buffer);
+                    init_args.push_back(prepass_width);
+                    init_args.push_back(prepass_height);
 
                     clctx.cqueue.exec("init_rays", init_args, {width, height}, {8, 8});
                 }
@@ -5093,8 +5185,8 @@ int main()
 
                         clctx.cqueue.exec("trace_rays", render_args, {width, height}, {8, 8});
 
-                        std::swap(ray_count[0], ray_count[1]);
-                        std::swap(ray_buffer[0], ray_buffer[1]);
+                        //std::swap(ray_count[0], ray_count[1]);
+                        //std::swap(ray_buffer[0], ray_buffer[1]);
                     }
                 }
 

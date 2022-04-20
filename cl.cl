@@ -1257,43 +1257,6 @@ void extract_waveform(__global ushort4* points, int point_count,
 }
 #endif // 0
 
-/*struct lightray
-{
-    float3 x;
-    float3 V;
-    float T;
-};
-
-__kernel
-void init_rays(__global float* cY0, __global float* cY1, __global float* cY2, __global float* cY3, __global float* cY4, __global float* cY5,
-               __global float* cA0, __global float* cA1, __global float* cA2, __global float* cA3, __global float* cA4, __global float* cA5,
-               __global float* cGi0, __global float* cGi1, __global float* cGi2, __global float* K, __global float* X, __global float* gA, __global float* gB0, __global float* gB1, __global float* gB2,
-            float scale, __global struct intermediate_bssnok_data* temp_in, __global struct lightray* rays, float3 camera_pos, float4 camera_quat,
-            float width, float height, int4 dim)
-{
-    int x = get_global_id(0);
-    int y = get_global_id(1);
-
-    if(x >= width)
-        return;
-
-    if(y >= height)
-        return;
-
-    ///ray location
-
-    float3 pos = camera_pos - (float3){dim.x, dim.y, dim.z}/2.f;
-
-    pos = clamp(pos, (float3)(0,0,0), (float3)(dim.x, dim.y, dim.z) - 1);
-
-    ///temporary while i don't do interpolation
-    float3 fipos = round(pos);
-
-    int ix = fipos.x;
-    int iy = fipos.y;
-    int iz = fipos.z;
-}*/
-
 float buffer_read_nearest_clamph(__global const DERIV_PRECISION* const buffer, int3 position, int4 dim)
 {
     position = clamp(position, (int3)(0,0,0), dim.xyz - 1);
@@ -1347,6 +1310,7 @@ struct lightray_simple
     int x, y;
 
     float iter_frac;
+    int early_terminate;
 };
 
 enum ds_result
@@ -1379,6 +1343,30 @@ int calculate_ds_error(float err, float current_ds, float3 next_acceleration, fl
     return DS_NONE;
 }
 
+int should_early_terminate(int x, int y, int width, int height, __global int* termination_buffer)
+{
+    x = clamp(x, 0, width-1);
+    y = clamp(y, 0, height-1);
+
+    return termination_buffer[y * width + x] == 1;
+}
+
+__kernel
+void calculate_singularities(__global struct lightray_simple* finished_rays, __global int* finished_count, __global int* termination_buffer, int width, int height)
+{
+    int id = get_global_id(0);
+
+    if(id >= *finished_count)
+        return;
+
+    struct lightray_simple ray = finished_rays[id];
+
+    int x = ray.x;
+    int y = ray.y;
+
+    termination_buffer[y * width + x] = ray.early_terminate;
+}
+
 __kernel
 void init_rays(__global struct lightray_simple* rays, __global int* ray_count0, __global int* ray_count1,
                 STANDARD_ARGS(),
@@ -1387,15 +1375,14 @@ void init_rays(__global struct lightray_simple* rays, __global int* ray_count0, 
                 __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
                 __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
                 float scale, float3 camera_pos, float4 camera_quat,
-                int4 dim, int width, int height)
+                int4 dim, int width, int height,
+                __global int* termination_buffer,
+                int prepass_width, int prepass_height)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
 
-    if(x >= width)
-        return;
-
-    if(y >= height)
+    if(x >= width || y >= height)
         return;
 
     float lp0;
@@ -1440,6 +1427,28 @@ void init_rays(__global struct lightray_simple* rays, __global int* ray_count0, 
     out.x = x;
     out.y = y;
     out.iter_frac = 0;
+    out.early_terminate = 0;
+
+    #define USE_PREPASS
+    #ifdef USE_PREPASS
+    if(prepass_width != width && prepass_height != height)
+    {
+        float fx = (float)x / width;
+        float fy = (float)y / height;
+
+        int lx = round(fx * prepass_width);
+        int ly = round(fy * prepass_height);
+
+        if(should_early_terminate(lx-1, ly, prepass_width, prepass_height, termination_buffer) &&
+           should_early_terminate(lx, ly, prepass_width, prepass_height, termination_buffer) &&
+           should_early_terminate(lx+1, ly, prepass_width, prepass_height, termination_buffer) &&
+           should_early_terminate(lx, ly-1, prepass_width, prepass_height, termination_buffer) &&
+           should_early_terminate(lx, ly+1, prepass_width, prepass_height, termination_buffer))
+        {
+            out.early_terminate = 2;
+        }
+    }
+    #endif // USE_PREPASS
 
     rays[y * width + x] = out;
 
@@ -1465,6 +1474,13 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
     struct lightray_simple ray_in = rays_in[y * width + x];
 
+    if(ray_in.early_terminate)
+    {
+        int next_idx = atomic_inc(ray_count_terminated);
+        rays_terminated[next_idx] = ray_in;
+        return;
+    }
+
     float lp1 = ray_in.lp1;
     float lp2 = ray_in.lp2;
     float lp3 = ray_in.lp3;
@@ -1483,6 +1499,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
     bool deliberate_termination = false;
     bool last_skipped = false;
+    bool hit_singularity = false;
 
     int iteration = 0;
 
@@ -1579,6 +1596,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         if(fast_length((float3){ldX0, ldX1, ldX2}) < 0.2f)
         {
+            hit_singularity = true;
             deliberate_termination = true;
             break;
         }
@@ -1597,6 +1615,12 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     ray_out.V2 = final_dX2;
 
     ray_out.iter_frac = iteration / 128.f;
+    ray_out.early_terminate = hit_singularity;
+
+    /*if(ray_out.early_terminate && width == 800)
+    {
+        printf("hit\n");
+    }*/
 
     if(!deliberate_termination)
     {
@@ -1664,12 +1688,12 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
 
     float uni_size = universe_size;
 
-    cpos = fix_ray_position(cpos, cvel, uni_size * 1.01f);
-
     float terminate_length = length(cpos);
 
-    if(terminate_length >= uni_size)
+    if(ray_in.early_terminate == 0)
     {
+        cpos = fix_ray_position(cpos, cvel, uni_size * 1.01f);
+
         float fr = fast_length(cpos);
         float theta = acos(cpos.z / fr);
         float phi = atan2(cpos.y, cpos.x);
@@ -1696,9 +1720,17 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
 
         write_imagef(screen, (int2){x, y}, val);
     }
+    else if(ray_in.early_terminate == 1)
+    {
+        float3 val = (float3)(0,0,0);
+
+        //val.xyz = clamp(ray_in.iter_frac, 0.f, 1.f);
+
+        write_imagef(screen, (int2){x, y}, (float4)(val.xyz,1));
+    }
     else
     {
-        float3 val;
+        float3 val = (float3)(0,1,0);
 
         //val.xyz = clamp(ray_in.iter_frac, 0.f, 1.f);
 
