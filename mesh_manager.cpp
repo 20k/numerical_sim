@@ -214,7 +214,7 @@ buffer_set& cpu_mesh::get_scratch(int which)
     return scratch;
 }
 
-void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, const std::vector<equation_info>& eqs)
+void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg)
 {
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
@@ -238,8 +238,6 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, const std::vec
         cl::copy(cqueue, data[0].buffers[i], data[1].buffers[i]);
         cl::copy(cqueue, data[0].buffers[i], scratch.buffers[i]);
     }
-
-    equations = eqs;
 }
 
 cl::buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, int id)
@@ -248,17 +246,6 @@ cl::buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::managed_command_queue
         return pool.request(ctx, cqueue, id, dim, sizeof(cl_half));
     else
         return pool.request(ctx, cqueue, id, dim, sizeof(cl_float));
-}
-
-equation_info name_to_equation(const cpu_mesh& m, const std::string& equation)
-{
-    for(const equation_info& inf : m.equations)
-    {
-        if(inf.name == equation)
-            return inf;
-    }
-
-    throw std::runtime_error("No equation description " + equation);
 }
 
 ///returns buffers and intermediates
@@ -284,46 +271,6 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
     std::vector<cl::buffer> intermediates;
 
     mqueue.begin_splice(main_queue);
-
-    std::array derivative_names
-    {
-        "dcYij0",
-        "dcYij1",
-        "dcYij2",
-        "dcYij3",
-        "dcYij4",
-        "dcYij5",
-        "dcYij6",
-        "dcYij7",
-        "dcYij8",
-        "dcYij9",
-        "dcYij10",
-        "dcYij11",
-        "dcYij12",
-        "dcYij13",
-        "dcYij14",
-        "dcYij15",
-        "dcYij16",
-        "dcYij17",
-
-        "digA0",
-        "digA1",
-        "digA2",
-
-        "digB0",
-        "digB1",
-        "digB2",
-        "digB3",
-        "digB4",
-        "digB5",
-        "digB6",
-        "digB7",
-        "digB8",
-
-        "dX0",
-        "dX1",
-        "dX2",
-    };
 
     auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
     {
@@ -435,25 +382,14 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
         auto step_kernel = [&](const std::string& name)
         {
-            equation_info eq = name_to_equation(*this, name);
-
             cl::args a1;
 
             a1.push_back(points_set.second_derivative_points);
             a1.push_back(points_set.second_count);
 
-            //for(auto& i : generic_in)
-
-            for(int kk=0; kk < (int)generic_in.size(); kk++)
+            for(auto& i : generic_in)
             {
-                std::string ename = buffer_names[kk];
-
-                auto& i = generic_in[kk];
-
-                if(eq.uses(ename))
-                    a1.push_back(i.as_device_read_only());
-                else
-                    a1.push_back(i.as_device_inaccessible());
+                a1.push_back(i.as_device_read_only());
             }
 
             for(int kk=0; kk < (int)generic_out.size(); kk++)
@@ -464,24 +400,9 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                     a1.push_back(generic_out[kk].as_device_inaccessible());
             }
 
-            /*for(const std::string& v : eq.input_variables)
+            for(auto& i : base_yn)
             {
-                std::cout << "name " << name << " " << v << std::endl;
-            }*/
-
-            //for(auto& i : base_yn)
-            for(int kk=0; kk < (int)base_yn.size(); kk++)
-            {
-                std::string ename = buffer_names[kk];
-
-                //std::cout << "Does " << name << " use " << ename << " " << eq.uses(ename) << std::endl;
-
-                auto& i = base_yn[kk];
-
-                if(eq.uses(ename))
-                    a1.push_back(i.as_device_read_only());
-                else
-                    a1.push_back(i.as_device_inaccessible());
+                a1.push_back(i.as_device_read_only());
             }
 
             for(auto& i : momentum_constraint)
@@ -489,18 +410,9 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 a1.push_back(i.as_device_read_only());
             }
 
-            //for(auto& i : intermediates)
-
-            for(int kk=0; kk < intermediates.size(); kk++)
+            for(auto& i : intermediates)
             {
-                std::string derivative_name = derivative_names[kk];
-
-                auto& i = intermediates[kk];
-
-                if(eq.uses(derivative_name))
-                    a1.push_back(i.as_device_read_only());
-                else
-                    a1.push_back(i.as_device_inaccessible());
+                a1.push_back(i.as_device_read_only());
             }
 
             a1.push_back(scale);
