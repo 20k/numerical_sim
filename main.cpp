@@ -1816,6 +1816,13 @@ struct black_hole
     tensor<T, 3> angular_momentum;
 };
 
+struct adm_black_hole
+{
+    float adm_mass = 0;
+    tensor<float, 3> velocity;
+    tensor<float, 3> angular_velocity;
+};
+
 ///https://arxiv.org/pdf/gr-qc/0610128.pdf initial conditions, see (7)
 template<typename T>
 inline
@@ -2197,15 +2204,15 @@ cl::buffer construct_adm_holes(cl::context& ctx, cl::command_queue& cqueue, cons
     return gpu_holes;
 }
 
-std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& holes, cl::context& ctx, cl::command_queue& cqueue)
+std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& holes, cl::context& ctx, cl::command_queue& cqueue, float err = 0.0001f)
 {
     std::vector<float> ret;
 
     cl::buffer buf = construct_adm_holes(ctx, cqueue, holes);
 
-    vec3i dim = {211, 211, 211};
+    vec3i dim = {251, 251, 251};
 
-    cl::buffer u_arg = iterate_u(ctx, cqueue, {211, 211, 211}, get_c_at_max(), buf, 0.00001f);
+    cl::buffer u_arg = iterate_u(ctx, cqueue, dim, get_c_at_max(), buf, err);
 
     for(int i=0; i < (int)holes.size(); i++)
     {
@@ -2216,7 +2223,7 @@ std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& hole
 }
 
 inline
-initial_conditions setup_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, equation_context& ctx, vec3f centre, float scale)
+initial_conditions setup_dynamic_initial_conditions(const std::string& u_argument_string, cl::context& clctx, cl::command_queue& cqueue, vec3f centre, float scale)
 {
     initial_conditions ret(clctx);
 
@@ -2364,13 +2371,109 @@ initial_conditions setup_initial_conditions(cl::context& clctx, cl::command_queu
         }
     }
 
+    equation_context eqs;
+
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     value BL_s_dyn = calculate_conformal_guess(pos, gpu_holes);
     tensor<value, 3, 3> bcAij_dyn = calculate_bcAij(pos, gpu_holes);
     value aij_aIJ_dyn = calculate_aij_aIJ(flat_metric, bcAij_dyn, gpu_holes);
-    ctx.add("init_aij_aIJ_dyn", aij_aIJ_dyn);
-    ctx.add("init_BL_val_dyn", aij_aIJ_dyn);
 
+    eqs.add("init_aij_aIJ_dyn", aij_aIJ_dyn);
+    eqs.add("init_BL_val_dyn", BL_s_dyn);
+
+    std::string local_build_str = u_argument_string;
+
+    eqs.build(local_build_str, 8);
+
+    {
+        cl::program u_program(clctx, "u_solver.cl");
+        u_program.build(clctx, local_build_str);
+
+        clctx.register_program(u_program);
+    }
+
+    #define USE_ADM_HOLE
+    #ifdef USE_ADM_HOLE
+    adm_black_hole adm1;
+    adm1.adm_mass = 0.5f;
+    adm1.velocity = {0.f, 0.f, 0.f};
+    adm1.angular_velocity = {0.2f, 0.f, 0.f};
+
+    adm_black_hole adm2;
+    adm2.adm_mass = 0.6f;
+    adm2.velocity = {0.f, 0.f, 0.f};
+    adm2.angular_velocity = {-0.2f, 0.f, 0.f};
+
+    std::vector<adm_black_hole> adm_holes;
+    adm_holes.push_back(adm1);
+    adm_holes.push_back(adm2);
+
+    assert(holes.size() == adm_holes.size());
+
+    for(int i=0; i < holes.size(); i++)
+    {
+        black_hole<float>& raw_hole = holes[i];
+        adm_black_hole& adm_hole = adm_holes[i];
+
+        raw_hole.momentum = adm_hole.adm_mass * adm_hole.velocity;
+        raw_hole.angular_momentum = adm_hole.adm_mass * adm_hole.angular_velocity;
+        raw_hole.bare_mass = 0.5f;
+    }
+
+    float start_err = 0.001f;
+    float fin_err = 0.0001f;
+
+    int iterations = 8;
+
+    for(int i=0; i < iterations; i++)
+    {
+        float err = ((float)i / (iterations - 1)) * (fin_err - start_err) + start_err;
+
+        std::vector<float> masses = calculate_adm_mass(holes, clctx, cqueue, err);
+
+        printf("Masses ");
+
+        for(int kk=0; kk < (int)masses.size(); kk++)
+        {
+            printf("%f ", masses[kk]);
+        }
+
+        printf("\n");
+
+        for(int kk=0; kk < (int)masses.size(); kk++)
+        {
+            float error_delta = adm_holes[kk].adm_mass - masses[kk];
+
+            float relaxation = 0.5;
+
+            float bare_mass_adjust = holes[kk].bare_mass + holes[kk].bare_mass * (error_delta / masses[kk]) * relaxation;
+
+            holes[kk].bare_mass = bare_mass_adjust;
+
+            printf("new bare mass %f\n", holes[kk].bare_mass);
+        }
+    }
+    #endif // USE_ADM_HOLE
+
+    ret.holes = holes;
+    ret.gpu_holes = construct_adm_holes(clctx, cqueue, holes);
+
+    return ret;
+}
+
+void setup_static_conditions(cl::context& clctx, cl::command_queue& cqueue, equation_context& ctx, const std::vector<black_hole<float>>& holes)
+{
+    tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+    metric<value, 3, 3> flat_metric;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            flat_metric.idx(i, j) = (i == j) ? 1 : 0;
+        }
+    }
 
     value BL_s = calculate_conformal_guess(pos, holes);
     tensor<value, 3, 3> bcAij_static = calculate_bcAij(pos, holes);
@@ -2389,11 +2492,6 @@ initial_conditions setup_initial_conditions(cl::context& clctx, cl::command_queu
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 69
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
     ///phi
-
-    ret.holes = holes;
-    ret.gpu_holes = construct_adm_holes(clctx, cqueue, holes);
-
-    return ret;
 }
 
 ///https://arxiv.org/pdf/gr-qc/0206072.pdf alternative initial conditions
@@ -4671,16 +4769,11 @@ int main()
     float scale = calculate_scale(c_at_max, size);
     vec3f centre = {size.x()/2.f, size.y()/2.f, size.z()/2.f};
 
-    equation_context setup_initial;
-    initial_conditions holes = setup_initial_conditions(clctx.ctx, clctx.cqueue, setup_initial, centre, scale);
-    setup_initial.build(u_argument_string, 8);
+    initial_conditions holes = setup_dynamic_initial_conditions(u_argument_string, clctx.ctx, clctx.cqueue, centre, scale);
 
-    {
-        cl::program u_program(clctx.ctx, "u_solver.cl");
-        u_program.build(clctx.ctx, u_argument_string);
+    equation_context setup_static;
 
-        clctx.ctx.register_program(u_program);
-    }
+    setup_static_conditions(clctx.ctx, clctx.cqueue, setup_static, holes.holes);
 
     cl::buffer gpu_holes = holes.gpu_holes;
 
@@ -4754,7 +4847,7 @@ int main()
     ctx5.build(argument_string, 4);
     ctx6.build(argument_string, 5);
     ctx7.build(argument_string, 6);
-    setup_initial.build(argument_string, 8);
+    setup_static.build(argument_string, 8);
     ctx10.build(argument_string, 9);
     ctx11.build(argument_string, 10);
     ctx12.build(argument_string, 11);
