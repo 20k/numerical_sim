@@ -2005,7 +2005,7 @@ std::vector<black_hole> setup_initial_conditions(equation_context& ctx, vec3f ce
     std::vector<black_hole> holes;
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
-    #define PAPER_0610128
+    //#define PAPER_0610128
     #ifdef PAPER_0610128
     black_hole h1;
     h1.bare_mass = 0.483;
@@ -2020,6 +2020,23 @@ std::vector<black_hole> setup_initial_conditions(equation_context& ctx, vec3f ce
     holes.push_back(h1);
     holes.push_back(h2);
     #endif // PAPER_0610128
+
+    #define NAKED
+    #ifdef NAKED
+    black_hole h1;
+    h1.bare_mass = 1;
+    h1.momentum = {0,0,0};
+    h1.position = {-3, 0, 0};
+    h1.angular_momentum = {-0.6f, 0.f, 0.f};
+
+    black_hole h2;
+    h2.bare_mass = 0.2f;
+    h2.momentum = {0,0,0};
+    h2.position = {3, 0, 0};
+    h2.angular_momentum = {0.6f / h2.bare_mass, 0.f, 0.f};
+
+    holes = {h1, h2};
+    #endif // NAKED
 
     for(black_hole& hole : holes)
     {
@@ -4664,7 +4681,10 @@ int main()
 
     async_u.join();
 
-    printf("Black hole test mass %f\n", get_nonspinning_adm_mass(clctx.cqueue, 0, holes, size, scale, u_arg));
+    for(int i=0; i < (int)holes.size(); i++)
+    {
+        printf("Black hole test mass %f %i\n", get_nonspinning_adm_mass(clctx.cqueue, i, holes, size, scale, u_arg), i);
+    }
 
     ///this is not thread safe
     clctx.ctx.register_program(prog);
