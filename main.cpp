@@ -1805,18 +1805,21 @@ struct standard_arguments
     }
 };
 
+template<typename T>
 struct black_hole
 {
     ///in world coordinates
-    vec3f position;
+    tensor<T, 3> position;
     ///this is not a parameter that maps to any straightforward concept of mass
-    float bare_mass = 0;
-    vec3f momentum;
-    vec3f angular_momentum;
+    T bare_mass = 0;
+    tensor<T, 3> momentum;
+    tensor<T, 3> angular_momentum;
 };
 
 ///https://arxiv.org/pdf/gr-qc/0610128.pdf initial conditions, see (7)
-tensor<value, 3, 3> calculate_single_bcAij(const vec<3, value>& pos, const black_hole& hole)
+template<typename T>
+inline
+tensor<value, 3, 3> calculate_single_bcAij(const tensor<value, 3>& pos, const black_hole<T>& hole)
 {
     tensor<value, 3, 3, 3> eijk = get_eijk();
 
@@ -1839,19 +1842,18 @@ tensor<value, 3, 3> calculate_single_bcAij(const vec<3, value>& pos, const black
         {
             tensor<value, 3> momentum_tensor = {hole.momentum.x(), hole.momentum.y(), hole.momentum.z()};
 
-            vec<3, value> vri = {hole.position.x(), hole.position.y(), hole.position.z()};
+            tensor<value, 3> vri = {hole.position.x(), hole.position.y(), hole.position.z()};
 
             value ra = (pos - vri).length();
 
             ra = max(ra, 1e-6);
 
-            vec<3, value> nia = (pos - vri) / ra;
+            tensor<value, 3> nia = (pos - vri) / ra;
 
             tensor<value, 3> momentum_lower = lower_index(momentum_tensor, flat);
             tensor<value, 3> nia_lower = lower_index(tensor<value, 3>{nia.x(), nia.y(), nia.z()}, flat);
 
             bcAij.idx(i, j) += (3 / (2.f * ra * ra)) * (momentum_lower.idx(i) * nia_lower.idx(j) + momentum_lower.idx(j) * nia_lower.idx(i) - (flat.idx(i, j) - nia_lower.idx(i) * nia_lower.idx(j)) * sum_multiply(momentum_tensor, nia_lower));
-
 
             ///spin
             value s1 = 0;
@@ -1874,11 +1876,13 @@ tensor<value, 3, 3> calculate_single_bcAij(const vec<3, value>& pos, const black
 }
 
 ///this does not return the same kind of conformal cAij as bssn uses, need to reconstruct Kij!
-tensor<value, 3, 3> calculate_bcAij(const vec<3, value>& pos, const std::vector<black_hole>& holes)
+template<typename T>
+inline
+tensor<value, 3, 3> calculate_bcAij(const tensor<value, 3>& pos, const std::vector<black_hole<T>>& holes)
 {
     tensor<value, 3, 3> bcAij;
 
-    for(const black_hole& hole : holes)
+    for(const black_hole<T>& hole : holes)
     {
         bcAij += calculate_single_bcAij(pos, hole);
 
@@ -1887,21 +1891,21 @@ tensor<value, 3, 3> calculate_bcAij(const vec<3, value>& pos, const std::vector<
     return bcAij;
 }
 
-vec3f world_to_voxel(vec3f world_pos, vec3i dim, float scale)
+tensor<float, 3> world_to_voxel(const tensor<float, 3>& world_pos, vec3i dim, float scale)
 {
-    vec3f centre = {(dim.x() - 1)/2, (dim.y() - 1)/2, (dim.z() - 1)/2};
+    tensor<float, 3> centre = {(dim.x() - 1)/2, (dim.y() - 1)/2, (dim.z() - 1)/2};
 
     return (world_pos / scale) + centre;
 }
 
 //https://arxiv.org/pdf/gr-qc/0610128.pdf (6)
-float get_nonspinning_adm_mass(cl::command_queue& cqueue, int idx, const std::vector<black_hole>& holes, vec3i dim, float scale, cl::buffer& u_buffer)
+float get_nonspinning_adm_mass(cl::command_queue& cqueue, int idx, const std::vector<black_hole<float>>& holes, vec3i dim, float scale, cl::buffer& u_buffer)
 {
     assert(idx >= 0 && idx < holes.size());
 
-    const black_hole& my_hole = holes[idx];
+    const black_hole<float>& my_hole = holes[idx];
 
-    vec3f voxel_pos = world_to_voxel(my_hole.position, dim, scale);
+    tensor<float, 3> voxel_pos = world_to_voxel(my_hole.position, dim, scale);
 
     int read_idx = (int)voxel_pos.z() * dim.x() * dim.y() + (int)voxel_pos.y() * dim.x() + (int)voxel_pos.x();
 
@@ -1928,10 +1932,61 @@ float get_nonspinning_adm_mass(cl::command_queue& cqueue, int idx, const std::ve
     return holes[idx].bare_mass * (u_read + sum);
 }
 
-inline
-std::vector<black_hole> setup_initial_conditions(equation_context& ctx, vec3f centre, float scale)
+struct initial_conditions
 {
-    vec<3, value> pos;
+    std::vector<black_hole<float>> holes;
+    cl::buffer gpu_holes;
+
+    initial_conditions(cl::context& ctx) : gpu_holes(ctx){}
+};
+
+template<typename T>
+inline
+value calculate_aij_aIJ(const metric<value, 3, 3>& flat_metric, const tensor<value, 3, 3>& bcAij, const std::vector<black_hole<T>>& holes)
+{
+    value aij_aIJ = 0;
+
+    tensor<value, 3, 3> ibcAij = raise_both(bcAij, flat_metric, flat_metric.invert());
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            aij_aIJ += ibcAij.idx(i, j) * bcAij.idx(i, j);
+        }
+    }
+
+    return aij_aIJ;
+}
+
+template<typename T>
+inline
+value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<black_hole<T>>& holes)
+{
+    //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
+    value BL_s = 0;
+
+    for(const black_hole<T>& hole : holes)
+    {
+        value Mi = hole.bare_mass;
+        tensor<value, 3> ri = {hole.position.x(), hole.position.y(), hole.position.z()};
+
+        value dist = (pos - ri).length();
+
+        dist = max(dist, 1e-6);
+
+        BL_s += Mi / (2 * dist);
+    }
+
+    return BL_s;
+}
+
+inline
+initial_conditions setup_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, equation_context& ctx, vec3f centre, float scale)
+{
+    initial_conditions ret(clctx);
+
+    tensor<value, 3> pos;
 
     pos[0].make_value("ox");
     pos[1].make_value("oy");
@@ -1939,11 +1994,11 @@ std::vector<black_hole> setup_initial_conditions(equation_context& ctx, vec3f ce
 
     float bulge = 1;
 
-    auto san_black_hole_pos = [&](vec3f in)
+    auto san_black_hole_pos = [&](const tensor<float, 3>& in)
     {
-        vec3f scaled = round((in / scale) * bulge);
+        tensor<float, 3> scaled = round((in / scale) * bulge);
 
-        std::cout << "Black hole at voxel " << scaled + centre << std::endl;
+        //std::cout << "Black hole at voxel " << scaled + centre << std::endl;
 
         return scaled * scale / bulge;
     };
@@ -2002,17 +2057,17 @@ std::vector<black_hole> setup_initial_conditions(equation_context& ctx, vec3f ce
     #endif // SINGLEHOLE
     #endif // 0
 
-    std::vector<black_hole> holes;
+    std::vector<black_hole<float>> holes;
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     #define PAPER_0610128
     #ifdef PAPER_0610128
-    black_hole h1;
+    black_hole<float> h1;
     h1.bare_mass = 0.483;
     h1.momentum = {0, 0.133 * 0.94, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
-    black_hole h2;
+    black_hole<float> h2;
     h2.bare_mass = 0.483;
     h2.momentum = {0, -0.133 * 0.94, 0};
     h2.position = {3.257, 0.f, 0.f};
@@ -2038,9 +2093,31 @@ std::vector<black_hole> setup_initial_conditions(equation_context& ctx, vec3f ce
     holes = {h1, h2};
     #endif // NAKED
 
-    for(black_hole& hole : holes)
+    for(black_hole<float>& hole : holes)
     {
         hole.position = san_black_hole_pos(hole.position);
+    }
+
+    std::vector<black_hole<value>> gpu_holes;
+
+    for(int i=0; i < (int)holes.size(); i++)
+    {
+        std::string sidx = std::to_string(i);
+
+        std::string p = "holes[" + sidx + "].";
+
+        auto suff = [&](const std::string& in)
+        {
+            return p + in;
+        };
+
+        black_hole<value> bhv;
+        bhv.position = {suff("px"), suff("py"), suff("pz")};
+        bhv.momentum = {suff("mx"), suff("my"), suff("mz")};
+        bhv.angular_momentum = {suff("amx"), suff("amy"), suff("amz")};
+        bhv.bare_mass = suff("mass");
+
+        gpu_holes.push_back(bhv);
     }
 
     metric<value, 3, 3> flat_metric;
@@ -2053,53 +2130,58 @@ std::vector<black_hole> setup_initial_conditions(equation_context& ctx, vec3f ce
         }
     }
 
-    tensor<value, 3, 3> bcAij = calculate_bcAij(pos, holes);
-
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
-    value BL_s = 0;
+    value BL_s_dyn = calculate_conformal_guess(pos, gpu_holes);
+    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij(pos, gpu_holes);
+    value aij_aIJ_dyn = calculate_aij_aIJ(flat_metric, bcAij_dyn, gpu_holes);
+    ctx.add("init_aij_aIJ_dyn", aij_aIJ_dyn);
+    ctx.add("init_BL_val_dyn", aij_aIJ_dyn);
 
-    for(const black_hole& hole : holes)
-    {
-        float Mi = hole.bare_mass;
-        vec3f ri = hole.position;
 
-        vec<3, value> vri = {ri.x(), ri.y(), ri.z()};
-
-        value dist = (pos - vri).length();
-
-        dist = max(dist, 1e-6);
-
-        BL_s += Mi / (2 * dist);
-    }
+    value BL_s = calculate_conformal_guess(pos, holes);
+    tensor<value, 3, 3> bcAij_static = calculate_bcAij(pos, holes);
+    value aij_aIJ_static = calculate_aij_aIJ(flat_metric, bcAij_static, holes);
 
     ctx.add("init_BL_val", BL_s);
-
-    value aij_aIJ = 0;
-
-    tensor<value, 3, 3> ibcAij = raise_both(bcAij, flat_metric, flat_metric.invert());
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            aij_aIJ += ibcAij.idx(i, j) * bcAij.idx(i, j);
-        }
-    }
-
-    ctx.add("init_aij_aIJ", aij_aIJ);
+    ctx.add("init_aij_aIJ", aij_aIJ_static);
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
     for(int i=0; i < 6; i++)
     {
-        ctx.add("init_bcA" + std::to_string(i), bcAij.idx(linear_indices[i].x(), linear_indices[i].y()));
+        ctx.add("init_bcA" + std::to_string(i), bcAij_static.idx(linear_indices[i].x(), linear_indices[i].y()));
     }
 
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 69
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
     ///phi
 
-    return holes;
+    ret.holes = holes;
+    ret.gpu_holes.alloc(sizeof(cl_float) * 10 * holes.size());
+
+    std::vector<cl_float> to_write;
+
+    ///matches the gpu hole struct
+    for(const black_hole<float>& v : holes)
+    {
+        to_write.push_back(v.bare_mass);
+
+        to_write.push_back(v.position.x());
+        to_write.push_back(v.position.y());
+        to_write.push_back(v.position.z());
+
+        to_write.push_back(v.momentum.x());
+        to_write.push_back(v.momentum.y());
+        to_write.push_back(v.momentum.z());
+
+        to_write.push_back(v.angular_momentum.x());
+        to_write.push_back(v.angular_momentum.y());
+        to_write.push_back(v.angular_momentum.z());
+    }
+
+    ret.gpu_holes.write(cqueue, to_write);
+
+    return ret;
 }
 
 ///https://arxiv.org/pdf/gr-qc/0206072.pdf alternative initial conditions
@@ -4338,7 +4420,7 @@ void check_symmetry(const std::string& debug_name, cl::command_queue& cqueue, cl
     #endif // CHECK_SYMMETRY
 }
 
-cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_int> base_size, float c_at_max, int scale_factor, std::optional<cl::buffer> base)
+cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_int> base_size, float c_at_max, int scale_factor, cl::buffer& gpu_holes, std::optional<cl::buffer> base)
 {
     vec<4, cl_int> reduced_clsize = ((base_size - 1) / scale_factor) + 1;
 
@@ -4402,6 +4484,7 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
         iterate_u_args.push_back(still_going[which_still_going]);
         iterate_u_args.push_back(still_going[(which_still_going + 1) % 2]);
         iterate_u_args.push_back(etol);
+        iterate_u_args.push_back(gpu_holes);
 
         cqueue.exec("iterative_u_solve", iterate_u_args, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1});
 
@@ -4483,7 +4566,7 @@ cl::buffer extract_u_region(cl::context& ctx, cl::command_queue& cqueue, cl::buf
     return out;
 }
 
-cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, float c_at_max)
+cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, float c_at_max, cl::buffer& gpu_holes)
 {
     float boundaries[4] = {c_at_max, c_at_max * 4, c_at_max * 8, c_at_max * 16};
 
@@ -4496,14 +4579,14 @@ cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, fl
         float current_boundary = boundaries[i + 1];
         float next_boundary = boundaries[i];
 
-        cl::buffer reduced = solve_for_u(ctx, cqueue, clsize, current_boundary, 1, last);
+        cl::buffer reduced = solve_for_u(ctx, cqueue, clsize, current_boundary, 1, gpu_holes, last);
 
         cl::buffer extracted = extract_u_region(ctx, cqueue, reduced, current_boundary, next_boundary, clsize);
 
         last = extracted;
     }
 
-    return solve_for_u(ctx, cqueue, clsize, c_at_max, 1, last);
+    return solve_for_u(ctx, cqueue, clsize, c_at_max, 1, gpu_holes, last);
 }
 
 ///it seems like basically i need numerical dissipation of some form
@@ -4562,7 +4645,7 @@ int main()
     vec3f centre = {size.x()/2.f, size.y()/2.f, size.z()/2.f};
 
     equation_context setup_initial;
-    std::vector<black_hole> holes = setup_initial_conditions(setup_initial, centre, scale);
+    initial_conditions holes = setup_initial_conditions(clctx.ctx, clctx.cqueue, setup_initial, centre, scale);
     setup_initial.build(u_argument_string, 8);
 
     {
@@ -4572,13 +4655,15 @@ int main()
         clctx.ctx.register_program(u_program);
     }
 
+    cl::buffer gpu_holes = holes.gpu_holes;
+
     cl::buffer u_arg(clctx.ctx);
 
-    auto u_thread = [c_at_max, size, &clctx, &u_arg]()
+    auto u_thread = [c_at_max, size, &clctx, &u_arg, &gpu_holes]()
     {
         cl::command_queue cqueue(clctx.ctx);
 
-        u_arg = iterate_u(clctx.ctx, cqueue, size, c_at_max).as_read_only();
+        u_arg = iterate_u(clctx.ctx, cqueue, size, c_at_max, gpu_holes).as_read_only();
 
         cqueue.block();
     };
@@ -4684,9 +4769,9 @@ int main()
 
     async_u.join();
 
-    for(int i=0; i < (int)holes.size(); i++)
+    for(int i=0; i < (int)holes.holes.size(); i++)
     {
-        printf("Black hole test mass %f %i\n", get_nonspinning_adm_mass(clctx.cqueue, i, holes, size, scale, u_arg), i);
+        printf("Black hole test mass %f %i\n", get_nonspinning_adm_mass(clctx.cqueue, i, holes.holes, size, scale, u_arg), i);
     }
 
     ///this is not thread safe
