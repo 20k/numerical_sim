@@ -2024,16 +2024,16 @@ std::vector<black_hole> setup_initial_conditions(equation_context& ctx, vec3f ce
     #define NAKED
     #ifdef NAKED
     black_hole h1;
-    h1.bare_mass = 1;
+    h1.bare_mass = 0.835f;
     h1.momentum = {0,0,0};
-    h1.position = {-3, 0, 0};
-    h1.angular_momentum = {-0.6f, 0.f, 0.f};
+    h1.position = {-5, 0, 0};
+    h1.angular_momentum = {-0.9 * 1.f, 0.f, 0.f};
 
     black_hole h2;
     h2.bare_mass = 0.2f;
     h2.momentum = {0,0,0};
-    h2.position = {3, 0, 0};
-    h2.angular_momentum = {0.6f / h2.bare_mass, 0.f, 0.f};
+    h2.position = {5, 0, 0};
+    h2.angular_momentum = {0.75 * 0.2f, 0.f, 0.f};
 
     holes = {h1, h2};
     #endif // NAKED
