@@ -1818,6 +1818,9 @@ struct black_hole
 
 struct adm_black_hole
 {
+    float bare_mass_guess = 0.5f;
+
+    tensor<float, 3> position;
     float adm_mass = 0;
     tensor<float, 3> velocity;
     tensor<float, 3> angular_velocity;
@@ -2173,7 +2176,7 @@ cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, fl
     return solve_for_u(ctx, cqueue, clsize, c_at_max, 1, gpu_holes, last, etol);
 }
 
-cl::buffer construct_adm_holes(cl::context& ctx, cl::command_queue& cqueue, const std::vector<black_hole<float>>& holes)
+cl::buffer construct_black_holes(cl::context& ctx, cl::command_queue& cqueue, const std::vector<black_hole<float>>& holes)
 {
     cl::buffer gpu_holes(ctx);
 
@@ -2208,7 +2211,7 @@ std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& hole
 {
     std::vector<float> ret;
 
-    cl::buffer buf = construct_adm_holes(ctx, cqueue, holes);
+    cl::buffer buf = construct_black_holes(ctx, cqueue, holes);
 
     vec3i dim = {251, 251, 251};
 
@@ -2222,16 +2225,68 @@ std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& hole
     return ret;
 }
 
+void create_u_program(cl::context& clctx, int holes, const std::string& u_argument_string)
+{
+    tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+    std::vector<black_hole<value>> gpu_holes;
+
+    for(int i=0; i < holes; i++)
+    {
+        std::string sidx = std::to_string(i);
+
+        std::string p = "holes[" + sidx + "].";
+
+        auto suff = [&](const std::string& in)
+        {
+            return p + in;
+        };
+
+        black_hole<value> bhv;
+        bhv.position = {suff("px"), suff("py"), suff("pz")};
+        bhv.momentum = {suff("mx"), suff("my"), suff("mz")};
+        bhv.angular_momentum = {suff("amx"), suff("amy"), suff("amz")};
+        bhv.bare_mass = suff("mass");
+
+        gpu_holes.push_back(bhv);
+    }
+
+    metric<value, 3, 3> flat_metric;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            flat_metric.idx(i, j) = (i == j) ? 1 : 0;
+        }
+    }
+
+    equation_context eqs;
+
+    //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
+    value BL_s_dyn = calculate_conformal_guess(pos, gpu_holes);
+    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij(pos, gpu_holes);
+    value aij_aIJ_dyn = calculate_aij_aIJ(flat_metric, bcAij_dyn, gpu_holes);
+
+    eqs.add("init_aij_aIJ_dyn", aij_aIJ_dyn);
+    eqs.add("init_BL_val_dyn", BL_s_dyn);
+
+    std::string local_build_str = u_argument_string;
+
+    eqs.build(local_build_str, 8);
+
+    {
+        cl::program u_program(clctx, "u_solver.cl");
+        u_program.build(clctx, local_build_str);
+
+        clctx.register_program(u_program);
+    }
+}
+
 inline
-initial_conditions setup_dynamic_initial_conditions(const std::string& u_argument_string, cl::context& clctx, cl::command_queue& cqueue, vec3f centre, float scale)
+initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, float scale, std::vector<black_hole<float>> holes)
 {
     initial_conditions ret(clctx);
-
-    tensor<value, 3> pos;
-
-    pos[0].make_value("ox");
-    pos[1].make_value("oy");
-    pos[2].make_value("oz");
 
     float bulge = 1;
 
@@ -2239,10 +2294,92 @@ initial_conditions setup_dynamic_initial_conditions(const std::string& u_argumen
     {
         tensor<float, 3> scaled = round((in / scale) * bulge);
 
-        //std::cout << "Black hole at voxel " << scaled + centre << std::endl;
+        return scaled * scale / bulge;
+    };
+
+    for(black_hole<float>& hole : holes)
+    {
+        hole.position = san_black_hole_pos(hole.position);
+    }
+
+    ret.holes = holes;
+    ret.gpu_holes = construct_black_holes(clctx, cqueue, holes);
+
+    return ret;
+}
+
+inline
+initial_conditions get_adm_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, float scale, std::vector<adm_black_hole> adm_holes)
+{
+    float bulge = 1;
+
+    auto san_black_hole_pos = [&](const tensor<float, 3>& in)
+    {
+        tensor<float, 3> scaled = round((in / scale) * bulge);
 
         return scaled * scale / bulge;
     };
+
+    for(adm_black_hole& hole : adm_holes)
+    {
+        hole.position = san_black_hole_pos(hole.position);
+    }
+
+    std::vector<black_hole<float>> raw_holes;
+
+    for(adm_black_hole& adm : adm_holes)
+    {
+        black_hole<float> black;
+
+        black.position = adm.position;
+        black.bare_mass = adm.bare_mass_guess;
+        black.momentum = adm.adm_mass * adm.velocity;
+        black.angular_momentum = adm.adm_mass * adm.angular_velocity;
+
+        raw_holes.push_back(black);
+    }
+
+    float start_err = 0.001f;
+    float fin_err = 0.0001f;
+
+    int iterations = 8;
+
+    for(int i=0; i < iterations; i++)
+    {
+        float err = ((float)i / (iterations - 1)) * (fin_err - start_err) + start_err;
+
+        std::vector<float> masses = calculate_adm_mass(raw_holes, clctx, cqueue, err);
+
+        printf("Masses ");
+
+        for(int kk=0; kk < (int)masses.size(); kk++)
+        {
+            printf("%f ", masses[kk]);
+        }
+
+        printf("\n");
+
+        for(int kk=0; kk < (int)masses.size(); kk++)
+        {
+            float error_delta = adm_holes[kk].adm_mass - masses[kk];
+
+            float relaxation = 0.5;
+
+            float bare_mass_adjust = raw_holes[kk].bare_mass + raw_holes[kk].bare_mass * (error_delta / masses[kk]) * relaxation;
+
+            raw_holes[kk].bare_mass = bare_mass_adjust;
+
+            printf("new bare mass %f\n", raw_holes[kk].bare_mass);
+        }
+    }
+
+    return get_bare_initial_conditions(clctx, cqueue, scale, raw_holes);
+}
+
+inline
+initial_conditions setup_dynamic_initial_conditions(const std::string& u_argument_string, cl::context& clctx, cl::command_queue& cqueue, vec3f centre, float scale)
+{
+    initial_conditions ret(clctx);
 
     #if 0
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
@@ -2298,6 +2435,9 @@ initial_conditions setup_dynamic_initial_conditions(const std::string& u_argumen
     #endif // SINGLEHOLE
     #endif // 0
 
+    //#define BARE_BLACK_HOLES
+    #ifdef BARE_BLACK_HOLES
+
     std::vector<black_hole<float>> holes;
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
@@ -2317,148 +2457,36 @@ initial_conditions setup_dynamic_initial_conditions(const std::string& u_argumen
     holes.push_back(h2);
     #endif // PAPER_0610128
 
-    //#define NAKED
-    #ifdef NAKED
-    black_hole h1;
-    h1.bare_mass = 0.835f;
-    h1.momentum = {0,0,0};
-    h1.position = {-5, 0, 0};
-    h1.angular_momentum = {-0.9 * 1.f, 0.f, 0.f};
+    create_u_program(clctx, holes.size(), u_argument_string);
 
-    black_hole h2;
-    h2.bare_mass = 0.2f;
-    h2.momentum = {0,0,0};
-    h2.position = {5, 0, 0};
-    h2.angular_momentum = {0.75 * 0.2f, 0.f, 0.f};
-
-    holes = {h1, h2};
-    #endif // NAKED
-
-    for(black_hole<float>& hole : holes)
-    {
-        hole.position = san_black_hole_pos(hole.position);
-    }
-
-    std::vector<black_hole<value>> gpu_holes;
-
-    for(int i=0; i < (int)holes.size(); i++)
-    {
-        std::string sidx = std::to_string(i);
-
-        std::string p = "holes[" + sidx + "].";
-
-        auto suff = [&](const std::string& in)
-        {
-            return p + in;
-        };
-
-        black_hole<value> bhv;
-        bhv.position = {suff("px"), suff("py"), suff("pz")};
-        bhv.momentum = {suff("mx"), suff("my"), suff("mz")};
-        bhv.angular_momentum = {suff("amx"), suff("amy"), suff("amz")};
-        bhv.bare_mass = suff("mass");
-
-        gpu_holes.push_back(bhv);
-    }
-
-    metric<value, 3, 3> flat_metric;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            flat_metric.idx(i, j) = (i == j) ? 1 : 0;
-        }
-    }
-
-    equation_context eqs;
-
-    //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
-    value BL_s_dyn = calculate_conformal_guess(pos, gpu_holes);
-    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij(pos, gpu_holes);
-    value aij_aIJ_dyn = calculate_aij_aIJ(flat_metric, bcAij_dyn, gpu_holes);
-
-    eqs.add("init_aij_aIJ_dyn", aij_aIJ_dyn);
-    eqs.add("init_BL_val_dyn", BL_s_dyn);
-
-    std::string local_build_str = u_argument_string;
-
-    eqs.build(local_build_str, 8);
-
-    {
-        cl::program u_program(clctx, "u_solver.cl");
-        u_program.build(clctx, local_build_str);
-
-        clctx.register_program(u_program);
-    }
+    return get_bare_initial_conditions(clctx, cqueue, scale, holes);
+    #endif
 
     #define USE_ADM_HOLE
     #ifdef USE_ADM_HOLE
+    std::vector<adm_black_hole> adm_holes;
+
     adm_black_hole adm1;
+    adm1.position = {-4, 0, 0};
     adm1.adm_mass = 0.5f;
     adm1.velocity = {0.f, 0.f, 0.f};
     adm1.angular_velocity = {0.2f, 0.f, 0.f};
 
     adm_black_hole adm2;
+    adm2.position = {4, 0, 0};
     adm2.adm_mass = 0.6f;
     adm2.velocity = {0.f, 0.f, 0.f};
     adm2.angular_velocity = {-0.2f, 0.f, 0.f};
 
-    std::vector<adm_black_hole> adm_holes;
     adm_holes.push_back(adm1);
     adm_holes.push_back(adm2);
 
-    assert(holes.size() == adm_holes.size());
+    create_u_program(clctx, adm_holes.size(), u_argument_string);
 
-    for(int i=0; i < holes.size(); i++)
-    {
-        black_hole<float>& raw_hole = holes[i];
-        adm_black_hole& adm_hole = adm_holes[i];
-
-        raw_hole.momentum = adm_hole.adm_mass * adm_hole.velocity;
-        raw_hole.angular_momentum = adm_hole.adm_mass * adm_hole.angular_velocity;
-        raw_hole.bare_mass = 0.5f;
-    }
-
-    float start_err = 0.001f;
-    float fin_err = 0.0001f;
-
-    int iterations = 8;
-
-    for(int i=0; i < iterations; i++)
-    {
-        float err = ((float)i / (iterations - 1)) * (fin_err - start_err) + start_err;
-
-        std::vector<float> masses = calculate_adm_mass(holes, clctx, cqueue, err);
-
-        printf("Masses ");
-
-        for(int kk=0; kk < (int)masses.size(); kk++)
-        {
-            printf("%f ", masses[kk]);
-        }
-
-        printf("\n");
-
-        for(int kk=0; kk < (int)masses.size(); kk++)
-        {
-            float error_delta = adm_holes[kk].adm_mass - masses[kk];
-
-            float relaxation = 0.5;
-
-            float bare_mass_adjust = holes[kk].bare_mass + holes[kk].bare_mass * (error_delta / masses[kk]) * relaxation;
-
-            holes[kk].bare_mass = bare_mass_adjust;
-
-            printf("new bare mass %f\n", holes[kk].bare_mass);
-        }
-    }
+    return get_adm_initial_conditions(clctx, cqueue, scale, adm_holes);
     #endif // USE_ADM_HOLE
 
-    ret.holes = holes;
-    ret.gpu_holes = construct_adm_holes(clctx, cqueue, holes);
-
-    return ret;
+    assert(false);
 }
 
 void setup_static_conditions(cl::context& clctx, cl::command_queue& cqueue, equation_context& ctx, const std::vector<black_hole<float>>& holes)
