@@ -115,7 +115,7 @@ void extract_u_region(__global float* u_in, __global float* u_out, float c_at_ma
 ///todo: this, but second order, because memory reads are heavily cached
 __kernel
 void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out,
-                       float scale, int4 dim, __constant int* last_still_going, __global int* still_going)
+                       float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol)
 {
     if(*last_still_going == 0)
         return;
@@ -263,7 +263,7 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
     float err = u0n1 - u;
 
-    if(fabs(err) > 0.000001)
+    if(fabs(err) > etol)
     {
         atomic_xchg(still_going, 1);
         //*still_going = 1;

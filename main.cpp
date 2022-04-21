@@ -2005,7 +2005,7 @@ std::vector<black_hole> setup_initial_conditions(equation_context& ctx, vec3f ce
     std::vector<black_hole> holes;
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
-    //#define PAPER_0610128
+    #define PAPER_0610128
     #ifdef PAPER_0610128
     black_hole h1;
     h1.bare_mass = 0.483;
@@ -2021,7 +2021,7 @@ std::vector<black_hole> setup_initial_conditions(equation_context& ctx, vec3f ce
     holes.push_back(h2);
     #endif // PAPER_0610128
 
-    #define NAKED
+    //#define NAKED
     #ifdef NAKED
     black_hole h1;
     h1.bare_mass = 0.835f;
@@ -4388,6 +4388,8 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
 
     int which_still_going = 0;
 
+    cl_float etol = 0.000001f;
+
     for(int i=0; i < N; i++)
     {
         float local_scale = calculate_scale(c_at_max, reduced_clsize);
@@ -4399,6 +4401,7 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_in
         iterate_u_args.push_back(reduced_clsize);
         iterate_u_args.push_back(still_going[which_still_going]);
         iterate_u_args.push_back(still_going[(which_still_going + 1) % 2]);
+        iterate_u_args.push_back(etol);
 
         cqueue.exec("iterative_u_solve", iterate_u_args, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1});
 
