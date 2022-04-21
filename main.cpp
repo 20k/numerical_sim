@@ -83,6 +83,8 @@ https://arxiv.org/pdf/gr-qc/0501043.pdf - hamiltonian constraint
 https://orca.cardiff.ac.uk/114952/1/PhysRevD.98.044014.pdf - this paper states that bowen-york suffers hamiltonian constraint violations, which... explains a lot
 https://arxiv.org/pdf/0908.1063.pdf - gives an estimate of black hole mass from apparent horizon. Analysis of trumpet initial conditions shows they're unfortunately the same as non trumpet
 https://arxiv.org/pdf/0912.2920.pdf - z4c
+https://arxiv.org/pdf/astro-ph/0408492v1.pdf - kicks
+https://arxiv.org/pdf/2108.05119.pdf - apparently horizons
 */
 
 ///notes:
@@ -2213,7 +2215,7 @@ std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& hole
 
     cl::buffer buf = construct_black_holes(ctx, cqueue, holes);
 
-    vec3i dim = {251, 251, 251};
+    vec3i dim = {281, 281, 281};
 
     cl::buffer u_arg = iterate_u(ctx, cqueue, dim, get_c_at_max(), buf, err);
 
@@ -2435,9 +2437,8 @@ initial_conditions setup_dynamic_initial_conditions(const std::string& u_argumen
     #endif // SINGLEHOLE
     #endif // 0
 
-    //#define BARE_BLACK_HOLES
+    #define BARE_BLACK_HOLES
     #ifdef BARE_BLACK_HOLES
-
     std::vector<black_hole<float>> holes;
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
@@ -2462,24 +2463,62 @@ initial_conditions setup_dynamic_initial_conditions(const std::string& u_argumen
     return get_bare_initial_conditions(clctx, cqueue, scale, holes);
     #endif
 
-    #define USE_ADM_HOLE
+    //#define USE_ADM_HOLE
     #ifdef USE_ADM_HOLE
     std::vector<adm_black_hole> adm_holes;
 
+    #ifdef TEST_CSE
     adm_black_hole adm1;
     adm1.position = {-4, 0, 0};
     adm1.adm_mass = 0.5f;
     adm1.velocity = {0.f, 0.f, 0.f};
-    adm1.angular_velocity = {0.2f, 0.f, 0.f};
+    adm1.angular_velocity = {0.f, 0.f, 0.f};
 
     adm_black_hole adm2;
     adm2.position = {4, 0, 0};
     adm2.adm_mass = 0.6f;
     adm2.velocity = {0.f, 0.f, 0.f};
-    adm2.angular_velocity = {-0.2f, 0.f, 0.f};
+    adm2.angular_velocity = {0.f, 0.f, 0.f};
 
     adm_holes.push_back(adm1);
     adm_holes.push_back(adm2);
+    #endif // TEST_CSE
+
+    //#define NAKED_CASE
+    #ifdef NAKED_CASE
+    adm_black_hole adm1;
+    adm1.position = {-3, 0, 0};
+    adm1.adm_mass = 0.5f;
+    adm1.velocity = {0.f, 0.f, 0.f};
+    adm1.angular_velocity = {0.6f, 0.f, 0.f};
+
+    adm_black_hole adm2;
+    adm2.position = {3, 0, 0};
+    adm2.adm_mass = 0.7f;
+    adm2.velocity = {0.f, 0.f, 0.f};
+    adm2.angular_velocity = {-0.7f, 0.f, 0.f};
+
+    adm_holes.push_back(adm1);
+    adm_holes.push_back(adm2);
+    #endif // NAKED_CASE
+
+    //#define KICK
+    #ifdef KICK
+    adm_black_hole adm1;
+    adm1.position = {-3, 0, 0};
+    adm1.adm_mass = 0.85f;
+    adm1.velocity = {0.f, 0.15f / adm1.adm_mass, 0.f};
+    adm1.angular_velocity = {0.f, 0.f, 0.f};
+
+    adm_black_hole adm2;
+    adm2.position = {3, 0, 0};
+    adm2.adm_mass = 0.4f;
+    adm2.velocity = {0.f, -0.15f / adm2.adm_mass, 0.f};
+    adm2.angular_velocity = {0.f, 0.f, 0.f};
+
+    adm_holes.push_back(adm1);
+    adm_holes.push_back(adm2);
+    #endif // KICK
 
     create_u_program(clctx, adm_holes.size(), u_argument_string);
 
@@ -4790,7 +4829,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {251, 251, 251};
+    vec3i size = {281, 281, 281};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
