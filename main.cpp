@@ -2166,6 +2166,55 @@ cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, fl
     return solve_for_u(ctx, cqueue, clsize, c_at_max, 1, gpu_holes, last, etol);
 }
 
+cl::buffer construct_adm_holes(cl::context& ctx, cl::command_queue& cqueue, const std::vector<black_hole<float>>& holes)
+{
+    cl::buffer gpu_holes(ctx);
+
+    gpu_holes.alloc(sizeof(cl_float) * 10 * holes.size());
+
+    std::vector<cl_float> to_write;
+
+    ///matches the gpu hole struct
+    for(const black_hole<float>& v : holes)
+    {
+        to_write.push_back(v.bare_mass);
+
+        to_write.push_back(v.position.x());
+        to_write.push_back(v.position.y());
+        to_write.push_back(v.position.z());
+
+        to_write.push_back(v.momentum.x());
+        to_write.push_back(v.momentum.y());
+        to_write.push_back(v.momentum.z());
+
+        to_write.push_back(v.angular_momentum.x());
+        to_write.push_back(v.angular_momentum.y());
+        to_write.push_back(v.angular_momentum.z());
+    }
+
+    gpu_holes.write(cqueue, to_write);
+
+    return gpu_holes;
+}
+
+std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& holes, cl::context& ctx, cl::command_queue& cqueue)
+{
+    std::vector<float> ret;
+
+    cl::buffer buf = construct_adm_holes(ctx, cqueue, holes);
+
+    vec3i dim = {211, 211, 211};
+
+    cl::buffer u_arg = iterate_u(ctx, cqueue, {211, 211, 211}, get_c_at_max(), buf, 0.00001f);
+
+    for(int i=0; i < (int)holes.size(); i++)
+    {
+        ret.push_back(get_nonspinning_adm_mass(cqueue, i, holes, dim, calculate_scale(get_c_at_max(), dim), u_arg));
+    }
+
+    return ret;
+}
+
 inline
 initial_conditions setup_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, equation_context& ctx, vec3f centre, float scale)
 {
@@ -2342,29 +2391,7 @@ initial_conditions setup_initial_conditions(cl::context& clctx, cl::command_queu
     ///phi
 
     ret.holes = holes;
-    ret.gpu_holes.alloc(sizeof(cl_float) * 10 * holes.size());
-
-    std::vector<cl_float> to_write;
-
-    ///matches the gpu hole struct
-    for(const black_hole<float>& v : holes)
-    {
-        to_write.push_back(v.bare_mass);
-
-        to_write.push_back(v.position.x());
-        to_write.push_back(v.position.y());
-        to_write.push_back(v.position.z());
-
-        to_write.push_back(v.momentum.x());
-        to_write.push_back(v.momentum.y());
-        to_write.push_back(v.momentum.z());
-
-        to_write.push_back(v.angular_momentum.x());
-        to_write.push_back(v.angular_momentum.y());
-        to_write.push_back(v.angular_momentum.z());
-    }
-
-    ret.gpu_holes.write(cqueue, to_write);
+    ret.gpu_holes = construct_adm_holes(clctx, cqueue, holes);
 
     return ret;
 }
