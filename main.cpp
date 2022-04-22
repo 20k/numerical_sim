@@ -600,7 +600,7 @@ struct differentiation_context
     std::array<value, elements> ys;
     std::array<value, elements> zs;
 
-    differentiation_context(const value& in, int idx, bool should_pin = true, bool linear_interpolation = false)
+    differentiation_context(const value& in, int idx, bool linear_interpolation = false)
     {
         std::vector<std::string> variables = in.get_all_variables();
 
@@ -694,7 +694,7 @@ value get_distance(const vec<3, value>& p1, const vec<3, value>& p2)
 
 value get_scale_distance(equation_context& ctx, const value& in, int idx, int which)
 {
-    differentiation_context<3> dctx(in, idx, false);
+    differentiation_context<3> dctx(in, idx);
 
     value final_command;
 
@@ -736,7 +736,7 @@ vec<3, value> get_idx_offset(int idx)
 
 value first_derivative(equation_context& ctx, const value& in, int idx)
 {
-    differentiation_context<3> dctx(in, idx, false);
+    differentiation_context<3> dctx(in, idx);
 
     value h = get_scale_distance(ctx, in, idx, 0);
     value k = get_scale_distance(ctx, in, idx, 1);
@@ -749,7 +749,7 @@ value first_derivative(equation_context& ctx, const value& in, int idx)
 
 value second_derivative(equation_context& ctx, const value& in, int idx)
 {
-    differentiation_context<5> dctx(in, idx, false);
+    differentiation_context<5> dctx(in, idx);
 
     vec<3, value> pos = {"ix", "iy", "iz"};
 
@@ -771,7 +771,7 @@ value second_derivative(equation_context& ctx, const value& in, int idx)
 
 value fourth_derivative(equation_context& ctx, const value& in, int idx)
 {
-    differentiation_context<5> dctx(in, idx, false);
+    differentiation_context<5> dctx(in, idx);
 
     vec<3, value> pos = {"ix", "iy", "iz"};
 
@@ -812,7 +812,7 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
 
     //#define FOURTH
     #ifdef FOURTH
-    differentiation_context<5> dctx(in, idx, false);
+    differentiation_context<5> dctx(in, idx);
     //value stencil = -(1 / (16.f * effective_scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
 
     value stencil = (-1 / 16.f) * pow(effective_scale, 3.f) * fourth_derivative(ctx, in, idx);
@@ -821,7 +821,7 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
 
     #define SIXTH
     #ifdef SIXTH
-    differentiation_context<7> dctx(in, idx, false);
+    differentiation_context<7> dctx(in, idx);
     value stencil = (1 / (64.f * scale)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
     #endif // SIXTH
 
@@ -865,21 +865,21 @@ value hacky_differentiate(const value& in, int idx, bool pin = true, bool linear
 
     if(order == 1)
     {
-        differentiation_context dctx(in, idx, true, linear);
+        differentiation_context dctx(in, idx, linear);
         std::array<value, 5> vars = dctx.vars;
 
         final_command = (vars[3] - vars[1]) / (2 * scale);
     }
     else if(order == 2)
     {
-        differentiation_context dctx(in, idx, true, linear);
+        differentiation_context dctx(in, idx, linear);
         std::array<value, 5> vars = dctx.vars;
 
         final_command = (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
     }
     else if(order == 3)
     {
-        differentiation_context<7> dctx(in, idx, true, linear);
+        differentiation_context<7> dctx(in, idx, linear);
         std::array<value, 7> vars = dctx.vars;
 
         final_command = (-(1/60.f) * vars[0] + (3/20.f) * vars[1] - (3/4.f) * vars[2] + 0 * vars[3] + (3/4.f) * vars[4] - (3/20.f) * vars[5] + (1/60.f) * vars[6]) / scale;
@@ -915,28 +915,28 @@ value diff1(equation_context& ctx, const value& in, int idx)
 
     if(order == 1)
     {
-        differentiation_context<3> dctx(in, idx, true, ctx.uses_linear);
+        differentiation_context<3> dctx(in, idx, ctx.uses_linear);
         std::array<value, 3> vars = dctx.vars;
 
         return (vars[2] - vars[0]) / (2 * scale);
     }
     else if(order == 2)
     {
-        differentiation_context dctx(in, idx, true, ctx.uses_linear);
+        differentiation_context dctx(in, idx, ctx.uses_linear);
         std::array<value, 5> vars = dctx.vars;
 
         return (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
     }
     else if(order == 3)
     {
-        differentiation_context<7> dctx(in, idx, true, ctx.uses_linear);
+        differentiation_context<7> dctx(in, idx, ctx.uses_linear);
         std::array<value, 7> vars = dctx.vars;
 
         return (-(1/60.f) * vars[0] + (3/20.f) * vars[1] - (3/4.f) * vars[2] + 0 * vars[3] + (3/4.f) * vars[4] - (3/20.f) * vars[5] + (1/60.f) * vars[6]) / scale;
     }
     else if(order == 4)
     {
-        differentiation_context<9> dctx(in, idx, true, ctx.uses_linear);
+        differentiation_context<9> dctx(in, idx, ctx.uses_linear);
         std::array<value, 9> vars = dctx.vars;
 
         return ((1/280.f) * vars[0] - (4/105.f) * vars[1] + (1/5.f) * vars[2] - (4/5.f) * vars[3] + (4/5.f) * vars[5] - (1/5.f) * vars[6] + (4/105.f) * vars[7] - (1/280.f) * vars[8]) / scale;
@@ -956,28 +956,28 @@ value diff2(equation_context& ctx, const value& in, int idx, int idy, const valu
     {
         if(order == 1)
         {
-            differentiation_context<3> dctx(in, idx, true, ctx.uses_linear);
+            differentiation_context<3> dctx(in, idx, ctx.uses_linear);
             std::array<value, 3> vars = dctx.vars;
 
             return (vars[0] - 2 * vars[1] + vars[2]) / (scale * scale);
         }
         else if(order == 2)
         {
-            differentiation_context<5> dctx(in, idx, true, ctx.uses_linear);
+            differentiation_context<5> dctx(in, idx, ctx.uses_linear);
             std::array<value, 5> vars = dctx.vars;
 
             return (-vars[0] + 16 * vars[1] - 30 * vars[2] + 16 * vars[3] - vars[4]) / (12 * scale * scale);
         }
         else if(order == 3)
         {
-            differentiation_context<7> dctx(in, idx, true, ctx.uses_linear);
+            differentiation_context<7> dctx(in, idx, ctx.uses_linear);
             std::array<value, 7> vars = dctx.vars;
 
             return ((1/90.f) * vars[0] - (3/20.f) * vars[1] + (3/2.f) * vars[2] - (49/18.f) * vars[3] + (3/2.f) * vars[4] - (3/20.f) * vars[5] + (1/90.f) * vars[6]) / (scale * scale);
         }
         else if(order == 4)
         {
-            differentiation_context<9> dctx(in, idx, true, ctx.uses_linear);
+            differentiation_context<9> dctx(in, idx, ctx.uses_linear);
             std::array<value, 9> vars = dctx.vars;
 
             return ((-1/560.f) * vars[0] + (8/315.f) * vars[1] - (1/5.f) * vars[2] + (8/5.f) * vars[3] - (205/72.f) * vars[4] + (8/5.f) * vars[5] - (1/5.f) * vars[6] + (8/315.f) * vars[7] - (1/560.f) * vars[8]) / (scale * scale);
@@ -1056,7 +1056,7 @@ value upwind_differentiate(equation_context& ctx, const value& prefix, const val
 
     return prefix * diff1(ctx, in, idx);
 
-    /*differentiation_context<7> dctx(in, idx, false);
+    /*differentiation_context<7> dctx(in, idx);
 
     value scale = "scale";
 
@@ -4942,6 +4942,13 @@ int main()
     equation_context ctx7;
     ctx7.uses_linear = true;
     loop_geodesics(ctx7, {size.x(), size.y(), size.z()});
+
+    {
+        std::string test;
+        ctx7.build(test, 6);
+
+        std::cout << "LOOPY\n\n\n\n" << test << std::endl << std::endl;
+    }
 
     equation_context ctx10;
     build_kreiss_oliger_dissipate_singular(ctx10);
