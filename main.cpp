@@ -4943,13 +4943,6 @@ int main()
     ctx7.uses_linear = true;
     loop_geodesics(ctx7, {size.x(), size.y(), size.z()});
 
-    {
-        std::string test;
-        ctx7.build(test, 6);
-
-        std::cout << "LOOPY\n\n\n\n" << test << std::endl << std::endl;
-    }
-
     equation_context ctx10;
     build_kreiss_oliger_dissipate_singular(ctx10);
 
