@@ -266,13 +266,13 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     std::vector<cl::buffer>* last_valid_thin_buffer = &get_input().buffers;
 
-    auto& base_yn = get_input().buffers;
+    auto& base_yn = scratch.buffers;
 
     std::vector<cl::buffer> intermediates;
 
     mqueue.begin_splice(main_queue);
 
-    auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
+    auto step = [&](auto& generic_in, auto& generic_out, float current_timestep, int sub_iteration)
     {
         intermediates.clear();
 
@@ -418,6 +418,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             a1.push_back(scale);
             a1.push_back(clsize);
             a1.push_back(current_timestep);
+            a1.push_back(sub_iteration);
 
             mqueue.exec(name, a1, {points_set.second_count}, {128});
             //mqueue.flush();
@@ -615,10 +616,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     for(int i=0; i < iterations; i++)
     {
-        if(i != 0)
-            step(scratch.buffers, b2.buffers, timestep);
-        else
-            step(b1.buffers, b2.buffers, timestep);
+        step(b1.buffers, b2.buffers, timestep, i);
 
         if(i != iterations - 1)
         {
@@ -627,7 +625,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             #endif
 
             enforce_constraints(b2.buffers);
-            std::swap(b2, scratch);
+            //std::swap(b2, scratch);
+            std::swap(b2, b1);
         }
     }
     #endif

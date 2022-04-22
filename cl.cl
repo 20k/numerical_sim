@@ -718,7 +718,7 @@ void evolve_cY(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, int sub_iteration)
 {
     int local_idx = get_global_id(0);
 
@@ -748,6 +748,16 @@ void evolve_cY(__global ushort4* points, int point_count,
     float f_dtcYij4 = dtcYij4;
     float f_dtcYij5 = dtcYij5;
 
+    if(sub_iteration == 0)
+    {
+        base_cY0[index] = cY0[index];
+        base_cY1[index] = cY1[index];
+        base_cY2[index] = cY2[index];
+        base_cY3[index] = cY3[index];
+        base_cY4[index] = cY4[index];
+        base_cY5[index] = cY5[index];
+    }
+
     float b0 = base_cY0[index];
     float b1 = base_cY1[index];
     float b2 = base_cY2[index];
@@ -773,7 +783,7 @@ void evolve_cA(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, int sub_iteration)
 {
     int local_idx = get_global_id(0);
 
@@ -803,6 +813,16 @@ void evolve_cA(__global ushort4* points, int point_count,
     float f_dtcAij4 = dtcAij4;
     float f_dtcAij5 = dtcAij5;
 
+    if(sub_iteration == 0)
+    {
+        base_cA0[index] = cA0[index];
+        base_cA1[index] = cA1[index];
+        base_cA2[index] = cA2[index];
+        base_cA3[index] = cA3[index];
+        base_cA4[index] = cA4[index];
+        base_cA5[index] = cA5[index];
+    }
+
     float b0 = base_cA0[index];
     float b1 = base_cA1[index];
     float b2 = base_cA2[index];
@@ -830,7 +850,7 @@ void evolve_cGi(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, int sub_iteration)
 {
     int local_idx = get_global_id(0);
 
@@ -864,6 +884,13 @@ void evolve_cGi(__global ushort4* points, int point_count,
     #endif // USE_GBB
 
     {
+        if(sub_iteration == 0)
+        {
+            base_cGi0[index] = cGi0[index];
+            base_cGi1[index] = cGi1[index];
+            base_cGi2[index] = cGi2[index];
+        }
+
         float b0 = base_cGi0[index];
         float b1 = base_cGi1[index];
         float b2 = base_cGi2[index];
@@ -897,7 +924,7 @@ void evolve_K(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, int sub_iteration)
 {
     int local_idx = get_global_id(0);
 
@@ -922,6 +949,11 @@ void evolve_K(__global ushort4* points, int point_count,
 
     float f_dtK = dtK;
 
+    if(sub_iteration == 0)
+    {
+        base_K[index] = K[index];
+    }
+
     float b0 = base_K[index];
 
     oK[index] = f_dtK * timestep + b0;
@@ -938,7 +970,7 @@ void evolve_X(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, int sub_iteration)
 {
     int local_idx = get_global_id(0);
 
@@ -963,6 +995,11 @@ void evolve_X(__global ushort4* points, int point_count,
 
     float f_dtX = dtX;
 
+    if(sub_iteration == 0)
+    {
+        base_X[index] = X[index];
+    }
+
     float b0 = base_X[index];
 
     oX[index] = f_dtX * timestep + b0;
@@ -978,7 +1015,7 @@ void evolve_gA(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, int sub_iteration)
 {
     int local_idx = get_global_id(0);
 
@@ -1003,6 +1040,11 @@ void evolve_gA(__global ushort4* points, int point_count,
 
     float f_dtgA = dtgA;
 
+    if(sub_iteration == 0)
+    {
+        base_gA[index] = gA[index];
+    }
+
     float b0 = base_gA[index];
 
     ogA[index] = f_dtgA * timestep + b0;
@@ -1019,7 +1061,7 @@ void evolve_gB(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, int sub_iteration)
 {
     int local_idx = get_global_id(0);
 
@@ -1045,6 +1087,13 @@ void evolve_gB(__global ushort4* points, int point_count,
     float f_dtgB0 = dtgB0;
     float f_dtgB1 = dtgB1;
     float f_dtgB2 = dtgB2;
+
+    if(sub_iteration == 0)
+    {
+        base_gB0[index] = gB0[index];
+        base_gB1[index] = gB1[index];
+        base_gB2[index] = gB2[index];
+    }
 
     float b0 = base_gB0[index];
     float b1 = base_gB1[index];
