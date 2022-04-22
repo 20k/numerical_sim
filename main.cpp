@@ -2446,12 +2446,12 @@ initial_conditions setup_dynamic_initial_conditions(const std::string& u_argumen
     #ifdef PAPER_0610128
     black_hole<float> h1;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.94, 0};
+    h1.momentum = {0, 0.133 * 0.8, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     black_hole<float> h2;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.94, 0};
+    h2.momentum = {0, -0.133 * 0.8, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     holes.push_back(h1);
@@ -4871,7 +4871,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {281, 281, 281};
+    vec3i size = {251, 251, 251};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -5315,7 +5315,7 @@ int main()
                 clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
             }
 
-            /*{
+            {
                 wave_manager.issue_extraction(clctx.cqueue, last_valid_buffer, last_valid_thin, scale, clsize, rtex[which_texture]);
 
                 std::vector<float> values = wave_manager.process();
@@ -5325,7 +5325,7 @@ int main()
                     if(!isnanf(v))
                         real_decomp.push_back(v);
                 }
-            }*/
+            }
 
             time_elapsed_s += timestep;
             current_simulation_boundary += DIFFERENTIATION_WIDTH;
