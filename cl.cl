@@ -1559,6 +1559,11 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         lp2 = XFull1;
         lp3 = XFull2;
 
+        if(length_sq((float3)(lp1, lp2, lp3)) >= u_sq)
+        {
+            break;
+        }
+
         voxel_pos = world_to_voxel((float3)(lp1, lp2, lp3), dim, scale);
         voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
@@ -1639,10 +1644,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         V2 += dV2 * ds;
         #endif // EULER
 
-        if(length_sq((float3)(lp1, lp2, lp3)) >= u_sq)
-        {
-            break;
-        }
 
         //if(res == DS_RETURN)
         //    break;
