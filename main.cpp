@@ -4666,7 +4666,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
                 }
 
                 full_christoffel2.idx(i, j, k) = conformal_christoff2.idx(i, j, k) -
-                                                 (1.f/(2.f * max(args.X, 0.001f))) * (kronecker_ik * diff1(ctx, args.X, j) + kronecker_ij * diff1(ctx, args.X, k) - args.cY.idx(j, k) * sm);
+                                                 (1.f/(2.f * args.X)) * (kronecker_ik * diff1(ctx, args.X, j) + kronecker_ij * diff1(ctx, args.X, k) - args.cY.idx(j, k) * sm);
             }
         }
     }
@@ -5407,8 +5407,12 @@ int main()
                     render_args.push_back(ray_buffer[0]);
                     render_args.push_back(rays_terminated);
 
-                    for(auto& i : last_valid_buffer)
+                    //for(auto& i : last_valid_buffer)
+
+                    for(int kk=0; kk < last_valid_buffer.size(); kk++)
                     {
+                        auto& i = last_valid_buffer[kk];
+
                         render_args.push_back(i.as_device_read_only());
                     }
 

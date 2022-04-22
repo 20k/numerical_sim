@@ -1449,6 +1449,11 @@ void init_rays(__global struct lightray_simple* rays, __global int* ray_count0,
         *ray_count0 = width * height;
 }
 
+float length_sq(float3 in)
+{
+    return dot(in, in);
+}
+
 __kernel
 void trace_rays(__global struct lightray_simple* rays_in, __global struct lightray_simple* rays_terminated,
                 STANDARD_ARGS(),
@@ -1480,21 +1485,14 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
     bool hit_singularity = false;
 
-    ///ray location
-    ///temporary while i don't do interpolation
-    float next_ds = 0.1f;
-
     bool last_skipped = false;
-
-    int iteration = 0;
 
     float u_sq = (universe_size / 1.01f) * (universe_size / 1.01f);
 
-    for(iteration=0; iteration < 65000; iteration++)
+    #pragma unroll(16)
+    for(int iteration=0; iteration < 256; iteration++)
     {
-        float3 cpos = {lp1, lp2, lp3};
-
-        float3 voxel_pos = world_to_voxel(cpos, dim, scale);
+        float3 voxel_pos = world_to_voxel((float3)(lp1, lp2, lp3), dim, scale);
 
         voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
@@ -1504,8 +1502,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         float fy = voxel_pos.y;
         float fz = voxel_pos.z;
 
-        float ds = 0;
-
         float X_far = 0.9f;
         float X_near = 0.6f;
 
@@ -1513,8 +1509,86 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         my_fraction = clamp(my_fraction, 0.f, 1.f);
 
-        ds = mix(0.1f, 2.f, my_fraction);
+        float ds = mix(0.4f, 4.f, my_fraction);
 
+        float VHalf0 = 0;
+        float VHalf1 = 0;
+        float VHalf2 = 0;
+
+        {
+            float TEMPORARIES6;
+
+            float d0 = V0Diff;
+            float d1 = V1Diff;
+            float d2 = V2Diff;
+
+            VHalf0 = 0.5f * d0 * ds + V0;
+            VHalf1 = 0.5f * d1 * ds + V1;
+            VHalf2 = 0.5f * d2 * ds + V2;
+        }
+
+        float XFull0 = 0;
+        float XFull1 = 0;
+        float XFull2 = 0;
+
+        float ldX0 = 0;
+        float ldX1 = 0;
+        float ldX2 = 0;
+
+        {
+            V0 = VHalf0;
+            V1 = VHalf1;
+            V2 = VHalf2;
+
+            float TEMPORARIES6;
+
+            float d0 = X0Diff;
+            float d1 = X1Diff;
+            float d2 = X2Diff;
+
+            ldX0 = d0;
+            ldX1 = d1;
+            ldX2 = d2;
+
+            XFull0 = lp1 + d0 * ds;
+            XFull1 = lp2 + d1 * ds;
+            XFull2 = lp3 + d2 * ds;
+        }
+
+        lp1 = XFull0;
+        lp2 = XFull1;
+        lp3 = XFull2;
+
+        voxel_pos = world_to_voxel((float3)(lp1, lp2, lp3), dim, scale);
+        voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+        fx = voxel_pos.x;
+        fy = voxel_pos.y;
+        fz = voxel_pos.z;
+
+        float afull0 = 0;
+        float afull1 = 0;
+        float afull2 = 0;
+
+        {
+            float TEMPORARIES6;
+
+            float d0 = V0Diff;
+            float d1 = V1Diff;
+            float d2 = V2Diff;
+
+            afull0 = d0;
+            afull1 = d1;
+            afull2 = d2;
+        }
+
+        {
+            V0 = VHalf0 + 0.5f * afull0 * ds;
+            V1 = VHalf1 + 0.5f * afull1 * ds;
+            V2 = VHalf2 + 0.5f * afull2 * ds;
+        }
+
+        #ifdef EULER
         float dV0 = 0;
         float dV1 = 0;
         float dV2 = 0;
@@ -1532,6 +1606,14 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         float ldX2 = 0;
 
         {
+            /*float lV0 = V0 + dV0 * ds;
+            float lV1 = V1 + dV1 * ds;
+            float lV2 = V2 + dV2 * ds;
+
+            float V0 = lV0;
+            float V1 = lV1;
+            float V2 = lV2;*/
+
             float TEMPORARIES6;
 
             ldX0 = X0Diff;
@@ -1539,17 +1621,25 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
             ldX2 = X2Diff;
         }
 
-        float terminate_length = fast_length(cpos);
-
-        final_dX0 = ldX0;
-        final_dX1 = ldX1;
-        final_dX2 = ldX2;
+        //final_dX0 = ldX0;
+        //final_dX1 = ldX1;
+        //final_dX2 = ldX2;
 
         lp1 += ldX0 * ds;
         lp2 += ldX1 * ds;
         lp3 += ldX2 * ds;
 
-        if(dot((float3)(lp1, lp2, lp3), (float3)(lp1, lp2, lp3)) >= u_sq)
+        if(length_sq((float3)(lp1, lp2, lp3)) >= u_sq)
+        {
+            break;
+        }
+
+        V0 += dV0 * ds;
+        V1 += dV1 * ds;
+        V2 += dV2 * ds;
+        #endif // EULER
+
+        if(length_sq((float3)(lp1, lp2, lp3)) >= u_sq)
         {
             break;
         }
@@ -1565,16 +1655,12 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         //last_skipped = false;
 
-        V0 += dV0 * ds;
-        V1 += dV1 * ds;
-        V2 += dV2 * ds;
-
         /*if(x == (int)width/2 && y == (int)height/2)
         {
             printf("%f %f %f  %f %f %f\n", V0, V1, V2, lp1, lp2, lp3);
         }*/
 
-        if(fast_length((float3){ldX0, ldX1, ldX2}) < 0.2f)
+        if(length_sq((float3)(ldX0, ldX1, ldX2)) < 0.2f * 0.2f)
         {
             hit_singularity = true;
             break;
@@ -1589,11 +1675,11 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     ray_out.lp2 = lp2;
     ray_out.lp3 = lp3;
 
-    ray_out.V0 = final_dX0;
-    ray_out.V1 = final_dX1;
-    ray_out.V2 = final_dX2;
+    ray_out.V0 = V0;
+    ray_out.V1 = V1;
+    ray_out.V2 = V2;
 
-    ray_out.iter_frac = iteration / 128.f;
+    ray_out.iter_frac = 0;
     ray_out.hit_singularity = hit_singularity;
 
     rays_terminated[y * width + x] = ray_out;
