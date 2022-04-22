@@ -3349,6 +3349,37 @@ void build_cGi(equation_context& ctx)
     #ifdef CHRISTOFFEL_49
     tensor<value, 3, 3> littlekij = unpinned_icY.to_tensor() * K;
 
+    ///PAPER_12055111_SUBST
+
+    tensor<value, 3> Yij_Kj;
+
+    #define PAPER_1205_5111
+    #ifdef PAPER_1205_5111
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            sum += diff1(ctx, littlekij.idx(i, j), j);
+        }
+
+        Yij_Kj.idx(i) = sum + args.K * derived_cGi.idx(i);
+    }
+    #else
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            sum += icY.idx(i, j) * diff1(ctx, args.K, j);
+        }
+
+        Yij_Kj.idx(i) = sum;
+    }
+    #endif // PAPER_1205_5111
+
     for(int i=0; i < 3; i++)
     {
         value s1 = 0;
@@ -3361,12 +3392,7 @@ void build_cGi(equation_context& ctx)
             }
         }
 
-        value s2 = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            s2 += 2 * gA * -(2.f/3.f) * diff1(ctx, littlekij.idx(i, j), j);
-        }
+        value s2 = 2 * gA * -(2.f/3.f) * Yij_Kj.idx(i);
 
         value s3 = 0;
 
@@ -3426,9 +3452,9 @@ void build_cGi(equation_context& ctx)
         }
 
         ///this is the only instanced of derived_cGi that might want to be regular cGi
-        value s10 = (2.f/3.f) * -2 * gA * K * derived_cGi.idx(i);
+        //value s10 = (2.f/3.f) * -2 * gA * K * derived_cGi.idx(i);
 
-        dtcGi.idx(i) = s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8 + s9 + s10;
+        dtcGi.idx(i) = s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8 + s9;
 
         ///https://arxiv.org/pdf/1205.5111v1.pdf 50
         ///made it to 70+ and then i got bored, but the simulation was meaningfully different
@@ -3456,6 +3482,22 @@ void build_cGi(equation_context& ctx)
 
         dtcGi.idx(i) += -(1 + E) * step(lambdai) * lambdai * args.bigGi.idx(i);
         #endif // EQ_50
+
+        //#define YBS
+        #ifdef YBS
+        value E = 1;
+
+        {
+            value sum = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                sum += diff1(ctx, args.gB.idx(k), k);
+            }
+
+            dtcGi.idx(i) += (-2.f/3.f) * (E + 1) * args.bigGi.idx(i) * sum;
+        }
+        #endif // YBS
     }
     #endif // CHRISTOFFEL_49
 
