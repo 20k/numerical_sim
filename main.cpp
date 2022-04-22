@@ -1770,12 +1770,11 @@ struct standard_arguments
         christoff2 = gpu_christoffel_symbols_2(ctx, cY, icY);
         #endif
 
-
         /*
         ///dcgA alias
         for(int i=0; i < 3; i++)
         {
-            value v = hacky_differentiate(gA, i, false);
+            value v = diff1(ctx, gA, i);
 
             ctx.alias(v, digA.idx(i));
         }
@@ -1785,7 +1784,7 @@ struct standard_arguments
         {
             for(int j=0; j < 3; j++)
             {
-                value v = hacky_differentiate(gB.idx(j), i, false);
+                value v = diff1(ctx, gB.idx(j), i);
 
                 ctx.alias(v, digB.idx(i, j));
             }
@@ -1798,11 +1797,16 @@ struct standard_arguments
             {
                 for(int j=0; j < 3; j++)
                 {
-                    value v = hacky_differentiate(cY.idx(i, j), k, false);
+                    value v = diff1(ctx, cY.idx(i, j), k);
 
                     ctx.alias(v, dcYij.idx(k, i, j));
                 }
             }
+        }
+
+        for(int i=0; i < 3; i++)
+        {
+            ctx.alias(diff1(ctx, X, i), dX.idx(i));
         }*/
     }
 };
