@@ -1492,17 +1492,51 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     {
         float3 cpos = {lp1, lp2, lp3};
 
+        float3 voxel_pos = world_to_voxel(cpos, dim, scale);
+
+        voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+        float BH_X = buffer_read_linear(X, voxel_pos, dim);
+
+        float fx = voxel_pos.x;
+        float fy = voxel_pos.y;
+        float fz = voxel_pos.z;
+
+        float TEMPORARIES6;
+
+        float ldX0 = X0Diff;
+        float ldX1 = X1Diff;
+        float ldX2 = X2Diff;
+
         float terminate_length = fast_length(cpos);
 
         if(terminate_length >= universe_size / 1.01f)
         {
+            final_dX0 = ldX0;
+            final_dX1 = ldX1;
+            final_dX2 = ldX2;
+
             break;
         }
 
         float ds = next_ds;
 
-        //float3 next_acceleration = {dV0, dV1, dV2};
+        float dV0 = V0Diff;
+        float dV1 = V1Diff;
+        float dV2 = V2Diff;
+
+        float3 next_acceleration = {dV0, dV1, dV2};
+
         //int res = calculate_ds_error(err_in, ds, next_acceleration, &next_ds);
+
+        float X_far = 0.9f;
+        float X_near = 0.6f;
+
+        float my_fraction = (clamp(BH_X, X_near, X_far) - X_near) / (X_far - X_near);
+
+        my_fraction = clamp(my_fraction, 0.f, 1.f);
+
+        ds = mix(0.1f, 2.f, my_fraction);
 
         //if(res == DS_RETURN)
         //    break;
@@ -1513,61 +1547,15 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
             continue;
         }*/
 
-        float dV0 = 0;
-        float dV1 = 0;
-        float dV2 = 0;
-
-        float3 voxel_pos = world_to_voxel((float3){lp1, lp2, lp3}, dim, scale);
-
-        voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
-
-        float fx = voxel_pos.x;
-        float fy = voxel_pos.y;
-        float fz = voxel_pos.z;
-
-        float X_far = 0.9f;
-        float X_near = 0.6f;
-
-        float BH_X = buffer_read_linear(X, voxel_pos, dim);
-
-        float my_fraction = (clamp(BH_X, X_near, X_far) - X_near) / (X_far - X_near);
-
-        my_fraction = clamp(my_fraction, 0.f, 1.f);
-
-        ds = mix(0.1f, 2.f, my_fraction);
-
-        {
-            float TEMPORARIES6;
-
-            dV0 = V0Diff;
-            dV1 = V1Diff;
-            dV2 = V2Diff;
-        }
+        //last_skipped = false;
 
         V0 += dV0 * ds;
         V1 += dV1 * ds;
         V2 += dV2 * ds;
 
-        float ldX0 = 0;
-        float ldX1 = 0;
-        float ldX2 = 0;
-
-        {
-            float TEMPORARIES6;
-
-            ldX0 = X0Diff;
-            ldX1 = X1Diff;
-            ldX2 = X2Diff;
-        }
-
-        //last_skipped = false;
         lp1 += ldX0 * ds;
         lp2 += ldX1 * ds;
         lp3 += ldX2 * ds;
-
-        final_dX0 = ldX0;
-        final_dX1 = ldX1;
-        final_dX2 = ldX2;
 
         /*if(x == (int)width/2 && y == (int)height/2)
         {
