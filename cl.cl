@@ -1502,10 +1502,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         float fy = voxel_pos.y;
         float fz = voxel_pos.z;
 
-        /*int ix = floor(fx);
-        int iy = floor(fy);
-        int iz = floor(fz);*/
-
         float TEMPORARIES6;
 
         float ldX0 = X0Diff;
@@ -1532,11 +1528,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         float3 next_acceleration = {dV0, dV1, dV2};
 
         //int res = calculate_ds_error(err_in, ds, next_acceleration, &next_ds);
-
-        /*if(BH_X < 0.8f)
-        {
-            ds = min(ds, 0.5f);
-        }*/
 
         float X_far = 0.9f;
         float X_near = 0.6f;
