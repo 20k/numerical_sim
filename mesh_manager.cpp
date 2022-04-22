@@ -612,7 +612,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
     auto& b1 = get_input();
     auto& b2 = get_output();
 
-    int iterations = 2;
+    int iterations = 3;
 
     for(int i=0; i < iterations; i++)
     {

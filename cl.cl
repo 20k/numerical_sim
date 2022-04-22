@@ -750,12 +750,12 @@ void evolve_cY(__global ushort4* points, int point_count,
 
     if(sub_iteration == 0)
     {
-        base_cY0[index] = cY0[index];
-        base_cY1[index] = cY1[index];
-        base_cY2[index] = cY2[index];
-        base_cY3[index] = cY3[index];
-        base_cY4[index] = cY4[index];
-        base_cY5[index] = cY5[index];
+        base_cY0[index] = cY0[index] + 0.5f * timestep * f_dtcYij0;
+        base_cY1[index] = cY1[index] + 0.5f * timestep * f_dtcYij1;
+        base_cY2[index] = cY2[index] + 0.5f * timestep * f_dtcYij2;
+        base_cY3[index] = cY3[index] + 0.5f * timestep * f_dtcYij3;
+        base_cY4[index] = cY4[index] + 0.5f * timestep * f_dtcYij4;
+        base_cY5[index] = cY5[index] + 0.5f * timestep * f_dtcYij5;
     }
 
     float b0 = base_cY0[index];
@@ -765,12 +765,12 @@ void evolve_cY(__global ushort4* points, int point_count,
     float b4 = base_cY4[index];
     float b5 = base_cY5[index];
 
-    ocY0[index] = f_dtcYij0 * timestep + b0;
-    ocY1[index] = f_dtcYij1 * timestep + b1;
-    ocY2[index] = f_dtcYij2 * timestep + b2;
-    ocY3[index] = f_dtcYij3 * timestep + b3;
-    ocY4[index] = f_dtcYij4 * timestep + b4;
-    ocY5[index] = f_dtcYij5 * timestep + b5;
+    ocY0[index] = f_dtcYij0 * timestep * 0.5f + b0;
+    ocY1[index] = f_dtcYij1 * timestep * 0.5f + b1;
+    ocY2[index] = f_dtcYij2 * timestep * 0.5f + b2;
+    ocY3[index] = f_dtcYij3 * timestep * 0.5f + b3;
+    ocY4[index] = f_dtcYij4 * timestep * 0.5f + b4;
+    ocY5[index] = f_dtcYij5 * timestep * 0.5f + b5;
 }
 
 __kernel
@@ -815,12 +815,12 @@ void evolve_cA(__global ushort4* points, int point_count,
 
     if(sub_iteration == 0)
     {
-        base_cA0[index] = cA0[index];
-        base_cA1[index] = cA1[index];
-        base_cA2[index] = cA2[index];
-        base_cA3[index] = cA3[index];
-        base_cA4[index] = cA4[index];
-        base_cA5[index] = cA5[index];
+        base_cA0[index] = cA0[index] + 0.5f * timestep * f_dtcAij0;
+        base_cA1[index] = cA1[index] + 0.5f * timestep * f_dtcAij1;
+        base_cA2[index] = cA2[index] + 0.5f * timestep * f_dtcAij2;
+        base_cA3[index] = cA3[index] + 0.5f * timestep * f_dtcAij3;
+        base_cA4[index] = cA4[index] + 0.5f * timestep * f_dtcAij4;
+        base_cA5[index] = cA5[index] + 0.5f * timestep * f_dtcAij5;
     }
 
     float b0 = base_cA0[index];
@@ -830,14 +830,14 @@ void evolve_cA(__global ushort4* points, int point_count,
     float b4 = base_cA4[index];
     float b5 = base_cA5[index];
 
-    ocA0[index] = f_dtcAij0 * timestep + b0;
-    ocA1[index] = f_dtcAij1 * timestep + b1;
-    ocA2[index] = f_dtcAij2 * timestep + b2;
+    ocA0[index] = f_dtcAij0 * timestep * 0.5f + b0;
+    ocA1[index] = f_dtcAij1 * timestep * 0.5f + b1;
+    ocA2[index] = f_dtcAij2 * timestep * 0.5f+ b2;
     #ifndef NO_CAIJYY
-    ocA3[index] = f_dtcAij3 * timestep + b3;
+    ocA3[index] = f_dtcAij3 * timestep * 0.5f+ b3;
     #endif // NO_CAIJYY
-    ocA4[index] = f_dtcAij4 * timestep + b4;
-    ocA5[index] = f_dtcAij5 * timestep + b5;
+    ocA4[index] = f_dtcAij4 * timestep * 0.5f+ b4;
+    ocA5[index] = f_dtcAij5 * timestep * 0.5f+ b5;
 }
 
 __kernel
@@ -886,18 +886,18 @@ void evolve_cGi(__global ushort4* points, int point_count,
     {
         if(sub_iteration == 0)
         {
-            base_cGi0[index] = cGi0[index];
-            base_cGi1[index] = cGi1[index];
-            base_cGi2[index] = cGi2[index];
+            base_cGi0[index] = cGi0[index] + 0.5f * timestep * f_dtcGi0;
+            base_cGi1[index] = cGi1[index] + 0.5f * timestep * f_dtcGi1;
+            base_cGi2[index] = cGi2[index] + 0.5f * timestep * f_dtcGi2;
         }
 
         float b0 = base_cGi0[index];
         float b1 = base_cGi1[index];
         float b2 = base_cGi2[index];
 
-        ocGi0[index] = f_dtcGi0 * timestep + b0;
-        ocGi1[index] = f_dtcGi1 * timestep + b1;
-        ocGi2[index] = f_dtcGi2 * timestep + b2;
+        ocGi0[index] = f_dtcGi0 * timestep * 0.5f + b0;
+        ocGi1[index] = f_dtcGi1 * timestep * 0.5f + b1;
+        ocGi2[index] = f_dtcGi2 * timestep * 0.5f + b2;
     }
 
     #ifdef USE_GBB
@@ -951,12 +951,12 @@ void evolve_K(__global ushort4* points, int point_count,
 
     if(sub_iteration == 0)
     {
-        base_K[index] = K[index];
+        base_K[index] = K[index] + 0.5f * timestep * f_dtK;
     }
 
     float b0 = base_K[index];
 
-    oK[index] = f_dtK * timestep + b0;
+    oK[index] = f_dtK * timestep * 0.5f + b0;
 }
 
 
@@ -997,12 +997,12 @@ void evolve_X(__global ushort4* points, int point_count,
 
     if(sub_iteration == 0)
     {
-        base_X[index] = X[index];
+        base_X[index] = X[index] + 0.5f * timestep * f_dtX;
     }
 
     float b0 = base_X[index];
 
-    oX[index] = f_dtX * timestep + b0;
+    oX[index] = f_dtX * timestep * 0.5f + b0;
 }
 
 __kernel
@@ -1042,12 +1042,12 @@ void evolve_gA(__global ushort4* points, int point_count,
 
     if(sub_iteration == 0)
     {
-        base_gA[index] = gA[index];
+        base_gA[index] = gA[index] + 0.5f * timestep * f_dtgA;
     }
 
     float b0 = base_gA[index];
 
-    ogA[index] = f_dtgA * timestep + b0;
+    ogA[index] = f_dtgA * timestep * 0.5f + b0;
 }
 
 
@@ -1090,18 +1090,18 @@ void evolve_gB(__global ushort4* points, int point_count,
 
     if(sub_iteration == 0)
     {
-        base_gB0[index] = gB0[index];
-        base_gB1[index] = gB1[index];
-        base_gB2[index] = gB2[index];
+        base_gB0[index] = gB0[index] + 0.5f * timestep * f_dtgB0;
+        base_gB1[index] = gB1[index] + 0.5f * timestep * f_dtgB1;
+        base_gB2[index] = gB2[index] + 0.5f * timestep * f_dtgB2;
     }
 
     float b0 = base_gB0[index];
     float b1 = base_gB1[index];
     float b2 = base_gB2[index];
 
-    ogB0[index] = f_dtgB0 * timestep + b0;
-    ogB1[index] = f_dtgB1 * timestep + b1;
-    ogB2[index] = f_dtgB2 * timestep + b2;
+    ogB0[index] = f_dtgB0 * timestep * 0.5f + b0;
+    ogB1[index] = f_dtgB1 * timestep * 0.5f + b1;
+    ogB2[index] = f_dtgB2 * timestep * 0.5f + b2;
 }
 
 __kernel
