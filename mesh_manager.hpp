@@ -105,9 +105,9 @@ struct cpu_mesh
         #endif // USE_GBB
     };
 
-    float dissipate_low = 0.25;
-    float dissipate_high = 0.25;
-    float dissipate_gauge = 0.25;
+    float dissipate_low = 0.4;
+    float dissipate_high = 0.4;
+    float dissipate_gauge = 0.4;
 
     float dissipate_caijyy = dissipate_high;
 

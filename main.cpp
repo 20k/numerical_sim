@@ -2446,12 +2446,12 @@ initial_conditions setup_dynamic_initial_conditions(const std::string& u_argumen
     #ifdef PAPER_0610128
     black_hole<float> h1;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.94, 0};
+    h1.momentum = {0, 0.133, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     black_hole<float> h2;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.94, 0};
+    h2.momentum = {0, -0.133, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     holes.push_back(h1);
@@ -2823,7 +2823,7 @@ void build_momentum_constraint(equation_context& ctx)
     }
 
     //#define BETTERDAMP_DTCAIJ
-    //#define DAMP_DTCAIJ
+    #define DAMP_DTCAIJ
     #if defined(DAMP_DTCAIJ) || defined(BETTERDAMP_DTCAIJ)
     #define CALCULATE_MOMENTUM_CONSTRAINT
     #endif // defined
@@ -3287,7 +3287,7 @@ void build_cA(equation_context& ctx)
             #endif // DAMP_DTCAIJ
 
             #ifdef BETTERDAMP_DTCAIJ
-            value F_a = scale * gA;
+            value F_a = scale;
 
             ///https://arxiv.org/pdf/1205.5111v1.pdf (56)
             dtcAij.idx(i, j) += scale * F_a * gpu_trace_free(symmetric_momentum_deriv, cY, icY).idx(i, j);
@@ -3353,7 +3353,7 @@ void build_cGi(equation_context& ctx)
 
     tensor<value, 3> Yij_Kj;
 
-    #define PAPER_1205_5111
+    //#define PAPER_1205_5111
     #ifdef PAPER_1205_5111
     for(int i=0; i < 3; i++)
     {
@@ -3458,7 +3458,7 @@ void build_cGi(equation_context& ctx)
 
         ///https://arxiv.org/pdf/1205.5111v1.pdf 50
         ///made it to 70+ and then i got bored, but the simulation was meaningfully different
-        #define EQ_50
+       // #define EQ_50
         #ifdef EQ_50
         auto step = [](const value& in)
         {
@@ -3483,7 +3483,7 @@ void build_cGi(equation_context& ctx)
         dtcGi.idx(i) += -(1 + E) * step(lambdai) * lambdai * args.bigGi.idx(i);
         #endif // EQ_50
 
-        //#define YBS
+        #define YBS
         #ifdef YBS
         value E = 1;
 
@@ -3624,7 +3624,7 @@ void build_gB(equation_context& ctx)
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
     ///todo: remove this
 
-    float N = 2;
+    float N = 1;
 
     tensor<value, 3> dtgB = (3.f/4.f) * args.derived_cGi + bjdjbi - N * args.gB;
 
