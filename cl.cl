@@ -186,6 +186,8 @@ struct argument_state
     __global DERIV_PRECISION GET_DERIVLIST(*, );
 };
 
+#define ALL_ARGS(p) GET_ARGLIST(, p), GET_DERIVLIST(, p)
+
 __kernel
 void calculate_initial_conditions(STANDARD_ARGS(),
                                   __global float* u_value,
@@ -1504,6 +1506,8 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     bool last_skipped = false;
 
     float u_sq = (universe_size / 1.01f) * (universe_size / 1.01f);
+
+    struct argument_state st = {ALL_ARGS()};
 
     #pragma unroll(16)
     for(int iteration=0; iteration < 256; iteration++)
