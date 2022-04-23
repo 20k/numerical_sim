@@ -1466,13 +1466,68 @@ float length_sq(float3 in)
     return dot(in, in);
 }
 
+///this returns the change in X, which is not velocity
+///its unfortunate that position, aka X, and the conformal factor are called the same thing here
+float3 calculate_X_derivative(float3 Xpos, float3 vel, int4 dim, float scale, STANDARD_ARGS(), STANDARD_DERIVS())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+
+    ///isn't this already handled internally?
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float V0 = vel.x;
+    float V1 = vel.y;
+    float V2 = vel.z;
+
+    float X0 = Xpos.x;
+    float X1 = Xpos.y;
+    float X2 = Xpos.z;
+
+    float TEMPORARIES6;
+
+    float d0 = X0Diff;
+    float d1 = X1Diff;
+    float d2 = X2Diff;
+
+    return (float3){d0, d1, d2};
+}
+
+float3 calculate_V_derivatives(float3 Xpos, float3 vel, int4 dim, float scale, STANDARD_ARGS(), STANDARD_DERIVS())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+
+    ///isn't this already handled internally?
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float V0 = vel.x;
+    float V1 = vel.y;
+    float V2 = vel.z;
+
+    float X0 = Xpos.x;
+    float X1 = Xpos.y;
+    float X2 = Xpos.z;
+
+    float TEMPORARIES6;
+
+    float d0 = V0Diff;
+    float d1 = V1Diff;
+    float d2 = V2Diff;
+
+    return (float3){d0, d1, d2};
+}
+
 __kernel
 void trace_rays(__global struct lightray_simple* rays_in, __global struct lightray_simple* rays_terminated,
                 STANDARD_ARGS(),
-                __global DERIV_PRECISION* dcYij0, __global DERIV_PRECISION* dcYij1, __global DERIV_PRECISION* dcYij2, __global DERIV_PRECISION* dcYij3, __global DERIV_PRECISION* dcYij4, __global DERIV_PRECISION* dcYij5, __global DERIV_PRECISION* dcYij6, __global DERIV_PRECISION* dcYij7, __global DERIV_PRECISION* dcYij8, __global DERIV_PRECISION* dcYij9, __global DERIV_PRECISION* dcYij10, __global DERIV_PRECISION* dcYij11, __global DERIV_PRECISION* dcYij12, __global DERIV_PRECISION* dcYij13, __global DERIV_PRECISION* dcYij14, __global DERIV_PRECISION* dcYij15, __global DERIV_PRECISION* dcYij16, __global DERIV_PRECISION* dcYij17,
-                __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
-                __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
-                __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
+                STANDARD_DERIVS(),
                 float scale, int4 dim, int width, int height, float err_in)
 {
     int x = get_global_id(0);
