@@ -1648,7 +1648,9 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         float3 AH;
 
-        calculate_V_derivatives_big3(&AH, fx, fy, fz, lp1, lp2, lp3, V0, V1, V2, scale, dim, ALL_ARGS());
+        //calculate_V_derivatives_big3(&AH, fx, fy, fz, lp1, lp2, lp3, V0, V1, V2, scale, dim, ALL_ARGS());
+
+        AH = calculate_V_derivatives_big(fx, fy, fz, lp1, lp2, lp3, V0, V1, V2, scale, dim, ALL_ARGS());
 
         VHalf0 = 0.5f * AH.x * ds + V0;
         VHalf1 = 0.5f * AH.y * ds + V1;
