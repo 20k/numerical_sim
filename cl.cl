@@ -1540,6 +1540,17 @@ void calculate_V_derivatives_big2(float* oV0, float* oV1, float* oV2, float fx, 
     *oV2 = d2;
 }
 
+void calculate_V_derivatives_big3(float3* out, float fx, float fy, float fz, float lp1, float lp2, float lp3, float V0, float V1, float V2, float scale, int4 dim, STANDARD_ARGS(), STANDARD_DERIVS())
+{
+    float TEMPORARIES6;
+
+    float d0 = V0Diff;
+    float d1 = V1Diff;
+    float d2 = V2Diff;
+
+    *out = (float3)(d0, d1, d2);
+}
+
 __kernel
 void trace_rays(__global struct lightray_simple* rays_in, __global struct lightray_simple* rays_terminated,
                 STANDARD_ARGS(),
@@ -1635,15 +1646,13 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         float VHalf1 = 0;
         float VHalf2 = 0;
 
-        float AH0;
-        float AH1;
-        float AH2;
+        float3 AH;
 
-        calculate_V_derivatives_big2(&AH0, &AH1, &AH2, fx, fy, fz, lp1, lp2, lp3, V0, V1, V2, scale, dim, ALL_ARGS());
+        calculate_V_derivatives_big3(&AH, fx, fy, fz, lp1, lp2, lp3, V0, V1, V2, scale, dim, ALL_ARGS());
 
-        VHalf0 = 0.5f * AH0 * ds + V0;
-        VHalf1 = 0.5f * AH1 * ds + V1;
-        VHalf2 = 0.5f * AH2 * ds + V2;
+        VHalf0 = 0.5f * AH.x * ds + V0;
+        VHalf1 = 0.5f * AH.y * ds + V1;
+        VHalf2 = 0.5f * AH.z * ds + V2;
 
         /*float3 VHalf_compact = 0.5f * calculate_V_derivatives((float3)(lp1, lp2, lp3), (float3)(V0, V1, V2), scale, dim, ALL_ARGS()) * ds + (float3)(V0, V1, V2);
 
