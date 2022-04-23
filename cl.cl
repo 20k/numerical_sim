@@ -1509,6 +1509,8 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         my_fraction = clamp(my_fraction, 0.f, 1.f);
 
+        #define VERLET
+        #ifdef VERLET
         float ds = mix(0.4f, 4.f, my_fraction);
 
         float VHalf0 = 0;
@@ -1592,8 +1594,12 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
             V1 = VHalf1 + 0.5f * afull1 * ds;
             V2 = VHalf2 + 0.5f * afull2 * ds;
         }
+        #endif // VERLET
 
+        //#define EULER
         #ifdef EULER
+        float ds = mix(0.1f, 2.f, my_fraction);
+
         float dV0 = 0;
         float dV1 = 0;
         float dV2 = 0;
