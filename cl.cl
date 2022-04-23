@@ -1581,10 +1581,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         float3 XDiff;
         velocity_to_XDiff(&XDiff, Xpos, VHalf, scale, dim, ALL_ARGS());
 
-        float ldX0 = XDiff.x;
-        float ldX1 = XDiff.y;
-        float ldX2 = XDiff.z;
-
         float3 XFull = Xpos + XDiff * ds;
 
         Xpos = XFull;
@@ -1674,7 +1670,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
             printf("%f %f %f  %f %f %f\n", V0, V1, V2, lp1, lp2, lp3);
         }*/
 
-        if(length_sq((float3)(ldX0, ldX1, ldX2)) < 0.2f * 0.2f)
+        if(length_sq(XDiff) < 0.2f * 0.2f)
         {
             hit_singularity = true;
             break;
