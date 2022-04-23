@@ -1539,10 +1539,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     float V1 = ray_in.V1;
     float V2 = ray_in.V2;
 
-    float final_dX0 = 0;
-    float final_dX1 = 0;
-    float final_dX2 = 0;
-
     bool hit_singularity = false;
 
     bool last_skipped = false;
@@ -1567,7 +1563,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         my_fraction = clamp(my_fraction, 0.f, 1.f);
 
-        #define VERLET
+        //#define VERLET
         #ifdef VERLET
         float ds = mix(0.4f, 4.f, my_fraction);
 
@@ -1599,9 +1595,21 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         vel = VFull;
         #endif // VERLET
 
-        //#define EULER
+        #define EULER
         #ifdef EULER
         float ds = mix(0.1f, 2.f, my_fraction);
+
+        float lp1 = Xpos.x;
+        float lp2 = Xpos.y;
+        float lp3 = Xpos.z;
+
+        float V0 = vel.x;
+        float V1 = vel.y;
+        float V2 = vel.z;
+
+        float fx = voxel_pos.x;
+        float fy = voxel_pos.y;
+        float fz = voxel_pos.z;
 
         float dV0 = 0;
         float dV1 = 0;
@@ -1635,22 +1643,20 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
             ldX2 = X2Diff;
         }
 
-        //final_dX0 = ldX0;
-        //final_dX1 = ldX1;
-        //final_dX2 = ldX2;
+        float3 XDiff = (float3)(ldX0, ldX1, ldX2);
 
-        lp1 += ldX0 * ds;
-        lp2 += ldX1 * ds;
-        lp3 += ldX2 * ds;
+        Xpos.x += ldX0 * ds;
+        Xpos.y += ldX1 * ds;
+        Xpos.z += ldX2 * ds;
 
-        if(length_sq((float3)(lp1, lp2, lp3)) >= u_sq)
+        if(length_sq(Xpos) >= u_sq)
         {
             break;
         }
 
-        V0 += dV0 * ds;
-        V1 += dV1 * ds;
-        V2 += dV2 * ds;
+        vel.x += dV0 * ds;
+        vel.y += dV1 * ds;
+        vel.z += dV2 * ds;
         #endif // EULER
 
 
