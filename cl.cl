@@ -180,12 +180,6 @@ float get_distance(int x1, int y1, int z1, int x2, int y2, int z2, int4 dim, flo
                 __global float* p##gBB0, __global float* p##gBB1, __global float* p##gBB2
 #endif
 
-struct argument_state
-{
-    __global float GET_ARGLIST(*, );
-    __global DERIV_PRECISION GET_DERIVLIST(*, );
-};
-
 #define ALL_ARGS(p) GET_ARGLIST(, p), GET_DERIVLIST(, p)
 
 __kernel
@@ -1506,8 +1500,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     bool last_skipped = false;
 
     float u_sq = (universe_size / 1.01f) * (universe_size / 1.01f);
-
-    struct argument_state st = {ALL_ARGS()};
 
     #pragma unroll(16)
     for(int iteration=0; iteration < 256; iteration++)
