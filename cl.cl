@@ -1516,6 +1516,30 @@ float3 calculate_V_derivatives(float3 Xpos, float3 vel, float scale, int4 dim, S
     return (float3){d0, d1, d2};
 }
 
+float3 calculate_V_derivatives_big(float fx, float fy, float fz, float lp1, float lp2, float lp3, float V0, float V1, float V2, float scale, int4 dim, STANDARD_ARGS(), STANDARD_DERIVS())
+{
+    float TEMPORARIES6;
+
+    float d0 = V0Diff;
+    float d1 = V1Diff;
+    float d2 = V2Diff;
+
+    return (float3){d0, d1, d2};
+}
+
+void calculate_V_derivatives_big2(float* oV0, float* oV1, float* oV2, float fx, float fy, float fz, float lp1, float lp2, float lp3, float V0, float V1, float V2, float scale, int4 dim, STANDARD_ARGS(), STANDARD_DERIVS())
+{
+    float TEMPORARIES6;
+
+    float d0 = V0Diff;
+    float d1 = V1Diff;
+    float d2 = V2Diff;
+
+    *oV0 = d0;
+    *oV1 = d1;
+    *oV2 = d2;
+}
+
 __kernel
 void trace_rays(__global struct lightray_simple* rays_in, __global struct lightray_simple* rays_terminated,
                 STANDARD_ARGS(),
@@ -1548,13 +1572,13 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
     float u_sq = (universe_size / 1.01f) * (universe_size / 1.01f);
 
-    float3 Xpos = {lp1, lp2, lp3};
-    float3 vel = {V0, V1, V2};
+    //float3 Xpos = {lp1, lp2, lp3};
+    //float3 vel = {V0, V1, V2};
 
     #pragma unroll(16)
     for(int iteration=0; iteration < 256; iteration++)
     {
-        float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+        float3 voxel_pos = world_to_voxel((float3)(lp1, lp2, lp3), dim, scale);
         voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
         float BH_X = buffer_read_linear(X, voxel_pos, dim);
@@ -1568,8 +1592,10 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         #define VERLET
         #ifdef VERLET
+
         float ds = mix(0.4f, 4.f, my_fraction);
 
+        #if 0
         float3 ABase = calculate_V_derivatives(Xpos, vel, scale, dim, ALL_ARGS());
 
         float3 VHalf = vel + 0.5f * ABase * ds;
@@ -1597,13 +1623,45 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         float3 VFull = VHalf + 0.5f * AFull_approx * ds;
 
         vel = VFull;
+        #endif // 0
 
-        #if 0
+        #if 1
+
+        float fx = voxel_pos.x;
+        float fy = voxel_pos.y;
+        float fz = voxel_pos.z;
+
         float VHalf0 = 0;
         float VHalf1 = 0;
         float VHalf2 = 0;
 
-        {
+        float AH0;
+        float AH1;
+        float AH2;
+
+        calculate_V_derivatives_big2(&AH0, &AH1, &AH2, fx, fy, fz, lp1, lp2, lp3, V0, V1, V2, scale, dim, ALL_ARGS());
+
+        VHalf0 = 0.5f * AH0 * ds + V0;
+        VHalf1 = 0.5f * AH1 * ds + V1;
+        VHalf2 = 0.5f * AH2 * ds + V2;
+
+        /*float3 VHalf_compact = 0.5f * calculate_V_derivatives((float3)(lp1, lp2, lp3), (float3)(V0, V1, V2), scale, dim, ALL_ARGS()) * ds + (float3)(V0, V1, V2);
+
+        VHalf0 = VHalf_compact.x;
+        VHalf1 = VHalf_compact.y;
+        VHalf2 = VHalf_compact.z;*/
+
+        ///calculate_V_derivatives_big
+
+        /*float3 VHalf_compact = 0.5f * calculate_V_derivatives_big(fx, fy, fz, lp1, lp2, lp3, V0, V1, V2, scale, dim, ALL_ARGS()) * ds + (float3)(V0, V1, V2);
+
+        VHalf0 = VHalf_compact.x;
+        VHalf1 = VHalf_compact.y;
+        VHalf2 = VHalf_compact.z;*/
+
+
+
+        /*{
             float TEMPORARIES6;
 
             float d0 = V0Diff;
@@ -1613,7 +1671,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
             VHalf0 = 0.5f * d0 * ds + V0;
             VHalf1 = 0.5f * d1 * ds + V1;
             VHalf2 = 0.5f * d2 * ds + V2;
-        }
+        }*/
 
         float XFull0 = 0;
         float XFull1 = 0;
@@ -1765,13 +1823,13 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     ray_out.x = x;
     ray_out.y = y;
 
-    ray_out.lp1 = Xpos.x;
-    ray_out.lp2 = Xpos.y;
-    ray_out.lp3 = Xpos.z;
+    ray_out.lp1 = lp1;
+    ray_out.lp2 = lp2;
+    ray_out.lp3 = lp3;
 
-    ray_out.V0 = vel.x;
-    ray_out.V1 = vel.y;
-    ray_out.V2 = vel.z;
+    ray_out.V0 = V0;
+    ray_out.V1 = V1;
+    ray_out.V2 = V2;
 
     ray_out.iter_frac = 0;
     ray_out.hit_singularity = hit_singularity;
