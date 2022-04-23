@@ -1468,7 +1468,7 @@ float length_sq(float3 in)
 
 ///this returns the change in X, which is not velocity
 ///its unfortunate that position, aka X, and the conformal factor are called the same thing here
-float3 calculate_X_derivative(float3 Xpos, float3 vel, int4 dim, float scale, STANDARD_ARGS(), STANDARD_DERIVS())
+float3 velocity_to_XDiff(float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS(), STANDARD_DERIVS())
 {
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
 
@@ -1496,7 +1496,7 @@ float3 calculate_X_derivative(float3 Xpos, float3 vel, int4 dim, float scale, ST
     return (float3){d0, d1, d2};
 }
 
-float3 calculate_V_derivatives(float3 Xpos, float3 vel, int4 dim, float scale, STANDARD_ARGS(), STANDARD_DERIVS())
+float3 calculate_V_derivatives(float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS(), STANDARD_DERIVS())
 {
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
 
@@ -1556,18 +1556,16 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
     float u_sq = (universe_size / 1.01f) * (universe_size / 1.01f);
 
+    float3 Xpos = {lp1, lp2, lp3};
+    float3 vel = {V0, V1, V2};
+
     #pragma unroll(16)
     for(int iteration=0; iteration < 256; iteration++)
     {
-        float3 voxel_pos = world_to_voxel((float3)(lp1, lp2, lp3), dim, scale);
-
+        float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
         voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
         float BH_X = buffer_read_linear(X, voxel_pos, dim);
-
-        float fx = voxel_pos.x;
-        float fy = voxel_pos.y;
-        float fz = voxel_pos.z;
 
         float X_far = 0.9f;
         float X_near = 0.6f;
@@ -1580,6 +1578,35 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         #ifdef VERLET
         float ds = mix(0.4f, 4.f, my_fraction);
 
+        float3 ABase = calculate_V_derivatives(Xpos, vel, scale, dim, ALL_ARGS());
+
+        float3 VHalf = vel + 0.5f * ABase * ds;
+
+        float3 VFull_approx = vel + ABase * ds;
+
+        float3 XDiff = velocity_to_XDiff(Xpos, VHalf, scale, dim, ALL_ARGS());
+
+        float ldX0 = XDiff.x;
+        float ldX1 = XDiff.y;
+        float ldX2 = XDiff.z;
+
+        float3 XFull = Xpos + XDiff * ds;
+
+        Xpos = XFull;
+
+        if(length_sq(XFull) >= u_sq)
+        {
+            break;
+        }
+
+        ///can only approximate A here
+        float3 AFull_approx = calculate_V_derivatives(XFull, VFull_approx, scale, dim, ALL_ARGS());
+
+        float3 VFull = VHalf + 0.5f * AFull_approx * ds;
+
+        vel = VFull;
+
+        #if 0
         float VHalf0 = 0;
         float VHalf1 = 0;
         float VHalf2 = 0;
@@ -1661,6 +1688,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
             V1 = VHalf1 + 0.5f * afull1 * ds;
             V2 = VHalf2 + 0.5f * afull2 * ds;
         }
+        #endif // 0
         #endif // VERLET
 
         //#define EULER
@@ -1745,13 +1773,13 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     ray_out.x = x;
     ray_out.y = y;
 
-    ray_out.lp1 = lp1;
-    ray_out.lp2 = lp2;
-    ray_out.lp3 = lp3;
+    ray_out.lp1 = Xpos.x;
+    ray_out.lp2 = Xpos.y;
+    ray_out.lp3 = Xpos.z;
 
-    ray_out.V0 = V0;
-    ray_out.V1 = V1;
-    ray_out.V2 = V2;
+    ray_out.V0 = vel.x;
+    ray_out.V1 = vel.y;
+    ray_out.V2 = vel.z;
 
     ray_out.iter_frac = 0;
     ray_out.hit_singularity = hit_singularity;
