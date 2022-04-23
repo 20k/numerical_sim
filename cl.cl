@@ -1602,8 +1602,9 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         float3 accel;
         calculate_V_derivatives(&accel, Xpos, vel, scale, dim, ALL_ARGS());
 
+        ///uncomment the accel*ds to get symplectic euler
         float3 XDiff;
-        velocity_to_XDiff(&XDiff, Xpos, vel, scale, dim, ALL_ARGS());
+        velocity_to_XDiff(&XDiff, Xpos, vel /*+ accel * ds*/, scale, dim, ALL_ARGS());
 
         Xpos += XDiff * ds;
 
