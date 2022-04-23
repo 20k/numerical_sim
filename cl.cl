@@ -1531,22 +1531,14 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
     struct lightray_simple ray_in = rays_in[y * width + x];
 
-    float lp1 = ray_in.lp1;
-    float lp2 = ray_in.lp2;
-    float lp3 = ray_in.lp3;
-
-    float V0 = ray_in.V0;
-    float V1 = ray_in.V1;
-    float V2 = ray_in.V2;
+    float3 Xpos = {ray_in.lp1, ray_in.lp2, ray_in.lp3};
+    float3 vel = {ray_in.V0, ray_in.V1, ray_in.V2};
 
     bool hit_singularity = false;
 
     bool last_skipped = false;
 
     float u_sq = (universe_size / 1.01f) * (universe_size / 1.01f);
-
-    float3 Xpos = {lp1, lp2, lp3};
-    float3 vel = {V0, V1, V2};
 
     #pragma unroll(16)
     for(int iteration=0; iteration < 256; iteration++)
@@ -1563,7 +1555,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         my_fraction = clamp(my_fraction, 0.f, 1.f);
 
-        //#define VERLET
+        #define VERLET
         #ifdef VERLET
         float ds = mix(0.4f, 4.f, my_fraction);
 
@@ -1595,7 +1587,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         vel = VFull;
         #endif // VERLET
 
-        #define EULER
+        //#define EULER
         #ifdef EULER
         float ds = mix(0.1f, 2.f, my_fraction);
 
@@ -1615,17 +1607,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         vel += accel * ds;
         #endif // EULER
-
-        //if(res == DS_RETURN)
-        //    break;
-
-        /*if(res == DS_SKIP)
-        {
-            last_skipped = true;
-            continue;
-        }*/
-
-        //last_skipped = false;
 
         /*if(x == (int)width/2 && y == (int)height/2)
         {
