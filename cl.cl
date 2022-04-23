@@ -1468,7 +1468,7 @@ float length_sq(float3 in)
 
 ///this returns the change in X, which is not velocity
 ///its unfortunate that position, aka X, and the conformal factor are called the same thing here
-float3 velocity_to_XDiff(float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS(), STANDARD_DERIVS())
+void velocity_to_XDiff(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS(), STANDARD_DERIVS())
 {
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
 
@@ -1489,10 +1489,10 @@ float3 velocity_to_XDiff(float3 Xpos, float3 vel, float scale, int4 dim, STANDAR
     float d1 = X1Diff;
     float d2 = X2Diff;
 
-    return (float3){d0, d1, d2};
+    *out = (float3){d0, d1, d2};
 }
 
-float3 calculate_V_derivatives(float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS(), STANDARD_DERIVS())
+void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS(), STANDARD_DERIVS())
 {
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
 
@@ -1513,7 +1513,7 @@ float3 calculate_V_derivatives(float3 Xpos, float3 vel, float scale, int4 dim, S
     float d1 = V1Diff;
     float d2 = V2Diff;
 
-    return (float3){d0, d1, d2};
+    *out = (float3){d0, d1, d2};
 }
 
 __kernel
@@ -1570,13 +1570,15 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         #ifdef VERLET
         float ds = mix(0.4f, 4.f, my_fraction);
 
-        float3 ABase = calculate_V_derivatives(Xpos, vel, scale, dim, ALL_ARGS());
+        float3 ABase;
+        calculate_V_derivatives(&ABase, Xpos, vel, scale, dim, ALL_ARGS());
 
         float3 VHalf = vel + 0.5f * ABase * ds;
 
         float3 VFull_approx = vel + ABase * ds;
 
-        float3 XDiff = velocity_to_XDiff(Xpos, VHalf, scale, dim, ALL_ARGS());
+        float3 XDiff;
+        velocity_to_XDiff(&XDiff, Xpos, VHalf, scale, dim, ALL_ARGS());
 
         float ldX0 = XDiff.x;
         float ldX1 = XDiff.y;
@@ -1592,95 +1594,12 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         }
 
         ///can only approximate A here
-        float3 AFull_approx = calculate_V_derivatives(XFull, VFull_approx, scale, dim, ALL_ARGS());
+        float3 AFull_approx;
+        calculate_V_derivatives(&AFull_approx, XFull, VFull_approx, scale, dim, ALL_ARGS());
 
         float3 VFull = VHalf + 0.5f * AFull_approx * ds;
 
         vel = VFull;
-
-        #if 0
-        float VHalf0 = 0;
-        float VHalf1 = 0;
-        float VHalf2 = 0;
-
-        {
-            float TEMPORARIES6;
-
-            float d0 = V0Diff;
-            float d1 = V1Diff;
-            float d2 = V2Diff;
-
-            VHalf0 = 0.5f * d0 * ds + V0;
-            VHalf1 = 0.5f * d1 * ds + V1;
-            VHalf2 = 0.5f * d2 * ds + V2;
-        }
-
-        float XFull0 = 0;
-        float XFull1 = 0;
-        float XFull2 = 0;
-
-        float ldX0 = 0;
-        float ldX1 = 0;
-        float ldX2 = 0;
-
-        {
-            V0 = VHalf0;
-            V1 = VHalf1;
-            V2 = VHalf2;
-
-            float TEMPORARIES6;
-
-            float d0 = X0Diff;
-            float d1 = X1Diff;
-            float d2 = X2Diff;
-
-            ldX0 = d0;
-            ldX1 = d1;
-            ldX2 = d2;
-
-            XFull0 = lp1 + d0 * ds;
-            XFull1 = lp2 + d1 * ds;
-            XFull2 = lp3 + d2 * ds;
-        }
-
-        lp1 = XFull0;
-        lp2 = XFull1;
-        lp3 = XFull2;
-
-        if(length_sq((float3)(lp1, lp2, lp3)) >= u_sq)
-        {
-            break;
-        }
-
-        voxel_pos = world_to_voxel((float3)(lp1, lp2, lp3), dim, scale);
-        voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
-
-        fx = voxel_pos.x;
-        fy = voxel_pos.y;
-        fz = voxel_pos.z;
-
-        float afull0 = 0;
-        float afull1 = 0;
-        float afull2 = 0;
-
-        {
-            float TEMPORARIES6;
-
-            float d0 = V0Diff;
-            float d1 = V1Diff;
-            float d2 = V2Diff;
-
-            afull0 = d0;
-            afull1 = d1;
-            afull2 = d2;
-        }
-
-        {
-            V0 = VHalf0 + 0.5f * afull0 * ds;
-            V1 = VHalf1 + 0.5f * afull1 * ds;
-            V2 = VHalf2 + 0.5f * afull2 * ds;
-        }
-        #endif // 0
         #endif // VERLET
 
         //#define EULER
