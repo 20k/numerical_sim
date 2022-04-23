@@ -1551,6 +1551,30 @@ void calculate_V_derivatives_big3(float3* out, float fx, float fy, float fz, flo
     *out = (float3)(d0, d1, d2);
 }
 
+void calculate_V_derivatives2(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS(), STANDARD_DERIVS())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+
+    ///isn't this already handled internally?
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float V0 = vel.x;
+    float V1 = vel.y;
+    float V2 = vel.z;
+
+    float TEMPORARIES6;
+
+    float d0 = V0Diff;
+    float d1 = V1Diff;
+    float d2 = V2Diff;
+
+    *out = (float3){d0, d1, d2};
+}
+
 __kernel
 void trace_rays(__global struct lightray_simple* rays_in, __global struct lightray_simple* rays_terminated,
                 STANDARD_ARGS(),
@@ -1650,7 +1674,9 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         //calculate_V_derivatives_big3(&AH, fx, fy, fz, lp1, lp2, lp3, V0, V1, V2, scale, dim, ALL_ARGS());
 
-        AH = calculate_V_derivatives_big(fx, fy, fz, lp1, lp2, lp3, V0, V1, V2, scale, dim, ALL_ARGS());
+        calculate_V_derivatives2(&AH, (float3)(lp1, lp2, lp3), (float3)(V0, V1, V2), scale, dim, ALL_ARGS());
+
+        //AH = calculate_V_derivatives_big(fx, fy, fz, lp1, lp2, lp3, V0, V1, V2, scale, dim, ALL_ARGS());
 
         VHalf0 = 0.5f * AH.x * ds + V0;
         VHalf1 = 0.5f * AH.y * ds + V1;
