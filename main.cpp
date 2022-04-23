@@ -4634,7 +4634,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     ctx.add("universe_size", universe_length * scale);
 
-    tensor<value, 3> X_upper = {"lp1", "lp2", "lp3"};
+    //tensor<value, 3> X_upper = {"lp1", "lp2", "lp3"};
     tensor<value, 3> V_upper = {"V0", "V1", "V2"};
 
     /*inverse_metric<value, 3, 3> iYij = args.Yij.invert();

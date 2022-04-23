@@ -1483,10 +1483,6 @@ float3 velocity_to_XDiff(float3 Xpos, float3 vel, float scale, int4 dim, STANDAR
     float V1 = vel.y;
     float V2 = vel.z;
 
-    float X0 = Xpos.x;
-    float X1 = Xpos.y;
-    float X2 = Xpos.z;
-
     float TEMPORARIES6;
 
     float d0 = X0Diff;
@@ -1510,10 +1506,6 @@ float3 calculate_V_derivatives(float3 Xpos, float3 vel, float scale, int4 dim, S
     float V0 = vel.x;
     float V1 = vel.y;
     float V2 = vel.z;
-
-    float X0 = Xpos.x;
-    float X1 = Xpos.y;
-    float X2 = Xpos.z;
 
     float TEMPORARIES6;
 
@@ -1594,7 +1586,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         Xpos = XFull;
 
-        if(length_sq(XFull) >= u_sq)
+        if(length_sq(Xpos) >= u_sq)
         {
             break;
         }
