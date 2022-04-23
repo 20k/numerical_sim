@@ -1599,66 +1599,21 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         #ifdef EULER
         float ds = mix(0.1f, 2.f, my_fraction);
 
-        float lp1 = Xpos.x;
-        float lp2 = Xpos.y;
-        float lp3 = Xpos.z;
+        float3 accel;
+        calculate_V_derivatives(&accel, Xpos, vel, scale, dim, ALL_ARGS());
 
-        float V0 = vel.x;
-        float V1 = vel.y;
-        float V2 = vel.z;
+        float3 XDiff;
+        velocity_to_XDiff(&XDiff, Xpos, vel, scale, dim, ALL_ARGS());
 
-        float fx = voxel_pos.x;
-        float fy = voxel_pos.y;
-        float fz = voxel_pos.z;
-
-        float dV0 = 0;
-        float dV1 = 0;
-        float dV2 = 0;
-
-        {
-            float TEMPORARIES6;
-
-            dV0 = V0Diff;
-            dV1 = V1Diff;
-            dV2 = V2Diff;
-        }
-
-        float ldX0 = 0;
-        float ldX1 = 0;
-        float ldX2 = 0;
-
-        {
-            /*float lV0 = V0 + dV0 * ds;
-            float lV1 = V1 + dV1 * ds;
-            float lV2 = V2 + dV2 * ds;
-
-            float V0 = lV0;
-            float V1 = lV1;
-            float V2 = lV2;*/
-
-            float TEMPORARIES6;
-
-            ldX0 = X0Diff;
-            ldX1 = X1Diff;
-            ldX2 = X2Diff;
-        }
-
-        float3 XDiff = (float3)(ldX0, ldX1, ldX2);
-
-        Xpos.x += ldX0 * ds;
-        Xpos.y += ldX1 * ds;
-        Xpos.z += ldX2 * ds;
+        Xpos += XDiff * ds;
 
         if(length_sq(Xpos) >= u_sq)
         {
             break;
         }
 
-        vel.x += dV0 * ds;
-        vel.y += dV1 * ds;
-        vel.z += dV2 * ds;
+        vel += accel * ds;
         #endif // EULER
-
 
         //if(res == DS_RETURN)
         //    break;
