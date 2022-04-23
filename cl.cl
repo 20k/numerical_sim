@@ -1468,6 +1468,7 @@ float length_sq(float3 in)
 
 ///this returns the change in X, which is not velocity
 ///its unfortunate that position, aka X, and the conformal factor are called the same thing here
+///the reason why these functions use out parameters is to work around a significant optimisation failure in AMD's opencl compiler
 void velocity_to_XDiff(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS(), STANDARD_DERIVS())
 {
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
