@@ -232,6 +232,9 @@ struct equation_context
         {
             if(dual_types::equivalent(concrete, i.first))
             {
+                //std::cout << "CONC " << type_to_string(concrete)  << " ALIAS " << type_to_string(alias) << std::endl;
+                //std::cout << "ALIAS " << type_to_string(alias) << " WITH " << type_to_string(i.second) << std::endl;
+
                 assert(dual_types::equivalent(alias, i.second));
                 return;
             }
@@ -564,18 +567,28 @@ struct differentiation_context
 
         std::vector<value> indexed_variables;
 
-        in.recurse_arguments([&indexed_variables](const value& v)
+        in.recurse_arguments([&indexed_variables, linear_interpolation](const value& v)
         {
             if(v.type != dual_types::ops::UNKNOWN_FUNCTION)
                 return;
 
             std::string function_name = type_to_string(v.args[0]);
 
-            if(function_name != "index" && function_name != "buffer_read_linear" && function_name != "buffer_read_linearh")
+            if(function_name != "buffer_index" && function_name != "buffer_read_linear" && function_name != "buffer_read_linearh")
                 return;
+
+            if(linear_interpolation)
+                assert(function_name  == "buffer_read_linear" || function_name == "buffer_read_linearh");
+            else
+                assert(function_name == "buffer_index");
 
             indexed_variables.push_back(v);
         });
+
+        if(indexed_variables.size() == 0)
+        {
+            std::cout << "WHAT? " << type_to_string(in) << std::endl;
+        }
 
         assert(indexed_variables.size() > 0);
 
@@ -589,17 +602,17 @@ struct differentiation_context
             {
                 value to_sub;
 
-                if(function_name == "index")
+                if(function_name == "buffer_index")
                 {
-                    to_sub = apply(function_name, xs[kk], ys[kk], zs[kk], "dim");
+                    to_sub = apply(function_name, variables.args[1], xs[kk], ys[kk], zs[kk], "dim");
                 }
                 else if(function_name == "buffer_read_linear")
                 {
-                    to_sub = apply(function_name, as_float3(xs[kk], ys[kk], zs[kk]), "dim");
+                    to_sub = apply(function_name, variables.args[1], as_float3(xs[kk], ys[kk], zs[kk]), "dim");
                 }
                 else if(function_name == "buffer_read_linearh")
                 {
-                    to_sub = apply(function_name, as_float3(xs[kk], ys[kk], zs[kk]), "dim");
+                    to_sub = apply(function_name, variables.args[1], as_float3(xs[kk], ys[kk], zs[kk]), "dim");
                 }
                 else
                 {
@@ -797,7 +810,7 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
 
 void build_kreiss_oliger_dissipate_singular(equation_context& ctx)
 {
-    value buf = apply("index", "buffer", "ix", "iy", "iz", "dim");
+    value buf = dual_types::apply("buffer_index", "buffer", "ix", "iy", "iz", "dim");
 
     value coeff = "coefficient";
 
@@ -1409,7 +1422,7 @@ tensor<T, N, N> lower_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met
     return ret;
 }
 
-std::string bidx(const std::string& buf, bool interpolate)
+value bidx(const std::string& buf, bool interpolate)
 {
     if(interpolate)
     {
@@ -1417,16 +1430,16 @@ std::string bidx(const std::string& buf, bool interpolate)
 
         if(v.is_derivative)
         {
-            return apply("buffer_read_linearh", buf, as_float3("fx", "fy", "fz"), "dim");
+            return dual_types::apply("buffer_read_linearh", buf, as_float3("fx", "fy", "fz"), "dim");
         }
         else
         {
-            return apply("buffer_read_linear", buf, as_float3("fx", "fy", "fz"), "dim");
+            return dual_types::apply("buffer_read_linear", buf, as_float3("fx", "fy", "fz"), "dim");
         }
     }
     else
     {
-        return apply("index", buf, "ix", "iy", "iz", "dim");
+        return dual_types::apply("buffer_index", buf, "ix", "iy", "iz", "dim");
     }
 }
 
@@ -1472,18 +1485,18 @@ struct standard_arguments
     {
         bool interpolate = ctx.uses_linear;
 
-        gA.make_value(bidx("gA", interpolate));
+        gA = (bidx("gA", interpolate));
 
         gA = max(gA, 0.f);
         //gA = max(gA, 0.00001f);
 
-        gB.idx(0).make_value(bidx("gB0", interpolate));
-        gB.idx(1).make_value(bidx("gB1", interpolate));
-        gB.idx(2).make_value(bidx("gB2", interpolate));
+        gB.idx(0) = (bidx("gB0", interpolate));
+        gB.idx(1) = (bidx("gB1", interpolate));
+        gB.idx(2) = (bidx("gB2", interpolate));
 
-        gBB.idx(0).make_value(bidx("gBB0", interpolate));
-        gBB.idx(1).make_value(bidx("gBB1", interpolate));
-        gBB.idx(2).make_value(bidx("gBB2", interpolate));
+        gBB.idx(0) = (bidx("gBB0", interpolate));
+        gBB.idx(1) = (bidx("gBB1", interpolate));
+        gBB.idx(2) = (bidx("gBB2", interpolate));
 
         std::array<int, 9> arg_table
         {
@@ -1520,16 +1533,16 @@ struct standard_arguments
 
         //cA.idx(1, 1) = -(raised_cAij.idx(0, 0) + raised_cAij.idx(2, 2) + cA.idx(0, 1) * icY.idx(0, 1) + cA.idx(1, 2) * icY.idx(1, 2)) / (icY.idx(1, 1));
 
-        X.make_value(bidx("X", interpolate));
-        K.make_value(bidx("K", interpolate));
+        X = (bidx("X", interpolate));
+        K = (bidx("K", interpolate));
 
         //X = max(X, 0.0001f);
 
         gA_X = gA / max(X, 0.001f);
 
-        cGi.idx(0).make_value(bidx("cGi0", interpolate));
-        cGi.idx(1).make_value(bidx("cGi1", interpolate));
-        cGi.idx(2).make_value(bidx("cGi2", interpolate));
+        cGi.idx(0) = (bidx("cGi0", interpolate));
+        cGi.idx(1) = (bidx("cGi1", interpolate));
+        cGi.idx(2) = (bidx("cGi2", interpolate));
 
         for(int i=0; i < 3; i++)
         {
@@ -1543,9 +1556,9 @@ struct standard_arguments
 
         Kij = Aij + Yij.to_tensor() * (K / 3.f);
 
-        momentum_constraint.idx(0).make_value(bidx("momentum0", interpolate));
-        momentum_constraint.idx(1).make_value(bidx("momentum1", interpolate));
-        momentum_constraint.idx(2).make_value(bidx("momentum2", interpolate));
+        momentum_constraint.idx(0) = (bidx("momentum0", interpolate));
+        momentum_constraint.idx(1) = (bidx("momentum1", interpolate));
+        momentum_constraint.idx(2) = (bidx("momentum2", interpolate));
 
         for(int k=0; k < 3; k++)
         {
@@ -1557,20 +1570,18 @@ struct standard_arguments
 
                     int final_index = k + symmetric_index * 3;
 
-                    std::string name = bidx("dcYij" + std::to_string(final_index), interpolate);
-
-                    dcYij.idx(k, i, j) = name;
+                    dcYij.idx(k, i, j) = bidx("dcYij" + std::to_string(final_index), interpolate);
                 }
             }
         }
 
-        digA.idx(0).make_value(bidx("digA0", interpolate));
-        digA.idx(1).make_value(bidx("digA1", interpolate));
-        digA.idx(2).make_value(bidx("digA2", interpolate));
+        digA.idx(0) = (bidx("digA0", interpolate));
+        digA.idx(1) = (bidx("digA1", interpolate));
+        digA.idx(2) = (bidx("digA2", interpolate));
 
-        dX.idx(0).make_value(bidx("dX0", interpolate));
-        dX.idx(1).make_value(bidx("dX1", interpolate));
-        dX.idx(2).make_value(bidx("dX2", interpolate));
+        dX.idx(0) = (bidx("dX0", interpolate));
+        dX.idx(1) = (bidx("dX1", interpolate));
+        dX.idx(2) = (bidx("dX2", interpolate));
 
         ///derivative
         for(int i=0; i < 3; i++)
@@ -1580,9 +1591,7 @@ struct standard_arguments
             {
                 int idx = i + j * 3;
 
-                std::string name = bidx("digB" + std::to_string(idx), interpolate);
-
-                digB.idx(i, j).make_value(name);
+                digB.idx(i, j)  = bidx("digB" + std::to_string(idx), interpolate);
             }
         }
 
@@ -2533,7 +2542,7 @@ inline
 void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale)
 {
     value bl_conformal = "bl_conformal";
-    value u = "u_value[IDX(ix,iy,iz)]";
+    value u = dual_types::apply("buffer_index", "u_value", "ix", "iy", "iz", "dim");
 
     tensor<value, 3, 3> bcAij;
 
@@ -2701,7 +2710,7 @@ void build_intermediate_thin(equation_context& ctx)
 {
     standard_arguments args(ctx);
 
-    value buffer = "buffer[IDX(ix,iy,iz)]";
+    value buffer = dual_types::apply("buffer_index", "buffer", "ix", "iy", "iz", "dim");
 
     value v1 = diff1(ctx, buffer, 0);
     value v2 = diff1(ctx, buffer, 1);
