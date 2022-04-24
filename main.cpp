@@ -574,13 +574,40 @@ struct differentiation_context
 
             std::string function_name = type_to_string(v.args[0]);
 
-            if(function_name != "buffer_index" && function_name != "buffer_read_linear" && function_name != "buffer_read_linearh")
+            if(function_name != "buffer_index" && function_name != "buffer_indexh" &&
+               function_name != "buffer_read_linear" && function_name != "buffer_read_linearh")
                 return;
 
             if(linear_interpolation)
-                assert(function_name  == "buffer_read_linear" || function_name == "buffer_read_linearh");
+                assert(function_name == "buffer_read_linear" || function_name == "buffer_read_linearh");
             else
-                assert(function_name == "buffer_index");
+                assert(function_name == "buffer_index" || function_name == "buffer_indexh");
+
+            #ifdef CHECK_HALF_PRECISION
+            std::string vname = type_to_string(v.args[1]);
+
+            std::vector<variable> test_vars = get_variables();
+
+            for(const variable& them : test_vars)
+            {
+                if(vname == them.name)
+                {
+                    if(linear_interpolation && them.is_derivative)
+                        assert(function_name == "buffer_read_linearh");
+                    else if(linear_interpolation && !them.is_derivative)
+                        assert(function_name == "buffer_read_linear");
+                    else if(!linear_interpolation && them.is_derivative)
+                        assert(function_name == "buffer_indexh");
+                    else if(!linear_interpolation && !them.is_derivative)
+                        assert(function_name == "buffer_index");
+                    else
+                    {
+                        std::cout << "FNAME " << type_to_string(v) << std::endl;
+                        assert(false);
+                    }
+                }
+            }
+            #endif // CHECK_HALF_PRECISION
 
             indexed_variables.push_back(v);
         });
@@ -602,15 +629,11 @@ struct differentiation_context
             {
                 value to_sub;
 
-                if(function_name == "buffer_index")
+                if(function_name == "buffer_index" || function_name == "buffer_indexh")
                 {
                     to_sub = apply(function_name, variables.args[1], xs[kk], ys[kk], zs[kk], "dim");
                 }
-                else if(function_name == "buffer_read_linear")
-                {
-                    to_sub = apply(function_name, variables.args[1], as_float3(xs[kk], ys[kk], zs[kk]), "dim");
-                }
-                else if(function_name == "buffer_read_linearh")
+                else if(function_name == "buffer_read_linear" || function_name == "buffer_read_linearh")
                 {
                     to_sub = apply(function_name, variables.args[1], as_float3(xs[kk], ys[kk], zs[kk]), "dim");
                 }
@@ -1439,7 +1462,16 @@ value bidx(const std::string& buf, bool interpolate)
     }
     else
     {
-        return dual_types::apply("buffer_index", buf, "ix", "iy", "iz", "dim");
+        variable v = fetch_variable(buf);
+
+        if(v.is_derivative)
+        {
+            return dual_types::apply("buffer_indexh", buf, "ix", "iy", "iz", "dim");
+        }
+        else
+        {
+            return dual_types::apply("buffer_index", buf, "ix", "iy", "iz", "dim");
+        }
     }
 }
 

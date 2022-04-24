@@ -9,6 +9,11 @@
 #include "transform_position.cl"
 #include "common.cl"
 
+float buffer_indexh(__global const DERIV_PRECISION* const buffer, int x, int y, int z, int4 dim)
+{
+    return buffer[z * dim.x * dim.y + y * dim.x + x];
+}
+
 bool invalid_first(int ix, int iy, int iz, int4 dim)
 {
     return ix < BORDER_WIDTH || iy < BORDER_WIDTH || iz < BORDER_WIDTH || ix >= dim.x - BORDER_WIDTH || iy >= dim.y - BORDER_WIDTH || iz >= dim.z - BORDER_WIDTH;
