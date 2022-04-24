@@ -62,3 +62,8 @@ float buffer_read_linear(__global const float* const buffer, float3 position, in
 
     return c0 - frac.z * (c0 - c1);
 }
+
+float index(__global const float* const buffer, int x, int y, int z, int4 dim)
+{
+    return buffer[z * dim.x * dim.y + y * dim.x + x];
+}

@@ -518,77 +518,9 @@ variable fetch_variable(const std::string& name)
     throw std::runtime_error("Err in fetch variable for name " + name);
 }
 
-inline
-std::string decompose_variable(std::string str)
+value as_float3(const value& x, const value& y, const value& z)
 {
-    std::string buffer;
-    std::string val;
-
-    if(str.ends_with(")]"))
-    {
-        if(!str.ends_with("[IDX(ix,iy,iz)]"))
-        {
-            std::cout << "Got bad string " << str << std::endl;
-            assert(false);
-        }
-    }
-
-    std::vector<variable> variables = get_variables();
-
-    if(str.starts_with("buffer_read_linear("))
-    {
-        std::string_view sview = str;
-        sview.remove_prefix(strlen("buffer_read_linear("));
-
-        int len = sview.find_first_of(',');
-
-        assert(len != std::string_view::npos);
-
-        buffer = std::string(sview.begin(), sview.begin() + len);
-    }
-
-    else if(str.starts_with("buffer_read_linearh("))
-    {
-        std::string_view sview = str;
-        sview.remove_prefix(strlen("buffer_read_linearh("));
-
-        int len = sview.find_first_of(',');
-
-        assert(len != std::string_view::npos);
-
-        buffer = std::string(sview.begin(), sview.begin() + len);
-    }
-
-    else if(str.starts_with("buffer"))
-    {
-        buffer = "buffer";
-    }
-    else
-    {
-        std::string stripped = strip_variable(str);
-
-        buffer = stripped;
-
-        bool any_found = false;
-
-        for(auto& i : variables)
-        {
-            if(i.name == stripped)
-            {
-                any_found = true;
-                break;
-            }
-        }
-
-        if(!any_found)
-        {
-            std::cout << "None for " << stripped << std::endl;
-        }
-
-        assert(any_found);
-    }
-
-    return buffer;
+    return dual_types::apply("(float3)", x, y, z);
 }
 
 template<int elements = 5>
@@ -602,41 +534,6 @@ struct differentiation_context
 
     differentiation_context(const value& in, int idx, bool linear_interpolation = false)
     {
-        std::vector<std::string> variables = in.get_all_variables();
-
-        value cp = in;
-
-        auto index_raw = [](const value& x, const value& y, const value& z)
-        {
-            return "IDX(" + type_to_string(x, true) + "," + type_to_string(y, true) + "," + type_to_string(z, true) + ")";
-        };
-
-        auto fetch_linear = [](const std::string& buffer, const value& x, const value& y, const value& z)
-        {
-            variable v = fetch_variable(buffer);
-
-            std::string func = v.is_derivative ? "buffer_read_linearh" : "buffer_read_linear";
-
-            return func + "(" + buffer + ",(float3)(" + type_to_string(x, false) + "," + type_to_string(y, false) + "," + type_to_string(z, false) + "),dim)";
-        };
-
-        auto index_without_extension = [](const std::string& buffer, const std::string& with_what)
-        {
-            return buffer + "[" + with_what + "]";
-        };
-
-        auto index = [index_without_extension, index_raw, fetch_linear, linear_interpolation](const std::string& buffer, const value& x, const value& y, const value& z)
-        {
-            if(linear_interpolation)
-            {
-                return fetch_linear(buffer, x, y, z);
-            }
-            else
-            {
-                return index_without_extension(buffer, index_raw(x, y, z));
-            }
-        };
-
         for(int i=0; i < elements; i++)
         {
             if(linear_interpolation)
@@ -665,24 +562,76 @@ struct differentiation_context
                 zs[i] += offset;
         }
 
-        std::array<std::map<std::string, std::string>, elements> substitutions;
+        std::vector<value> indexed_variables;
 
-        for(auto& i : variables)
+        in.recurse_arguments([&indexed_variables](const value& v)
         {
-            std::string decomp = decompose_variable(i);
+            if(v.type != dual_types::ops::UNKNOWN_FUNCTION)
+                return;
+
+            std::string function_name = type_to_string(v.args[0]);
+
+            if(function_name != "index" && function_name != "buffer_read_linear" && function_name != "buffer_read_linearh")
+                return;
+
+            indexed_variables.push_back(v);
+        });
+
+        assert(indexed_variables.size() > 0);
+
+        std::array<std::vector<value>, elements> substitutions;
+
+        for(auto& variables : indexed_variables)
+        {
+            std::string function_name = type_to_string(variables.args.at(0));
 
             for(int kk=0; kk < elements; kk++)
             {
-                value to_sub = index(decomp, xs[kk], ys[kk], zs[kk]);
+                value to_sub;
 
-                substitutions[kk][i] = type_to_string(to_sub);
+                if(function_name == "index")
+                {
+                    to_sub = apply(function_name, xs[kk], ys[kk], zs[kk], "dim");
+                }
+                else if(function_name == "buffer_read_linear")
+                {
+                    to_sub = apply(function_name, as_float3(xs[kk], ys[kk], zs[kk]), "dim");
+                }
+                else if(function_name == "buffer_read_linearh")
+                {
+                    to_sub = apply(function_name, as_float3(xs[kk], ys[kk], zs[kk]), "dim");
+                }
+                else
+                {
+                    assert(false);
+                }
+
+                substitutions[kk].push_back(to_sub);
             }
         }
 
         for(int i=0; i < elements; i++)
         {
-            vars[i] = cp;
-            vars[i].substitute(substitutions[i]);
+            vars[i] = in;
+
+            ///look for a function which matches our indexed variables
+            ///if we find it, substitute for the substitution
+            vars[i].recurse_arguments([&substitutions, &indexed_variables, i](value& v)
+            {
+                assert(substitutions[i].size() == indexed_variables.size());
+
+                ///search through the indexed variables
+                for(int kk=0; kk < (int)indexed_variables.size(); kk++)
+                {
+                    ///its a me!
+                    if(dual_types::equivalent(indexed_variables[kk], v))
+                    {
+                        ///substitute us for the directional derivative
+                        v = substitutions[i][kk];
+                        return;
+                    }
+                }
+            });
         }
     }
 };
@@ -848,7 +797,7 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
 
 void build_kreiss_oliger_dissipate_singular(equation_context& ctx)
 {
-    value buf = "buffer[IDX(ix,iy,iz)]";
+    value buf = apply("index", "buffer", "ix", "iy", "iz", "dim");
 
     value coeff = "coefficient";
 
@@ -1466,12 +1415,19 @@ std::string bidx(const std::string& buf, bool interpolate)
     {
         variable v = fetch_variable(buf);
 
-        std::string func = v.is_derivative ? "buffer_read_linearh" : "buffer_read_linear";
-
-        return func + "(" + buf + ",(float3)(fx,fy,fz),dim)";
+        if(v.is_derivative)
+        {
+            return apply("buffer_read_linearh", buf, as_float3("fx", "fy", "fz"), "dim");
+        }
+        else
+        {
+            return apply("buffer_read_linear", buf, as_float3("fx", "fy", "fz"), "dim");
+        }
     }
     else
-        return buf + "[IDX(ix,iy,iz)]";
+    {
+        return apply("index", buf, "ix", "iy", "iz", "dim");
+    }
 }
 
 struct standard_arguments
