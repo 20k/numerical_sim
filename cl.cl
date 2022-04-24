@@ -1672,7 +1672,10 @@ float3 fix_ray_position(float3 cartesian_pos, float3 cartesian_velocity, float s
     return cartesian_pos + my_t * cartesian_velocity;
 }
 
-__kernel void render_rays(__global struct lightray_simple* rays_in, __global int* ray_count, __write_only image2d_t screen, float scale, int width, int height)
+__kernel void render_rays(__global struct lightray_simple* rays_in, __global int* ray_count, __write_only image2d_t screen,
+                          STANDARD_ARGS(),
+                          STANDARD_DERIVS(),
+                          float scale, int4 dim, int width, int height)
 {
     int idx = get_global_id(0);
 
@@ -1698,11 +1701,14 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
     float3 cpos = {lp1, lp2, lp3};
     float3 cvel = {V0, V1, V2};
 
+    float3 XDiff;
+    velocity_to_XDiff(&XDiff, cpos, cvel, scale, dim, ALL_ARGS());
+
     float uni_size = universe_size;
 
     if(!ray_in.hit_singularity)
     {
-        cpos = fix_ray_position(cpos, cvel, uni_size * 1.01f);
+        cpos = fix_ray_position(cpos, XDiff, uni_size * 1.01f);
 
         float fr = fast_length(cpos);
         float theta = acos(cpos.z / fr);

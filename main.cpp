@@ -5404,12 +5404,8 @@ int main()
                     render_args.push_back(ray_buffer[0]);
                     render_args.push_back(rays_terminated);
 
-                    //for(auto& i : last_valid_buffer)
-
-                    for(int kk=0; kk < last_valid_buffer.size(); kk++)
+                    for(auto& i : last_valid_buffer)
                     {
-                        auto& i = last_valid_buffer[kk];
-
                         render_args.push_back(i.as_device_read_only());
                     }
 
@@ -5432,7 +5428,19 @@ int main()
                     render_args.push_back(rays_terminated.as_device_read_only());
                     render_args.push_back(ray_count_terminated.as_device_read_only());
                     render_args.push_back(rtex[which_texture]);
+
+                    for(auto& i : last_valid_buffer)
+                    {
+                        render_args.push_back(i.as_device_read_only());
+                    }
+
+                    for(auto& i : last_valid_thin)
+                    {
+                        render_args.push_back(i.as_device_read_only());
+                    }
+
                     render_args.push_back(scale);
+                    render_args.push_back(clsize);
                     render_args.push_back(width);
                     render_args.push_back(height);
 
