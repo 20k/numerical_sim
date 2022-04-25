@@ -1630,38 +1630,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         #endif // VERLET_2
 
-        //#define VERLET
-        #ifdef VERLET
-        float ds = mix(0.4f, 4.f, my_fraction);
-
-        float3 ABase;
-        calculate_V_derivatives(&ABase, Xpos, vel, scale, dim, ALL_ARGS());
-
-        float3 VHalf = vel + 0.5f * ABase * ds;
-
-        float3 VFull_approx = vel + ABase * ds;
-
-        float3 XDiff;
-        velocity_to_XDiff(&XDiff, Xpos, VHalf, scale, dim, ALL_ARGS());
-
-        float3 XFull = Xpos + XDiff * ds;
-
-        Xpos = XFull;
-
-        if(length_sq(Xpos) >= u_sq)
-        {
-            break;
-        }
-
-        ///can only approximate A here
-        float3 AFull_approx;
-        calculate_V_derivatives(&AFull_approx, XFull, VFull_approx, scale, dim, ALL_ARGS());
-
-        float3 VFull = VHalf + 0.5f * AFull_approx * ds;
-
-        vel = VFull;
-        #endif // VERLET
-
         //#define EULER
         #ifdef EULER
         float ds = mix(0.1f, 2.f, my_fraction);
