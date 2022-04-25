@@ -9,6 +9,19 @@
 #include "transform_position.cl"
 #include "common.cl"
 
+float srgb_to_lin_single(float in)
+{
+    if(in < 0.04045f)
+        return in / 12.92f;
+    else
+        return pow((in + 0.055f) / 1.055f, 2.4f);
+}
+
+float3 srgb_to_lin(float3 in)
+{
+    return (float3)(srgb_to_lin_single(in.x), srgb_to_lin_single(in.y), srgb_to_lin_single(in.z));
+}
+
 float buffer_indexh(__global const DERIV_PRECISION* const buffer, int x, int y, int z, int4 dim)
 {
     return buffer[z * dim.x * dim.y + y * dim.x + x];
@@ -714,13 +727,6 @@ void clean_data(__global ushort4* points, int point_count,
     gBB1[index] += -y_r * (gBB1[index] - fin_gBB1) * timestep;
     gBB2[index] += -y_r * (gBB2[index] - fin_gBB2) * timestep;
     #endif // USE_GBB
-}
-
-float3 srgb_to_lin(float3 C_srgb)
-{
-    return  0.012522878f * C_srgb +
-            0.682171111f * C_srgb * C_srgb +
-            0.305306011f * C_srgb * C_srgb * C_srgb;
 }
 
 #define NANCHECK(w) if(isnan(w[index])){printf("NAN " #w " %i %i %i\n", ix, iy, iz); debug = true;}
@@ -1763,6 +1769,24 @@ float4 read_mipmap(image2d_t mipmap1, sampler_t sam, float2 pos, float lod)
     return read_imagef(mipmap1, sam, pos, lod);
 }
 
+float circular_diff(float f1, float f2)
+{
+    float a1 = f1 * M_PI * 2;
+    float a2 = f2 * M_PI * 2;
+
+    float2 v1 = {cos(a1), sin(a1)};
+    float2 v2 = {cos(a2), sin(a2)};
+
+    return atan2(v1.x * v2.y - v1.y * v2.x, v1.x * v2.x + v1.y * v2.y) / (2 * M_PI);
+}
+
+float2 circular_diff2(float2 f1, float2 f2)
+{
+    return (float2)(circular_diff(f1.x, f2.x), circular_diff(f1.y, f2.y));
+}
+
+#define MIPMAP_CONDITIONAL(x) (x(mip_background))
+
 __kernel void render_rays(__global struct lightray_simple* rays_in, __global int* ray_count, __write_only image2d_t screen,
                           STANDARD_ARGS(),
                           STANDARD_DERIVS(),
@@ -1800,6 +1824,10 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
     {
         cpos = fix_ray_position(cpos, XDiff, uni_size * 1.01f);
 
+        float sxf = texture_coordinates[y * width + x].x;
+        float syf = texture_coordinates[y * width + x].y;
+
+        #if 0
         float fr = fast_length(cpos);
         float theta = acos(cpos.z / fr);
         float phi = atan2(cpos.y, cpos.x);
@@ -1825,6 +1853,196 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
         //val.xyz = clamp(ray_in.iter_frac, 0.f, 1.f);
 
         write_imagef(screen, (int2){x, y}, val);
+        #endif // 0
+
+        #define MIPMAPPING
+        #ifdef MIPMAPPING
+        int dx = 1;
+        int dy = 1;
+
+        if(x == width-1)
+            dx = -1;
+
+        if(y == height-1)
+            dy = -1;
+
+        float2 tl = texture_coordinates[y * width + x];
+        float2 tr = texture_coordinates[y * width + x + dx];
+        float2 bl = texture_coordinates[(y + dy) * width + x];
+
+        ///higher = sharper
+        float bias_frac = 1.3;
+
+        //TL x 0.435143 TR 0.434950 TD -0.000149, aka (tr.x - tl.x) / 1.3
+        float2 dx_vtc = circular_diff2(tl, tr) / bias_frac;
+        float2 dy_vtc = circular_diff2(tl, bl) / bias_frac;
+
+        if(dx == -1)
+        {
+            dx_vtc = -dx_vtc;
+        }
+
+        if(dy == -1)
+        {
+            dy_vtc = -dy_vtc;
+        }
+
+        //#define TRILINEAR
+        #ifdef TRILINEAR
+        dx_vtc.x *= MIPMAP_CONDITIONAL(get_image_width);
+        dy_vtc.x *= MIPMAP_CONDITIONAL(get_image_width);
+
+        dx_vtc.y *= MIPMAP_CONDITIONAL(get_image_height);
+        dy_vtc.y *= MIPMAP_CONDITIONAL(get_image_height);
+
+        //dx_vtc.x /= 10.f;
+        //dy_vtc.x /= 10.f;
+
+        dx_vtc /= 2.f;
+        dy_vtc /= 2.f;
+
+        float delta_max_sqr = max(dot(dx_vtc, dx_vtc), dot(dy_vtc, dy_vtc));
+
+        float mip_level = 0.5 * log2(delta_max_sqr);
+
+        //mip_level -= 0.5;
+
+        float mip_clamped = clamp(mip_level, 0.f, 5.f);
+
+        float4 end_result = MIPMAP_CONDITIONAL_READ(read_imagef, sam, ((float2){sxf, syf}), mip_clamped);
+        #else
+
+        dx_vtc.x *= MIPMAP_CONDITIONAL(get_image_width);
+        dy_vtc.x *= MIPMAP_CONDITIONAL(get_image_width);
+
+        dx_vtc.y *= MIPMAP_CONDITIONAL(get_image_height);
+        dy_vtc.y *= MIPMAP_CONDITIONAL(get_image_height);
+
+        ///http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.1002.1336&rep=rep1&type=pdf
+        float dv_dx = dx_vtc.y;
+        float dv_dy = dy_vtc.y;
+
+        float du_dx = dx_vtc.x;
+        float du_dy = dy_vtc.x;
+
+        float Ann = dv_dx * dv_dx + dv_dy * dv_dy;
+        float Bnn = -2 * (du_dx * dv_dx + du_dy * dv_dy);
+        float Cnn = du_dx * du_dx + du_dy * du_dy; ///only tells lies
+
+        ///hecc
+        #define HECKBERT
+        #ifdef HECKBERT
+        Ann = dv_dx * dv_dx + dv_dy * dv_dy + 1;
+        Cnn = du_dx * du_dx + du_dy * du_dy + 1;
+        #endif // HECKBERT
+
+        float F = Ann * Cnn - Bnn * Bnn / 4;
+        float A = Ann / F;
+        float B = Bnn / F;
+        float C = Cnn / F;
+
+        float root = sqrt((A - C) * (A - C) + B*B);
+        float a_prime = (A + C - root) / 2;
+        float c_prime = (A + C + root) / 2;
+
+        float majorRadius = native_rsqrt(a_prime);
+        float minorRadius = native_rsqrt(c_prime);
+
+        float theta = atan2(B, (A - C)/2);
+
+        majorRadius = max(majorRadius, 1.f);
+        minorRadius = max(minorRadius, 1.f);
+
+        majorRadius = max(majorRadius, minorRadius);
+
+        float fProbes = 2 * (majorRadius / minorRadius) - 1;
+        int iProbes = floor(fProbes + 0.5f);
+
+        int maxProbes = 8;
+
+        iProbes = min(iProbes, maxProbes);
+
+        if(iProbes < fProbes)
+            minorRadius = 2 * majorRadius / (iProbes + 1);
+
+        float levelofdetail = log2(minorRadius);
+
+        int maxLod = MIPMAP_CONDITIONAL(get_image_num_mip_levels) - 1;
+
+        if(levelofdetail > maxLod)
+        {
+            levelofdetail = maxLod;
+            iProbes = 1;
+        }
+
+        float4 end_result = 0;
+
+        if(iProbes == 1 || iProbes <= 1)
+        {
+            if(iProbes < 1)
+                levelofdetail = maxLod;
+
+            end_result = read_mipmap(mip_background, sam, (float2){sxf, syf}, levelofdetail);
+        }
+        else
+        {
+            float lineLength = 2 * (majorRadius - minorRadius);
+            float du = cos(theta) * lineLength / (iProbes - 1);
+            float dv = sin(theta) * lineLength / (iProbes - 1);
+
+            float4 totalWeight = 0;
+            float accumulatedProbes = 0;
+
+            int startN = 0;
+
+            ///odd probes
+            if((iProbes % 2) == 1)
+            {
+                int probeArm = (iProbes - 1) / 2;
+
+                startN = -2 * probeArm;
+            }
+            else
+            {
+                int probeArm = (iProbes / 2);
+
+                startN = -2 * probeArm - 1;
+            }
+
+            int currentN = startN;
+            float alpha = 2;
+
+            float sU = du / MIPMAP_CONDITIONAL(get_image_width);
+            float sV = dv / MIPMAP_CONDITIONAL(get_image_height);
+
+            for(int cnt = 0; cnt < iProbes; cnt++)
+            {
+                float d_2 = (currentN * currentN / 4.f) * (du * du + dv * dv) / (majorRadius * majorRadius);
+
+                ///not a performance issue
+                float relativeWeight = native_exp(-alpha * d_2);
+
+                float centreu = sxf;
+                float centrev = syf;
+
+                float cu = centreu + (currentN / 2.f) * sU;
+                float cv = centrev + (currentN / 2.f) * sV;
+
+                float4 fval = read_mipmap(mip_background, sam, (float2){cu, cv}, levelofdetail);
+
+                totalWeight += relativeWeight * fval;
+                accumulatedProbes += relativeWeight;
+
+                currentN += 2;
+            }
+
+            end_result = totalWeight / accumulatedProbes;
+        }
+
+        #endif // TRILINEAR
+        #endif // MIPMAPPING
+
+        write_imagef(screen, (int2){x, y}, (float4)(srgb_to_lin(end_result.xyz), 1.f));
     }
     else
     {
