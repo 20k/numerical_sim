@@ -1397,6 +1397,135 @@ int calculate_ds_error(float err, float current_ds, float3 next_acceleration, fl
     return DS_NONE;
 }
 
+///https://www.ccs.neu.edu/home/fell/CS4300/Lectures/Ray-TracingFormulas.pdf
+float3 fix_ray_position(float3 cartesian_pos, float3 cartesian_velocity, float sphere_radius)
+{
+    cartesian_velocity = fast_normalize(cartesian_velocity);
+
+    float3 C = (float3){0,0,0};
+
+    float a = 1;
+    float b = 2 * dot(cartesian_velocity, (cartesian_pos - C));
+    float c = dot(C, C) + dot(cartesian_pos, cartesian_pos) - 2 * (dot(cartesian_pos, C)) - sphere_radius * sphere_radius;
+
+    float discrim = b*b - 4 * a * c;
+
+    if(discrim < 0)
+        return cartesian_pos;
+
+    float t0 = (-b - native_sqrt(discrim)) / (2 * a);
+    float t1 = (-b + native_sqrt(discrim)) / (2 * a);
+
+    float my_t = 0;
+
+    if(fabs(t0) < fabs(t1))
+        my_t = t0;
+    else
+        my_t = t1;
+
+    return cartesian_pos + my_t * cartesian_velocity;
+}
+
+///this returns the change in X, which is not velocity
+///its unfortunate that position, aka X, and the conformal factor are called the same thing here
+///the reason why these functions use out parameters is to work around a significant optimisation failure in AMD's opencl compiler
+void velocity_to_XDiff(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS(), STANDARD_DERIVS())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+
+    ///isn't this already handled internally?
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float V0 = vel.x;
+    float V1 = vel.y;
+    float V2 = vel.z;
+
+    float TEMPORARIES6;
+
+    float d0 = X0Diff;
+    float d1 = X1Diff;
+    float d2 = X2Diff;
+
+    *out = (float3){d0, d1, d2};
+}
+
+void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS(), STANDARD_DERIVS())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+
+    ///isn't this already handled internally?
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float V0 = vel.x;
+    float V1 = vel.y;
+    float V2 = vel.z;
+
+    float TEMPORARIES6;
+
+    float d0 = V0Diff;
+    float d1 = V1Diff;
+    float d2 = V2Diff;
+
+    *out = (float3){d0, d1, d2};
+}
+
+
+__kernel
+void calculate_adm_texture_coordinates(__global struct lightray_simple* finished_rays, __global float2* texture_coordinates, int width, int height,
+                                       float3 camera_pos, float4 camera_quat,
+                                       STANDARD_ARGS(), STANDARD_DERIVS(), float scale, int4 dim)
+{
+    int x = get_global_id(0);
+    int y = get_global_id(1);
+
+    if(x >= width || y >= height)
+        return;
+
+    struct lightray_simple* ray = &finished_rays[y * width + x];
+
+    float3 cpos = {ray->lp1, ray->lp2, ray->lp3};
+    float3 cvel = {ray->V0, ray->V1, ray->V2};
+
+    float3 XDiff;
+    velocity_to_XDiff(&XDiff, cpos, cvel, scale, dim, ALL_ARGS());
+
+    float uni_size = universe_size;
+
+    cpos = fix_ray_position(cpos, XDiff, uni_size * 1.01f);
+
+    float fr = fast_length(cpos);
+    float theta = acos(cpos.z / fr);
+    float phi = atan2(cpos.y, cpos.x);
+
+    float3 npolar = (float3)(fr, theta, phi);
+
+    float thetaf = fmod(npolar.y, 2 * M_PI);
+    float phif = npolar.z;
+
+    if(thetaf >= M_PI)
+    {
+        phif += M_PI;
+        thetaf -= M_PI;
+    }
+
+    phif = fmod(phif, 2 * M_PI);
+
+    float sxf = (phif) / (2 * M_PI);
+    float syf = thetaf / M_PI;
+
+    sxf += 0.5f;
+
+    texture_coordinates[y * width + x] = (float2)(sxf, syf);
+}
+
 __kernel
 void init_rays(__global struct lightray_simple* rays, __global int* ray_count0,
                 STANDARD_ARGS(),
@@ -1469,57 +1598,6 @@ void init_rays(__global struct lightray_simple* rays, __global int* ray_count0,
 float length_sq(float3 in)
 {
     return dot(in, in);
-}
-
-///this returns the change in X, which is not velocity
-///its unfortunate that position, aka X, and the conformal factor are called the same thing here
-///the reason why these functions use out parameters is to work around a significant optimisation failure in AMD's opencl compiler
-void velocity_to_XDiff(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS(), STANDARD_DERIVS())
-{
-    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
-
-    ///isn't this already handled internally?
-    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
-
-    float fx = voxel_pos.x;
-    float fy = voxel_pos.y;
-    float fz = voxel_pos.z;
-
-    float V0 = vel.x;
-    float V1 = vel.y;
-    float V2 = vel.z;
-
-    float TEMPORARIES6;
-
-    float d0 = X0Diff;
-    float d1 = X1Diff;
-    float d2 = X2Diff;
-
-    *out = (float3){d0, d1, d2};
-}
-
-void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS(), STANDARD_DERIVS())
-{
-    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
-
-    ///isn't this already handled internally?
-    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
-
-    float fx = voxel_pos.x;
-    float fy = voxel_pos.y;
-    float fz = voxel_pos.z;
-
-    float V0 = vel.x;
-    float V1 = vel.y;
-    float V2 = vel.z;
-
-    float TEMPORARIES6;
-
-    float d0 = V0Diff;
-    float d1 = V1Diff;
-    float d2 = V2Diff;
-
-    *out = (float3){d0, d1, d2};
 }
 
 float get_static_verlet_ds(float3 Xpos, __global float* X, float scale, int4 dim)
@@ -1679,35 +1757,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     ray_out.hit_singularity = hit_singularity;
 
     rays_terminated[y * width + x] = ray_out;
-}
-
-///https://www.ccs.neu.edu/home/fell/CS4300/Lectures/Ray-TracingFormulas.pdf
-float3 fix_ray_position(float3 cartesian_pos, float3 cartesian_velocity, float sphere_radius)
-{
-    cartesian_velocity = fast_normalize(cartesian_velocity);
-
-    float3 C = (float3){0,0,0};
-
-    float a = 1;
-    float b = 2 * dot(cartesian_velocity, (cartesian_pos - C));
-    float c = dot(C, C) + dot(cartesian_pos, cartesian_pos) - 2 * (dot(cartesian_pos, C)) - sphere_radius * sphere_radius;
-
-    float discrim = b*b - 4 * a * c;
-
-    if(discrim < 0)
-        return cartesian_pos;
-
-    float t0 = (-b - native_sqrt(discrim)) / (2 * a);
-    float t1 = (-b + native_sqrt(discrim)) / (2 * a);
-
-    float my_t = 0;
-
-    if(fabs(t0) < fabs(t1))
-        my_t = t0;
-    else
-        my_t = t1;
-
-    return cartesian_pos + my_t * cartesian_velocity;
 }
 
 __kernel void render_rays(__global struct lightray_simple* rays_in, __global int* ray_count, __write_only image2d_t screen,
