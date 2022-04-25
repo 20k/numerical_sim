@@ -1541,8 +1541,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
     bool hit_singularity = false;
 
-    bool last_skipped = false;
-
     float u_sq = (universe_size / 1.01f) * (universe_size / 1.01f);
 
     #pragma unroll(16)
