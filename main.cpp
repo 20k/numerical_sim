@@ -4817,6 +4817,66 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     return r_phys;
 }*/
 
+cl::image_with_mipmaps load_mipped_image(const std::string& fname, opencl_context& clctx)
+{
+    sf::Image img;
+    img.loadFromFile(fname);
+
+    std::vector<uint8_t> as_uint8;
+
+    for(int y=0; y < (int)img.getSize().y; y++)
+    {
+        for(int x=0; x < (int)img.getSize().x; x++)
+        {
+            auto col = img.getPixel(x, y);
+
+            as_uint8.push_back(col.r);
+            as_uint8.push_back(col.g);
+            as_uint8.push_back(col.b);
+            as_uint8.push_back(col.a);
+        }
+    }
+
+    texture_settings bsett;
+    bsett.width = img.getSize().x;
+    bsett.height = img.getSize().y;
+    bsett.is_srgb = false;
+
+    texture opengl_tex;
+    opengl_tex.load_from_memory(bsett, &as_uint8[0]);
+
+    #define MIP_LEVELS 20
+
+    int max_mips = floor(log2(std::min(img.getSize().x, img.getSize().y))) + 1;
+
+    max_mips = std::min(max_mips, MIP_LEVELS);
+
+    cl::image_with_mipmaps image_mipped(clctx.ctx);
+    image_mipped.alloc((vec2i){img.getSize().x, img.getSize().y}, max_mips, {CL_RGBA, CL_FLOAT});
+
+    int swidth = img.getSize().x;
+    int sheight = img.getSize().y;
+
+    for(int i=0; i < max_mips; i++)
+    {
+        printf("I is %i\n", i);
+
+        int cwidth = swidth;
+        int cheight = sheight;
+
+        swidth /= 2;
+        sheight /= 2;
+
+        std::vector<vec4f> converted = opengl_tex.read(i);
+
+        assert((int)converted.size() == (cwidth * cheight));
+
+        image_mipped.write(clctx.cqueue, (char*)&converted[0], vec<2, size_t>{0, 0}, vec<2, size_t>{cwidth, cheight}, i);
+    }
+
+    return image_mipped;
+}
+
 struct lightray
 {
     cl_float4 pos;
@@ -4899,6 +4959,8 @@ int main()
     };
 
     std::thread async_u(u_thread);
+
+    cl::image_with_mipmaps background_mipped = load_mipped_image("background.png", clctx);
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 

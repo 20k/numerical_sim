@@ -1477,7 +1477,6 @@ void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, 
     *out = (float3){d0, d1, d2};
 }
 
-
 __kernel
 void calculate_adm_texture_coordinates(__global struct lightray_simple* finished_rays, __global float2* texture_coordinates, int width, int height,
                                        float3 camera_pos, float4 camera_quat,
@@ -1759,15 +1758,17 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     rays_terminated[y * width + x] = ray_out;
 }
 
+float4 read_mipmap(image2d_t mipmap1, sampler_t sam, float2 pos, float lod)
+{
+    return read_imagef(mipmap1, sam, pos, lod);
+}
+
 __kernel void render_rays(__global struct lightray_simple* rays_in, __global int* ray_count, __write_only image2d_t screen,
                           STANDARD_ARGS(),
                           STANDARD_DERIVS(),
                           float scale, int4 dim, int width, int height)
 {
     int idx = get_global_id(0);
-
-    //if(idx >= *ray_count)
-    //    return;
 
     if(idx >= width * height)
         return;
