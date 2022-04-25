@@ -4548,7 +4548,7 @@ value dot_metric(const tensor<value, N>& v1_upper, const tensor<value, N>& v2_up
 ///https://arxiv.org/pdf/1208.3927.pdf (28a)
 void loop_geodesics(equation_context& ctx, vec3f dim)
 {
-    ctx.order = 1;
+    ctx.order = 2;
 
     standard_arguments args(ctx);
 
@@ -4567,7 +4567,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
     vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
 
-    for(int i=0; i < 3; i++)
+    /*for(int i=0; i < 3; i++)
     {
         value v = diff1(ctx, args.gA, i);
 
@@ -4604,7 +4604,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         value v = diff1(ctx, args.X, i);
 
         ctx.alias(v, args.dX.idx(i));
-    }
+    }*/
 
     tensor<value, 3, 3> digB;
 
