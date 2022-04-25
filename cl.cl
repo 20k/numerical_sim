@@ -1522,6 +1522,23 @@ void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, 
     *out = (float3){d0, d1, d2};
 }
 
+float get_static_verlet_ds(float3 Xpos, __global float* X, float scale, int4 dim)
+{
+    float X_far = 0.9f;
+    float X_near = 0.6f;
+
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float BH_X = buffer_read_linear(X, voxel_pos, dim);
+
+    float my_fraction = (clamp(BH_X, X_near, X_far) - X_near) / (X_far - X_near);
+
+    my_fraction = clamp(my_fraction, 0.f, 1.f);
+
+    return mix(0.4f, 4.f, my_fraction);
+}
+
 __kernel
 void trace_rays(__global struct lightray_simple* rays_in, __global struct lightray_simple* rays_terminated,
                 STANDARD_ARGS(),
@@ -1543,22 +1560,77 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
     float u_sq = (universe_size / 1.01f) * (universe_size / 1.01f);
 
+    float3 VHalf = (float3)(0,0,0);
+    float3 VFull_approx = (float3)(0,0,0);
+
+    float ds = 0;
+
+    ///so: this performs the first two iterations of verlet early
+    ///this means that the main verlet loop does not contain separate memory reads, resulting in a 40ms -> 28ms speedup due to
+    ///optimisation
+    #define VERLET_2
+    #ifdef VERLET_2
+    {
+        ds = get_static_verlet_ds(Xpos, X, scale, dim);
+
+        float3 ABase;
+        calculate_V_derivatives(&ABase, Xpos, vel, scale, dim, ALL_ARGS());
+
+        VHalf = vel + 0.5f * ABase * ds;
+
+        VFull_approx = vel + ABase * ds;
+
+        float3 XDiff;
+        velocity_to_XDiff(&XDiff, Xpos, VHalf, scale, dim, ALL_ARGS());
+
+        float3 XFull = Xpos + XDiff * ds;
+
+        Xpos = XFull;
+    }
+    #endif // VERLET_2
+
     #pragma unroll(16)
     for(int iteration=0; iteration < 256; iteration++)
     {
-        float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
-        voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+        #ifdef VERLET_2
+        ///finish previous iteration
+        {
+            float3 AFull_approx;
+            calculate_V_derivatives(&AFull_approx, Xpos, VFull_approx, scale, dim, ALL_ARGS());
 
-        float BH_X = buffer_read_linear(X, voxel_pos, dim);
+            float3 VFull = VHalf + 0.5f * AFull_approx * ds;
 
-        float X_far = 0.9f;
-        float X_near = 0.6f;
+            vel = VFull;
+        }
 
-        float my_fraction = (clamp(BH_X, X_near, X_far) - X_near) / (X_far - X_near);
+        ///next iteration
+        ds = get_static_verlet_ds(Xpos, X, scale, dim);
 
-        my_fraction = clamp(my_fraction, 0.f, 1.f);
+        float3 XDiff;
 
-        #define VERLET
+        {
+            float3 ABase;
+            calculate_V_derivatives(&ABase, Xpos, vel, scale, dim, ALL_ARGS());
+
+            VHalf = vel + 0.5f * ABase * ds;
+
+            VFull_approx = vel + ABase * ds;
+
+            velocity_to_XDiff(&XDiff, Xpos, VHalf, scale, dim, ALL_ARGS());
+
+            float3 XFull = Xpos + XDiff * ds;
+
+            Xpos = XFull;
+        }
+
+        if(length_sq(Xpos) >= u_sq)
+        {
+            break;
+        }
+
+        #endif // VERLET_2
+
+        //#define VERLET
         #ifdef VERLET
         float ds = mix(0.4f, 4.f, my_fraction);
 
