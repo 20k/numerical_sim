@@ -1766,7 +1766,9 @@ float4 read_mipmap(image2d_t mipmap1, sampler_t sam, float2 pos, float lod)
 __kernel void render_rays(__global struct lightray_simple* rays_in, __global int* ray_count, __write_only image2d_t screen,
                           STANDARD_ARGS(),
                           STANDARD_DERIVS(),
-                          float scale, int4 dim, int width, int height)
+                          float scale, int4 dim, int width, int height,
+                          __read_only image2d_t mip_background,
+                          __global float2* texture_coordinates, sampler_t sam)
 {
     int idx = get_global_id(0);
 

@@ -4960,6 +4960,16 @@ int main()
 
     std::thread async_u(u_thread);
 
+    cl_sampler_properties sampler_props[] = {
+    CL_SAMPLER_NORMALIZED_COORDS, CL_TRUE,
+    CL_SAMPLER_ADDRESSING_MODE, CL_ADDRESS_REPEAT,
+    CL_SAMPLER_FILTER_MODE, CL_FILTER_LINEAR,
+    CL_SAMPLER_MIP_FILTER_MODE_KHR, CL_FILTER_LINEAR,
+    0
+    };
+
+    cl_sampler sam = clCreateSamplerWithProperties(clctx.ctx.native_context.data, sampler_props, nullptr);
+
     cl::image_with_mipmaps background_mipped = load_mipped_image("background.png", clctx);
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
@@ -5096,6 +5106,9 @@ int main()
 
     cl::buffer ray_count_terminated(clctx.ctx);
     ray_count_terminated.alloc(sizeof(cl_int));
+
+    cl::buffer texture_coordinates(clctx.ctx);
+    texture_coordinates.alloc(sizeof(cl_float2) * width * height);
 
     cpu_mesh_settings base_settings;
 
@@ -5276,6 +5289,8 @@ int main()
             ray_buffer[0].alloc(sizeof(cl_float) * 10 * width * height);
             ray_buffer[1].alloc(sizeof(cl_float) * 10 * width * height);
             rays_terminated.alloc(sizeof(cl_float) * 10 * width * height);
+
+            texture_coordinates.alloc(sizeof(cl_float2) * width * height);
         }
 
         rtex[which_texture].acquire(clctx.cqueue);
@@ -5486,6 +5501,31 @@ int main()
                 }
 
                 {
+                    cl::args texture_args;
+                    texture_args.push_back(rays_terminated.as_device_read_only());
+                    texture_args.push_back(texture_coordinates);
+                    texture_args.push_back(width);
+                    texture_args.push_back(height);
+                    texture_args.push_back(ccamera_pos);
+                    texture_args.push_back(ccamera_quat);
+
+                    for(auto& i : last_valid_buffer)
+                    {
+                        texture_args.push_back(i.as_device_read_only());
+                    }
+
+                    for(auto& i : last_valid_thin)
+                    {
+                        texture_args.push_back(i.as_device_read_only());
+                    }
+
+                    texture_args.push_back(scale);
+                    texture_args.push_back(clsize);
+
+                    clctx.cqueue.exec("calculate_adm_texture_coordinates", texture_args, {width, height}, {8, 8});
+                }
+
+                {
                     cl::args render_args;
                     render_args.push_back(rays_terminated.as_device_read_only());
                     render_args.push_back(ray_count_terminated.as_device_read_only());
@@ -5505,6 +5545,9 @@ int main()
                     render_args.push_back(clsize);
                     render_args.push_back(width);
                     render_args.push_back(height);
+                    render_args.push_back(background_mipped);
+                    render_args.push_back(texture_coordinates);
+                    render_args.push_back(sam);
 
                     clctx.cqueue.exec("render_rays", render_args, {width * height}, {128});
                 }
