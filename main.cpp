@@ -4548,7 +4548,7 @@ value dot_metric(const tensor<value, N>& v1_upper, const tensor<value, N>& v2_up
 ///https://arxiv.org/pdf/1208.3927.pdf (28a)
 void loop_geodesics(equation_context& ctx, vec3f dim)
 {
-    ctx.order = 2;
+    ctx.order = 1;
 
     standard_arguments args(ctx);
 
