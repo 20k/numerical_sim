@@ -2799,9 +2799,9 @@ tensor<value, 3> calculate_momentum_constraint(equation_context& ctx,
                                     const tensor<value, 3, 3>& cA, const value& X, const value& K)
 {
     value X_clamped = max(X, 0.001f);
-
     tensor<value, 3> Mi;
 
+    #if 0
     tensor<value, 3, 3> second_cAij = raise_second_index(cA, cY, icY);
 
     for(int i=0; i < 3; i++)
@@ -2833,6 +2833,35 @@ tensor<value, 3> calculate_momentum_constraint(equation_context& ctx,
         value s4 = -(2.f/3.f) * diff1(ctx, K, i);
 
         Mi.idx(i) = s1 + s2 + s3 + s4;
+    }
+    #endif // 0
+
+    tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, cA,cY, icY);
+
+    tensor<value, 3, 3> mixed_cAij = raise_index(cA, cY, icY);
+
+    for(int i=0; i < 3; i++)
+    {
+        value s1 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            for(int n=0; n < 3; n++)
+            {
+                s1 += icY.idx(m, n) * dmni.idx(m, n, i);
+            }
+        }
+
+        value s2 = -(2.f/3.f) * diff1(ctx, K, i);
+
+        value s3 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            s3 += -(3.f/2.f) * mixed_cAij.idx(m, i) * diff1(ctx, X, m) / X_clamped;
+        }
+
+        Mi.idx(i) = s1 + s2 + s3;
     }
 
     return Mi;
@@ -3361,6 +3390,10 @@ void build_cA(equation_context& ctx)
 
     #define AIJ_SIGMA
     #ifdef AIJ_SIGMA
+    tensor<value, 3> Mi = calculate_momentum_constraint(ctx, cY, icY, cA, args.X, args.K);
+
+    ctx.pin(Mi);
+
     tensor<value, 3> gB_lower = lower_index(gB, cY);
 
     tensor<value, 3, 3> BiMj;
@@ -3369,7 +3402,7 @@ void build_cA(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            BiMj.idx(i, j) = gB_lower.idx(i) * calculate_momentum_constraint(ctx, cY, unpinned_icY, cA, args.X, args.K).idx(j);
+            BiMj.idx(i, j) = gB_lower.idx(i) * Mi.idx(j);
         }
     }
 
