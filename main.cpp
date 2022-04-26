@@ -3137,7 +3137,7 @@ void build_cY(equation_context& ctx)
     }
     #endif // USE_DTCYIJ_MODIFICATION
 
-    float K1 = 0.1f;
+    float K1 = 0.9f;
     dtcYij = dtcYij - K1 * args.gA * calculate_hamiltonian(ctx, args) * args.cY.to_tensor();
 
     for(int i=0; i < 6; i++)
