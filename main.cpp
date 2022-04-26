@@ -1493,6 +1493,7 @@ struct standard_arguments
     value gA_X;
 
     metric<value, 3, 3> Yij;
+    inverse_metric<value, 3, 3> iYij;
     tensor<value, 3, 3> Kij;
 
     tensor<value, 3> momentum_constraint;
@@ -1582,6 +1583,7 @@ struct standard_arguments
             for(int j=0; j < 3; j++)
             {
                 Yij.idx(i, j) = cY.idx(i, j) / max(X, 0.001f);
+                iYij.idx(i, j) = X * icY.idx(i, j);
             }
         }
 
@@ -3094,6 +3096,36 @@ tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& 
     ctx.pin(xgARij);
 
     return xgARij;
+}
+
+value calculate_hamiltonian(const metric<value, 3, 3>& Yij, const inverse_metric<value, 3, 3>& iYij, const tensor<value, 3, 3>& Rij, const value& K, const tensor<value, 3, 3>& Kij)
+{
+    value R = gpu_trace(Rij, Yij, iYij);
+
+    tensor<value, 3, 3> KIJ = raise_both(Kij, Yij, iYij);
+
+    value Kij_KIJ = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            Kij_KIJ += Kij.idx(i, j) * KIJ.idx(i, j);
+        }
+    }
+
+    return R + K*K - Kij_KIJ;
+}
+
+value calculate_hamiltonian(equation_context& ctx, standard_arguments& args)
+{
+    auto icY = args.cY.invert();
+
+    tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, args.cY);
+
+    tensor<value, 3, 3> xgARij = calculate_xgARij(ctx, args, icY, christoff1, args.christoff2);
+
+    return calculate_hamiltonian(args.Yij, args.iYij, (xgARij / (args.X * args.gA)), args.K, args.Kij);
 }
 
 inline
@@ -4801,6 +4833,12 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.81
 }
 
+void build_hamiltonian_constraint(equation_context& ctx)
+{
+    standard_arguments args(ctx);
+
+    ctx.add("HAMILTONIAN", calculate_hamiltonian(ctx, args));
+}
 
 /*float fisheye(float r)
 {
@@ -5025,6 +5063,9 @@ int main()
     equation_context ctx13;
     build_momentum_constraint(ctx13);
 
+    equation_context ctx14;
+    build_hamiltonian_constraint(ctx14);
+
     ctx1.build(argument_string, 0);
     ctx4.build(argument_string, 3);
     ctx5.build(argument_string, 4);
@@ -5035,6 +5076,7 @@ int main()
     ctx11.build(argument_string, 10);
     ctx12.build(argument_string, 11);
     ctx13.build(argument_string, 12);
+    ctx14.build(argument_string, "unused1");
 
     dtcY.build(argument_string, "tcy");
     dtcA.build(argument_string, "tca");
