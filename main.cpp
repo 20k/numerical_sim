@@ -3398,8 +3398,10 @@ void build_cA(equation_context& ctx)
 
             #ifdef DAMP_DTCAIJ2
 
+            float config = 0.25f;
+
             dtcAij.idx(i, j) += 0.0001f * gA * momentum_TF.idx(i, j)
-                             -(3.f/5.f) * BiMj_TF.idx(i, j)
+                             -(3.f/5.f) * config * BiMj_TF.idx(i, j)
                              -(1/10.f) * BiAj_TF.idx(i, j)
                              -(1.f/3.f) * cY.idx(i, j) * BkAk;
 
