@@ -20,7 +20,7 @@
 
 /**
 current paper set
-https://arxiv.org/pdf/gr-qc/0505055.pdf - fourth order numerical paper, finite differencing
+https://arxiv.org/pdf/gr-qc/0505055.pdf - fourth order numerical paper, finite differencing - uses the hamiltonian constraint to calculate R
 https://arxiv.org/pdf/gr-qc/0511048.pdf - good reference, th eone with lies and bssn
 https://arxiv.org/pdf/gr-qc/0206072.pdf - binary initial conditions, caij
 https://link.springer.com/article/10.12942/lrr-2000-5#Equ48 - initial conditions
@@ -122,11 +122,15 @@ struct equation_context
     std::vector<std::pair<value, value>> aliases;
     bool uses_linear = false;
     bool debug = false;
+    bool neverpin = false;
 
     int order = 2;
 
     void pin(value& v)
     {
+        if(neverpin)
+            return;
+
         for(auto& i : temporaries)
         {
             if(dual_types::equivalent(v, i.second))
@@ -2949,54 +2953,6 @@ void build_momentum_constraint(equation_context& ctx)
 }
 
 inline
-void build_cY(equation_context& ctx)
-{
-    standard_arguments args(ctx);
-
-    metric<value, 3, 3> unpinned_cY = args.cY;
-
-    ctx.pin(args.cY);
-
-    tensor<value, 3> bigGi_lower = lower_index(args.bigGi, args.cY);
-    tensor<value, 3> gB_lower = lower_index(args.gB, args.cY);
-
-    ctx.pin(bigGi_lower);
-    ctx.pin(gB_lower);
-
-    tensor<value, 3, 3> lie_cYij = gpu_lie_derivative_weight(ctx, args.gB, unpinned_cY);
-
-    ///https://arxiv.org/pdf/gr-qc/0511048.pdf (1)
-    ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.66
-    tensor<value, 3, 3> dtcYij = -2 * args.gA * args.cA + lie_cYij;
-
-    ///makes it to 50 with this enabled
-    #define USE_DTCYIJ_MODIFICATION
-    #ifdef USE_DTCYIJ_MODIFICATION
-    ///https://arxiv.org/pdf/1205.5111v1.pdf 46
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            float sigma = 4/5.f;
-
-            dtcYij.idx(i, j) += sigma * 0.5f * (gB_lower.idx(i) * bigGi_lower.idx(j) + gB_lower.idx(j) * bigGi_lower.idx(i));
-
-            dtcYij.idx(i, j) += -(1.f/5.f) * args.cY.idx(i, j) * sum_multiply(args.gB, bigGi_lower);
-        }
-    }
-    #endif // USE_DTCYIJ_MODIFICATION
-
-    for(int i=0; i < 6; i++)
-    {
-        std::string name = "dtcYij" + std::to_string(i);
-
-        vec2i idx = args.linear_indices[i];
-
-        ctx.add(name, dtcYij.idx(idx.x(), idx.y()));
-    }
-}
-
-inline
 tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& args, const inverse_metric<value, 3, 3>& icY, const tensor<value, 3, 3, 3>& christoff1, const tensor<value, 3, 3, 3>& christoff2)
 {
     value gA_X = args.gA_X;
@@ -3098,11 +3054,11 @@ tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& 
     return xgARij;
 }
 
-value calculate_hamiltonian(const metric<value, 3, 3>& Yij, const inverse_metric<value, 3, 3>& iYij, const tensor<value, 3, 3>& Rij, const value& K, const tensor<value, 3, 3>& Kij)
+value calculate_hamiltonian(const metric<value, 3, 3>& cY, const inverse_metric<value, 3, 3>& icY, const metric<value, 3, 3>& Yij, const inverse_metric<value, 3, 3>& iYij, const tensor<value, 3, 3>& Rij, const value& K, const tensor<value, 3, 3>& cA)
 {
     value R = gpu_trace(Rij, Yij, iYij);
 
-    tensor<value, 3, 3> KIJ = raise_both(Kij, Yij, iYij);
+    /*tensor<value, 3, 3> KIJ = raise_both(Kij, Yij, iYij);
 
     value Kij_KIJ = 0;
 
@@ -3112,9 +3068,21 @@ value calculate_hamiltonian(const metric<value, 3, 3>& Yij, const inverse_metric
         {
             Kij_KIJ += Kij.idx(i, j) * KIJ.idx(i, j);
         }
+    }*/
+
+    tensor<value, 3, 3> aIJ = raise_both(cA, cY, icY);
+
+    value aij_aIJ;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            aij_aIJ += cA.idx(i, j) * aIJ.idx(i, j);
+        }
     }
 
-    return R + K*K - Kij_KIJ;
+    return R + K*K - aij_aIJ;
 }
 
 value calculate_hamiltonian(equation_context& ctx, standard_arguments& args)
@@ -3125,7 +3093,58 @@ value calculate_hamiltonian(equation_context& ctx, standard_arguments& args)
 
     tensor<value, 3, 3> xgARij = calculate_xgARij(ctx, args, icY, christoff1, args.christoff2);
 
-    return calculate_hamiltonian(args.Yij, args.iYij, (xgARij / (args.X * args.gA)), args.K, args.Kij);
+    return calculate_hamiltonian(args.cY, icY, args.Yij, args.iYij, (xgARij / (max(args.X, 0.001f) * args.gA)), args.K, args.cA);
+}
+
+inline
+void build_cY(equation_context& ctx)
+{
+    standard_arguments args(ctx);
+
+    metric<value, 3, 3> unpinned_cY = args.cY;
+
+    //ctx.pin(args.cY);
+
+    tensor<value, 3> bigGi_lower = lower_index(args.bigGi, args.cY);
+    tensor<value, 3> gB_lower = lower_index(args.gB, args.cY);
+
+    ctx.pin(bigGi_lower);
+    ctx.pin(gB_lower);
+
+    tensor<value, 3, 3> lie_cYij = gpu_lie_derivative_weight(ctx, args.gB, unpinned_cY);
+
+    ///https://arxiv.org/pdf/gr-qc/0511048.pdf (1)
+    ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.66
+    tensor<value, 3, 3> dtcYij = -2 * args.gA * args.cA + lie_cYij;
+
+    ///makes it to 50 with this enabled
+    #define USE_DTCYIJ_MODIFICATION
+    #ifdef USE_DTCYIJ_MODIFICATION
+    ///https://arxiv.org/pdf/1205.5111v1.pdf 46
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            float sigma = 4/5.f;
+
+            dtcYij.idx(i, j) += sigma * 0.5f * (gB_lower.idx(i) * bigGi_lower.idx(j) + gB_lower.idx(j) * bigGi_lower.idx(i));
+
+            dtcYij.idx(i, j) += -(1.f/5.f) * args.cY.idx(i, j) * sum_multiply(args.gB, bigGi_lower);
+        }
+    }
+    #endif // USE_DTCYIJ_MODIFICATION
+
+    float K1 = 0.1f;
+    dtcYij = dtcYij - K1 * args.gA * calculate_hamiltonian(ctx, args) * args.cY.to_tensor();
+
+    for(int i=0; i < 6; i++)
+    {
+        std::string name = "dtcYij" + std::to_string(i);
+
+        vec2i idx = args.linear_indices[i];
+
+        ctx.add(name, dtcYij.idx(idx.x(), idx.y()));
+    }
 }
 
 inline
@@ -4835,6 +4854,8 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
 void build_hamiltonian_constraint(equation_context& ctx)
 {
+    ctx.neverpin = true;
+
     standard_arguments args(ctx);
 
     ctx.add("HAMILTONIAN", calculate_hamiltonian(ctx, args));

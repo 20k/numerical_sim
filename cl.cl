@@ -1197,6 +1197,8 @@ void render(STANDARD_ARGS(),
 
     //for(int z = 20; z < dim.z-20; z++)
 
+    float hamiltonian = 0;
+
     {
         float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim);
 
@@ -1234,6 +1236,8 @@ void render(STANDARD_ARGS(),
             ascalar = 0;*/
 
         max_scalar = max(ascalar, max_scalar);
+
+        hamiltonian = HAMILTONIAN;
     }
 
     float real = 0;
@@ -1257,7 +1261,12 @@ void render(STANDARD_ARGS(),
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 
-    float3 col = {real, max_scalar, max_scalar};
+    //float3 col = {real, max_scalar, max_scalar};
+
+    hamiltonian = fabs(hamiltonian) * 1000;
+    hamiltonian = clamp(hamiltonian, 0.f, 1.f);
+
+    float3 col = {hamiltonian, 0.f, 0.f};
 
     float3 lin_col = srgb_to_lin(col);
 
