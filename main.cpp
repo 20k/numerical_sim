@@ -85,6 +85,7 @@ https://arxiv.org/pdf/0908.1063.pdf - gives an estimate of black hole mass from 
 https://arxiv.org/pdf/0912.2920.pdf - z4c
 https://arxiv.org/pdf/astro-ph/0408492v1.pdf - kicks
 https://arxiv.org/pdf/2108.05119.pdf - apparently horizons
+https://arxiv.org/pdf/gr-qc/0209066.pdf - hamiltonian constraint damping
 */
 
 ///notes:
