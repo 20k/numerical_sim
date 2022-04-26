@@ -3154,8 +3154,9 @@ void build_cY(equation_context& ctx)
     }
     #endif // USE_DTCYIJ_MODIFICATION
 
+    #define BAD_HAMIDAMP
     #ifdef BAD_HAMIDAMP
-    float K1 = 0.9f;
+    float K1 = 1.5f;
     dtcYij = dtcYij - K1 * args.gA * calculate_hamiltonian(ctx, args) * args.cY.to_tensor();
     #endif // BAD_HAMIDAMP
 
