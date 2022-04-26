@@ -3088,6 +3088,23 @@ value calculate_hamiltonian(const metric<value, 3, 3>& cY, const inverse_metric<
     return R + ((D - 2) / (D - 1)) * K*K - aij_aIJ;
 }
 
+value calculate_R_from_hamiltonian(const value& K, const tensor<value, 3, 3>& cA, const unit_metric<value, 3, 3>& cY, const inverse_metric<value, 3, 3>& icY)
+{
+    tensor<value, 3, 3> aIJ = raise_both(cA, cY, icY);
+
+    value aij_aIJ;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            aij_aIJ += cA.idx(i, j) * aIJ.idx(i, j);
+        }
+    }
+
+    return -((2.f/3.f) * K * K - aij_aIJ);
+}
+
 value calculate_hamiltonian(equation_context& ctx, standard_arguments& args)
 {
     auto icY = args.cY.invert();
@@ -3137,8 +3154,10 @@ void build_cY(equation_context& ctx)
     }
     #endif // USE_DTCYIJ_MODIFICATION
 
+    #ifdef BAD_HAMIDAMP
     float K1 = 0.9f;
     dtcYij = dtcYij - K1 * args.gA * calculate_hamiltonian(ctx, args) * args.cY.to_tensor();
+    #endif // BAD_HAMIDAMP
 
     for(int i=0; i < 6; i++)
     {
@@ -3263,9 +3282,9 @@ void build_cA(equation_context& ctx)
     tensor<value, 3, 3> dtcAij;
 
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf replaced with definition under bssn aux
-    tensor<value, 3, 3> with_trace = -Xdidja + xgARij;
+    //tensor<value, 3, 3> with_trace = -Xdidja + xgARij;
 
-    tensor<value, 3, 3> without_trace = gpu_trace_free(with_trace, cY, icY);
+    //tensor<value, 3, 3> without_trace = gpu_trace_free(with_trace, cY, icY);
 
     #ifdef BETTERDAMP_DTCAIJ
     tensor<value, 3, 3> momentum_deriv;
@@ -3317,9 +3336,13 @@ void build_cA(equation_context& ctx)
             ///therefore I think constant factor multiplications to the metric make no difference to the trace calculation, so we can use
             ///cY here instead of Yij
 
+            value tf1 = gpu_trace_free(-Xdidja, cY, icY).idx(i, j);
+
+            value tf2 = xgARij.idx(i, j) - gA * (1.f/3.f) * cY.idx(i, j) * calculate_R_from_hamiltonian(K, cA, cY, icY);
+
             ///not convinced its correct to push x inside of trace free?
             ///what if the riemann quantity is made trace free by cY instead of Yij like I assumed?
-            value p1 = without_trace.idx(i, j);
+            value p1 = tf1 + tf2;
 
             value p2 = gA * (K * cA.idx(i, j) - 2 * sum);
 
