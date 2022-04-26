@@ -463,7 +463,7 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim)
 
     //return (r - sponge_r0) / (sponge_r1 - sponge_r0);
 
-    float sigma = (sponge_r1 - sponge_r0) / 2;
+    float sigma = (sponge_r1 - sponge_r0) / 3;
     return native_exp(-pow((r - sponge_r1) / sigma, 2));
 }
 
