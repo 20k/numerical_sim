@@ -2829,7 +2829,8 @@ void build_momentum_constraint(equation_context& ctx)
 
     //#define BETTERDAMP_DTCAIJ
     //#define DAMP_DTCAIJ
-    #if defined(DAMP_DTCAIJ) || defined(BETTERDAMP_DTCAIJ)
+    #define DAMP_DTCAIJ2
+    #if defined(DAMP_DTCAIJ) || defined(BETTERDAMP_DTCAIJ) || defined(DAMP_DTCAIJ2)
     #define CALCULATE_MOMENTUM_CONSTRAINT
     #endif // defined
 
@@ -3289,8 +3290,61 @@ void build_cA(equation_context& ctx)
     }
 
     ctx.pin(symmetric_momentum_deriv);
-
     #endif // BETTERDAMP_DTCAIJ
+
+    #ifdef DAMP_DTCAIJ2
+    tensor<value, 3> Ai;
+
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                sum += icY.idx(j, k) * diff1(ctx, cA.idx(j, k), i) + cA.idx(j, k) * diff1(ctx, unpinned_icY.idx(j, k), i);
+            }
+        }
+
+        Ai.idx(i) = sum;
+    }
+
+    tensor<value, 3, 3> momentum_deriv;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            momentum_deriv.idx(i, j) = diff1(ctx, args.momentum_constraint.idx(i), j);
+        }
+    }
+
+    tensor<value, 3> gB_lower = lower_index(gB, cY);
+
+    tensor<value, 3, 3> BiMj;
+    tensor<value, 3, 3> BiAj;
+    value BkAk = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            BiMj.idx(i, j) = gB_lower.idx(i) * args.momentum_constraint.idx(j);
+            BiAj.idx(i, j) = gB_lower.idx(i) * Ai.idx(j);
+        }
+    }
+
+    for(int k=0; k < 3; k++)
+    {
+        BkAk += gB.idx(k) * Ai.idx(k);
+    }
+
+    tensor<value, 3, 3> momentum_TF = gpu_trace_free(momentum_deriv, cY, icY);
+    tensor<value, 3, 3> BiMj_TF = gpu_trace_free(BiMj, cY, icY);
+    tensor<value, 3, 3> BiAj_TF = gpu_trace_free(BiAj, cY, icY);
+
+    #endif // DAMP_DTCAIJ2
 
     for(int i=0; i < 3; i++)
     {
@@ -3341,6 +3395,15 @@ void build_cA(equation_context& ctx)
                                                 (gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)
                                                  + gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(j, i));
             #endif // DAMP_DTCAIJ
+
+            #ifdef DAMP_DTCAIJ2
+
+            dtcAij.idx(i, j) += 0.0001f * gA * momentum_TF.idx(i, j)
+                             -(3.f/5.f) * BiMj_TF.idx(i, j)
+                             -(1/10.f) * BiAj_TF.idx(i, j)
+                             -(1.f/3.f) * cY.idx(i, j) * BkAk;
+
+            #endif // DAMP_DTCAIJ2
 
             #ifdef BETTERDAMP_DTCAIJ
             value F_a = scale * gA;
