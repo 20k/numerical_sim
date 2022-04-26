@@ -3154,7 +3154,7 @@ void build_cY(equation_context& ctx)
     }
     #endif // USE_DTCYIJ_MODIFICATION
 
-    #define BAD_HAMIDAMP
+    //#define BAD_HAMIDAMP
     #ifdef BAD_HAMIDAMP
     float K1 = 1.5f;
     dtcYij = dtcYij - K1 * args.gA * calculate_hamiltonian(ctx, args) * args.cY.to_tensor();
@@ -3642,6 +3642,23 @@ void build_K(equation_context& ctx)
     tensor<value, 3, 3> icAij = raise_both(cA, cY, icY);
 
     value dtK = sum(tensor_upwind(ctx, gB, K)) - sum_multiply(icY.to_tensor(), Xdidja) + gA * (sum_multiply(icAij, cA) + (1/3.f) * K * K);
+
+    #define EXPERIMENTAL_H_DAMP
+    #ifdef EXPERIMENTAL_H_DAMP
+    value hamil = calculate_hamiltonian(ctx, args);
+
+    auto step = [](const value& in)
+    {
+        return dual_if(in < 0,
+        [](){return 1;},
+        [](){return 0;});
+    };
+
+    value violation = 0.05f * step(hamil) * sqrt(fabs(hamil));
+
+    dtK += violation;
+
+    #endif // EXPERIMENTAL_H_DAMP
 
     ctx.add("dtK", dtK);
 }
