@@ -3082,7 +3082,10 @@ value calculate_hamiltonian(const metric<value, 3, 3>& cY, const inverse_metric<
         }
     }
 
-    return R + K*K - aij_aIJ;
+    float D = 4;
+
+    ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf
+    return R + ((D - 2) / (D - 1)) * K*K - aij_aIJ;
 }
 
 value calculate_hamiltonian(equation_context& ctx, standard_arguments& args)
