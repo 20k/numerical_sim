@@ -1135,6 +1135,38 @@ void dissipate_single(__global ushort4* points, int point_count,
 }
 
 __kernel
+void dissipate_single_unidir(__global ushort4* points, int point_count,
+                             __global float* buffer, __global float* obuffer,
+                             float coefficient,
+                             float scale, int4 dim, float timestep)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    if(invalid_second(ix, iy, iz, dim))
+        return;
+
+    int index = IDX(ix, iy, iz);
+
+    float damp = 1;
+
+    float TEMPORARIES9;
+
+    float dissipate_single = KREISS_DISSIPATE_SINGULAR;
+
+    obuffer[index] = buffer[index] + damp * dissipate_single * timestep;
+}
+
+__kernel
 void render(STANDARD_ARGS(),
             __global DERIV_PRECISION* dcYij0, __global DERIV_PRECISION* dcYij1, __global DERIV_PRECISION* dcYij2, __global DERIV_PRECISION* dcYij3, __global DERIV_PRECISION* dcYij4, __global DERIV_PRECISION* dcYij5, __global DERIV_PRECISION* dcYij6, __global DERIV_PRECISION* dcYij7, __global DERIV_PRECISION* dcYij8, __global DERIV_PRECISION* dcYij9, __global DERIV_PRECISION* dcYij10, __global DERIV_PRECISION* dcYij11, __global DERIV_PRECISION* dcYij12, __global DERIV_PRECISION* dcYij13, __global DERIV_PRECISION* dcYij14, __global DERIV_PRECISION* dcYij15, __global DERIV_PRECISION* dcYij16, __global DERIV_PRECISION* dcYij17,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,

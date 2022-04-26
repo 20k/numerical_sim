@@ -510,6 +510,31 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         }
     };
 
+    auto dissipate_unidir = [&](auto& in, auto& out)
+    {
+        for(int i=0; i < buffer_set::buffer_count; i++)
+        {
+            cl::args diss;
+
+            diss.push_back(points_set.second_derivative_points);
+            diss.push_back(points_set.second_count);
+
+            diss.push_back(in[i].as_device_read_only());
+            diss.push_back(out[i]);
+
+            float coeff = dissipation_coefficients[i];
+
+            diss.push_back(coeff);
+            diss.push_back(scale);
+            diss.push_back(clsize);
+            diss.push_back(timestep);
+
+            if(coeff == 0)
+                continue;
+
+            mqueue.exec("dissipate_single_unidir", diss, {points_set.second_count}, {128});
+        }
+    };
     ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
     //#define RK4
     #ifdef RK4
@@ -622,12 +647,15 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
         if(i != iterations - 1)
         {
+            //#define INTERMEDIATE_DISSIPATE
             #ifdef INTERMEDIATE_DISSIPATE
             dissipate(base_yn, b2.buffers);
             #endif
 
-            enforce_constraints(b2.buffers);
-            std::swap(b2, scratch);
+            dissipate_unidir(b2.buffers, scratch.buffers);
+
+            enforce_constraints(scratch.buffers);
+            //std::swap(b2, scratch);
         }
     }
     #endif
@@ -691,7 +719,11 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
     copy_valid(generic_data[(which_data + 1) % 2].buffers, generic_data[which_data].buffers);
     #endif // DISSIPATE_SELF
 
-    dissipate(get_input().buffers, get_output().buffers);
+    dissipate_unidir(b2.buffers, scratch.buffers);
+
+    std::swap(b2, scratch);;
+
+    //dissipate(get_input().buffers, get_output().buffers);
 
     {
         cl::args cleaner;
