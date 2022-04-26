@@ -3099,23 +3099,43 @@ tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& 
     return xgARij;
 }
 
-value calculate_hamiltonian(const metric<value, 3, 3>& Yij, const inverse_metric<value, 3, 3>& iYij, const tensor<value, 3, 3>& Rij, const value& K, const tensor<value, 3, 3>& Kij)
+value calculate_hamiltonian(const metric<value, 3, 3>& cY, const inverse_metric<value, 3, 3>& icY, const metric<value, 3, 3>& Yij, const inverse_metric<value, 3, 3>& iYij, const tensor<value, 3, 3>& Rij, const value& K, const tensor<value, 3, 3>& cA)
 {
     value R = gpu_trace(Rij, Yij, iYij);
 
-    tensor<value, 3, 3> KIJ = raise_both(Kij, Yij, iYij);
+    tensor<value, 3, 3> aIJ = raise_both(cA, cY, icY);
 
-    value Kij_KIJ = 0;
+    value aij_aIJ;
 
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
-            Kij_KIJ += Kij.idx(i, j) * KIJ.idx(i, j);
+            aij_aIJ += cA.idx(i, j) * aIJ.idx(i, j);
         }
     }
 
-    return R + K*K - Kij_KIJ;
+    float D = 4;
+
+    ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf
+    return R + ((D - 2) / (D - 1)) * K*K - aij_aIJ;
+}
+
+value calculate_R_from_hamiltonian(const value& K, const tensor<value, 3, 3>& cA, const unit_metric<value, 3, 3>& cY, const inverse_metric<value, 3, 3>& icY)
+{
+    tensor<value, 3, 3> aIJ = raise_both(cA, cY, icY);
+
+    value aij_aIJ;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            aij_aIJ += cA.idx(i, j) * aIJ.idx(i, j);
+        }
+    }
+
+    return -((2.f/3.f) * K * K - aij_aIJ);
 }
 
 value calculate_hamiltonian(equation_context& ctx, standard_arguments& args)
@@ -3126,8 +3146,9 @@ value calculate_hamiltonian(equation_context& ctx, standard_arguments& args)
 
     tensor<value, 3, 3> xgARij = calculate_xgARij(ctx, args, icY, christoff1, args.christoff2);
 
-    return calculate_hamiltonian(args.Yij, args.iYij, (xgARij / (args.X * args.gA)), args.K, args.Kij);
+    return calculate_hamiltonian(args.cY, icY, args.Yij, args.iYij, (xgARij / (max(args.X, 0.001f) * args.gA)), args.K, args.cA);
 }
+
 
 inline
 void build_cA(equation_context& ctx)
