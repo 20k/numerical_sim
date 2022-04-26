@@ -86,6 +86,7 @@ https://arxiv.org/pdf/0912.2920.pdf - z4c
 https://arxiv.org/pdf/astro-ph/0408492v1.pdf - kicks
 https://arxiv.org/pdf/2108.05119.pdf - apparently horizons
 https://arxiv.org/pdf/gr-qc/0209066.pdf - hamiltonian constraint damping
+https://air.unipr.it/retrieve/handle/11381/2783927/20540/0912.2920.pdf - relativistic hydrodynamics
 */
 
 ///notes:
