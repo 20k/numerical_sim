@@ -88,10 +88,12 @@ std::vector<cl_ushort4> get_harmonic_extraction_points(vec3i dim, int extract_pi
 
         ret_as_int.push_back({f0.x() + 1, f0.y() + 1, f0.z() + 1});
 
+        ret_as_int.push_back({f0.x(), f0.y(), centre.z()});
+
         return 0.f;
     };
 
-    int n = 64;
+    int n = 8;
 
     (void)spherical_integrate(func, n);
 
@@ -193,7 +195,7 @@ dual_types::complex<float> get_harmonic(const std::vector<cl_ushort4>& points, c
         return (result * conjugate(harmonic)).imaginary;
     };
 
-    int n = 64;
+    int n = 8;
 
     return {spherical_integrate(func_real, n), spherical_integrate(func_imaginary, n)};
 

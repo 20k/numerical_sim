@@ -42,12 +42,26 @@ auto integrate_1d(const T& func, int n, float upper, float lower)
     using variable_type = decltype(func(0.f));
     variable_type sum =  0;
 
-    int pieces = 1;
+    int pieces = 8 * n;
     float step = (upper - lower) / pieces;
+
+    /*for(int i=0; i < pieces; i++)
+    {
+        sum += integrate_1d_raw(func, n, i * step + lower, (i + 1) * step + lower);
+    }*/
 
     for(int i=0; i < pieces; i++)
     {
-        sum += integrate_1d_raw(func, n, i * step + lower, (i + 1) * step + lower);
+        float base_x = i * step;
+        float next_x = (i + 1) * step;
+
+        float real_x = (base_x + next_x) / 2.f;
+
+        auto i_1 = func(real_x);
+
+        auto area = i_1 * (next_x - base_x);
+
+        sum += area;
     }
 
     return sum;
