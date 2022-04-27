@@ -110,7 +110,7 @@ std::vector<cl_ushort4> get_harmonic_extraction_points(vec3i dim, int extract_pi
     return ret;
 }
 
-float get_harmonic(const std::vector<cl_ushort4>& points, const std::vector<dual_types::complex<float>>& vals, vec3i dim, int extract_pixel, int l, int m)
+dual_types::complex<float> get_harmonic(const std::vector<cl_ushort4>& points, const std::vector<dual_types::complex<float>>& vals, vec3i dim, int extract_pixel, int l, int m)
 {
     std::map<int, std::map<int, std::map<int, float>>> real_value_map;
     std::map<int, std::map<int, std::map<int, float>>> imaginary_value_map;
@@ -144,16 +144,20 @@ float get_harmonic(const std::vector<cl_ushort4>& points, const std::vector<dual
         float interpolated_real = linear_interpolate(real_value_map, pos, dim);
         float interpolated_imaginary = linear_interpolate(imaginary_value_map, pos, dim);
 
+        dual_types::complex<float> result = {interpolated_real, interpolated_imaginary};
+
+        return result * conj;
+
         //printf("interpolated %f %f\n", interpolated.real, interpolated.imaginary);
 
-        float scalar_product = interpolated_real * conj.real + interpolated_imaginary * conj.imaginary;
+        //float scalar_product = interpolated_real * conj.real + interpolated_imaginary * conj.imaginary;
 
-        return scalar_product;
+        //return scalar_product;
     };
 
     int n = 64;
 
-    float harmonic = spherical_integrate(func, n);
+    dual_types::complex<float> harmonic = spherical_integrate(func, n);
 
     //printf("Harmonic %f\n", harmonic);
 
@@ -240,9 +244,9 @@ void gravitational_wave_manager::issue_extraction(cl::command_queue& cqueue, std
     last_event = data;
 }
 
-std::vector<float> gravitational_wave_manager::process()
+std::vector<dual_types::complex<float>> gravitational_wave_manager::process()
 {
-    std::vector<float> real_harmonic;
+    std::vector<dual_types::complex<float>> complex_harmonics;
 
     std::vector<cl_float2*> to_process;
 
@@ -262,13 +266,13 @@ std::vector<float> gravitational_wave_manager::process()
             as_vector.push_back({vec[i].s[0], vec[i].s[1]});
         }
 
-        float harmonic = get_harmonic(raw_harmonic_points, as_vector, simulation_size, extract_pixel, 2, 2);
+        dual_types::complex<float> harmonic = get_harmonic(raw_harmonic_points, as_vector, simulation_size, extract_pixel, 2, 2);
 
-        if(!isnanf(harmonic))
-            real_harmonic.push_back(harmonic);
+        if(!isnanf(harmonic.real) && !isnanf(harmonic.imaginary))
+            complex_harmonics.push_back(harmonic);
 
         delete [] vec;
     }
 
-    return real_harmonic;
+    return complex_harmonics;
 }

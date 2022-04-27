@@ -5486,12 +5486,11 @@ int main()
             {
                 wave_manager.issue_extraction(clctx.cqueue, last_valid_buffer, last_valid_thin, scale, clsize, rtex[which_texture]);
 
-                std::vector<float> values = wave_manager.process();
+                std::vector<dual_types::complex<float>> values = wave_manager.process();
 
-                for(float v : values)
+                for(dual_types::complex<float> v : values)
                 {
-                    if(!isnanf(v))
-                        real_decomp.push_back(v);
+                    real_decomp.push_back(v.real);
                 }
             }
 

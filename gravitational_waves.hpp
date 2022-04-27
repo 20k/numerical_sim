@@ -8,6 +8,7 @@
 #include <optional>
 #include <vector>
 #include <vec/vec.hpp>
+#include <geodesic/dual_value.hpp>
 
 struct gravitational_wave_manager
 {
@@ -39,7 +40,7 @@ struct gravitational_wave_manager
 
     static void callback(cl_event event, cl_int event_command_status, void* user_data);
     void issue_extraction(cl::command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<cl::buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize, cl::gl_rendertexture& tex);
-    std::vector<float> process();
+    std::vector<dual_types::complex<float>> process();
 };
 
 #endif // GRAVITATIONAL_WAVES_HPP_INCLUDED
