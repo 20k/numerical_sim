@@ -13,8 +13,8 @@ template<typename T>
 inline
 auto integrate_1d_raw(const T& func, int n, float upper, float lower)
 {
-    std::vector<float> weights = get_legendre_weights(n);
-    std::vector<float> nodes = get_legendre_nodes(n);
+    auto weights = get_legendre_weights(n);
+    auto nodes = get_legendre_nodes(n);
 
     using variable_type = decltype(func(0.f));
 
@@ -22,7 +22,7 @@ auto integrate_1d_raw(const T& func, int n, float upper, float lower)
 
     for(int j=0; j < n; j++)
     {
-        float w = weights[j];
+        double w = weights[j];
         float xj = nodes[j];
 
         float value = ((upper - lower)/2.f) * xj + (upper + lower) / 2.f;
@@ -60,9 +60,6 @@ auto spherical_integrate(const T& f_theta_phi, int n)
     using variable_type = decltype(f_theta_phi(0.f, 0.f));
 
     variable_type sum = 0;
-
-    std::vector<float> weights = get_legendre_weights(n);
-    std::vector<float> nodes = get_legendre_nodes(n);
 
     float iupper = 2 * M_PI;
     float ilower = 0;

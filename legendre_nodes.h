@@ -4,7 +4,7 @@
 #include <vector>
 
 inline
-std::vector<float> get_legendre_nodes(int n)
+std::vector<double> get_legendre_nodes(int n)
 {
 
 if(n == 2){ return {

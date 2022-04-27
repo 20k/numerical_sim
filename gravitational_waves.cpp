@@ -163,32 +163,32 @@ dual_types::complex<float> get_harmonic(const std::vector<cl_ushort4>& points, c
 
     auto func_real = [&](float theta, float phi)
     {
-        dual_types::complex<float> harmonic = sYlm_2(-2, l, m, theta, phi);
+        dual_types::complex<double> harmonic = sYlm_2<double>(-2, l, m, theta, phi);
 
         vec3f pos = {rad * cos(phi) * sin(theta), rad * sin(phi) * sin(theta), rad * cos(theta)};
 
         pos += centre;
 
-        float interpolated_real = linear_interpolate(real_value_map, pos, dim);
-        float interpolated_imaginary = linear_interpolate(imaginary_value_map, pos, dim);
+        double interpolated_real = linear_interpolate(real_value_map, pos, dim);
+        double interpolated_imaginary = linear_interpolate(imaginary_value_map, pos, dim);
 
-        dual_types::complex<float> result = {interpolated_real, interpolated_imaginary};
+        dual_types::complex<double> result = {interpolated_real, interpolated_imaginary};
 
         return (result * conjugate(harmonic)).real;
     };
 
     auto func_imaginary = [&](float theta, float phi)
     {
-        dual_types::complex<float> harmonic = sYlm_2(-2, l, m, theta, phi);
+        dual_types::complex<double> harmonic = sYlm_2<double>(-2, l, m, theta, phi);
 
         vec3f pos = {rad * cos(phi) * sin(theta), rad * sin(phi) * sin(theta), rad * cos(theta)};
 
         pos += centre;
 
-        float interpolated_real = linear_interpolate(real_value_map, pos, dim);
-        float interpolated_imaginary = linear_interpolate(imaginary_value_map, pos, dim);
+        double interpolated_real = linear_interpolate(real_value_map, pos, dim);
+        double interpolated_imaginary = linear_interpolate(imaginary_value_map, pos, dim);
 
-        dual_types::complex<float> result = {interpolated_real, interpolated_imaginary};
+        dual_types::complex<double> result = {interpolated_real, interpolated_imaginary};
 
         return (result * conjugate(harmonic)).imaginary;
     };
