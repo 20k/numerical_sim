@@ -174,9 +174,7 @@ dual_types::complex<float> get_harmonic(const std::vector<cl_ushort4>& points, c
 
         dual_types::complex<float> result = {interpolated_real, interpolated_imaginary};
 
-        float value = result.real * harmonic.real + result.imaginary * harmonic.imaginary;
-
-        return value;
+        return (result * conjugate(harmonic)).real;
     };
 
     auto func_imaginary = [&](float theta, float phi)
@@ -192,9 +190,7 @@ dual_types::complex<float> get_harmonic(const std::vector<cl_ushort4>& points, c
 
         dual_types::complex<float> result = {interpolated_real, interpolated_imaginary};
 
-        float value = result.real * harmonic.real - result.imaginary * harmonic.imaginary;
-
-        return value;
+        return (result * conjugate(harmonic)).imaginary;
     };
 
     int n = 64;

@@ -5224,6 +5224,7 @@ int main()
 
     std::vector<float> real_graph;
     std::vector<float> real_decomp;
+    std::vector<float> imaginary_decomp;
 
     int which_texture = 0;
     int steps = 0;
@@ -5411,7 +5412,7 @@ int main()
             if(real_graph.size() > 0)
             {
                 ImGui::PushItemWidth(400);
-                ImGui::PlotLines("w4      ", &real_graph[0], real_graph.size());
+                ImGui::PlotLines("w4      ", real_graph.data(), real_graph.size());
                 ImGui::PopItemWidth();
             }
 
@@ -5420,7 +5421,14 @@ int main()
             if(real_decomp.size() > 0)
             {
                 ImGui::PushItemWidth(400);
-                ImGui::PlotLines("w4_l2_m0", &real_decomp[0], real_decomp.size());
+                ImGui::PlotLines("w4_l2_m2_re", real_decomp.data(), real_decomp.size());
+                ImGui::PopItemWidth();
+            }
+
+            if(imaginary_decomp.size() > 0)
+            {
+                ImGui::PushItemWidth(400);
+                ImGui::PlotLines("w4_l2_m2_im", imaginary_decomp.data(), real_decomp.size());
                 ImGui::PopItemWidth();
             }
 
@@ -5491,6 +5499,7 @@ int main()
                 for(dual_types::complex<float> v : values)
                 {
                     real_decomp.push_back(v.real);
+                    imaginary_decomp.push_back(v.imaginary);
                 }
             }
 
