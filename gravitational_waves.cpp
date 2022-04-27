@@ -129,6 +129,7 @@ dual_types::complex<float> get_harmonic(const std::vector<cl_ushort4>& points, c
 
     vec3f centre = dim_to_centre(dim);
 
+    #if 0
     auto func = [&](float theta, float phi)
     {
         dual_types::complex<float> harmonic = sYlm_2(-2, l, m, theta, phi);
@@ -158,10 +159,51 @@ dual_types::complex<float> get_harmonic(const std::vector<cl_ushort4>& points, c
     int n = 64;
 
     dual_types::complex<float> harmonic = spherical_integrate(func, n);
+    #endif // 0
+
+    auto func_real = [&](float theta, float phi)
+    {
+        dual_types::complex<float> harmonic = sYlm_2(-2, l, m, theta, phi);
+
+        vec3f pos = {rad * cos(phi) * sin(theta), rad * sin(phi) * sin(theta), rad * cos(theta)};
+
+        pos += centre;
+
+        float interpolated_real = linear_interpolate(real_value_map, pos, dim);
+        float interpolated_imaginary = linear_interpolate(imaginary_value_map, pos, dim);
+
+        dual_types::complex<float> result = {interpolated_real, interpolated_imaginary};
+
+        float value = result.real * harmonic.real + result.imaginary * harmonic.imaginary;
+
+        return value;
+    };
+
+    auto func_imaginary = [&](float theta, float phi)
+    {
+        dual_types::complex<float> harmonic = sYlm_2(-2, l, m, theta, phi);
+
+        vec3f pos = {rad * cos(phi) * sin(theta), rad * sin(phi) * sin(theta), rad * cos(theta)};
+
+        pos += centre;
+
+        float interpolated_real = linear_interpolate(real_value_map, pos, dim);
+        float interpolated_imaginary = linear_interpolate(imaginary_value_map, pos, dim);
+
+        dual_types::complex<float> result = {interpolated_real, interpolated_imaginary};
+
+        float value = result.real * harmonic.real - result.imaginary * harmonic.imaginary;
+
+        return value;
+    };
+
+    int n = 64;
+
+    return {spherical_integrate(func_real, n), spherical_integrate(func_imaginary, n)};
 
     //printf("Harmonic %f\n", harmonic);
 
-    return harmonic;
+    //return harmonic;
 }
 
 gravitational_wave_manager::gravitational_wave_manager(cl::context& ctx, vec3i _simulation_size, float c_at_max, float scale) :
