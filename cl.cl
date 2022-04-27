@@ -1478,6 +1478,10 @@ void velocity_to_XDiff(float3* out, float3 Xpos, float3 vel, float scale, int4 d
     float fy = voxel_pos.y;
     float fz = voxel_pos.z;
 
+    float lp1 = Xpos.x;
+    float lp2 = Xpos.y;
+    float lp3 = Xpos.z;
+
     float V0 = vel.x;
     float V1 = vel.y;
     float V2 = vel.z;
@@ -1501,6 +1505,10 @@ void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, 
     float fx = voxel_pos.x;
     float fy = voxel_pos.y;
     float fz = voxel_pos.z;
+
+    float lp1 = Xpos.x;
+    float lp2 = Xpos.y;
+    float lp3 = Xpos.z;
 
     float V0 = vel.x;
     float V1 = vel.y;

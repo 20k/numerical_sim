@@ -1074,12 +1074,94 @@ tensor<value, 3> tensor_upwind(equation_context& ctx, const tensor<value, 3>& pr
     return ret;
 }
 
+///https://en.wikipedia.org/wiki/Covariant_derivative#Covariant_derivative_by_field_type
+///for the tensor DcDa, this returns idx(a, c)
+template<typename T, int N>
+inline
+tensor<T, N, N> gpu_covariant_derivative_low_vec(equation_context& ctx, const tensor<T, N>& v_in, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
+{
+    auto christoff = gpu_christoffel_symbols_2(ctx, met, inverse);
+
+    tensor<T, N, N> lac;
+
+    for(int a=0; a < N; a++)
+    {
+        for(int c=0; c < N; c++)
+        {
+            T sum = 0;
+
+            for(int b=0; b < N; b++)
+            {
+                sum = sum + christoff.idx(b, c, a) * v_in.idx(b);
+            }
+
+            lac.idx(a, c) = diff1(ctx, v_in.idx(a), c) - sum;
+        }
+    }
+
+    return lac;
+}
+
+template<typename T, int N>
+inline
+tensor<T, N, N> gpu_covariant_derivative_high_vec(equation_context& ctx, const tensor<T, N>& v_in, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
+{
+    auto christoff = gpu_christoffel_symbols_2(ctx, met, inverse);
+
+    tensor<T, N, N> lac;
+
+    for(int a=0; a < N; a++)
+    {
+        for(int b=0; b < N; b++)
+        {
+            T sum = 0;
+
+            for(int c=0; c < N; c++)
+            {
+                sum = sum + christoff.idx(a, b, c) * v_in.idx(c);
+            }
+
+            lac.idx(a, b) = diff1(ctx, v_in.idx(a), b) - sum;
+        }
+    }
+
+    return lac;
+}
+
+
 template<typename T, int N>
 inline
 T lie_derivative(equation_context& ctx, const tensor<T, N>& gB, const T& variable)
 {
     ///https://en.wikipedia.org/wiki/Lie_derivative#Coordinate_expressions
     return sum(tensor_upwind(ctx, gB, variable));
+}
+
+template<typename T, int N>
+inline
+tensor<value, N> lie_derivative_upper(equation_context& ctx, const tensor<T, N>& gB, const tensor<value, N>& variable, const metric<T, N, N>& met, const inverse_metric<T, N, N>& imet)
+{
+    ///a;b
+    tensor<value, N, N> cov_div = gpu_covariant_derivative_high_vec(ctx, variable, met, imet);
+    tensor<value, N, N> cov_div2 = gpu_covariant_derivative_high_vec(ctx, gB, met, imet);
+
+    tensor<value, N> ret;
+
+    for(int i=0; i < N; i++)
+    {
+        value sum = 0;
+        value sum2 = 0;
+
+        for(int j=0; j < N; j++)
+        {
+            sum += gB.idx(j) * cov_div.idx(i, j);
+            sum2 += variable.idx(j) * cov_div2.idx(i, j);
+        }
+
+        ret.idx(i) = sum - sum2;
+    }
+
+    return ret;
 }
 
 /*tensor<value, 3, 3> tensor_upwind(equation_context& ctx, const tensor<value, 3>& prefix, const tensor<value, 3>& in)
@@ -1240,34 +1322,6 @@ tensor<value, N> lower_index(const tensor<value, N>& mT, const metric<value, N, 
     }
 
     return ret;
-}
-
-///https://en.wikipedia.org/wiki/Covariant_derivative#Covariant_derivative_by_field_type
-///for the tensor DcDa, this returns idx(a, c)
-template<typename T, int N>
-inline
-tensor<T, N, N> gpu_covariant_derivative_low_vec(equation_context& ctx, const tensor<T, N>& v_in, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
-{
-    auto christoff = gpu_christoffel_symbols_2(ctx, met, inverse);
-
-    tensor<T, N, N> lac;
-
-    for(int a=0; a < N; a++)
-    {
-        for(int c=0; c < N; c++)
-        {
-            T sum = 0;
-
-            for(int b=0; b < N; b++)
-            {
-                sum = sum + christoff.idx(b, c, a) * v_in.idx(b);
-            }
-
-            lac.idx(a, c) = diff1(ctx, v_in.idx(a), c) - sum;
-        }
-    }
-
-    return lac;
 }
 
 template<typename T, int N>
@@ -4711,7 +4765,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     ctx.add("universe_size", universe_length * scale);
 
-    //tensor<value, 3> X_upper = {"lp1", "lp2", "lp3"};
+    tensor<value, 3> X_upper = {"lp1", "lp2", "lp3"};
     tensor<value, 3> V_upper = {"V0", "V1", "V2"};
 
     /*inverse_metric<value, 3, 3> iYij = args.Yij.invert();
@@ -4759,7 +4813,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     ///https://arxiv.org/pdf/1208.3927.pdf (28a)
     #define PAPER_1
     #ifdef PAPER_1
-    tensor<value, 3> dx = args.gA * V_upper - args.gB;
+    tensor<value, 3> dx = args.gA * V_upper - args.gB + lie_derivative_upper(ctx, args.gB, X_upper, args.cY, icY);
 
     tensor<value, 3> V_upper_diff;
 
@@ -4791,6 +4845,8 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         }
     }
     #endif // PAPER_1
+
+    V_upper_diff += lie_derivative_upper(ctx, args.gB, V_upper, args.cY, icY);
 
     /*value length_sq = dot_metric(V_upper, V_upper, args.Yij);
 
