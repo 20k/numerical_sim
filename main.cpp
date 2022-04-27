@@ -2829,7 +2829,8 @@ void build_momentum_constraint(equation_context& ctx)
 
     //#define BETTERDAMP_DTCAIJ
     //#define DAMP_DTCAIJ
-    #if defined(DAMP_DTCAIJ) || defined(BETTERDAMP_DTCAIJ)
+    //#define AIJ_SIGMA
+    #if defined(DAMP_DTCAIJ) || defined(BETTERDAMP_DTCAIJ) || defined(AIJ_SIGMA)
     #define CALCULATE_MOMENTUM_CONSTRAINT
     #endif // defined
 
@@ -3292,6 +3293,24 @@ void build_cA(equation_context& ctx)
 
     #endif // BETTERDAMP_DTCAIJ
 
+    #ifdef AIJ_SIGMA
+    tensor<value, 3> Mi = args.momentum_constraint;
+
+    tensor<value, 3> gB_lower = lower_index(gB, cY);
+
+    tensor<value, 3, 3> BiMj;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            BiMj.idx(i, j) = gB_lower.idx(i) * Mi.idx(j);
+        }
+    }
+
+    tensor<value, 3, 3> BiMj_TF = gpu_trace_free(BiMj, cY, icY);
+    #endif // AIJ_SIGMA
+
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
@@ -3348,6 +3367,12 @@ void build_cA(equation_context& ctx)
             ///https://arxiv.org/pdf/1205.5111v1.pdf (56)
             dtcAij.idx(i, j) += scale * F_a * gpu_trace_free(symmetric_momentum_deriv, cY, icY).idx(i, j);
             #endif // BETTERDAMP_DTCAIJ
+
+            #ifdef AIJ_SIGMA
+            float sigma = 0.25f;
+
+            dtcAij.idx(i, j) += (-3.f/5.f) * sigma * BiMj_TF.idx(i, j);
+            #endif // AIJ_SIGMA
         }
     }
 
