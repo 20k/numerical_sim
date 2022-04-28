@@ -746,7 +746,7 @@ void clean_data(__global ushort4* points, int point_count,
             printf("Dtk %f\n", s_dtK);
         }*/
 
-        if(ix == 12 && iy == dim.y/2 && iz == dim.z/2)
+        /*if(ix == 12 && iy == dim.y/2 && iz == dim.z/2)
         {
             printf("%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
                    X[index],
@@ -771,7 +771,7 @@ void clean_data(__global ushort4* points, int point_count,
                    s_dtcGi0,
                    s_dtcGi1,
                    s_dtcGi2);
-        }
+        }*/
 
         #if 0
         if(ix == 12 && iy == dim.y/2 && iz == dim.z/2)
@@ -885,6 +885,11 @@ void evolve_cY(__global ushort4* points, int point_count,
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
+    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim);
+
+    if(sponge_factor > 0)
+        return;
+
     #ifndef SYMMETRY_BOUNDARY
     if(invalid_second(ix, iy, iz, dim))
         return;
@@ -945,6 +950,11 @@ void evolve_cA(__global ushort4* points, int point_count,
         return;
     #endif // SYMMETRY_BOUNDARY
 
+    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim);
+
+    if(sponge_factor > 0)
+        return;
+
     int index = IDX(ix, iy, iz);
 
     float TEMPORARIEStca;
@@ -1001,6 +1011,11 @@ void evolve_cGi(__global ushort4* points, int point_count,
     if(invalid_second(ix, iy, iz, dim))
         return;
     #endif // SYMMETRY_BOUNDARY
+
+    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim);
+
+    if(sponge_factor > 0)
+        return;
 
     int index = IDX(ix, iy, iz);
 
@@ -1069,6 +1084,11 @@ void evolve_K(__global ushort4* points, int point_count,
         return;
     #endif // SYMMETRY_BOUNDARY
 
+    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim);
+
+    if(sponge_factor > 0)
+        return;
+
     int index = IDX(ix, iy, iz);
 
     float TEMPORARIEStk;
@@ -1110,6 +1130,11 @@ void evolve_X(__global ushort4* points, int point_count,
         return;
     #endif // SYMMETRY_BOUNDARY
 
+    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim);
+
+    if(sponge_factor > 0)
+        return;
+
     int index = IDX(ix, iy, iz);
 
     float TEMPORARIEStx;
@@ -1149,6 +1174,11 @@ void evolve_gA(__global ushort4* points, int point_count,
     if(invalid_second(ix, iy, iz, dim))
         return;
     #endif // SYMMETRY_BOUNDARY
+
+    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim);
+
+    if(sponge_factor > 0)
+        return;
 
     int index = IDX(ix, iy, iz);
 
@@ -1190,6 +1220,11 @@ void evolve_gB(__global ushort4* points, int point_count,
     if(invalid_second(ix, iy, iz, dim))
         return;
     #endif // SYMMETRY_BOUNDARY
+
+    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim);
+
+    if(sponge_factor > 0)
+        return;
 
     int index = IDX(ix, iy, iz);
 

@@ -2622,14 +2622,23 @@ void build_sommerfield(equation_context& ctx)
 
         return -sum - (v/r) * (f - f0);*/
 
-        tensor<value, 3> xi_dtf;
+        value sum = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            sum += (v * pos.idx(i) / r) * diff1(ctx, f, i);
+        }
+
+        return -sum - v * (f - f0) / r;
+
+        /*tensor<value, 3> xi_dtf;
 
         for(int i=0; i < 3; i++)
         {
             xi_dtf.idx(i) = -v * diff1(ctx, f, i) - ((v * pos.idx(i)) / (r * r)) * (f - f0);
         }
 
-        return sum(xi_dtf) * sponge;
+        return sum(xi_dtf) * sponge;*/
     };
 
     value dtcY0 = sommerfield(args.cY.idx(0, 0), asy_cY0, 1);
