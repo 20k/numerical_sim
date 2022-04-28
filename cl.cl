@@ -746,9 +746,10 @@ void clean_data(__global ushort4* points, int point_count,
             printf("Dtk %f\n", s_dtK);
         }*/
 
-        /*if(ix == 12 && iy == dim.y/2 && iz == dim.z/2)
+        if(ix == 12 && iy == dim.y/2 && iz == dim.z/2)
         {
-            printf("%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+            printf("%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+                   X[index],
                    s_dtcY0,
                    s_dtcY1,
                    s_dtcY2,
@@ -770,7 +771,7 @@ void clean_data(__global ushort4* points, int point_count,
                    s_dtcGi0,
                    s_dtcGi1,
                    s_dtcGi2);
-        }*/
+        }
 
         #if 0
         if(ix == 12 && iy == dim.y/2 && iz == dim.z/2)

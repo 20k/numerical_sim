@@ -2568,7 +2568,7 @@ void setup_static_conditions(cl::context& clctx, cl::command_queue& cqueue, equa
 
 void build_sommerfield(equation_context& ctx)
 {
-    ctx.order = 1;
+    ctx.order = 2;
     standard_arguments args(ctx);
 
     value sponge = "sponge_factor";
@@ -2649,10 +2649,10 @@ void build_sommerfield(equation_context& ctx)
     value dtK = sommerfield(args.K, asy_K, 1);
     value dtX = sommerfield(args.X, asy_X, 1);
 
-    value dtgA = sommerfield(args.gA, asy_gA, 1);
-    value dtgB0 = sommerfield(args.gB.idx(0), asy_gB0, 1);
-    value dtgB1 = sommerfield(args.gB.idx(1), asy_gB1, 1);
-    value dtgB2 = sommerfield(args.gB.idx(2), asy_gB2, 1);
+    value dtgA = sommerfield(args.gA, asy_gA, sqrt(2));
+    value dtgB0 = sommerfield(args.gB.idx(0), asy_gB0, sqrt(2));
+    value dtgB1 = sommerfield(args.gB.idx(1), asy_gB1, sqrt(2));
+    value dtgB2 = sommerfield(args.gB.idx(2), asy_gB2, sqrt(2));
 
     value dtcGi0 = sommerfield(args.cGi.idx(0), asy_cGi0, 1);
     value dtcGi1 = sommerfield(args.cGi.idx(1), asy_cGi1, 1);
