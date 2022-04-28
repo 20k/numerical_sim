@@ -735,6 +735,11 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             cleaner.push_back(i);
         }
 
+        for(auto& i : scratch.buffers)
+        {
+            cleaner.push_back(i);
+        }
+
         //cleaner.push_back(bssnok_datas[which_data]);
         cleaner.push_back(u_arg);
         cleaner.push_back(scale);
@@ -742,6 +747,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         cleaner.push_back(timestep);
 
         mqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
+
+        std::swap(scratch, get_output());
     }
 
     enforce_constraints(get_output().buffers);

@@ -599,6 +599,7 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
 __kernel
 void clean_data(__global ushort4* points, int point_count,
                 STANDARD_ARGS(),
+                STANDARD_ARGS(o),
                 __global float* u_value,
                 float scale, int4 dim,
                 float timestep)
@@ -624,6 +625,9 @@ void clean_data(__global ushort4* points, int point_count,
     if(sponge_factor <= 0)
         return;
 
+    if(sponge_factor == 1)
+        return;
+
     float3 offset = transform_position(ix, iy, iz, dim, scale);
 
     float ox = offset.x;
@@ -634,6 +638,7 @@ void clean_data(__global ushort4* points, int point_count,
 
     float TEMPORARIES0;
 
+    #if 0
     float initial_cY0 = init_cY0;
     float initial_cY1 = init_cY1;
     float initial_cY2 = init_cY2;
@@ -660,6 +665,7 @@ void clean_data(__global ushort4* points, int point_count,
     float fin_gBB1 = init_gBB1;
     float fin_gBB2 = init_gBB2;
     #endif // USE_GBB
+    #endif // 0
 
     int index = IDX(ix, iy, iz);
 
@@ -688,6 +694,65 @@ void clean_data(__global ushort4* points, int point_count,
     initial_X = 1;
     #endif // RADIATIVE
 
+    {
+        float TEMPORARIESsommerfield;
+
+        float s_dtcY0 = sommer_dtcY0;
+        float s_dtcY1 = sommer_dtcY1;
+        float s_dtcY2 = sommer_dtcY2;
+        float s_dtcY3 = sommer_dtcY3;
+        float s_dtcY4 = sommer_dtcY4;
+        float s_dtcY5 = sommer_dtcY5;
+
+        float s_dtcA0 = sommer_dtcY0;
+        float s_dtcA1 = sommer_dtcA1;
+        float s_dtcA2 = sommer_dtcA2;
+        float s_dtcA3 = sommer_dtcA3;
+        float s_dtcA4 = sommer_dtcA4;
+        float s_dtcA5 = sommer_dtcA5;
+
+        float s_dtK = sommer_dtK;
+        float s_dtX = sommer_dtX;
+
+        float s_dtgA = sommer_dtgA;
+        float s_dtgB0 = sommer_dtgB0;
+        float s_dtgB1 = sommer_dtgB1;
+        float s_dtgB2 = sommer_dtgB2;
+
+        float s_dtcGi0 = sommer_dtcGi0;
+        float s_dtcGi1 = sommer_dtcGi1;
+        float s_dtcGi2 = sommer_dtcGi2;
+
+        printf("Dts0 %f\n", s_dtcY0);
+
+        ocY0[index] = cY0[index] + s_dtcY0 * timestep;
+        ocY1[index] = cY1[index] + s_dtcY1 * timestep;
+        ocY2[index] = cY2[index] + s_dtcY2 * timestep;
+        ocY3[index] = cY3[index] + s_dtcY3 * timestep;
+        ocY4[index] = cY4[index] + s_dtcY4 * timestep;
+        ocY5[index] = cY5[index] + s_dtcY5 * timestep;
+
+        ocA0[index] = cA0[index] + s_dtcA0 * timestep;
+        ocA1[index] = cA1[index] + s_dtcA1 * timestep;
+        ocA2[index] = cA2[index] + s_dtcA2 * timestep;
+        ocA3[index] = cA3[index] + s_dtcA3 * timestep;
+        ocA4[index] = cA4[index] + s_dtcA4 * timestep;
+        ocA5[index] = cA5[index] + s_dtcA5 * timestep;
+
+        oK[index] = K[index] + s_dtK * timestep;
+        oX[index] = X[index] + s_dtX * timestep;
+
+        ogA[index] = gA[index] + s_dtgA * timestep;
+        ogB0[index] = gB0[index] + s_dtgB0 * timestep;
+        ogB1[index] = gB1[index] + s_dtgB1 * timestep;
+        ogB2[index] = gB2[index] + s_dtgB2 * timestep;
+
+        ocGi0[index] = cGi0[index] + s_dtcGi0 * timestep;
+        ocGi1[index] = cGi1[index] + s_dtcGi1 * timestep;
+        ocGi2[index] = cGi2[index] + s_dtcGi2 * timestep;
+    }
+
+    #if 0
     ///https://authors.library.caltech.edu/8284/1/RINcqg07.pdf (34)
     float y_r = sponge_factor;
 
@@ -727,6 +792,7 @@ void clean_data(__global ushort4* points, int point_count,
     gBB1[index] += -y_r * (gBB1[index] - fin_gBB1) * timestep;
     gBB2[index] += -y_r * (gBB2[index] - fin_gBB2) * timestep;
     #endif // USE_GBB
+    #endif // 0
 }
 
 #define NANCHECK(w) if(isnan(w[index])){printf("NAN " #w " %i %i %i\n", ix, iy, iz); debug = true;}
