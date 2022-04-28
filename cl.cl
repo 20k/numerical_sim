@@ -1526,7 +1526,7 @@ void calculate_adm_texture_coordinates(__global struct lightray_simple* finished
     if(x >= width || y >= height)
         return;
 
-    struct lightray_simple* ray = &finished_rays[y * width + x];
+    __global struct lightray_simple* ray = &finished_rays[y * width + x];
 
     float3 cpos = {ray->lp1, ray->lp2, ray->lp3};
     float3 cvel = {ray->V0, ray->V1, ray->V2};

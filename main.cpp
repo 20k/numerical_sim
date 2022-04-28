@@ -5011,7 +5011,7 @@ int main()
 
     std::cout << "EXT " << cl::get_extensions(clctx.ctx) << std::endl;
 
-    std::string argument_string = "-I ./ -O3 -cl-std=CL2.0 -cl-uniform-work-group-size -cl-mad-enable -cl-finite-math-only -cl-denorms-are-zero ";
+    std::string argument_string = "-I ./ -O3 -cl-std=CL2.0 -cl-mad-enable -cl-finite-math-only -cl-denorms-are-zero ";
 
     std::string u_argument_string = argument_string;
 
