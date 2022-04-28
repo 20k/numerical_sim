@@ -2571,6 +2571,8 @@ void build_sommerfield(equation_context& ctx)
     ctx.order = 1;
     standard_arguments args(ctx);
 
+    value sponge = "sponge_factor";
+
     ///Xi
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
@@ -2604,14 +2606,30 @@ void build_sommerfield(equation_context& ctx)
 
     auto sommerfield = [&](value f, value f0, value v)
     {
-        value sum = 0;
+        /*value sum = 0;
 
         for(int i=0; i < 3; i++)
         {
             sum += (v * r / pos.idx(i)) * diff1(ctx, f, i);
         }
 
-        return -sum - (v/r) * (f - f0);
+        if(dual_types::equivalent(f, args.cY.idx(0, 0)))
+        {
+            ctx.add("sommer_dbg0", pos.idx(2));
+
+            std::cout << "STR " << type_to_string(pos.idx(2)) << std::endl;
+        }
+
+        return -sum - (v/r) * (f - f0);*/
+
+        tensor<value, 3> xi_dtf;
+
+        for(int i=0; i < 3; i++)
+        {
+            xi_dtf.idx(i) = -v * diff1(ctx, f, i) - ((v * pos.idx(i)) / (r * r)) * (f - f0);
+        }
+
+        return sum(xi_dtf) * sponge;
     };
 
     value dtcY0 = sommerfield(args.cY.idx(0, 0), asy_cY0, 1);
@@ -2665,6 +2683,11 @@ void build_sommerfield(equation_context& ctx)
     ctx.add("sommer_dtcGi0", dtcGi0);
     ctx.add("sommer_dtcGi1", dtcGi1);
     ctx.add("sommer_dtcGi2", dtcGi2);
+
+    /*ctx.add("sommer_dbg0", args.cY.idx(0, 0));
+    ctx.add("sommer_dbg1", diff1(ctx, args.cY.idx(0, 0), 2));
+    ctx.add("sommer_dbg2", r);
+    ctx.add("sommer_dbg3", pos.idx(0));*/
 }
 
 ///https://arxiv.org/pdf/gr-qc/0206072.pdf alternative initial conditions

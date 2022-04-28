@@ -625,8 +625,12 @@ void clean_data(__global ushort4* points, int point_count,
     if(sponge_factor <= 0)
         return;
 
-    if(sponge_factor == 1)
+    int index = IDX(ix, iy, iz);
+
+    /*if(ix < 4 || iy < 4 || iz < 4 || ix >= dim.x - 4 || iy >= dim.y - 4 || iz >= dim.z - 4)
+    {
         return;
+    }*/
 
     float3 offset = transform_position(ix, iy, iz, dim, scale);
 
@@ -667,7 +671,6 @@ void clean_data(__global ushort4* points, int point_count,
     #endif // USE_GBB
     #endif // 0
 
-    int index = IDX(ix, iy, iz);
 
     ///todo: investigate if 2 full orbits is possible on the non radiative condition
     ///woooo
@@ -704,7 +707,7 @@ void clean_data(__global ushort4* points, int point_count,
         float s_dtcY4 = sommer_dtcY4;
         float s_dtcY5 = sommer_dtcY5;
 
-        float s_dtcA0 = sommer_dtcY0;
+        float s_dtcA0 = sommer_dtcA0;
         float s_dtcA1 = sommer_dtcA1;
         float s_dtcA2 = sommer_dtcA2;
         float s_dtcA3 = sommer_dtcA3;
@@ -723,33 +726,93 @@ void clean_data(__global ushort4* points, int point_count,
         float s_dtcGi1 = sommer_dtcGi1;
         float s_dtcGi2 = sommer_dtcGi2;
 
-        printf("Dts0 %f\n", s_dtcY0);
+        /*if(isnan(s_dtcA0))
+        {
+            printf("Dts0 %f %i %i %i\n", s_dtcY0, ix, iy, iz);
+        }
 
-        ocY0[index] = cY0[index] + s_dtcY0 * timestep;
-        ocY1[index] = cY1[index] + s_dtcY1 * timestep;
-        ocY2[index] = cY2[index] + s_dtcY2 * timestep;
-        ocY3[index] = cY3[index] + s_dtcY3 * timestep;
-        ocY4[index] = cY4[index] + s_dtcY4 * timestep;
-        ocY5[index] = cY5[index] + s_dtcY5 * timestep;
+        if(isnan(s_dtcY0))
+        {
+            printf("Dtsa0 %f %i %i %i\n", s_dtcY0, ix, iy, iz);
+        }*/
 
-        ocA0[index] = cA0[index] + s_dtcA0 * timestep;
-        ocA1[index] = cA1[index] + s_dtcA1 * timestep;
-        ocA2[index] = cA2[index] + s_dtcA2 * timestep;
-        ocA3[index] = cA3[index] + s_dtcA3 * timestep;
-        ocA4[index] = cA4[index] + s_dtcA4 * timestep;
-        ocA5[index] = cA5[index] + s_dtcA5 * timestep;
+        /*if(isnan(s_dtX))
+        {
+            printf("Dtx %f\n", s_dtX);
+        }
 
-        oK[index] = K[index] + s_dtK * timestep;
-        oX[index] = X[index] + s_dtX * timestep;
+        if(isnan(s_dtK))
+        {
+            printf("Dtk %f\n", s_dtK);
+        }*/
 
-        ogA[index] = gA[index] + s_dtgA * timestep;
-        ogB0[index] = gB0[index] + s_dtgB0 * timestep;
-        ogB1[index] = gB1[index] + s_dtgB1 * timestep;
-        ogB2[index] = gB2[index] + s_dtgB2 * timestep;
+        /*if(ix == 12 && iy == dim.y/2 && iz == dim.z/2)
+        {
+            printf("%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
+                   s_dtcY0,
+                   s_dtcY1,
+                   s_dtcY2,
+                   s_dtcY3,
+                   s_dtcY4,
+                   s_dtcY5,
+                   s_dtcA0,
+                   s_dtcA1,
+                   s_dtcA2,
+                   s_dtcA3,
+                   s_dtcA4,
+                   s_dtcA5,
+                   s_dtK,
+                   s_dtX,
+                   s_dtgA,
+                   s_dtgB0,
+                   s_dtgB1,
+                   s_dtgB2,
+                   s_dtcGi0,
+                   s_dtcGi1,
+                   s_dtcGi2);
+        }*/
 
-        ocGi0[index] = cGi0[index] + s_dtcGi0 * timestep;
-        ocGi1[index] = cGi1[index] + s_dtcGi1 * timestep;
-        ocGi2[index] = cGi2[index] + s_dtcGi2 * timestep;
+        #if 0
+        if(ix == 12 && iy == dim.y/2 && iz == dim.z/2)
+        {
+            /*float v0 = sommer_dbg0;
+            float v1 = sommer_dbg1;
+            float v2 = sommer_dbg2;
+            float v3 = sommer_dbg3;
+
+            printf("%f %f %f %f %f\n", s_dtcY0, v0, v1, v2, v3);*/
+
+            float v0 = sommer_dbg0;
+
+            printf("s %f %f %f\n", s_dtcY0, v0, ox);
+        }
+        #endif // 0
+
+        ocY0[index] += s_dtcY0 * timestep;
+        ocY1[index] += s_dtcY1 * timestep;
+        ocY2[index] += s_dtcY2 * timestep;
+        ocY3[index] += s_dtcY3 * timestep;
+        ocY4[index] += s_dtcY4 * timestep;
+        ocY5[index] += s_dtcY5 * timestep;
+
+        ocA0[index] += s_dtcA0 * timestep;
+        ocA1[index] += s_dtcA1 * timestep;
+        ocA2[index] += s_dtcA2 * timestep;
+        ocA3[index] += s_dtcA3 * timestep;
+        ocA4[index] += s_dtcA4 * timestep;
+        ocA5[index] += s_dtcA5 * timestep;
+
+        oK[index] += s_dtK * timestep;
+        oX[index] += s_dtX * timestep;
+
+        ogA[index] += s_dtgA * timestep;
+        ogB0[index] += s_dtgB0 * timestep;
+        ogB1[index] += s_dtgB1 * timestep;
+        ogB2[index] += s_dtgB2 * timestep;
+
+        ocGi0[index] += s_dtcGi0 * timestep;
+        ocGi1[index] += s_dtcGi1 * timestep;
+        ocGi2[index] += s_dtcGi2 * timestep;
     }
 
     #if 0

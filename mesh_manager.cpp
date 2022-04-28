@@ -721,7 +721,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     dissipate_unidir(b2.buffers, scratch.buffers);
 
-    std::swap(b2, scratch);;
+    std::swap(b2, scratch);
 
     //dissipate(get_input().buffers, get_output().buffers);
 
@@ -730,12 +730,12 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         cleaner.push_back(sponge_positions);
         cleaner.push_back(sponge_positions_count);
 
-        for(auto& i : get_output().buffers)
+        for(auto& i : scratch.buffers)
         {
             cleaner.push_back(i);
         }
 
-        for(auto& i : scratch.buffers)
+        for(auto& i : b2.buffers)
         {
             cleaner.push_back(i);
         }
@@ -748,7 +748,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
         mqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
 
-        std::swap(scratch, get_output());
+        //std::swap(scratch, get_output());
     }
 
     enforce_constraints(get_output().buffers);
