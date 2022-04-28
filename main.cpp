@@ -2447,7 +2447,7 @@ initial_conditions setup_dynamic_initial_conditions(const std::string& u_argumen
     std::vector<black_hole<float>> holes;
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
-    #define PAPER_0610128
+    //#define PAPER_0610128
     #ifdef PAPER_0610128
     black_hole<float> h1;
     h1.bare_mass = 0.483;
@@ -2462,6 +2462,19 @@ initial_conditions setup_dynamic_initial_conditions(const std::string& u_argumen
     holes.push_back(h1);
     holes.push_back(h2);
     #endif // PAPER_0610128
+
+    #define PAPER_0812_0641
+    #ifdef PAPER_0812_0641
+    black_hole<float> h1;
+    h1.bare_mass = 0.5;
+    h1.position = {-1.1515, 0, 0};
+
+    black_hole<float> h2;
+    h2.bare_mass = 0.5;
+    h2.position = {1.1515, 0, 0};
+
+    holes = {h1, h2};
+    #endif // PAPER_0812_0641
 
     create_u_program(clctx, holes.size(), u_argument_string);
 

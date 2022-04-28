@@ -88,12 +88,12 @@ std::vector<cl_ushort4> get_harmonic_extraction_points(vec3i dim, int extract_pi
 
         ret_as_int.push_back({f0.x() + 1, f0.y() + 1, f0.z() + 1});
 
-        ret_as_int.push_back({f0.x(), f0.y(), centre.z()});
+        //ret_as_int.push_back({f0.x(), f0.y(), centre.z()});
 
         return 0.f;
     };
 
-    int n = 8;
+    int n = 4;
 
     (void)spherical_integrate(func, n);
 
@@ -195,7 +195,7 @@ dual_types::complex<float> get_harmonic(const std::vector<cl_ushort4>& points, c
         return (result * conjugate(harmonic)).imaginary;
     };
 
-    int n = 8;
+    int n = 4;
 
     return {spherical_integrate(func_real, n), spherical_integrate(func_imaginary, n)};
 
@@ -306,7 +306,7 @@ std::vector<dual_types::complex<float>> gravitational_wave_manager::process()
             as_vector.push_back({vec[i].s[0], vec[i].s[1]});
         }
 
-        dual_types::complex<float> harmonic = get_harmonic(raw_harmonic_points, as_vector, simulation_size, extract_pixel, 2, 2);
+        dual_types::complex<float> harmonic = get_harmonic(raw_harmonic_points, as_vector, simulation_size, extract_pixel, 2, 0);
 
         if(!isnanf(harmonic.real) && !isnanf(harmonic.imaginary))
             complex_harmonics.push_back(harmonic);
