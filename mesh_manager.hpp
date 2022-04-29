@@ -39,13 +39,13 @@ struct gpu_mesh
 
 struct evolution_points
 {
-    cl::buffer first_derivative_points;
-    cl::buffer second_derivative_points;
+    cl::buffer full_derivative_points;
+    cl::buffer reduced_derivative_points;
 
-    int first_count = 0;
-    int second_count = 0;
+    int full_count = 0;
+    int reduced_count = 0;
 
-    evolution_points(cl::context& ctx) : first_derivative_points(ctx), second_derivative_points(ctx){}
+    evolution_points(cl::context& ctx) : full_derivative_points(ctx), reduced_derivative_points(ctx){}
 };
 
 struct thin_intermediates_pool

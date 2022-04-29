@@ -56,6 +56,24 @@ std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_
     return {real.as_device_read_only(), count};
 }
 
+std::pair<cl::buffer, int> extract_buffer(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& buf, cl::buffer& count)
+{
+    std::vector<cl_ushort4> cpu_buf = buf.read<cl_ushort4>(cqueue);
+    cl_int cpu_count_1 = count.read<cl_int>(cqueue).at(0);
+
+    assert(cpu_count_1 > 0);
+
+    std::sort(std::execution::par_unseq, cpu_buf.begin(), cpu_buf.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
+    {
+        return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
+    });
+
+    cl::buffer shrunk_points(ctx);
+    shrunk_points.alloc(cpu_buf.size() * sizeof(cl_ushort4));
+    shrunk_points.write(cqueue, cpu_buf);
+
+    return {shrunk_points, cpu_count_1};
+}
 
 inline
 evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
@@ -85,46 +103,17 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
     args.push_back(scale);
     args.push_back(clsize);
 
-    cqueue.exec("generate_evolution_points", args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
+    cqueue.exec("generate_evolution_points2", args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
 
-    std::vector<cl_ushort4> cpu_points_1 = points_1.read<cl_ushort4>(cqueue);
-    std::vector<cl_ushort4> cpu_points_2 = points_2.read<cl_ushort4>(cqueue);
-
-    printf("Original evolve points %i\n", cpu_points_1.size());
-
-    cl_int cpu_count_1 = count_1.read<cl_int>(cqueue).at(0);
-    cl_int cpu_count_2 = count_2.read<cl_int>(cqueue).at(0);
-
-    assert(cpu_count_1 > 0);
-    assert(cpu_count_2 > 0);
-
-    cpu_points_1.resize(cpu_count_1);
-    cpu_points_2.resize(cpu_count_2);
-
-    std::sort(std::execution::par_unseq, cpu_points_1.begin(), cpu_points_1.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
-    {
-        return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
-    });
-
-    std::sort(std::execution::par_unseq, cpu_points_2.begin(), cpu_points_2.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
-    {
-        return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
-    });
-
-    cl::buffer shrunk_points_1(ctx);
-    shrunk_points_1.alloc(cpu_points_1.size() * sizeof(cl_ushort4));
-    shrunk_points_1.write(cqueue, cpu_points_1);
-
-    cl::buffer shrunk_points_2(ctx);
-    shrunk_points_2.alloc(cpu_points_2.size() * sizeof(cl_ushort4));
-    shrunk_points_2.write(cqueue, cpu_points_2);
+    auto [shrunk_points_1, cpu_count_1] = extract_buffer(ctx, cqueue, points_1, count_1);
+    auto [shrunk_points_2, cpu_count_2] = extract_buffer(ctx, cqueue, points_2, count_2);
 
     evolution_points ret(ctx);
-    ret.first_count = cpu_count_1;
-    ret.second_count = cpu_count_2;
+    ret.full_count = cpu_count_1;
+    ret.reduced_count = cpu_count_2;
 
-    ret.first_derivative_points = shrunk_points_1.as_device_read_only();
-    ret.second_derivative_points = shrunk_points_2.as_device_read_only();
+    ret.full_derivative_points = shrunk_points_1.as_device_read_only();
+    ret.reduced_derivative_points = shrunk_points_2.as_device_read_only();
 
     printf("Evolve point reduction %i\n", cpu_count_1);
 
