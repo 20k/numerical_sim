@@ -934,7 +934,7 @@ value diff1_interior(equation_context& ctx, const value& in, int idx, int order)
 
 value diff1(equation_context& ctx, const value& in, int idx)
 {
-    ctx.use_
+    ctx.use_precise_differentiation = false;
 
     if(!ctx.use_precise_differentiation)
     {

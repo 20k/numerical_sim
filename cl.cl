@@ -576,23 +576,7 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
     if(sponge_factor <= 0)
         return;
 
-    bool all_high = true;
-
-    for(int i=-1; i <= 1; i++)
-    {
-        for(int j=-1; j <= 1; j++)
-        {
-            for(int k=-1; k <= 1; k++)
-            {
-                if(sponge_damp_coeff(ix + i, iy + j, iz + k, scale, dim) < 1)
-                {
-                    all_high = false;
-                }
-            }
-        }
-    }
-
-    if(all_high)
+    if(is_deep_boundary_point(ix, iy, iz, scale, dim))
         return;
 
     int idx = atomic_inc(point_count);
