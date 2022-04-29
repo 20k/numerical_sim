@@ -183,7 +183,95 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim)
     //return (r - sponge_r0) / (sponge_r1 - sponge_r0);
 
     float sigma = (sponge_r1 - sponge_r0) / 3;
-    return native_exp(-pow((r - sponge_r1) / sigma, 2));
+    return clamp(native_exp(-pow((r - sponge_r1) / sigma, 2)), 0.f, 1.f);
+}
+
+///if we're surrounded entirely by 1s, we're a deep boundary point
+float is_deep_boundary_point(float x, float y, float z, float scale, int4 dim)
+{
+    #pragma unroll
+    for(int iz=-1; iz <= 1; iz++)
+    {
+        #pragma unroll
+        for(int iy=-1; iy <= 1; iy++)
+        {
+            #pragma unroll
+            for(int ix=-1; ix <= 1; ix++)
+            {
+                if(sponge_damp_coeff(x + ix, y + iy, z + iz, scale, dim) < 1)
+                    return 0;
+            }
+        }
+    }
+
+    return 1;
+}
+
+///if we're a 1, and around us is something that's not a 1, we're a border point
+float is_exact_border_point(float x, float y, float z, float scale, int4 dim)
+{
+    if(sponge_damp_coeff(x, y, z, scale, dim) < 1)
+        return 0;
+
+    #pragma unroll
+    for(int iz=-1; iz <= 1; iz++)
+    {
+        #pragma unroll
+        for(int iy=-1; iy <= 1; iy++)
+        {
+            #pragma unroll
+            for(int ix=-1; ix <= 1; ix++)
+            {
+                if(sponge_damp_coeff(x + ix, y + iy, z + iz, scale, dim) < 1)
+                    return 1;
+            }
+        }
+    }
+
+    return 0;
+}
+
+float is_low_order_evolved_point(float x, float y, float z, float scale, int4 dim)
+{
+    if(is_exact_border_point(x, y, z, scale, dim) == 1)
+        return 0;
+
+    #pragma unroll
+    for(int iz=-BORDER_WIDTH; iz <= BORDER_WIDTH; iz++)
+    {
+        #pragma unroll
+        for(int iy=-BORDER_WIDTH; iy <= BORDER_WIDTH; iy++)
+        {
+            #pragma unroll
+            for(int ix=-BORDER_WIDTH; ix <= BORDER_WIDTH; ix++)
+            {
+                if(is_exact_border_point(x + ix, y + iy, z + iz, scale, dim) == 1)
+                    return 1;
+            }
+        }
+    }
+
+    return 0;
+}
+
+float is_regular_order_evolved_point(float x, float y, float z, float scale, int4 dim)
+{
+    #pragma unroll
+    for(int iz=-BORDER_WIDTH; iz <= BORDER_WIDTH; iz++)
+    {
+        #pragma unroll
+        for(int iy=-BORDER_WIDTH; iy <= BORDER_WIDTH; iy++)
+        {
+            #pragma unroll
+            for(int ix=-BORDER_WIDTH; ix <= BORDER_WIDTH; ix++)
+            {
+                if(is_exact_border_point(x + ix, y + iy, z + iz, scale, dim) == 1)
+                    return 0;
+            }
+        }
+    }
+
+    return 1;
 }
 
 void buffer_write(__global float* buffer, int3 position, int4 dim, float value)
