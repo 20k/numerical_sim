@@ -895,6 +895,47 @@ value hacky_differentiate(const value& in, int idx, bool pin = true, bool linear
 }
 #endif // 0
 
+value diff1_interior(const value& in, int idx, int direction, int order, bool uses_linear)
+{
+    if(direction != 0)
+        assert(order == 1);
+
+    value scale = "scale";
+
+    if(order == 1)
+    {
+        assert(direction == 0 || direction == 1 || direction == -1);
+
+        differentiation_context<3> dctx(in, idx, uses_linear);
+        std::array<value, 3> vars = dctx.vars;
+
+        if(direction == 0)
+        {
+            return (vars[2] - vars[0]) / (2 * scale);
+        }
+
+        if(direction == 1)
+        {
+            return (vars[2] - vars[1]) / scale;
+        }
+
+        if(direction == -1)
+        {
+            return (vars[1] - vars[0]) / scale;
+        }
+    }
+    else if(order == 2)
+    {
+        differentiation_context dctx(in, idx, uses_linear);
+        std::array<value, 5> vars = dctx.vars;
+
+        return (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
+    }
+
+    assert(false);
+    return 0;
+}
+
 value diff1(equation_context& ctx, const value& in, int idx)
 {
     int order = ctx.order;
