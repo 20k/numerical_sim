@@ -103,7 +103,7 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
     evolution_points ret(ctx);
     ret.count = cpu_count_1;
     ret.points = shrunk_points_1.as_device_read_only();
-    ret.order = order;
+    ret.order = order.as_device_read_only();
 
     printf("Evolve point reduction %i\n", cpu_count_1);
 
