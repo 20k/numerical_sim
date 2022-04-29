@@ -944,76 +944,41 @@ value diff1(equation_context& ctx, const value& in, int idx)
 
     if(ctx.careful_differentiation)
     {
-        value any_boundary = 0;
+        value ix = "ix";
+        value iy = "iy";
+        value iz = "iz";
 
-        for(int z=-2; z <= 2; z++)
-        {
-            for(int y=-2; y <= 2; y++)
-            {
-                for(int x=-2; x <= 2; x++)
-                {
-                    value ix = "ix";
-                    value iy = "iy";
-                    value iz = "iz";
+        value left_blocked = 0;
+        value right_blocked = 0;
 
-                    any_boundary += dual_types::apply("sponge_damp_coeff", ix + x, iy + y, iz + z, "scale", "dim");
-                }
-            }
-        }
-
-        value o1 = 0;
+        int off = 1;
 
         {
+            tensor<value, 3> offset;
+            offset.idx(idx) = -off;
 
-            differentiation_context<3> dctx(in, idx, ctx.uses_linear);
-            std::array<value, 3> vars = dctx.vars;
-
-            o1 = (vars[2] - vars[0]) / (2 * scale);
+            left_blocked += dual_types::apply("sponge_damp_coeff", ix + offset.idx(0), iy + offset.idx(1), iz + offset.idx(2), "scale", "dim");
         }
-
-        value o2 = 0;
 
         {
-            differentiation_context<5> dctx(in, idx, ctx.uses_linear);
-            std::array<value, 5> vars = dctx.vars;
+            tensor<value, 3> offset;
+            offset.idx(idx) = off;
 
-            o2 = (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
+            right_blocked += dual_types::apply("sponge_damp_coeff", ix + offset.idx(0), iy + offset.idx(1), iz + offset.idx(2), "scale", "dim");
         }
 
-        return dual_types::dual_if(any_boundary > 0, [&](){return o1;}, [&](){return o2;});
+        value central_o = diff1_interior(in, idx, 0, order, ctx.uses_linear);
+        value central_1 = diff1_interior(in, idx, 0, 1, ctx.uses_linear);
+
+
+        value any_blocked = left_blocked + right_blocked;
+
+        return dual_types::dual_if(any_blocked > 0,
+                                   [&](){return central_1;},
+                                   [&](){return central_o;});
     }
 
-    if(order == 1)
-    {
-        differentiation_context<3> dctx(in, idx, ctx.uses_linear);
-        std::array<value, 3> vars = dctx.vars;
-
-        return (vars[2] - vars[0]) / (2 * scale);
-    }
-    else if(order == 2)
-    {
-        differentiation_context dctx(in, idx, ctx.uses_linear);
-        std::array<value, 5> vars = dctx.vars;
-
-        return (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
-    }
-    else if(order == 3)
-    {
-        differentiation_context<7> dctx(in, idx, ctx.uses_linear);
-        std::array<value, 7> vars = dctx.vars;
-
-        return (-(1/60.f) * vars[0] + (3/20.f) * vars[1] - (3/4.f) * vars[2] + 0 * vars[3] + (3/4.f) * vars[4] - (3/20.f) * vars[5] + (1/60.f) * vars[6]) / scale;
-    }
-    else if(order == 4)
-    {
-        differentiation_context<9> dctx(in, idx, ctx.uses_linear);
-        std::array<value, 9> vars = dctx.vars;
-
-        return ((1/280.f) * vars[0] - (4/105.f) * vars[1] + (1/5.f) * vars[2] - (4/5.f) * vars[3] + (4/5.f) * vars[5] - (1/5.f) * vars[6] + (4/105.f) * vars[7] - (1/280.f) * vars[8]) / scale;
-    }
-
-    assert(false);
-    return 0;
+    return diff1_interior(in, idx, 0, order, ctx.uses_linear);
 }
 
 value diff2(equation_context& ctx, const value& in, int idx, int idy, const value& first_x, const value& first_y)
