@@ -125,6 +125,7 @@ struct equation_context
     bool debug = false;
 
     int order = 2;
+    bool careful_differentiation = false;
 
     void pin(value& v)
     {
@@ -899,6 +900,43 @@ value diff1(equation_context& ctx, const value& in, int idx)
     int order = ctx.order;
 
     value scale = "scale";
+
+    if(ctx.careful_differentiation)
+    {
+        value any_boundary = 0;
+
+        for(int z=-2; z <= 2; z++)
+        {
+            for(int y=-2; y <= 2; y++)
+            {
+                for(int x=-2; x <= 2; x++)
+                {
+                    any_boundary += dual_types::apply("sponge_damp_coeff", "ix", "iy", "iz", "scale", "dim");
+                }
+            }
+        }
+
+        value o1 = 0;
+
+        {
+
+            differentiation_context<3> dctx(in, idx, ctx.uses_linear);
+            std::array<value, 3> vars = dctx.vars;
+
+            o1 = (vars[2] - vars[0]) / (2 * scale);
+        }
+
+        value o2 = 0;
+
+        {
+            differentiation_context<5> dctx(in, idx, ctx.uses_linear);
+            std::array<value, 5> vars = dctx.vars;
+
+            o2 = (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
+        }
+
+        return dual_types::dual_if(any_boundary > 0, [&](){return o1;}, [&](){return o2;});
+    }
 
     if(order == 1)
     {
@@ -4103,6 +4141,8 @@ tensor<T, 4> tensor_project_upper(const tensor<T, 4>& in, const value& gA, const
 inline
 void extract_waveforms(equation_context& ctx)
 {
+    ctx.careful_differentiation = false;
+
     printf("Extracting waveforms\n");
 
     tensor<value, 3, 3> kronecker;
@@ -4491,6 +4531,7 @@ vec<3, value> unrotate_vector(const vec<3, value>& bx, const vec<3, value>& by, 
 void process_geodesics(equation_context& ctx)
 {
     ctx.order = 1;
+    ctx.careful_differentiation = false;
 
     standard_arguments args(ctx);
 
@@ -4629,6 +4670,7 @@ value dot_metric(const tensor<value, N>& v1_upper, const tensor<value, N>& v2_up
 void loop_geodesics(equation_context& ctx, vec3f dim)
 {
     ctx.order = 1;
+    ctx.careful_differentiation = false;
 
     standard_arguments args(ctx);
 
