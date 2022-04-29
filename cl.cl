@@ -485,6 +485,8 @@ void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
         return;
     #endif // SYMMETRY_BOUNDARY
 
+    int order = order_ptr[IDX(ix,iy,iz)];
+
     float TEMPORARIES10;
 
     buffer_out_1[IDX(ix,iy,iz)] = init_buffer_intermediate0;
@@ -788,6 +790,8 @@ void evolve_cY(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
 
+    int order = order_ptr[index];
+
     float TEMPORARIEStcy;
 
     float f_dtcYij0 = dtcYij0;
@@ -842,6 +846,8 @@ void evolve_cA(__global ushort4* points, int point_count,
     #endif // SYMMETRY_BOUNDARY
 
     int index = IDX(ix, iy, iz);
+
+    int order = order_ptr[index];
 
     float TEMPORARIEStca;
 
@@ -899,6 +905,8 @@ void evolve_cGi(__global ushort4* points, int point_count,
     #endif // SYMMETRY_BOUNDARY
 
     int index = IDX(ix, iy, iz);
+
+    int order = order_ptr[index];
 
     float TEMPORARIEStcgi;
 
@@ -967,6 +975,8 @@ void evolve_K(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
 
+    int order = order_ptr[index];
+
     float TEMPORARIEStk;
 
     float f_dtK = dtK;
@@ -1008,6 +1018,8 @@ void evolve_X(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
 
+    int order = order_ptr[index];
+
     float TEMPORARIEStx;
 
     float f_dtX = dtX;
@@ -1047,6 +1059,8 @@ void evolve_gA(__global ushort4* points, int point_count,
     #endif // SYMMETRY_BOUNDARY
 
     int index = IDX(ix, iy, iz);
+
+    int order = order_ptr[index];
 
     float TEMPORARIEStga;
 
@@ -1088,6 +1102,8 @@ void evolve_gB(__global ushort4* points, int point_count,
     #endif // SYMMETRY_BOUNDARY
 
     int index = IDX(ix, iy, iz);
+
+    int order = order_ptr[index];
 
     float TEMPORARIEStgb;
 

@@ -934,40 +934,22 @@ value diff1_interior(equation_context& ctx, const value& in, int idx, int order)
 
 value diff1(equation_context& ctx, const value& in, int idx)
 {
-    ctx.use_precise_differentiation = false;
-
     if(!ctx.use_precise_differentiation)
     {
         return diff1_interior(ctx, in, idx, ctx.order);
     }
     else
     {
-        /*value regular_order = dual_types::apply("is_regular_order_evolved_point", "ix", "iy", "iz", "scale", "dim");
-        value low_order = dual_types::apply("is_low_order_evolved_point", "ix", "iy", "iz", "scale", "dim");
-
-        value regular_d = diff1_interior(ctx, in, idx, ctx.order);
-        value low_d = diff1_interior(ctx, in, idx, 1);
-
-        return dual_types::if_v(regular_order, regular_d, low_d);*/
-
         tensor<value, 3> offset = {"ix", "iy", "iz"};
 
-        value is_low_order = 0;
+        value order = "order";
 
-        for(int i=-ctx.order; i <= ctx.order; i++)
-        {
-            if(i == 0)
-                continue;
-
-            offset.idx(idx) = i;
-
-            is_low_order += dual_types::apply("sponge_damp_coeff", "ix" + offset.x(), "iy" + offset.y(), "iz" + offset.z(), "scale", "dim");
-        }
+        value is_low_order = order == 1;
 
         value regular_d = diff1_interior(ctx, in, idx, ctx.order);
         value low_d = diff1_interior(ctx, in, idx, 1);
 
-        return dual_types::if_v(is_low_order > 0, regular_d, low_d);
+        return dual_types::if_v(is_low_order, regular_d, low_d);
     }
 }
 
