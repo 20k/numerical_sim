@@ -936,7 +936,7 @@ value diff1_interior(equation_context& ctx, const value& in, int idx, int order)
 
 value diff1(equation_context& ctx, const value& in, int idx)
 {
-    ctx.use_precise_differentiation = false;
+    //ctx.use_precise_differentiation = false;
 
     if(!ctx.use_precise_differentiation)
     {
@@ -4150,6 +4150,7 @@ tensor<T, 4> tensor_project_upper(const tensor<T, 4>& in, const value& gA, const
 inline
 void extract_waveforms(equation_context& ctx)
 {
+    ctx.use_precise_differentiation = false;
     printf("Extracting waveforms\n");
 
     tensor<value, 3, 3> kronecker;
