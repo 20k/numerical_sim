@@ -123,6 +123,7 @@ struct equation_context
     std::vector<std::pair<value, value>> aliases;
     bool uses_linear = false;
     bool debug = false;
+    bool use_precise_differentiation = true;
 
     int order = 2;
 
@@ -894,10 +895,8 @@ value hacky_differentiate(const value& in, int idx, bool pin = true, bool linear
 }
 #endif // 0
 
-value diff1(equation_context& ctx, const value& in, int idx)
+value diff1_interior(equation_context& ctx, const value& in, int idx, int order)
 {
-    int order = ctx.order;
-
     value scale = "scale";
 
     if(order == 1)
@@ -931,6 +930,45 @@ value diff1(equation_context& ctx, const value& in, int idx)
 
     assert(false);
     return 0;
+}
+
+value diff1(equation_context& ctx, const value& in, int idx)
+{
+    ctx.use_
+
+    if(!ctx.use_precise_differentiation)
+    {
+        return diff1_interior(ctx, in, idx, ctx.order);
+    }
+    else
+    {
+        /*value regular_order = dual_types::apply("is_regular_order_evolved_point", "ix", "iy", "iz", "scale", "dim");
+        value low_order = dual_types::apply("is_low_order_evolved_point", "ix", "iy", "iz", "scale", "dim");
+
+        value regular_d = diff1_interior(ctx, in, idx, ctx.order);
+        value low_d = diff1_interior(ctx, in, idx, 1);
+
+        return dual_types::if_v(regular_order, regular_d, low_d);*/
+
+        tensor<value, 3> offset = {"ix", "iy", "iz"};
+
+        value is_low_order = 0;
+
+        for(int i=-ctx.order; i <= ctx.order; i++)
+        {
+            if(i == 0)
+                continue;
+
+            offset.idx(idx) = i;
+
+            is_low_order += dual_types::apply("sponge_damp_coeff", "ix" + offset.x(), "iy" + offset.y(), "iz" + offset.z(), "scale", "dim");
+        }
+
+        value regular_d = diff1_interior(ctx, in, idx, ctx.order);
+        value low_d = diff1_interior(ctx, in, idx, 1);
+
+        return dual_types::if_v(is_low_order > 0, regular_d, low_d);
+    }
 }
 
 value diff2(equation_context& ctx, const value& in, int idx, int idy, const value& first_x, const value& first_y)
@@ -4491,6 +4529,7 @@ vec<3, value> unrotate_vector(const vec<3, value>& bx, const vec<3, value>& by, 
 void process_geodesics(equation_context& ctx)
 {
     ctx.order = 1;
+    ctx.use_precise_differentiation = false;
 
     standard_arguments args(ctx);
 
@@ -4629,6 +4668,7 @@ value dot_metric(const tensor<value, N>& v1_upper, const tensor<value, N>& v2_up
 void loop_geodesics(equation_context& ctx, vec3f dim)
 {
     ctx.order = 1;
+    ctx.use_precise_differentiation = false;
 
     standard_arguments args(ctx);
 

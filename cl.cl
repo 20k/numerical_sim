@@ -187,7 +187,7 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim)
 }
 
 ///if we're surrounded entirely by 1s, we're a deep boundary point
-float is_deep_boundary_point(float x, float y, float z, float scale, int4 dim)
+bool is_deep_boundary_point(float x, float y, float z, float scale, int4 dim)
 {
     #pragma unroll
     for(int iz=-1; iz <= 1; iz++)
@@ -208,7 +208,7 @@ float is_deep_boundary_point(float x, float y, float z, float scale, int4 dim)
 }
 
 ///if we're a 1, and around us is something that's not a 1, we're a border point
-float is_exact_border_point(float x, float y, float z, float scale, int4 dim)
+bool is_exact_border_point(float x, float y, float z, float scale, int4 dim)
 {
     if(sponge_damp_coeff(x, y, z, scale, dim) < 1)
         return 0;
@@ -231,7 +231,7 @@ float is_exact_border_point(float x, float y, float z, float scale, int4 dim)
     return 0;
 }
 
-float is_low_order_evolved_point(float x, float y, float z, float scale, int4 dim)
+bool is_low_order_evolved_point(float x, float y, float z, float scale, int4 dim)
 {
     if(is_exact_border_point(x, y, z, scale, dim) == 1)
         return 0;
@@ -257,7 +257,7 @@ float is_low_order_evolved_point(float x, float y, float z, float scale, int4 di
     return 0;
 }
 
-float is_regular_order_evolved_point(float x, float y, float z, float scale, int4 dim)
+bool is_regular_order_evolved_point(float x, float y, float z, float scale, int4 dim)
 {
     if(sponge_damp_coeff(x, y, z, scale, dim) == 1)
         return 0;
