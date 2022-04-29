@@ -584,67 +584,8 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
     points[idx].xyz = (ushort3)(ix, iy, iz);
 }
 
-///could try this function also where it only calculates derivatives for dynamic fields
-///aka do not calculate derivatives across the maximal sponge point
-bool valid_first_derivative_point(int3 pos, float scale, int4 dim)
-{
-    ///one of the points would lie outside the boundary
-    if(invalid_first(pos.x, pos.y, pos.z, dim))
-        return false;
-
-    int width = BORDER_WIDTH;
-
-    for(int z=-width; z <= width; z++)
-    {
-        for(int y=-width; y <= width; y++)
-        {
-            for(int x=-width; x <= width; x++)
-            {
-                int3 combo = (int3)(x, y, z) + pos;
-
-                float sponge_local = sponge_damp_coeff(combo.x, combo.y, combo.z, scale, dim);
-
-                ///one of the points is non sponged, so we should calculate first derivatives
-                if(sponge_local < 1)
-                    return true;
-            }
-        }
-    }
-
-    ///no point is unsponged, therefore do not process
-    return false;
-}
-
-///if any point is not a valid first derivative point, we can't evolve this correctly
-bool valid_second_derivative_point(int3 pos, float scale, int4 dim)
-{
-    ///out of boundaries for the below loop
-    if(invalid_first(pos.x, pos.y, pos.z, dim))
-        return false;
-
-    int width = BORDER_WIDTH;
-
-    for(int z=-width; z <= width; z++)
-    {
-        for(int y=-width; y <= width; y++)
-        {
-            for(int x=-width; x <= width; x++)
-            {
-                int3 combo = (int3)(x, y, z) + pos;
-
-                ///one of the underlying first derivatives would be invalid
-                if(!valid_first_derivative_point(combo, scale, dim))
-                    return false;
-            }
-        }
-    }
-
-    return true;
-}
-
 __kernel
-void generate_evolution_points(__global ushort4* points_1st, __global int* point_count_1st,
-                               __global ushort4* points_2nd, __global int* point_count_2nd,
+void generate_evolution_points(__global ushort4* points __global int* point_count, __global char* order_ptr,
                                float scale, int4 dim)
 {
     int ix = get_global_id(0);
@@ -656,18 +597,21 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
 
     int3 pos = (int3)(ix, iy, iz);
 
-    if(valid_first_derivative_point(pos, scale, dim))
+    if(is_regular_order_evolved_point(ix, iy, iz, scale, dim) && is_low_order_evolved_point(ix, iy, iz, scale, dim))
     {
-        int idx = atomic_inc(point_count_1st);
+        int idx = atomic_inc(point_count);
 
-        points_1st[idx].xyz = (ushort3)(ix, iy, iz);
+        points[idx].xyz = (ushort3)(ix, iy, iz);
     }
 
-    if(valid_second_derivative_point(pos, scale, dim))
+    if(is_regular_order_evolved_point(ix, iy, iz, scale, dim))
     {
-        int idx = atomic_inc(point_count_2nd);
+        order_ptr[idx] = 2;
+    }
 
-        points_2nd[idx].xyz = (ushort3)(ix, iy, iz);
+    if(is_low_order_evolved_point(ix, iy, iz, scale, dim))
+    {
+        order_ptr[idx] = 1;
     }
 }
 
