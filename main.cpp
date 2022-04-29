@@ -836,6 +836,8 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
 
 void build_kreiss_oliger_dissipate_singular(equation_context& ctx)
 {
+    ctx.use_precise_differentiation = false;
+
     value buf = dual_types::apply("buffer_index", "buffer", "ix", "iy", "iz", "dim");
 
     value coeff = "coefficient";
@@ -950,7 +952,7 @@ value diff1(equation_context& ctx, const value& in, int idx)
 
         return dual_types::if_v(regular_order, regular_d, low_d);*/
 
-        tensor<value, 3> offset = {"ix", "iy", "iz"};
+        /*tensor<value, 3> offset = {"ix", "iy", "iz"};
 
         value is_low_order = 0;
 
@@ -967,7 +969,14 @@ value diff1(equation_context& ctx, const value& in, int idx)
         value regular_d = diff1_interior(ctx, in, idx, ctx.order);
         value low_d = diff1_interior(ctx, in, idx, 1);
 
-        return dual_types::if_v(is_low_order > 0, regular_d, low_d);
+        return dual_types::if_v(is_low_order > 0, regular_d, low_d);*/
+
+        value order = "order";
+
+        value regular_d = diff1_interior(ctx, in, idx, ctx.order);
+        value low_d = diff1_interior(ctx, in, idx, 1);
+
+        return dual_types::if_v(order > 1, regular_d, low_d);
     }
 }
 

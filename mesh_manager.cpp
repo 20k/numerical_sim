@@ -34,7 +34,7 @@ std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_
 
     std::vector<cl_ushort4> cpu_points = points.read<cl_ushort4>(cqueue);
 
-    printf("Original sponge points %i\n", cpu_points.size());
+    printf("Original sponge points %i\n", (int)cpu_points.size());
 
     cl_int count = real_count.read<cl_int>(cqueue).at(0);
 
@@ -261,32 +261,35 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     mqueue.begin_splice(main_queue);
 
+    std::vector<std::tuple<cl::buffer, int, int>> point_set = {{points_set.full_derivative_points, points_set.full_count, 2},
+                                                               {points_set.reduced_derivative_points, points_set.reduced_count, 1}};
+
     auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
     {
         intermediates.clear();
 
         last_valid_thin_buffer = &generic_in;
 
-        cl::args last_args;
-
         {
             auto differentiate = [&](cl::managed_command_queue& cqueue, const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
             {
                 int idx = buffer_to_index(name);
 
-                cl::args thin;
-                thin.push_back(points_set.first_derivative_points);
-                thin.push_back(points_set.first_count);
-                thin.push_back(generic_in[idx].as_device_read_only());
-                thin.push_back(out1);
-                thin.push_back(out2);
-                thin.push_back(out3);
-                thin.push_back(scale);
-                thin.push_back(clsize);
+                for(auto& [point_buffer, point_count, order] : point_set)
+                {
+                    cl::args thin;
+                    thin.push_back(point_buffer);
+                    thin.push_back(point_count);
+                    thin.push_back(generic_in[idx].as_device_read_only());
+                    thin.push_back(out1);
+                    thin.push_back(out2);
+                    thin.push_back(out3);
+                    thin.push_back(scale);
+                    thin.push_back(clsize);
+                    thin.push_back(order);
 
-                last_args = thin;
-
-                cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.first_count}, {128});
+                    cqueue.exec("calculate_intermediate_data_thin", thin, {point_count}, {128});
+                }
 
                 //cqueue.flush();
             };
@@ -315,7 +318,9 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         ///end all the differentiation work before we move on
         if(sett.calculate_momentum_constraint)
         {
-            cl::args momentum_args;
+            assert(false);
+
+            /*cl::args momentum_args;
 
             momentum_args.push_back(points_set.first_derivative_points);
             momentum_args.push_back(points_set.first_count);
@@ -333,7 +338,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             momentum_args.push_back(scale);
             momentum_args.push_back(clsize);
 
-            mqueue.exec("calculate_momentum_constraint", momentum_args, {points_set.first_count}, {128});
+            mqueue.exec("calculate_momentum_constraint", momentum_args, {points_set.first_count}, {128});*/
         }
 
         std::vector<std::string> modified_by
@@ -371,44 +376,52 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
         auto step_kernel = [&](const std::string& name)
         {
-            cl::args a1;
+            std::vector<std::tuple<cl::buffer, int, int>> point_set = {{points_set.full_derivative_points, points_set.full_count, 2},
+                                                                 {points_set.reduced_derivative_points, points_set.reduced_count, 1}};
 
-            a1.push_back(points_set.second_derivative_points);
-            a1.push_back(points_set.second_count);
-
-            for(auto& i : generic_in)
+            for(auto& [point_buffer, point_count, order] : point_set)
             {
-                a1.push_back(i.as_device_read_only());
+                cl::args a1;
+
+                a1.push_back(point_buffer);
+                a1.push_back(point_count);
+
+                for(auto& i : generic_in)
+                {
+                    a1.push_back(i.as_device_read_only());
+                }
+
+                for(int kk=0; kk < (int)generic_out.size(); kk++)
+                {
+                    if(modified_by[kk] == name)
+                        a1.push_back(generic_out[kk]);
+                    else
+                        a1.push_back(generic_out[kk].as_device_inaccessible());
+                }
+
+                for(auto& i : base_yn)
+                {
+                    a1.push_back(i.as_device_read_only());
+                }
+
+                for(auto& i : momentum_constraint)
+                {
+                    a1.push_back(i.as_device_read_only());
+                }
+
+                for(auto& i : intermediates)
+                {
+                    a1.push_back(i.as_device_read_only());
+                }
+
+                a1.push_back(scale);
+                a1.push_back(clsize);
+                a1.push_back(current_timestep);
+                a1.push_back(order);
+
+                mqueue.exec(name, a1, {point_count}, {128});
             }
 
-            for(int kk=0; kk < (int)generic_out.size(); kk++)
-            {
-                if(modified_by[kk] == name)
-                    a1.push_back(generic_out[kk]);
-                else
-                    a1.push_back(generic_out[kk].as_device_inaccessible());
-            }
-
-            for(auto& i : base_yn)
-            {
-                a1.push_back(i.as_device_read_only());
-            }
-
-            for(auto& i : momentum_constraint)
-            {
-                a1.push_back(i.as_device_read_only());
-            }
-
-            for(auto& i : intermediates)
-            {
-                a1.push_back(i.as_device_read_only());
-            }
-
-            a1.push_back(scale);
-            a1.push_back(clsize);
-            a1.push_back(current_timestep);
-
-            mqueue.exec(name, a1, {points_set.second_count}, {128});
             //mqueue.flush();
         };
 
@@ -423,41 +436,47 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     auto enforce_constraints = [&](auto& generic_out)
     {
-        cl::args constraints;
-
-        ///technically this function could work anywhere as it does not need derivatives
-        ///but only the valid second derivative points are used
-        constraints.push_back(points_set.second_derivative_points);
-        constraints.push_back(points_set.second_count);
-
-        for(auto& i : generic_out)
+        for(auto& [point_buffer, point_count, order] : point_set)
         {
-            constraints.push_back(i);
+            cl::args constraints;
+
+            ///technically this function could work anywhere as it does not need derivatives
+            ///but only the valid second derivative points are used
+            constraints.push_back(point_buffer);
+            constraints.push_back(point_count);
+
+            for(auto& i : generic_out)
+            {
+                constraints.push_back(i);
+            }
+
+            constraints.push_back(scale);
+            constraints.push_back(clsize);
+
+            mqueue.exec("enforce_algebraic_constraints", constraints, {point_count}, {128});
         }
-
-        constraints.push_back(scale);
-        constraints.push_back(clsize);
-
-        mqueue.exec("enforce_algebraic_constraints", constraints, {points_set.second_count}, {128});
     };
 
-    auto diff_to_input = [&](auto& buffer_in, cl_float factor)
+    /*auto diff_to_input = [&](auto& buffer_in, cl_float factor)
     {
         for(int i=0; i < (int)buffer_in.size(); i++)
         {
-            cl::args accum;
-            accum.push_back(points_set.second_derivative_points);
-            accum.push_back(points_set.second_count);
-            accum.push_back(clsize);
-            accum.push_back(buffer_in[i]);
-            accum.push_back(base_yn[i]);
-            accum.push_back(factor);
+            for(auto& [point_buffer, point_count, order] : point_set)
+            {
+                cl::args accum;
+                accum.push_back(point_buffer);
+                accum.push_back(point_count);
+                accum.push_back(clsize);
+                accum.push_back(buffer_in[i]);
+                accum.push_back(base_yn[i]);
+                accum.push_back(factor);
 
-            mqueue.exec("calculate_rk4_val", accum, {points_set.second_count}, {128});
+                mqueue.exec("calculate_rk4_val", accum, {point_count}, {128});
+            }
         }
-    };
+    };*/
 
-    auto copy_valid = [&](auto& in, auto& out)
+    /*auto copy_valid = [&](auto& in, auto& out)
     {
         for(int i=0; i < (int)in.size(); i++)
         {
@@ -497,31 +516,34 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             mqueue.exec("dissipate_single", diss, {points_set.second_count}, {128});
             //mqueue.flush();
         }
-    };
+    };*/
 
     auto dissipate_unidir = [&](auto& in, auto& out)
     {
         for(int i=0; i < buffer_set::buffer_count; i++)
         {
-            cl::args diss;
+            for(auto& [point_buffer, point_count, order] : point_set)
+            {
+                cl::args diss;
 
-            diss.push_back(points_set.second_derivative_points);
-            diss.push_back(points_set.second_count);
+                diss.push_back(point_buffer);
+                diss.push_back(point_count);
 
-            diss.push_back(in[i].as_device_read_only());
-            diss.push_back(out[i]);
+                diss.push_back(in[i].as_device_read_only());
+                diss.push_back(out[i]);
 
-            float coeff = dissipation_coefficients[i];
+                float coeff = dissipation_coefficients[i];
 
-            diss.push_back(coeff);
-            diss.push_back(scale);
-            diss.push_back(clsize);
-            diss.push_back(timestep);
+                diss.push_back(coeff);
+                diss.push_back(scale);
+                diss.push_back(clsize);
+                diss.push_back(timestep);
 
-            if(coeff == 0)
-                continue;
+                if(coeff == 0)
+                    continue;
 
-            mqueue.exec("dissipate_single_unidir", diss, {points_set.second_count}, {128});
+                mqueue.exec("dissipate_single_unidir", diss, {point_count}, {128});
+            }
         }
     };
     ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
