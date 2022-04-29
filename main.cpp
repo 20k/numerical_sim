@@ -911,7 +911,11 @@ value diff1(equation_context& ctx, const value& in, int idx)
             {
                 for(int x=-2; x <= 2; x++)
                 {
-                    any_boundary += dual_types::apply("sponge_damp_coeff", "ix", "iy", "iz", "scale", "dim");
+                    value ix = "ix";
+                    value iy = "iy";
+                    value iz = "iz";
+
+                    any_boundary += dual_types::apply("sponge_damp_coeff", ix + x, iy + y, iz + z, "scale", "dim");
                 }
             }
         }
