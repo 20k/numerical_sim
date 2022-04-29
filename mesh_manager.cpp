@@ -29,6 +29,8 @@ std::pair<cl::buffer, int> extract_buffer(cl::context& ctx, cl::command_queue& c
     shrunk_points.alloc(cpu_buf.size() * sizeof(cl_ushort4));
     shrunk_points.write(cqueue, cpu_buf);
 
+    printf("COUNT %i\n", cpu_count_1);
+
     return {shrunk_points, cpu_count_1};
 }
 
