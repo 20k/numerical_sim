@@ -970,7 +970,6 @@ value diff1(equation_context& ctx, const value& in, int idx)
         value central_o = diff1_interior(in, idx, 0, order, ctx.uses_linear);
         value central_1 = diff1_interior(in, idx, 0, 1, ctx.uses_linear);
 
-
         value any_blocked = left_blocked + right_blocked;
 
         return dual_types::dual_if(any_blocked > 0,
