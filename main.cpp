@@ -949,7 +949,7 @@ value diff1(equation_context& ctx, const value& in, int idx)
         value regular_d = diff1_interior(ctx, in, idx, ctx.order);
         value low_d = diff1_interior(ctx, in, idx, 1);
 
-        return dual_types::if_v(is_low_order, regular_d, low_d);
+        return dual_types::if_v(is_low_order, low_d, regular_d);
     }
 }
 
