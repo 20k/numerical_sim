@@ -466,7 +466,7 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
 __kernel
 void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
                                       __global float* buffer, __global DERIV_PRECISION* buffer_out_1, __global DERIV_PRECISION* buffer_out_2, __global DERIV_PRECISION* buffer_out_3,
-                                      float scale, int4 dim)
+                                      float scale, int4 dim, __global char* order_ptr)
 {
     int local_idx = get_global_id(0);
 
@@ -585,7 +585,7 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
 }
 
 __kernel
-void generate_evolution_points(__global ushort4* points __global int* point_count, __global char* order_ptr,
+void generate_evolution_points(__global ushort4* points, __global int* point_count, __global char* order_ptr,
                                float scale, int4 dim)
 {
     int ix = get_global_id(0);
@@ -597,7 +597,7 @@ void generate_evolution_points(__global ushort4* points __global int* point_coun
 
     int3 pos = (int3)(ix, iy, iz);
 
-    if(is_regular_order_evolved_point(ix, iy, iz, scale, dim) && is_low_order_evolved_point(ix, iy, iz, scale, dim))
+    if(is_regular_order_evolved_point(ix, iy, iz, scale, dim) || is_low_order_evolved_point(ix, iy, iz, scale, dim))
     {
         int idx = atomic_inc(point_count);
 
@@ -606,11 +606,15 @@ void generate_evolution_points(__global ushort4* points __global int* point_coun
 
     if(is_regular_order_evolved_point(ix, iy, iz, scale, dim))
     {
+        int idx = IDX(ix, iy, iz);
+
         order_ptr[idx] = 2;
     }
 
     if(is_low_order_evolved_point(ix, iy, iz, scale, dim))
     {
+        int idx = IDX(ix, iy, iz);
+
         order_ptr[idx] = 1;
     }
 }
@@ -763,7 +767,7 @@ void evolve_cY(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, __global char* order_ptr)
 {
     int local_idx = get_global_id(0);
 
@@ -818,7 +822,7 @@ void evolve_cA(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, __global char* order_ptr)
 {
     int local_idx = get_global_id(0);
 
@@ -875,7 +879,7 @@ void evolve_cGi(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, __global char* order_ptr)
 {
     int local_idx = get_global_id(0);
 
@@ -942,7 +946,7 @@ void evolve_K(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, __global char* order_ptr)
 {
     int local_idx = get_global_id(0);
 
@@ -983,7 +987,7 @@ void evolve_X(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, __global char* order_ptr)
 {
     int local_idx = get_global_id(0);
 
@@ -1023,7 +1027,7 @@ void evolve_gA(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, __global char* order_ptr)
 {
     int local_idx = get_global_id(0);
 
@@ -1064,7 +1068,7 @@ void evolve_gB(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, __global char* order_ptr)
 {
     int local_idx = get_global_id(0);
 
