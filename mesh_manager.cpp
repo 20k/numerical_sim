@@ -13,6 +13,26 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size)
 }
 
 inline
+std::pair<cl::buffer, int> extract_buffer(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& buf, cl::buffer& count)
+{
+    std::vector<cl_ushort4> cpu_buf = buf.read<cl_ushort4>(cqueue);
+    cl_int cpu_count_1 = count.read<cl_int>(cqueue).at(0);
+
+    assert(cpu_count_1 > 0);
+
+    std::sort(std::execution::par_unseq, cpu_buf.begin(), cpu_buf.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
+    {
+        return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
+    });
+
+    cl::buffer shrunk_points(ctx);
+    shrunk_points.alloc(cpu_buf.size() * sizeof(cl_ushort4));
+    shrunk_points.write(cqueue, cpu_buf);
+
+    return {shrunk_points, cpu_count_1};
+}
+
+inline
 std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
 {
     cl::buffer points(ctx);
@@ -32,47 +52,9 @@ std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_
 
     cqueue.exec("generate_sponge_points", args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
 
-    std::vector<cl_ushort4> cpu_points = points.read<cl_ushort4>(cqueue);
-
-    printf("Original sponge points %i\n", (int)cpu_points.size());
-
-    cl_int count = real_count.read<cl_int>(cqueue).at(0);
-
-    assert(count > 0);
-
-    cpu_points.resize(count);
-
-    std::sort(std::execution::par_unseq, cpu_points.begin(), cpu_points.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
-    {
-        return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
-    });
-
-    cl::buffer real(ctx);
-    real.alloc(cpu_points.size() * sizeof(cl_ushort4));
-    real.write(cqueue, cpu_points);
-
-    printf("Sponge point reduction %i\n", count);
+    auto [real, count] = extract_buffer(ctx, cqueue, points, real_count);
 
     return {real.as_device_read_only(), count};
-}
-
-std::pair<cl::buffer, int> extract_buffer(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& buf, cl::buffer& count)
-{
-    std::vector<cl_ushort4> cpu_buf = buf.read<cl_ushort4>(cqueue);
-    cl_int cpu_count_1 = count.read<cl_int>(cqueue).at(0);
-
-    assert(cpu_count_1 > 0);
-
-    std::sort(std::execution::par_unseq, cpu_buf.begin(), cpu_buf.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
-    {
-        return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
-    });
-
-    cl::buffer shrunk_points(ctx);
-    shrunk_points.alloc(cpu_buf.size() * sizeof(cl_ushort4));
-    shrunk_points.write(cqueue, cpu_buf);
-
-    return {shrunk_points, cpu_count_1};
 }
 
 inline
