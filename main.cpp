@@ -4141,6 +4141,7 @@ tensor<T, 4> tensor_project_upper(const tensor<T, 4>& in, const value& gA, const
 inline
 void extract_waveforms(equation_context& ctx)
 {
+    ctx.use_precise_differentiation = false;
     printf("Extracting waveforms\n");
 
     tensor<value, 3, 3> kronecker;
