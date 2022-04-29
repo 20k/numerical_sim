@@ -236,6 +236,9 @@ float is_low_order_evolved_point(float x, float y, float z, float scale, int4 di
     if(is_exact_border_point(x, y, z, scale, dim) == 1)
         return 0;
 
+    if(sponge_damp_coeff(x, y, z, scale, dim) == 1)
+        return 0;
+
     #pragma unroll
     for(int iz=-BORDER_WIDTH; iz <= BORDER_WIDTH; iz++)
     {
@@ -256,6 +259,9 @@ float is_low_order_evolved_point(float x, float y, float z, float scale, int4 di
 
 float is_regular_order_evolved_point(float x, float y, float z, float scale, int4 dim)
 {
+    if(sponge_damp_coeff(x, y, z, scale, dim) == 1)
+        return 0;
+
     #pragma unroll
     for(int iz=-BORDER_WIDTH; iz <= BORDER_WIDTH; iz++)
     {
