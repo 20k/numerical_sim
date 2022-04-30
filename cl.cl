@@ -878,7 +878,7 @@ void clean_data(__global ushort4* points, int point_count,
 
         if((order & D_FULL) == 0 && (order & D_LOW) == 0 && iz == dim.z/2 && iy == dim.y/2)
         {
-            printf("Ox %f Val %f diff %f %i %i %i\n", oX[index], X[index], s_dtX, ix, iy, iz);
+            printf("Ox %f Val %f diff %f %i %i %i\n", ocY0[index], cY0[index], s_dtcY0, ix, iy, iz);
             //printf("Val %f diff %f\n", cY0[index], s_dtcY0);
         }
 
@@ -1410,7 +1410,7 @@ void render(STANDARD_ARGS(),
     //for(int z = 20; z < dim.z-20; z++)
 
     {
-        float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim);
+        /*float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim);
 
         if(sponge_factor > 0)
         {
@@ -1418,7 +1418,7 @@ void render(STANDARD_ARGS(),
 
             write_imagef(screen, (int2){get_global_id(0), get_global_id(1)}, (float4)(srgb_to_lin(sponge_col), 1));
             return;
-        }
+        }*/
 
         #ifdef NEWORDER_DEBUG
         ushort order = order_ptr[IDX(ix, iy, iz)];
