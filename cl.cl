@@ -115,11 +115,6 @@ void copy_valid(__global ushort4* points, int point_count, __global float* in, _
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     int index = IDX(ix, iy, iz);
 
     out[index] = in[index];
