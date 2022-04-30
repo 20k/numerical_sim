@@ -895,6 +895,12 @@ void clean_data(__global ushort4* points, int point_count,
         float s_dtcGi1 = sommer_dtcGi1;
         float s_dtcGi2 = sommer_dtcGi2;
 
+        /*if((order & D_FULL) == 0 && (order & D_LOW) == 0 && iz == dim.z/2)
+        {
+            printf("Val %f diff %f\n", K[index], s_dtK);
+            //printf("Val %f diff %f\n", cY0[index], s_dtcY0);
+        }*/
+
         ocY0[index] += s_dtcY0 * timestep;
         ocY1[index] += s_dtcY1 * timestep;
         ocY2[index] += s_dtcY2 * timestep;

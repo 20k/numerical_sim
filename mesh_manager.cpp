@@ -515,14 +515,27 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
     {
         for(int i=0; i < (int)in.size(); i++)
         {
-            cl::args copy;
-            copy.push_back(points_set.second_derivative_points);
-            copy.push_back(points_set.second_count);
-            copy.push_back(in[i]);
-            copy.push_back(out[i]);
-            copy.push_back(clsize);
+            {
+                cl::args copy;
+                copy.push_back(points_set.second_derivative_points);
+                copy.push_back(points_set.second_count);
+                copy.push_back(in[i]);
+                copy.push_back(out[i]);
+                copy.push_back(clsize);
 
-            mqueue.exec("copy_valid", copy, {points_set.second_count}, {128});
+                mqueue.exec("copy_valid", copy, {points_set.second_count}, {128});
+            }
+
+            {
+                cl::args copy;
+                copy.push_back(points_set.border_points);
+                copy.push_back(points_set.border_count);
+                copy.push_back(in[i]);
+                copy.push_back(out[i]);
+                copy.push_back(clsize);
+
+                mqueue.exec("copy_valid", copy, {points_set.border_count}, {128});
+            }
         }
     };
 
@@ -675,6 +688,32 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
     diff_to_input(generic_data[(which_data + 1) % 2].buffers, timestep);
     #endif
 
+    auto clean = [&](const auto& base_buf, const auto& inout)
+    {
+        cl::args cleaner;
+        cleaner.push_back(points_set.border_points);
+        cleaner.push_back(points_set.border_count);
+
+        for(auto& i : scratch.buffers)
+        {
+            cleaner.push_back(i);
+        }
+
+        for(auto& i : get_output().buffers)
+        {
+            cleaner.push_back(i);
+        }
+
+        //cleaner.push_back(bssnok_datas[which_data]);
+        cleaner.push_back(u_arg);
+        cleaner.push_back(points_set.order);
+        cleaner.push_back(scale);
+        cleaner.push_back(clsize);
+        cleaner.push_back(timestep);
+
+        mqueue.exec("clean_data", cleaner, {points_set.border_count}, {256});
+    };
+
     #define BACKWARD_EULER
     #ifdef BACKWARD_EULER
     auto& b1 = get_input();
@@ -697,6 +736,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             #endif
 
             dissipate_unidir(b2.buffers, scratch.buffers);
+
+            clean(b2, scratch);
 
             enforce_constraints(scratch.buffers);
             //std::swap(b2, scratch);
@@ -769,30 +810,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     //dissipate(get_input().buffers, get_output().buffers);
 
-    {
-        cl::args cleaner;
-        cleaner.push_back(points_set.border_points);
-        cleaner.push_back(points_set.border_count);
-
-        for(auto& i : scratch.buffers)
-        {
-            cleaner.push_back(i);
-        }
-
-        for(auto& i : get_output().buffers)
-        {
-            cleaner.push_back(i);
-        }
-
-        //cleaner.push_back(bssnok_datas[which_data]);
-        cleaner.push_back(u_arg);
-        cleaner.push_back(points_set.order);
-        cleaner.push_back(scale);
-        cleaner.push_back(clsize);
-        cleaner.push_back(timestep);
-
-        mqueue.exec("clean_data", cleaner, {points_set.border_count}, {256});
-    }
+    clean(scratch, b2);
 
     enforce_constraints(get_output().buffers);
 
