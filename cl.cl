@@ -186,49 +186,29 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim)
     return clamp(native_exp(-pow((r - sponge_r1) / sigma, 2)), 0.f, 1.f);
 }
 
-///if we're surrounded entirely by 1s, we're a deep boundary point
-bool is_deep_boundary_point(float x, float y, float z, float scale, int4 dim)
-{
-    #pragma unroll
-    for(int iz=-1; iz <= 1; iz++)
-    {
-        #pragma unroll
-        for(int iy=-1; iy <= 1; iy++)
-        {
-            #pragma unroll
-            for(int ix=-1; ix <= 1; ix++)
-            {
-                if(sponge_damp_coeff(x + ix, y + iy, z + iz, scale, dim) < 1)
-                    return 0;
-            }
-        }
-    }
-
-    return 1;
-}
-
 ///if we're a 1, and around us is something that's not a 1, we're a border point
 bool is_exact_border_point(float x, float y, float z, float scale, int4 dim)
 {
     if(sponge_damp_coeff(x, y, z, scale, dim) < 1)
         return 0;
 
-    #pragma unroll
-    for(int iz=-1; iz <= 1; iz++)
+    int3 points[6] = {{-1, 0, 0}, {1, 0, 0}, {0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}};
+
+    for(int i=0; i < 6; i++)
     {
-        #pragma unroll
-        for(int iy=-1; iy <= 1; iy++)
-        {
-            #pragma unroll
-            for(int ix=-1; ix <= 1; ix++)
-            {
-                if(sponge_damp_coeff(x + ix, y + iy, z + iz, scale, dim) < 1)
-                    return 1;
-            }
-        }
+        int3 offset = points[i];
+
+         if(sponge_damp_coeff(x + offset.x, y + offset.y, z + offset.z, scale, dim) < 1)
+            return 1;
     }
 
     return 0;
+}
+
+///if we're surrounded entirely by 1s, we're a deep boundary point
+bool is_deep_boundary_point(float x, float y, float z, float scale, int4 dim)
+{
+    return sponge_damp_coeff(x, y, z, scale, dim) == 1 && !is_exact_border_point(x, y, z, scale, dim);
 }
 
 bool is_low_order_evolved_point(float x, float y, float z, float scale, int4 dim)
