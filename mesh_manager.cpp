@@ -298,6 +298,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 thin.push_back(out3);
                 thin.push_back(scale);
                 thin.push_back(clsize);
+                thin.push_back(points_set.order);
 
                 last_args = thin;
 
@@ -330,6 +331,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         ///end all the differentiation work before we move on
         if(sett.calculate_momentum_constraint)
         {
+            assert(false);
+
             cl::args momentum_args;
 
             momentum_args.push_back(points_set.first_derivative_points);
@@ -422,6 +425,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             a1.push_back(scale);
             a1.push_back(clsize);
             a1.push_back(current_timestep);
+            a1.push_back(points_set.order);
 
             mqueue.exec(name, a1, {points_set.second_count}, {128});
             //mqueue.flush();
@@ -532,6 +536,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             diss.push_back(scale);
             diss.push_back(clsize);
             diss.push_back(timestep);
+            diss.push_back(points_set.order);
 
             if(coeff == 0)
                 continue;
