@@ -526,11 +526,6 @@ void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_first(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     int order = order_ptr[IDX(ix,iy,iz)];
 
     float TEMPORARIES10;
@@ -556,11 +551,6 @@ void calculate_intermediate_data_thin_directional(__global ushort4* points, int 
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_first(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
 
     int order = order_ptr[IDX(ix,iy,iz)];
 
@@ -624,10 +614,6 @@ void calculate_momentum_constraint(__global ushort4* points, int point_count,
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
 
     float TEMPORARIES12;
 
@@ -992,11 +978,6 @@ void evolve_cY(__global ushort4* points, int point_count,
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     float left = cY0[IDX(ix-1, iy, iz)];
     ushort order_left = order_ptr[IDX(ix-1, iy, iz)];
     ushort my_order = order_ptr[IDX(ix, iy, iz)];
@@ -1063,11 +1044,6 @@ void evolve_cA(__global ushort4* points, int point_count,
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
@@ -1120,11 +1096,6 @@ void evolve_cGi(__global ushort4* points, int point_count,
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
 
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
@@ -1189,11 +1160,6 @@ void evolve_K(__global ushort4* points, int point_count,
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
@@ -1231,11 +1197,6 @@ void evolve_X(__global ushort4* points, int point_count,
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
@@ -1271,11 +1232,6 @@ void evolve_gA(__global ushort4* points, int point_count,
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
 
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
@@ -1314,11 +1270,6 @@ void evolve_gB(__global ushort4* points, int point_count,
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
@@ -1354,11 +1305,6 @@ void dissipate_single(__global ushort4* points, int point_count,
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
 
     int index = IDX(ix, iy, iz);
 
@@ -1409,9 +1355,6 @@ void dissipate_single_unidir(__global ushort4* points, int point_count,
     int iz = points[local_idx].z;
 
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    if(invalid_second(ix, iy, iz, dim))
         return;
 
     int index = IDX(ix, iy, iz);
