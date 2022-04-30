@@ -2761,6 +2761,7 @@ void build_sommerfield(equation_context& ctx)
 {
     ctx.order = 1;
     ctx.always_directional_derivatives = true;
+    ctx.use_precise_differentiation = true;
     standard_arguments args(ctx);
 
     value sponge = "sponge_factor";
@@ -5302,6 +5303,7 @@ int main()
     build_hamiltonian_constraint(ctx14);
 
     equation_context ctxsommer;
+    build_sommerfield(ctxsommer);
 
     ctx1.build(argument_string, 0);
     ctx4.build(argument_string, 3);
