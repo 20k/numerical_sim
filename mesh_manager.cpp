@@ -570,26 +570,51 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
     {
         for(int i=0; i < buffer_set::buffer_count; i++)
         {
-            cl::args diss;
+            {
+                cl::args diss;
 
-            diss.push_back(points_set.second_derivative_points);
-            diss.push_back(points_set.second_count);
+                diss.push_back(points_set.second_derivative_points);
+                diss.push_back(points_set.second_count);
 
-            diss.push_back(in[i].as_device_read_only());
-            diss.push_back(out[i]);
+                diss.push_back(in[i].as_device_read_only());
+                diss.push_back(out[i]);
 
-            float coeff = dissipation_coefficients[i];
+                float coeff = dissipation_coefficients[i];
 
-            diss.push_back(coeff);
-            diss.push_back(scale);
-            diss.push_back(clsize);
-            diss.push_back(timestep);
-            diss.push_back(points_set.order);
+                diss.push_back(coeff);
+                diss.push_back(scale);
+                diss.push_back(clsize);
+                diss.push_back(timestep);
+                diss.push_back(points_set.order);
 
-            if(coeff == 0)
-                continue;
+                if(coeff == 0)
+                    continue;
 
-            mqueue.exec("dissipate_single_unidir", diss, {points_set.second_count}, {128});
+                mqueue.exec("dissipate_single_unidir", diss, {points_set.second_count}, {128});
+            }
+
+            {
+                cl::args diss;
+
+                diss.push_back(points_set.border_points);
+                diss.push_back(points_set.border_count);
+
+                diss.push_back(in[i].as_device_read_only());
+                diss.push_back(out[i]);
+
+                float coeff = dissipation_coefficients[i];
+
+                diss.push_back(coeff);
+                diss.push_back(scale);
+                diss.push_back(clsize);
+                diss.push_back(timestep);
+                diss.push_back(points_set.order);
+
+                if(coeff == 0)
+                    continue;
+
+                mqueue.exec("dissipate_single_unidir", diss, {points_set.border_count}, {128});
+            }
         }
     };
     ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
