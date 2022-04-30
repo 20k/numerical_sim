@@ -374,12 +374,13 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     #endif // USE_GBB
 
     ///nanananananananana
-    #define NANIFY
-    #ifdef NANIFY
-    float nan = NAN;
 
     if(is_deep_boundary_point(ix, iy, iz, scale, dim))
     {
+        //#define NANIFY
+        #ifdef NANIFY
+        float nan = NAN;
+
         cY0[index] = nan;
         cY1[index] = nan;
         cY2[index] = nan;
@@ -405,8 +406,34 @@ void calculate_initial_conditions(STANDARD_ARGS(),
         gB0[index] = nan;
         gB1[index] = nan;
         gB2[index] = nan;
+        #else
+        cY0[index] = 1;
+        cY1[index] = 0;
+        cY2[index] = 0;
+        cY3[index] = 1;
+        cY4[index] = 0;
+        cY5[index] = 1;
+
+        cA0[index] = 0;
+        cA1[index] = 0;
+        cA2[index] = 0;
+        cA3[index] = 0;
+        cA4[index] = 0;
+        cA5[index] = 0;
+
+        cGi0[index] = 0;
+        cGi1[index] = 0;
+        cGi2[index] = 0;
+
+        K[index] = 0;
+        X[index] = 1;
+
+        gA[index] = 1;
+        gB0[index] = 0;
+        gB1[index] = 0;
+        gB2[index] = 0;
+        #endif
     }
-    #endif // NANIFY
 
     if(ix == (dim.x-1)/2 && iz == (dim.z-1)/2)
     {
