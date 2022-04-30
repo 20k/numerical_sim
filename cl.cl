@@ -305,6 +305,15 @@ float get_distance(int x1, int y1, int z1, int x2, int y2, int z2, int4 dim, flo
     return fast_length(d2 - d1);
 }
 
+enum derivative_bitflags
+{
+    D_LOW = 1,
+    D_FULL = 2,
+    D_ONLY_PX = 4,
+    D_ONLY_PY = 8,
+    D_ONLY_PZ = 16,
+};
+
 #ifndef USE_GBB
 
     #define GET_ARGLIST(a, p) a p##cY0, a p##cY1, a p##cY2, a p##cY3, a p##cY4, a p##cY5, \
@@ -585,15 +594,6 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
 
     points[idx].xyz = (ushort3)(ix, iy, iz);
 }
-
-enum derivative_bitflags
-{
-    D_LOW = 1,
-    D_FULL = 2,
-    D_ONLY_PX = 4,
-    D_ONLY_PY = 8,
-    D_ONLY_PZ = 16,
-};
 
 bool valid_point(float ix, float iy, float iz, float scale, int4 dim)
 {
@@ -1083,6 +1083,7 @@ void evolve_X(__global ushort4* points, int point_count,
     #endif // SYMMETRY_BOUNDARY
 
     int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
 
     float TEMPORARIEStx;
 
