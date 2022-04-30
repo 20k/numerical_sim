@@ -876,11 +876,11 @@ void clean_data(__global ushort4* points, int point_count,
         float s_dtcGi1 = sommer_dtcGi1;
         float s_dtcGi2 = sommer_dtcGi2;
 
-        if((order & D_FULL) == 0 && (order & D_LOW) == 0 && iz == dim.z/2 && iy == dim.y/2)
+        /*if((order & D_FULL) == 0 && (order & D_LOW) == 0 && iz == dim.z/2 && iy == dim.y/2)
         {
             printf("Ox %f Val %f diff %f %i %i %i\n", ocY0[index], cY0[index], s_dtcY0, ix, iy, iz);
             //printf("Val %f diff %f\n", cY0[index], s_dtcY0);
-        }
+        }*/
 
         ocY0[index] += s_dtcY0 * timestep;
         ocY1[index] += s_dtcY1 * timestep;
@@ -995,6 +995,11 @@ void evolve_cY(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
+
+    /*if((ix == 6 || ix == 7 || ix == 8 || ix == 25) && iy == 125 && iz == 125)
+    {
+        printf("EV Val %f %f %f %f %f %f %i %i %i\n", cA0[index], cA1[index], cA2[index], cA3[index], cA4[index], cA5[index], ix, iy, iz);
+    }*/
 
     float TEMPORARIEStcy;
 

@@ -493,7 +493,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             mqueue.exec("enforce_algebraic_constraints", constraints, {points_set.second_count}, {128});
         }
 
-        {
+        /*{
             cl::args constraints;
             ///technically this function could work anywhere as it does not need derivatives
             ///but only the valid second derivative points are used
@@ -509,7 +509,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             constraints.push_back(clsize);
 
             mqueue.exec("enforce_algebraic_constraints", constraints, {points_set.border_count}, {128});
-        }
+        }*/
     };
 
     auto diff_to_input = [&](auto& buffer_in, cl_float factor)
