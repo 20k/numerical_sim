@@ -897,7 +897,7 @@ void clean_data(__global ushort4* points, int point_count,
 
         if((order & D_FULL) == 0 && (order & D_LOW) == 0 && iz == dim.z/2 && iy == dim.y/2)
         {
-            printf("Val %f diff %f\n", X[index], s_dtX);
+            printf("Ox %f Val %f diff %f %i %i %i\n", oX[index], X[index], s_dtX, ix, iy, iz);
             //printf("Val %f diff %f\n", cY0[index], s_dtcY0);
         }
 
@@ -1424,6 +1424,11 @@ void dissipate_single_unidir(__global ushort4* points, int point_count,
 
     if((order & D_FULL) == 0)
         return;
+
+    if(ix == 6 && iy == 125 && iz == 125)
+    {
+        printf("Hellodiss\n");
+    }
 
     float damp = 1;
 
