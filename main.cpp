@@ -958,15 +958,39 @@ value diff1(equation_context& ctx, const value& in, int idx)
         value d_only_py = "D_ONLY_PY";
         value d_only_pz = "D_ONLY_PZ";
 
+        value directional = 0;
+
+        if(idx == 0)
+        {
+            directional = d_only_px;
+        }
+        else if(idx == 1)
+        {
+            directional = d_only_py;
+        }
+        else if(idx == 2)
+        {
+            directional = d_only_pz;
+        }
+
         value order = "order";
 
-        value is_high_order = order & d_full;
-        value is_low_order = order & d_low;
+        value is_high_order = (order & d_full) > 0;
+        value is_low_order = (order & d_low) > 0;
+
+        value is_forward = (order & directional) > 0;
 
         value regular_d = diff1_interior(ctx, in, idx, ctx.order, 0);
         value low_d = diff1_interior(ctx, in, idx, 1, 0);
 
-        return is_high_order * regular_d + is_low_order * low_d;
+        value forward_d = diff1_interior(ctx, in, idx, 1, 1);
+        value back_d = diff1_interior(ctx, in, idx, 1, -1);
+
+        value short_d = dual_types::if_v(is_forward, forward_d, back_d);
+
+        value is_directional = (is_high_order == 0) & (is_low_order == 0);
+
+        return is_high_order * regular_d + is_low_order * low_d + is_directional * short_d;
 
         //return dual_types::if_v(is_low_order > 0, low_d, regular_d);
     }
