@@ -503,6 +503,37 @@ void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
     buffer_out_3[IDX(ix,iy,iz)] = init_buffer_intermediate2;
 }
 
+__kernel
+void calculate_intermediate_data_thin_directional(__global ushort4* points, int point_count,
+                                      __global float* buffer, __global DERIV_PRECISION* buffer_out_1, __global DERIV_PRECISION* buffer_out_2, __global DERIV_PRECISION* buffer_out_3,
+                                      float scale, int4 dim, __global ushort* order_ptr)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    #ifndef SYMMETRY_BOUNDARY
+    if(invalid_first(ix, iy, iz, dim))
+        return;
+    #endif // SYMMETRY_BOUNDARY
+
+    int order = order_ptr[IDX(ix,iy,iz)];
+
+    float TEMPORARIESdirectional;
+
+    buffer_out_1[IDX(ix,iy,iz)] = init_buffer_intermediate0_directional;
+    buffer_out_2[IDX(ix,iy,iz)] = init_buffer_intermediate1_directional;
+    buffer_out_3[IDX(ix,iy,iz)] = init_buffer_intermediate2_directional;
+}
+
 #if 0
 __kernel
 void calculate_intermediate_data_thin_cY5(__global ushort4* points, int point_count,

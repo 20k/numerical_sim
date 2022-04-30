@@ -124,6 +124,7 @@ struct equation_context
     bool uses_linear = false;
     bool debug = false;
     bool use_precise_differentiation = true;
+    bool always_directional_derivatives = false;
 
     int order = 2;
 
@@ -2820,6 +2821,23 @@ void build_intermediate_thin(equation_context& ctx)
     ctx.add("init_buffer_intermediate2", v3);
 }
 
+void build_intermediate_thin_directional(equation_context& ctx)
+{
+    ctx.always_directional_derivatives = true;
+
+    standard_arguments args(ctx);
+
+    value buffer = dual_types::apply("buffer_index", "buffer", "ix", "iy", "iz", "dim");
+
+    value v1 = diff1(ctx, buffer, 0);
+    value v2 = diff1(ctx, buffer, 1);
+    value v3 = diff1(ctx, buffer, 2);
+
+    ctx.add("init_buffer_intermediate0_directional", v1);
+    ctx.add("init_buffer_intermediate1_directional", v2);
+    ctx.add("init_buffer_intermediate2_directional", v3);
+}
+
 void build_intermediate_thin_cY5(equation_context& ctx)
 {
     standard_arguments args(ctx);
@@ -5170,6 +5188,9 @@ int main()
     equation_context ctx11;
     build_intermediate_thin(ctx11);
 
+    equation_context ctxdirectional;
+    build_intermediate_thin_directional(ctxdirectional);
+
     equation_context ctx12;
     build_intermediate_thin_cY5(ctx12);
 
@@ -5190,6 +5211,7 @@ int main()
     ctx12.build(argument_string, 11);
     ctx13.build(argument_string, 12);
     ctx14.build(argument_string, "unused1");
+    ctxdirectional.build(argument_string, "directional");
 
     dtcY.build(argument_string, "tcy");
     dtcA.build(argument_string, "tca");
