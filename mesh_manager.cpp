@@ -737,6 +737,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
             dissipate_unidir(b2.buffers, scratch.buffers);
 
+            copy_valid(scratch.buffers, b2.buffers);
+
             clean(b2, scratch);
 
             enforce_constraints(scratch.buffers);
@@ -809,6 +811,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
     std::swap(b2, scratch);;
 
     //dissipate(get_input().buffers, get_output().buffers);
+
+    copy_valid(b2.buffers, scratch.buffers);
 
     clean(scratch, b2);
 
