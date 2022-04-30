@@ -905,17 +905,23 @@ value diff1_interior(equation_context& ctx, const value& in, int idx, int order,
 
     if(order == 1)
     {
-        differentiation_context<3> dctx(in, idx, ctx.uses_linear);
-        std::array<value, 3> vars = dctx.vars;
+        differentiation_context<5> dctx(in, idx, ctx.uses_linear);
+        std::array<value, 5> vars = dctx.vars;
 
         if(direction == 0)
-            return (vars[2] - vars[0]) / (2 * scale);
+            return (vars[3] - vars[1]) / (2 * scale);
 
-        if(direction == 1)
+        /*if(direction == 1)
             return (vars[2] - vars[1]) / scale;
 
         if(direction == -1)
-            return (vars[1] - vars[0]) / scale;
+            return (vars[1] - vars[0]) / scale;*/
+
+        if(direction == 1)
+            return (-vars[4] + 4 * vars[3] - 3 * vars[2]) / (2 * scale);
+
+        if(direction == -1)
+            return (vars[0] - 4 * vars[1] + 3 * vars[2]) / (2 * scale);
     }
     else if(order == 2)
     {
