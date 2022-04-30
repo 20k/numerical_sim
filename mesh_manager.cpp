@@ -56,7 +56,6 @@ std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_
     return {real.as_device_read_only(), count};
 }
 
-
 inline
 evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
 {
@@ -66,8 +65,11 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
     cl::buffer points_2(ctx);
     cl::buffer count_2(ctx);
 
+    cl::buffer order(ctx);
+
     points_1.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
     points_2.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
+    order.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort));
 
     count_1.alloc(sizeof(cl_int));
     count_2.alloc(sizeof(cl_int));
@@ -82,6 +84,7 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
     args.push_back(count_1);
     args.push_back(points_2);
     args.push_back(count_2);
+    args.push_back(order);
     args.push_back(scale);
     args.push_back(clsize);
 
@@ -125,6 +128,7 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
 
     ret.first_derivative_points = shrunk_points_1.as_device_read_only();
     ret.second_derivative_points = shrunk_points_2.as_device_read_only();
+    ret.order = order.as_device_read_only();
 
     printf("Evolve point reduction %i\n", cpu_count_1);
 

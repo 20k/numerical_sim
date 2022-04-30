@@ -584,67 +584,26 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
     points[idx].xyz = (ushort3)(ix, iy, iz);
 }
 
-///could try this function also where it only calculates derivatives for dynamic fields
-///aka do not calculate derivatives across the maximal sponge point
-bool valid_first_derivative_point(int3 pos, float scale, int4 dim)
+enum derivative_bitflags
 {
-    ///one of the points would lie outside the boundary
-    if(invalid_first(pos.x, pos.y, pos.z, dim))
-        return false;
+    D_LOW = 1,
+    D_FULL = 2,
+    D_ONLY_PX = 4,
+    D_ONLY_PY = 8,
+    D_ONLY_PZ = 16,
+};
 
-    int width = BORDER_WIDTH;
-
-    for(int z=-width; z <= width; z++)
-    {
-        for(int y=-width; y <= width; y++)
-        {
-            for(int x=-width; x <= width; x++)
-            {
-                int3 combo = (int3)(x, y, z) + pos;
-
-                float sponge_local = sponge_damp_coeff(combo.x, combo.y, combo.z, scale, dim);
-
-                ///one of the points is non sponged, so we should calculate first derivatives
-                if(sponge_local < 1)
-                    return true;
-            }
-        }
-    }
-
-    ///no point is unsponged, therefore do not process
-    return false;
-}
-
-///if any point is not a valid first derivative point, we can't evolve this correctly
-bool valid_second_derivative_point(int3 pos, float scale, int4 dim)
+bool valid_point(float ix, float iy, float iz, float scale, int4 dim)
 {
-    ///out of boundaries for the below loop
-    if(invalid_first(pos.x, pos.y, pos.z, dim))
-        return false;
-
-    int width = BORDER_WIDTH;
-
-    for(int z=-width; z <= width; z++)
-    {
-        for(int y=-width; y <= width; y++)
-        {
-            for(int x=-width; x <= width; x++)
-            {
-                int3 combo = (int3)(x, y, z) + pos;
-
-                ///one of the underlying first derivatives would be invalid
-                if(!valid_first_derivative_point(combo, scale, dim))
-                    return false;
-            }
-        }
-    }
-
-    return true;
+    return is_regular_order_evolved_point(ix, iy, iz, scale, dim) ||
+       is_low_order_evolved_point(ix, iy, iz, scale, dim) ||
+       is_exact_border_point(ix, iy, iz, scale, dim);
 }
 
 __kernel
 void generate_evolution_points(__global ushort4* points_1st, __global int* point_count_1st,
                                __global ushort4* points_2nd, __global int* point_count_2nd,
+                               __global ushort* order_ptr,
                                float scale, int4 dim)
 {
     int ix = get_global_id(0);
@@ -654,20 +613,79 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    int3 pos = (int3)(ix, iy, iz);
-
-    if(valid_first_derivative_point(pos, scale, dim))
+    if(is_regular_order_evolved_point(ix, iy, iz, scale, dim) ||
+       is_low_order_evolved_point(ix, iy, iz, scale, dim) ||
+       is_exact_border_point(ix, iy, iz, scale, dim))
     {
         int idx = atomic_inc(point_count_1st);
 
         points_1st[idx].xyz = (ushort3)(ix, iy, iz);
     }
 
-    if(valid_second_derivative_point(pos, scale, dim))
+    if(is_regular_order_evolved_point(ix, iy, iz, scale, dim) ||
+       is_low_order_evolved_point(ix, iy, iz, scale, dim))
     {
         int idx = atomic_inc(point_count_2nd);
 
         points_2nd[idx].xyz = (ushort3)(ix, iy, iz);
+    }
+
+    int index = IDX(ix, iy, iz);
+
+    if(is_regular_order_evolved_point(ix, iy, iz, scale, dim))
+    {
+        order_ptr[index] = D_FULL;
+    }
+
+    if(is_low_order_evolved_point(ix, iy, iz, scale, dim))
+    {
+        order_ptr[index] = D_LOW;
+    }
+
+    if(is_exact_border_point(ix, iy, iz, scale, dim))
+    {
+        bool valid_px = valid_point(ix+1, iy, iz, scale, dim);
+        bool valid_nx = valid_point(ix-1, iy, iz, scale, dim);
+
+        bool valid_py = valid_point(ix, iy+1, iz, scale, dim);
+        bool valid_ny = valid_point(ix, iy-1, iz, scale, dim);
+
+        bool valid_pz = valid_point(ix, iy, iz+1, scale, dim);
+        bool valid_nz = valid_point(ix, iy, iz-1, scale, dim);
+
+        if(!valid_px && !valid_nx)
+        {
+            printf("Error! No valid point x for %i %i %i\n", ix, iy, iz);
+        }
+
+        if(!valid_py && !valid_ny)
+        {
+            printf("Error! No valid point x for %i %i %i\n", ix, iy, iz);
+        }
+
+        if(!valid_pz && !valid_nz)
+        {
+            printf("Error! No valid point x for %i %i %i\n", ix, iy, iz);
+        }
+
+        ushort out = 0;
+
+        if(valid_px)
+        {
+            out |= D_ONLY_PX;
+        }
+
+        if(valid_py)
+        {
+            out |= D_ONLY_PY;
+        }
+
+        if(valid_pz)
+        {
+            out |= D_ONLY_PZ;
+        }
+
+        order_ptr[index] = out;
     }
 }
 
