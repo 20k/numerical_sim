@@ -762,9 +762,10 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
             dissipate_unidir(b2.buffers, scratch.buffers);
 
-            copy_valid(scratch.buffers, b2.buffers);
+            //copy_valid(scratch.buffers, b2.buffers);
 
-            clean(b2, scratch);
+            ///this is actually just double cleaning, because we don't copy boundary points
+            //clean(b2, scratch);
 
             enforce_constraints(scratch.buffers);
             //std::swap(b2, scratch);
