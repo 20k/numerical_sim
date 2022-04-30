@@ -2757,6 +2757,110 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     #endif // USE_GBB
 }
 
+void build_sommerfield(equation_context& ctx)
+{
+    ctx.order = 1;
+    ctx.always_directional_derivatives = true;
+    standard_arguments args(ctx);
+
+    value sponge = "sponge_factor";
+
+    ///Xi
+    tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+    value r = pos.length();
+
+    float asy_cY0 = 1;
+    float asy_cY1 = 0;
+    float asy_cY2 = 0;
+    float asy_cY3 = 1;
+    float asy_cY4 = 0;
+    float asy_cY5 = 1;
+
+    float asy_cA0 = 0;
+    float asy_cA1 = 0;
+    float asy_cA2 = 0;
+    float asy_cA3 = 0;
+    float asy_cA4 = 0;
+    float asy_cA5 = 0;
+
+    float asy_K = 0;
+    float asy_X = 1;
+
+    float asy_gA = 1;
+    float asy_gB0 = 0;
+    float asy_gB1 = 0;
+    float asy_gB2 = 0;
+
+    float asy_cGi0 = 0;
+    float asy_cGi1 = 0;
+    float asy_cGi2 = 0;
+
+    auto sommerfield = [&](value f, value f0, value v)
+    {
+        value sum = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            sum += (v * pos.idx(i) / r) * diff1(ctx, f, i);
+        }
+
+        return -sum - v * (f - f0) / r;
+    };
+
+    value dtcY0 = sommerfield(args.cY.idx(0, 0), asy_cY0, 1);
+    value dtcY1 = sommerfield(args.cY.idx(1, 0), asy_cY1, 1);
+    value dtcY2 = sommerfield(args.cY.idx(2, 0), asy_cY2, 1);
+    value dtcY3 = sommerfield(args.cY.idx(1, 1), asy_cY3, 1);
+    value dtcY4 = sommerfield(args.cY.idx(2, 1), asy_cY4, 1);
+    value dtcY5 = sommerfield(args.cY.idx(2, 2), asy_cY5, 1);
+
+    value dtcA0 = sommerfield(args.cA.idx(0, 0), asy_cA0, 1);
+    value dtcA1 = sommerfield(args.cA.idx(1, 0), asy_cA1, 1);
+    value dtcA2 = sommerfield(args.cA.idx(2, 0), asy_cA2, 1);
+    value dtcA3 = sommerfield(args.cA.idx(1, 1), asy_cA3, 1);
+    value dtcA4 = sommerfield(args.cA.idx(2, 1), asy_cA4, 1);
+    value dtcA5 = sommerfield(args.cA.idx(2, 2), asy_cA5, 1);
+
+    value dtK = sommerfield(args.K, asy_K, 1);
+    value dtX = sommerfield(args.X, asy_X, 1);
+
+    value dtgA = sommerfield(args.gA, asy_gA, sqrt(2));
+    value dtgB0 = sommerfield(args.gB.idx(0), asy_gB0, sqrt(2));
+    value dtgB1 = sommerfield(args.gB.idx(1), asy_gB1, sqrt(2));
+    value dtgB2 = sommerfield(args.gB.idx(2), asy_gB2, sqrt(2));
+
+    value dtcGi0 = sommerfield(args.cGi.idx(0), asy_cGi0, 1);
+    value dtcGi1 = sommerfield(args.cGi.idx(1), asy_cGi1, 1);
+    value dtcGi2 = sommerfield(args.cGi.idx(2), asy_cGi2, 1);
+
+    ctx.add("sommer_dtcY0", dtcY0);
+    ctx.add("sommer_dtcY1", dtcY1);
+    ctx.add("sommer_dtcY2", dtcY2);
+    ctx.add("sommer_dtcY3", dtcY3);
+    ctx.add("sommer_dtcY4", dtcY4);
+    ctx.add("sommer_dtcY5", dtcY5);
+
+    ctx.add("sommer_dtcA0", dtcA0);
+    ctx.add("sommer_dtcA1", dtcA1);
+    ctx.add("sommer_dtcA2", dtcA2);
+    ctx.add("sommer_dtcA3", dtcA3);
+    ctx.add("sommer_dtcA4", dtcA4);
+    ctx.add("sommer_dtcA5", dtcA5);
+
+    ctx.add("sommer_dtK", dtK);
+    ctx.add("sommer_dtX", dtX);
+
+    ctx.add("sommer_dtgA", dtgA);
+    ctx.add("sommer_dtgB0", dtgB0);
+    ctx.add("sommer_dtgB1", dtgB1);
+    ctx.add("sommer_dtgB2", dtgB2);
+
+    ctx.add("sommer_dtcGi0", dtcGi0);
+    ctx.add("sommer_dtcGi1", dtcGi1);
+    ctx.add("sommer_dtcGi2", dtcGi2);
+}
+
 ///algebraic_constraints
 ///https://arxiv.org/pdf/1507.00570.pdf says that the cY modification is bad
 inline
@@ -5197,6 +5301,8 @@ int main()
     equation_context ctx14;
     build_hamiltonian_constraint(ctx14);
 
+    equation_context ctxsommer;
+
     ctx1.build(argument_string, 0);
     ctx4.build(argument_string, 3);
     ctx5.build(argument_string, 4);
@@ -5209,6 +5315,7 @@ int main()
     ctx13.build(argument_string, 12);
     ctx14.build(argument_string, "unused1");
     ctxdirectional.build(argument_string, "directional");
+    ctxsommer.build(argument_string, "sommerfeld");
 
     dtcY.build(argument_string, "tcy");
     dtcA.build(argument_string, "tca");
