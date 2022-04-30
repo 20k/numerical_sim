@@ -991,9 +991,10 @@ value diff1(equation_context& ctx, const value& in, int idx)
 
         value is_directional = (is_high_order == 0) & (is_low_order == 0);
 
-        return is_high_order * regular_d + is_low_order * low_d + is_directional * short_d;
-
-        //return dual_types::if_v(is_low_order > 0, low_d, regular_d);
+        if(ctx.always_directional_derivatives)
+            return short_d;
+        else
+            return is_high_order * regular_d + is_low_order * low_d;
     }
 }
 

@@ -288,8 +288,6 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
         last_valid_thin_buffer = &generic_in;
 
-        cl::args last_args;
-
         {
             auto differentiate = [&](cl::managed_command_queue& cqueue, const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
             {
@@ -306,9 +304,20 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 thin.push_back(clsize);
                 thin.push_back(points_set.order);
 
-                last_args = thin;
-
                 cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.first_count}, {128});
+
+                cl::args thin2;
+                thin2.push_back(points_set.border_points);
+                thin2.push_back(points_set.border_count);
+                thin2.push_back(generic_in[idx].as_device_read_only());
+                thin2.push_back(out1);
+                thin2.push_back(out2);
+                thin2.push_back(out3);
+                thin2.push_back(scale);
+                thin2.push_back(clsize);
+                thin2.push_back(points_set.order);
+
+                cqueue.exec("calculate_intermediate_data_thin_directional", thin2, {points_set.border_count}, {128});
 
                 //cqueue.flush();
             };
