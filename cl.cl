@@ -398,6 +398,17 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     #ifdef NANIFY
     float nan = NAN;
 
+    ///87 152 16
+
+    if(ix == 87 && iy == 152 && iz == 16)
+    {
+        printf("hi my type %i", is_low_order_evolved_point(ix, iy, iz, scale, dim));
+    }
+    if(ix == 86 && iy == 152 && iz == 16)
+    {
+        printf("hi my type left %i %i", is_low_order_evolved_point(ix, iy, iz, scale, dim), is_deep_boundary_point(ix, iy, iz, scale, dim));
+    }
+
     if(is_deep_boundary_point(ix, iy, iz, scale, dim))
     {
         cY0[index] = nan;
@@ -929,6 +940,21 @@ void evolve_cY(__global ushort4* points, int point_count,
         return;
     #endif // SYMMETRY_BOUNDARY
 
+    float left = cY0[IDX(ix-1, iy, iz)];
+    ushort order_left = order_ptr[IDX(ix-1, iy, iz)];
+    ushort my_order = order_ptr[IDX(ix, iy, iz)];
+
+    /*if(isnan(left))
+    {
+        printf("Nan %i %i %i %i %i\n", order_left, my_order, ix, iy, iz);
+    }*/
+
+    ///87 152 16
+    /*if(ix == 86 && iy == 152 && iz == 16)
+    {
+        printf("My cy %f\n", cY0[IDX(ix, iy, iz)]);
+    }*/
+
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
@@ -1333,6 +1359,9 @@ void dissipate_single_unidir(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
+
+    if((order & D_FULL) == 0)
+        return;
 
     float damp = 1;
 
