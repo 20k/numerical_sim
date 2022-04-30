@@ -605,6 +605,7 @@ bool valid_point(float ix, float iy, float iz, float scale, int4 dim)
 __kernel
 void generate_evolution_points(__global ushort4* points_1st, __global int* point_count_1st,
                                __global ushort4* points_2nd, __global int* point_count_2nd,
+                               __global ushort4* points_border, __global int* point_count_border,
                                __global ushort* order_ptr,
                                float scale, int4 dim)
 {
@@ -616,8 +617,7 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
         return;
 
     if(is_regular_order_evolved_point(ix, iy, iz, scale, dim) ||
-       is_low_order_evolved_point(ix, iy, iz, scale, dim) ||
-       is_exact_border_point(ix, iy, iz, scale, dim))
+       is_low_order_evolved_point(ix, iy, iz, scale, dim))
     {
         int idx = atomic_inc(point_count_1st);
 
@@ -646,6 +646,10 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
 
     if(is_exact_border_point(ix, iy, iz, scale, dim))
     {
+        int border_idx = atomic_inc(point_count_border);
+
+        points_border[border_idx].xyz = (ushort3)(ix, iy, iz);
+
         bool valid_px = valid_point(ix+1, iy, iz, scale, dim);
         bool valid_nx = valid_point(ix-1, iy, iz, scale, dim);
 

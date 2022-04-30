@@ -41,12 +41,14 @@ struct evolution_points
 {
     cl::buffer first_derivative_points;
     cl::buffer second_derivative_points;
+    cl::buffer border_points;
     cl::buffer order;
 
     int first_count = 0;
     int second_count = 0;
+    int border_count = 0;
 
-    evolution_points(cl::context& ctx) : first_derivative_points(ctx), second_derivative_points(ctx), order(ctx){}
+    evolution_points(cl::context& ctx) : first_derivative_points(ctx), second_derivative_points(ctx), border_points(ctx), order(ctx){}
 };
 
 struct thin_intermediates_pool
