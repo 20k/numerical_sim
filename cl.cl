@@ -1434,6 +1434,7 @@ void render(STANDARD_ARGS(),
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
+            __global ushort* order_ptr,
             float scale, int4 dim, __write_only image2d_t screen)
 {
     int ix = get_global_id(0);
@@ -1469,6 +1470,40 @@ void render(STANDARD_ARGS(),
             write_imagef(screen, (int2){get_global_id(0), get_global_id(1)}, (float4)(srgb_to_lin(sponge_col), 1));
             return;
         }
+
+        #ifdef NEWORDER_DEBUG
+        ushort order = order_ptr[IDX(ix, iy, iz)];
+
+        if(order & D_FULL)
+        {
+            float4 sponge_col = {0, 0, 0, 1};
+
+            write_imagef(screen, (int2){get_global_id(0), get_global_id(1)}, sponge_col);
+            return;
+        }
+
+        else if(order & D_LOW)
+        {
+            float4 sponge_col = {0, 1, 0, 1};
+
+            write_imagef(screen, (int2){get_global_id(0), get_global_id(1)}, sponge_col);
+            return;
+        }
+
+        else if(!is_exact_border_point(ix, iy, iz, scale, dim))
+        {
+            float4 sponge_col = {0, 0, 0, 1};
+
+            write_imagef(screen, (int2){get_global_id(0), get_global_id(1)}, sponge_col);
+            return;
+        }
+        else
+        {
+            float4 sponge_col = {1, 0, 0, 1};
+            write_imagef(screen, (int2){get_global_id(0), get_global_id(1)}, sponge_col);
+            return;
+        }
+        #endif
 
         int index = IDX(ix, iy, iz);
 

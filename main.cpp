@@ -5677,6 +5677,7 @@ int main()
                     render.push_back(i.as_device_read_only());
                 }
 
+                render.push_back(base_mesh.points_set.order);
                 //render.push_back(bssnok_datas[which_data]);
                 render.push_back(scale);
                 render.push_back(clsize);
