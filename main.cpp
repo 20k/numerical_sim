@@ -895,16 +895,26 @@ value hacky_differentiate(const value& in, int idx, bool pin = true, bool linear
 }
 #endif // 0
 
-value diff1_interior(equation_context& ctx, const value& in, int idx, int order)
+value diff1_interior(equation_context& ctx, const value& in, int idx, int order, int direction)
 {
     value scale = "scale";
+
+    if(direction != 0)
+        assert(order == 1);
 
     if(order == 1)
     {
         differentiation_context<3> dctx(in, idx, ctx.uses_linear);
         std::array<value, 3> vars = dctx.vars;
 
-        return (vars[2] - vars[0]) / (2 * scale);
+        if(direction == 0)
+            return (vars[2] - vars[0]) / (2 * scale);
+
+        if(direction == 1)
+            return (vars[2] - vars[1]) / scale;
+
+        if(direction == -1)
+            return (vars[1] - vars[0]) / scale;
     }
     else if(order == 2)
     {
@@ -938,7 +948,7 @@ value diff1(equation_context& ctx, const value& in, int idx)
 
     if(!ctx.use_precise_differentiation)
     {
-        return diff1_interior(ctx, in, idx, ctx.order);
+        return diff1_interior(ctx, in, idx, ctx.order, 0);
     }
     else
     {
@@ -953,8 +963,8 @@ value diff1(equation_context& ctx, const value& in, int idx)
         value is_high_order = order & d_full;
         value is_low_order = order & d_low;
 
-        value regular_d = diff1_interior(ctx, in, idx, ctx.order);
-        value low_d = diff1_interior(ctx, in, idx, 1);
+        value regular_d = diff1_interior(ctx, in, idx, ctx.order, 0);
+        value low_d = diff1_interior(ctx, in, idx, 1, 0);
 
         return is_high_order * regular_d + is_low_order * low_d;
 
