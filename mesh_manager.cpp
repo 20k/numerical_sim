@@ -453,6 +453,48 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         step_kernel("evolve_X");
         step_kernel("evolve_gA");
         step_kernel("evolve_gB");
+
+        {
+            cl::args a1;
+
+            a1.push_back(points_set.border_points);
+            a1.push_back(points_set.border_count);
+
+            for(auto& i : generic_in)
+            {
+                a1.push_back(i.as_device_read_only());
+            }
+
+            for(int kk=0; kk < (int)generic_out.size(); kk++)
+            {
+                if(modified_by[kk] == "evolve_cY")
+                    a1.push_back(generic_out[kk]);
+                else
+                    a1.push_back(generic_out[kk].as_device_inaccessible());
+            }
+
+            for(auto& i : base_yn)
+            {
+                a1.push_back(i.as_device_read_only());
+            }
+
+            for(auto& i : momentum_constraint)
+            {
+                a1.push_back(i.as_device_read_only());
+            }
+
+            for(auto& i : intermediates)
+            {
+                a1.push_back(i.as_device_read_only());
+            }
+
+            a1.push_back(scale);
+            a1.push_back(clsize);
+            a1.push_back(current_timestep);
+            a1.push_back(points_set.order);
+
+            mqueue.exec("evolve_cY", a1, {points_set.border_count}, {128});
+        }
     };
 
     auto enforce_constraints = [&](auto& generic_out)
@@ -557,26 +599,51 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
     {
         for(int i=0; i < buffer_set::buffer_count; i++)
         {
-            cl::args diss;
+            {
+                cl::args diss;
 
-            diss.push_back(points_set.second_derivative_points);
-            diss.push_back(points_set.second_count);
+                diss.push_back(points_set.second_derivative_points);
+                diss.push_back(points_set.second_count);
 
-            diss.push_back(in[i].as_device_read_only());
-            diss.push_back(out[i]);
+                diss.push_back(in[i].as_device_read_only());
+                diss.push_back(out[i]);
 
-            float coeff = dissipation_coefficients[i];
+                float coeff = dissipation_coefficients[i];
 
-            diss.push_back(coeff);
-            diss.push_back(scale);
-            diss.push_back(clsize);
-            diss.push_back(timestep);
-            diss.push_back(points_set.order);
+                diss.push_back(coeff);
+                diss.push_back(scale);
+                diss.push_back(clsize);
+                diss.push_back(timestep);
+                diss.push_back(points_set.order);
 
-            if(coeff == 0)
-                continue;
+                if(coeff == 0)
+                    continue;
 
-            mqueue.exec("dissipate_single_unidir", diss, {points_set.second_count}, {128});
+                mqueue.exec("dissipate_single_unidir", diss, {points_set.second_count}, {128});
+            }
+
+            {
+                cl::args diss;
+
+                diss.push_back(points_set.border_points);
+                diss.push_back(points_set.border_count);
+
+                diss.push_back(in[i].as_device_read_only());
+                diss.push_back(out[i]);
+
+                float coeff = dissipation_coefficients[i];
+
+                diss.push_back(coeff);
+                diss.push_back(scale);
+                diss.push_back(clsize);
+                diss.push_back(timestep);
+                diss.push_back(points_set.order);
+
+                if(coeff == 0)
+                    continue;
+
+                mqueue.exec("dissipate_single_unidir", diss, {points_set.border_count}, {128});
+            }
         }
     };
     ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
