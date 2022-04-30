@@ -754,12 +754,12 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         cleaner.push_back(points_set.border_points);
         cleaner.push_back(points_set.border_count);
 
-        for(auto& i : get_output().buffers)
+        for(auto& i : scratch.buffers)
         {
             cleaner.push_back(i);
         }
 
-        for(auto& i : scratch.buffers)
+        for(auto& i : get_output().buffers)
         {
             cleaner.push_back(i);
         }
@@ -772,8 +772,6 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         cleaner.push_back(timestep);
 
         mqueue.exec("clean_data", cleaner, {points_set.border_count}, {256});
-
-        std::swap(scratch, b2);
     }
 
     enforce_constraints(get_output().buffers);
