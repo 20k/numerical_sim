@@ -457,22 +457,42 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     auto enforce_constraints = [&](auto& generic_out)
     {
-        cl::args constraints;
 
-        ///technically this function could work anywhere as it does not need derivatives
-        ///but only the valid second derivative points are used
-        constraints.push_back(points_set.second_derivative_points);
-        constraints.push_back(points_set.second_count);
-
-        for(auto& i : generic_out)
         {
-            constraints.push_back(i);
+            cl::args constraints;
+            ///technically this function could work anywhere as it does not need derivatives
+            ///but only the valid second derivative points are used
+            constraints.push_back(points_set.second_derivative_points);
+            constraints.push_back(points_set.second_count);
+
+            for(auto& i : generic_out)
+            {
+                constraints.push_back(i);
+            }
+
+            constraints.push_back(scale);
+            constraints.push_back(clsize);
+
+            mqueue.exec("enforce_algebraic_constraints", constraints, {points_set.second_count}, {128});
         }
 
-        constraints.push_back(scale);
-        constraints.push_back(clsize);
+        {
+            cl::args constraints;
+            ///technically this function could work anywhere as it does not need derivatives
+            ///but only the valid second derivative points are used
+            constraints.push_back(points_set.border_points);
+            constraints.push_back(points_set.border_count);
 
-        mqueue.exec("enforce_algebraic_constraints", constraints, {points_set.second_count}, {128});
+            for(auto& i : generic_out)
+            {
+                constraints.push_back(i);
+            }
+
+            constraints.push_back(scale);
+            constraints.push_back(clsize);
+
+            mqueue.exec("enforce_algebraic_constraints", constraints, {points_set.border_count}, {128});
+        }
     };
 
     auto diff_to_input = [&](auto& buffer_in, cl_float factor)
