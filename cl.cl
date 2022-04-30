@@ -378,17 +378,6 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     #ifdef NANIFY
     float nan = NAN;
 
-    ///87 152 16
-
-    if(ix == 87 && iy == 152 && iz == 16)
-    {
-        printf("hi my type %i", is_low_order_evolved_point(ix, iy, iz, scale, dim));
-    }
-    if(ix == 86 && iy == 152 && iz == 16)
-    {
-        printf("hi my type left %i %i", is_low_order_evolved_point(ix, iy, iz, scale, dim), is_deep_boundary_point(ix, iy, iz, scale, dim));
-    }
-
     if(is_deep_boundary_point(ix, iy, iz, scale, dim))
     {
         cY0[index] = nan;
@@ -417,7 +406,6 @@ void calculate_initial_conditions(STANDARD_ARGS(),
         gB1[index] = nan;
         gB2[index] = nan;
     }
-
     #endif // NANIFY
 
     if(ix == (dim.x-1)/2 && iz == (dim.z-1)/2)
