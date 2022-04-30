@@ -977,7 +977,7 @@ value diff1(equation_context& ctx, const value& in, int idx)
         value order = "order";
 
         value is_high_order = (order & d_full) > 0;
-        value is_low_order = (order & d_low) > 0;
+        //value is_low_order = (order & d_low) > 0;
 
         value is_forward = (order & directional) > 0;
 
@@ -987,14 +987,10 @@ value diff1(equation_context& ctx, const value& in, int idx)
         value forward_d = diff1_interior(ctx, in, idx, 1, 1);
         value back_d = diff1_interior(ctx, in, idx, 1, -1);
 
-        value short_d = dual_types::if_v(is_forward, forward_d, back_d);
-
-        value is_directional = (is_high_order == 0) & (is_low_order == 0);
-
         if(ctx.always_directional_derivatives)
-            return short_d;
+            return dual_types::if_v(is_forward, forward_d, back_d);
         else
-            return is_high_order * regular_d + is_low_order * low_d;
+            return dual_types::if_v(is_high_order, regular_d, low_d);
     }
 }
 
