@@ -2832,10 +2832,10 @@ void build_sommerfeld(equation_context& ctx)
     value dtK = sommerfeld(args.K, asy_K, 1);
     value dtX = sommerfeld(args.X, asy_X, 1);
 
-    value dtgA = sommerfeld(args.gA, asy_gA, sqrt(2));
-    value dtgB0 = sommerfeld(args.gB.idx(0), asy_gB0, sqrt(2));
-    value dtgB1 = sommerfeld(args.gB.idx(1), asy_gB1, sqrt(2));
-    value dtgB2 = sommerfeld(args.gB.idx(2), asy_gB2, sqrt(2));
+    value dtgA = sommerfeld(args.gA, asy_gA, 1);
+    value dtgB0 = sommerfeld(args.gB.idx(0), asy_gB0, 1);
+    value dtgB1 = sommerfeld(args.gB.idx(1), asy_gB1, 1);
+    value dtgB2 = sommerfeld(args.gB.idx(2), asy_gB2, 1);
 
     value dtcGi0 = sommerfeld(args.cGi.idx(0), asy_cGi0, 1);
     value dtcGi1 = sommerfeld(args.cGi.idx(1), asy_cGi1, 1);
