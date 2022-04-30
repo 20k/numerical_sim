@@ -374,7 +374,7 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     #endif // USE_GBB
 
     ///nanananananananana
-    //#define NANIFY
+    #define NANIFY
     #ifdef NANIFY
     float nan = NAN;
 
@@ -1401,8 +1401,8 @@ void dissipate_single_unidir(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
-    //if((order & D_FULL) == 0)
-    //    return;
+    if((order & D_FULL) == 0)
+        return;
 
     float damp = 1;
 
