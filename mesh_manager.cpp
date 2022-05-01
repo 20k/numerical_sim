@@ -284,6 +284,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     auto nan_check = [&](const std::string& name, auto& in, auto& points, int point_count)
     {
+        mqueue.block();
         std::cout << "CHECK " << name << std::endl;
 
         cl::args args;
@@ -514,7 +515,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         step_kernel("evolve_gA");
         step_kernel("evolve_gB");
 
-        nan_check("step", generic_in, points_set.second_derivative_points, points_set.second_count);
+        nan_check("step_input", generic_in, points_set.second_derivative_points, points_set.second_count);
+        nan_check("step_output", generic_out, points_set.second_derivative_points, points_set.second_count);
 
         copy_border(generic_in, generic_out);
         clean(generic_in, generic_out);
