@@ -776,6 +776,7 @@ void nan_check_base(__global ushort4* points, int point_count,
        isnan(X[index]) || isnan(K[index]) || isnan(gA[index]) || isnan(gB0[index]) || isnan(gB1[index]) || isnan(gB2[index]))
     {
         printf("Oh no! %i %i %i\n", ix, iy, iz);
+        standard_debug(GET_ARGLIST(,), ix, iy, iz, dim);
     }
 }
 
@@ -1064,6 +1065,11 @@ void evolve_cY(__global ushort4* points, int point_count,
     float b3 = base_cY3[index];
     float b4 = base_cY4[index];
     float b5 = base_cY5[index];
+
+    if(isnan(f_dtcYij0))
+    {
+        printf("B hello %f %f\n", b0, f_dtcYij0);
+    }
 
     ocY0[index] = f_dtcYij0 * timestep + b0;
     ocY1[index] = f_dtcYij1 * timestep + b1;
@@ -1477,12 +1483,13 @@ void render(STANDARD_ARGS(),
             return;
         }*/
 
+        //#define NEWORDER_DEBUG
         #ifdef NEWORDER_DEBUG
         ushort order = order_ptr[IDX(ix, iy, iz)];
 
         if(order & D_FULL)
         {
-            float4 sponge_col = {0, 0, 0, 1};
+            float4 sponge_col = {1, 1, 1, 1};
 
             write_imagef(screen, (int2){get_global_id(0), get_global_id(1)}, sponge_col);
             return;
