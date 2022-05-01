@@ -1621,8 +1621,8 @@ void dissipate_single_unidir(__global ushort4* points, int point_count,
 
     float world_len = fast_length(world_pos);
 
-    if(world_len > universe_size / 1.5f)
-        damp = 2;
+    /*if(world_len > universe_size / 1.5f)
+        damp = 2;*/
 
     float TEMPORARIES9;
 
