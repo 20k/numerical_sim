@@ -2815,6 +2815,7 @@ void build_sommerfeld(equation_context& ctx)
         return -sum - v * (f - f0) / r;
     };
 
+    ///todo: copy over boundaries in step, then do clean
     value dtcY0 = sommerfeld(args.cY.idx(0, 0), asy_cY0, 1);
     value dtcY1 = sommerfeld(args.cY.idx(1, 0), asy_cY1, 1);
     value dtcY2 = sommerfeld(args.cY.idx(2, 0), asy_cY2, 1);
