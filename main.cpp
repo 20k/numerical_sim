@@ -905,7 +905,7 @@ value diff1_interior(equation_context& ctx, const value& in, int idx, int order,
 
     if(order == 1)
     {
-        #if 1
+        #if 0
         differentiation_context<5> dctx(in, idx, ctx.uses_linear);
         std::array<value, 5> vars = dctx.vars;
 
@@ -925,7 +925,7 @@ value diff1_interior(equation_context& ctx, const value& in, int idx, int order,
             return (vars[0] - 4 * vars[1] + 3 * vars[2]) / (2 * scale);
         #endif // 0
 
-        /*differentiation_context<5> dctx(in, idx, ctx.uses_linear);
+        differentiation_context<5> dctx(in, idx, ctx.uses_linear);
         std::array<value, 5> vars = dctx.vars;
 
         if(direction == 0)
@@ -935,7 +935,7 @@ value diff1_interior(equation_context& ctx, const value& in, int idx, int order,
             return (vars[3] - vars[2]) / scale;
 
         if(direction == -1)
-            return (vars[2] - vars[1]) / scale;*/
+            return (vars[2] - vars[1]) / scale;
     }
     else if(order == 2)
     {
@@ -1017,7 +1017,7 @@ value diff1(equation_context& ctx, const value& in, int idx)
 
         value selected_directional = dual_types::if_v(is_forward, forward_d, back_d);
 
-        value selected_full = dual_types::if_v(is_bidi, regular_d, selected_directional);
+        value selected_full = dual_types::if_v(is_bidi, low_d, selected_directional);
 
         if(ctx.always_directional_derivatives)
             return selected_full;
