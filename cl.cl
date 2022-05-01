@@ -534,6 +534,15 @@ void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
     buffer_out_1[IDX(ix,iy,iz)] = init_buffer_intermediate0;
     buffer_out_2[IDX(ix,iy,iz)] = init_buffer_intermediate1;
     buffer_out_3[IDX(ix,iy,iz)] = init_buffer_intermediate2;
+
+    if(ix == 243 && iy == 233 && iz == 231)
+    {
+        float val1 = buffer_out_1[IDX(ix,iy,iz)];
+        float val2 = buffer_out_2[IDX(ix,iy,iz)];
+        float val3 = buffer_out_3[IDX(ix,iy,iz)];
+
+        printf("Calculating %f %f %f\n", val1, val2, val3);
+    }
 }
 
 __kernel
@@ -1095,6 +1104,11 @@ void evolve_cY(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
+    /*if(ix == 243 && iy == 233 && iz == 231)
+    {
+        standard_debug(GET_ARGLIST(,), ix, iy, iz, dim);
+    }*/
+
     /*if((ix == 6 || ix == 7 || ix == 8 || ix == 25) && iy == 125 && iz == 125)
     {
         printf("EV Val %f %f %f %f %f %f %f %i %i %i\n", cA0[index], cA1[index], cA2[index], cA3[index], cA4[index], cA5[index], X[index], ix, iy, iz);
@@ -1183,12 +1197,12 @@ void evolve_cA(__global ushort4* points, int point_count,
     float b4 = base_cA4[index];
     float b5 = base_cA5[index];
 
-    if(ix == 165 && iy == 121 && iz == 13)
+    /*if(ix == 165 && iy == 121 && iz == 13)
     {
         int my_order = order & D_FULL;
 
         printf("Hi there boys %f %f %f %f %i %i\n", cA0[index], cA0[IDX(ix, iy, iz-1)], cA0[IDX(ix, iy, iz-2)], cA0[IDX(ix, iy, iz-3)], my_order, order);
-    }
+    }*/
 
     if(isnan(f_dtcAij0) || isnan(b0))
     {
