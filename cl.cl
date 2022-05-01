@@ -161,7 +161,7 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim)
 
     float3 diff = ((float3){x, y, z} - fdim) * scale;
 
-    //#define MANHATTEN_SPONGE
+    #define MANHATTEN_SPONGE
     #ifdef MANHATTEN_SPONGE
     float r = max(fabs(diff.x), max(fabs(diff.y), fabs(diff.z)));
     #else
@@ -710,14 +710,14 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
 
         points_border[border_idx].xyz = (ushort3)(ix, iy, iz);
 
-        bool valid_px = valid_point(ix+1, iy, iz, scale, dim);// && valid_point(ix+2, iy, iz, scale, dim);
-        bool valid_nx = valid_point(ix-1, iy, iz, scale, dim);// && valid_point(ix-2, iy, iz, scale, dim);
+        bool valid_px = valid_point(ix+1, iy, iz, scale, dim) && valid_point(ix+2, iy, iz, scale, dim);
+        bool valid_nx = valid_point(ix-1, iy, iz, scale, dim) && valid_point(ix-2, iy, iz, scale, dim);
 
-        bool valid_py = valid_point(ix, iy+1, iz, scale, dim);// && valid_point(ix, iy+2, iz, scale, dim);
-        bool valid_ny = valid_point(ix, iy-1, iz, scale, dim);// && valid_point(ix, iy-2, iz, scale, dim);
+        bool valid_py = valid_point(ix, iy+1, iz, scale, dim) && valid_point(ix, iy+2, iz, scale, dim);
+        bool valid_ny = valid_point(ix, iy-1, iz, scale, dim) && valid_point(ix, iy-2, iz, scale, dim);
 
-        bool valid_pz = valid_point(ix, iy, iz+1, scale, dim);// && valid_point(ix, iy, iz+2, scale, dim);
-        bool valid_nz = valid_point(ix, iy, iz-1, scale, dim);// && valid_point(ix, iy, iz-2, scale, dim);
+        bool valid_pz = valid_point(ix, iy, iz+1, scale, dim) && valid_point(ix, iy, iz+2, scale, dim);
+        bool valid_nz = valid_point(ix, iy, iz-1, scale, dim) && valid_point(ix, iy, iz-2, scale, dim);
 
         if(!valid_px && !valid_nx)
         {
@@ -823,7 +823,7 @@ void nan_check_derivatives(__global ushort4* points, int point_count,
 
 __kernel
 void nan_check_derivatives(__global ushort4* points, int point_count,
-                           __global DERIV_PRECISION* buf, int4 dim)
+                           __global DERIV_PRECISION* buf, int4 dim, __global ushort* order_ptr)
 {
     int idx = get_global_id(0);
 
@@ -835,12 +835,13 @@ void nan_check_derivatives(__global ushort4* points, int point_count,
     int iz = points[idx].z;
 
     int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
 
     float value = buf[index];
 
     if(isnan(value))
     {
-        printf("Nan in derivative %i %i %i\n", ix, iy, iz);
+        printf("Nan in derivative %i %i %i %i\n", ix, iy, iz, order);
     }
 }
 

@@ -313,6 +313,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         args.push_back(point_count);
         args.push_back(deriv.as_device_read_only());
         args.push_back(clsize);
+        args.push_back(points_set.order);
 
         mqueue.exec("nan_check_derivatives", args, {point_count}, {128});
     };
