@@ -5732,10 +5732,13 @@ int main()
 
                 std::vector<dual_types::complex<float>> values = wave_manager.process();
 
-                for(dual_types::complex<float> v : values)
+                if(time_elapsed_s >= 50)
                 {
-                    real_decomp.push_back(v.real);
-                    imaginary_decomp.push_back(v.imaginary);
+                    for(dual_types::complex<float> v : values)
+                    {
+                        real_decomp.push_back(v.real);
+                        imaginary_decomp.push_back(v.imaginary);
+                    }
                 }
             }
 
