@@ -282,8 +282,10 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     mqueue.begin_splice(main_queue);
 
-    auto nan_check = [&](auto& in, auto& points, int point_count)
+    auto nan_check = [&](const std::string& name, auto& in, auto& points, int point_count)
     {
+        std::cout << "CHECK " << name << std::endl;
+
         cl::args args;
 
         args.push_back(points);
@@ -511,6 +513,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         step_kernel("evolve_X");
         step_kernel("evolve_gA");
         step_kernel("evolve_gB");
+
+        nan_check("step", generic_in, points_set.second_derivative_points, points_set.second_count);
 
         copy_border(generic_in, generic_out);
         clean(generic_in, generic_out);
@@ -869,6 +873,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
     #endif // DISSIPATE_SELF
 
     dissipate_unidir(b2.buffers, scratch.buffers);
+    nan_check("dissipate", scratch.buffers, points_set.second_derivative_points, points_set.second_count);
 
     std::swap(b2, scratch);;
 
@@ -880,6 +885,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
     //clean(scratch, b2);
 
     enforce_constraints(get_output().buffers);
+    nan_check("enforce", get_output().buffers, points_set.second_derivative_points, points_set.second_count);
 
     mqueue.end_splice(main_queue);
 
