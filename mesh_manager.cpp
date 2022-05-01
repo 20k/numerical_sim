@@ -553,7 +553,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         nan_check("step_output", generic_out, points_set.second_derivative_points, points_set.second_count);
 
         copy_border(generic_in, generic_out);
-        clean(generic_in, generic_out);
+        //clean(generic_in, generic_out);
     };
 
     auto enforce_constraints = [&](auto& generic_out)
@@ -912,6 +912,11 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
     nan_check("dissipate", scratch.buffers, points_set.second_derivative_points, points_set.second_count);
 
     std::swap(b2, scratch);;
+
+    {
+        copy_valid(b2.buffers, scratch.buffers);
+        clean(scratch.buffers, b2.buffers);
+    }
 
     //dissipate(get_input().buffers, get_output().buffers);
 
