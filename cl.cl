@@ -760,17 +760,29 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
 
         ushort out = 0;
 
-        if(valid_px)
+        if(valid_px && valid_nx)
+        {
+            out |= D_BOTH_PX;
+        }
+        else if(valid_px)
         {
             out |= D_ONLY_PX;
         }
 
-        if(valid_py)
+        if(valid_py && valid_ny)
+        {
+            out |= D_BOTH_PY;
+        }
+        else if(valid_py)
         {
             out |= D_ONLY_PY;
         }
 
-        if(valid_pz)
+        if(valid_pz && valid_nz)
+        {
+            out |= D_BOTH_PZ;
+        }
+        else if(valid_pz)
         {
             out |= D_ONLY_PZ;
         }
