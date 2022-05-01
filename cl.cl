@@ -288,6 +288,9 @@ enum derivative_bitflags
     D_ONLY_PX = 4,
     D_ONLY_PY = 8,
     D_ONLY_PZ = 16,
+    D_BOTH_PX = 32,
+    D_BOTH_PY = 64,
+    D_BOTH_PZ = 128,
 };
 
 #ifndef USE_GBB
