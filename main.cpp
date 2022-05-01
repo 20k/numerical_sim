@@ -5732,7 +5732,7 @@ int main()
 
                 std::vector<dual_types::complex<float>> values = wave_manager.process();
 
-                if(time_elapsed_s >= 50)
+                //if(time_elapsed_s >= 50)
                 {
                     for(dual_types::complex<float> v : values)
                     {

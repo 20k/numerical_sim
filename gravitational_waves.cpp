@@ -174,6 +174,10 @@ dual_types::complex<float> get_harmonic(const std::vector<cl_ushort4>& points, c
 
         dual_types::complex<float> result = {interpolated_real, interpolated_imaginary};
 
+        dual_types::complex<float> conj = conjugate(harmonic);
+
+        //return interpolated_real * conj.real + interpolated_imaginary * conj.imaginary;
+
         return (result * conjugate(harmonic)).real;
     };
 
