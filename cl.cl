@@ -373,7 +373,7 @@ void calculate_initial_conditions(STANDARD_ARGS(),
 
     if(is_deep_boundary_point(ix, iy, iz, scale, dim))
     {
-        #define NANIFY
+        //#define NANIFY
         #ifdef NANIFY
         float nan = NAN;
 
@@ -555,10 +555,10 @@ void calculate_intermediate_data_thin_directional(__global ushort4* points, int 
 
     int order = order_ptr[IDX(ix,iy,iz)];
 
-    if(ix == 138 && iy == 109 && iz == 7)
+    /*if(ix == 138 && iy == 109 && iz == 7)
     {
         printf("ORDER %i\n", order);
-    }
+    }*/
 
     float TEMPORARIESdirectional;
 
