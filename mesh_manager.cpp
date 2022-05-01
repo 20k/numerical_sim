@@ -914,7 +914,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
     std::swap(b2, scratch);;
 
     {
-        copy_valid(b2.buffers, scratch.buffers);
+        //copy_valid(b2.buffers, scratch.buffers);
         clean(scratch.buffers, b2.buffers);
     }
 
