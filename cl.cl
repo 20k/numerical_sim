@@ -749,6 +749,13 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
     }
 }
 
+void standard_debug(STANDARD_ARGS(), int ix, int iy, int iz, int4 dim)
+{
+    int index = IDX(ix, iy, iz);
+
+    printf("EV Val %f %f %f %f %f %f %f %f %f %f %f %f %f %f %i %i %i\n", cY0[index], cY1[index], cY2[index], cY3[index], cY4[index], cY5[index], cA0[index], cA1[index], cA2[index], cA3[index], cA4[index], cA5[index], X[index], K[index], ix, iy, iz);
+}
+
 ///https://cds.cern.ch/record/517706/files/0106072.pdf
 ///boundary conditions
 ///todo: damp to schwarzschild, not initial conditions?
@@ -876,11 +883,13 @@ void clean_data(__global ushort4* points, int point_count,
         float s_dtcGi1 = sommer_dtcGi1;
         float s_dtcGi2 = sommer_dtcGi2;
 
-        /*if((order & D_FULL) == 0 && (order & D_LOW) == 0 && iz == dim.z/2 && iy == dim.y/2)
+        if((order & D_FULL) == 0 && (order & D_LOW) == 0 && iz == dim.z/2 && iy == dim.y/2)
         {
-            printf("Ox %f Val %f diff %f %i %i %i\n", oX[index], X[index], s_dtX, ix, iy, iz);
+            //standard_debug(GET_ARGLIST(,), ix, iy, iz, dim);
+
+            //printf("Ox %f Val %f diff %f %i %i %i\n", oX[index], X[index], s_dtX, ix, iy, iz);
             //printf("Val %f diff %f\n", cY0[index], s_dtcY0);
-        }*/
+        }
 
         ocY0[index] += s_dtcY0 * timestep;
         ocY1[index] += s_dtcY1 * timestep;
@@ -952,13 +961,6 @@ void clean_data(__global ushort4* points, int point_count,
     #endif // 0
 }
 
-void standard_debug(STANDARD_ARGS(), int ix, int iy, int iz, int4 dim)
-{
-    int index = IDX(ix, iy, iz);
-
-    printf("EV Val %f %f %f %f %f %f %f %f %f %f %f %f %f %f %i %i %i\n", cY0[index], cY1[index], cY2[index], cY3[index], cY4[index], cY5[index], cA0[index], cA1[index], cA2[index], cA3[index], cA4[index], cA5[index], X[index], K[index], ix, iy, iz);
-}
-
 #define NANCHECK(w) if(isnan(w[index])){printf("NAN " #w " %i %i %i\n", ix, iy, iz); debug = true;}
 
 __kernel
@@ -1008,7 +1010,11 @@ void evolve_cY(__global ushort4* points, int point_count,
         printf("EV Val %f %f %f %f %f %f %f %i %i %i\n", cA0[index], cA1[index], cA2[index], cA3[index], cA4[index], cA5[index], X[index], ix, iy, iz);
     }*/
 
-    /*if(ix == 191 && iy == 191 && iz == 53)
+    //228 171 161
+    //22 171 161
+    //if(ix == 191 && iy == 191 && iz == 53)
+    //if(ix == 228 && iy == 171 && iz == 161)
+    /*if(ix == 22 && iy == 171 && iz == 161)
     {
         standard_debug(GET_ARGLIST(,), ix, iy, iz, dim);
     }
