@@ -538,14 +538,14 @@ void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
     buffer_out_2[IDX(ix,iy,iz)] = init_buffer_intermediate1;
     buffer_out_3[IDX(ix,iy,iz)] = init_buffer_intermediate2;
 
-    if(ix == 243 && iy == 233 && iz == 231)
+    /*if(ix == 243 && iy == 233 && iz == 231)
     {
         float val1 = buffer_out_1[IDX(ix,iy,iz)];
         float val2 = buffer_out_2[IDX(ix,iy,iz)];
         float val3 = buffer_out_3[IDX(ix,iy,iz)];
 
         printf("Calculating %f %f %f\n", val1, val2, val3);
-    }
+    }*/
 }
 
 __kernel
@@ -578,14 +578,14 @@ void calculate_intermediate_data_thin_directional(__global ushort4* points, int 
     buffer_out_2[IDX(ix,iy,iz)] = init_buffer_intermediate1_directional;
     buffer_out_3[IDX(ix,iy,iz)] = init_buffer_intermediate2_directional;
 
-    if(ix == 244 && iy == 233 && iz == 231)
+    /*if(ix == 244 && iy == 233 && iz == 231)
     {
         float d1 = buffer_out_1[IDX(ix,iy,iz)];
         float d2 = buffer_out_2[IDX(ix,iy,iz)];
         float d3 = buffer_out_3[IDX(ix,iy,iz)];
 
         printf("buffer %f %f %f %f %f\n", buffer[IDX(ix,iy,iz)], buffer[IDX(ix-1,iy,iz)], d1, d2, d3);
-    }
+    }*/
 }
 
 #if 0
@@ -1160,10 +1160,10 @@ void evolve_cY(__global ushort4* points, int point_count,
     //if(ix == 191 && iy == 191 && iz == 53)
     //if(ix == 228 && iy == 171 && iz == 161)
     //if(ix == 22 && iy == 171 && iz == 161)
-    if(ix == 243 && iy == 233 && iz == 231)
+    /*if(ix == 243 && iy == 233 && iz == 231)
     {
         standard_debug(GET_ARGLIST(,), ix, iy, iz, dim);
-    }
+    }*/
 
     /*if(isnan(cY0[index]) || isnan(cY1[index]) || isnan(cY2[index]) || isnan(cY3[index]) || isnan(cY4[index]) || isnan(cY5[index]) ||
        isnan(cA0[index]) || isnan(cA1[index]) || isnan(cA2[index]) || isnan(cA3[index]) || isnan(cA4[index]) || isnan(cA5[index]) ||
@@ -1246,7 +1246,7 @@ void evolve_cA(__global ushort4* points, int point_count,
         printf("Hi there boys %f %f %f %f %i %i\n", cA0[index], cA0[IDX(ix, iy, iz-1)], cA0[IDX(ix, iy, iz-2)], cA0[IDX(ix, iy, iz-3)], my_order, order);
     }*/
 
-    if(isnan(f_dtcAij0) || isnan(b0))
+    /*if(isnan(f_dtcAij0) || isnan(b0))
     {
         printf("0 hello %f %f %i %i %i\n", b0, f_dtcAij0, ix, iy, iz);
     }
@@ -1274,7 +1274,7 @@ void evolve_cA(__global ushort4* points, int point_count,
     if(isnan(f_dtcAij5) || isnan(b5))
     {
         printf("5 hello %f %f\n", b5, f_dtcAij5);
-    }
+    }*/
 
     ocA0[index] = f_dtcAij0 * timestep + b0;
     ocA1[index] = f_dtcAij1 * timestep + b1;
@@ -1285,7 +1285,7 @@ void evolve_cA(__global ushort4* points, int point_count,
     ocA4[index] = f_dtcAij4 * timestep + b4;
     ocA5[index] = f_dtcAij5 * timestep + b5;
 
-    if(isnan(ocA0[index]) || isnan(b0))
+    /*if(isnan(ocA0[index]) || isnan(b0))
     {
         printf("00 hello %f %f\n", b0, f_dtcAij0);
     }
@@ -1313,7 +1313,7 @@ void evolve_cA(__global ushort4* points, int point_count,
     if(isnan(ocA5[index]) || isnan(b5))
     {
         printf("05 hello %f %f\n", b5, f_dtcAij5);
-    }
+    }*/
 }
 
 __kernel

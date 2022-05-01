@@ -1017,7 +1017,7 @@ value diff1(equation_context& ctx, const value& in, int idx)
 
         value selected_directional = dual_types::if_v(is_forward, forward_d, back_d);
 
-        value selected_full = dual_types::if_v(is_bidi, low_d, selected_directional);
+        value selected_full = dual_types::if_v(is_bidi, regular_d, selected_directional);
 
         if(ctx.always_directional_derivatives)
             return selected_full;

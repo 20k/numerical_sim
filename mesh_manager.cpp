@@ -284,6 +284,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     auto nan_check = [&](const std::string& name, auto& in, auto& points, int point_count)
     {
+        return;
+
         mqueue.block();
         //std::cout << "CHECK " << name << std::endl;
 
@@ -304,6 +306,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     auto nan_check_derivs = [&](const std::string& name, auto& deriv, auto& points, int point_count)
     {
+        return;
+
         mqueue.block();
         //std::cout << "CHECKd " << name << std::endl;
 
@@ -387,9 +391,9 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 nan_check_derivs(name + "2", out2, points_set.first_derivative_points, points_set.first_count);
                 nan_check_derivs(name + "3", out3, points_set.first_derivative_points, points_set.first_count);
 
-                cqueue.block();
+                //cqueue.block();
 
-                std::cout << "NAME " << name << std::endl;
+                //std::cout << "NAME " << name << std::endl;
 
                 cl::args thin2;
                 thin2.push_back(points_set.border_points);
@@ -404,7 +408,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
                 cqueue.exec("calculate_intermediate_data_thin_directional", thin2, {points_set.border_count}, {128});
 
-                cqueue.block();
+                //cqueue.block();
 
                 nan_check_derivs(name + "1d", out1, points_set.border_points, points_set.border_count);
                 nan_check_derivs(name + "2d", out2, points_set.border_points, points_set.border_count);
