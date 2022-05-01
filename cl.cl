@@ -722,6 +722,9 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
         order_ptr[index] = D_LOW;
     }
 
+    ///oh god
+    ///this is a fuckup
+    ///I'm using directional derivatives when we have valid derivs on both sides
     if(is_exact_border_point(ix, iy, iz, scale, dim))
     {
         int border_idx = atomic_inc(point_count_border);
