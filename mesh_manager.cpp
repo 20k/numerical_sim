@@ -631,8 +631,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 diss.push_back(timestep);
                 diss.push_back(points_set.order);
 
-                if(coeff == 0)
-                    continue;
+                //if(coeff == 0)
+                //    continue;
 
                 mqueue.exec("dissipate_single_unidir", diss, {points_set.second_count}, {128});
             }
