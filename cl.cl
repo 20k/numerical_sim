@@ -372,7 +372,7 @@ void calculate_initial_conditions(STANDARD_ARGS(),
 
     if(is_deep_boundary_point(ix, iy, iz, scale, dim))
     {
-        //#define NANIFY
+        #define NANIFY
         #ifdef NANIFY
         float nan = NAN;
 
