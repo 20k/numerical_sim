@@ -1066,11 +1066,6 @@ void evolve_cY(__global ushort4* points, int point_count,
     float b4 = base_cY4[index];
     float b5 = base_cY5[index];
 
-    if(isnan(f_dtcYij0))
-    {
-        printf("B hello %f %f\n", b0, f_dtcYij0);
-    }
-
     ocY0[index] = f_dtcYij0 * timestep + b0;
     ocY1[index] = f_dtcYij1 * timestep + b1;
     ocY2[index] = f_dtcYij2 * timestep + b2;
@@ -1122,6 +1117,36 @@ void evolve_cA(__global ushort4* points, int point_count,
     float b4 = base_cA4[index];
     float b5 = base_cA5[index];
 
+    if(isnan(f_dtcAij0) || isnan(b0))
+    {
+        printf("0 hello %f %f\n", b0, f_dtcAij0);
+    }
+
+    if(isnan(f_dtcAij1) || isnan(b1))
+    {
+        printf("1 hello %f %f\n", b1, f_dtcAij1);
+    }
+
+    if(isnan(f_dtcAij2) || isnan(b2))
+    {
+        printf("2 hello %f %f\n", b2, f_dtcAij2);
+    }
+
+    if(isnan(f_dtcAij3) || isnan(b3))
+    {
+        printf("3 hello %f %f\n", b3, f_dtcAij3);
+    }
+
+    if(isnan(f_dtcAij4) || isnan(b4))
+    {
+        printf("4 hello %f %f\n", b4, f_dtcAij4);
+    }
+
+    if(isnan(f_dtcAij5) || isnan(b5))
+    {
+        printf("5 hello %f %f\n", b5, f_dtcAij5);
+    }
+
     ocA0[index] = f_dtcAij0 * timestep + b0;
     ocA1[index] = f_dtcAij1 * timestep + b1;
     ocA2[index] = f_dtcAij2 * timestep + b2;
@@ -1130,6 +1155,36 @@ void evolve_cA(__global ushort4* points, int point_count,
     #endif // NO_CAIJYY
     ocA4[index] = f_dtcAij4 * timestep + b4;
     ocA5[index] = f_dtcAij5 * timestep + b5;
+
+    if(isnan(ocA0[index]) || isnan(b0))
+    {
+        printf("00 hello %f %f\n", b0, f_dtcAij0);
+    }
+
+    if(isnan(ocA1[index]) || isnan(b1))
+    {
+        printf("01 hello %f %f\n", b1, f_dtcAij1);
+    }
+
+    if(isnan(ocA2[index]) || isnan(b2))
+    {
+        printf("02 hello %f %f\n", b2, f_dtcAij2);
+    }
+
+    if(isnan(ocA3[index]) || isnan(b3))
+    {
+        printf("03 hello %f %f\n", b3, f_dtcAij3);
+    }
+
+    if(isnan(ocA4[index]) || isnan(b4))
+    {
+        printf("04 hello %f %f\n", b4, f_dtcAij4);
+    }
+
+    if(isnan(ocA5[index]) || isnan(b5))
+    {
+        printf("05 hello %f %f\n", b5, f_dtcAij5);
+    }
 }
 
 __kernel
