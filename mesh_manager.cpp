@@ -667,6 +667,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         }
     };
 
+    ///todo: Make this also copy the boundary
     auto dissipate_unidir = [&](auto& in, auto& out)
     {
         for(int i=0; i < buffer_set::buffer_count; i++)
