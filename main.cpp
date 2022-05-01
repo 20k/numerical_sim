@@ -905,6 +905,7 @@ value diff1_interior(equation_context& ctx, const value& in, int idx, int order,
 
     if(order == 1)
     {
+        #if 1
         differentiation_context<5> dctx(in, idx, ctx.uses_linear);
         std::array<value, 5> vars = dctx.vars;
 
@@ -922,6 +923,19 @@ value diff1_interior(equation_context& ctx, const value& in, int idx, int order,
 
         if(direction == -1)
             return (vars[0] - 4 * vars[1] + 3 * vars[2]) / (2 * scale);
+        #endif // 0
+
+        /*differentiation_context<5> dctx(in, idx, ctx.uses_linear);
+        std::array<value, 5> vars = dctx.vars;
+
+        if(direction == 0)
+            return (vars[3] - vars[1]) / (2 * scale);
+
+        if(direction == 1)
+            return (vars[3] - vars[2]) / scale;
+
+        if(direction == -1)
+            return (vars[2] - vars[1]) / scale;*/
     }
     else if(order == 2)
     {
@@ -3344,6 +3358,7 @@ value calculate_hamiltonian(equation_context& ctx, standard_arguments& args)
 inline
 void build_cA(equation_context& ctx)
 {
+    ctx.debug = true;
     standard_arguments args(ctx);
 
     value scale = "scale";

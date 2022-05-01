@@ -1119,7 +1119,9 @@ void evolve_cA(__global ushort4* points, int point_count,
 
     if(ix == 165 && iy == 121 && iz == 13)
     {
-        printf("Hi there boys %f %f %f %f\n", cA0[index], cA0[IDX(ix, iy, iz-1)], cA0[IDX(ix, iy, iz-2)], cA0[IDX(ix, iy, iz-3)]);
+        int my_order = order & D_FULL;
+
+        printf("Hi there boys %f %f %f %f %i %i\n", cA0[index], cA0[IDX(ix, iy, iz-1)], cA0[IDX(ix, iy, iz-2)], cA0[IDX(ix, iy, iz-3)], my_order, order);
     }
 
     if(isnan(f_dtcAij0) || isnan(b0))
