@@ -1119,7 +1119,7 @@ void evolve_cA(__global ushort4* points, int point_count,
 
     if(isnan(f_dtcAij0) || isnan(b0))
     {
-        printf("0 hello %f %f\n", b0, f_dtcAij0);
+        printf("0 hello %f %f %i %i %i\n", b0, f_dtcAij0, ix, iy, iz);
     }
 
     if(isnan(f_dtcAij1) || isnan(b1))
