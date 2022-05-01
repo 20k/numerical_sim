@@ -574,6 +574,15 @@ void calculate_intermediate_data_thin_directional(__global ushort4* points, int 
     buffer_out_1[IDX(ix,iy,iz)] = init_buffer_intermediate0_directional;
     buffer_out_2[IDX(ix,iy,iz)] = init_buffer_intermediate1_directional;
     buffer_out_3[IDX(ix,iy,iz)] = init_buffer_intermediate2_directional;
+
+    if(ix == 244 && iy == 233 && iz == 231)
+    {
+        float d1 = buffer_out_1[IDX(ix,iy,iz)];
+        float d2 = buffer_out_2[IDX(ix,iy,iz)];
+        float d3 = buffer_out_3[IDX(ix,iy,iz)];
+
+        printf("buffer %f %f %f %f %f\n", buffer[IDX(ix,iy,iz)], buffer[IDX(ix-1,iy,iz)], d1, d2, d3);
+    }
 }
 
 #if 0
@@ -954,6 +963,11 @@ void clean_data(__global ushort4* points, int point_count,
     #endif // RADIATIVE
 
     {
+        /*if(ix == 244 && iy == 233 && iz == 231)
+        {
+            standard_debug(GET_ARGLIST(,), ix, iy, iz, dim);
+        }*/
+
         float TEMPORARIESsommerfeld;
 
         float s_dtcY0 = sommer_dtcY0;
@@ -989,6 +1003,15 @@ void clean_data(__global ushort4* points, int point_count,
             //printf("Ox %f Val %f diff %f %i %i %i\n", oX[index], X[index], s_dtX, ix, iy, iz);
             //printf("Val %f diff %f\n", cY0[index], s_dtcY0);
         }
+
+        /*if(ix == 244 && iy == 233 && iz == 231)
+        {
+            printf("IVal %f %f\n", cY1[IDX(ix, iy, iz)], cY1[IDX(ix-1, iy, iz)]);
+
+            float dval = SOMMER_DBG;
+
+            printf("hi hello s_dtcY1 %f %f %i %i %i\n", s_dtcY1, dval, ix, iy, iz);
+        }*/
 
         ocY0[index] += s_dtcY0 * timestep;
         ocY1[index] += s_dtcY1 * timestep;
@@ -1118,10 +1141,11 @@ void evolve_cY(__global ushort4* points, int point_count,
     //22 171 161
     //if(ix == 191 && iy == 191 && iz == 53)
     //if(ix == 228 && iy == 171 && iz == 161)
-    /*if(ix == 22 && iy == 171 && iz == 161)
+    //if(ix == 22 && iy == 171 && iz == 161)
+    if(ix == 243 && iy == 233 && iz == 231)
     {
         standard_debug(GET_ARGLIST(,), ix, iy, iz, dim);
-    }*/
+    }
 
     /*if(isnan(cY0[index]) || isnan(cY1[index]) || isnan(cY2[index]) || isnan(cY3[index]) || isnan(cY4[index]) || isnan(cY5[index]) ||
        isnan(cA0[index]) || isnan(cA1[index]) || isnan(cA2[index]) || isnan(cA3[index]) || isnan(cA4[index]) || isnan(cA5[index]) ||

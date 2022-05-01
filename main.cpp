@@ -905,7 +905,7 @@ value diff1_interior(equation_context& ctx, const value& in, int idx, int order,
 
     if(order == 1)
     {
-        #if 1
+        #if 0
         differentiation_context<5> dctx(in, idx, ctx.uses_linear);
         std::array<value, 5> vars = dctx.vars;
 
@@ -925,7 +925,7 @@ value diff1_interior(equation_context& ctx, const value& in, int idx, int order,
             return (vars[0] - 4 * vars[1] + 3 * vars[2]) / (2 * scale);
         #endif // 0
 
-        /*differentiation_context<5> dctx(in, idx, ctx.uses_linear);
+        differentiation_context<5> dctx(in, idx, ctx.uses_linear);
         std::array<value, 5> vars = dctx.vars;
 
         if(direction == 0)
@@ -935,7 +935,7 @@ value diff1_interior(equation_context& ctx, const value& in, int idx, int order,
             return (vars[3] - vars[2]) / scale;
 
         if(direction == -1)
-            return (vars[2] - vars[1]) / scale;*/
+            return (vars[2] - vars[1]) / scale;
     }
     else if(order == 2)
     {
@@ -2824,6 +2824,11 @@ void build_sommerfeld(equation_context& ctx)
         for(int i=0; i < 3; i++)
         {
             sum += (v * pos.idx(i) / r) * diff1(ctx, f, i);
+        }
+
+        if(dual_types::equivalent(f, args.cY.idx(1, 0)))
+        {
+            ctx.add("SOMMER_DBG", diff1(ctx, f, 0));
         }
 
         return -sum - v * (f - f0) / r;
