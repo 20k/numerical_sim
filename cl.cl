@@ -1363,6 +1363,7 @@ void dissipate_single(__global ushort4* points, int point_count,
     obuffer[index] += damp * dissipate_single * timestep;
 }
 
+///this isn't copying the low order stuff, I'm an eejit
 __kernel
 void dissipate_single_unidir(__global ushort4* points, int point_count,
                              __global float* buffer, __global float* obuffer,
@@ -1385,12 +1386,15 @@ void dissipate_single_unidir(__global ushort4* points, int point_count,
     int order = order_ptr[index];
 
     if((order & D_FULL) == 0)
+    {
+        obuffer[index] = buffer[index];
         return;
+    }
 
-    if(ix == 6 && iy == 125 && iz == 125)
+    /*if(ix == 6 && iy == 125 && iz == 125)
     {
         printf("Hellodiss\n");
-    }
+    }*/
 
     float damp = 1;
 
