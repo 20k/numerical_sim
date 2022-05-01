@@ -297,6 +297,32 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         }
     };
 
+    auto clean = [&](const auto& base_buf, const auto& inout)
+    {
+        cl::args cleaner;
+        cleaner.push_back(points_set.border_points);
+        cleaner.push_back(points_set.border_count);
+
+        for(auto& i : base_buf)
+        {
+            cleaner.push_back(i);
+        }
+
+        for(auto& i : inout)
+        {
+            cleaner.push_back(i);
+        }
+
+        //cleaner.push_back(bssnok_datas[which_data]);
+        cleaner.push_back(u_arg);
+        cleaner.push_back(points_set.order);
+        cleaner.push_back(scale);
+        cleaner.push_back(clsize);
+        cleaner.push_back(timestep);
+
+        mqueue.exec("clean_data", cleaner, {points_set.border_count}, {256});
+    };
+
     auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
     {
         intermediates.clear();
@@ -470,6 +496,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         step_kernel("evolve_gB");
 
         copy_border(generic_in, generic_out);
+        clean(generic_in, generic_out);
     };
 
     auto enforce_constraints = [&](auto& generic_out)
@@ -732,32 +759,6 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
     diff_to_input(generic_data[(which_data + 1) % 2].buffers, timestep);
     #endif
 
-    auto clean = [&](const auto& base_buf, const auto& inout)
-    {
-        cl::args cleaner;
-        cleaner.push_back(points_set.border_points);
-        cleaner.push_back(points_set.border_count);
-
-        for(auto& i : base_buf.buffers)
-        {
-            cleaner.push_back(i);
-        }
-
-        for(auto& i : inout.buffers)
-        {
-            cleaner.push_back(i);
-        }
-
-        //cleaner.push_back(bssnok_datas[which_data]);
-        cleaner.push_back(u_arg);
-        cleaner.push_back(points_set.order);
-        cleaner.push_back(scale);
-        cleaner.push_back(clsize);
-        cleaner.push_back(timestep);
-
-        mqueue.exec("clean_data", cleaner, {points_set.border_count}, {256});
-    };
-
     #define BACKWARD_EULER
     #ifdef BACKWARD_EULER
     auto& b1 = get_input();
@@ -857,9 +858,9 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
     //dissipate(get_input().buffers, get_output().buffers);
 
     //copy_border(b1.buffers, scratch.buffers);
-    copy_valid(b2.buffers, scratch.buffers);
+    //copy_valid(b2.buffers, scratch.buffers);
 
-    clean(scratch, b2);
+    //clean(scratch, b2);
 
     enforce_constraints(get_output().buffers);
 

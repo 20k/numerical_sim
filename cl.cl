@@ -878,7 +878,7 @@ void clean_data(__global ushort4* points, int point_count,
 
         /*if((order & D_FULL) == 0 && (order & D_LOW) == 0 && iz == dim.z/2 && iy == dim.y/2)
         {
-            printf("Ox %f Val %f diff %f %i %i %i\n", ocY0[index], cY0[index], s_dtcY0, ix, iy, iz);
+            printf("Ox %f Val %f diff %f %i %i %i\n", oX[index], X[index], s_dtX, ix, iy, iz);
             //printf("Val %f diff %f\n", cY0[index], s_dtcY0);
         }*/
 
@@ -952,6 +952,13 @@ void clean_data(__global ushort4* points, int point_count,
     #endif // 0
 }
 
+void standard_debug(STANDARD_ARGS(), int ix, int iy, int iz, int4 dim)
+{
+    int index = IDX(ix, iy, iz);
+
+    printf("EV Val %f %f %f %f %f %f %f %f %f %f %f %f %f %f %i %i %i\n", cY0[index], cY1[index], cY2[index], cY3[index], cY4[index], cY5[index], cA0[index], cA1[index], cA2[index], cA3[index], cA4[index], cA5[index], X[index], K[index], ix, iy, iz);
+}
+
 #define NANCHECK(w) if(isnan(w[index])){printf("NAN " #w " %i %i %i\n", ix, iy, iz); debug = true;}
 
 __kernel
@@ -998,7 +1005,19 @@ void evolve_cY(__global ushort4* points, int point_count,
 
     /*if((ix == 6 || ix == 7 || ix == 8 || ix == 25) && iy == 125 && iz == 125)
     {
-        printf("EV Val %f %f %f %f %f %f %i %i %i\n", cA0[index], cA1[index], cA2[index], cA3[index], cA4[index], cA5[index], ix, iy, iz);
+        printf("EV Val %f %f %f %f %f %f %f %i %i %i\n", cA0[index], cA1[index], cA2[index], cA3[index], cA4[index], cA5[index], X[index], ix, iy, iz);
+    }*/
+
+    /*if(ix == 191 && iy == 191 && iz == 53)
+    {
+        standard_debug(GET_ARGLIST(,), ix, iy, iz, dim);
+    }
+
+    if(isnan(cY0[index]) || isnan(cY1[index]) || isnan(cY2[index]) || isnan(cY3[index]) || isnan(cY4[index]) || isnan(cY5[index]) ||
+       isnan(cA0[index]) || isnan(cA1[index]) || isnan(cA2[index]) || isnan(cA3[index]) || isnan(cA4[index]) || isnan(cA5[index]) ||
+       isnan(X[index]) || isnan(K[index]) || isnan(gA[index]) || isnan(gB0[index]) || isnan(gB1[index]) || isnan(gB2[index]))
+    {
+        printf("NAN %i %i %i\n", ix, iy, iz);
     }*/
 
     float TEMPORARIEStcy;
