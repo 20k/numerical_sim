@@ -756,6 +756,29 @@ void standard_debug(STANDARD_ARGS(), int ix, int iy, int iz, int4 dim)
     printf("EV Val %f %f %f %f %f %f %f %f %f %f %f %f %f %f %i %i %i\n", cY0[index], cY1[index], cY2[index], cY3[index], cY4[index], cY5[index], cA0[index], cA1[index], cA2[index], cA3[index], cA4[index], cA5[index], X[index], K[index], ix, iy, iz);
 }
 
+__kernel
+void nan_check_base(__global ushort4* points, int point_count,
+                    STANDARD_ARGS(), int4 dim)
+{
+    int idx = get_global_id(0);
+
+    if(idx >= point_count)
+        return;
+
+    int ix = points[idx].x;
+    int iy = points[idx].y;
+    int iz = points[idx].z;
+
+    int index = IDX(ix, iy, iz);
+
+    if(isnan(cY0[index]) || isnan(cY1[index]) || isnan(cY2[index]) || isnan(cY3[index]) || isnan(cY4[index]) || isnan(cY5[index]) ||
+       isnan(cA0[index]) || isnan(cA1[index]) || isnan(cA2[index]) || isnan(cA3[index]) || isnan(cA4[index]) || isnan(cA5[index]) ||
+       isnan(X[index]) || isnan(K[index]) || isnan(gA[index]) || isnan(gB0[index]) || isnan(gB1[index]) || isnan(gB2[index]))
+    {
+        printf("Oh no! %i %i %i\n", ix, iy, iz);
+    }
+}
+
 ///https://cds.cern.ch/record/517706/files/0106072.pdf
 ///boundary conditions
 ///todo: damp to schwarzschild, not initial conditions?
@@ -1017,9 +1040,9 @@ void evolve_cY(__global ushort4* points, int point_count,
     /*if(ix == 22 && iy == 171 && iz == 161)
     {
         standard_debug(GET_ARGLIST(,), ix, iy, iz, dim);
-    }
+    }*/
 
-    if(isnan(cY0[index]) || isnan(cY1[index]) || isnan(cY2[index]) || isnan(cY3[index]) || isnan(cY4[index]) || isnan(cY5[index]) ||
+    /*if(isnan(cY0[index]) || isnan(cY1[index]) || isnan(cY2[index]) || isnan(cY3[index]) || isnan(cY4[index]) || isnan(cY5[index]) ||
        isnan(cA0[index]) || isnan(cA1[index]) || isnan(cA2[index]) || isnan(cA3[index]) || isnan(cA4[index]) || isnan(cA5[index]) ||
        isnan(X[index]) || isnan(K[index]) || isnan(gA[index]) || isnan(gB0[index]) || isnan(gB1[index]) || isnan(gB2[index]))
     {

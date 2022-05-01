@@ -282,6 +282,23 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     mqueue.begin_splice(main_queue);
 
+    auto nan_check = [&](auto& in, auto& points, int point_count)
+    {
+        cl::args args;
+
+        args.push_back(points);
+        args.push_back(point_count);
+
+        for(auto& i : in)
+        {
+            args.push_back(i.as_device_read_only());
+        }
+
+        args.push_back(clsize);
+
+        mqueue.exec("nan_check_base", args, {point_count}, {128});
+    };
+
     auto copy_border = [&](auto& in, auto& out)
     {
         for(int i=0; i < (int)in.size(); i++)
@@ -764,7 +781,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
     auto& b1 = get_input();
     auto& b2 = get_output();
 
-    int iterations = 2;
+    int iterations = 1;
 
     for(int i=0; i < iterations; i++)
     {
