@@ -554,6 +554,11 @@ void calculate_intermediate_data_thin_directional(__global ushort4* points, int 
 
     int order = order_ptr[IDX(ix,iy,iz)];
 
+    if(ix == 138 && iy == 109 && iz == 7)
+    {
+        printf("ORDER %i\n", order);
+    }
+
     float TEMPORARIESdirectional;
 
     buffer_out_1[IDX(ix,iy,iz)] = init_buffer_intermediate0_directional;
@@ -704,14 +709,14 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
 
         points_border[border_idx].xyz = (ushort3)(ix, iy, iz);
 
-        bool valid_px = valid_point(ix+1, iy, iz, scale, dim);
-        bool valid_nx = valid_point(ix-1, iy, iz, scale, dim);
+        bool valid_px = valid_point(ix+1, iy, iz, scale, dim) && valid_point(ix+2, iy, iz, scale, dim);
+        bool valid_nx = valid_point(ix-1, iy, iz, scale, dim) && valid_point(ix-2, iy, iz, scale, dim);
 
-        bool valid_py = valid_point(ix, iy+1, iz, scale, dim);
-        bool valid_ny = valid_point(ix, iy-1, iz, scale, dim);
+        bool valid_py = valid_point(ix, iy+1, iz, scale, dim) && valid_point(ix, iy+2, iz, scale, dim);
+        bool valid_ny = valid_point(ix, iy-1, iz, scale, dim) && valid_point(ix, iy-2, iz, scale, dim);
 
-        bool valid_pz = valid_point(ix, iy, iz+1, scale, dim);
-        bool valid_nz = valid_point(ix, iy, iz-1, scale, dim);
+        bool valid_pz = valid_point(ix, iy, iz+1, scale, dim) && valid_point(ix, iy, iz+2, scale, dim);
+        bool valid_nz = valid_point(ix, iy, iz-1, scale, dim) && valid_point(ix, iy, iz-2, scale, dim);
 
         if(!valid_px && !valid_nx)
         {

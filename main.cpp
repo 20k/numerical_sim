@@ -2956,6 +2956,8 @@ void build_intermediate_thin_directional(equation_context& ctx)
     value v2 = diff1(ctx, buffer, 1);
     value v3 = diff1(ctx, buffer, 2);
 
+    std::cout << "DERIVB " << type_to_string(v1) << std::endl;
+
     ctx.add("init_buffer_intermediate0_directional", v1);
     ctx.add("init_buffer_intermediate1_directional", v2);
     ctx.add("init_buffer_intermediate2_directional", v3);
