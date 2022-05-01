@@ -302,6 +302,21 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         mqueue.exec("nan_check_base", args, {point_count}, {128});
     };
 
+    auto nan_check_derivs = [&](const std::string& name, auto& deriv, auto& points, int point_count)
+    {
+        mqueue.block();
+        std::cout << "CHECKd " << name << std::endl;
+
+        cl::args args;
+
+        args.push_back(points);
+        args.push_back(point_count);
+        args.push_back(deriv.as_device_read_only());
+        args.push_back(clsize);
+
+        mqueue.exec("nan_check_derivatives", args, {point_count}, {128});
+    };
+
     auto copy_border = [&](auto& in, auto& out)
     {
         for(int i=0; i < (int)in.size(); i++)
@@ -367,6 +382,10 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
                 cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.first_count}, {128});
 
+                nan_check_derivs(name + "1", out1, points_set.first_derivative_points, points_set.first_count);
+                nan_check_derivs(name + "2", out2, points_set.first_derivative_points, points_set.first_count);
+                nan_check_derivs(name + "3", out3, points_set.first_derivative_points, points_set.first_count);
+
                 cl::args thin2;
                 thin2.push_back(points_set.border_points);
                 thin2.push_back(points_set.border_count);
@@ -379,6 +398,10 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 thin2.push_back(points_set.order);
 
                 cqueue.exec("calculate_intermediate_data_thin_directional", thin2, {points_set.border_count}, {128});
+
+                nan_check_derivs(name + "1d", out1, points_set.border_points, points_set.border_count);
+                nan_check_derivs(name + "2d", out2, points_set.border_points, points_set.border_count);
+                nan_check_derivs(name + "3d", out3, points_set.border_points, points_set.border_count);
 
                 //cqueue.flush();
             };

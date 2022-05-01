@@ -780,6 +780,65 @@ void nan_check_base(__global ushort4* points, int point_count,
     }
 }
 
+/*#define GET_DERIVLIST(a, p) a p##dcYij0, a p##dcYij1, a p##dcYij2, a p##dcYij3, a p##dcYij4, a p##dcYij5, a p##dcYij6, a p##dcYij7, a p##dcYij8, a p##dcYij9, a p##dcYij10, a p##dcYij11, a p##dcYij12, a p##dcYij13, a p##dcYij14, a p##dcYij15, a p##dcYij16, a p##dcYij17, \
+                        a p##digA0, a p##digA1, a p##digA2, \
+                        a p##digB0, a p##digB1, a p##digB2, a p##digB3, a p##digB4, a p##digB5, a p##digB6, a p##digB7, a p##digB8, \
+                        a p##dX0, a p##dX1, a p##dX2
+*/
+
+#if 0
+__kernel
+void nan_check_derivatives(__global ushort4* points, int point_count,
+                           STANDARD_DERIVS(), int4 dim)
+{
+    int idx = get_global_id(0);
+
+    if(idx >= point_count)
+        return;
+
+    int ix = points[idx].x;
+    int iy = points[idx].y;
+    int iz = points[idx].z;
+
+    int index = IDX(ix, iy, iz);
+
+    if(isnan(dcYij0[index]) || isnan(dcYij1[index]) || isnan(dcYij2[index]) || isnan(dcYij3[index]) || isnan(dcYij4[index]) || isnan(dcYij5[index]) || isnan(dcYij6[index]) || isnan(dcYij7[index]) || isnan(dcYij8[index]) || isnan(dcYij9[index]) || isnan(dcYij10[index]) || isnan(dcYij11[index]) || isnan(dcYij11[index]) || isnan(dcYij12[index]) || isnan(dcYij13[index]) || isnan(dcYij14[index]) || isnan(dcYij15[index]) || isnan(dcYij16[index]) || isnan(dcYij17[index]) ||
+       isnan(digA0[index]) || isnan(digA1[index]) || isnan(digA2[index]) || isnan(digA3[index]) || isnan(digA4))
+
+    /*if(isnan(cY0[index]) || isnan(cY1[index]) || isnan(cY2[index]) || isnan(cY3[index]) || isnan(cY4[index]) || isnan(cY5[index]) ||
+       isnan(cA0[index]) || isnan(cA1[index]) || isnan(cA2[index]) || isnan(cA3[index]) || isnan(cA4[index]) || isnan(cA5[index]) ||
+       isnan(X[index]) || isnan(K[index]) || isnan(gA[index]) || isnan(gB0[index]) || isnan(gB1[index]) || isnan(gB2[index]))
+    {
+        printf("Oh no! %i %i %i\n", ix, iy, iz);
+        standard_debug(GET_ARGLIST(,), ix, iy, iz, dim);
+    }*/
+}
+#endif // 0f
+
+__kernel
+void nan_check_derivatives(__global ushort4* points, int point_count,
+                           __global DERIV_PRECISION* buf, int4 dim)
+{
+    int idx = get_global_id(0);
+
+    if(idx >= point_count)
+        return;
+
+    int ix = points[idx].x;
+    int iy = points[idx].y;
+    int iz = points[idx].z;
+
+    int index = IDX(ix, iy, iz);
+
+    float value = buf[index];
+
+    if(isnan(value))
+    {
+        printf("Nan in derivative %i %i %i\n", ix, iy, iz);
+    }
+}
+
+
 ///https://cds.cern.ch/record/517706/files/0106072.pdf
 ///boundary conditions
 ///todo: damp to schwarzschild, not initial conditions?
