@@ -593,8 +593,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         {
             cl::args diss;
 
-            diss.push_back(points_set.second_derivative_points);
-            diss.push_back(points_set.second_count);
+            diss.push_back(points_set.all_points);
+            diss.push_back(points_set.all_count);
 
             diss.push_back(in[i].as_device_read_only());
             diss.push_back(out[i]);
@@ -613,7 +613,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             mqueue.exec("dissipate_single_unidir", diss, {points_set.second_count}, {128});
         }
 
-        copy_border(in, out);
+        //copy_border(in, out);
     };
     ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
     //#define RK4
