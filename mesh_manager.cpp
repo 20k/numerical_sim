@@ -92,20 +92,26 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
     cl::buffer border_points(ctx);
     cl::buffer border_count(ctx);
 
+    cl::buffer all_points(ctx);
+    cl::buffer all_count(ctx);
+
     cl::buffer order(ctx);
 
     points_1.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
     points_2.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
     border_points.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
+    all_points.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
     order.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort));
 
     count_1.alloc(sizeof(cl_int));
     count_2.alloc(sizeof(cl_int));
     border_count.alloc(sizeof(cl_int));
+    all_count.alloc(sizeof(cl_int));
 
     count_1.set_to_zero(cqueue);
     count_2.set_to_zero(cqueue);
     border_count.set_to_zero(cqueue);
+    all_count.set_to_zero(cqueue);
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
@@ -116,6 +122,8 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
     args.push_back(count_2);
     args.push_back(border_points);
     args.push_back(border_count);
+    args.push_back(all_points);
+    args.push_back(all_count);
     args.push_back(order);
     args.push_back(scale);
     args.push_back(clsize);
@@ -125,15 +133,18 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
     auto [shrunk_points_1, cpu_count_1] = extract_buffer(ctx, cqueue, points_1, count_1);
     auto [shrunk_points_2, cpu_count_2] = extract_buffer(ctx, cqueue, points_2, count_2);
     auto [shrunk_border, cpu_border_count] = extract_buffer(ctx, cqueue, border_points, border_count);
+    auto [shrunk_all, cpu_all_count] = extract_buffer(ctx, cqueue, all_points, all_count);
 
     evolution_points ret(ctx);
     ret.first_count = cpu_count_1;
     ret.second_count = cpu_count_2;
     ret.border_count = cpu_border_count;
+    ret.all_count = cpu_all_count;
 
     ret.first_derivative_points = shrunk_points_1;
     ret.second_derivative_points = shrunk_points_2;
     ret.border_points = shrunk_border;
+    ret.all_points = shrunk_all;
     ret.order = order.as_device_read_only();
 
     printf("Evolve point reduction %i\n", cpu_count_1);

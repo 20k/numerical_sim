@@ -602,6 +602,7 @@ __kernel
 void generate_evolution_points(__global ushort4* points_1st, __global int* point_count_1st,
                                __global ushort4* points_2nd, __global int* point_count_2nd,
                                __global ushort4* points_border, __global int* point_count_border,
+                               __global ushort4* points_all, __global int* point_count_all,
                                __global ushort* order_ptr,
                                float scale, int4 dim)
 {
@@ -626,6 +627,15 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
         int idx = atomic_inc(point_count_2nd);
 
         points_2nd[idx].xyz = (ushort3)(ix, iy, iz);
+    }
+
+    if(is_regular_order_evolved_point(ix, iy, iz, scale, dim) ||
+       is_low_order_evolved_point(ix, iy, iz, scale, dim) ||
+       is_exact_border_point(ix, iy, iz, scale, dim))
+    {
+        int idx = atomic_inc(point_count_all);
+
+        points_all[idx].xyz = (ushort3)(ix, iy, iz);
     }
 
     int index = IDX(ix, iy, iz);
