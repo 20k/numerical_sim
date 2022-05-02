@@ -78,12 +78,23 @@ void test_harmonics()
         {
             for(float phi = 0; phi <= 2 * M_PI; phi += M_PI/16)
             {
-                dual_types::complex<float> ym222 = sqrt(5 / (64 * M_PI)) * (1 - cos(theta)) * (1 - cos(theta)) * expi_s(-2 * phi);
+                {
+                    dual_types::complex<float> ym222 = sqrt(5 / (64 * M_PI)) * (1 - cos(theta)) * (1 - cos(theta)) * expi_s(-2 * phi);
 
-                dual_types::complex<float> ym222_c = sYlm_2(-2, 2, -2, theta, phi);
+                    dual_types::complex<float> ym222_c = sYlm_2(-2, 2, -2, theta, phi);
 
-                assert(fabs(ym222.real - ym222_c.real) < tol);
-                assert(fabs(ym222.imaginary - ym222_c.imaginary) < tol);
+                    assert(fabs(ym222.real - ym222_c.real) < tol);
+                    assert(fabs(ym222.imaginary - ym222_c.imaginary) < tol);
+                }
+
+                {
+                    dual_types::complex<float> y222 = sqrt(5 / (64 * M_PI)) * (1 + cos(theta)) * (1 + cos(theta)) * expi_s(2 * phi);
+
+                    dual_types::complex<float> y222_c = sYlm_2(-2, 2, 2, theta, phi);
+
+                    assert(fabs(y222.real - y222_c.real) < tol);
+                    assert(fabs(y222.imaginary - y222_c.imaginary) < tol);
+                }
             }
         }
     }
