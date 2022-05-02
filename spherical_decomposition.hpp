@@ -58,7 +58,7 @@ void test_spherical_decomp()
 
         float radius = 1;
 
-        for(int l=0; l < 10; l++)
+        for(int l=0; l < 4; l++)
         {
             for(int m=-l; m <= l; m++)
             {
@@ -67,6 +67,8 @@ void test_spherical_decomp()
                 printf("Lm %i %i %f\n", l, m, lm[l][m]);
             }
         }
+
+        //printf("Base harm %f", sYlm_2(0, 0, 0, 0.f, 0.f));
 
         for(float theta = 0; theta <= M_PI; theta += M_PI/8)
         {

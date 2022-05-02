@@ -92,7 +92,7 @@ void test_integration()
 
         float integral = spherical_integrate(f1_theta_phi, 64);
 
-        assert(approx_equal(integral, 4 * M_PI/9, 0.0001f));
+        assert(approx_equal(integral, 4 * M_PI/9, 0.00001f));
     }
 
     {
@@ -108,7 +108,7 @@ void test_integration()
 
         float integral = spherical_integrate(f3_theta_phi, 64);
 
-        assert(approx_equal(integral, 0.049629692928687f, 0.0001f));
+        assert(approx_equal(integral, 0.049629692928687f, 0.00001f));
     }
 
 }
