@@ -611,10 +611,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             //if(coeff == 0)
             //    continue;
 
-            mqueue.exec("dissipate_single_unidir", diss, {points_set.second_count}, {128});
+            mqueue.exec("dissipate_single_unidir", diss, {points_set.all_count}, {128});
         }
-
-        //copy_border(in, out);
     };
     ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
     //#define RK4
