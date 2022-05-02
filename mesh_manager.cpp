@@ -282,6 +282,47 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     mqueue.begin_splice(main_queue);
 
+    auto copy_border = [&](auto& in, auto& out)
+    {
+        for(int i=0; i < (int)in.size(); i++)
+        {
+            cl::args copy;
+            copy.push_back(points_set.border_points);
+            copy.push_back(points_set.border_count);
+            copy.push_back(in[i]);
+            copy.push_back(out[i]);
+            copy.push_back(clsize);
+
+            mqueue.exec("copy_valid", copy, {points_set.border_count}, {128});
+        }
+    };
+
+    auto clean = [&](const auto& base_buf, const auto& inout)
+    {
+        cl::args cleaner;
+        cleaner.push_back(points_set.border_points);
+        cleaner.push_back(points_set.border_count);
+
+        for(auto& i : base_buf)
+        {
+            cleaner.push_back(i);
+        }
+
+        for(auto& i : inout)
+        {
+            cleaner.push_back(i);
+        }
+
+        //cleaner.push_back(bssnok_datas[which_data]);
+        cleaner.push_back(u_arg);
+        cleaner.push_back(points_set.order);
+        cleaner.push_back(scale);
+        cleaner.push_back(clsize);
+        cleaner.push_back(timestep);
+
+        mqueue.exec("clean_data", cleaner, {points_set.border_count}, {256});
+    };
+
     auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
     {
         intermediates.clear();
@@ -453,6 +494,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         step_kernel("evolve_X");
         step_kernel("evolve_gA");
         step_kernel("evolve_gB");
+
+        copy_border(generic_in, generic_out);
     };
 
     auto enforce_constraints = [&](auto& generic_out)
@@ -553,11 +596,13 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             diss.push_back(timestep);
             diss.push_back(points_set.order);
 
-            if(coeff == 0)
-                continue;
+            //if(coeff == 0)
+            //    continue;
 
             mqueue.exec("dissipate_single_unidir", diss, {points_set.second_count}, {128});
         }
+
+        copy_border(in, out);
     };
     ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
     //#define RK4
@@ -749,30 +794,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     //dissipate(get_input().buffers, get_output().buffers);
 
-    {
-        cl::args cleaner;
-        cleaner.push_back(points_set.border_points);
-        cleaner.push_back(points_set.border_count);
-
-        for(auto& i : scratch.buffers)
-        {
-            cleaner.push_back(i);
-        }
-
-        for(auto& i : get_output().buffers)
-        {
-            cleaner.push_back(i);
-        }
-
-        //cleaner.push_back(bssnok_datas[which_data]);
-        cleaner.push_back(u_arg);
-        cleaner.push_back(points_set.order);
-        cleaner.push_back(scale);
-        cleaner.push_back(clsize);
-        cleaner.push_back(timestep);
-
-        mqueue.exec("clean_data", cleaner, {points_set.border_count}, {256});
-    }
+    clean(scratch.buffers, b2.buffers);
 
     enforce_constraints(get_output().buffers);
 

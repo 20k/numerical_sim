@@ -1312,7 +1312,12 @@ void render(STANDARD_ARGS(),
     {
         float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim);
 
+        #define SOMMER_RENDER
+        #ifndef SOMMER_RENDER
         if(sponge_factor > 0)
+        #else
+        if(sponge_factor == 0)
+        #endif
         {
             float3 sponge_col = {sponge_factor, 0, 0};
 
