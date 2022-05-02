@@ -9,6 +9,9 @@
 #include "transform_position.cl"
 #include "common.cl"
 
+///because we need to cutoff slightly before the real edge due to various factors
+#define RENDERING_CUTOFF_MULT 0.95f
+
 float srgb_to_lin_single(float in)
 {
     if(in < 0.04045f)
@@ -1710,7 +1713,7 @@ void calculate_adm_texture_coordinates(__global struct lightray_simple* finished
 
     float uni_size = universe_size;
 
-    cpos = fix_ray_position(cpos, XDiff, uni_size * 1.01f);
+    cpos = fix_ray_position(cpos, XDiff, uni_size * RENDERING_CUTOFF_MULT);
 
     float fr = fast_length(cpos);
     float theta = acos(cpos.z / fr);
@@ -1847,7 +1850,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
     bool hit_singularity = false;
 
-    float u_sq = (universe_size / 1.01f) * (universe_size / 1.01f);
+    float u_sq = (universe_size * RENDERING_CUTOFF_MULT) * (universe_size * RENDERING_CUTOFF_MULT);
 
     float3 VHalf = (float3)(0,0,0);
     float3 VFull_approx = (float3)(0,0,0);
@@ -2028,7 +2031,7 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
 
     if(!ray_in.hit_singularity)
     {
-        cpos = fix_ray_position(cpos, XDiff, uni_size * 1.01f);
+        cpos = fix_ray_position(cpos, XDiff, uni_size * RENDERING_CUTOFF_MULT);
 
         float sxf = texture_coordinates[y * width + x].x;
         float syf = texture_coordinates[y * width + x].y;
