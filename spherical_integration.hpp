@@ -57,13 +57,6 @@ template<typename T>
 inline
 auto spherical_integrate(const T& f_theta_phi, int n)
 {
-    using variable_type = decltype(f_theta_phi(0.f, 0.f));
-
-    variable_type sum = 0;
-
-    std::vector<float> weights = get_legendre_weights(n);
-    std::vector<float> nodes = get_legendre_nodes(n);
-
     float iupper = 2 * M_PI;
     float ilower = 0;
 

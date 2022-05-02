@@ -4,6 +4,7 @@
 #include "legendre_weights.h"
 #include "spherical_integration.hpp"
 #include "spherical_harmonics.hpp"
+#include "spherical_decomposition.hpp"
 
 float linear_interpolate(const std::map<int, std::map<int, std::map<int, float>>>& vals_map, vec3f pos, vec3i dim)
 {
@@ -48,6 +49,8 @@ float linear_interpolate(const std::map<int, std::map<int, std::map<int, float>>
     return c0 * (1 - frac.z()) + c1 * frac.z();
 }
 
+#define INTEGRATION_N 64
+
 vec3f dim_to_centre(vec3i dim)
 {
     vec3i even = dim - 1;
@@ -67,12 +70,8 @@ std::vector<cl_ushort4> get_harmonic_extraction_points(vec3i dim, int extract_pi
     float rad = get_harmonic_extraction_radius(extract_pixel);
     vec3f centre = dim_to_centre(dim);
 
-    auto func = [&](float theta, float phi)
+    auto func = [&](vec3f pos)
     {
-        vec3f pos = {rad * cos(phi) * sin(theta), rad * sin(phi) * sin(theta), rad * cos(theta)};
-
-        pos += centre;
-
         vec3f ff0 = floor(pos);
 
         vec3i f0 = {ff0.x(), ff0.y(), ff0.z()};
@@ -88,12 +87,10 @@ std::vector<cl_ushort4> get_harmonic_extraction_points(vec3i dim, int extract_pi
 
         ret_as_int.push_back({f0.x() + 1, f0.y() + 1, f0.z() + 1});
 
-        return 0.f;
+        return dual_types::complex<float>(0.f, 0.f);
     };
 
-    int n = 64;
-
-    (void)spherical_integrate(func, n);
+    (void)spherical_decompose_complex_cartesian_function(func, -2, 2, 2, centre, rad, INTEGRATION_N);
 
     std::vector<cl_ushort4> ret;
 
@@ -129,77 +126,15 @@ dual_types::complex<float> get_harmonic(const std::vector<cl_ushort4>& points, c
 
     vec3f centre = dim_to_centre(dim);
 
-    #if 0
-    auto func = [&](float theta, float phi)
+    auto to_integrate = [&](const vec3f& pos)
     {
-        dual_types::complex<float> harmonic = sYlm_2(-2, l, m, theta, phi);
+        float real = linear_interpolate(real_value_map, pos, dim);
+        float imaginary = linear_interpolate(imaginary_value_map, pos, dim);
 
-        dual_types::complex<float> conj = conjugate(harmonic);
-
-        //printf("Hreal %f\n", harmonic.real);
-
-        vec3f pos = {rad * cos(phi) * sin(theta), rad * sin(phi) * sin(theta), rad * cos(theta)};
-
-        pos += centre;
-
-        float interpolated_real = linear_interpolate(real_value_map, pos, dim);
-        float interpolated_imaginary = linear_interpolate(imaginary_value_map, pos, dim);
-
-        dual_types::complex<float> result = {interpolated_real, interpolated_imaginary};
-
-        return result * conj;
-
-        //printf("interpolated %f %f\n", interpolated.real, interpolated.imaginary);
-
-        //float scalar_product = interpolated_real * conj.real + interpolated_imaginary * conj.imaginary;
-
-        //return scalar_product;
+        return dual_types::complex<float>(real, imaginary);
     };
 
-    int n = 64;
-
-    dual_types::complex<float> harmonic = spherical_integrate(func, n);
-    #endif // 0
-
-    auto func_real = [&](float theta, float phi)
-    {
-        dual_types::complex<float> harmonic = sYlm_2(-2, l, m, theta, phi);
-
-        vec3f pos = {rad * cos(phi) * sin(theta), rad * sin(phi) * sin(theta), rad * cos(theta)};
-
-        pos += centre;
-
-        float interpolated_real = linear_interpolate(real_value_map, pos, dim);
-        float interpolated_imaginary = linear_interpolate(imaginary_value_map, pos, dim);
-
-        dual_types::complex<float> result = {interpolated_real, interpolated_imaginary};
-
-        return (result * conjugate(harmonic)).real;
-    };
-
-    auto func_imaginary = [&](float theta, float phi)
-    {
-        dual_types::complex<float> harmonic = sYlm_2(-2, l, m, theta, phi);
-
-        vec3f pos = {rad * cos(phi) * sin(theta), rad * sin(phi) * sin(theta), rad * cos(theta)};
-
-        pos += centre;
-
-        float interpolated_real = linear_interpolate(real_value_map, pos, dim);
-        float interpolated_imaginary = linear_interpolate(imaginary_value_map, pos, dim);
-
-        dual_types::complex<float> result = {interpolated_real, interpolated_imaginary};
-
-        return (result * conjugate(harmonic)).imaginary;
-    };
-
-    int n = 64;
-
-    return {spherical_integrate(func_real, n), spherical_integrate(func_imaginary, n)};
-
-    //printf("Harmonic %f\n", harmonic);
-
-    //return harmonic;
+    return spherical_decompose_complex_cartesian_function(to_integrate, -2, l, m, centre, rad, INTEGRATION_N);
 }
 
 gravitational_wave_manager::gravitational_wave_manager(cl::context& ctx, vec3i _simulation_size, float c_at_max, float scale) :

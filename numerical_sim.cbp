@@ -156,6 +156,7 @@
 		<Unit filename="main.cpp" />
 		<Unit filename="mesh_manager.cpp" />
 		<Unit filename="mesh_manager.hpp" />
+		<Unit filename="spherical_decomposition.hpp" />
 		<Unit filename="spherical_harmonics.hpp" />
 		<Unit filename="spherical_integration.hpp" />
 		<Unit filename="transform_position.cl" />
