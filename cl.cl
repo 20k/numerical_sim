@@ -27,16 +27,6 @@ float buffer_indexh(__global const DERIV_PRECISION* const buffer, int x, int y, 
     return buffer[z * dim.x * dim.y + y * dim.x + x];
 }
 
-bool invalid_first(int ix, int iy, int iz, int4 dim)
-{
-    return ix < BORDER_WIDTH || iy < BORDER_WIDTH || iz < BORDER_WIDTH || ix >= dim.x - BORDER_WIDTH || iy >= dim.y - BORDER_WIDTH || iz >= dim.z - BORDER_WIDTH;
-}
-
-bool invalid_second(int ix, int iy, int iz, int4 dim)
-{
-    return ix < BORDER_WIDTH * 2 || iy < BORDER_WIDTH * 2 || iz < BORDER_WIDTH * 2 || ix >= dim.x - BORDER_WIDTH * 2 || iy >= dim.y - BORDER_WIDTH * 2 || iz >= dim.z - BORDER_WIDTH * 2;
-}
-
 __kernel
 void trapezoidal_accumulate(__global ushort4* points, int point_count, int4 dim, __global float* yn, __global float* fn, __global float* fnp1, float timestep)
 {
@@ -48,14 +38,6 @@ void trapezoidal_accumulate(__global ushort4* points, int point_count, int4 dim,
     int ix = points[local_idx].x;
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
 
     int index = IDX(ix, iy, iz);
 
@@ -75,14 +57,6 @@ void accumulate_rk4(__global ushort4* points, int point_count, int4 dim, __globa
     int ix = points[local_idx].x;
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
 
     int index = IDX(ix, iy, iz);
 
@@ -112,14 +86,6 @@ void copy_valid(__global ushort4* points, int point_count, __global float* in, _
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
 
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     int index = IDX(ix, iy, iz);
 
     out[index] = in[index];
@@ -136,14 +102,6 @@ void calculate_rk4_val(__global ushort4* points, int point_count, int4 dim, __gl
     int ix = points[local_idx].x;
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
 
     int index = IDX(ix, iy, iz);
 
@@ -183,7 +141,81 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim)
     //return (r - sponge_r0) / (sponge_r1 - sponge_r0);
 
     float sigma = (sponge_r1 - sponge_r0) / 3;
-    return native_exp(-pow((r - sponge_r1) / sigma, 2));
+    return clamp(native_exp(-pow((r - sponge_r1) / sigma, 2)), 0.f, 1.f);
+}
+
+///if we're a 1, and around us is something that's not a 1, we're a border point
+bool is_exact_border_point(float x, float y, float z, float scale, int4 dim)
+{
+    if(sponge_damp_coeff(x, y, z, scale, dim) < 1)
+        return 0;
+
+    int3 points[6] = {{-1, 0, 0}, {1, 0, 0}, {0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}};
+
+    for(int i=0; i < 6; i++)
+    {
+        int3 offset = points[i];
+
+         if(sponge_damp_coeff(x + offset.x, y + offset.y, z + offset.z, scale, dim) < 1)
+            return 1;
+    }
+
+    return 0;
+}
+
+///if we're surrounded entirely by 1s, we're a deep boundary point
+bool is_deep_boundary_point(float x, float y, float z, float scale, int4 dim)
+{
+    return sponge_damp_coeff(x, y, z, scale, dim) == 1 && !is_exact_border_point(x, y, z, scale, dim);
+}
+
+bool is_low_order_evolved_point(float x, float y, float z, float scale, int4 dim)
+{
+    if(is_exact_border_point(x, y, z, scale, dim) == 1)
+        return 0;
+
+    if(sponge_damp_coeff(x, y, z, scale, dim) == 1)
+        return 0;
+
+    #pragma unroll
+    for(int iz=-BORDER_WIDTH; iz <= BORDER_WIDTH; iz++)
+    {
+        #pragma unroll
+        for(int iy=-BORDER_WIDTH; iy <= BORDER_WIDTH; iy++)
+        {
+            #pragma unroll
+            for(int ix=-BORDER_WIDTH; ix <= BORDER_WIDTH; ix++)
+            {
+                if(is_exact_border_point(x + ix, y + iy, z + iz, scale, dim) == 1)
+                    return 1;
+            }
+        }
+    }
+
+    return 0;
+}
+
+bool is_regular_order_evolved_point(float x, float y, float z, float scale, int4 dim)
+{
+    if(sponge_damp_coeff(x, y, z, scale, dim) == 1)
+        return 0;
+
+    #pragma unroll
+    for(int iz=-BORDER_WIDTH; iz <= BORDER_WIDTH; iz++)
+    {
+        #pragma unroll
+        for(int iy=-BORDER_WIDTH; iy <= BORDER_WIDTH; iy++)
+        {
+            #pragma unroll
+            for(int ix=-BORDER_WIDTH; ix <= BORDER_WIDTH; ix++)
+            {
+                if(is_exact_border_point(x + ix, y + iy, z + iz, scale, dim) == 1)
+                    return 0;
+            }
+        }
+    }
+
+    return 1;
 }
 
 void buffer_write(__global float* buffer, int3 position, int4 dim, float value)
@@ -210,6 +242,18 @@ float get_distance(int x1, int y1, int z1, int x2, int y2, int z2, int4 dim, flo
 
     return fast_length(d2 - d1);
 }
+
+enum derivative_bitflags
+{
+    D_LOW = 1,
+    D_FULL = 2,
+    D_ONLY_PX = 4,
+    D_ONLY_PY = 8,
+    D_ONLY_PZ = 16,
+    D_BOTH_PX = 32,
+    D_BOTH_PY = 64,
+    D_BOTH_PZ = 128,
+};
 
 #ifndef USE_GBB
 
@@ -289,6 +333,53 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     gBB1[index] = init_gBB1;
     gBB2[index] = init_gBB2;
     #endif // USE_GBB
+
+    ///nanananananananana
+    //#define NANIFY
+    #ifdef NANIFY
+    float nan = NAN;
+
+    ///87 152 16
+
+    if(ix == 87 && iy == 152 && iz == 16)
+    {
+        printf("hi my type %i", is_low_order_evolved_point(ix, iy, iz, scale, dim));
+    }
+    if(ix == 86 && iy == 152 && iz == 16)
+    {
+        printf("hi my type left %i %i", is_low_order_evolved_point(ix, iy, iz, scale, dim), is_deep_boundary_point(ix, iy, iz, scale, dim));
+    }
+
+    if(is_deep_boundary_point(ix, iy, iz, scale, dim))
+    {
+        cY0[index] = nan;
+        cY1[index] = nan;
+        cY2[index] = nan;
+        cY3[index] = nan;
+        cY4[index] = nan;
+        cY5[index] = nan;
+
+        cA0[index] = nan;
+        cA1[index] = nan;
+        cA2[index] = nan;
+        cA3[index] = nan;
+        cA4[index] = nan;
+        cA5[index] = nan;
+
+        cGi0[index] = nan;
+        cGi1[index] = nan;
+        cGi2[index] = nan;
+
+        K[index] = nan;
+        X[index] = nan;
+
+        gA[index] = nan;
+        gB0[index] = nan;
+        gB1[index] = nan;
+        gB2[index] = nan;
+    }
+
+    #endif // NANIFY
 
     if(ix == (dim.x-1)/2 && iz == (dim.z-1)/2)
     {
@@ -372,7 +463,7 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
 __kernel
 void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
                                       __global float* buffer, __global DERIV_PRECISION* buffer_out_1, __global DERIV_PRECISION* buffer_out_2, __global DERIV_PRECISION* buffer_out_3,
-                                      float scale, int4 dim)
+                                      float scale, int4 dim, __global ushort* order_ptr)
 {
     int local_idx = get_global_id(0);
 
@@ -383,19 +474,24 @@ void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
 
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
+    int order = order_ptr[IDX(ix,iy,iz)];
 
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_first(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
+    if((order & D_FULL) > 0 || ((order & D_LOW) > 0))
+    {
+        float TEMPORARIES10;
 
-    float TEMPORARIES10;
+        buffer_out_1[IDX(ix,iy,iz)] = init_buffer_intermediate0;
+        buffer_out_2[IDX(ix,iy,iz)] = init_buffer_intermediate1;
+        buffer_out_3[IDX(ix,iy,iz)] = init_buffer_intermediate2;
+    }
+    else
+    {
+        float TEMPORARIESdirectional;
 
-    buffer_out_1[IDX(ix,iy,iz)] = init_buffer_intermediate0;
-    buffer_out_2[IDX(ix,iy,iz)] = init_buffer_intermediate1;
-    buffer_out_3[IDX(ix,iy,iz)] = init_buffer_intermediate2;
+        buffer_out_1[IDX(ix,iy,iz)] = init_buffer_intermediate0_directional;
+        buffer_out_2[IDX(ix,iy,iz)] = init_buffer_intermediate1_directional;
+        buffer_out_3[IDX(ix,iy,iz)] = init_buffer_intermediate2_directional;
+    }
 }
 
 #if 0
@@ -449,13 +545,6 @@ void calculate_momentum_constraint(__global ushort4* points, int point_count,
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
 
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     float TEMPORARIES12;
 
     float m1 = init_momentum0;
@@ -482,23 +571,7 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
     if(sponge_factor <= 0)
         return;
 
-    bool all_high = true;
-
-    for(int i=-1; i <= 1; i++)
-    {
-        for(int j=-1; j <= 1; j++)
-        {
-            for(int k=-1; k <= 1; k++)
-            {
-                if(sponge_damp_coeff(ix + i, iy + j, iz + k, scale, dim) < 1)
-                {
-                    all_high = false;
-                }
-            }
-        }
-    }
-
-    if(all_high)
+    if(is_deep_boundary_point(ix, iy, iz, scale, dim))
         return;
 
     int idx = atomic_inc(point_count);
@@ -506,67 +579,19 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
     points[idx].xyz = (ushort3)(ix, iy, iz);
 }
 
-///could try this function also where it only calculates derivatives for dynamic fields
-///aka do not calculate derivatives across the maximal sponge point
-bool valid_first_derivative_point(int3 pos, float scale, int4 dim)
+bool valid_point(float ix, float iy, float iz, float scale, int4 dim)
 {
-    ///one of the points would lie outside the boundary
-    if(invalid_first(pos.x, pos.y, pos.z, dim))
-        return false;
-
-    int width = BORDER_WIDTH;
-
-    for(int z=-width; z <= width; z++)
-    {
-        for(int y=-width; y <= width; y++)
-        {
-            for(int x=-width; x <= width; x++)
-            {
-                int3 combo = (int3)(x, y, z) + pos;
-
-                float sponge_local = sponge_damp_coeff(combo.x, combo.y, combo.z, scale, dim);
-
-                ///one of the points is non sponged, so we should calculate first derivatives
-                if(sponge_local < 1)
-                    return true;
-            }
-        }
-    }
-
-    ///no point is unsponged, therefore do not process
-    return false;
-}
-
-///if any point is not a valid first derivative point, we can't evolve this correctly
-bool valid_second_derivative_point(int3 pos, float scale, int4 dim)
-{
-    ///out of boundaries for the below loop
-    if(invalid_first(pos.x, pos.y, pos.z, dim))
-        return false;
-
-    int width = BORDER_WIDTH;
-
-    for(int z=-width; z <= width; z++)
-    {
-        for(int y=-width; y <= width; y++)
-        {
-            for(int x=-width; x <= width; x++)
-            {
-                int3 combo = (int3)(x, y, z) + pos;
-
-                ///one of the underlying first derivatives would be invalid
-                if(!valid_first_derivative_point(combo, scale, dim))
-                    return false;
-            }
-        }
-    }
-
-    return true;
+    return is_regular_order_evolved_point(ix, iy, iz, scale, dim) ||
+       is_low_order_evolved_point(ix, iy, iz, scale, dim) ||
+       is_exact_border_point(ix, iy, iz, scale, dim);
 }
 
 __kernel
 void generate_evolution_points(__global ushort4* points_1st, __global int* point_count_1st,
                                __global ushort4* points_2nd, __global int* point_count_2nd,
+                               __global ushort4* points_border, __global int* point_count_border,
+                               __global ushort4* points_all, __global int* point_count_all,
+                               __global ushort* order_ptr,
                                float scale, int4 dim)
 {
     int ix = get_global_id(0);
@@ -576,20 +601,103 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    int3 pos = (int3)(ix, iy, iz);
-
-    if(valid_first_derivative_point(pos, scale, dim))
+    if(is_regular_order_evolved_point(ix, iy, iz, scale, dim) ||
+       is_low_order_evolved_point(ix, iy, iz, scale, dim))
     {
         int idx = atomic_inc(point_count_1st);
 
         points_1st[idx].xyz = (ushort3)(ix, iy, iz);
     }
 
-    if(valid_second_derivative_point(pos, scale, dim))
+    if(is_regular_order_evolved_point(ix, iy, iz, scale, dim) ||
+       is_low_order_evolved_point(ix, iy, iz, scale, dim))
     {
         int idx = atomic_inc(point_count_2nd);
 
         points_2nd[idx].xyz = (ushort3)(ix, iy, iz);
+    }
+
+    if(is_regular_order_evolved_point(ix, iy, iz, scale, dim) ||
+       is_low_order_evolved_point(ix, iy, iz, scale, dim) ||
+       is_exact_border_point(ix, iy, iz, scale, dim))
+    {
+        int idx = atomic_inc(point_count_all);
+
+        points_all[idx].xyz = (ushort3)(ix, iy, iz);
+    }
+
+    int index = IDX(ix, iy, iz);
+
+    if(is_regular_order_evolved_point(ix, iy, iz, scale, dim))
+    {
+        order_ptr[index] = D_FULL;
+    }
+
+    if(is_low_order_evolved_point(ix, iy, iz, scale, dim))
+    {
+        order_ptr[index] = D_LOW;
+    }
+
+    if(is_exact_border_point(ix, iy, iz, scale, dim))
+    {
+        int border_idx = atomic_inc(point_count_border);
+
+        points_border[border_idx].xyz = (ushort3)(ix, iy, iz);
+
+        bool valid_px = valid_point(ix+1, iy, iz, scale, dim);// && valid_point(ix+2, iy, iz, scale, dim);
+        bool valid_nx = valid_point(ix-1, iy, iz, scale, dim);// && valid_point(ix-2, iy, iz, scale, dim);
+
+        bool valid_py = valid_point(ix, iy+1, iz, scale, dim);// && valid_point(ix, iy+2, iz, scale, dim);
+        bool valid_ny = valid_point(ix, iy-1, iz, scale, dim);// && valid_point(ix, iy-2, iz, scale, dim);
+
+        bool valid_pz = valid_point(ix, iy, iz+1, scale, dim);// && valid_point(ix, iy, iz+2, scale, dim);
+        bool valid_nz = valid_point(ix, iy, iz-1, scale, dim);// && valid_point(ix, iy, iz-2, scale, dim);
+
+        if(!valid_px && !valid_nx)
+        {
+            printf("Error! No valid point x for %i %i %i\n", ix, iy, iz);
+        }
+
+        if(!valid_py && !valid_ny)
+        {
+            printf("Error! No valid point x for %i %i %i\n", ix, iy, iz);
+        }
+
+        if(!valid_pz && !valid_nz)
+        {
+            printf("Error! No valid point x for %i %i %i\n", ix, iy, iz);
+        }
+
+        ushort out = 0;
+
+        if(valid_px && valid_nx)
+        {
+            out |= D_BOTH_PX;
+        }
+        else if(valid_px)
+        {
+            out |= D_ONLY_PX;
+        }
+
+        if(valid_py && valid_ny)
+        {
+            out |= D_BOTH_PY;
+        }
+        else if(valid_py)
+        {
+            out |= D_ONLY_PY;
+        }
+
+        if(valid_pz && valid_nz)
+        {
+            out |= D_BOTH_PZ;
+        }
+        else if(valid_pz)
+        {
+            out |= D_ONLY_PZ;
+        }
+
+        order_ptr[index] = out;
     }
 }
 
@@ -599,7 +707,9 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
 __kernel
 void clean_data(__global ushort4* points, int point_count,
                 STANDARD_ARGS(),
+                STANDARD_ARGS(o),
                 __global float* u_value,
+                __global ushort* order_ptr,
                 float scale, int4 dim,
                 float timestep)
 {
@@ -662,6 +772,7 @@ void clean_data(__global ushort4* points, int point_count,
     #endif // USE_GBB
 
     int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
 
     ///todo: investigate if 2 full orbits is possible on the non radiative condition
     ///woooo
@@ -688,6 +799,63 @@ void clean_data(__global ushort4* points, int point_count,
     initial_X = 1;
     #endif // RADIATIVE
 
+    {
+        float TEMPORARIESsommerfeld;
+
+        float s_dtcY0 = sommer_dtcY0;
+        float s_dtcY1 = sommer_dtcY1;
+        float s_dtcY2 = sommer_dtcY2;
+        float s_dtcY3 = sommer_dtcY3;
+        float s_dtcY4 = sommer_dtcY4;
+        float s_dtcY5 = sommer_dtcY5;
+
+        float s_dtcA0 = sommer_dtcA0;
+        float s_dtcA1 = sommer_dtcA1;
+        float s_dtcA2 = sommer_dtcA2;
+        float s_dtcA3 = sommer_dtcA3;
+        float s_dtcA4 = sommer_dtcA4;
+        float s_dtcA5 = sommer_dtcA5;
+
+        float s_dtK = sommer_dtK;
+        float s_dtX = sommer_dtX;
+
+        float s_dtgA = sommer_dtgA;
+        float s_dtgB0 = sommer_dtgB0;
+        float s_dtgB1 = sommer_dtgB1;
+        float s_dtgB2 = sommer_dtgB2;
+
+        float s_dtcGi0 = sommer_dtcGi0;
+        float s_dtcGi1 = sommer_dtcGi1;
+        float s_dtcGi2 = sommer_dtcGi2;
+
+        ocY0[index] += s_dtcY0 * timestep;
+        ocY1[index] += s_dtcY1 * timestep;
+        ocY2[index] += s_dtcY2 * timestep;
+        ocY3[index] += s_dtcY3 * timestep;
+        ocY4[index] += s_dtcY4 * timestep;
+        ocY5[index] += s_dtcY5 * timestep;
+
+        ocA0[index] += s_dtcA0 * timestep;
+        ocA1[index] += s_dtcA1 * timestep;
+        ocA2[index] += s_dtcA2 * timestep;
+        ocA3[index] += s_dtcA3 * timestep;
+        ocA4[index] += s_dtcA4 * timestep;
+        ocA5[index] += s_dtcA5 * timestep;
+
+        oK[index] += s_dtK * timestep;
+        oX[index] += s_dtX * timestep;
+
+        ogA[index] += s_dtgA * timestep;
+        ogB0[index] += s_dtgB0 * timestep;
+        ogB1[index] += s_dtgB1 * timestep;
+        ogB2[index] += s_dtgB2 * timestep;
+
+        ocGi0[index] += s_dtcGi0 * timestep;
+        ocGi1[index] += s_dtcGi1 * timestep;
+        ocGi2[index] += s_dtcGi2 * timestep;
+    }
+
+    #if 0
     ///https://authors.library.caltech.edu/8284/1/RINcqg07.pdf (34)
     float y_r = sponge_factor;
 
@@ -727,6 +895,7 @@ void clean_data(__global ushort4* points, int point_count,
     gBB1[index] += -y_r * (gBB1[index] - fin_gBB1) * timestep;
     gBB2[index] += -y_r * (gBB2[index] - fin_gBB2) * timestep;
     #endif // USE_GBB
+    #endif // 0
 }
 
 #define NANCHECK(w) if(isnan(w[index])){printf("NAN " #w " %i %i %i\n", ix, iy, iz); debug = true;}
@@ -741,7 +910,7 @@ void evolve_cY(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, __global ushort* order_ptr)
 {
     int local_idx = get_global_id(0);
 
@@ -752,15 +921,19 @@ void evolve_cY(__global ushort4* points, int point_count,
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
 
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
+
+    if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
+    {
+        ocY0[index] = base_cY0[index];
+        ocY1[index] = base_cY1[index];
+        ocY2[index] = base_cY2[index];
+        ocY3[index] = base_cY3[index];
+        ocY4[index] = base_cY4[index];
+        ocY5[index] = base_cY5[index];
+        return;
+    }
 
     float TEMPORARIEStcy;
 
@@ -796,7 +969,7 @@ void evolve_cA(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, __global ushort* order_ptr)
 {
     int local_idx = get_global_id(0);
 
@@ -807,15 +980,19 @@ void evolve_cA(__global ushort4* points, int point_count,
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
 
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
+
+    if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
+    {
+        ocA0[index] = base_cA0[index];
+        ocA1[index] = base_cA1[index];
+        ocA2[index] = base_cA2[index];
+        ocA3[index] = base_cA3[index];
+        ocA4[index] = base_cA4[index];
+        ocA5[index] = base_cA5[index];
+        return;
+    }
 
     float TEMPORARIEStca;
 
@@ -853,7 +1030,7 @@ void evolve_cGi(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, __global ushort* order_ptr)
 {
     int local_idx = get_global_id(0);
 
@@ -864,15 +1041,16 @@ void evolve_cGi(__global ushort4* points, int point_count,
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
 
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
+
+    if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
+    {
+        ocGi0[index] = base_cGi0[index];
+        ocGi1[index] = base_cGi1[index];
+        ocGi2[index] = base_cGi2[index];
+        return;
+    }
 
     float TEMPORARIEStcgi;
 
@@ -920,7 +1098,7 @@ void evolve_K(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, __global ushort* order_ptr)
 {
     int local_idx = get_global_id(0);
 
@@ -931,15 +1109,14 @@ void evolve_K(__global ushort4* points, int point_count,
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
 
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
+
+    if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
+    {
+        oK[index] = base_K[index];
+        return;
+    }
 
     float TEMPORARIEStk;
 
@@ -961,7 +1138,7 @@ void evolve_X(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, __global ushort* order_ptr)
 {
     int local_idx = get_global_id(0);
 
@@ -972,15 +1149,14 @@ void evolve_X(__global ushort4* points, int point_count,
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
 
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
+
+    if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
+    {
+        oX[index] = base_X[index];
+        return;
+    }
 
     float TEMPORARIEStx;
 
@@ -1001,7 +1177,7 @@ void evolve_gA(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, __global ushort* order_ptr)
 {
     int local_idx = get_global_id(0);
 
@@ -1012,15 +1188,14 @@ void evolve_gA(__global ushort4* points, int point_count,
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
 
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
+
+    if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
+    {
+        ogA[index] = base_gA[index];
+        return;
+    }
 
     float TEMPORARIEStga;
 
@@ -1042,7 +1217,7 @@ void evolve_gB(__global ushort4* points, int point_count,
             __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
             __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
             __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
-            float scale, int4 dim, float timestep)
+            float scale, int4 dim, float timestep, __global ushort* order_ptr)
 {
     int local_idx = get_global_id(0);
 
@@ -1053,15 +1228,16 @@ void evolve_gB(__global ushort4* points, int point_count,
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
 
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
+
+    if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
+    {
+        ogB0[index] = base_gB0[index];
+        ogB1[index] = base_gB1[index];
+        ogB2[index] = base_gB2[index];
+        return;
+    }
 
     float TEMPORARIEStgb;
 
@@ -1092,14 +1268,6 @@ void dissipate_single(__global ushort4* points, int point_count,
     int ix = points[local_idx].x;
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
 
     int index = IDX(ix, iy, iz);
 
@@ -1138,7 +1306,7 @@ __kernel
 void dissipate_single_unidir(__global ushort4* points, int point_count,
                              __global float* buffer, __global float* obuffer,
                              float coefficient,
-                             float scale, int4 dim, float timestep)
+                             float scale, int4 dim, float timestep, __global ushort* order_ptr)
 {
     int local_idx = get_global_id(0);
 
@@ -1149,13 +1317,14 @@ void dissipate_single_unidir(__global ushort4* points, int point_count,
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
 
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-
     int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
+
+    if((order & D_FULL) == 0)
+    {
+        obuffer[index] = buffer[index];
+        return;
+    }
 
     float damp = 1;
 
@@ -1200,7 +1369,12 @@ void render(STANDARD_ARGS(),
     {
         float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim);
 
+        #define SOMMER_RENDER
+        #ifndef SOMMER_RENDER
         if(sponge_factor > 0)
+        #else
+        if(sponge_factor == 1)
+        #endif
         {
             float3 sponge_col = {sponge_factor, 0, 0};
 

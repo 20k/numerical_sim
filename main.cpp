@@ -123,6 +123,8 @@ struct equation_context
     std::vector<std::pair<value, value>> aliases;
     bool uses_linear = false;
     bool debug = false;
+    bool use_precise_differentiation = true;
+    bool always_directional_derivatives = false;
 
     int order = 2;
 
@@ -894,18 +896,46 @@ value hacky_differentiate(const value& in, int idx, bool pin = true, bool linear
 }
 #endif // 0
 
-value diff1(equation_context& ctx, const value& in, int idx)
+value diff1_interior(equation_context& ctx, const value& in, int idx, int order, int direction)
 {
-    int order = ctx.order;
-
     value scale = "scale";
+
+    if(direction != 0)
+        assert(order == 1);
 
     if(order == 1)
     {
-        differentiation_context<3> dctx(in, idx, ctx.uses_linear);
-        std::array<value, 3> vars = dctx.vars;
+        #if 0
+        differentiation_context<5> dctx(in, idx, ctx.uses_linear);
+        std::array<value, 5> vars = dctx.vars;
 
-        return (vars[2] - vars[0]) / (2 * scale);
+        if(direction == 0)
+            return (vars[3] - vars[1]) / (2 * scale);
+
+        /*if(direction == 1)
+            return (vars[2] - vars[1]) / scale;
+
+        if(direction == -1)
+            return (vars[1] - vars[0]) / scale;*/
+
+        if(direction == 1)
+            return (-vars[4] + 4 * vars[3] - 3 * vars[2]) / (2 * scale);
+
+        if(direction == -1)
+            return (vars[0] - 4 * vars[1] + 3 * vars[2]) / (2 * scale);
+        #endif // 0
+
+        differentiation_context<5> dctx(in, idx, ctx.uses_linear);
+        std::array<value, 5> vars = dctx.vars;
+
+        if(direction == 0)
+            return (vars[3] - vars[1]) / (2 * scale);
+
+        if(direction == 1)
+            return (vars[3] - vars[2]) / scale;
+
+        if(direction == -1)
+            return (vars[2] - vars[1]) / scale;
     }
     else if(order == 2)
     {
@@ -931,6 +961,69 @@ value diff1(equation_context& ctx, const value& in, int idx)
 
     assert(false);
     return 0;
+}
+
+value diff1(equation_context& ctx, const value& in, int idx)
+{
+    //ctx.use_precise_differentiation = false;
+
+    if(!ctx.use_precise_differentiation)
+    {
+        return diff1_interior(ctx, in, idx, ctx.order, 0);
+    }
+    else
+    {
+        value d_low = "D_LOW";
+        value d_full = "D_FULL";
+        value d_only_px = "D_ONLY_PX";
+        value d_only_py = "D_ONLY_PY";
+        value d_only_pz = "D_ONLY_PZ";
+        value d_both_px = "D_BOTH_PX";
+        value d_both_py = "D_BOTH_PY";
+        value d_both_pz = "D_BOTH_PZ";
+
+        value directional_single = 0;
+        value directional_both = 0;
+
+        if(idx == 0)
+        {
+            directional_single = d_only_px;
+            directional_both = d_both_px;
+        }
+        else if(idx == 1)
+        {
+            directional_single = d_only_py;
+            directional_both = d_both_py;
+        }
+        else if(idx == 2)
+        {
+            directional_single = d_only_pz;
+            directional_both = d_both_pz;
+        }
+
+        value order = "order";
+
+        value is_high_order = (order & d_full) > 0;
+        //value is_low_order = (order & d_low) > 0;
+
+        value is_forward = (order & directional_single) > 0;
+        value is_bidi = (order & directional_both) > 0;
+
+        value regular_d = diff1_interior(ctx, in, idx, ctx.order, 0);
+        value low_d = diff1_interior(ctx, in, idx, 1, 0);
+
+        value forward_d = diff1_interior(ctx, in, idx, 1, 1);
+        value back_d = diff1_interior(ctx, in, idx, 1, -1);
+
+        value selected_directional = dual_types::if_v(is_forward, forward_d, back_d);
+
+        value selected_full = dual_types::if_v(is_bidi, low_d, selected_directional);
+
+        if(ctx.always_directional_derivatives)
+            return selected_full;
+        else
+            return dual_types::if_v(is_high_order, regular_d, low_d);
+    }
 }
 
 value diff2(equation_context& ctx, const value& in, int idx, int idy, const value& first_x, const value& first_y)
@@ -2696,6 +2789,111 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     #endif // USE_GBB
 }
 
+void build_sommerfeld(equation_context& ctx)
+{
+    ctx.order = 1;
+    ctx.always_directional_derivatives = true;
+    ctx.use_precise_differentiation = true;
+    standard_arguments args(ctx);
+
+    value sponge = "sponge_factor";
+
+    ///Xi
+    tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+    value r = pos.length();
+
+    float asy_cY0 = 1;
+    float asy_cY1 = 0;
+    float asy_cY2 = 0;
+    float asy_cY3 = 1;
+    float asy_cY4 = 0;
+    float asy_cY5 = 1;
+
+    float asy_cA0 = 0;
+    float asy_cA1 = 0;
+    float asy_cA2 = 0;
+    float asy_cA3 = 0;
+    float asy_cA4 = 0;
+    float asy_cA5 = 0;
+
+    float asy_K = 0;
+    float asy_X = 1;
+
+    float asy_gA = 1;
+    float asy_gB0 = 0;
+    float asy_gB1 = 0;
+    float asy_gB2 = 0;
+
+    float asy_cGi0 = 0;
+    float asy_cGi1 = 0;
+    float asy_cGi2 = 0;
+
+    auto sommerfeld = [&](value f, value f0, value v)
+    {
+        value sum = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            sum += (v * pos.idx(i) / r) * diff1(ctx, f, i);
+        }
+
+        return -sum - v * (f - f0) / r;
+    };
+
+    value dtcY0 = sommerfeld(args.cY.idx(0, 0), asy_cY0, 1);
+    value dtcY1 = sommerfeld(args.cY.idx(1, 0), asy_cY1, 1);
+    value dtcY2 = sommerfeld(args.cY.idx(2, 0), asy_cY2, 1);
+    value dtcY3 = sommerfeld(args.cY.idx(1, 1), asy_cY3, 1);
+    value dtcY4 = sommerfeld(args.cY.idx(2, 1), asy_cY4, 1);
+    value dtcY5 = sommerfeld(args.cY.idx(2, 2), asy_cY5, 1);
+
+    value dtcA0 = sommerfeld(args.cA.idx(0, 0), asy_cA0, 1);
+    value dtcA1 = sommerfeld(args.cA.idx(1, 0), asy_cA1, 1);
+    value dtcA2 = sommerfeld(args.cA.idx(2, 0), asy_cA2, 1);
+    value dtcA3 = sommerfeld(args.cA.idx(1, 1), asy_cA3, 1);
+    value dtcA4 = sommerfeld(args.cA.idx(2, 1), asy_cA4, 1);
+    value dtcA5 = sommerfeld(args.cA.idx(2, 2), asy_cA5, 1);
+
+    value dtK = sommerfeld(args.K, asy_K, 1);
+    value dtX = sommerfeld(args.X, asy_X, 1);
+
+    value dtgA = sommerfeld(args.gA, asy_gA, sqrt(2));
+    value dtgB0 = sommerfeld(args.gB.idx(0), asy_gB0, sqrt(2));
+    value dtgB1 = sommerfeld(args.gB.idx(1), asy_gB1, sqrt(2));
+    value dtgB2 = sommerfeld(args.gB.idx(2), asy_gB2, sqrt(2));
+
+    value dtcGi0 = sommerfeld(args.cGi.idx(0), asy_cGi0, 1);
+    value dtcGi1 = sommerfeld(args.cGi.idx(1), asy_cGi1, 1);
+    value dtcGi2 = sommerfeld(args.cGi.idx(2), asy_cGi2, 1);
+
+    ctx.add("sommer_dtcY0", dtcY0);
+    ctx.add("sommer_dtcY1", dtcY1);
+    ctx.add("sommer_dtcY2", dtcY2);
+    ctx.add("sommer_dtcY3", dtcY3);
+    ctx.add("sommer_dtcY4", dtcY4);
+    ctx.add("sommer_dtcY5", dtcY5);
+
+    ctx.add("sommer_dtcA0", dtcA0);
+    ctx.add("sommer_dtcA1", dtcA1);
+    ctx.add("sommer_dtcA2", dtcA2);
+    ctx.add("sommer_dtcA3", dtcA3);
+    ctx.add("sommer_dtcA4", dtcA4);
+    ctx.add("sommer_dtcA5", dtcA5);
+
+    ctx.add("sommer_dtK", dtK);
+    ctx.add("sommer_dtX", dtX);
+
+    ctx.add("sommer_dtgA", dtgA);
+    ctx.add("sommer_dtgB0", dtgB0);
+    ctx.add("sommer_dtgB1", dtgB1);
+    ctx.add("sommer_dtgB2", dtgB2);
+
+    ctx.add("sommer_dtcGi0", dtcGi0);
+    ctx.add("sommer_dtcGi1", dtcGi1);
+    ctx.add("sommer_dtcGi2", dtcGi2);
+}
+
 ///algebraic_constraints
 ///https://arxiv.org/pdf/1507.00570.pdf says that the cY modification is bad
 inline
@@ -2755,6 +2953,23 @@ void build_intermediate_thin(equation_context& ctx)
     ctx.add("init_buffer_intermediate0", v1);
     ctx.add("init_buffer_intermediate1", v2);
     ctx.add("init_buffer_intermediate2", v3);
+}
+
+void build_intermediate_thin_directional(equation_context& ctx)
+{
+    ctx.always_directional_derivatives = true;
+
+    standard_arguments args(ctx);
+
+    value buffer = dual_types::apply("buffer_index", "buffer", "ix", "iy", "iz", "dim");
+
+    value v1 = diff1(ctx, buffer, 0);
+    value v2 = diff1(ctx, buffer, 1);
+    value v3 = diff1(ctx, buffer, 2);
+
+    ctx.add("init_buffer_intermediate0_directional", v1);
+    ctx.add("init_buffer_intermediate1_directional", v2);
+    ctx.add("init_buffer_intermediate2_directional", v3);
 }
 
 void build_intermediate_thin_cY5(equation_context& ctx)
@@ -4103,6 +4318,7 @@ tensor<T, 4> tensor_project_upper(const tensor<T, 4>& in, const value& gA, const
 inline
 void extract_waveforms(equation_context& ctx)
 {
+    ctx.use_precise_differentiation = false;
     printf("Extracting waveforms\n");
 
     tensor<value, 3, 3> kronecker;
@@ -4491,6 +4707,7 @@ vec<3, value> unrotate_vector(const vec<3, value>& bx, const vec<3, value>& by, 
 void process_geodesics(equation_context& ctx)
 {
     ctx.order = 1;
+    ctx.use_precise_differentiation = false;
 
     standard_arguments args(ctx);
 
@@ -4629,6 +4846,7 @@ value dot_metric(const tensor<value, N>& v1_upper, const tensor<value, N>& v2_up
 void loop_geodesics(equation_context& ctx, vec3f dim)
 {
     ctx.order = 1;
+    ctx.use_precise_differentiation = false;
 
     standard_arguments args(ctx);
 
@@ -5104,6 +5322,9 @@ int main()
     equation_context ctx11;
     build_intermediate_thin(ctx11);
 
+    equation_context ctxdirectional;
+    build_intermediate_thin_directional(ctxdirectional);
+
     equation_context ctx12;
     build_intermediate_thin_cY5(ctx12);
 
@@ -5112,6 +5333,9 @@ int main()
 
     equation_context ctx14;
     build_hamiltonian_constraint(ctx14);
+
+    equation_context ctxsommer;
+    build_sommerfeld(ctxsommer);
 
     ctx1.build(argument_string, 0);
     ctx4.build(argument_string, 3);
@@ -5124,6 +5348,8 @@ int main()
     ctx12.build(argument_string, 11);
     ctx13.build(argument_string, 12);
     ctx14.build(argument_string, "unused1");
+    ctxdirectional.build(argument_string, "directional");
+    ctxsommer.build(argument_string, "sommerfeld");
 
     dtcY.build(argument_string, "tcy");
     dtcA.build(argument_string, "tca");

@@ -56,6 +56,29 @@ std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_
     return {real.as_device_read_only(), count};
 }
 
+inline
+std::pair<cl::buffer, int> extract_buffer(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& buf, cl::buffer& count)
+{
+    std::vector<cl_ushort4> cpu_buf = buf.read<cl_ushort4>(cqueue);
+    cl_int cpu_count_1 = count.read<cl_int>(cqueue).at(0);
+
+    assert(cpu_count_1 > 0);
+
+    cpu_buf.resize(cpu_count_1);
+
+    std::sort(std::execution::par_unseq, cpu_buf.begin(), cpu_buf.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
+    {
+        return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
+    });
+
+    cl::buffer shrunk_points(ctx);
+    shrunk_points.alloc(cpu_buf.size() * sizeof(cl_ushort4));
+    shrunk_points.write(cqueue, cpu_buf);
+
+    printf("COUNT %i\n", cpu_count_1);
+
+    return {shrunk_points.as_device_read_only(), cpu_count_1};
+}
 
 inline
 evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
@@ -66,14 +89,30 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
     cl::buffer points_2(ctx);
     cl::buffer count_2(ctx);
 
+    cl::buffer border_points(ctx);
+    cl::buffer border_count(ctx);
+
+    cl::buffer all_points(ctx);
+    cl::buffer all_count(ctx);
+
+    cl::buffer order(ctx);
+
     points_1.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
     points_2.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
+    border_points.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
+    all_points.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
+    order.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort));
 
     count_1.alloc(sizeof(cl_int));
     count_2.alloc(sizeof(cl_int));
+    border_count.alloc(sizeof(cl_int));
+    all_count.alloc(sizeof(cl_int));
 
     count_1.set_to_zero(cqueue);
     count_2.set_to_zero(cqueue);
+    border_count.set_to_zero(cqueue);
+    all_count.set_to_zero(cqueue);
+    order.set_to_zero(cqueue);
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
@@ -82,49 +121,32 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
     args.push_back(count_1);
     args.push_back(points_2);
     args.push_back(count_2);
+    args.push_back(border_points);
+    args.push_back(border_count);
+    args.push_back(all_points);
+    args.push_back(all_count);
+    args.push_back(order);
     args.push_back(scale);
     args.push_back(clsize);
 
     cqueue.exec("generate_evolution_points", args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
 
-    std::vector<cl_ushort4> cpu_points_1 = points_1.read<cl_ushort4>(cqueue);
-    std::vector<cl_ushort4> cpu_points_2 = points_2.read<cl_ushort4>(cqueue);
-
-    printf("Original evolve points %i\n", cpu_points_1.size());
-
-    cl_int cpu_count_1 = count_1.read<cl_int>(cqueue).at(0);
-    cl_int cpu_count_2 = count_2.read<cl_int>(cqueue).at(0);
-
-    assert(cpu_count_1 > 0);
-    assert(cpu_count_2 > 0);
-
-    cpu_points_1.resize(cpu_count_1);
-    cpu_points_2.resize(cpu_count_2);
-
-    std::sort(std::execution::par_unseq, cpu_points_1.begin(), cpu_points_1.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
-    {
-        return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
-    });
-
-    std::sort(std::execution::par_unseq, cpu_points_2.begin(), cpu_points_2.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
-    {
-        return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
-    });
-
-    cl::buffer shrunk_points_1(ctx);
-    shrunk_points_1.alloc(cpu_points_1.size() * sizeof(cl_ushort4));
-    shrunk_points_1.write(cqueue, cpu_points_1);
-
-    cl::buffer shrunk_points_2(ctx);
-    shrunk_points_2.alloc(cpu_points_2.size() * sizeof(cl_ushort4));
-    shrunk_points_2.write(cqueue, cpu_points_2);
+    auto [shrunk_points_1, cpu_count_1] = extract_buffer(ctx, cqueue, points_1, count_1);
+    auto [shrunk_points_2, cpu_count_2] = extract_buffer(ctx, cqueue, points_2, count_2);
+    auto [shrunk_border, cpu_border_count] = extract_buffer(ctx, cqueue, border_points, border_count);
+    auto [shrunk_all, cpu_all_count] = extract_buffer(ctx, cqueue, all_points, all_count);
 
     evolution_points ret(ctx);
     ret.first_count = cpu_count_1;
     ret.second_count = cpu_count_2;
+    ret.border_count = cpu_border_count;
+    ret.all_count = cpu_all_count;
 
-    ret.first_derivative_points = shrunk_points_1.as_device_read_only();
-    ret.second_derivative_points = shrunk_points_2.as_device_read_only();
+    ret.first_derivative_points = shrunk_points_1;
+    ret.second_derivative_points = shrunk_points_2;
+    ret.border_points = shrunk_border;
+    ret.all_points = shrunk_all;
+    ret.order = order.as_device_read_only();
 
     printf("Evolve point reduction %i\n", cpu_count_1);
 
@@ -272,13 +294,52 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     mqueue.begin_splice(main_queue);
 
+    auto copy_border = [&](auto& in, auto& out)
+    {
+        for(int i=0; i < (int)in.size(); i++)
+        {
+            cl::args copy;
+            copy.push_back(points_set.border_points);
+            copy.push_back(points_set.border_count);
+            copy.push_back(in[i]);
+            copy.push_back(out[i]);
+            copy.push_back(clsize);
+
+            mqueue.exec("copy_valid", copy, {points_set.border_count}, {128});
+        }
+    };
+
+    auto clean = [&](const auto& base_buf, const auto& inout)
+    {
+        cl::args cleaner;
+        cleaner.push_back(points_set.border_points);
+        cleaner.push_back(points_set.border_count);
+
+        for(auto& i : base_buf)
+        {
+            cleaner.push_back(i);
+        }
+
+        for(auto& i : inout)
+        {
+            cleaner.push_back(i);
+        }
+
+        //cleaner.push_back(bssnok_datas[which_data]);
+        cleaner.push_back(u_arg);
+        cleaner.push_back(points_set.order);
+        cleaner.push_back(scale);
+        cleaner.push_back(clsize);
+        cleaner.push_back(timestep);
+
+        mqueue.exec("clean_data", cleaner, {points_set.border_count}, {256});
+    };
+
     auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
     {
         intermediates.clear();
 
         last_valid_thin_buffer = &generic_in;
-
-        cl::args last_args;
 
         {
             auto differentiate = [&](cl::managed_command_queue& cqueue, const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
@@ -286,20 +347,17 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 int idx = buffer_to_index(name);
 
                 cl::args thin;
-                thin.push_back(points_set.first_derivative_points);
-                thin.push_back(points_set.first_count);
+                thin.push_back(points_set.all_points);
+                thin.push_back(points_set.all_count);
                 thin.push_back(generic_in[idx].as_device_read_only());
                 thin.push_back(out1);
                 thin.push_back(out2);
                 thin.push_back(out3);
                 thin.push_back(scale);
                 thin.push_back(clsize);
+                thin.push_back(points_set.order);
 
-                last_args = thin;
-
-                cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.first_count}, {128});
-
-                //cqueue.flush();
+                cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.all_count}, {128});
             };
 
             std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
@@ -326,6 +384,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         ///end all the differentiation work before we move on
         if(sett.calculate_momentum_constraint)
         {
+            assert(false);
+
             cl::args momentum_args;
 
             momentum_args.push_back(points_set.first_derivative_points);
@@ -384,8 +444,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         {
             cl::args a1;
 
-            a1.push_back(points_set.second_derivative_points);
-            a1.push_back(points_set.second_count);
+            a1.push_back(points_set.all_points);
+            a1.push_back(points_set.all_count);
 
             for(auto& i : generic_in)
             {
@@ -418,8 +478,9 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             a1.push_back(scale);
             a1.push_back(clsize);
             a1.push_back(current_timestep);
+            a1.push_back(points_set.order);
 
-            mqueue.exec(name, a1, {points_set.second_count}, {128});
+            mqueue.exec(name, a1, {points_set.all_count}, {128});
             //mqueue.flush();
         };
 
@@ -430,6 +491,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         step_kernel("evolve_X");
         step_kernel("evolve_gA");
         step_kernel("evolve_gB");
+
+        //copy_border(generic_in, generic_out);
     };
 
     auto enforce_constraints = [&](auto& generic_out)
@@ -516,8 +579,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         {
             cl::args diss;
 
-            diss.push_back(points_set.second_derivative_points);
-            diss.push_back(points_set.second_count);
+            diss.push_back(points_set.all_points);
+            diss.push_back(points_set.all_count);
 
             diss.push_back(in[i].as_device_read_only());
             diss.push_back(out[i]);
@@ -528,11 +591,12 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             diss.push_back(scale);
             diss.push_back(clsize);
             diss.push_back(timestep);
+            diss.push_back(points_set.order);
 
-            if(coeff == 0)
-                continue;
+            //if(coeff == 0)
+            //    continue;
 
-            mqueue.exec("dissipate_single_unidir", diss, {points_set.second_count}, {128});
+            mqueue.exec("dissipate_single_unidir", diss, {points_set.all_count}, {128});
         }
     };
     ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
@@ -725,24 +789,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     //dissipate(get_input().buffers, get_output().buffers);
 
-    {
-        cl::args cleaner;
-        cleaner.push_back(sponge_positions);
-        cleaner.push_back(sponge_positions_count);
-
-        for(auto& i : get_output().buffers)
-        {
-            cleaner.push_back(i);
-        }
-
-        //cleaner.push_back(bssnok_datas[which_data]);
-        cleaner.push_back(u_arg);
-        cleaner.push_back(scale);
-        cleaner.push_back(clsize);
-        cleaner.push_back(timestep);
-
-        mqueue.exec("clean_data", cleaner, {sponge_positions_count}, {256});
-    }
+    clean(scratch.buffers, b2.buffers);
 
     enforce_constraints(get_output().buffers);
 
