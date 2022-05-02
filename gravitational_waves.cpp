@@ -104,6 +104,14 @@ std::vector<cl_ushort4> get_harmonic_extraction_points(vec3i dim, int extract_pi
         return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
     });
 
+    auto eq_shorts = [](cl_ushort4 p1, cl_ushort4 p2){return p1.s[0] == p2.s[0] && p1.s[1] == p2.s[1] && p1.s[2] == p2.s[2];};
+
+    printf("Pre deduplicate wave size %i\n", ret.size());
+
+    ret.erase(std::unique(ret.begin(), ret.end(), eq_shorts), ret.end());
+
+    printf("Post deduplicate size %i\n", ret.size());
+
     return ret;
 }
 
