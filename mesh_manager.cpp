@@ -112,6 +112,7 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
     count_2.set_to_zero(cqueue);
     border_count.set_to_zero(cqueue);
     all_count.set_to_zero(cqueue);
+    order.set_to_zero(cqueue);
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
