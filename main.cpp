@@ -17,6 +17,7 @@
 #include "mesh_manager.hpp"
 #include "spherical_harmonics.hpp"
 #include "spherical_integration.hpp"
+#include "spherical_decomposition.hpp"
 
 /**
 current paper set
@@ -5198,6 +5199,7 @@ int main()
 
     test_harmonics();
     test_integration();
+    test_spherical_decomp();
 
     int width = 800;
     int height = 600;

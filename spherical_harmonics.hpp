@@ -14,6 +14,12 @@ int64_t factorial(int64_t i)
     return i * factorial(i - 1);
 }
 
+inline
+double factorial_d(int64_t i)
+{
+    return factorial(i);
+}
+
 template<typename T>
 inline
 dual_types::complex<T> expi_s(T val)
@@ -41,12 +47,24 @@ dual_types::complex<T> sYlm_2(int s, int l, int m, T theta, T phi)
         int k1 = std::max(0, m - s);
         int k2 = std::min(l + m, l - s);
 
+        std::array<double, 4> top = {sqrt(factorial_d(l + m)), sqrt(factorial_d(l - m)), sqrt(factorial_d(l + s)), sqrt(factorial_d(l - s))};
+        std::sort(top.begin(), top.end());
+
         T sum = 0;
 
         for(int k=k1; k <= k2; k++)
         {
-            float cp1 = (double)(pow(-1, k) * sqrt((double)(factorial(l + m) * factorial(l - m) * factorial(l + s) * factorial(l - s)))) /
-                        ((double)(factorial(l + m - k) * factorial(l - s - k) * factorial(k) * factorial(k + s - m)));
+            std::array<double, 4> bottom = {factorial_d(l + m - k), factorial_d(l - s - k), factorial_d(k), factorial_d(k + s - m)};
+            std::sort(bottom.begin(), bottom.end());
+
+            double run = 1;
+
+            for(int sum = 3; sum >= 0; sum--)
+            {
+                run *= top[sum] / bottom[sum];
+            }
+
+            float cp1 = run;
 
             assert(isfinite(cp1));
 

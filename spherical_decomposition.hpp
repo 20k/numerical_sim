@@ -34,4 +34,26 @@ dual_types::complex<T> spherical_decompose_complex_cartesian_function(U&& cartes
     return {spherical_integrate(func_re, n), spherical_integrate(func_im, n)};
 }
 
+inline
+void test_spherical_decomp()
+{
+    ///http://scipp.ucsc.edu/~haber/ph116C/SphericalHarmonics_12.pdf 12
+    {
+        auto my_real_function = [](vec3f pos)
+        {
+            return pos.x() * sin(pos.y()) * cos(pos.z());
+        };
+
+        std::map<int, std::map<int, float>> lm;
+
+        for(int l=0; l < 10; l++)
+        {
+            for(int m=-l; m <= l; m++)
+            {
+                lm[l][m] = spherical_decompose_complex_cartesian_function(my_real_function,  0, l, m, {0,0,0}, 1.f, 64).real;
+            }
+        }
+    }
+}
+
 #endif // SPHERICAL_DECOMPOSITION_HPP_INCLUDED
