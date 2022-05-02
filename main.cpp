@@ -4322,6 +4322,7 @@ inline
 void extract_waveforms(equation_context& ctx)
 {
     ctx.use_precise_differentiation = false;
+    ctx.order = 4;
     printf("Extracting waveforms\n");
 
     tensor<value, 3, 3> kronecker;
@@ -5240,7 +5241,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {221, 221, 221};
+    vec3i size = {281, 281, 281};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -5370,7 +5371,7 @@ int main()
     #endif // USE_GBB
 
     ///seems to make 0 difference to instability time
-    #define USE_HALF_INTERMEDIATE
+    //#define USE_HALF_INTERMEDIATE
     #ifdef USE_HALF_INTERMEDIATE
     int intermediate_data_size = sizeof(cl_half);
     argument_string += "-DDERIV_PRECISION=half ";
