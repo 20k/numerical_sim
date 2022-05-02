@@ -66,6 +66,16 @@ dual_types::complex<T> sYlm_2(int s, int l, int m, T theta, T phi)
 
             float cp1 = run;
 
+            if(!isfinite(cp1))
+            {
+                printf("Run %f\n", run);
+
+                for(int i=0; i < 4; i++)
+                {
+                    printf("Top %f bottom %f\n", top[i], bottom[i]);
+                }
+            }
+
             assert(isfinite(cp1));
 
             T cp2 = pow(cos(theta/2.f), 2 * l + m - s - 2 * k);
