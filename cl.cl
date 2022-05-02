@@ -476,34 +476,22 @@ void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
 
     int order = order_ptr[IDX(ix,iy,iz)];
 
-    float TEMPORARIES10;
+    if((order & D_FULL) > 0 || ((order & D_LOW) > 0))
+    {
+        float TEMPORARIES10;
 
-    buffer_out_1[IDX(ix,iy,iz)] = init_buffer_intermediate0;
-    buffer_out_2[IDX(ix,iy,iz)] = init_buffer_intermediate1;
-    buffer_out_3[IDX(ix,iy,iz)] = init_buffer_intermediate2;
-}
+        buffer_out_1[IDX(ix,iy,iz)] = init_buffer_intermediate0;
+        buffer_out_2[IDX(ix,iy,iz)] = init_buffer_intermediate1;
+        buffer_out_3[IDX(ix,iy,iz)] = init_buffer_intermediate2;
+    }
+    else
+    {
+        float TEMPORARIESdirectional;
 
-__kernel
-void calculate_intermediate_data_thin_directional(__global ushort4* points, int point_count,
-                                      __global float* buffer, __global DERIV_PRECISION* buffer_out_1, __global DERIV_PRECISION* buffer_out_2, __global DERIV_PRECISION* buffer_out_3,
-                                      float scale, int4 dim, __global ushort* order_ptr)
-{
-    int local_idx = get_global_id(0);
-
-    if(local_idx >= point_count)
-        return;
-
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
-
-    int order = order_ptr[IDX(ix,iy,iz)];
-
-    float TEMPORARIESdirectional;
-
-    buffer_out_1[IDX(ix,iy,iz)] = init_buffer_intermediate0_directional;
-    buffer_out_2[IDX(ix,iy,iz)] = init_buffer_intermediate1_directional;
-    buffer_out_3[IDX(ix,iy,iz)] = init_buffer_intermediate2_directional;
+        buffer_out_1[IDX(ix,iy,iz)] = init_buffer_intermediate0_directional;
+        buffer_out_2[IDX(ix,iy,iz)] = init_buffer_intermediate1_directional;
+        buffer_out_3[IDX(ix,iy,iz)] = init_buffer_intermediate2_directional;
+    }
 }
 
 #if 0

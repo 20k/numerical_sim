@@ -347,8 +347,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 int idx = buffer_to_index(name);
 
                 cl::args thin;
-                thin.push_back(points_set.first_derivative_points);
-                thin.push_back(points_set.first_count);
+                thin.push_back(points_set.all_points);
+                thin.push_back(points_set.all_count);
                 thin.push_back(generic_in[idx].as_device_read_only());
                 thin.push_back(out1);
                 thin.push_back(out2);
@@ -357,22 +357,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 thin.push_back(clsize);
                 thin.push_back(points_set.order);
 
-                cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.first_count}, {128});
-
-                cl::args thin2;
-                thin2.push_back(points_set.border_points);
-                thin2.push_back(points_set.border_count);
-                thin2.push_back(generic_in[idx].as_device_read_only());
-                thin2.push_back(out1);
-                thin2.push_back(out2);
-                thin2.push_back(out3);
-                thin2.push_back(scale);
-                thin2.push_back(clsize);
-                thin2.push_back(points_set.order);
-
-                cqueue.exec("calculate_intermediate_data_thin_directional", thin2, {points_set.border_count}, {128});
-
-                //cqueue.flush();
+                cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.all_count}, {128});
             };
 
             std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
