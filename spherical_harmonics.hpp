@@ -71,7 +71,7 @@ dual_types::complex<T> sYlm_2(int s, int l, int m, T theta, T phi)
             T cp2 = pow(cos(theta/2.f), 2 * l + m - s - 2 * k);
             T cp3 = pow(sin(theta/2.f), 2 * k + s - m);
 
-            sum = sum + cp1 * cp2 * cp3;
+            sum = sum + pow(-1, k) * cp1 * cp2 * cp3;
         }
 
         return sum;
