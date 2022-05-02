@@ -113,6 +113,14 @@ void test_harmonics()
                     assert(fabs(y222.real - y222_c.real) < tol);
                     assert(fabs(y222.imaginary - y222_c.imaginary) < tol);
                 }
+
+                {
+                    dual_types::complex<float> y220 = sqrt(15 / (32 * M_PI)) * sin(theta) * sin(theta);
+                    dual_types::complex<float> y220_c = sYlm_2(-2, 2, 0, theta, phi);
+
+                    assert(fabs(y220.real - y220_c.real) < tol);
+                    assert(fabs(y220.imaginary - y220_c.imaginary) < tol);
+                }
             }
         }
     }

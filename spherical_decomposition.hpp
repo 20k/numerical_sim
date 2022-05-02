@@ -43,7 +43,15 @@ void test_spherical_decomp()
 
         auto my_real_function = [](vec3f pos)
         {
-            return pos.x() * sin(pos.y()) * cos(pos.z()) + pos.x() + pos.y() + pos.z();
+            float r = pos.length();
+            float theta = acos(pos.z() / r);
+            float phi = atan2(pos.y(), pos.x());
+
+            return 1;
+
+            //return r * (4 + sin(theta)) + r * (4 + sin(phi));
+
+            //return pos.x() * sin(pos.y()) * cos(pos.z()) + pos.x() + pos.y() + pos.z();
         };
 
         std::map<int, std::map<int, float>> lm;
@@ -54,7 +62,9 @@ void test_spherical_decomp()
         {
             for(int m=-l; m <= l; m++)
             {
-                lm[l][m] = spherical_decompose_complex_cartesian_function(my_real_function,  0, l, m, {0,0,0}, radius, 64).real;
+                lm[l][m] = spherical_decompose_complex_cartesian_function(my_real_function, 0, l, m, {0,0,0}, radius, 64).real;
+
+                printf("Lm %i %i %f\n", l, m, lm[l][m]);
             }
         }
 
