@@ -905,17 +905,37 @@ value diff1_interior(equation_context& ctx, const value& in, int idx, int order,
 
     if(order == 1)
     {
-        differentiation_context<3> dctx(in, idx, ctx.uses_linear);
-        std::array<value, 3> vars = dctx.vars;
+        #if 0
+        differentiation_context<5> dctx(in, idx, ctx.uses_linear);
+        std::array<value, 5> vars = dctx.vars;
 
         if(direction == 0)
-            return (vars[2] - vars[0]) / (2 * scale);
+            return (vars[3] - vars[1]) / (2 * scale);
 
-        if(direction == 1)
+        /*if(direction == 1)
             return (vars[2] - vars[1]) / scale;
 
         if(direction == -1)
-            return (vars[1] - vars[0]) / scale;
+            return (vars[1] - vars[0]) / scale;*/
+
+        if(direction == 1)
+            return (-vars[4] + 4 * vars[3] - 3 * vars[2]) / (2 * scale);
+
+        if(direction == -1)
+            return (vars[0] - 4 * vars[1] + 3 * vars[2]) / (2 * scale);
+        #endif // 0
+
+        differentiation_context<5> dctx(in, idx, ctx.uses_linear);
+        std::array<value, 5> vars = dctx.vars;
+
+        if(direction == 0)
+            return (vars[3] - vars[1]) / (2 * scale);
+
+        if(direction == 1)
+            return (vars[3] - vars[2]) / scale;
+
+        if(direction == -1)
+            return (vars[2] - vars[1]) / scale;
     }
     else if(order == 2)
     {
@@ -958,20 +978,27 @@ value diff1(equation_context& ctx, const value& in, int idx)
         value d_only_px = "D_ONLY_PX";
         value d_only_py = "D_ONLY_PY";
         value d_only_pz = "D_ONLY_PZ";
+        value d_both_px = "D_BOTH_PX";
+        value d_both_py = "D_BOTH_PY";
+        value d_both_pz = "D_BOTH_PZ";
 
-        value directional = 0;
+        value directional_single = 0;
+        value directional_both = 0;
 
         if(idx == 0)
         {
-            directional = d_only_px;
+            directional_single = d_only_px;
+            directional_both = d_both_px;
         }
         else if(idx == 1)
         {
-            directional = d_only_py;
+            directional_single = d_only_py;
+            directional_both = d_both_py;
         }
         else if(idx == 2)
         {
-            directional = d_only_pz;
+            directional_single = d_only_pz;
+            directional_both = d_both_pz;
         }
 
         value order = "order";
@@ -979,7 +1006,8 @@ value diff1(equation_context& ctx, const value& in, int idx)
         value is_high_order = (order & d_full) > 0;
         //value is_low_order = (order & d_low) > 0;
 
-        value is_forward = (order & directional) > 0;
+        value is_forward = (order & directional_single) > 0;
+        value is_bidi = (order & directional_both) > 0;
 
         value regular_d = diff1_interior(ctx, in, idx, ctx.order, 0);
         value low_d = diff1_interior(ctx, in, idx, 1, 0);
@@ -987,8 +1015,12 @@ value diff1(equation_context& ctx, const value& in, int idx)
         value forward_d = diff1_interior(ctx, in, idx, 1, 1);
         value back_d = diff1_interior(ctx, in, idx, 1, -1);
 
+        value selected_directional = dual_types::if_v(is_forward, forward_d, back_d);
+
+        value selected_full = dual_types::if_v(is_bidi, low_d, selected_directional);
+
         if(ctx.always_directional_derivatives)
-            return dual_types::if_v(is_forward, forward_d, back_d);
+            return selected_full;
         else
             return dual_types::if_v(is_high_order, regular_d, low_d);
     }

@@ -250,6 +250,9 @@ enum derivative_bitflags
     D_ONLY_PX = 4,
     D_ONLY_PY = 8,
     D_ONLY_PZ = 16,
+    D_BOTH_PX = 32,
+    D_BOTH_PY = 64,
+    D_BOTH_PZ = 128,
 };
 
 #ifndef USE_GBB
@@ -643,14 +646,14 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
 
         points_border[border_idx].xyz = (ushort3)(ix, iy, iz);
 
-        bool valid_px = valid_point(ix+1, iy, iz, scale, dim);
-        bool valid_nx = valid_point(ix-1, iy, iz, scale, dim);
+        bool valid_px = valid_point(ix+1, iy, iz, scale, dim);// && valid_point(ix+2, iy, iz, scale, dim);
+        bool valid_nx = valid_point(ix-1, iy, iz, scale, dim);// && valid_point(ix-2, iy, iz, scale, dim);
 
-        bool valid_py = valid_point(ix, iy+1, iz, scale, dim);
-        bool valid_ny = valid_point(ix, iy-1, iz, scale, dim);
+        bool valid_py = valid_point(ix, iy+1, iz, scale, dim);// && valid_point(ix, iy+2, iz, scale, dim);
+        bool valid_ny = valid_point(ix, iy-1, iz, scale, dim);// && valid_point(ix, iy-2, iz, scale, dim);
 
-        bool valid_pz = valid_point(ix, iy, iz+1, scale, dim);
-        bool valid_nz = valid_point(ix, iy, iz-1, scale, dim);
+        bool valid_pz = valid_point(ix, iy, iz+1, scale, dim);// && valid_point(ix, iy, iz+2, scale, dim);
+        bool valid_nz = valid_point(ix, iy, iz-1, scale, dim);// && valid_point(ix, iy, iz-2, scale, dim);
 
         if(!valid_px && !valid_nx)
         {
@@ -669,17 +672,29 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
 
         ushort out = 0;
 
-        if(valid_px)
+        if(valid_px && valid_nx)
+        {
+            out |= D_BOTH_PX;
+        }
+        else if(valid_px)
         {
             out |= D_ONLY_PX;
         }
 
-        if(valid_py)
+        if(valid_py && valid_ny)
+        {
+            out |= D_BOTH_PY;
+        }
+        else if(valid_py)
         {
             out |= D_ONLY_PY;
         }
 
-        if(valid_pz)
+        if(valid_pz && valid_nz)
+        {
+            out |= D_BOTH_PZ;
+        }
+        else if(valid_pz)
         {
             out |= D_ONLY_PZ;
         }
