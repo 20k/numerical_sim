@@ -1316,7 +1316,7 @@ void render(STANDARD_ARGS(),
         #ifndef SOMMER_RENDER
         if(sponge_factor > 0)
         #else
-        if(sponge_factor == 0)
+        if(sponge_factor == 1)
         #endif
         {
             float3 sponge_col = {sponge_factor, 0, 0};
