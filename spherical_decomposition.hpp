@@ -62,13 +62,11 @@ void test_spherical_decomp()
         {
             for(int m=-l; m <= l; m++)
             {
-                lm[l][m] = spherical_decompose_complex_cartesian_function(my_real_function, 0, l, m, {0,0,0}, radius, 64).real;
+                lm[l][m] = spherical_decompose_complex_cartesian_function<float>(my_real_function, 0, l, m, {0,0,0}, radius, 64).real;
 
                 printf("Lm %i %i %f\n", l, m, lm[l][m]);
             }
         }
-
-        //printf("Base harm %f", sYlm_2(0, 0, 0, 0.f, 0.f));
 
         for(float theta = 0; theta <= M_PI; theta += M_PI/8)
         {
