@@ -924,6 +924,17 @@ void evolve_cY(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
+    if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
+    {
+        ocY0[index] = base_cY0[index];
+        ocY1[index] = base_cY1[index];
+        ocY2[index] = base_cY2[index];
+        ocY3[index] = base_cY3[index];
+        ocY4[index] = base_cY4[index];
+        ocY5[index] = base_cY5[index];
+        return;
+    }
+
     float TEMPORARIEStcy;
 
     float f_dtcYij0 = dtcYij0;
@@ -971,6 +982,17 @@ void evolve_cA(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
+
+    if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
+    {
+        ocA0[index] = base_cA0[index];
+        ocA1[index] = base_cA1[index];
+        ocA2[index] = base_cA2[index];
+        ocA3[index] = base_cA3[index];
+        ocA4[index] = base_cA4[index];
+        ocA5[index] = base_cA5[index];
+        return;
+    }
 
     float TEMPORARIEStca;
 
@@ -1021,6 +1043,14 @@ void evolve_cGi(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
+
+    if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
+    {
+        ocGi0[index] = base_cGi0[index];
+        ocGi1[index] = base_cGi1[index];
+        ocGi2[index] = base_cGi2[index];
+        return;
+    }
 
     float TEMPORARIEStcgi;
 
@@ -1082,6 +1112,12 @@ void evolve_K(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
+    if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
+    {
+        oK[index] = base_K[index];
+        return;
+    }
+
     float TEMPORARIEStk;
 
     float f_dtK = dtK;
@@ -1116,6 +1152,12 @@ void evolve_X(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
+    if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
+    {
+        oX[index] = base_X[index];
+        return;
+    }
+
     float TEMPORARIEStx;
 
     float f_dtX = dtX;
@@ -1148,6 +1190,12 @@ void evolve_gA(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
+
+    if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
+    {
+        ogA[index] = base_gA[index];
+        return;
+    }
 
     float TEMPORARIEStga;
 
@@ -1182,6 +1230,14 @@ void evolve_gB(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
+
+    if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
+    {
+        ogB0[index] = base_gB0[index];
+        ogB1[index] = base_gB1[index];
+        ogB2[index] = base_gB2[index];
+        return;
+    }
 
     float TEMPORARIEStgb;
 

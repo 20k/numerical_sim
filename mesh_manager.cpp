@@ -444,8 +444,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         {
             cl::args a1;
 
-            a1.push_back(points_set.second_derivative_points);
-            a1.push_back(points_set.second_count);
+            a1.push_back(points_set.all_points);
+            a1.push_back(points_set.all_count);
 
             for(auto& i : generic_in)
             {
@@ -480,7 +480,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             a1.push_back(current_timestep);
             a1.push_back(points_set.order);
 
-            mqueue.exec(name, a1, {points_set.second_count}, {128});
+            mqueue.exec(name, a1, {points_set.all_count}, {128});
             //mqueue.flush();
         };
 
@@ -492,7 +492,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         step_kernel("evolve_gA");
         step_kernel("evolve_gB");
 
-        copy_border(generic_in, generic_out);
+        //copy_border(generic_in, generic_out);
     };
 
     auto enforce_constraints = [&](auto& generic_out)
