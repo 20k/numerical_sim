@@ -38,7 +38,7 @@ inline
 void test_spherical_decomp()
 {
     ///http://scipp.ucsc.edu/~haber/ph116C/SphericalHarmonics_12.pdf 12
-    #if 0
+    #if 1
     {
         float tol = 0.25f;
 
@@ -52,20 +52,20 @@ void test_spherical_decomp()
 
             //return r * (4 + sin(theta)) + r * (4 + sin(phi));
 
-            return pos.x() * sin(pos.y()) * cos(pos.z()) + pos.x() + pos.y() + pos.z();
+            return dual_types::complex<float>(pos.x() * sin(pos.y()) * cos(pos.z()) + pos.x() + pos.y() + pos.z(), -1 * r * sin(theta) + 0.1f);
         };
 
-        std::map<int, std::map<int, float>> lm;
+        std::map<int, std::map<int, dual_types::complex<float>>> lm;
 
         float radius = 1;
 
-        int max_l = 11;
+        int max_l = 6;
 
         for(int l=0; l < max_l; l++)
         {
             for(int m=-l; m <= l; m++)
             {
-                lm[l][m] = spherical_decompose_complex_cartesian_function<float>(my_real_function, 0, l, m, {0,0,0}, radius, 64).real;
+                lm[l][m] = spherical_decompose_complex_cartesian_function<float>(my_real_function, 0, l, m, {0,0,0}, radius, 64);
 
                 ///printf("Lm %i %i %f\n", l, m, lm[l][m]);
             }
@@ -77,7 +77,7 @@ void test_spherical_decomp()
             {
                 vec3f cart = {radius * cos(phi) * sin(theta), radius * sin(phi) * sin(theta), radius * cos(theta)};
 
-                float my_function = my_real_function(cart);
+                auto my_function = my_real_function(cart);
 
                 dual_types::complex<float> sum = {0,0};
 
@@ -89,12 +89,15 @@ void test_spherical_decomp()
                     }
                 }
 
-                printf("Theta phi %f %f Cart %f %f %f\n", theta, phi, cart.x(), cart.y(), cart.z());
+                /*printf("Theta phi %f %f Cart %f %f %f\n", theta, phi, cart.x(), cart.y(), cart.z());
 
-                printf("Sum real %.20f\n", sum.real);
-                printf("My function %.20f\n", my_function);
+                printf("Sum R %.20f\n", sum.real);
+                printf("Sum I %.20f\n", sum.imaginary);
+                printf("My function R %.20f\n", my_function.real);
+                printf("My function I %.20f\n", my_function.imaginary);*/
 
-                assert(fabs(sum.real - my_function) < tol * my_function);
+                assert(fabs(sum.real - my_function.real) < tol * fabs(my_function.real) + tol);
+                assert(fabs(sum.imaginary - my_function.imaginary) < tol * fabs(my_function.imaginary) + tol);
             }
         }
     }
