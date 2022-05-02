@@ -1266,8 +1266,11 @@ void dissipate_single_unidir(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
-    //if((order & D_FULL) == 0)
-    //    return;
+    if((order & D_FULL) == 0)
+    {
+        obuffer[index] = buffer[index];
+        return;
+    }
 
     float damp = 1;
 
