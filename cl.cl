@@ -27,16 +27,6 @@ float buffer_indexh(__global const DERIV_PRECISION* const buffer, int x, int y, 
     return buffer[z * dim.x * dim.y + y * dim.x + x];
 }
 
-bool invalid_first(int ix, int iy, int iz, int4 dim)
-{
-    return ix < BORDER_WIDTH || iy < BORDER_WIDTH || iz < BORDER_WIDTH || ix >= dim.x - BORDER_WIDTH || iy >= dim.y - BORDER_WIDTH || iz >= dim.z - BORDER_WIDTH;
-}
-
-bool invalid_second(int ix, int iy, int iz, int4 dim)
-{
-    return ix < BORDER_WIDTH * 2 || iy < BORDER_WIDTH * 2 || iz < BORDER_WIDTH * 2 || ix >= dim.x - BORDER_WIDTH * 2 || iy >= dim.y - BORDER_WIDTH * 2 || iz >= dim.z - BORDER_WIDTH * 2;
-}
-
 __kernel
 void trapezoidal_accumulate(__global ushort4* points, int point_count, int4 dim, __global float* yn, __global float* fn, __global float* fnp1, float timestep)
 {
@@ -48,14 +38,6 @@ void trapezoidal_accumulate(__global ushort4* points, int point_count, int4 dim,
     int ix = points[local_idx].x;
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
 
     int index = IDX(ix, iy, iz);
 
@@ -75,14 +57,6 @@ void accumulate_rk4(__global ushort4* points, int point_count, int4 dim, __globa
     int ix = points[local_idx].x;
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
 
     int index = IDX(ix, iy, iz);
 
@@ -112,14 +86,6 @@ void copy_valid(__global ushort4* points, int point_count, __global float* in, _
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
 
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     int index = IDX(ix, iy, iz);
 
     out[index] = in[index];
@@ -136,14 +102,6 @@ void calculate_rk4_val(__global ushort4* points, int point_count, int4 dim, __gl
     int ix = points[local_idx].x;
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
 
     int index = IDX(ix, iy, iz);
 
@@ -533,14 +491,6 @@ void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
 
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_first(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     int order = order_ptr[IDX(ix,iy,iz)];
 
     float TEMPORARIES10;
@@ -563,14 +513,6 @@ void calculate_intermediate_data_thin_directional(__global ushort4* points, int 
     int ix = points[local_idx].x;
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_first(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
 
     int order = order_ptr[IDX(ix,iy,iz)];
 
@@ -631,13 +573,6 @@ void calculate_momentum_constraint(__global ushort4* points, int point_count,
     int ix = points[local_idx].x;
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
 
     float TEMPORARIES12;
 
@@ -993,29 +928,6 @@ void evolve_cY(__global ushort4* points, int point_count,
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
 
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
-    float left = cY0[IDX(ix-1, iy, iz)];
-    ushort order_left = order_ptr[IDX(ix-1, iy, iz)];
-    ushort my_order = order_ptr[IDX(ix, iy, iz)];
-
-    /*if(isnan(left))
-    {
-        printf("Nan %i %i %i %i %i\n", order_left, my_order, ix, iy, iz);
-    }*/
-
-    ///87 152 16
-    /*if(ix == 86 && iy == 152 && iz == 16)
-    {
-        printf("My cy %f\n", cY0[IDX(ix, iy, iz)]);
-    }*/
-
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
@@ -1063,14 +975,6 @@ void evolve_cA(__global ushort4* points, int point_count,
     int ix = points[local_idx].x;
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
 
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
@@ -1121,14 +1025,6 @@ void evolve_cGi(__global ushort4* points, int point_count,
     int ix = points[local_idx].x;
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
 
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
@@ -1190,14 +1086,6 @@ void evolve_K(__global ushort4* points, int point_count,
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
 
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
@@ -1232,14 +1120,6 @@ void evolve_X(__global ushort4* points, int point_count,
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
 
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
@@ -1272,14 +1152,6 @@ void evolve_gA(__global ushort4* points, int point_count,
     int ix = points[local_idx].x;
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
 
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
@@ -1315,14 +1187,6 @@ void evolve_gB(__global ushort4* points, int point_count,
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
 
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
-
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
@@ -1355,14 +1219,6 @@ void dissipate_single(__global ushort4* points, int point_count,
     int ix = points[local_idx].x;
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    #ifndef SYMMETRY_BOUNDARY
-    if(invalid_second(ix, iy, iz, dim))
-        return;
-    #endif // SYMMETRY_BOUNDARY
 
     int index = IDX(ix, iy, iz);
 
@@ -1411,12 +1267,6 @@ void dissipate_single_unidir(__global ushort4* points, int point_count,
     int ix = points[local_idx].x;
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    if(invalid_second(ix, iy, iz, dim))
-        return;
 
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
