@@ -1418,7 +1418,11 @@ void render(STANDARD_ARGS(),
     {
         float TEMPORARIES4;
 
-        real = w4_real;
+        float R = length(offset);
+
+        float w4_r = sqrt((4 * M_PI * R * R) / (4 * M_PI));
+
+        real = (w4_real) * w4_r;
 
         real = fabs(real) * 1000.f;
 
@@ -1463,10 +1467,14 @@ void extract_waveform(__global ushort4* points, int point_count,
 
     float3 offset = transform_position(ix, iy, iz, dim, scale);
 
+    float R = length(offset);
+
+    float w4_r = sqrt((4 * M_PI * R * R) / (4 * M_PI));
+
     float TEMPORARIES4;
 
-    waveform_out[local_idx].x = w4_real;
-    waveform_out[local_idx].y = w4_complex;
+    waveform_out[local_idx].x = (w4_real) * w4_r;
+    waveform_out[local_idx].y = (w4_complex) * w4_r;
 
     float zfrac = (float)iz / dim.z;
 
