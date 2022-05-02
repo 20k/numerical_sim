@@ -1847,6 +1847,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
     float3 Xpos = {ray_in.lp1, ray_in.lp2, ray_in.lp3};
     float3 vel = {ray_in.V0, ray_in.V1, ray_in.V2};
+    float3 Xpos_last = Xpos;
 
     bool hit_singularity = false;
 
@@ -1912,6 +1913,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
             float3 XFull = Xpos + XDiff * ds;
 
+            Xpos_last = Xpos;
             Xpos = XFull;
         }
 
@@ -1959,9 +1961,9 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     ray_out.x = x;
     ray_out.y = y;
 
-    ray_out.lp1 = Xpos.x;
-    ray_out.lp2 = Xpos.y;
-    ray_out.lp3 = Xpos.z;
+    ray_out.lp1 = Xpos_last.x;
+    ray_out.lp2 = Xpos_last.y;
+    ray_out.lp3 = Xpos_last.z;
 
     ray_out.V0 = vel.x;
     ray_out.V1 = vel.y;
