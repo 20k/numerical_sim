@@ -125,6 +125,109 @@ T gpu_trace(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse
     return ret;
 }
 
+
+template<typename T, int N>
+inline
+tensor<T, N> raise_index_impl(const tensor<T, N>& mT, const inverse_metric<T, N, N>& met, int index)
+{
+    assert(index == 0);
+
+    tensor<T, N> ret;
+
+    for(int i=0; i < N; i++)
+    {
+        T sum = 0;
+
+        for(int s=0; s < N; s++)
+        {
+            sum = sum + met.idx(i, s) * mT.idx(s);
+        }
+
+        ret.idx(i) = sum;
+    }
+
+    return ret;
+}
+
+template<typename T, int N>
+inline
+tensor<T, N, N> raise_index_impl(const tensor<T, N, N>& mT, const inverse_metric<T, N, N>& met, int index)
+{
+    tensor<T, N, N> ret;
+
+    for(int i=0; i < N; i++)
+    {
+        for(int j=0; j < N; j++)
+        {
+            T sum = 0;
+
+            for(int s=0; s < N; s++)
+            {
+                if(index == 0)
+                {
+                    sum = sum + met.idx(i, s) * mT.idx(s, j);
+                }
+
+                if(index == 1)
+                {
+                    sum = sum + met.idx(j, s) * mT.idx(i, s);
+                }
+            }
+
+            ret.idx(i, j) = sum;
+        }
+    }
+
+    return ret;
+}
+
+template<typename T, int N>
+inline
+tensor<T, N, N, N> raise_index_impl(const tensor<T, N, N, N>& mT, const inverse_metric<T, N, N>& met, int index)
+{
+    tensor<T, N, N, N> ret;
+
+    for(int i=0; i < N; i++)
+    {
+        for(int j=0; j < N; j++)
+        {
+            for(int k=0; k < N; k++)
+            {
+                T sum = 0;
+
+                for(int s=0; s < N; s++)
+                {
+                    if(index == 0)
+                    {
+                        sum = sum + met.idx(i, s) * mT.idx(s, j, k);
+                    }
+
+                    if(index == 1)
+                    {
+                        sum = sum + met.idx(j, s) * mT.idx(i, s, k);
+                    }
+
+                    if(index == 2)
+                    {
+                        sum = sum + met.idx(k, s) * mT.idx(i, j, s);
+                    }
+                }
+
+                ret.idx(i, j, k) = sum;
+            }
+        }
+    }
+
+    return ret;
+}
+
+template<typename T, int U, int... N>
+inline
+tensor<T, N...> raise_index_generic(const tensor<T, N...>& mT, const inverse_metric<T, U, U>& met, int index)
+{
+    return raise_index_impl(mT, met, index);
+}
+
 struct equation_context
 {
     std::vector<std::pair<std::string, value>> values;
@@ -1603,9 +1706,9 @@ struct matter
     tensor<value, 3> cS;
 
     ///placeholders
-    value Gamma = 1;
-    value p0 = 1;
-    value eps = 1;
+    float Gamma = 2;
+    //value p0 = 1;
+    //value eps = 1;
 
     value chi_to_e_6phi(value chi)
     {
@@ -1616,6 +1719,35 @@ struct matter
         return pow(chi, (3.f/2.f));
     }
 
+    value calculate_e(const value& chi, const value& W)
+    {
+        value e_m6phi = chi_to_e_m6phi(chi);
+
+        return pow(e_m6phi / W, Gamma - 1) * pow(e_star, Gamma) * pow(p_star, Gamma - 2);
+    }
+
+    value calculate_h_with_gamma_eos(const value& chi, const value& W)
+    {
+        return 1 + Gamma * calculate_e(chi, W);
+    }
+
+    tensor<value, 3> get_u_lower(const value& chi, const value& W)
+    {
+        return cS / (p_star * calculate_h_with_gamma_eos(chi, W));
+    }
+
+    tensor<value, 3> get_v_upper(const inverse_metric<value, 3, 3>& iYij, const value& gA, const value& chi, const value& W)
+    {
+        value u0 = W / (p_star * gA);
+
+        tensor<value, 3> ui = get_u_lower(chi, W);
+
+        tensor<value, 3> raised = raise_index_generic(ui, iYij, 0);
+
+        return raised / u0;
+    }
+
+    #if 0
     value get_P()
     {
         return (Gamma - 1) * p0 * eps;
@@ -1652,6 +1784,7 @@ struct matter
 
         return p_star * chi_to_e_m6phi(chi) / p0;
     }
+    #endif // 0
 };
 
 struct standard_arguments
@@ -4087,85 +4220,6 @@ void build_gB(equation_context& ctx)
 
         ctx.add(name, dtgBB.idx(i));
     }
-}
-
-template<typename T, int N>
-inline
-tensor<T, N, N> raise_index_impl(const tensor<T, N, N>& mT, const inverse_metric<T, N, N>& met, int index)
-{
-    tensor<T, N, N> ret;
-
-    for(int i=0; i < N; i++)
-    {
-        for(int j=0; j < N; j++)
-        {
-            T sum = 0;
-
-            for(int s=0; s < N; s++)
-            {
-                if(index == 0)
-                {
-                    sum = sum + met.idx(i, s) * mT.idx(s, j);
-                }
-
-                if(index == 1)
-                {
-                    sum = sum + met.idx(j, s) * mT.idx(i, s);
-                }
-            }
-
-            ret.idx(i, j) = sum;
-        }
-    }
-
-    return ret;
-}
-
-template<typename T, int N>
-inline
-tensor<T, N, N, N> raise_index_impl(const tensor<T, N, N, N>& mT, const inverse_metric<T, N, N>& met, int index)
-{
-    tensor<T, N, N, N> ret;
-
-    for(int i=0; i < N; i++)
-    {
-        for(int j=0; j < N; j++)
-        {
-            for(int k=0; k < N; k++)
-            {
-                T sum = 0;
-
-                for(int s=0; s < N; s++)
-                {
-                    if(index == 0)
-                    {
-                        sum = sum + met.idx(i, s) * mT.idx(s, j, k);
-                    }
-
-                    if(index == 1)
-                    {
-                        sum = sum + met.idx(j, s) * mT.idx(i, s, k);
-                    }
-
-                    if(index == 2)
-                    {
-                        sum = sum + met.idx(k, s) * mT.idx(i, j, s);
-                    }
-                }
-
-                ret.idx(i, j, k) = sum;
-            }
-        }
-    }
-
-    return ret;
-}
-
-template<typename T, int U, int... N>
-inline
-tensor<T, N...> raise_index_generic(const tensor<T, N...>& mT, const inverse_metric<T, U, U>& met, int index)
-{
-    return raise_index_impl(mT, met, index);
 }
 
 template<int N>
