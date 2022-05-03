@@ -5334,7 +5334,7 @@ int main()
     build_momentum_constraint(ctx13);
 
     equation_context ctx14;
-    build_hamiltonian_constraint(ctx14);
+    //build_hamiltonian_constraint(ctx14);
 
     equation_context ctxsommer;
     build_sommerfeld(ctxsommer);
@@ -5349,7 +5349,7 @@ int main()
     ctx11.build(argument_string, 10);
     ctx12.build(argument_string, 11);
     ctx13.build(argument_string, 12);
-    ctx14.build(argument_string, "unused1");
+    //ctx14.build(argument_string, "unused1");
     ctxdirectional.build(argument_string, "directional");
     ctxsommer.build(argument_string, "sommerfeld");
 
