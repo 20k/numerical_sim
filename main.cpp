@@ -4320,6 +4320,7 @@ tensor<T, 4> tensor_project_upper(const tensor<T, 4>& in, const value& gA, const
 inline
 void extract_waveforms(equation_context& ctx)
 {
+    ctx.order = 4;
     ctx.use_precise_differentiation = false;
     printf("Extracting waveforms\n");
 
