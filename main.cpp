@@ -1570,6 +1570,20 @@ value bidx(const std::string& buf, bool interpolate)
     }
 }
 
+///https://arxiv.org/pdf/0812.0641.pdf just before 23
+///X = e-4phi
+struct matter
+{
+    value p_star;
+    value e_star;
+    tensor<value, 3> cS;
+
+    tensor<value, 3> get_v()
+    {
+
+    }
+};
+
 struct standard_arguments
 {
     value gA;
