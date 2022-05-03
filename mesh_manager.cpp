@@ -153,21 +153,22 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
     return ret;
 }
 
-
-cl::buffer thin_intermediates_pool::request(cl::context& ctx, cl::managed_command_queue& cqueue, int id, vec3i size, int element_size)
+ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::managed_command_queue& cqueue, vec3i size, int element_size)
 {
-    for(buffer_descriptor& desc : pool)
+    for(ref_counted_buffer& desc : pool)
     {
         int my_size = size.x() * size.y() * size.x() * element_size;
-        int desc_size = desc.size.x() * desc.size.y() * desc.size.z() * desc.element_size;
+        int desc_size = desc.alloc_size;
 
-        if(desc.id == id && desc_size >= my_size)
+        int rc = desc.ref_count();
+
+        if(rc == 1 && desc_size >= my_size)
         {
-            return desc.buf;
+            return desc;
         }
     }
 
-    cl::buffer next(ctx);
+    ref_counted_buffer next(ctx);
     next.alloc(size.x() * size.y() * size.z() * element_size);
 
     #ifdef NANFILL
@@ -179,11 +180,7 @@ cl::buffer thin_intermediates_pool::request(cl::context& ctx, cl::managed_comman
     cqueue.getting_value_depends_on(next, evt);
     #endif // NANFILL
 
-    buffer_descriptor& buf = pool.emplace_back(ctx);
-    buf.id = id;
-    buf.size = size;
-    buf.element_size = element_size;
-    buf.buf = next;
+    pool.push_back(next);
 
     return next;
 }
@@ -262,16 +259,16 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg)
     }
 }
 
-cl::buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, int id)
+ref_counted_buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool)
 {
     if(sett.use_half_intermediates)
-        return pool.request(ctx, cqueue, id, dim, sizeof(cl_half));
+        return pool.request(ctx, cqueue, dim, sizeof(cl_half));
     else
-        return pool.request(ctx, cqueue, id, dim, sizeof(cl_float));
+        return pool.request(ctx, cqueue, dim, sizeof(cl_float));
 }
 
 ///returns buffers and intermediates
-std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, cl::buffer& u_arg)
+std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, cl::buffer& u_arg)
 {
     auto buffer_to_index = [&](const std::string& name)
     {
@@ -290,7 +287,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     auto& base_yn = get_input().buffers;
 
-    std::vector<cl::buffer> intermediates;
+    std::vector<ref_counted_buffer> intermediates;
 
     mqueue.begin_splice(main_queue);
 
@@ -376,9 +373,9 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
                 int i2 = idx * 3 + 1;
                 int i3 = idx * 3 + 2;
 
-                cl::buffer b1 = get_thin_buffer(ctx, mqueue, pool, i1);
-                cl::buffer b2 = get_thin_buffer(ctx, mqueue, pool, i2);
-                cl::buffer b3 = get_thin_buffer(ctx, mqueue, pool, i3);
+                ref_counted_buffer b1 = get_thin_buffer(ctx, mqueue, pool);
+                ref_counted_buffer b2 = get_thin_buffer(ctx, mqueue, pool);
+                ref_counted_buffer b3 = get_thin_buffer(ctx, mqueue, pool);
 
                 differentiate(mqueue, buffers[idx], b1, b2, b3);
 

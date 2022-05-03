@@ -5490,7 +5490,7 @@ int main()
 
     std::cout << "Init time " << time_to_main.get_elapsed_time_s() << std::endl;
 
-    std::vector<cl::buffer> last_valid_thin;
+    std::vector<ref_counted_buffer> last_valid_thin;
     std::vector<cl::buffer> last_valid_buffer;
 
     float rendering_err = 0.01f;
@@ -5702,6 +5702,10 @@ int main()
             ever_stepped = true;
 
             steps++;
+
+            ///kill ref counting
+            last_valid_thin.clear();
+            last_valid_buffer.clear();
 
             std::tie(last_valid_buffer, last_valid_thin) = base_mesh.full_step(clctx.ctx, clctx.cqueue, mqueue, timestep, thin_pool, u_arg);
 

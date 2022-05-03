@@ -5,6 +5,7 @@
 #include "spherical_integration.hpp"
 #include "spherical_harmonics.hpp"
 #include "spherical_decomposition.hpp"
+#include "ref_counted.hpp"
 
 float linear_interpolate(const std::map<int, std::map<int, std::map<int, float>>>& vals_map, vec3f pos, vec3i dim)
 {
@@ -178,7 +179,7 @@ void gravitational_wave_manager::callback(cl_event event, cl_int event_command_s
     delete ((callback_data*)user_data);
 }
 
-void gravitational_wave_manager::issue_extraction(cl::command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<cl::buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize, cl::gl_rendertexture& tex)
+void gravitational_wave_manager::issue_extraction(cl::command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<ref_counted_buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize, cl::gl_rendertexture& tex)
 {
     cl::args waveform_args;
 

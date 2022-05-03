@@ -4,6 +4,7 @@
 #include <cl/cl.h>
 #include <vec/vec.hpp>
 #include <toolkit/opencl.hpp>
+#include "ref_counted.hpp"
 
 template<typename T>
 inline
@@ -55,19 +56,9 @@ struct evolution_points
 
 struct thin_intermediates_pool
 {
-    struct buffer_descriptor
-    {
-        cl::buffer buf;
-        int id = 0;
-        vec3i size;
-        int element_size = 0;
+    std::vector<ref_counted_buffer> pool;
 
-        buffer_descriptor(cl::context& ctx) : buf(ctx){}
-    };
-
-    std::vector<buffer_descriptor> pool;
-
-    cl::buffer request(cl::context& ctx, cl::managed_command_queue& cqueue, int id, vec3i size, int element_size);
+    ref_counted_buffer request(cl::context& ctx, cl::managed_command_queue& cqueue, vec3i size, int element_size);
 };
 
 struct cpu_mesh_settings
@@ -144,10 +135,10 @@ struct cpu_mesh
 
     void init(cl::command_queue& cqueue, cl::buffer& u_arg);
 
-    cl::buffer get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, int id);
+    ref_counted_buffer get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool);
 
     ///returns buffers and intermediates
-    std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, cl::buffer& u_arg);
+    std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, cl::buffer& u_arg);
 };
 
 #endif // MESH_MANAGER_HPP_INCLUDED
