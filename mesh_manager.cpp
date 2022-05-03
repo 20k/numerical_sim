@@ -345,8 +345,31 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
         last_valid_thin_buffer = &generic_in;
 
+        ref_counted_buffer temp = get_thin_buffer(ctx, mqueue, pool);
+
+        auto dissipate_deriv = [&](ref_counted_buffer& deriv)
         {
-            auto differentiate = [&](cl::managed_command_queue& cqueue, const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
+            cl_float coeff = 0.25f;
+
+            cl::args diss;
+            diss.push_back(points_set.all_points);
+            diss.push_back(points_set.all_count);
+            diss.push_back(deriv);
+            diss.push_back(temp);
+
+            diss.push_back(coeff);
+            diss.push_back(scale);
+            diss.push_back(clsize);
+            diss.push_back(timestep);
+            diss.push_back(points_set.order);
+
+            mqueue.exec("dissipate_single_unidir_deriv", diss, {points_set.all_count}, {128});
+
+            std::swap(deriv, temp);
+        };
+
+        {
+            auto differentiate = [&](cl::managed_command_queue& cqueue, const std::string& name, ref_counted_buffer& out1, ref_counted_buffer& out2, ref_counted_buffer& out3)
             {
                 int idx = buffer_to_index(name);
 
@@ -362,6 +385,10 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
                 thin.push_back(points_set.order);
 
                 cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.all_count}, {128});
+
+                dissipate_deriv(out1);
+                dissipate_deriv(out2);
+                dissipate_deriv(out3);
             };
 
             std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
