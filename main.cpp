@@ -1682,6 +1682,7 @@ value bidx(const std::string& buf, bool interpolate)
     }
 }
 
+///constant_1 is chi * icYij * cSi cSj
 template<typename T>
 inline
 T w_next(const T& w_in, const T& p_star, const T& chi, const T& constant_1, float gamma, const T& e_star)
