@@ -1587,6 +1587,10 @@ struct matter
     {
         return pow(1/chi, (3.f/2.f));
     }
+    value chi_to_e_m6phi(value chi)
+    {
+        return pow(chi, (3.f/2.f));
+    }
 
     value get_P()
     {
@@ -1598,9 +1602,21 @@ struct matter
         return 1 + eps + get_P() / p0;
     }
 
+    value get_u0(const value& chi, const value& gA)
+    {
+        return (p_star / (p0 * gA)) * chi_to_e_m6phi(chi);
+    }
+
     tensor<value, 3> get_u()
     {
         return cS / (p_star * get_h());
+    }
+
+    tensor<value, 3> get_v(const value& chi, const value& gA)
+    {
+        value u0 = get_u0(chi, gA);
+
+        return get_u() / u0;
     }
 };
 
