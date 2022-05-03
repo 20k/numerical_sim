@@ -309,15 +309,20 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         }
     };
 
-    auto clean = [&](const auto& base_buf, const auto& inout)
+    auto clean = [&](auto& in, auto& inout)
     {
         cl::args cleaner;
         cleaner.push_back(points_set.border_points);
         cleaner.push_back(points_set.border_count);
 
-        for(auto& i : base_buf)
+        for(auto& i : in)
         {
-            cleaner.push_back(i);
+            cleaner.push_back(i.as_device_read_only());
+        }
+
+        for(auto& i : base_yn)
+        {
+            cleaner.push_back(i.as_device_read_only());
         }
 
         for(auto& i : inout)

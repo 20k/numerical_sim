@@ -710,6 +710,7 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
 __kernel
 void clean_data(__global ushort4* points, int point_count,
                 STANDARD_ARGS(),
+                STANDARD_ARGS(base_),
                 STANDARD_ARGS(o),
                 __global float* u_value,
                 __global ushort* order_ptr,
