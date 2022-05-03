@@ -1598,7 +1598,7 @@ struct matter
         return 1 + eps + get_P() / p0;
     }
 
-    tensor<value, 3> get_v()
+    tensor<value, 3> get_u()
     {
         return cS / (p_star * get_h());
     }
