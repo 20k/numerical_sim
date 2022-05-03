@@ -4588,6 +4588,13 @@ void extract_waveforms(equation_context& ctx)
         w4 = sum;
     }
 
+    value length = pos.length();
+
+    ///this... seems like I'm missing something
+    value R = sqrt((4 * M_PI * length * length) / (4 * M_PI));
+
+    w4 = R * w4;
+
     //std::cout << "MUr " << type_to_string(mu.idx(1).real) << std::endl;
     //std::cout << "MUi " << type_to_string(mu.idx(1).imaginary) << std::endl;
 
