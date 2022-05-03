@@ -832,31 +832,31 @@ void clean_data(__global ushort4* points, int point_count,
         float s_dtcGi1 = sommer_dtcGi1;
         float s_dtcGi2 = sommer_dtcGi2;
 
-        ocY0[index] += s_dtcY0 * timestep;
-        ocY1[index] += s_dtcY1 * timestep;
-        ocY2[index] += s_dtcY2 * timestep;
-        ocY3[index] += s_dtcY3 * timestep;
-        ocY4[index] += s_dtcY4 * timestep;
-        ocY5[index] += s_dtcY5 * timestep;
+        ocY0[index] = s_dtcY0 * timestep + base_cY0[index];
+        ocY1[index] = s_dtcY1 * timestep + base_cY1[index];
+        ocY2[index] = s_dtcY2 * timestep + base_cY2[index];
+        ocY3[index] = s_dtcY3 * timestep + base_cY3[index];
+        ocY4[index] = s_dtcY4 * timestep + base_cY4[index];
+        ocY5[index] = s_dtcY5 * timestep + base_cY5[index];
 
-        ocA0[index] += s_dtcA0 * timestep;
-        ocA1[index] += s_dtcA1 * timestep;
-        ocA2[index] += s_dtcA2 * timestep;
-        ocA3[index] += s_dtcA3 * timestep;
-        ocA4[index] += s_dtcA4 * timestep;
-        ocA5[index] += s_dtcA5 * timestep;
+        ocA0[index] = s_dtcA0 * timestep + base_cA0[index];
+        ocA1[index] = s_dtcA1 * timestep + base_cA1[index];
+        ocA2[index] = s_dtcA2 * timestep + base_cA2[index];
+        ocA3[index] = s_dtcA3 * timestep + base_cA3[index];
+        ocA4[index] = s_dtcA4 * timestep + base_cA4[index];
+        ocA5[index] = s_dtcA5 * timestep + base_cA5[index];
 
-        oK[index] += s_dtK * timestep;
-        oX[index] += s_dtX * timestep;
+        oK[index] = s_dtK * timestep + base_K[index];
+        oX[index] = s_dtX * timestep + base_X[index];
 
-        ogA[index] += s_dtgA * timestep;
-        ogB0[index] += s_dtgB0 * timestep;
-        ogB1[index] += s_dtgB1 * timestep;
-        ogB2[index] += s_dtgB2 * timestep;
+        ogA[index] = s_dtgA * timestep + base_gA[index];
+        ogB0[index] = s_dtgB0 * timestep + base_gB0[index];
+        ogB1[index] = s_dtgB1 * timestep + base_gB1[index];
+        ogB2[index] = s_dtgB2 * timestep + base_gB2[index];
 
-        ocGi0[index] += s_dtcGi0 * timestep;
-        ocGi1[index] += s_dtcGi1 * timestep;
-        ocGi2[index] += s_dtcGi2 * timestep;
+        ocGi0[index] = s_dtcGi0 * timestep + base_cGi0[index];
+        ocGi1[index] = s_dtcGi1 * timestep + base_cGi1[index];
+        ocGi2[index] = s_dtcGi2 * timestep + base_cGi2[index];
     }
 
     #if 0
