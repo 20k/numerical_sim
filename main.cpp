@@ -1578,9 +1578,29 @@ struct matter
     value e_star;
     tensor<value, 3> cS;
 
+    ///placeholders
+    value Gamma = 1;
+    value p0 = 1;
+    value eps = 1;
+
+    value chi_to_e_6phi(value chi)
+    {
+        return pow(1/chi, (3.f/2.f));
+    }
+
+    value get_P()
+    {
+        return (Gamma - 1) * p0 * eps;
+    }
+
+    value get_h()
+    {
+        return 1 + eps + get_P() / p0;
+    }
+
     tensor<value, 3> get_v()
     {
-
+        return cS / (p_star * get_h());
     }
 };
 
