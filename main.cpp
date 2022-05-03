@@ -1612,11 +1612,21 @@ struct matter
         return cS / (p_star * get_h());
     }
 
-    tensor<value, 3> get_v(const value& chi, const value& gA)
+    ///need to raise indices
+    /*tensor<value, 3> get_v(const value& chi, const value& gA)
     {
         value u0 = get_u0(chi, gA);
 
         return get_u() / u0;
+    }*/
+
+    value w_from_eq1(const value& chi)
+    {
+        ///u0 = (pstar / (p0 * gA)) * e_m6phi
+        ///w = e_m6phi * pstar * gA * pstar / (p0 * gA)
+        ///w = e_m6hi * pstar / p0
+
+        return p_star * chi_to_e_m6phi(chi) / p0;
     }
 };
 
