@@ -87,6 +87,15 @@ https://arxiv.org/pdf/astro-ph/0408492v1.pdf - kicks
 https://arxiv.org/pdf/2108.05119.pdf - apparently horizons
 https://arxiv.org/pdf/gr-qc/0209066.pdf - hamiltonian constraint damping
 https://air.unipr.it/retrieve/handle/11381/2783927/20540/0912.2920.pdf - relativistic hydrodynamics
+
+///neutron stars
+https://arxiv.org/pdf/gr-qc/0209102.pdf - basic paper
+https://www.db-thueringen.de/servlets/MCRFileNodeServlet/dbt_derivate_00024818/thierfelder/diss_v3.1_pdfa.pdf - inversion
+https://www.researchgate.net/publication/50818590_Relativistic_simulations_of_rotational_core_collapse_I_Methods_initial_models_and_code_tests
+https://arxiv.org/pdf/gr-qc/9811015.pdf - hydrodynamics, 1998
+https://arxiv.org/pdf/gr-qc/0403029.pdf - collapse to black hole
+https://air.unipr.it/retrieve/handle/11381/2783927/20540/0912.2920.pdf - contains a definition for E
+https://arxiv.org/pdf/gr-qc/0003101.pdf - fat hydrodynamic paper
 */
 
 ///notes:
