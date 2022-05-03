@@ -131,24 +131,24 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
 
     cqueue.exec("generate_evolution_points", args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
 
-    auto [shrunk_points_1, cpu_count_1] = extract_buffer(ctx, cqueue, points_1, count_1);
-    auto [shrunk_points_2, cpu_count_2] = extract_buffer(ctx, cqueue, points_2, count_2);
+    //auto [shrunk_points_1, cpu_count_1] = extract_buffer(ctx, cqueue, points_1, count_1);
+    //auto [shrunk_points_2, cpu_count_2] = extract_buffer(ctx, cqueue, points_2, count_2);
     auto [shrunk_border, cpu_border_count] = extract_buffer(ctx, cqueue, border_points, border_count);
     auto [shrunk_all, cpu_all_count] = extract_buffer(ctx, cqueue, all_points, all_count);
 
     evolution_points ret(ctx);
-    ret.first_count = cpu_count_1;
-    ret.second_count = cpu_count_2;
+    //ret.first_count = cpu_count_1;
+    //ret.second_count = cpu_count_2;
     ret.border_count = cpu_border_count;
     ret.all_count = cpu_all_count;
 
-    ret.first_derivative_points = shrunk_points_1;
-    ret.second_derivative_points = shrunk_points_2;
+    //ret.first_derivative_points = shrunk_points_1;
+    //ret.second_derivative_points = shrunk_points_2;
     ret.border_points = shrunk_border;
     ret.all_points = shrunk_all;
     ret.order = order.as_device_read_only();
 
-    printf("Evolve point reduction %i\n", cpu_count_1);
+    //printf("Evolve point reduction %i\n", cpu_count_1);
 
     return ret;
 }
@@ -294,6 +294,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     mqueue.begin_splice(main_queue);
 
+    #if 0
     auto copy_border = [&](auto& in, auto& out)
     {
         for(int i=0; i < (int)in.size(); i++)
@@ -308,6 +309,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             mqueue.exec("copy_valid", copy, {points_set.border_count}, {128});
         }
     };
+    #endif // 0
 
     auto clean = [&](auto& in, auto& inout)
     {
@@ -391,7 +393,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         {
             assert(false);
 
-            cl::args momentum_args;
+            /*cl::args momentum_args;
 
             momentum_args.push_back(points_set.first_derivative_points);
             momentum_args.push_back(points_set.first_count);
@@ -409,7 +411,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             momentum_args.push_back(scale);
             momentum_args.push_back(clsize);
 
-            mqueue.exec("calculate_momentum_constraint", momentum_args, {points_set.first_count}, {128});
+            mqueue.exec("calculate_momentum_constraint", momentum_args, {points_set.first_count}, {128});*/
         }
 
         std::vector<std::string> modified_by
@@ -497,6 +499,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         step_kernel("evolve_gA");
         step_kernel("evolve_gB");
 
+        clean(generic_in, generic_out);
+
         //copy_border(generic_in, generic_out);
     };
 
@@ -506,8 +510,8 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
         ///technically this function could work anywhere as it does not need derivatives
         ///but only the valid second derivative points are used
-        constraints.push_back(points_set.second_derivative_points);
-        constraints.push_back(points_set.second_count);
+        constraints.push_back(points_set.all_points);
+        constraints.push_back(points_set.all_count);
 
         for(auto& i : generic_out)
         {
@@ -517,9 +521,10 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
         constraints.push_back(scale);
         constraints.push_back(clsize);
 
-        mqueue.exec("enforce_algebraic_constraints", constraints, {points_set.second_count}, {128});
+        mqueue.exec("enforce_algebraic_constraints", constraints, {points_set.all_count}, {128});
     };
 
+    #if 0
     auto diff_to_input = [&](auto& buffer_in, cl_float factor)
     {
         for(int i=0; i < (int)buffer_in.size(); i++)
@@ -577,6 +582,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
             //mqueue.flush();
         }
     };
+    #endif // 0
 
     auto dissipate_unidir = [&](auto& in, auto& out)
     {
@@ -794,7 +800,7 @@ std::pair<std::vector<cl::buffer>, std::vector<cl::buffer>> cpu_mesh::full_step(
 
     //dissipate(get_input().buffers, get_output().buffers);
 
-    clean(scratch.buffers, b2.buffers);
+    //clean(scratch.buffers, b2.buffers);
 
     enforce_constraints(get_output().buffers);
 
