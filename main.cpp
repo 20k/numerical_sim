@@ -1579,6 +1579,21 @@ value bidx(const std::string& buf, bool interpolate)
     }
 }
 
+template<typename T>
+inline
+T w_next(const T& w_in, const T& p_star, const T& chi, const T& constant_1, float gamma, const T& e_star)
+{
+    T e_m6phi = pow(chi, (3.f/2.f));
+    T p_term = pow(p_star, 2 - gamma);
+
+    ///pterm^ whatever * (w eterm)^G-1
+
+    ///w^(g-1) * eterm^(g-1)
+    ///negeterm^(g - 1) / (w^(g-1))
+
+    return sqrt(p_star * p_star + chi * constant_1 * pow(1 + (gamma * pow(e_star, gamma)) * pow(e_m6phi, gamma - 1) / (p_term * pow(w_in, gamma - 1)), -2));
+}
+
 ///https://arxiv.org/pdf/0812.0641.pdf just before 23
 ///X = e-4phi
 struct matter
@@ -5271,6 +5286,17 @@ struct lightray
 ///if i didn't evolve where sponge = 1, would be massively faster
 int main()
 {
+    /*{
+        float w = 0.5f;
+
+        for(int i=0; i < 50; i++)
+        {
+            w = w_next(w, 0.3f, 0.5f, 0.1f, 2.0f, 0.1f);
+
+            printf("W %f\n", w);
+        }
+    }*/
+
     steady_timer time_to_main;
 
     test_harmonics();
