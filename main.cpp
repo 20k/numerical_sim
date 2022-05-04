@@ -1725,16 +1725,21 @@ struct matter
         return chi_to_e_m6phi(chi) * p_star * p_star / W;
     }
 
-    value calculate_e(const value& chi, const value& W)
+    value calculate_eps(const value& chi, const value& W)
     {
         value e_m6phi = chi_to_e_m6phi(chi);
 
         return pow(e_m6phi / W, Gamma - 1) * pow(e_star, Gamma) * pow(p_star, Gamma - 2);
     }
 
+    value gamma_eos(const value& p0, const value& eps)
+    {
+        return (Gamma - 1) * p0 * eps;
+    }
+
     value calculate_h_with_gamma_eos(const value& chi, const value& W)
     {
-        return 1 + Gamma * calculate_e(chi, W);
+        return 1 + Gamma * calculate_eps(chi, W);
     }
 
     tensor<value, 3> get_u_lower(const value& chi, const value& W)
@@ -1751,6 +1756,17 @@ struct matter
         tensor<value, 3> raised = raise_index_generic(ui, iYij, 0);
 
         return raised / u0;
+    }
+
+    value calculate_adm_p(const value& chi, const value& W)
+    {
+        value h = calculate_h_with_gamma_eos(chi, W);
+        value em6phi = chi_to_e_m6phi(chi);
+
+        value p0 = calculate_p0(chi, W);
+        value eps = calculate_eps(chi, W);
+
+        return h * W * em6phi - gamma_eos(p0, eps);
     }
 };
 
