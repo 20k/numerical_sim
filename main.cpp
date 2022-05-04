@@ -1800,12 +1800,12 @@ struct matter
         return Sij * chi + X_P_Yij;
     }
 
-    tensor<value, 3, 3> calculate_adm_S(const unit_metric<value, 3, 3>& cY, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
+    value calculate_adm_S(const unit_metric<value, 3, 3>& cY, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
     {
         ///so. Raise Sij with iYij, which is X * cY
         ///now I'm actually raising X * Sij which means....... i can use cY?
         ///because iYij * Sjk = X * icYij * Sjk, and icYij * X * Sjk = X * icYij * Sjk
-        value XSij = calculate_adm_X_Sij(chi, W, cY);
+        tensor<value, 3, 3> XSij = calculate_adm_X_Sij(chi, W, cY);
 
         tensor<value, 3, 3> raised = raise_index_generic(XSij, icY, 0);
 
