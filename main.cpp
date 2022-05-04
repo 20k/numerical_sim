@@ -1730,6 +1730,7 @@ struct matter
     value p_star;
     value e_star;
     tensor<value, 3> cS;
+    value stashed_W;
 
     float Gamma = 2;
 
@@ -4255,6 +4256,14 @@ void build_K(equation_context& ctx)
     tensor<value, 3, 3> icAij = raise_both(cA, cY, icY);
 
     value dtK = sum(tensor_upwind(ctx, gB, K)) - sum_multiply(icY.to_tensor(), Xdidja) + gA * (sum_multiply(icAij, cA) + (1/3.f) * K * K);
+
+    ///matter
+    {
+        value matter_s = args.mat.calculate_adm_S(cY, icY, X, args.mat.stashed_W);
+        value matter_p = args.mat.calculate_adm_p(X, args.mat.stashed_W);
+
+        dtK += (8 * M_PI / 2) * gA * (matter_s + matter_p);
+    }
 
     ctx.add("dtK", dtK);
 }
