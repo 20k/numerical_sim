@@ -595,7 +595,9 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
     auto dissipate_unidir = [&](auto& in, auto& out)
     {
-        for(int i=0; i < buffer_set::buffer_count; i++)
+        assert(in.buffers.size() == out.buffers.size());
+
+        for(int i=0; i < (int)in.buffers.size(); i++)
         {
             cl::args diss;
 

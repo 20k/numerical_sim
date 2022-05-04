@@ -6132,7 +6132,7 @@ int main()
 
             for(auto& i : buffers)
             {
-                init_args.push_back(i);
+                init_args.push_back(i.buf);
             }
 
             init_args.push_back(scale);
@@ -6140,7 +6140,7 @@ int main()
             init_args.push_back(ccamera_quat);
             init_args.push_back(clsize);
             init_args.push_back(rtex[which_texture]);
-            init_args.push_back(ray_buffer);
+            init_args.push_back(ray_buffer[0]);
 
             clctx.cqueue.exec("init_accurate_rays", init_args, {width, height}, {8, 8});
 
@@ -6160,7 +6160,7 @@ int main()
 
             for(auto& i : buffers)
             {
-                step_args.push_back(i);
+                step_args.push_back(i.buf);
             }
 
             step_args.push_back(scale);
@@ -6168,7 +6168,7 @@ int main()
             step_args.push_back(ccamera_quat);
             step_args.push_back(clsize);
             step_args.push_back(rtex[which_texture]);
-            step_args.push_back(ray_buffer);
+            step_args.push_back(ray_buffer[0]);
             step_args.push_back(timestep);
 
             clctx.cqueue.exec("step_accurate_rays", step_args, {width * height}, {128});
