@@ -3991,7 +3991,7 @@ void build_cA(equation_context& ctx)
             {
                 tensor<value, 3, 3> xSij = args.mat.calculate_adm_X_Sij(X, args.mat.stashed_W, cY);
 
-                dtcAij.idx(i, j) += gpu_trace_free(-8 * M_PI * gA * xSij).idx(i, j);
+                dtcAij.idx(i, j) += gpu_trace_free(-8 * M_PI * gA * xSij, cY, icY).idx(i, j);
             }
         }
     }
@@ -4199,6 +4199,20 @@ void build_cGi(equation_context& ctx)
             dtcGi.idx(i) += (-2.f/3.f) * (E + 1) * args.bigGi.idx(i) * sum;
         }
         #endif // YBS
+
+        ///matter
+        {
+            tensor<value, 3> ji_lower = args.mat.calculate_adm_Si(X);
+
+            value sum = 0;
+
+            for(int j=0; j < 3; j++)
+            {
+                sum += icY.idx(i, j) * ji_lower.idx(j);
+            }
+
+            dtcGi.idx(i) += gA * -2 * 8 * M_PI * sum;
+        }
     }
     #endif // CHRISTOFFEL_49
 
