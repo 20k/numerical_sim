@@ -3986,6 +3986,13 @@ void build_cA(equation_context& ctx)
 
             dtcAij.idx(i, j) += (-3.f/5.f) * sigma * BiMj_TF.idx(i, j);
             #endif // AIJ_SIGMA
+
+            ///matter
+            {
+                tensor<value, 3, 3> xSij = args.mat.calculate_adm_X_Sij(X, args.mat.stashed_W, cY);
+
+                dtcAij.idx(i, j) += gpu_trace_free(-8 * M_PI * gA * xSij).idx(i, j);
+            }
         }
     }
 
