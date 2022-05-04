@@ -3,9 +3,10 @@
 #include <execution>
 #include <iostream>
 
-std::vector<named_buffer> get_buffer_descriptors()
+buffer_set::buffer_set(cl::context& ctx, vec3i size)
 {
-    std::vector<named_buffer> ret = {
+    std::vector<std::pair<std::string, std::string>> ret =
+    {
         {"cY0", "evolve_cY"},
         {"cY1", "evolve_cY"},
         {"cY2", "evolve_cY"},
@@ -33,18 +34,28 @@ std::vector<named_buffer> get_buffer_descriptors()
         {"gB2", "evolve_gB"},
     };
 
-    assert(ret.size() == buffer_set::buffer_count);
+    assert(ret.size() == buffer_count);
 
-    return ret;
-}
-
-buffer_set::buffer_set(cl::context& ctx, vec3i size)
-{
     for(int kk=0; kk < buffer_count; kk++)
     {
-        buffers.emplace_back(ctx);
-        buffers.back().alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+        named_buffer& buf = buffers.emplace_back(ctx);
+
+        buf.buf.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+
+        buf.name = ret[kk].first;
+        buf.modified_by = ret[kk].second;
     }
+}
+
+named_buffer& buffer_set::lookup(const std::string& name)
+{
+    for(named_buffer& buf : buffers)
+    {
+        if(buf.name == name)
+            return buf;
+    }
+
+    assert(false);
 }
 
 inline
@@ -277,7 +288,7 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg)
 
         for(auto& i : data[0].buffers)
         {
-            init.push_back(i);
+            init.push_back(i.buf);
         }
 
         init.push_back(u_arg);
@@ -289,8 +300,8 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg)
 
     for(int i=0; i < (int)data[0].buffers.size(); i++)
     {
-        cl::copy(cqueue, data[0].buffers[i], data[1].buffers[i]);
-        cl::copy(cqueue, data[0].buffers[i], scratch.buffers[i]);
+        cl::copy(cqueue, data[0].buffers[i].buf, data[1].buffers[i].buf);
+        cl::copy(cqueue, data[0].buffers[i].buf, scratch.buffers[i].buf);
     }
 }
 
@@ -305,40 +316,16 @@ ref_counted_buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::managed_comma
 ///returns buffers and intermediates
 std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, cl::buffer& u_arg)
 {
-    std::vector<named_buffer> named = get_buffer_descriptors();
-
-    auto index_to_named = [&](int idx)
-    {
-        return named.at(idx);
-    };
-
-    auto buffer_to_index = [&](const std::string& name)
-    {
-        for(int idx = 0; idx < named.size(); idx++)
-        {
-            if(named[idx].name == name)
-                return idx;
-        }
-
-        assert(false);
-    };
-
-    auto buffer_to_evolved = [&](const std::string& name)
-    {
-        for(const named_buffer& buf : named)
-        {
-            if(buf.name == name)
-                return buf.modified_by;
-        }
-
-        assert(false);
-    };
-
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
-    std::vector<cl::buffer>* last_valid_thin_buffer = &get_input().buffers;
+    std::vector<cl::buffer> last_valid_thin_buffer;
 
-    auto& base_yn = get_input().buffers;
+    for(auto& i : get_input().buffers)
+    {
+        last_valid_thin_buffer.push_back(i.buf);
+    }
+
+    auto& base_yn = get_input();
 
     std::vector<ref_counted_buffer> intermediates;
 
@@ -367,19 +354,19 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
         cleaner.push_back(points_set.border_points);
         cleaner.push_back(points_set.border_count);
 
-        for(auto& i : in)
+        for(auto& i : in.buffers)
         {
-            cleaner.push_back(i.as_device_read_only());
+            cleaner.push_back(i.buf.as_device_read_only());
         }
 
-        for(auto& i : base_yn)
+        for(auto& i : base_yn.buffers)
         {
-            cleaner.push_back(i.as_device_read_only());
+            cleaner.push_back(i.buf.as_device_read_only());
         }
 
-        for(auto& i : inout)
+        for(auto& i : inout.buffers)
         {
-            cleaner.push_back(i);
+            cleaner.push_back(i.buf);
         }
 
         //cleaner.push_back(bssnok_datas[which_data]);
@@ -396,17 +383,20 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     {
         intermediates.clear();
 
-        last_valid_thin_buffer = &generic_in;
+        last_valid_thin_buffer.clear();
+
+        for(auto& i : generic_in.buffers)
+        {
+            last_valid_thin_buffer.push_back(i.buf);
+        }
 
         {
-            auto differentiate = [&](cl::managed_command_queue& cqueue, const std::string& name, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
+            auto differentiate = [&](cl::managed_command_queue& cqueue, cl::buffer in_buffer, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
             {
-                int idx = buffer_to_index(name);
-
                 cl::args thin;
                 thin.push_back(points_set.all_points);
                 thin.push_back(points_set.all_count);
-                thin.push_back(generic_in[idx].as_device_read_only());
+                thin.push_back(in_buffer.as_device_read_only());
                 thin.push_back(out1);
                 thin.push_back(out2);
                 thin.push_back(out3);
@@ -430,7 +420,9 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
                 ref_counted_buffer b2 = get_thin_buffer(ctx, mqueue, pool);
                 ref_counted_buffer b3 = get_thin_buffer(ctx, mqueue, pool);
 
-                differentiate(mqueue, buffers[idx], b1, b2, b3);
+                cl::buffer found = generic_in.lookup(buffers[idx]).buf;
+
+                differentiate(mqueue, found, b1, b2, b3);
 
                 intermediates.push_back(b1);
                 intermediates.push_back(b2);
@@ -471,24 +463,22 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
             a1.push_back(points_set.all_points);
             a1.push_back(points_set.all_count);
 
-            for(auto& i : generic_in)
+            for(auto& i : generic_in.buffers)
             {
-                a1.push_back(i.as_device_read_only());
+                a1.push_back(i.buf.as_device_read_only());
             }
 
-            for(int kk=0; kk < (int)generic_out.size(); kk++)
+            for(named_buffer& i : generic_out.buffers)
             {
-                named_buffer buf = index_to_named(kk);
-
-                if(buf.modified_by == name)
-                    a1.push_back(generic_out[kk]);
+                if(i.modified_by == name)
+                    a1.push_back(i.buf);
                 else
-                    a1.push_back(generic_out[kk].as_device_inaccessible());
+                    a1.push_back(i.buf.as_device_inaccessible());
             }
 
-            for(auto& i : base_yn)
+            for(auto& i : base_yn.buffers)
             {
-                a1.push_back(i.as_device_read_only());
+                a1.push_back(i.buf.as_device_read_only());
             }
 
             for(auto& i : momentum_constraint)
@@ -532,9 +522,9 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
         constraints.push_back(points_set.all_points);
         constraints.push_back(points_set.all_count);
 
-        for(auto& i : generic_out)
+        for(auto& i : generic_out.buffers)
         {
-            constraints.push_back(i);
+            constraints.push_back(i.buf);
         }
 
         constraints.push_back(scale);
@@ -612,8 +602,8 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
             diss.push_back(points_set.all_points);
             diss.push_back(points_set.all_count);
 
-            diss.push_back(in[i].as_device_read_only());
-            diss.push_back(out[i]);
+            diss.push_back(in.buffers[i].buf.as_device_read_only());
+            diss.push_back(out.buffers[i].buf);
 
             float coeff = dissipation_coefficients[i];
 
@@ -735,9 +725,9 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     for(int i=0; i < iterations; i++)
     {
         if(i != 0)
-            step(scratch.buffers, b2.buffers, timestep);
+            step(scratch, b2, timestep);
         else
-            step(b1.buffers, b2.buffers, timestep);
+            step(b1, b2, timestep);
 
         if(i != iterations - 1)
         {
@@ -746,9 +736,9 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
             dissipate(base_yn, b2.buffers);
             #endif
 
-            dissipate_unidir(b2.buffers, scratch.buffers);
+            dissipate_unidir(b2, scratch);
 
-            enforce_constraints(scratch.buffers);
+            enforce_constraints(scratch);
             //std::swap(b2, scratch);
         }
     }
@@ -813,7 +803,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     copy_valid(generic_data[(which_data + 1) % 2].buffers, generic_data[which_data].buffers);
     #endif // DISSIPATE_SELF
 
-    dissipate_unidir(b2.buffers, scratch.buffers);
+    dissipate_unidir(b2, scratch);
 
     std::swap(b2, scratch);;
 
@@ -821,11 +811,11 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
     //clean(scratch.buffers, b2.buffers);
 
-    enforce_constraints(get_output().buffers);
+    enforce_constraints(get_output());
 
     mqueue.end_splice(main_queue);
 
     flip();
 
-    return {*last_valid_thin_buffer, intermediates};
+    return {last_valid_thin_buffer, intermediates};
 }

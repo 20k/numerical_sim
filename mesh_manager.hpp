@@ -19,6 +19,16 @@ float get_c_at_max()
     return 55.f * (251.f/300.f);
 }
 
+struct named_buffer
+{
+    cl::buffer buf;
+
+    std::string name;
+    std::string modified_by;
+
+    named_buffer(cl::context& ctx) : buf(ctx){}
+};
+
 struct buffer_set
 {
     #ifndef USE_GBB
@@ -27,9 +37,11 @@ struct buffer_set
     static constexpr int buffer_count = 12 + 9 + 3;
     #endif
 
-    std::vector<cl::buffer> buffers;
+    std::vector<named_buffer> buffers;
 
     buffer_set(cl::context& ctx, vec3i size);
+
+    named_buffer& lookup(const std::string& name);
 };
 
 struct gpu_mesh
@@ -66,14 +78,6 @@ struct cpu_mesh_settings
     bool use_half_intermediates = false;
     bool calculate_momentum_constraint = false;
 };
-
-struct named_buffer
-{
-    std::string name;
-    std::string modified_by;
-};
-
-std::vector<named_buffer> get_buffer_descriptors();
 
 struct cpu_mesh
 {
