@@ -3087,6 +3087,23 @@ namespace hydrodynamics
         value eps = mat.calculate_eps(args.X, mat.stashed_W);
 
         value pressure = mat.gamma_eos(p0, eps);
+
+        vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
+
+        for(int i=0; i < 3; i++)
+        {
+            ctx.add("init_p_star_vi" + std::to_string(i), p_star_vi.idx(i));
+            ctx.add("init_e_star_vi" + std::to_string(i), e_star_vi.idx(i));
+        }
+
+        for(int i=0; i < 6; i++)
+        {
+            vec2i index = linear_indices[i];
+
+            ctx.add("init_skvi" + std::to_string(i), cSk_vi.idx(index.x(), index.y()));
+        }
+
+        ctx.add("init_pressure", pressure);
     }
 }
 
