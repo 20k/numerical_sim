@@ -1747,15 +1747,51 @@ struct matter
         return cS / (p_star * calculate_h_with_gamma_eos(chi, W));
     }
 
-    tensor<value, 3> get_v_upper(const inverse_metric<value, 3, 3>& iYij, const value& gA, const value& chi, const value& W)
+    tensor<value, 3> get_u_upper(const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
+    {
+        tensor<value, 3> ui_lower = get_u_lower(chi, W);
+
+        return raise_index_generic(ui_lower, chi * icY, 0);
+    }
+
+    tensor<value, 3> get_v_upper(const inverse_metric<value, 3, 3>& icY, const value& gA, const value& chi, const value& W)
     {
         value u0 = W / (p_star * gA);
 
-        tensor<value, 3> ui = get_u_lower(chi, W);
+        tensor<value, 3> u_up = get_u_upper(icY, chi, W);
 
-        tensor<value, 3> raised = raise_index_generic(ui, iYij, 0);
+        return u_up / u0;
+    }
 
-        return raised / u0;
+    tensor<value, 3> p_star_vi(const inverse_metric<value, 3, 3>& icY, const value& gA, const value& chi, const value& W)
+    {
+        tensor<value, 3> v_upper = get_v_upper(icY, gA, chi, W);
+
+        return p_star * v_upper;
+    }
+
+    tensor<value, 3> e_star_vi(const inverse_metric<value, 3, 3>& icY, const value& gA, const value& chi, const value& W)
+    {
+        tensor<value, 3> v_upper = get_v_upper(icY, gA, chi, W);
+
+        return e_star * v_upper;
+    }
+
+    tensor<value, 3, 3> cSk_vi(const inverse_metric<value, 3, 3>& icY, const value& gA, const value& chi, const value& W)
+    {
+        tensor<value, 3> v_upper = get_v_upper(icY, gA, chi, W);
+
+        tensor<value, 3, 3> cSk_vi;
+
+        for(int k=0; k < 3; k++)
+        {
+            for(int i=0; i < 3; i++)
+            {
+                cSk_vi.idx(k, i) = cS.idx(k) * v_upper.idx(i);
+            }
+        }
+
+        return cSk_vi;
     }
 
     value calculate_adm_p(const value& chi, const value& W)
