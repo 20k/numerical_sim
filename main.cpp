@@ -1842,7 +1842,7 @@ struct standard_arguments
     tensor<value, 3> gB;
     tensor<value, 3> gBB;
 
-    matter mat;
+    matter matt;
 
     unit_metric<value, 3, 3> cY;
     tensor<value, 3, 3> cA;
@@ -1877,7 +1877,7 @@ struct standard_arguments
 
     tensor<value, 3, 3, 3> christoff2;
 
-    standard_arguments(equation_context& ctx) : mat(ctx)
+    standard_arguments(equation_context& ctx) : matt(ctx)
     {
         bool interpolate = ctx.uses_linear;
 
@@ -3062,11 +3062,11 @@ namespace hydrodynamics
     void build_W(equation_context& ctx)
     {
         standard_arguments args(ctx);
-        matter& mat = args.mat;
+        matter& matt = args.matt;
 
         inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-        value W = mat.calculate_W(icY, args.X);
+        value W = matt.calculate_W(icY, args.X);
 
         ctx.add("init_hydro_W", W);
     }
@@ -3074,19 +3074,19 @@ namespace hydrodynamics
     void build_intermediate_variables_derivatives(equation_context& ctx)
     {
         standard_arguments args(ctx);
-        matter& mat = args.mat;
+        matter& matt = args.matt;
 
         inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-        tensor<value, 3> p_star_vi = mat.p_star_vi(icY, args.gA, args.X, mat.stashed_W);
-        tensor<value, 3> e_star_vi = mat.e_star_vi(icY, args.gA, args.X, mat.stashed_W);
+        tensor<value, 3> p_star_vi = matt.p_star_vi(icY, args.gA, args.X, matt.stashed_W);
+        tensor<value, 3> e_star_vi = matt.e_star_vi(icY, args.gA, args.X, matt.stashed_W);
 
-        tensor<value, 3, 3> cSk_vi = mat.cSk_vi(icY, args.gA, args.X, mat.stashed_W);
+        tensor<value, 3, 3> cSk_vi = matt.cSk_vi(icY, args.gA, args.X, matt.stashed_W);
 
-        value p0 = mat.calculate_p0(args.X, mat.stashed_W);
-        value eps = mat.calculate_eps(args.X, mat.stashed_W);
+        value p0 = matt.calculate_p0(args.X, matt.stashed_W);
+        value eps = matt.calculate_eps(args.X, matt.stashed_W);
 
-        value pressure = mat.gamma_eos(p0, eps);
+        value pressure = matt.gamma_eos(p0, eps);
 
         vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
@@ -3104,6 +3104,14 @@ namespace hydrodynamics
         }
 
         ctx.add("init_pressure", pressure);
+    }
+
+    void build_equations(equation_context& ctx)
+    {
+        standard_arguments args(ctx);
+        matter& matt = args.matt;
+
+
     }
 }
 
@@ -3911,7 +3919,7 @@ void build_cA(equation_context& ctx)
 
             ///matter
             {
-                tensor<value, 3, 3> xSij = args.mat.calculate_adm_X_Sij(X, args.mat.stashed_W, cY);
+                tensor<value, 3, 3> xSij = args.matt.calculate_adm_X_Sij(X, args.matt.stashed_W, cY);
 
                 dtcAij.idx(i, j) += gpu_trace_free(-8 * M_PI * gA * xSij, cY, icY).idx(i, j);
             }
@@ -4124,7 +4132,7 @@ void build_cGi(equation_context& ctx)
 
         ///matter
         {
-            tensor<value, 3> ji_lower = args.mat.calculate_adm_Si(X);
+            tensor<value, 3> ji_lower = args.matt.calculate_adm_Si(X);
 
             value sum = 0;
 
@@ -4202,8 +4210,8 @@ void build_K(equation_context& ctx)
 
     ///matter
     {
-        value matter_s = args.mat.calculate_adm_S(cY, icY, X, args.mat.stashed_W);
-        value matter_p = args.mat.calculate_adm_p(X, args.mat.stashed_W);
+        value matter_s = args.matt.calculate_adm_S(cY, icY, X, args.matt.stashed_W);
+        value matter_p = args.matt.calculate_adm_p(X, args.matt.stashed_W);
 
         dtK += (8 * M_PI / 2) * gA * (matter_s + matter_p);
     }
