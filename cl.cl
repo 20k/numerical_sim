@@ -1336,6 +1336,56 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
 }
 
 __kernel
+void evolve_hydro_all(__global ushort4* points, int point_count,
+                      STANDARD_ARGS(),
+                      STANDARD_ARGS(o),
+                      STANDARD_ARGS(base_),
+                      __global float* p_star_vi0, __global float* p_star_vi1, __global float* p_star_vi2,
+                      __global float* e_star_vi0, __global float* e_star_vi1, __global float* e_star_vi2,
+                      __global float* skvi0, __global float* skvi1, __global float* skvi2, __global float* skvi3, __global float* skvi4, __global float* skvi5,
+                      __global float* pressure,
+                      float scale, int4 dim, __global ushort* order_ptr)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
+
+    float f_dtp_star = init_dtp_star;
+    float f_dte_star = init_dte_star;
+
+    float f_dtSk0 = init_dtSk0;
+    float f_dtSk1 = init_dtSk1;
+    float f_dtSk2 = init_dtSk2;
+
+    /*float f_dtgA = dtgA;
+
+    float b0 = base_gA[index];
+
+    ogA[index] = f_dtgA * timestep + b0;*/
+
+    float base_p_star =  base_Dp_star[index];
+    float base_e_star = base_De_star[index];
+    float base_cS0 = base_DcS0[index];
+    float base_cS1 = base_DcS1[index];
+    float base_cS2 = base_DcS2[index];
+
+    oDp_star[index] = f_dtp_star * timestep + base_p_star;
+    oDe_star[index] = f_dte_star * timestep + base_e_star;
+
+    oDcS0[index] = f_dtSk0 * timestep + base_cS0;
+    oDcS1[index] = f_dtSk1 * timestep + base_cS1;
+    oDcS2[index] = f_dtSk2 * timestep + base_cS2;
+}
+
+__kernel
 void dissipate_single(__global ushort4* points, int point_count,
                       __global float* buffer, __global float* obuffer,
                       float coefficient,

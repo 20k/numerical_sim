@@ -3134,8 +3134,8 @@ namespace hydrodynamics
 
         for(int i=0; i < 3; i++)
         {
-            p_star_vi.idx(i) = bidx("p_star_vi", ctx.uses_linear, false);
-            e_star_vi.idx(i) = bidx("e_star_vi", ctx.uses_linear, false);
+            p_star_vi.idx(i) = bidx("p_star_vi" + std::to_string(i), ctx.uses_linear, false);
+            e_star_vi.idx(i) = bidx("e_star_vi" + std::to_string(i), ctx.uses_linear, false);
         }
 
         value P = bidx("pressure", ctx.uses_linear, false);

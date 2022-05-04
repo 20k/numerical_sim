@@ -33,11 +33,11 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size)
         {"gB1", "evolve_gB", cpu_mesh::dissipate_gauge, false},
         {"gB2", "evolve_gB", cpu_mesh::dissipate_gauge, false},
 
-        {"Dp_star", "evolve_Dp_star", 0.f, true},
-        {"De_star", "evolve_Dp_star", 0.f, true},
-        {"DcS0", "evolve_DcS", 0.f, true},
-        {"DcS1", "evolve_DcS", 0.f, true},
-        {"DcS2", "evolve_DcS", 0.f, true},
+        {"Dp_star", "evolve_hydro_all", 0.f, true},
+        {"De_star", "evolve_hydro_all", 0.f, true},
+        {"DcS0", "evolve_hydro_all", 0.f, true},
+        {"DcS1", "evolve_hydro_all", 0.f, true},
+        {"DcS2", "evolve_hydro_all", 0.f, true},
         {"DW_stashed", "calculate_hydro_W", 0.f, true},
     };
 
