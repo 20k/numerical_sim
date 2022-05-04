@@ -1603,7 +1603,7 @@ struct matter
             cS.idx(i) = bidx("DcS" + std::to_string(i), ctx.uses_linear, false);
         }
 
-        stashed_W = bidx("DW_precalculated", ctx.uses_linear, false);
+        stashed_W = bidx("DW_stashed", ctx.uses_linear, false);
     }
 
     value calculate_W(const inverse_metric<value, 3, 3>& icY, const value& chi)
