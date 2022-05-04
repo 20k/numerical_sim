@@ -1781,7 +1781,7 @@ struct matter
         return sum;
     }
 
-    tensor<value, 3> cSkvi_rhs(equation_context& ctx, const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const value& W)
+    tensor<value, 3> cSkvi_rhs(equation_context& ctx, const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const value& P, const value& W)
     {
         tensor<value, 3> dX;
 
@@ -1790,11 +1790,7 @@ struct matter
             dX.idx(i) = diff1(ctx, chi, i);
         }
 
-        value p0 = calculate_p0(chi, W);
-        value eps = calculate_eps(chi, W);
         value h = calculate_h_with_gamma_eos(chi, W);
-
-        value P = gamma_eos(p0, eps);
 
         tensor<value, 3> ret;
 
@@ -3111,7 +3107,81 @@ namespace hydrodynamics
         standard_arguments args(ctx);
         matter& matt = args.matt;
 
+        inverse_metric<value, 3, 3> icY = args.cY.invert();
 
+        tensor<value, 3> p_star_vi;
+        tensor<value, 3> e_star_vi;
+
+        std::array<int, 9> arg_table
+        {
+            0, 1, 2,
+            1, 3, 4,
+            2, 4, 5,
+        };
+
+        tensor<value, 3, 3> cskvi;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                int index = arg_table[i * 3 + j];
+
+                cskvi.idx(i, j) = bidx("skvi" + std::to_string(index), ctx.uses_linear, false);
+            }
+        }
+
+
+        for(int i=0; i < 3; i++)
+        {
+            p_star_vi.idx(i) = bidx("p_star_vi", ctx.uses_linear, false);
+            e_star_vi.idx(i) = bidx("e_star_vi", ctx.uses_linear, false);
+        }
+
+        value P = bidx("pressure", ctx.uses_linear, false);
+
+        value lhs_dtp_star = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            lhs_dtp_star += diff1(ctx, p_star_vi.idx(i), i);
+        }
+
+        value lhs_dte_star = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            lhs_dte_star += diff1(ctx, e_star_vi.idx(i), i);
+        }
+
+        tensor<value, 3> lhs_dtSk;
+
+        for(int k=0; k < 3; k++)
+        {
+            value sum = 0;
+
+            for(int i=0; i < 3; i++)
+            {
+                sum += diff1(ctx, cskvi.idx(k, i), i);
+            }
+
+            lhs_dtSk.idx(k) = sum;
+        }
+
+        tensor<value, 3> rhs = matt.cSkvi_rhs(ctx, icY, args.gA, args.gB, args.X, P, matt.stashed_W);
+
+        value dtp_star = -lhs_dtp_star;
+        value dte_star = -lhs_dte_star;
+
+        tensor<value, 3> dtSk = -lhs_dtSk + rhs;
+
+        ctx.add("init_dtp_star", dtp_star);
+        ctx.add("init_dte_star", dte_star);
+
+        for(int i=0; i < 3; i++)
+        {
+            ctx.add("init_dtSk" + std::to_string(i), dtSk.idx(i));
+        }
     }
 }
 
