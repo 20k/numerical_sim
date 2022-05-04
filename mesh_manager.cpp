@@ -34,7 +34,15 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size)
         {"gB2", "evolve_gB", cpu_mesh::dissipate_gauge},
     };
 
-    for(int kk=0; kk < values.size(); kk++)
+    #ifdef USE_MATTER
+    values.push_back({"Dp_star", "evolve_Dp_star", 0.f});
+    values.push_back({"De_star", "evolve_Dp_star", 0.f});
+    values.push_back({"DcS0", "evolve_DcS", 0.f});
+    values.push_back({"DcS1", "evolve_DcS", 0.f});
+    values.push_back({"DcS2", "evolve_DcS", 0.f});
+    #endif // USE_MATTER
+
+    for(int kk=0; kk < (int)values.size(); kk++)
     {
         named_buffer& buf = buffers.emplace_back(ctx);
 
@@ -411,10 +419,6 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
             for(int idx = 0; idx < (int)buffers.size(); idx++)
             {
-                int i1 = idx * 3 + 0;
-                int i2 = idx * 3 + 1;
-                int i3 = idx * 3 + 2;
-
                 ref_counted_buffer b1 = get_thin_buffer(ctx, mqueue, pool);
                 ref_counted_buffer b2 = get_thin_buffer(ctx, mqueue, pool);
                 ref_counted_buffer b3 = get_thin_buffer(ctx, mqueue, pool);
