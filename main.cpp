@@ -1721,6 +1721,8 @@ tensor<value, 3> calculate_dPhi(const value& chi, const tensor<value, 3>& dchi)
     return -dchi/(4 * max(chi, 0.001f));
 }
 
+//#define USE_MATTER
+
 ///https://arxiv.org/pdf/0812.0641.pdf just before 23
 ///X = e-4phi
 struct matter
@@ -1831,6 +1833,10 @@ struct matter
 
     value calculate_adm_p(const value& chi, const value& W)
     {
+        #ifndef USE_MATTER
+        return 0;
+        #endif // USE_MATTER
+
         value h = calculate_h_with_gamma_eos(chi, W);
         value em6phi = chi_to_e_m6phi(chi);
 
@@ -1842,6 +1848,10 @@ struct matter
 
     tensor<value, 3> calculate_adm_Si(const value& chi)
     {
+        #ifndef USE_MATTER
+        return {0,0,0};
+        #endif // USE_MATTER
+
         value em6phi = chi_to_e_m6phi(chi);
 
         return cS * em6phi;
@@ -1850,6 +1860,10 @@ struct matter
     ///the reason to calculate X_Sij is that its regular in terms of chi
     tensor<value, 3, 3> calculate_adm_X_Sij(const value& chi, const value& W, const unit_metric<value, 3, 3>& cY)
     {
+        #ifndef USE_MATTER
+        return {};
+        #endif // USE_MATTER
+
         value em6phi = chi_to_e_m6phi(chi);
         value h = calculate_h_with_gamma_eos(chi, W);
 
@@ -1873,6 +1887,10 @@ struct matter
 
     value calculate_adm_S(const unit_metric<value, 3, 3>& cY, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
     {
+        #ifndef USE_MATTER
+        return 0;
+        #endif // USE_MATTER
+
         ///so. Raise Sij with iYij, which is X * cY
         ///now I'm actually raising X * Sij which means....... i can use cY?
         ///because iYij * Sjk = X * icYij * Sjk, and icYij * X * Sjk = X * icYij * Sjk
@@ -1950,6 +1968,8 @@ struct standard_arguments
     value gA;
     tensor<value, 3> gB;
     tensor<value, 3> gBB;
+
+    matter mat;
 
     unit_metric<value, 3, 3> cY;
     tensor<value, 3, 3> cA;
