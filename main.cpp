@@ -5704,6 +5704,15 @@ int main()
     equation_context ctxsommer;
     build_sommerfeld(ctxsommer);
 
+    equation_context hydro_W;
+    hydrodynamics::build_W(hydro_W);
+
+    equation_context hydro_intermediates;
+    hydrodynamics::build_intermediate_variables_derivatives(hydro_intermediates);
+
+    equation_context hydro_final;
+    hydrodynamics::build_equations(hydro_final);
+
     ctx1.build(argument_string, 0);
     ctx4.build(argument_string, 3);
     ctx5.build(argument_string, 4);
@@ -5725,6 +5734,10 @@ int main()
     dtX.build(argument_string, "tx");
     dtgA.build(argument_string, "tga");
     dtgB.build(argument_string, "tgb");
+
+    hydro_W.build(argument_string, "hydrow");
+    hydro_intermediates.build(argument_string, "hydrointermediates");
+    hydro_final.build(argument_string, "hydrofinal");
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 
