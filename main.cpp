@@ -3057,6 +3057,39 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     #endif // USE_GBB
 }
 
+namespace hydrodynamics
+{
+    void build_W(equation_context& ctx)
+    {
+        standard_arguments args(ctx);
+        matter& mat = args.mat;
+
+        inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+        value W = mat.calculate_W(icY, args.X);
+
+        ctx.add("init_hydro_W", W);
+    }
+
+    void build_intermediate_variables_derivatives(equation_context& ctx)
+    {
+        standard_arguments args(ctx);
+        matter& mat = args.mat;
+
+        inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+        tensor<value, 3> p_star_vi = mat.p_star_vi(icY, args.gA, args.X, mat.stashed_W);
+        tensor<value, 3> e_star_vi = mat.e_star_vi(icY, args.gA, args.X, mat.stashed_W);
+
+        tensor<value, 3, 3> cSk_vi = mat.cSk_vi(icY, args.gA, args.X, mat.stashed_W);
+
+        value p0 = mat.calculate_p0(args.X, mat.stashed_W);
+        value eps = mat.calculate_eps(args.X, mat.stashed_W);
+
+        value pressure = mat.gamma_eos(p0, eps);
+    }
+}
+
 void build_sommerfeld(equation_context& ctx)
 {
     ctx.order = 1;
