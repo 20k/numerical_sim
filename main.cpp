@@ -1593,6 +1593,19 @@ struct matter
 
     float Gamma = 2;
 
+    matter(equation_context& ctx)
+    {
+        p_star = bidx("Dp_star", ctx.uses_linear, false);
+        e_star = bidx("De_star", ctx.uses_linear, false);
+
+        for(int i=0; i < 3; i++)
+        {
+            cS.idx(i) = bidx("DcS" + std::to_string(i), ctx.uses_linear, false);
+        }
+
+        stashed_W = bidx("DW_precalculated", ctx.uses_linear, false);
+    }
+
     value calculate_W(const inverse_metric<value, 3, 3>& icY, const value& chi)
     {
         value W = 0.5f;
@@ -1864,7 +1877,7 @@ struct standard_arguments
 
     tensor<value, 3, 3, 3> christoff2;
 
-    standard_arguments(equation_context& ctx)
+    standard_arguments(equation_context& ctx) : mat(ctx)
     {
         bool interpolate = ctx.uses_linear;
 
