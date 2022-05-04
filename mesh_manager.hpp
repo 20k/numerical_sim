@@ -26,6 +26,7 @@ struct named_buffer
     std::string name;
     std::string modified_by;
     float dissipation_coeff = 0.f;
+    bool matter_term = false;
 
     named_buffer(cl::context& ctx) : buf(ctx){}
 };
