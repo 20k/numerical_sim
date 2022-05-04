@@ -25,18 +25,13 @@ struct named_buffer
 
     std::string name;
     std::string modified_by;
+    float dissipation_coeff = 0.f;
 
     named_buffer(cl::context& ctx) : buf(ctx){}
 };
 
 struct buffer_set
 {
-    #ifndef USE_GBB
-    static constexpr int buffer_count = 12+9;
-    #else
-    static constexpr int buffer_count = 12 + 9 + 3;
-    #endif
-
     std::vector<named_buffer> buffers;
 
     buffer_set(cl::context& ctx, vec3i size);
@@ -101,29 +96,9 @@ struct cpu_mesh
 
     std::array<cl::buffer, 3> momentum_constraint;
 
-    float dissipate_low = 0.25;
-    float dissipate_high = 0.25;
-    float dissipate_gauge = 0.25;
-
-    float dissipate_caijyy = dissipate_high;
-
-    #ifdef NO_CAIJYY
-    dissipate_caijyy = 0;
-    #endif // NO_CAIJYY
-
-    std::array<float, buffer_set::buffer_count> dissipation_coefficients
-    {
-        dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, dissipate_low, //cY
-        dissipate_high, dissipate_high, dissipate_high, dissipate_caijyy, dissipate_high, dissipate_high, //cA
-        dissipate_low, dissipate_low, dissipate_low, //cGi
-        dissipate_high, //K
-        dissipate_low, //X
-        dissipate_gauge, //gA
-        dissipate_gauge, dissipate_gauge, dissipate_gauge, //gB
-        #ifdef USE_GBB
-        dissipate_gauge, dissipate_gauge, dissipate_gauge, //gBB
-        #endif // USE_GBB
-    };
+    static constexpr float dissipate_low = 0.25;
+    static constexpr float dissipate_high = 0.25;
+    static constexpr float dissipate_gauge = 0.25;
 
     cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett);
 

@@ -5,45 +5,44 @@
 
 buffer_set::buffer_set(cl::context& ctx, vec3i size)
 {
-    std::vector<std::pair<std::string, std::string>> ret =
+    std::vector<std::tuple<std::string, std::string, float>> values =
     {
-        {"cY0", "evolve_cY"},
-        {"cY1", "evolve_cY"},
-        {"cY2", "evolve_cY"},
-        {"cY3", "evolve_cY"},
-        {"cY4", "evolve_cY"},
-        {"cY5", "evolve_cY"},
+        {"cY0", "evolve_cY", cpu_mesh::dissipate_low},
+        {"cY1", "evolve_cY", cpu_mesh::dissipate_low},
+        {"cY2", "evolve_cY", cpu_mesh::dissipate_low},
+        {"cY3", "evolve_cY", cpu_mesh::dissipate_low},
+        {"cY4", "evolve_cY", cpu_mesh::dissipate_low},
+        {"cY5", "evolve_cY", cpu_mesh::dissipate_low},
 
-        {"cA0", "evolve_cA"},
-        {"cA1", "evolve_cA"},
-        {"cA2", "evolve_cA"},
-        {"cA3", "evolve_cA"},
-        {"cA4", "evolve_cA"},
-        {"cA5", "evolve_cA"},
+        {"cA0", "evolve_cA", cpu_mesh::dissipate_high},
+        {"cA1", "evolve_cA", cpu_mesh::dissipate_high},
+        {"cA2", "evolve_cA", cpu_mesh::dissipate_high},
+        {"cA3", "evolve_cA", cpu_mesh::dissipate_high},
+        {"cA4", "evolve_cA", cpu_mesh::dissipate_high},
+        {"cA5", "evolve_cA", cpu_mesh::dissipate_high},
 
-        {"cGi0", "evolve_cGi"},
-        {"cGi1", "evolve_cGi"},
-        {"cGi2", "evolve_cGi"},
+        {"cGi0", "evolve_cGi", cpu_mesh::dissipate_low},
+        {"cGi1", "evolve_cGi", cpu_mesh::dissipate_low},
+        {"cGi2", "evolve_cGi", cpu_mesh::dissipate_low},
 
-        {"K", "evolve_K"},
-        {"X", "evolve_X"},
+        {"K", "evolve_K", cpu_mesh::dissipate_high},
+        {"X", "evolve_X", cpu_mesh::dissipate_low},
 
-        {"gA", "evolve_gA"},
-        {"gB0", "evolve_gB"},
-        {"gB1", "evolve_gB"},
-        {"gB2", "evolve_gB"},
+        {"gA", "evolve_gA", cpu_mesh::dissipate_gauge},
+        {"gB0", "evolve_gB", cpu_mesh::dissipate_gauge},
+        {"gB1", "evolve_gB", cpu_mesh::dissipate_gauge},
+        {"gB2", "evolve_gB", cpu_mesh::dissipate_gauge},
     };
 
-    assert(ret.size() == buffer_count);
-
-    for(int kk=0; kk < buffer_count; kk++)
+    for(int kk=0; kk < values.size(); kk++)
     {
         named_buffer& buf = buffers.emplace_back(ctx);
 
         buf.buf.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
 
-        buf.name = ret[kk].first;
-        buf.modified_by = ret[kk].second;
+        buf.name = std::get<0>(values[kk]);
+        buf.modified_by = std::get<1>(values[kk]);
+        buf.dissipation_coeff = std::get<2>(values[kk]);
     }
 }
 
@@ -607,7 +606,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
             diss.push_back(in.buffers[i].buf.as_device_read_only());
             diss.push_back(out.buffers[i].buf);
 
-            float coeff = dissipation_coefficients[i];
+            float coeff = in.buffers[i].dissipation_coeff;
 
             diss.push_back(coeff);
             diss.push_back(scale);
