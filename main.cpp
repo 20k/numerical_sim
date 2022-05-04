@@ -1720,6 +1720,11 @@ struct matter
         return pow(chi, (3.f/2.f));
     }
 
+    value calculate_p0(const value& chi, const value& W)
+    {
+        return chi_to_e_m6phi(chi) * p_star * p_star / W;
+    }
+
     value calculate_e(const value& chi, const value& W)
     {
         value e_m6phi = chi_to_e_m6phi(chi);
