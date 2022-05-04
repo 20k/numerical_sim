@@ -1861,9 +1861,58 @@ struct matter
         return sum;
     }
 
-    tensor<value, 3> cSkvi_rhs(const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const value& W)
+    tensor<value, 3> cSkvi_rhs(equation_context& ctx, const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const value& W)
     {
+        tensor<value, 3> dX;
 
+        for(int i=0; i < 3; i++)
+        {
+            dX.idx(i) = diff1(ctx, chi, i);
+        }
+
+        value p0 = calculate_p0(chi, W);
+        value eps = calculate_eps(chi, W);
+        value h = calculate_h_with_gamma_eos(chi, W);
+
+        value P = gamma_eos(p0, eps);
+
+        tensor<value, 3> ret;
+
+        for(int k=0; k < 3; k++)
+        {
+            ret.idx(k) += -gA * chi_to_e_6phi(chi) * diff1(ctx, P, k);
+
+            ret.idx(k) += -W * h * diff1(ctx, gA, k);
+
+            {
+                value sum = 0;
+
+                for(int j=0; j < 3; j++)
+                {
+                    sum += -cS.idx(j) * diff1(ctx, gB.idx(j), k);
+                }
+
+                ret.idx(k) += sum;
+            }
+
+            {
+                value sum = 0;
+
+                for(int i=0; i < 3; i++)
+                {
+                    for(int j=0; j < 3; j++)
+                    {
+                        sum += (gA * chi * cS.idx(i) * cS.idx(j) / (2 * W * h)) * diff1(ctx, icY.idx(i, j), k);
+                    }
+                }
+
+                ret.idx(k) += sum;
+            }
+
+            ret.idx(k) += -((2 * gA * h * (W * W - p_star * p_star)) / W) * calculate_dPhi(chi, dX).idx(k);
+        }
+
+        return ret;
     }
 };
 
