@@ -1280,6 +1280,62 @@ void calculate_hydro_W(__global ushort4* points, int point_count,
 }
 
 __kernel
+void calculate_hydro_intermediates(__global ushort4* points, int point_count,
+                                   STANDARD_ARGS(),
+                                   __global float* p_star_vi0, __global float* p_star_vi1, __global float* p_star_vi2,
+                                   __global float* e_star_vi0, __global float* e_star_vi1, __global float* e_star_vi2,
+                                   __global float* skvi0, __global float* skvi1, __global float* skvi2, __global float* skvi3, __global float* skvi4, __global float* skvi5,
+                                   __global float* pressure,
+                                   float scale, int4 dim, __global ushort* order_ptr)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
+
+    float pstarvi0 = init_p_star_vi0;
+    float pstarvi1 = init_p_star_vi1;
+    float pstarvi2 = init_p_star_vi2;
+
+    float estarvi0 = init_e_star_vi0;
+    float estarvi1 = init_e_star_vi1;
+    float estarvi2 = init_e_star_vi2;
+
+    float lskvi0 = init_skvi0;
+    float lskvi1 = init_skvi1;
+    float lskvi2 = init_skvi2;
+    float lskvi3 = init_skvi3;
+    float lskvi4 = init_skvi4;
+    float lskvi5 = init_skvi5;
+
+    float cpress = init_pressure;
+
+    p_star_vi0[index] = pstarvi0;
+    p_star_vi1[index] = pstarvi1;
+    p_star_vi2[index] = pstarvi2;
+
+    e_star_vi0[index] = estarvi0;
+    e_star_vi1[index] = estarvi1;
+    e_star_vi2[index] = estarvi2;
+
+    skvi0[index] = lskvi0;
+    skvi1[index] = lskvi1;
+    skvi2[index] = lskvi2;
+    skvi3[index] = lskvi3;
+    skvi4[index] = lskvi4;
+    skvi5[index] = lskvi5;
+
+    pressure[index] = cpress;
+}
+
+__kernel
 void dissipate_single(__global ushort4* points, int point_count,
                       __global float* buffer, __global float* obuffer,
                       float coefficient,
