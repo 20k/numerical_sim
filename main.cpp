@@ -125,7 +125,6 @@ T gpu_trace(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse
     return ret;
 }
 
-
 template<typename T, int N>
 inline
 tensor<T, N> raise_index_impl(const tensor<T, N>& mT, const inverse_metric<T, N, N>& met, int index)
@@ -1715,6 +1714,7 @@ struct matter
     {
         return pow(1/chi, (3.f/2.f));
     }
+
     value chi_to_e_m6phi(value chi)
     {
         return pow(chi, (3.f/2.f));
@@ -1767,6 +1767,56 @@ struct matter
         value eps = calculate_eps(chi, W);
 
         return h * W * em6phi - gamma_eos(p0, eps);
+    }
+
+    tensor<value, 3> calculate_adm_Si(const value& chi)
+    {
+        value em6phi = chi_to_e_m6phi(chi);
+
+        return cS * em6phi;
+    }
+
+    ///the reason to calculate X_Sij is that its regular in terms of chi
+    tensor<value, 3, 3> calculate_adm_X_Sij(const value& chi, const value& W, const unit_metric<value, 3, 3>& cY)
+    {
+        value em6phi = chi_to_e_m6phi(chi);
+        value h = calculate_h_with_gamma_eos(chi, W);
+
+        value p0 = calculate_p0(chi, W);
+        value eps = calculate_eps(chi, W);
+
+        tensor<value, 3, 3> Sij;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                Sij.idx(i, j) = (em6phi / (W * h)) * cS.idx(i) * cS.idx(j);
+            }
+        }
+
+        tensor<value, 3, 3> X_P_Yij = gamma_eos(p0, eps) * cY.to_tensor();
+
+        return Sij * chi + X_P_Yij;
+    }
+
+    tensor<value, 3, 3> calculate_adm_S(const unit_metric<value, 3, 3>& cY, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
+    {
+        ///so. Raise Sij with iYij, which is X * cY
+        ///now I'm actually raising X * Sij which means....... i can use cY?
+        ///because iYij * Sjk = X * icYij * Sjk, and icYij * X * Sjk = X * icYij * Sjk
+        value XSij = calculate_adm_X_Sij(chi, W, cY);
+
+        tensor<value, 3, 3> raised = raise_index_generic(XSij, icY, 0);
+
+        value sum = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            sum += raised.idx(i, i);
+        }
+
+        return sum;
     }
 };
 
