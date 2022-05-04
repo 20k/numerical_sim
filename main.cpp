@@ -97,6 +97,7 @@ https://arxiv.org/pdf/gr-qc/9811015.pdf - hydrodynamics, 1998
 https://arxiv.org/pdf/gr-qc/0403029.pdf - collapse to black hole
 https://air.unipr.it/retrieve/handle/11381/2783927/20540/0912.2920.pdf - contains a definition for E
 https://arxiv.org/pdf/gr-qc/0003101.pdf - fat hydrodynamic paper
+https://arxiv.org/pdf/1606.04881.pdf - this provides mixed neutron star black hole initial conditions
 */
 
 ///notes:
