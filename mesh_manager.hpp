@@ -67,6 +67,14 @@ struct cpu_mesh_settings
     bool calculate_momentum_constraint = false;
 };
 
+struct named_buffer
+{
+    std::string name;
+    std::string modified_by;
+};
+
+std::vector<named_buffer> get_buffer_descriptors();
+
 struct cpu_mesh
 {
     cpu_mesh_settings sett;
@@ -88,18 +96,6 @@ struct cpu_mesh
     cl_int sponge_positions_count = 0;
 
     std::array<cl::buffer, 3> momentum_constraint;
-
-    std::array<std::string, buffer_set::buffer_count> buffer_names
-    {
-        "cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
-        "cA0", "cA1", "cA2", "cA3", "cA4", "cA5",
-        "cGi0", "cGi1", "cGi2",
-        "K", "X", "gA",
-        "gB0", "gB1", "gB2",
-        #ifdef USE_GBB
-        "gBB0", "gBB1", "gBB2",
-        #endif // USE_GBB
-    };
 
     float dissipate_low = 0.25;
     float dissipate_high = 0.25;

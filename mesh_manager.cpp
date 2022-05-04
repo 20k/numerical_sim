@@ -3,6 +3,41 @@
 #include <execution>
 #include <iostream>
 
+std::vector<named_buffer> get_buffer_descriptors()
+{
+    std::vector<named_buffer> ret = {
+        {"cY0", "evolve_cY"},
+        {"cY1", "evolve_cY"},
+        {"cY2", "evolve_cY"},
+        {"cY3", "evolve_cY"},
+        {"cY4", "evolve_cY"},
+        {"cY5", "evolve_cY"},
+
+        {"cA0", "evolve_cA"},
+        {"cA1", "evolve_cA"},
+        {"cA2", "evolve_cA"},
+        {"cA3", "evolve_cA"},
+        {"cA4", "evolve_cA"},
+        {"cA5", "evolve_cA"},
+
+        {"cGi0", "evolve_cGi"},
+        {"cGi1", "evolve_cGi"},
+        {"cGi2", "evolve_cGi"},
+
+        {"K", "evolve_K"},
+        {"X", "evolve_X"},
+
+        {"gA", "evolve_gA"},
+        {"gB0", "evolve_gB"},
+        {"gB1", "evolve_gB"},
+        {"gB2", "evolve_gB"},
+    };
+
+    assert(ret.size() == buffer_set::buffer_count);
+
+    return ret;
+}
+
 buffer_set::buffer_set(cl::context& ctx, vec3i size)
 {
     for(int kk=0; kk < buffer_count; kk++)
@@ -270,12 +305,30 @@ ref_counted_buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::managed_comma
 ///returns buffers and intermediates
 std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, cl::buffer& u_arg)
 {
+    std::vector<named_buffer> named = get_buffer_descriptors();
+
+    auto index_to_named = [&](int idx)
+    {
+        return named.at(idx);
+    };
+
     auto buffer_to_index = [&](const std::string& name)
     {
-        for(int idx = 0; idx < buffer_set::buffer_count; idx++)
+        for(int idx = 0; idx < named.size(); idx++)
         {
-            if(buffer_names[idx] == name)
+            if(named[idx].name == name)
                 return idx;
+        }
+
+        assert(false);
+    };
+
+    auto buffer_to_evolved = [&](const std::string& name)
+    {
+        for(const named_buffer& buf : named)
+        {
+            if(buf.name == name)
+                return buf.modified_by;
         }
 
         assert(false);
@@ -411,40 +464,6 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
             mqueue.exec("calculate_momentum_constraint", momentum_args, {points_set.first_count}, {128});*/
         }
 
-        std::map<std::string, std::string> modified_by
-        {
-            {"cY0", "evolve_cY"},
-            {"cY1", "evolve_cY"},
-            {"cY2", "evolve_cY"},
-            {"cY3", "evolve_cY"},
-            {"cY4", "evolve_cY"},
-            {"cY5", "evolve_cY"},
-
-            {"cA0", "evolve_cA"},
-            {"cA1", "evolve_cA"},
-            {"cA2", "evolve_cA"},
-            {"cA3", "evolve_cA"},
-            {"cA4", "evolve_cA"},
-            {"cA5", "evolve_cA"},
-
-            {"cGi0", "evolve_cGi"},
-            {"cGi1", "evolve_cGi"},
-            {"cGi2", "evolve_cGi"},
-
-            {"K", "evolve_K"},
-            {"X", "evolve_X"},
-
-            {"gA", "evolve_gA"},
-            {"gB0", "evolve_gB"},
-            {"gB1", "evolve_gB"},
-            {"gB2", "evolve_gB"},
-        };
-
-        if(modified_by.size() != generic_out.size())
-        {
-            std::cout << "Modified by map does not cover all variables" << std::endl;
-        }
-
         auto step_kernel = [&](const std::string& name)
         {
             cl::args a1;
@@ -459,14 +478,9 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
             for(int kk=0; kk < (int)generic_out.size(); kk++)
             {
-                auto val_it = modified_by.find(buffer_names[kk]);
+                named_buffer buf = index_to_named(kk);
 
-                if(val_it == modified_by.end())
-                {
-                    std::cout << "No markup for buffer " << buffer_names[kk] << std::endl;
-                }
-
-                if(val_it == modified_by.end() || val_it->second == name)
+                if(buf.modified_by == name)
                     a1.push_back(generic_out[kk]);
                 else
                     a1.push_back(generic_out[kk].as_device_inaccessible());
