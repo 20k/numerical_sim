@@ -411,38 +411,39 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
             mqueue.exec("calculate_momentum_constraint", momentum_args, {points_set.first_count}, {128});*/
         }
 
-        std::vector<std::string> modified_by
+        std::map<std::string, std::string> modified_by
         {
-            "evolve_cY",
-            "evolve_cY",
-            "evolve_cY",
-            "evolve_cY",
-            "evolve_cY",
-            "evolve_cY",
+            {"cY0", "evolve_cY"},
+            {"cY1", "evolve_cY"},
+            {"cY2", "evolve_cY"},
+            {"cY3", "evolve_cY"},
+            {"cY4", "evolve_cY"},
+            {"cY5", "evolve_cY"},
 
-            "evolve_cA",
-            "evolve_cA",
-            "evolve_cA",
-            "evolve_cA",
-            "evolve_cA",
-            "evolve_cA",
+            {"cA0", "evolve_cA"},
+            {"cA1", "evolve_cA"},
+            {"cA2", "evolve_cA"},
+            {"cA3", "evolve_cA"},
+            {"cA4", "evolve_cA"},
+            {"cA5", "evolve_cA"},
 
-            "evolve_cGi",
-            "evolve_cGi",
-            "evolve_cGi",
+            {"cGi0", "evolve_cGi"},
+            {"cGi1", "evolve_cGi"},
+            {"cGi2", "evolve_cGi"},
 
-            "evolve_K",
+            {"K", "evolve_K"},
+            {"X", "evolve_X"},
 
-            "evolve_X",
-
-            "evolve_gA",
-
-            "evolve_gB",
-            "evolve_gB",
-            "evolve_gB",
+            {"gA", "evolve_gA"},
+            {"gB0", "evolve_gB"},
+            {"gB1", "evolve_gB"},
+            {"gB2", "evolve_gB"},
         };
 
-        assert(modified_by.size() == generic_out.size());
+        if(modified_by.size() != generic_out.size())
+        {
+            std::cout << "Modified by map does not cover all variables" << std::endl;
+        }
 
         auto step_kernel = [&](const std::string& name)
         {
@@ -458,7 +459,14 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
             for(int kk=0; kk < (int)generic_out.size(); kk++)
             {
-                if(modified_by[kk] == name)
+                auto val_it = modified_by.find(buffer_names[kk]);
+
+                if(val_it == modified_by.end())
+                {
+                    std::cout << "No markup for buffer " << buffer_names[kk] << std::endl;
+                }
+
+                if(val_it == modified_by.end() || val_it->second == name)
                     a1.push_back(generic_out[kk]);
                 else
                     a1.push_back(generic_out[kk].as_device_inaccessible());
