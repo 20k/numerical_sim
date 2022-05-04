@@ -87,6 +87,7 @@ https://arxiv.org/pdf/astro-ph/0408492v1.pdf - kicks
 https://arxiv.org/pdf/2108.05119.pdf - apparently horizons
 https://arxiv.org/pdf/gr-qc/0209066.pdf - hamiltonian constraint damping
 https://air.unipr.it/retrieve/handle/11381/2783927/20540/0912.2920.pdf - relativistic hydrodynamics
+https://arxiv.org/pdf/gr-qc/9910044.pdf - the volume smeary integral thing for w4
 
 ///neutron stars
 https://arxiv.org/pdf/gr-qc/0209102.pdf - basic paper
@@ -1697,6 +1698,11 @@ T w_next(const T& w_in, const T& p_star, const T& chi, const T& constant_1, floa
     return sqrt(p_star * p_star + chi * constant_1 * pow(1 + (gamma * pow(e_star, gamma)) * pow(e_m6phi, gamma - 1) / (p_term * pow(w_in, gamma - 1)), -2));
 }
 
+tensor<value, 3> calculate_dPhi(const value& chi, const tensor<value, 3>& dchi)
+{
+    return -dchi/(4 * max(chi, 0.001f));
+}
+
 ///https://arxiv.org/pdf/0812.0641.pdf just before 23
 ///X = e-4phi
 struct matter
@@ -1853,6 +1859,11 @@ struct matter
         }
 
         return sum;
+    }
+
+    tensor<value, 3> cSkvi_rhs(const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const value& W)
+    {
+
     }
 };
 
