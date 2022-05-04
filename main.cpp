@@ -500,143 +500,6 @@ struct equation_context
 //#define SYMMETRY_BOUNDARY
 #define BORDER_WIDTH 4
 
-std::string strip_variable(std::string in)
-{
-    std::string valid;
-
-    for(auto i : in)
-    {
-        if(std::isalnum(i))
-        {
-            valid.push_back(i);
-        }
-        else
-        {
-            break;
-        }
-    }
-
-    return valid;
-}
-
-struct variable
-{
-    std::string name;
-    bool is_derivative = false;
-};
-
-inline
-std::vector<variable> get_variables()
-{
-    std::array variables
-    {
-        "cY0",
-        "cY1",
-        "cY2",
-        "cY3",
-        "cY4",
-        "cY5",
-        "cA0",
-        "cA1",
-        "cA2",
-        "cA3",
-        "cA4",
-        "cA5",
-        "cGi0",
-        "cGi1",
-        "cGi2",
-        "X",
-        "K",
-        "gA",
-        "gB0",
-        "gB1",
-        "gB2",
-        "gBB0",
-        "gBB1",
-        "gBB2",
-
-        "momentum0",
-        "momentum1",
-        "momentum2",
-    };
-
-    std::array derivatives
-    {
-        "dcYij0",
-        "dcYij1",
-        "dcYij2",
-        "dcYij3",
-        "dcYij4",
-        "dcYij5",
-        "dcYij6",
-        "dcYij7",
-        "dcYij8",
-        "dcYij9",
-        "dcYij10",
-        "dcYij11",
-        "dcYij12",
-        "dcYij13",
-        "dcYij14",
-        "dcYij15",
-        "dcYij16",
-        "dcYij17",
-
-        "digA0",
-        "digA1",
-        "digA2",
-
-        "digB0",
-        "digB1",
-        "digB2",
-        "digB3",
-        "digB4",
-        "digB5",
-        "digB6",
-        "digB7",
-        "digB8",
-
-        "dX0",
-        "dX1",
-        "dX2",
-    };
-
-    std::vector<variable> ret;
-
-    for(auto& i : variables)
-    {
-        variable v;
-        v.name = i;
-        v.is_derivative = false;
-
-        ret.push_back(v);
-    }
-
-    for(auto& i : derivatives)
-    {
-        variable v;
-        v.name = i;
-        v.is_derivative = true;
-
-        ret.push_back(v);
-    }
-
-    return ret;
-}
-
-inline
-variable fetch_variable(const std::string& name)
-{
-    std::vector<variable> ret = get_variables();
-
-    for(variable& v : ret)
-    {
-        if(v.name == name)
-            return v;
-    }
-
-    throw std::runtime_error("Err in fetch variable for name " + name);
-}
-
 value as_float3(const value& x, const value& y, const value& z)
 {
     return dual_types::apply("(float3)", x, y, z);
@@ -1652,13 +1515,11 @@ tensor<T, N, N> lower_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met
     return ret;
 }
 
-value bidx(const std::string& buf, bool interpolate)
+value bidx(const std::string& buf, bool interpolate, bool is_derivative)
 {
     if(interpolate)
     {
-        variable v = fetch_variable(buf);
-
-        if(v.is_derivative)
+        if(is_derivative)
         {
             return dual_types::apply("buffer_read_linearh", buf, as_float3("fx", "fy", "fz"), "dim");
         }
@@ -1669,9 +1530,7 @@ value bidx(const std::string& buf, bool interpolate)
     }
     else
     {
-        variable v = fetch_variable(buf);
-
-        if(v.is_derivative)
+        if(is_derivative)
         {
             return dual_types::apply("buffer_indexh", buf, "ix", "iy", "iz", "dim");
         }
@@ -2009,18 +1868,18 @@ struct standard_arguments
     {
         bool interpolate = ctx.uses_linear;
 
-        gA = (bidx("gA", interpolate));
+        gA = bidx("gA", interpolate, false);
 
         gA = max(gA, 0.f);
         //gA = max(gA, 0.00001f);
 
-        gB.idx(0) = (bidx("gB0", interpolate));
-        gB.idx(1) = (bidx("gB1", interpolate));
-        gB.idx(2) = (bidx("gB2", interpolate));
+        gB.idx(0) = bidx("gB0", interpolate, false);
+        gB.idx(1) = bidx("gB1", interpolate, false);
+        gB.idx(2) = bidx("gB2", interpolate, false);
 
-        gBB.idx(0) = (bidx("gBB0", interpolate));
-        gBB.idx(1) = (bidx("gBB1", interpolate));
-        gBB.idx(2) = (bidx("gBB2", interpolate));
+        gBB.idx(0) = bidx("gBB0", interpolate, false);
+        gBB.idx(1) = bidx("gBB1", interpolate, false);
+        gBB.idx(2) = bidx("gBB2", interpolate, false);
 
         std::array<int, 9> arg_table
         {
@@ -2035,7 +1894,7 @@ struct standard_arguments
             {
                 int index = arg_table[i * 3 + j];
 
-                cY.idx(i, j) = bidx("cY" + std::to_string(index), interpolate);
+                cY.idx(i, j) = bidx("cY" + std::to_string(index), interpolate, false);
             }
         }
 
@@ -2047,7 +1906,7 @@ struct standard_arguments
             {
                 int index = arg_table[i * 3 + j];
 
-                cA.idx(i, j) = bidx("cA" + std::to_string(index), interpolate);
+                cA.idx(i, j) = bidx("cA" + std::to_string(index), interpolate, false);
             }
         }
 
@@ -2057,16 +1916,16 @@ struct standard_arguments
 
         //cA.idx(1, 1) = -(raised_cAij.idx(0, 0) + raised_cAij.idx(2, 2) + cA.idx(0, 1) * icY.idx(0, 1) + cA.idx(1, 2) * icY.idx(1, 2)) / (icY.idx(1, 1));
 
-        X = (bidx("X", interpolate));
-        K = (bidx("K", interpolate));
+        X = bidx("X", interpolate, false);
+        K = bidx("K", interpolate, false);
 
         //X = max(X, 0.0001f);
 
         gA_X = gA / max(X, 0.001f);
 
-        cGi.idx(0) = (bidx("cGi0", interpolate));
-        cGi.idx(1) = (bidx("cGi1", interpolate));
-        cGi.idx(2) = (bidx("cGi2", interpolate));
+        cGi.idx(0) = bidx("cGi0", interpolate, false);
+        cGi.idx(1) = bidx("cGi1", interpolate, false);
+        cGi.idx(2) = bidx("cGi2", interpolate, false);
 
         for(int i=0; i < 3; i++)
         {
@@ -2081,9 +1940,9 @@ struct standard_arguments
 
         Kij = Aij + Yij.to_tensor() * (K / 3.f);
 
-        momentum_constraint.idx(0) = (bidx("momentum0", interpolate));
-        momentum_constraint.idx(1) = (bidx("momentum1", interpolate));
-        momentum_constraint.idx(2) = (bidx("momentum2", interpolate));
+        momentum_constraint.idx(0) = bidx("momentum0", interpolate, false);
+        momentum_constraint.idx(1) = bidx("momentum1", interpolate, false);
+        momentum_constraint.idx(2) = bidx("momentum2", interpolate, false);
 
         for(int k=0; k < 3; k++)
         {
@@ -2095,18 +1954,18 @@ struct standard_arguments
 
                     int final_index = k + symmetric_index * 3;
 
-                    dcYij.idx(k, i, j) = bidx("dcYij" + std::to_string(final_index), interpolate);
+                    dcYij.idx(k, i, j) = bidx("dcYij" + std::to_string(final_index), interpolate, true);
                 }
             }
         }
 
-        digA.idx(0) = (bidx("digA0", interpolate));
-        digA.idx(1) = (bidx("digA1", interpolate));
-        digA.idx(2) = (bidx("digA2", interpolate));
+        digA.idx(0) = bidx("digA0", interpolate, true);
+        digA.idx(1) = bidx("digA1", interpolate, true);
+        digA.idx(2) = bidx("digA2", interpolate, true);
 
-        dX.idx(0) = (bidx("dX0", interpolate));
-        dX.idx(1) = (bidx("dX1", interpolate));
-        dX.idx(2) = (bidx("dX2", interpolate));
+        dX.idx(0) = bidx("dX0", interpolate, true);
+        dX.idx(1) = bidx("dX1", interpolate, true);
+        dX.idx(2) = bidx("dX2", interpolate, true);
 
         ///derivative
         for(int i=0; i < 3; i++)
@@ -2116,7 +1975,7 @@ struct standard_arguments
             {
                 int idx = i + j * 3;
 
-                digB.idx(i, j)  = bidx("digB" + std::to_string(idx), interpolate);
+                digB.idx(i, j)  = bidx("digB" + std::to_string(idx), interpolate, true);
             }
         }
 
