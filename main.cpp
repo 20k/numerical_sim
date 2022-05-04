@@ -1685,9 +1685,10 @@ value bidx(const std::string& buf, bool interpolate)
 ///constant_1 is chi * icYij * cSi cSj
 template<typename T>
 inline
-T w_next(const T& w_in, const T& p_star, const T& chi, const T& constant_1, float gamma, const T& e_star)
+T w_next_interior(const T& w_in, const T& p_star, const T& chi, const T& constant_1, float gamma, const T& e_star)
 {
-    T e_m6phi = pow(chi, (3.f/2.f));
+    ///equations aren't properly regularised yet, because we have a power of -2
+    T e_m6phi = pow(max(chi, 0.001f), (3.f/2.f));
     T p_term = pow(p_star, 2 - gamma);
 
     ///pterm^ whatever * (w eterm)^G-1
@@ -1695,7 +1696,24 @@ T w_next(const T& w_in, const T& p_star, const T& chi, const T& constant_1, floa
     ///w^(g-1) * eterm^(g-1)
     ///negeterm^(g - 1) / (w^(g-1))
 
-    return sqrt(p_star * p_star + chi * constant_1 * pow(1 + (gamma * pow(e_star, gamma)) * pow(e_m6phi, gamma - 1) / (p_term * pow(w_in, gamma - 1)), -2));
+    return sqrt(p_star * p_star + constant_1 * pow(1 + (gamma * pow(e_star, gamma)) * pow(e_m6phi, gamma - 1) / (p_term * pow(w_in, gamma - 1)), -2));
+}
+
+template<typename T>
+inline
+T w_next(const T& w_in, const T& p_star, const T& chi, const inverse_metric<T, 3, 3>& icY, const tensor<T, 3>& cS, float gamma, const T& e_star)
+{
+    T constant_1 = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            constant_1 += chi * icY.idx(i, j) * cS.idx(i) * cS.idx(j);
+        }
+    }
+
+    return w_next_interior(w_in, p_star, chi, constant_1, gamma, e_star);
 }
 
 tensor<value, 3> calculate_dPhi(const value& chi, const tensor<value, 3>& dchi)
@@ -1711,10 +1729,21 @@ struct matter
     value e_star;
     tensor<value, 3> cS;
 
-    ///placeholders
     float Gamma = 2;
-    //value p0 = 1;
-    //value eps = 1;
+
+    value calculate_W(const inverse_metric<value, 3, 3>& icY, const value& chi)
+    {
+        value W = 0.5f;
+
+        int iterations = 5;
+
+        for(int i=0; i < iterations; i++)
+        {
+            W = w_next(W, p_star, chi, icY, cS, Gamma, e_star);
+        }
+
+        return W;
+    }
 
     value chi_to_e_6phi(value chi)
     {
