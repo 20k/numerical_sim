@@ -1621,6 +1621,29 @@ struct matter
         return W;
     }
 
+    ///??? comes from initial conditions
+    value p_star_max()
+    {
+        return 1;
+    }
+
+    value p_star_is_degenerate()
+    {
+        return p_star < 1e-5f * p_star_max();
+    }
+
+    value p_star_below_e_star_threshold()
+    {
+        float e_factor = 1e-4f;
+
+        return p_star < e_factor * p_star_max();
+    }
+
+    value e_star_clamped()
+    {
+        return min(e_star, 10 * p_star);
+    }
+
     value chi_to_e_6phi(value chi)
     {
         return pow(1/chi, (3.f/2.f));
@@ -1671,7 +1694,15 @@ struct matter
 
         tensor<value, 3> u_up = get_u_upper(icY, chi, W);
 
-        return u_up / u0;
+        tensor<value, 3> clamped;
+
+        for(int i=0; i < 3; i++)
+        {
+            ///todo: tensor if_v
+            clamped.idx(i) = dual_types::if_v(p_star_is_degenerate(), 0.f, u_up.idx(i) / u0);
+        }
+
+        return clamped;
     }
 
     tensor<value, 3> p_star_vi(const inverse_metric<value, 3, 3>& icY, const value& gA, const value& chi, const value& W)
@@ -3183,6 +3214,10 @@ namespace hydrodynamics
         {
             ctx.add("init_dtSk" + std::to_string(i), dtSk.idx(i));
         }
+
+        //ctx.add("e_star_p_limit", matt.p_star_below_e_star_threshold());
+        //ctx.add("e_star_p_value", matt.e_star_clamped());
+        ctx.add("p_star_max", matt.p_star_max());
     }
 }
 

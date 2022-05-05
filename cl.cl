@@ -1377,8 +1377,16 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     float base_cS1 = base_DcS1[index];
     float base_cS2 = base_DcS2[index];
 
-    oDp_star[index] = f_dtp_star * timestep + base_p_star;
-    oDe_star[index] = f_dte_star * timestep + base_e_star;
+    float fin_p_star = f_dtp_star * timestep + base_p_star;
+    float fin_e_star = f_dte_star * timestep + base_e_star;
+
+    if(fin_p_star < 1e-4 * p_star_max)
+    {
+        fin_e_star = min(fin_e_star, 10 * fin_p_star);
+    }
+
+    oDp_star[index] = fin_p_star;
+    oDe_star[index] = fin_e_star;
 
     oDcS0[index] = f_dtSk0 * timestep + base_cS0;
     oDcS1[index] = f_dtSk1 * timestep + base_cS1;
