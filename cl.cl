@@ -1344,7 +1344,7 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
                       __global float* e_star_vi0, __global float* e_star_vi1, __global float* e_star_vi2,
                       __global float* skvi0, __global float* skvi1, __global float* skvi2, __global float* skvi3, __global float* skvi4, __global float* skvi5,
                       __global float* pressure,
-                      float scale, int4 dim, __global ushort* order_ptr)
+                      float scale, int4 dim, __global ushort* order_ptr, float timestep)
 {
     int local_idx = get_global_id(0);
 
