@@ -168,8 +168,9 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     ///https://arxiv.org/pdf/1606.04881.pdf (66)
     float RHS = -(1/8.f) * aij_aIJ * pow(bl_s + u, -7);
 
-    #ifdef USE_MATTER
-
+    #define UNCONDITIONAL_MATTER
+    #if defined(USE_MATTER) || defined(UNCONDITIONAL_MATTER)
+    RHS += -2 * M_PI * pow(bl_s + u, -3.f) * PPW2_P;
     #endif // USE_MATTER
 
     float h2f0 = scale * scale * RHS;
