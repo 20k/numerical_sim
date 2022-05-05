@@ -3,7 +3,7 @@
 #include <execution>
 #include <iostream>
 
-buffer_set::buffer_set(cl::context& ctx, vec3i size)
+buffer_set::buffer_set(cl::context& ctx, vec3i size, bool use_matter)
 {
     std::vector<std::tuple<std::string, std::string, float, bool>> values =
     {
@@ -47,12 +47,10 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size)
 
         if(std::get<3>(values[kk]))
         {
-            //#define USE_MATTER
-            #ifdef USE_MATTER
-            buf.buf.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
-            #else
-            buf.buf.alloc(sizeof(cl_int));
-            #endif
+            if(use_matter)
+                buf.buf.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+            else
+                buf.buf.alloc(sizeof(cl_int));
         }
         else
         {
@@ -251,7 +249,7 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::manage
 }
 
 cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett) :
-        data{buffer_set(ctx, _dim), buffer_set(ctx, _dim)}, scratch{ctx, _dim}, points_set{ctx}, sponge_positions{ctx},
+        data{buffer_set(ctx, _dim, _sett.use_matter), buffer_set(ctx, _dim, _sett.use_matter)}, scratch{ctx, _dim, _sett.use_matter}, points_set{ctx}, sponge_positions{ctx},
         momentum_constraint{ctx, ctx, ctx}
 {
     centre = _centre;

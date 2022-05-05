@@ -5634,6 +5634,10 @@ int main()
 
     std::string argument_string = "-I ./ -O3 -cl-std=CL2.0 -cl-mad-enable -cl-finite-math-only -cl-denorms-are-zero ";
 
+    #ifdef USE_MATTER
+    argument_string += "-DUSE_MATTER ";
+    #endif // USE_MATTER
+
     std::string u_argument_string = argument_string;
 
     ///the simulation domain is this * 2
@@ -5849,6 +5853,10 @@ int main()
     #else
     base_settings.use_half_intermediates = false;
     #endif // USE_HALF_INTERMEDIATE
+
+    #ifdef USE_MATTER
+    base_settings.use_matter = true;
+    #endif // USE_MATTER
 
     #ifdef CALCULATE_MOMENTUM_CONSTRAINT
     base_settings.calculate_momentum_constraint = true;

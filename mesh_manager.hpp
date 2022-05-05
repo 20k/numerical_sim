@@ -19,6 +19,7 @@ float get_c_at_max()
     return 55.f * (251.f/300.f);
 }
 
+///todo: do this inherity
 struct named_buffer
 {
     cl::buffer buf;
@@ -35,7 +36,7 @@ struct buffer_set
 {
     std::vector<named_buffer> buffers;
 
-    buffer_set(cl::context& ctx, vec3i size);
+    buffer_set(cl::context& ctx, vec3i size, bool use_matter);
 
     named_buffer& lookup(const std::string& name);
 };
@@ -73,6 +74,7 @@ struct cpu_mesh_settings
 {
     bool use_half_intermediates = false;
     bool calculate_momentum_constraint = false;
+    bool use_matter = false;
 };
 
 struct cpu_mesh
