@@ -5242,12 +5242,12 @@ int main()
     cl::buffer u_arg(clctx.ctx);
 
     sandwich_result sandwich(clctx.ctx);
+        sandwich = setup_sandwich_laplace(clctx.ctx, clctx.cqueue, holes.holes, scale, size);
 
     auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes, &sandwich]()
     {
         cl::command_queue cqueue(clctx.ctx);
 
-        sandwich = setup_sandwich_laplace(clctx.ctx, cqueue, holes.holes, scale, size);
 
         laplace_data solve = setup_u_laplace(clctx.ctx, holes.holes);
         u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.000001f);

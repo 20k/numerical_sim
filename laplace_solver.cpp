@@ -250,22 +250,22 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
 
     equation_context ctx;
 
-    ctx.add("D_gB0_RHS", data.gB0_rhs);
-    ctx.add("D_gB1_RHS", data.gB1_rhs);
-    ctx.add("D_gB2_RHS", data.gB2_rhs);
-    ctx.add("D_gA_PHI_RHS", data.gA_phi_rhs);
+    ctx.add("B_gB0_RHS", data.gB0_rhs);
+    ctx.add("B_gB1_RHS", data.gB1_rhs);
+    ctx.add("B_gB2_RHS", data.gB2_rhs);
+    ctx.add("B_gA_PHI_RHS", data.gA_phi_rhs);
     ctx.add("U_TO_PHI", data.u_to_phi);
 
-    ctx.add("DJBJ", data.djbj);
+    ctx.add("BDJBJ", data.djbj);
 
-    std::string local_build_str = "-I ./ O3 -cl-std=CL2.0 -cl-mad-enable -cl-finite-math-only ";
+    std::string local_build_str = "-I ./ -O3 -cl-std=CL2.0 -cl-mad-enable -cl-finite-math-only ";
 
     ctx.build(local_build_str, "UNUSEDTHIN");
 
     cl::program t_program(clctx, "thin_sandwich.cl");
     t_program.build(clctx, local_build_str);
 
-    cl::kernel u_to_phi(t_program, "from_u_to_phi");
+    cl::kernel u_to_phi(t_program, "u_to_phi");
     cl::kernel calculate_djbj(t_program, "calculate_djbj");
     cl::kernel iterate(t_program, "iterative_sandwich");
     cl::kernel gA_phi_to_gA(t_program, "gA_phi_to_gA");
@@ -282,6 +282,7 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
         cl::args u_to_phi_args;
         u_to_phi_args.push_back(u_arg);
         u_to_phi_args.push_back(phi);
+        u_to_phi_args.push_back(scale);
         u_to_phi_args.push_back(clsize);
 
         u_to_phi.set_args(u_to_phi_args);
@@ -356,6 +357,7 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
         gA_args.push_back(args_in.gA_phi);
         gA_args.push_back(phi);
         gA_args.push_back(gA_out);
+        gA_args.push_back(scale);
         gA_args.push_back(clsize);
 
         gA_phi_to_gA.set_args(gA_args);
