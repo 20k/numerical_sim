@@ -2149,6 +2149,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<black_hole<fl
     laplace_data solve;
     solve.rhs = U_RHS;
     solve.boundary = 1;
+    solve.dimension = 1;
 
     return solve;
 }

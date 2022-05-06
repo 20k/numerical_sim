@@ -201,7 +201,12 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const l
     ctx.add("U_BASE", dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim"));
     ctx.add("U_RHS", data.rhs);
     ctx.add("U_BOUNDARY", data.boundary);
-    ctx.add("LAPLACE_SOLVE_1", 1);
+
+    if(data.dimension == 1)
+        ctx.add("LAPLACE_SOLVE_1", 1);
+
+    if(data.dimension == 3)
+        ctx.add("LAPLACE_SOLVE_3", 1);
 
     std::string local_build_str = "-I ./ -O3 -cl-std=CL2.0 -cl-mad-enable -cl-finite-math-only ";
 
