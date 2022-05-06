@@ -2188,6 +2188,7 @@ sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cq
     gB.idx(2) = bidx("gB2_in", false, false);
 
     equation_context ctx;
+    ctx.order = 1;
 
     value djbj_precalculate = 0;
 
