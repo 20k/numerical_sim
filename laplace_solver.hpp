@@ -9,6 +9,7 @@ struct laplace_data
     value boundary;
     value rhs;
     int dimension = 1;
+    std::vector<cl::buffer> extra_args;
 };
 
 std::vector<cl::buffer> laplace_solver(cl::context& clcltx, cl::command_queue& cqueue, const laplace_data& data, float scale, vec3i dim, float err = 0.0001f);

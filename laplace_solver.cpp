@@ -19,7 +19,7 @@ void check_symmetry(const std::string& debug_name, cl::command_queue& cqueue, cl
 }
 
 std::vector<cl::buffer> solve_for_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& setup, cl::kernel& iterate,
-                       vec<4, cl_int> base_size, float c_at_max, int scale_factor, std::optional<std::vector<cl::buffer>> base, cl_float etol, int dimensions)
+                       vec<4, cl_int> base_size, float c_at_max, int scale_factor, std::optional<std::vector<cl::buffer>> base, cl_float etol, int dimensions, std::vector<cl::buffer> extra_args)
 {
     vec<4, cl_int> reduced_clsize = ((base_size - 1) / scale_factor) + 1;
 
@@ -101,6 +101,11 @@ std::vector<cl::buffer> solve_for_u(cl::context& ctx, cl::command_queue& cqueue,
         for(int d = 0; d < dimensions; d++)
         {
             iterate_u_args.push_back(reduced_u_args[(which_reduced + 1) % 2][d]);
+        }
+
+        for(cl::buffer& b : extra_args)
+        {
+            iterate_u_args.push_back(b);
         }
 
         iterate_u_args.push_back(local_scale);
@@ -217,14 +222,14 @@ std::vector<cl::buffer> iterate_u(cl::context& ctx, cl::command_queue& cqueue, c
         float current_boundary = boundaries[i + 1];
         float next_boundary = boundaries[i];
 
-        std::vector<cl::buffer> reduced = solve_for_u(ctx, cqueue, setup, iterate, clsize, current_boundary, 1, last, etol, dimensions);
+        std::vector<cl::buffer> reduced = solve_for_u(ctx, cqueue, setup, iterate, clsize, current_boundary, 1, last, etol, dimensions, {});
 
         std::vector<cl::buffer> extracted = extract_u_region(ctx, cqueue, extract, reduced, current_boundary, next_boundary, clsize);
 
         last = extracted;
     }
 
-    return solve_for_u(ctx, cqueue, setup, iterate, clsize, c_at_max, 1, last, etol, dimensions);
+    return solve_for_u(ctx, cqueue, setup, iterate, clsize, c_at_max, 1, last, etol, dimensions, {});
 }
 
 std::vector<cl::buffer> laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const laplace_data& data, float scale, vec3i dim, float err)
@@ -255,5 +260,8 @@ std::vector<cl::buffer> laplace_solver(cl::context& clctx, cl::command_queue& cq
 
     float c_at_max = scale * dim.largest_elem();
 
-    return iterate_u(clctx, cqueue, setup, iterate, extract, dim, c_at_max, err, data.dimension);
+    if(data.extra_args.size() == 0)
+        return iterate_u(clctx, cqueue, setup, iterate, extract, dim, c_at_max, err, data.dimension);
+    else
+        return solve_for_u(clctx, cqueue, setup, iterate, {dim.x(), dim.y(), dim.z(), 0}, c_at_max, 1, std::nullopt, err, data.dimension, data.extra_args);
 }
