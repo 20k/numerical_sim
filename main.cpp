@@ -2213,7 +2213,7 @@ sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cq
 
     value gA_phi = bidx("gA_phi_in", false, false);
 
-    value gA = gA / phi;
+    value gA = gA_phi / phi;
 
     tensor<value, 3, 3> bcAij = calculate_bcAij(pos, cpu_holes);
     ///raised

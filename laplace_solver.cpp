@@ -265,9 +265,9 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
     cl::program t_program(clctx, "thin_sandwich.cl");
     t_program.build(clctx, local_build_str);
 
+    cl::kernel u_to_phi(t_program, "from_u_to_phi");
     cl::kernel calculate_djbj(t_program, "calculate_djbj");
     cl::kernel iterate(t_program, "iterative_sandwich");
-    cl::kernel u_to_phi(t_program, "u_to_phi");
     cl::kernel gA_phi_to_gA(t_program, "gA_phi_to_gA");
 
     cl::buffer u_arg = data.u_arg;
