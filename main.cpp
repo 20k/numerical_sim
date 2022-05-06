@@ -2075,9 +2075,6 @@ float get_nonspinning_adm_mass(cl::command_queue& cqueue, int idx, const std::ve
 struct initial_conditions
 {
     std::vector<black_hole<float>> holes;
-    cl::buffer gpu_holes;
-
-    initial_conditions(cl::context& ctx) : gpu_holes(ctx){}
 };
 
 template<typename T>
@@ -2121,68 +2118,15 @@ value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<b
     return BL_s;
 }
 
-cl::buffer construct_black_holes(cl::context& ctx, cl::command_queue& cqueue, const std::vector<black_hole<float>>& holes)
-{
-    cl::buffer gpu_holes(ctx);
-
-    gpu_holes.alloc(sizeof(cl_float) * 10 * holes.size());
-
-    std::vector<cl_float> to_write;
-
-    ///matches the gpu hole struct
-    for(const black_hole<float>& v : holes)
-    {
-        to_write.push_back(v.bare_mass);
-
-        to_write.push_back(v.position.x());
-        to_write.push_back(v.position.y());
-        to_write.push_back(v.position.z());
-
-        to_write.push_back(v.momentum.x());
-        to_write.push_back(v.momentum.y());
-        to_write.push_back(v.momentum.z());
-
-        to_write.push_back(v.angular_momentum.x());
-        to_write.push_back(v.angular_momentum.y());
-        to_write.push_back(v.angular_momentum.z());
-    }
-
-    gpu_holes.write(cqueue, to_write);
-
-    return gpu_holes;
-}
-
 struct laplace_data
 {
     value boundary;
     value rhs;
 };
 
-laplace_data setup_u_laplace(cl::context& clctx, int holes)
+laplace_data setup_u_laplace(cl::context& clctx, const std::vector<black_hole<float>>& cpu_holes)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
-
-    std::vector<black_hole<value>> gpu_holes;
-
-    for(int i=0; i < holes; i++)
-    {
-        std::string sidx = std::to_string(i);
-
-        std::string p = "holes[" + sidx + "].";
-
-        auto suff = [&](const std::string& in)
-        {
-            return p + in;
-        };
-
-        black_hole<value> bhv;
-        bhv.position = {suff("px"), suff("py"), suff("pz")};
-        bhv.momentum = {suff("mx"), suff("my"), suff("mz")};
-        bhv.angular_momentum = {suff("amx"), suff("amy"), suff("amz")};
-        bhv.bare_mass = suff("mass");
-
-        gpu_holes.push_back(bhv);
-    }
 
     metric<value, 3, 3> flat_metric;
 
@@ -2199,9 +2143,9 @@ laplace_data setup_u_laplace(cl::context& clctx, int holes)
     equation_context eqs;
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
-    value BL_s_dyn = calculate_conformal_guess(pos, gpu_holes);
-    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij(pos, gpu_holes);
-    value aij_aIJ_dyn = calculate_aij_aIJ(flat_metric, bcAij_dyn, gpu_holes);
+    value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
+    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij(pos, cpu_holes);
+    value aij_aIJ_dyn = calculate_aij_aIJ(flat_metric, bcAij_dyn, cpu_holes);
 
     ///https://arxiv.org/pdf/1606.04881.pdf 74
     value phi = BL_s_dyn + u_value;
@@ -2219,13 +2163,11 @@ std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& hole
 {
     std::vector<float> ret;
 
-    cl::buffer buf = construct_black_holes(ctx, cqueue, holes);
-
     vec3i dim = {281, 281, 281};
 
-    laplace_data solve = setup_u_laplace(ctx, holes.size());
+    laplace_data solve = setup_u_laplace(ctx, holes);
 
-    cl::buffer u_arg = laplace_solver(ctx, cqueue, buf, solve.rhs, solve.boundary, calculate_scale(get_c_at_max(), dim), dim, err);
+    cl::buffer u_arg = laplace_solver(ctx, cqueue, solve.rhs, solve.boundary, calculate_scale(get_c_at_max(), dim), dim, err);
 
     for(int i=0; i < (int)holes.size(); i++)
     {
@@ -2238,7 +2180,7 @@ std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& hole
 inline
 initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, float scale, std::vector<black_hole<float>> holes)
 {
-    initial_conditions ret(clctx);
+    initial_conditions ret;
 
     float bulge = 1;
 
@@ -2255,7 +2197,6 @@ initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_q
     }
 
     ret.holes = holes;
-    ret.gpu_holes = construct_black_holes(clctx, cqueue, holes);
 
     return ret;
 }
@@ -2331,7 +2272,7 @@ initial_conditions get_adm_initial_conditions(cl::context& clctx, cl::command_qu
 inline
 initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, vec3f centre, float scale)
 {
-    initial_conditions ret(clctx);
+    initial_conditions ret;
 
     #if 0
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
@@ -5203,17 +5144,15 @@ int main()
 
     setup_static_conditions(clctx.ctx, clctx.cqueue, setup_static, holes.holes);
 
-    cl::buffer gpu_holes = holes.gpu_holes;
-
     cl::buffer u_arg(clctx.ctx);
 
-    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &gpu_holes, &holes]()
+    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes]()
     {
         cl::command_queue cqueue(clctx.ctx);
 
-        laplace_data solve = setup_u_laplace(clctx.ctx, holes.holes.size());
+        laplace_data solve = setup_u_laplace(clctx.ctx, holes.holes);
 
-        u_arg = laplace_solver(clctx.ctx, cqueue, gpu_holes, solve.rhs, solve.boundary, scale, size, 0.000001f);
+        u_arg = laplace_solver(clctx.ctx, cqueue, solve.rhs, solve.boundary, scale, size, 0.000001f);
 
         cqueue.block();
     };

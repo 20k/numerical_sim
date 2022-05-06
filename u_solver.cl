@@ -105,14 +105,6 @@ void extract_u_region(__global float* u_in, __global float* u_out, float c_at_ma
     u_out[IDX(ix, iy, iz)] = val;
 }
 
-struct gpu_hole
-{
-    float mass; ///bare mass parameter
-    float px, py, pz; ///position
-    float mx, my, mz; ///adm momentum
-    float amx, amy, amz; ///adm angular momentum
-};
-
 ///https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan2008/Workbook33/33_2_elliptic_pde.pdf
 ///https://arxiv.org/pdf/1205.5111v1.pdf 78
 ///https://arxiv.org/pdf/gr-qc/0007085.pdf 76?
@@ -123,8 +115,7 @@ struct gpu_hole
 ///todo: this, but second order, because memory reads are heavily cached
 __kernel
 void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out,
-                       float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol,
-                       __global struct gpu_hole* holes)
+                       float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol)
 {
     if(*last_still_going == 0)
         return;

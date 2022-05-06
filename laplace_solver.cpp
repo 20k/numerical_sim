@@ -19,7 +19,7 @@ void check_symmetry(const std::string& debug_name, cl::command_queue& cqueue, cl
 }
 
 cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& setup, cl::kernel& iterate,
-                       vec<4, cl_int> base_size, float c_at_max, int scale_factor, cl::buffer& gpu_holes, std::optional<cl::buffer> base, cl_float etol)
+                       vec<4, cl_int> base_size, float c_at_max, int scale_factor, std::optional<cl::buffer> base, cl_float etol)
 {
     vec<4, cl_int> reduced_clsize = ((base_size - 1) / scale_factor) + 1;
 
@@ -83,7 +83,6 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& 
         iterate_u_args.push_back(still_going[which_still_going]);
         iterate_u_args.push_back(still_going[(which_still_going + 1) % 2]);
         iterate_u_args.push_back(etol);
-        iterate_u_args.push_back(gpu_holes);
 
         iterate.set_args(iterate_u_args);
 
@@ -172,7 +171,7 @@ cl::buffer extract_u_region(cl::context& ctx, cl::command_queue& cqueue, cl::ker
 }
 
 cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& setup, cl::kernel& iterate, cl::kernel& extract,
-                     vec3i size, float c_at_max, cl::buffer& gpu_holes, cl_float etol)
+                     vec3i size, float c_at_max, cl_float etol)
 {
     float boundaries[4] = {c_at_max, c_at_max * 4, c_at_max * 8, c_at_max * 16};
 
@@ -185,17 +184,17 @@ cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& se
         float current_boundary = boundaries[i + 1];
         float next_boundary = boundaries[i];
 
-        cl::buffer reduced = solve_for_u(ctx, cqueue, setup, iterate, clsize, current_boundary, 1, gpu_holes, last, etol);
+        cl::buffer reduced = solve_for_u(ctx, cqueue, setup, iterate, clsize, current_boundary, 1, last, etol);
 
         cl::buffer extracted = extract_u_region(ctx, cqueue, extract, reduced, current_boundary, next_boundary, clsize);
 
         last = extracted;
     }
 
-    return solve_for_u(ctx, cqueue, setup, iterate, clsize, c_at_max, 1, gpu_holes, last, etol);
+    return solve_for_u(ctx, cqueue, setup, iterate, clsize, c_at_max, 1, last, etol);
 }
 
-cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, cl::buffer& gpu_holes, const value& rhs, const value& boundary, float scale, vec3i dim, float err)
+cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const value& rhs, const value& boundary, float scale, vec3i dim, float err)
 {
     equation_context ctx;
 
@@ -217,5 +216,5 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, cl::buf
 
     float c_at_max = scale * dim.largest_elem();
 
-    return iterate_u(clctx, cqueue, setup, iterate, extract, dim, c_at_max, gpu_holes, err);
+    return iterate_u(clctx, cqueue, setup, iterate, extract, dim, c_at_max, err);
 }
