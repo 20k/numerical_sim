@@ -111,7 +111,7 @@ struct cpu_mesh
     buffer_set& get_output();
     buffer_set& get_scratch(int which);
 
-    void init(cl::command_queue& cqueue, cl::buffer& u_arg);
+    void init(cl::command_queue& cqueue, cl::buffer& u_arg, cl::buffer& gA, cl::buffer& gB0, cl::buffer& gB1, cl::buffer& gB2);;
 
     ref_counted_buffer get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool);
 

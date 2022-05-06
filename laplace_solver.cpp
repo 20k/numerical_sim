@@ -347,7 +347,7 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
         std::swap(still_going, last_still_going);
     }
 
-    cl::buffer gA_out(ctx);
+    cl::buffer gA_out(clctx);
     gA_out.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
     gA_out.fill(cqueue, cl_float{1});
 
