@@ -219,6 +219,8 @@ void laplace_interior(__global float* buffer_in, __global float* buffer_out, flo
 ///didix + djdjx + dkdkx = 0
 ///so with first order stencil, we get [1, -2, 1] in each direction, which is why we get a central -6
 ///todo: this, but second order, because memory reads are heavily cached
+
+#ifdef LAPLACE_SOLVE_1
 __kernel
 void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out,
                        float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol)
@@ -248,6 +250,61 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
     laplace_interior(u_offset_in, u_offset_out, h2f0, ix, iy, iz, scale, dim, still_going, etol);
 }
+#endif
+
+#ifdef LAPLACE_SOLVE_3
+__kernel
+void iterative_u_solve3(__global float* gB0_in, __global float* gB1_in, __global float* gB2_in,
+                        __global float* gB0_out, __global float* gB1_out, __global float* gB2_out,
+                        float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol)
+{
+    if(*last_still_going == 0)
+        return;
+
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    if(ix < 1 || iy < 1 || iz < 1 || ix >= dim.x - 1 || iy >= dim.y - 1 || iz >= dim.z - 1)
+        return;
+
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
+
+    float ox = offset.x;
+    float oy = offset.y;
+    float oz = offset.z;
+
+    {
+        int bufidx = 0;
+
+        float RHS = U_RHS;
+        float h2f0 = scale * scale * RHS;
+
+        laplace_interior(gB0_in, gB0_out, h2f0_0, ix, iy, iz, scale, dim, still_going, etol);
+    }
+
+    {
+        int bufidx = 1;
+
+        float RHS = U_RHS;
+        float h2f0 = scale * scale * RHS;
+
+        laplace_interior(gB0_in, gB0_out, h2f0_0, ix, iy, iz, scale, dim, still_going, etol);
+    }
+
+    {
+        int bufidx = 2;
+
+        float RHS = U_RHS;
+        float h2f0 = scale * scale * RHS;
+
+        laplace_interior(gB0_in, gB0_out, h2f0_0, ix, iy, iz, scale, dim, still_going, etol);
+    }
+}
+#endif
 
 __kernel
 void check_z_symmetry(__global float* u_in, int4 dim)
