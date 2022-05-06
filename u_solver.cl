@@ -170,6 +170,7 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
     //#define UNCONDITIONAL_MATTER
     #if defined(USE_MATTER) || defined(UNCONDITIONAL_MATTER)
+    ///https://arxiv.org/pdf/1606.04881.pdf (66)
     RHS += -2 * M_PI * pow(bl_s + u, -3.f) * PPW2_P;
     #endif // USE_MATTER
 
