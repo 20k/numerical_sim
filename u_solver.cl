@@ -105,60 +105,22 @@ void extract_u_region(__global float* u_in, __global float* u_out, float c_at_ma
     u_out[IDX(ix, iy, iz)] = val;
 }
 
-///https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan2008/Workbook33/33_2_elliptic_pde.pdf
-///https://arxiv.org/pdf/1205.5111v1.pdf 78
-///https://arxiv.org/pdf/gr-qc/0007085.pdf 76?
-
-///so, the laplacian is the sum of second derivatives in the same direction, ie
-///didix + djdjx + dkdkx = 0
-///so with first order stencil, we get [1, -2, 1] in each direction, which is why we get a central -6
-///todo: this, but second order, because memory reads are heavily cached
-__kernel
-void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out,
-                       float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol)
+void laplace_interior(__global float* buffer_in, __global float* buffer_out, float h2f0, int ix, int iy, int iz, float scale, int4 dim, __global int* still_going, float etol)
 {
-    if(*last_still_going == 0)
-        return;
-
-    int ix = get_global_id(0);
-    int iy = get_global_id(1);
-    int iz = get_global_id(2);
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    /*if(ix == 0 && iy == 0 && iz == 0)
-    {
-        printf("Val %f\n", u_offset_in[IDX(ix, iy, iz)]);
-    }*/
-
-    if(ix < 1 || iy < 1 || iz < 1 || ix >= dim.x - 1 || iy >= dim.y - 1 || iz >= dim.z - 1)
-        return;
-
     bool x_degenerate = ix < 2 || ix >= dim.x - 2;
     bool y_degenerate = iy < 2 || iy >= dim.y - 2;
     bool z_degenerate = iz < 2 || iz >= dim.z - 2;
-
-    float3 offset = transform_position(ix, iy, iz, dim, scale);
-
-    float ox = offset.x;
-    float oy = offset.y;
-    float oz = offset.z;
-
-    float RHS = U_RHS;
-
-    float h2f0 = scale * scale * RHS;
 
     float u0n1 = 0;
 
     if(x_degenerate || y_degenerate || z_degenerate)
     {
-        float uxm1 = u_offset_in[IDX(ix-1, iy, iz)];
-        float uxp1 = u_offset_in[IDX(ix+1, iy, iz)];
-        float uym1 = u_offset_in[IDX(ix, iy-1, iz)];
-        float uyp1 = u_offset_in[IDX(ix, iy+1, iz)];
-        float uzm1 = u_offset_in[IDX(ix, iy, iz-1)];
-        float uzp1 = u_offset_in[IDX(ix, iy, iz+1)];
+        float uxm1 = buffer_in[IDX(ix-1, iy, iz)];
+        float uxp1 = buffer_in[IDX(ix+1, iy, iz)];
+        float uym1 = buffer_in[IDX(ix, iy-1, iz)];
+        float uyp1 = buffer_in[IDX(ix, iy+1, iz)];
+        float uzm1 = buffer_in[IDX(ix, iy, iz-1)];
+        float uzp1 = buffer_in[IDX(ix, iy, iz+1)];
 
         ///so, floating point maths isn't associative
         ///which means that if we're on the other side of a symmetric boundary about the central plane
@@ -189,19 +151,19 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
         float coeff2 = -1.f/12.f;
         float coeff_center = -5.f/2.f;
 
-        float uxm1 = coeff1 * u_offset_in[IDX(ix-1, iy, iz)];
-        float uxp1 = coeff1 * u_offset_in[IDX(ix+1, iy, iz)];
-        float uym1 = coeff1 * u_offset_in[IDX(ix, iy-1, iz)];
-        float uyp1 = coeff1 * u_offset_in[IDX(ix, iy+1, iz)];
-        float uzm1 = coeff1 * u_offset_in[IDX(ix, iy, iz-1)];
-        float uzp1 = coeff1 * u_offset_in[IDX(ix, iy, iz+1)];
+        float uxm1 = coeff1 * buffer_in[IDX(ix-1, iy, iz)];
+        float uxp1 = coeff1 * buffer_in[IDX(ix+1, iy, iz)];
+        float uym1 = coeff1 * buffer_in[IDX(ix, iy-1, iz)];
+        float uyp1 = coeff1 * buffer_in[IDX(ix, iy+1, iz)];
+        float uzm1 = coeff1 * buffer_in[IDX(ix, iy, iz-1)];
+        float uzp1 = coeff1 * buffer_in[IDX(ix, iy, iz+1)];
 
-        float uxm2 = coeff2 * u_offset_in[IDX(ix-2, iy, iz)];
-        float uxp2 = coeff2 * u_offset_in[IDX(ix+2, iy, iz)];
-        float uym2 = coeff2 * u_offset_in[IDX(ix, iy-2, iz)];
-        float uyp2 = coeff2 * u_offset_in[IDX(ix, iy+2, iz)];
-        float uzm2 = coeff2 * u_offset_in[IDX(ix, iy, iz-2)];
-        float uzp2 = coeff2 * u_offset_in[IDX(ix, iy, iz+2)];
+        float uxm2 = coeff2 * buffer_in[IDX(ix-2, iy, iz)];
+        float uxp2 = coeff2 * buffer_in[IDX(ix+2, iy, iz)];
+        float uym2 = coeff2 * buffer_in[IDX(ix, iy-2, iz)];
+        float uyp2 = coeff2 * buffer_in[IDX(ix, iy+2, iz)];
+        float uzm2 = coeff2 * buffer_in[IDX(ix, iy, iz-2)];
+        float uzp2 = coeff2 * buffer_in[IDX(ix, iy, iz+2)];
 
         ///so, floating point maths isn't associative
         ///which means that if we're on the other side of a symmetric boundary about the central plane
@@ -237,31 +199,54 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
         u0n1 = -(1/(3 * coeff_center)) * (Xs1 + Ys1 + Zs1 + Xs2 + Ys2 + Zs2 - h2f0);
     }
 
-    //if(ix == 50 && iy == dim.y/2 && iz == dim.z/2)
-    //    printf("hi %.23f\n", u0n1);
-
-    /*if(ix == (dim.x - 1) / 2 && iy == (dim.y - 1) / 2)
-    {
-        int cz = (dim.z - 1) / 2;
-
-        if(iz == cz - 1 || iz == cz || iz == cz + 1)
-        {
-            printf("Val %.24f %i\n", u0n1, iz);
-        }
-    }*/
-
-    float u = U_BASE;
+    float u = buffer_in[IDX(ix,iy,iz)];
 
     float err = u0n1 - u;
 
     if(fabs(err) > etol)
     {
         atomic_xchg(still_going, 1);
-        //*still_going = 1;
     }
 
-    u_offset_out[IDX(ix, iy, iz)] = mix(u, u0n1, 0.5f);
-    //u_offset_out[IDX(ix, iy, iz)] = u0n1;
+    buffer_out[IDX(ix, iy, iz)] = mix(u, u0n1, 0.5f);
+}
+
+///https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan2008/Workbook33/33_2_elliptic_pde.pdf
+///https://arxiv.org/pdf/1205.5111v1.pdf 78
+///https://arxiv.org/pdf/gr-qc/0007085.pdf 76?
+
+///so, the laplacian is the sum of second derivatives in the same direction, ie
+///didix + djdjx + dkdkx = 0
+///so with first order stencil, we get [1, -2, 1] in each direction, which is why we get a central -6
+///todo: this, but second order, because memory reads are heavily cached
+__kernel
+void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out,
+                       float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol)
+{
+    if(*last_still_going == 0)
+        return;
+
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    if(ix < 1 || iy < 1 || iz < 1 || ix >= dim.x - 1 || iy >= dim.y - 1 || iz >= dim.z - 1)
+        return;
+
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
+
+    float ox = offset.x;
+    float oy = offset.y;
+    float oz = offset.z;
+
+    float RHS = U_RHS;
+
+    float h2f0 = scale * scale * RHS;
+
+    laplace_interior(u_offset_in, u_offset_out, h2f0, ix, iy, iz, scale, dim, still_going, etol);
 }
 
 __kernel
