@@ -16,7 +16,11 @@ struct sandwich_data
 {
     sandwich_data(cl::context& ctx) : u_arg(ctx){}
 
-    value rhs;
+    value gA_phi_rhs;
+    value gB0_rhs;
+    value gB1_rhs;
+    value gB2_rhs;
+    value u_to_phi;
     cl::buffer u_arg;
 };
 

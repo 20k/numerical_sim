@@ -2153,6 +2153,39 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<black_hole<fl
     return solve;
 }
 
+sandwich_data setup_sandwich_laplace(cl::context& clctx, const std::vector<black_hole<float>>& cpu_holes, vec3i dim)
+{
+    cl::buffer u_arg(clctx);
+
+    {
+        laplace_data solve = setup_u_laplace(ctx, holes);
+
+        u_arg = laplace_solver(ctx, cqueue, solve, calculate_scale(get_c_at_max(), dim), dim, 0.0001f);
+    }
+
+    tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+    metric<value, 3, 3> flat_metric;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            flat_metric.idx(i, j) = (i == j) ? 1 : 0;
+        }
+    }
+
+    value u_value = dual_types::apply("buffer_index", "u_in", "ix", "iy", "iz", "dim");
+
+    value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
+
+    value phi = BL_s_dyn + u_value;
+
+    sandwich_data sandwich;
+    sandwich.u_arg = u_arg;
+    sandwich.u_to_phi = phi;
+}
+
 std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& holes, cl::context& ctx, cl::command_queue& cqueue, float err = 0.0001f)
 {
     std::vector<float> ret;

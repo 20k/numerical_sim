@@ -1,3 +1,20 @@
+#include "common.cl"
+
+__kernel
+void u_to_phi(__global float* u_in, __global float* phi_out, int4 dim)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    float phi = U_TO_PHI;
+
+    phi_out[IDX(ix,iy,iz)] = phi;
+}
+
 __kernel
 void calculate_djbj(__global float* gB0_in, __global float* gB1_in, __global float* gB2_in,
                     __global float* djbj0_out, __global float* djbj1_out, __global float* djbj2_out,
@@ -27,7 +44,7 @@ void iterative_sandwich(__global float* gB0_in, __global float* gB1_in, __global
                         __global float* gB0_out, __global float* gB1_out, __global float* gB2_out,
                         __global float* gA_phi_in,
                         __global float* gA_phi_out,
-                        __global float* phi,
+                        __global float* u_arg,
                         __global float* djbj,
                         float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol)
 {

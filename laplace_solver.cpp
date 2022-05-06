@@ -219,10 +219,54 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const l
     return iterate_u(clctx, cqueue, setup, iterate, extract, dim, c_at_max, err);
 }
 
+struct sandwich_state
+{
+    cl::buffer gA_phi;
+    cl::buffer gB0;
+    cl::buffer gB1;
+    cl::buffer gB2;
+
+    sandwich_state(cl::context& ctx, vec3i dim, cl::command_queue& cqueue, cl::buffer& phi) : gA_phi(ctx), gB0(ctx), gB1(ctx), gB2(ctx)
+    {
+        int size = dim.x() * dim.y() * dim.z() * sizeof(cl_float);
+
+        gA_phi.alloc(size);
+        gB0.alloc(size);
+        gB1.alloc(size);
+        gB2.alloc(size);
+    }
+};
+
 sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, const sandwich_data& data, float scale, vec3i dim, float err)
 {
     sandwich_result result(clctx);
 
+    equation_context ctx;
+
+    ctx.add("D_gB0_RHS", data.gB0_rhs);
+    ctx.add("D_gB1_RHS", data.gB1_rhs);
+    ctx.add("D_gB2_RHS", data.gB2_rhs);
+    ctx.add("D_gA_PHI_RHS", data.gA_phi_rhs);
+    ctx.add("U_TO_PHI", data.u_to_phi);
+
+    std::string local_build_str = "-I ./ O3 -cl-std=CL2.0 -cl-mad-enable -cl-finite-math-only ";
+
+    ctx.build(local_build_str, "UNUSEDTHIN");
+
+    cl::program t_program(clctx, "thin_sandwich.cl");
+    t_program.build(clctx, local_build_str);
+
+    cl::kernel calculate_djbj(t_program, "calculate_djbj");
+    cl::kernel iterate(t_program, "iterative_sandwich");
+
+    cl::buffer u_arg = data.u_arg;
+
+    cl::buffer djbj(clctx);
+    djbj.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+    djbj.set_to_zero(cqueue);
+
+    sandwich_state args_in(clctx, dim);
+    sandwich_state args_out(clctx, dim);
 
     return result;
 }
