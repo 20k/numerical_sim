@@ -153,12 +153,12 @@ void iterative_u_solve(U_ARGS_IN, U_ARGS_OUT,
 
     if(x_degenerate || y_degenerate || z_degenerate)
     {
-        float uxm1 = u_offset_in[IDX(ix-1, iy, iz)];
-        float uxp1 = u_offset_in[IDX(ix+1, iy, iz)];
-        float uym1 = u_offset_in[IDX(ix, iy-1, iz)];
-        float uyp1 = u_offset_in[IDX(ix, iy+1, iz)];
-        float uzm1 = u_offset_in[IDX(ix, iy, iz-1)];
-        float uzp1 = u_offset_in[IDX(ix, iy, iz+1)];
+        float uxm1 = U_BASE_BUFFER[IDX(ix-1, iy, iz)];
+        float uxp1 = U_BASE_BUFFER[IDX(ix+1, iy, iz)];
+        float uym1 = U_BASE_BUFFER[IDX(ix, iy-1, iz)];
+        float uyp1 = U_BASE_BUFFER[IDX(ix, iy+1, iz)];
+        float uzm1 = U_BASE_BUFFER[IDX(ix, iy, iz-1)];
+        float uzp1 = U_BASE_BUFFER[IDX(ix, iy, iz+1)];
 
         ///so, floating point maths isn't associative
         ///which means that if we're on the other side of a symmetric boundary about the central plane
@@ -189,19 +189,19 @@ void iterative_u_solve(U_ARGS_IN, U_ARGS_OUT,
         float coeff2 = -1.f/12.f;
         float coeff_center = -5.f/2.f;
 
-        float uxm1 = coeff1 * u_offset_in[IDX(ix-1, iy, iz)];
-        float uxp1 = coeff1 * u_offset_in[IDX(ix+1, iy, iz)];
-        float uym1 = coeff1 * u_offset_in[IDX(ix, iy-1, iz)];
-        float uyp1 = coeff1 * u_offset_in[IDX(ix, iy+1, iz)];
-        float uzm1 = coeff1 * u_offset_in[IDX(ix, iy, iz-1)];
-        float uzp1 = coeff1 * u_offset_in[IDX(ix, iy, iz+1)];
+        float uxm1 = coeff1 * U_BASE_BUFFER[IDX(ix-1, iy, iz)];
+        float uxp1 = coeff1 * U_BASE_BUFFER[IDX(ix+1, iy, iz)];
+        float uym1 = coeff1 * U_BASE_BUFFER[IDX(ix, iy-1, iz)];
+        float uyp1 = coeff1 * U_BASE_BUFFER[IDX(ix, iy+1, iz)];
+        float uzm1 = coeff1 * U_BASE_BUFFER[IDX(ix, iy, iz-1)];
+        float uzp1 = coeff1 * U_BASE_BUFFER[IDX(ix, iy, iz+1)];
 
-        float uxm2 = coeff2 * u_offset_in[IDX(ix-2, iy, iz)];
-        float uxp2 = coeff2 * u_offset_in[IDX(ix+2, iy, iz)];
-        float uym2 = coeff2 * u_offset_in[IDX(ix, iy-2, iz)];
-        float uyp2 = coeff2 * u_offset_in[IDX(ix, iy+2, iz)];
-        float uzm2 = coeff2 * u_offset_in[IDX(ix, iy, iz-2)];
-        float uzp2 = coeff2 * u_offset_in[IDX(ix, iy, iz+2)];
+        float uxm2 = coeff2 * U_BASE_BUFFER[IDX(ix-2, iy, iz)];
+        float uxp2 = coeff2 * U_BASE_BUFFER[IDX(ix+2, iy, iz)];
+        float uym2 = coeff2 * U_BASE_BUFFER[IDX(ix, iy-2, iz)];
+        float uyp2 = coeff2 * U_BASE_BUFFER[IDX(ix, iy+2, iz)];
+        float uzm2 = coeff2 * U_BASE_BUFFER[IDX(ix, iy, iz-2)];
+        float uzp2 = coeff2 * U_BASE_BUFFER[IDX(ix, iy, iz+2)];
 
         ///so, floating point maths isn't associative
         ///which means that if we're on the other side of a symmetric boundary about the central plane
@@ -250,7 +250,7 @@ void iterative_u_solve(U_ARGS_IN, U_ARGS_OUT,
         }
     }*/
 
-    float u = U_BASE;
+    float u = U_BASE_BUFFER[IDX(ix,iy,iz)];;
 
     float err = u0n1 - u;
 
@@ -262,7 +262,7 @@ void iterative_u_solve(U_ARGS_IN, U_ARGS_OUT,
 
     float to_store = mix(u, u0n1, 0.5f);
 
-    U_STORE;
+    U_STORE_BUFFER[IDX(ix,iy,iz)] = to_store;
 
     //u_offset_out[IDX(ix, iy, iz)] = ;
     //u_offset_out[IDX(ix, iy, iz)] = u0n1;

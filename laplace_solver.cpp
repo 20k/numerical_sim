@@ -213,8 +213,8 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const l
 {
     equation_context ctx;
 
-    ctx.add("U_BASE", data.fetcher);
-    ctx.add("U_STORE", data.storer);
+    ctx.add("U_BASE_BUFFER", data.buffer_in);
+    ctx.add("U_STORE_BUFFER", data.buffer_out);
     ctx.add("U_RHS", data.rhs);
     ctx.add("U_BOUNDARY", data.boundary);
 

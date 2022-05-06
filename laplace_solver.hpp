@@ -8,8 +8,8 @@ struct laplace_data
 {
     value boundary;
     value rhs;
-    value fetcher;
-    value storer;
+    value buffer_in;
+    value buffer_out;
 
     std::vector<std::pair<std::string, std::string>> args_in;
     std::vector<std::pair<std::string, std::string>> args_out;
