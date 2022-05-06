@@ -125,6 +125,8 @@ void iterative_sandwich(__global float* gB0_in, __global float* gB1_in, __global
     gB1_out[IDX(ix,iy,iz)] = max(gB1_out[IDX(ix,iy,iz)], 0.f);
     gB2_out[IDX(ix,iy,iz)] = max(gB2_out[IDX(ix,iy,iz)], 0.f);
 
+    gA_phi_out[IDX(ix,iy,iz)] = clamp(gA_phi_out[IDX(ix,iy,iz)], 0.f, phi[IDX(ix,iy,iz)]);
+
     /*gB0_out[IDX(ix,iy,iz)] = 0;
     gB1_out[IDX(ix,iy,iz)] = 0;
     gB2_out[IDX(ix,iy,iz)] = 0;
