@@ -2153,7 +2153,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<black_hole<fl
     return solve;
 }
 
-sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cqueue, const std::vector<black_hole<float>>& cpu_holes, float scale, vec3i dim)
+sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cqueue, const std::vector<black_hole<float>>& cpu_holes, float scale, vec3i dim, cl::buffer& order_ptr)
 {
     cl::buffer u_arg(clctx);
 
@@ -2247,7 +2247,7 @@ sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cq
     gA_phi_rhs = gA_phi * ((7.f/8.f) * pow(phi, -8.f) * aij_aIJ); ///todo: matter terms
 
     sandwich.gA_phi_rhs = gA_phi_rhs;
-
+    sandwich.order_ptr = order_ptr;
 
     sandwich_result result = sandwich_solver(clctx, cqueue, sandwich, scale, dim, 0.0001f);
 
@@ -5248,13 +5248,15 @@ int main()
 
     evolution_points evolve_points = generate_evolution_points(clctx.ctx, clctx.cqueue, scale, size);
 
+    cl::buffer order_ptr = evolve_points.order;
+
     sandwich_result sandwich(clctx.ctx);
 
-    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes, &sandwich]()
+    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes, &sandwich, &order_ptr]()
     {
         cl::command_queue cqueue(clctx.ctx);
 
-        sandwich = setup_sandwich_laplace(clctx.ctx, clctx.cqueue, holes.holes, scale, size);
+        sandwich = setup_sandwich_laplace(clctx.ctx, clctx.cqueue, holes.holes, scale, size, order_ptr);
 
         laplace_data solve = setup_u_laplace(clctx.ctx, holes.holes);
         u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.000001f);

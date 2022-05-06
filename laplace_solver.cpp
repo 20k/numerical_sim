@@ -317,6 +317,7 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
         djbj_args.push_back(scale);
         djbj_args.push_back(clsize);
         djbj_args.push_back(still_going);
+        djbj_args.push_back(data.order_ptr);
 
         calculate_djbj.set_args(djbj_args);
 
@@ -338,6 +339,7 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
         sandwich_args.push_back(last_still_going);
         sandwich_args.push_back(still_going);
         sandwich_args.push_back(err);
+        sandwich_args.push_back(data.order_ptr);
 
         iterate.set_args(sandwich_args);
 

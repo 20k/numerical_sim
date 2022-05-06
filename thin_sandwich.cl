@@ -45,7 +45,7 @@ void gA_phi_to_gA(__global float* gA_phi, __global float* phi, __global float* g
 __kernel
 void calculate_djbj(__global float* gB0_in, __global float* gB1_in, __global float* gB2_in,
                     __global float* djbj_out,
-                    float scale, int4 dim, __constant int* last_still_going)
+                    float scale, int4 dim, __constant int* last_still_going, __global ushort* order_ptr)
 {
     if(*last_still_going == 0)
         return;
@@ -63,6 +63,8 @@ void calculate_djbj(__global float* gB0_in, __global float* gB1_in, __global flo
     float oy = offset.y;
     float oz = offset.z;
 
+    int order = order_ptr[IDX(ix,iy,iz)];
+
     float v0 = BDJBJ;
 
     djbj_out[IDX(ix,iy,iz)] = v0;
@@ -75,7 +77,8 @@ void iterative_sandwich(__global float* gB0_in, __global float* gB1_in, __global
                         __global float* gA_phi_out,
                         __global float* phi,
                         __global float* djbj,
-                        float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol)
+                        float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol,
+                        __global ushort* order_ptr)
 {
     if(*last_still_going == 0)
         return;
@@ -95,6 +98,8 @@ void iterative_sandwich(__global float* gB0_in, __global float* gB1_in, __global
     float ox = offset.x;
     float oy = offset.y;
     float oz = offset.z;
+
+    int order = order_ptr[IDX(ix,iy,iz)];
 
     float gB0_RHS = B_gB0_RHS;
     float gB1_RHS = B_gB1_RHS;

@@ -8,6 +8,7 @@
 
 #include "transform_position.cl"
 #include "common.cl"
+#include "evolve_points.cl"
 
 ///because we need to cutoff slightly before the real edge due to various factors
 #define RENDERING_CUTOFF_MULT 0.95f

@@ -14,7 +14,7 @@ cl::buffer laplace_solver(cl::context& clcltx, cl::command_queue& cqueue, const 
 
 struct sandwich_data
 {
-    sandwich_data(cl::context& ctx) : u_arg(ctx){}
+    sandwich_data(cl::context& ctx) : u_arg(ctx), order_ptr(ctx){}
 
     value gA_phi_rhs;
     value gB0_rhs;
@@ -25,6 +25,7 @@ struct sandwich_data
     value djbj;
 
     cl::buffer u_arg;
+    cl::buffer order_ptr;
 };
 
 struct sandwich_result
