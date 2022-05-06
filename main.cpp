@@ -2658,7 +2658,7 @@ void create_u_program(cl::context& clctx, int holes, const std::string& u_argume
         }
     }
 
-    value u_value = bidx("u_offset_in", false, false);
+    value u_value = dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim");
 
     equation_context eqs;
 
