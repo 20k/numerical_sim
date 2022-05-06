@@ -10,6 +10,9 @@ struct laplace_data
     value rhs;
     value fetcher;
     value storer;
+
+    std::vector<std::pair<std::string, std::string>> args_in;
+    std::vector<std::pair<std::string, std::string>> args_out;
 };
 
 cl::buffer laplace_solver(cl::context& clcltx, cl::command_queue& cqueue, const laplace_data& data, float scale, vec3i dim, float err = 0.0001f);

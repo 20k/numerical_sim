@@ -67,3 +67,5 @@ float buffer_index(__global const float* const buffer, int x, int y, int z, int4
 {
     return buffer[z * dim.x * dim.y + y * dim.x + x];
 }
+
+#define MAKE_ARG(type, name) __global type* name

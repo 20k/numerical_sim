@@ -2153,6 +2153,9 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<black_hole<fl
     solve.fetcher = dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim");
     solve.storer = "u_offset_out[IDX(ix,iy,iz)]=to_store";
 
+    solve.args_in.push_back({"float", "u_offset_in"});
+    solve.args_out.push_back({"float", "u_offset_out"});
+
     return solve;
 }
 

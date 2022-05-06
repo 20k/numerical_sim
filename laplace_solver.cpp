@@ -194,6 +194,21 @@ cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& se
     return solve_for_u(ctx, cqueue, setup, iterate, clsize, c_at_max, 1, last, etol);
 }
 
+std::string make_args(const std::vector<std::pair<std::string, std::string>>& vals)
+{
+    std::string args_str = "";
+
+    for(auto& [type, name] : vals)
+    {
+        args_str += "MAKE_ARG(" + type + "," + name + "),";
+    }
+
+    if(args_str.size() > 0)
+        args_str.pop_back();
+
+    return args_str;
+}
+
 cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const laplace_data& data, float scale, vec3i dim, float err)
 {
     equation_context ctx;
@@ -202,6 +217,12 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const l
     ctx.add("U_STORE", data.storer);
     ctx.add("U_RHS", data.rhs);
     ctx.add("U_BOUNDARY", data.boundary);
+
+    std::string args_1 = make_args(data.args_in);
+    std::string args_2 = make_args(data.args_out);
+
+    ctx.add("U_ARGS_IN", args_1);
+    ctx.add("U_ARGS_OUT", args_2);
 
     std::string local_build_str = "-I ./ -O3 -cl-std=CL2.0 -cl-mad-enable -cl-finite-math-only ";
 
