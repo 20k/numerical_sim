@@ -256,7 +256,7 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
     ctx.add("D_gA_PHI_RHS", data.gA_phi_rhs);
     ctx.add("U_TO_PHI", data.u_to_phi);
 
-    ctx.add("DJBJ0", data.djbj);
+    ctx.add("DJBJ", data.djbj);
 
     std::string local_build_str = "-I ./ O3 -cl-std=CL2.0 -cl-mad-enable -cl-finite-math-only ";
 
@@ -288,12 +288,18 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
         cqueue.exec(u_to_phi, {dim.x(), dim.y(), dim.z()}, {8, 8, 1}, {});
     }
 
-    cl::buffer djbj{clctx};
-    djbj.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
-    djbj.set_to_zero(cqueue);
-
     sandwich_state args_in(clctx, dim, cqueue, phi);
     sandwich_state args_out(clctx, dim, cqueue, phi);
+
+    int iterations = 1000;
+
+    for(int i=0; i < iterations; i++)
+    {
+        cl::buffer djbj{clctx};
+        djbj.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+        djbj.set_to_zero(cqueue);
+
+    }
 
     return result;
 }
