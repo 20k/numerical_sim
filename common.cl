@@ -1,3 +1,6 @@
+#ifndef COMMON_CL_INCLUDED
+#define COMMON_CL_INCLUDED
+
 #define IDX(i, j, k) ((k) * dim.x * dim.y + (j) * dim.x + (i))
 #define IDXD(i, j, k, d) ((k) * (d.x) * (d.y) + (j) * (d.x) + (i))
 
@@ -67,3 +70,5 @@ float buffer_index(__global const float* const buffer, int x, int y, int z, int4
 {
     return buffer[z * dim.x * dim.y + y * dim.x + x];
 }
+
+#endif // COMMON_CL_INCLUDED
