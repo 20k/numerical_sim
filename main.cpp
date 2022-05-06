@@ -2153,14 +2153,14 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<black_hole<fl
     return solve;
 }
 
-sandwich_data setup_sandwich_laplace(cl::context& clctx, const std::vector<black_hole<float>>& cpu_holes, vec3i dim)
+sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cqueue, const std::vector<black_hole<float>>& cpu_holes, float scale, vec3i dim)
 {
     cl::buffer u_arg(clctx);
 
     {
-        laplace_data solve = setup_u_laplace(ctx, holes);
+        laplace_data solve = setup_u_laplace(clctx, cpu_holes);
 
-        u_arg = laplace_solver(ctx, cqueue, solve, calculate_scale(get_c_at_max(), dim), dim, 0.0001f);
+        u_arg = laplace_solver(clctx, cqueue, solve, calculate_scale(get_c_at_max(), dim), dim, 0.0001f);
     }
 
     tensor<value, 3> pos = {"ox", "oy", "oz"};
@@ -2179,11 +2179,79 @@ sandwich_data setup_sandwich_laplace(cl::context& clctx, const std::vector<black
 
     value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
 
-    value phi = BL_s_dyn + u_value;
+    value phi_dyn = BL_s_dyn + u_value;
 
-    sandwich_data sandwich;
+    tensor<value, 3> gB;
+
+    gB.idx(0) = bidx("gB0_in", false, false);
+    gB.idx(1) = bidx("gB1_in", false, false);
+    gB.idx(2) = bidx("gB2_in", false, false);
+
+    equation_context ctx;
+
+    value djbj = 0;
+
+    for(int j=0; j < 3; j++)
+    {
+        djbj += diff1(ctx, gB.idx(j), j);
+    }
+
+    sandwich_data sandwich(clctx);
     sandwich.u_arg = u_arg;
-    sandwich.u_to_phi = phi;
+    sandwich.u_to_phi = phi_dyn;
+
+    sandwich.djbj = djbj;
+
+    tensor<value, 3> djbj_prec;
+
+    for(int i=0; i < 3; i++)
+    {
+        djbj_prec.idx(i) = bidx("djbj" + std::to_string(i), false, false);
+    }
+
+    value phi = bidx("phi", false, false);
+
+    value gA_phi = bidx("gA_phi_in", false, false);
+
+    value gA = gA / phi;
+
+    tensor<value, 3, 3> bcAij = calculate_bcAij(pos, cpu_holes);
+    ///raised
+    tensor<value, 3, 3> ibcAij = raise_both(bcAij, flat_metric, flat_metric.invert());
+
+    value aij_aIJ = calculate_aij_aIJ(flat_metric, bcAij, cpu_holes);
+
+    tensor<value, 3> gB_rhs;
+
+    for(int i=0; i < 3; i++)
+    {
+        value p1 = -(1.f/3.f) * diff1(ctx, djbj, i);
+
+        value p2 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            p2 += 2 * ibcAij.idx(i, j) * diff1(ctx, gA * pow(phi, -6.f), j);
+        }
+
+        ///value p3 = matter
+        gB_rhs.idx(i) = p1 + p2;
+    }
+
+    sandwich.gB0_rhs = gB_rhs.idx(0);
+    sandwich.gB1_rhs = gB_rhs.idx(1);
+    sandwich.gB2_rhs = gB_rhs.idx(2);
+
+    value gA_phi_rhs = 0;
+
+    gA_phi_rhs = gA_phi * ((7.f/8.f) * pow(phi, -8.f) * aij_aIJ); ///todo: matter terms
+
+    sandwich.gA_phi_rhs = gA_phi_rhs;
+
+
+    sandwich_result result = sandwich_solver(clctx, cqueue, sandwich, scale, dim, 0.0001f);
+
+    return result;
 }
 
 std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& holes, cl::context& ctx, cl::command_queue& cqueue, float err = 0.0001f)

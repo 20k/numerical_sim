@@ -17,7 +17,7 @@ void u_to_phi(__global float* u_in, __global float* phi_out, int4 dim)
 
 __kernel
 void calculate_djbj(__global float* gB0_in, __global float* gB1_in, __global float* gB2_in,
-                    __global float* djbj0_out, __global float* djbj1_out, __global float* djbj2_out,
+                    __global float* djbj_out,
                     float scale, int4 dim, __constant int* last_still_going)
 {
     if(*last_still_going == 0)
@@ -30,13 +30,9 @@ void calculate_djbj(__global float* gB0_in, __global float* gB1_in, __global flo
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    float v0 = DJBJ0;
-    float v1 = DJBJ1;
-    float v2 = DJBJ2;
+    float v0 = DJBJ;
 
-    djbj0_out[IDX(ix,iy,iz)] = v0;
-    djbj1_out[IDX(ix,iy,iz)] = v1;
-    djbj2_out[IDX(ix,iy,iz)] = v2;
+    djbj_out[IDX(ix,iy,iz)] = v0;
 }
 
 __kernel
@@ -44,8 +40,10 @@ void iterative_sandwich(__global float* gB0_in, __global float* gB1_in, __global
                         __global float* gB0_out, __global float* gB1_out, __global float* gB2_out,
                         __global float* gA_phi_in,
                         __global float* gA_phi_out,
-                        __global float* u_arg,
-                        __global float* djbj,
+                        __global float* phi,
+                        __global float* djbj0,
+                        __global float* djbj1,
+                        __global float* djbj2,
                         float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol)
 {
     if(*last_still_going == 0)

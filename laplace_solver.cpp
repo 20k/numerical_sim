@@ -234,6 +234,13 @@ struct sandwich_state
         gB0.alloc(size);
         gB1.alloc(size);
         gB2.alloc(size);
+
+        gB0.set_to_zero(cqueue);
+        gB1.set_to_zero(cqueue);
+        gB2.set_to_zero(cqueue);
+
+        ///aka, gA = 1
+        cl::copy(cqueue, phi, gA_phi);
     }
 };
 
@@ -249,6 +256,8 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
     ctx.add("D_gA_PHI_RHS", data.gA_phi_rhs);
     ctx.add("U_TO_PHI", data.u_to_phi);
 
+    ctx.add("DJBJ0", data.djbj);
+
     std::string local_build_str = "-I ./ O3 -cl-std=CL2.0 -cl-mad-enable -cl-finite-math-only ";
 
     ctx.build(local_build_str, "UNUSEDTHIN");
@@ -261,12 +270,16 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
 
     cl::buffer u_arg = data.u_arg;
 
-    cl::buffer djbj(clctx);
+    cl::buffer phi(clctx);
+    phi.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+    phi.fill(cqueue, cl_float{1.f});
+
+    cl::buffer djbj{clctx};
     djbj.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
     djbj.set_to_zero(cqueue);
 
-    sandwich_state args_in(clctx, dim);
-    sandwich_state args_out(clctx, dim);
+    sandwich_state args_in(clctx, dim, cqueue, phi);
+    sandwich_state args_out(clctx, dim, cqueue, phi);
 
     return result;
 }

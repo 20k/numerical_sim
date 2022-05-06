@@ -21,6 +21,9 @@ struct sandwich_data
     value gB1_rhs;
     value gB2_rhs;
     value u_to_phi;
+
+    value djbj;
+
     cl::buffer u_arg;
 };
 
