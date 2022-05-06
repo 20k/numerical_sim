@@ -71,4 +71,50 @@ float buffer_index(__global const float* const buffer, int x, int y, int z, int4
     return buffer[z * dim.x * dim.y + y * dim.x + x];
 }
 
+float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim)
+{
+    float edge_half = scale * ((dim.x - 2)/2.f);
+
+    //float sponge_r0 = scale * ((dim.x/2) - 48);
+    float sponge_r0 = scale * (((dim.x - 1)/2.f) - 48);
+    //float sponge_r0 = scale * ((dim.x/2) - 32);
+    //float sponge_r0 = edge_half/2;
+    float sponge_r1 = scale * (((dim.x - 1)/2.f) - 6);
+
+    float3 fdim = ((float3)(dim.x, dim.y, dim.z) - 1)/2.f;
+
+    float3 diff = ((float3){x, y, z} - fdim) * scale;
+
+    #ifdef MANHATTEN_SPONGE
+    float r = max(fabs(diff.x), max(fabs(diff.y), fabs(diff.z)));
+    #else
+    float r = fast_length(diff);
+    #endif // MANHATTEN_SPONGE
+
+    if(r <= sponge_r0)
+        return 0.f;
+
+    if(r >= sponge_r1)
+        return 1.f;
+
+    r = clamp(r, sponge_r0, sponge_r1);
+
+    //return (r - sponge_r0) / (sponge_r1 - sponge_r0);
+
+    float sigma = (sponge_r1 - sponge_r0) / 3;
+    return clamp(native_exp(-pow((r - sponge_r1) / sigma, 2)), 0.f, 1.f);
+}
+
+enum derivative_bitflags
+{
+    D_LOW = 1,
+    D_FULL = 2,
+    D_ONLY_PX = 4,
+    D_ONLY_PY = 8,
+    D_ONLY_PZ = 16,
+    D_BOTH_PX = 32,
+    D_BOTH_PY = 64,
+    D_BOTH_PZ = 128,
+};
+
 #endif // COMMON_CL_INCLUDED

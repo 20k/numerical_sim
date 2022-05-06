@@ -5241,6 +5241,13 @@ int main()
 
     cl::buffer u_arg(clctx.ctx);
 
+    cl::program evolve_prog(clctx.ctx, "evolve_points.cl");
+    evolve_prog.build(clctx.ctx, argument_string + "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ");
+
+    clctx.ctx.register_program(evolve_prog);
+
+    evolution_points evolve_points = generate_evolution_points(clctx.ctx, clctx.cqueue, scale, size);
+
     sandwich_result sandwich(clctx.ctx);
 
     auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes, &sandwich]()
@@ -5448,7 +5455,7 @@ int main()
     base_settings.calculate_momentum_constraint = true;
     #endif // CALCULATE_MOMENTUM_CONSTRAINT
 
-    cpu_mesh base_mesh(clctx.ctx, clctx.cqueue, {0,0,0}, size, base_settings);
+    cpu_mesh base_mesh(clctx.ctx, clctx.cqueue, {0,0,0}, size, base_settings, evolve_points);
 
     cl_float time_elapsed_s = 0;
 

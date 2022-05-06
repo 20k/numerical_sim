@@ -63,6 +63,8 @@ struct evolution_points
     evolution_points(cl::context& ctx) : border_points(ctx), all_points(ctx), order(ctx){}
 };
 
+evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size);
+
 struct thin_intermediates_pool
 {
     std::vector<ref_counted_buffer> pool;
@@ -103,7 +105,7 @@ struct cpu_mesh
     static constexpr float dissipate_high = 0.25;
     static constexpr float dissipate_gauge = 0.25;
 
-    cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett);
+    cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points);
 
     void flip();
 

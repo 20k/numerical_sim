@@ -143,7 +143,6 @@ std::pair<cl::buffer, int> extract_buffer(cl::context& ctx, cl::command_queue& c
     return {shrunk_points.as_device_read_only(), cpu_count_1};
 }
 
-inline
 evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
 {
     cl::buffer points_1(ctx);
@@ -248,7 +247,7 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::manage
     return next;
 }
 
-cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett) :
+cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points) :
         data{buffer_set(ctx, _dim, _sett.use_matter), buffer_set(ctx, _dim, _sett.use_matter)}, scratch{ctx, _dim, _sett.use_matter}, points_set{ctx}, sponge_positions{ctx},
         momentum_constraint{ctx, ctx, ctx}
 {
@@ -258,7 +257,7 @@ cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, v
 
     scale = calculate_scale(get_c_at_max(), dim);
 
-    points_set = generate_evolution_points(ctx, cqueue, scale, dim);
+    points_set = points;
     std::tie(sponge_positions, sponge_positions_count) = generate_sponge_points(ctx, cqueue, scale, dim);
 
     for(auto& i : momentum_constraint)
