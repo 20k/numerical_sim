@@ -218,3 +218,11 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const l
 
     return iterate_u(clctx, cqueue, setup, iterate, extract, dim, c_at_max, err);
 }
+
+sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, const sandwich_data& data, float scale, vec3i dim, float err)
+{
+    sandwich_result result(clctx);
+
+
+    return result;
+}
