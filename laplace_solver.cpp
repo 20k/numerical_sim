@@ -268,6 +268,7 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
     cl::kernel calculate_djbj(t_program, "calculate_djbj");
     cl::kernel iterate(t_program, "iterative_sandwich");
     cl::kernel u_to_phi(t_program, "u_to_phi");
+    cl::kernel gA_phi_to_gA(t_program, "gA_phi_to_gA");
 
     cl::buffer u_arg = data.u_arg;
 
@@ -291,15 +292,81 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
     sandwich_state args_in(clctx, dim, cqueue, phi);
     sandwich_state args_out(clctx, dim, cqueue, phi);
 
+    cl::buffer djbj{clctx};
+    djbj.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+    djbj.set_to_zero(cqueue);
+
+    cl::buffer still_going(clctx);
+    still_going.alloc(sizeof(cl_int));
+    still_going.fill(cqueue, cl_int{1});
+
+    cl::buffer last_still_going(clctx);
+    last_still_going.alloc(sizeof(cl_int));
+    last_still_going.fill(cqueue, cl_int{1});
+
     int iterations = 1000;
 
     for(int i=0; i < iterations; i++)
     {
-        cl::buffer djbj{clctx};
-        djbj.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
-        djbj.set_to_zero(cqueue);
+        cl::args djbj_args;
+        djbj_args.push_back(args_in.gB0);
+        djbj_args.push_back(args_in.gB1);
+        djbj_args.push_back(args_in.gB2);
+        djbj_args.push_back(djbj);
+        djbj_args.push_back(scale);
+        djbj_args.push_back(clsize);
+        djbj_args.push_back(still_going);
 
+        calculate_djbj.set_args(djbj_args);
+
+        cqueue.exec(calculate_djbj, {dim.x(), dim.y(), dim.z()}, {8, 8, 1}, {});
+
+        cl::args sandwich_args;
+        sandwich_args.push_back(args_in.gB0);
+        sandwich_args.push_back(args_in.gB1);
+        sandwich_args.push_back(args_in.gB2);
+        sandwich_args.push_back(args_out.gB0);
+        sandwich_args.push_back(args_out.gB1);
+        sandwich_args.push_back(args_out.gB2);
+        sandwich_args.push_back(args_in.gA_phi);
+        sandwich_args.push_back(args_out.gA_phi);
+        sandwich_args.push_back(phi);
+        sandwich_args.push_back(djbj);
+        sandwich_args.push_back(scale);
+        sandwich_args.push_back(clsize);
+        sandwich_args.push_back(last_still_going);
+        sandwich_args.push_back(still_going);
+        sandwich_args.push_back(err);
+
+        iterate.set_args(sandwich_args);
+
+        cqueue.exec(iterate, {dim.x(), dim.y(), dim.z()}, {8, 8, 1}, {});
+
+        std::swap(args_out, args_in);
+
+        std::swap(still_going, last_still_going);
     }
+
+    cl::buffer gA_out(ctx);
+    gA_out.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+    gA_out.fill(cqueue, cl_float{1});
+
+    {
+        cl::args gA_args;
+        gA_args.push_back(args_in.gA_phi);
+        gA_args.push_back(phi);
+        gA_args.push_back(gA_out);
+        gA_args.push_back(clsize);
+
+        gA_phi_to_gA.set_args(gA_args);
+
+        cqueue.exec(gA_phi_to_gA, {dim.x(), dim.y(), dim.z()}, {8, 8, 1}, {});
+    }
+
+    result.gA = gA_out;
+    result.gB0 = args_in.gB0;
+    result.gB1 = args_in.gB1;
+    result.gB2 = args_in.gB2;
 
     return result;
 }
