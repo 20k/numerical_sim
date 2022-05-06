@@ -5247,11 +5247,10 @@ int main()
     {
         cl::command_queue cqueue(clctx.ctx);
 
-        laplace_data solve = setup_u_laplace(clctx.ctx, holes.holes);
-
-        u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.000001f);
-
         sandwich = setup_sandwich_laplace(clctx.ctx, cqueue, holes.holes, scale, size);
+
+        laplace_data solve = setup_u_laplace(clctx.ctx, holes.holes);
+        u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.000001f);
 
         cqueue.block();
     };

@@ -1,4 +1,5 @@
 #include "common.cl"
+#include "generic_laplace.cl"
 
 __kernel
 void u_to_phi(__global float* u_in, __global float* phi_out, int4 dim)
