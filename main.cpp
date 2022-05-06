@@ -2674,6 +2674,7 @@ void create_u_program(cl::context& clctx, int holes, const std::string& u_argume
 
     eqs.add("U_BASE", u_value);
     eqs.add("U_RHS", U_RHS);
+    eqs.add("U_BOUNDARY", 1);
 
     std::string local_build_str = u_argument_string;
 

@@ -12,7 +12,7 @@ void setup_u_offset(__global float* u_offset,
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    u_offset[IDX(ix, iy, iz)] = 1;
+    u_offset[IDX(ix, iy, iz)] = U_BOUNDARY;
 }
 
 float round_away_from(float in, float val)
