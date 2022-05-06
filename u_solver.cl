@@ -70,7 +70,7 @@ void upscale_u(__global float* u_in, __global float* u_out, int4 in_dim, int4 ou
 
     ///todo: remove this
     if(ix == 0 || iy == 0 || iz == 0 || ix == out_dim.x - 1 || iy == out_dim.y - 1 || iz == out_dim.z - 1)
-        val = 1;
+        val = U_BOUNDARY;
 
     u_out[IDXD(ix, iy, iz, out_dim)] = val;
 }
