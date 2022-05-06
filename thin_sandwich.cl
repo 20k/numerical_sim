@@ -111,4 +111,10 @@ void iterative_sandwich(__global float* gB0_in, __global float* gB1_in, __global
     laplace_interior(gB1_in, gB1_out, scale * scale * gB1_RHS, ix, iy, iz, scale, dim, still_going, etol);
     laplace_interior(gB2_in, gB2_out, scale * scale * gB2_RHS, ix, iy, iz, scale, dim, still_going, etol);
     laplace_interior(gA_phi_in, gA_phi_out, scale * scale * gA_PHI_RHS, ix, iy, iz, scale, dim, still_going, etol);
+
+    /*gB0_out[IDX(ix,iy,iz)] = 0;
+    gB1_out[IDX(ix,iy,iz)] = 0;
+    gB2_out[IDX(ix,iy,iz)] = 0;
+
+    gA_phi_out[IDX(ix,iy,iz)] = 1 / pow(phi[IDX(ix,iy,iz)], 2);*/
 }

@@ -2189,25 +2189,20 @@ sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cq
 
     equation_context ctx;
 
-    value djbj = 0;
+    value djbj_precalculate = 0;
 
     for(int j=0; j < 3; j++)
     {
-        djbj += diff1(ctx, gB.idx(j), j);
+        djbj_precalculate += diff1(ctx, gB.idx(j), j);
     }
 
     sandwich_data sandwich(clctx);
     sandwich.u_arg = u_arg;
     sandwich.u_to_phi = phi_dyn;
 
-    sandwich.djbj = djbj;
+    sandwich.djbj = djbj_precalculate;
 
-    tensor<value, 3> djbj_prec;
-
-    for(int i=0; i < 3; i++)
-    {
-        djbj_prec.idx(i) = bidx("djbj" + std::to_string(i), false, false);
-    }
+    value djbj = bidx("djbj", false, false);
 
     value phi = bidx("phi", false, false);
 
