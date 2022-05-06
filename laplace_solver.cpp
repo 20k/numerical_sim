@@ -18,34 +18,50 @@ void check_symmetry(const std::string& debug_name, cl::command_queue& cqueue, cl
     #endif // CHECK_SYMMETRY
 }
 
-cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& setup, cl::kernel& iterate,
-                       vec<4, cl_int> base_size, float c_at_max, int scale_factor, std::optional<cl::buffer> base, cl_float etol)
+std::vector<cl::buffer> solve_for_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& setup, cl::kernel& iterate,
+                       vec<4, cl_int> base_size, float c_at_max, int scale_factor, std::optional<std::vector<cl::buffer>> base, cl_float etol, int dimensions)
 {
     vec<4, cl_int> reduced_clsize = ((base_size - 1) / scale_factor) + 1;
 
-    std::array<cl::buffer, 2> reduced_u_args{ctx, ctx};
+    std::array<std::vector<cl::buffer>, 2> reduced_u_args;
 
     if(base.has_value())
         reduced_u_args[0] = base.value();
     else
-        reduced_u_args[0].alloc(reduced_clsize.x() * reduced_clsize.y() * reduced_clsize.z() * sizeof(cl_float));
+    {
+        for(int i=0; i < dimensions; i++)
+        {
+            cl::buffer& buf = reduced_u_args[0].emplace_back(ctx);
+            buf.alloc(reduced_clsize.x() * reduced_clsize.y() * reduced_clsize.z() * sizeof(cl_float));
+        }
+    }
 
-    reduced_u_args[1].alloc(reduced_clsize.x() * reduced_clsize.y() * reduced_clsize.z() * sizeof(cl_float));
+    for(int i=0; i < dimensions; i++)
+    {
+        cl::buffer& buf = reduced_u_args[1].emplace_back(ctx);
+        buf.alloc(reduced_clsize.x() * reduced_clsize.y() * reduced_clsize.z() * sizeof(cl_float));
+    }
 
     int which_reduced = 0;
 
     if(!base.has_value())
     {
-        cl::args initial_u_args;
-        initial_u_args.push_back(reduced_u_args[0]);
-        initial_u_args.push_back(reduced_clsize);
+        for(int i=0; i < dimensions; i++)
+        {
+            cl::args initial_u_args;
+            initial_u_args.push_back(reduced_u_args[0][i]);
+            initial_u_args.push_back(reduced_clsize);
 
-        setup.set_args(initial_u_args);
+            setup.set_args(initial_u_args);
 
-        cqueue.exec(setup, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1}, {});
+            cqueue.exec(setup, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1}, {});
+        }
     }
 
-    cl::copy(cqueue, reduced_u_args[0], reduced_u_args[1]);
+    for(int i=0; i < dimensions; i++)
+    {
+        cl::copy(cqueue, reduced_u_args[0][i], reduced_u_args[1][i]);
+    }
 
     int N = 8000;
 
@@ -76,8 +92,17 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& 
         float local_scale = calculate_scale(c_at_max, reduced_clsize);
 
         cl::args iterate_u_args;
-        iterate_u_args.push_back(reduced_u_args[which_reduced]);
-        iterate_u_args.push_back(reduced_u_args[(which_reduced + 1) % 2]);
+
+        for(int d = 0; d < dimensions; d++)
+        {
+            iterate_u_args.push_back(reduced_u_args[which_reduced][d]);
+        }
+
+        for(int d = 0; d < dimensions; d++)
+        {
+            iterate_u_args.push_back(reduced_u_args[(which_reduced + 1) % 2][d]);
+        }
+
         iterate_u_args.push_back(local_scale);
         iterate_u_args.push_back(reduced_clsize);
         iterate_u_args.push_back(still_going[which_still_going]);
@@ -97,7 +122,10 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& 
         which_still_going = (which_still_going + 1) % 2;
     }
 
-    check_symmetry("post_iterate", cqueue, reduced_u_args[which_reduced], reduced_clsize);
+    for(int i=0; i < dimensions; i++)
+    {
+        check_symmetry("post_iterate", cqueue, reduced_u_args[which_reduced][i], reduced_clsize);
+    }
 
     return reduced_u_args[which_reduced];
 }
@@ -148,53 +176,58 @@ cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, fl
 }
 #endif // OLD_FAST_U
 
-cl::buffer extract_u_region(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& extract,
-                            cl::buffer& in, float c_at_max_in, float c_at_max_out, vec<4, cl_int> clsize)
+std::vector<cl::buffer> extract_u_region(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& extract,
+                            std::vector<cl::buffer>& in, float c_at_max_in, float c_at_max_out, vec<4, cl_int> clsize)
 {
-    cl::buffer out(ctx);
-    out.alloc(in.alloc_size);
+    std::vector<cl::buffer> ret;
 
-    cl::args upscale_args;
-    upscale_args.push_back(in);
-    upscale_args.push_back(out);
-    upscale_args.push_back(c_at_max_in);
-    upscale_args.push_back(c_at_max_out);
-    upscale_args.push_back(clsize);
+    for(cl::buffer& buf : in)
+    {
+        cl::buffer& out = ret.emplace_back(ctx);
+        out.alloc(buf.alloc_size);
 
-    extract.set_args(upscale_args);
+        cl::args upscale_args;
+        upscale_args.push_back(buf);
+        upscale_args.push_back(out);
+        upscale_args.push_back(c_at_max_in);
+        upscale_args.push_back(c_at_max_out);
+        upscale_args.push_back(clsize);
 
-    cqueue.exec(extract, {clsize.x(), clsize.y(), clsize.z()}, {8, 8, 1}, {});
+        extract.set_args(upscale_args);
 
-    check_symmetry("extract_u_region", cqueue, out, clsize);
+        cqueue.exec(extract, {clsize.x(), clsize.y(), clsize.z()}, {8, 8, 1}, {});
 
-    return out;
+        check_symmetry("extract_u_region", cqueue, out, clsize);
+    }
+
+    return ret;
 }
 
-cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& setup, cl::kernel& iterate, cl::kernel& extract,
-                     vec3i size, float c_at_max, cl_float etol)
+std::vector<cl::buffer> iterate_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& setup, cl::kernel& iterate, cl::kernel& extract,
+                     vec3i size, float c_at_max, cl_float etol, int dimensions)
 {
     float boundaries[4] = {c_at_max, c_at_max * 4, c_at_max * 8, c_at_max * 16};
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
-    std::optional<cl::buffer> last;
+    std::optional<std::vector<cl::buffer>> last;
 
     for(int i=2; i >= 0; i--)
     {
         float current_boundary = boundaries[i + 1];
         float next_boundary = boundaries[i];
 
-        cl::buffer reduced = solve_for_u(ctx, cqueue, setup, iterate, clsize, current_boundary, 1, last, etol);
+        std::vector<cl::buffer> reduced = solve_for_u(ctx, cqueue, setup, iterate, clsize, current_boundary, 1, last, etol, dimensions);
 
-        cl::buffer extracted = extract_u_region(ctx, cqueue, extract, reduced, current_boundary, next_boundary, clsize);
+        std::vector<cl::buffer> extracted = extract_u_region(ctx, cqueue, extract, reduced, current_boundary, next_boundary, clsize);
 
         last = extracted;
     }
 
-    return solve_for_u(ctx, cqueue, setup, iterate, clsize, c_at_max, 1, last, etol);
+    return solve_for_u(ctx, cqueue, setup, iterate, clsize, c_at_max, 1, last, etol, dimensions);
 }
 
-cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const laplace_data& data, float scale, vec3i dim, float err)
+std::vector<cl::buffer> laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const laplace_data& data, float scale, vec3i dim, float err)
 {
     equation_context ctx;
 
@@ -222,5 +255,5 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const l
 
     float c_at_max = scale * dim.largest_elem();
 
-    return iterate_u(clctx, cqueue, setup, iterate, extract, dim, c_at_max, err);
+    return iterate_u(clctx, cqueue, setup, iterate, extract, dim, c_at_max, err, data.dimension);
 }

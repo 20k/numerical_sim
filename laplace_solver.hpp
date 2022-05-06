@@ -11,6 +11,6 @@ struct laplace_data
     int dimension = 1;
 };
 
-cl::buffer laplace_solver(cl::context& clcltx, cl::command_queue& cqueue, const laplace_data& data, float scale, vec3i dim, float err = 0.0001f);
+std::vector<cl::buffer> laplace_solver(cl::context& clcltx, cl::command_queue& cqueue, const laplace_data& data, float scale, vec3i dim, float err = 0.0001f);
 
 #endif // LAPLACE_SOLVER_HPP_INCLUDED

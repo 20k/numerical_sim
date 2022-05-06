@@ -2162,7 +2162,7 @@ std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& hole
 
     laplace_data solve = setup_u_laplace(ctx, holes);
 
-    cl::buffer u_arg = laplace_solver(ctx, cqueue, solve, calculate_scale(get_c_at_max(), dim), dim, err);
+    cl::buffer u_arg = laplace_solver(ctx, cqueue, solve, calculate_scale(get_c_at_max(), dim), dim, err).at(0);
 
     for(int i=0; i < (int)holes.size(); i++)
     {
@@ -5147,7 +5147,7 @@ int main()
 
         laplace_data solve = setup_u_laplace(clctx.ctx, holes.holes);
 
-        u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.000001f);
+        u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.000001f).at(0);
 
         cqueue.block();
     };
