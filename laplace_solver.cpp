@@ -2,17 +2,21 @@
 #include "mesh_manager.hpp"
 #include "equation_context.hpp"
 
-void check_symmetry(const std::string& debug_name, cl::command_queue& cqueue, cl::buffer& arg, vec<4, cl_int> size)
+void check_symmetry(const std::string& debug_name, cl::kernel& kern, cl::command_queue& cqueue, cl::buffer& arg, vec<4, cl_int> size)
 {
-    //#define CHECK_SYMMETRY
+    #define CHECK_SYMMETRY
     #ifdef CHECK_SYMMETRY
+    cqueue.block();
+
     std::cout << debug_name << std::endl;
 
     cl::args check;
     check.push_back(arg);
     check.push_back(size);
 
-    cqueue.exec("check_z_symmetry", check, {size.x(), size.y(), size.z()}, {8, 8, 1});
+    kern.set_args(check);
+
+    cqueue.exec(kern, {size.x(), size.y(), size.z()}, {8, 8, 1}, {});
 
     cqueue.block();
     #endif // CHECK_SYMMETRY
@@ -97,7 +101,7 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& 
         which_still_going = (which_still_going + 1) % 2;
     }
 
-    check_symmetry("post_iterate", cqueue, reduced_u_args[which_reduced], reduced_clsize);
+    //check_symmetry("post_iterate", cqueue, reduced_u_args[which_reduced], reduced_clsize);
 
     return reduced_u_args[which_reduced];
 }
@@ -165,7 +169,7 @@ cl::buffer extract_u_region(cl::context& ctx, cl::command_queue& cqueue, cl::ker
 
     cqueue.exec(extract, {clsize.x(), clsize.y(), clsize.z()}, {8, 8, 1}, {});
 
-    check_symmetry("extract_u_region", cqueue, out, clsize);
+    //check_symmetry("extract_u_region", cqueue, out, clsize);
 
     return out;
 }
@@ -269,6 +273,7 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
     cl::kernel calculate_djbj(t_program, "calculate_djbj");
     cl::kernel iterate(t_program, "iterative_sandwich");
     cl::kernel gA_phi_to_gA(t_program, "gA_phi_to_gA");
+    cl::kernel check_z_symmetry(t_program, "check_z_symmetry");
 
     cl::buffer u_arg = data.u_arg;
 
@@ -340,6 +345,12 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
         sandwich_args.push_back(still_going);
         sandwich_args.push_back(err);
         sandwich_args.push_back(data.order_ptr);
+
+        check_symmetry("djbj", check_z_symmetry, cqueue, djbj, clsize);
+        check_symmetry("gB0", check_z_symmetry, cqueue, args_out.gB0, clsize);
+        check_symmetry("gB1", check_z_symmetry, cqueue, args_out.gB1, clsize);
+        check_symmetry("gB2", check_z_symmetry, cqueue, args_out.gB2, clsize);
+        check_symmetry("gA_phi", check_z_symmetry, cqueue, args_out.gA_phi, clsize);
 
         iterate.set_args(sandwich_args);
 

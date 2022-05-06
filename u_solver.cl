@@ -143,31 +143,3 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
     laplace_interior(u_offset_in, u_offset_out, h2f0, ix, iy, iz, scale, dim, still_going, etol);
 }
-
-__kernel
-void check_z_symmetry(__global float* u_in, int4 dim)
-{
-    int ix = get_global_id(0);
-    int iy = get_global_id(1);
-    int iz = get_global_id(2);
-
-    if(iz >= (dim.z - 1)/2)
-        return;
-
-    if(ix >= dim.x)
-        return;
-
-    if(iy >= dim.y)
-        return;
-
-    float base_value = u_in[IDX(ix, iy, iz)];
-
-    int mirrored_z = dim.z - iz - 1;
-
-    float v_mirrored = u_in[IDX(ix, iy, mirrored_z)];
-
-    if(base_value != v_mirrored)
-    {
-        printf("Failure in symmetry %.23f %i %i %i against %.23f %i %i %i with dim %i %i %i\n", base_value, ix, iy, iz, v_mirrored, ix, iy, mirrored_z, dim.x, dim.y, dim.z);
-    }
-}

@@ -2190,11 +2190,15 @@ sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cq
     equation_context ctx;
     ctx.order = 1;
 
+    equation_context precise;
+    precise.always_directional_derivatives = true;
+    precise.order = 1;
+
     value djbj_precalculate = 0;
 
     for(int j=0; j < 3; j++)
     {
-        djbj_precalculate += diff1(ctx, gB.idx(j), j);
+        djbj_precalculate += diff1(precise, gB.idx(j), j);
     }
 
     sandwich_data sandwich(clctx);
