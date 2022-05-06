@@ -194,13 +194,13 @@ cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& se
     return solve_for_u(ctx, cqueue, setup, iterate, clsize, c_at_max, 1, last, etol);
 }
 
-cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const value& rhs, const value& boundary, float scale, vec3i dim, float err)
+cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const laplace_data& data, float scale, vec3i dim, float err)
 {
     equation_context ctx;
 
     ctx.add("U_BASE", dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim"));
-    ctx.add("U_RHS", rhs);
-    ctx.add("U_BOUNDARY", boundary);
+    ctx.add("U_RHS", data.rhs);
+    ctx.add("U_BOUNDARY", data.boundary);
 
     std::string local_build_str = "-I ./ -O3 -cl-std=CL2.0 -cl-mad-enable -cl-finite-math-only ";
 

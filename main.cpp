@@ -2118,12 +2118,6 @@ value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<b
     return BL_s;
 }
 
-struct laplace_data
-{
-    value boundary;
-    value rhs;
-};
-
 laplace_data setup_u_laplace(cl::context& clctx, const std::vector<black_hole<float>>& cpu_holes)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
@@ -2167,7 +2161,7 @@ std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& hole
 
     laplace_data solve = setup_u_laplace(ctx, holes);
 
-    cl::buffer u_arg = laplace_solver(ctx, cqueue, solve.rhs, solve.boundary, calculate_scale(get_c_at_max(), dim), dim, err);
+    cl::buffer u_arg = laplace_solver(ctx, cqueue, solve, calculate_scale(get_c_at_max(), dim), dim, err);
 
     for(int i=0; i < (int)holes.size(); i++)
     {
@@ -5152,7 +5146,7 @@ int main()
 
         laplace_data solve = setup_u_laplace(clctx.ctx, holes.holes);
 
-        u_arg = laplace_solver(clctx.ctx, cqueue, solve.rhs, solve.boundary, scale, size, 0.000001f);
+        u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.000001f);
 
         cqueue.block();
     };
