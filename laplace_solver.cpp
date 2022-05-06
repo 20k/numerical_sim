@@ -194,11 +194,12 @@ cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& se
     return solve_for_u(ctx, cqueue, setup, iterate, clsize, c_at_max, 1, last, etol);
 }
 
-cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const value& rhs, const value& boundary, float scale, vec3i dim, float err)
+cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const value& rhs, const value& boundary, const value& fetcher, const value& storer, float scale, vec3i dim, float err)
 {
     equation_context ctx;
 
-    ctx.add("U_BASE", dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim"));
+    ctx.add("U_BASE", fetcher);
+    ctx.add("U_STORE", storer);
     ctx.add("U_RHS", rhs);
     ctx.add("U_BOUNDARY", boundary);
 

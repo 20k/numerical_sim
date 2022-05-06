@@ -260,7 +260,11 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
         //*still_going = 1;
     }
 
-    u_offset_out[IDX(ix, iy, iz)] = mix(u, u0n1, 0.5f);
+    float to_store = mix(u, u0n1, 0.5f);
+
+    U_STORE;
+
+    //u_offset_out[IDX(ix, iy, iz)] = ;
     //u_offset_out[IDX(ix, iy, iz)] = u0n1;
 }
 

@@ -4,6 +4,6 @@
 #include <geodesic/dual_value.hpp>
 #include <toolkit/opencl.hpp>
 
-cl::buffer laplace_solver(cl::context& clcltx, cl::command_queue& cqueue, const value& rhs, const value& boundary, float scale, vec3i dim, float err = 0.0001f);
+cl::buffer laplace_solver(cl::context& clcltx, cl::command_queue& cqueue, const value& rhs, const value& boundary, const value& fetcher, const value& storer, float scale, vec3i dim, float err = 0.0001f);
 
 #endif // LAPLACE_SOLVER_HPP_INCLUDED

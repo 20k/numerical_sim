@@ -2122,6 +2122,8 @@ struct laplace_data
 {
     value boundary;
     value rhs;
+    value fetcher;
+    value storer;
 };
 
 laplace_data setup_u_laplace(cl::context& clctx, const std::vector<black_hole<float>>& cpu_holes)
@@ -2156,6 +2158,9 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<black_hole<fl
     solve.rhs = U_RHS;
     solve.boundary = 1;
 
+    solve.fetcher = dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim");
+    solve.storer = "u_offset_out[IDX(ix,iy,iz)]=to_store";
+
     return solve;
 }
 
@@ -2167,7 +2172,7 @@ std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& hole
 
     laplace_data solve = setup_u_laplace(ctx, holes);
 
-    cl::buffer u_arg = laplace_solver(ctx, cqueue, solve.rhs, solve.boundary, calculate_scale(get_c_at_max(), dim), dim, err);
+    cl::buffer u_arg = laplace_solver(ctx, cqueue, solve.rhs, solve.boundary, solve.fetcher, solve.storer, calculate_scale(get_c_at_max(), dim), dim, err);
 
     for(int i=0; i < (int)holes.size(); i++)
     {
@@ -5152,7 +5157,7 @@ int main()
 
         laplace_data solve = setup_u_laplace(clctx.ctx, holes.holes);
 
-        u_arg = laplace_solver(clctx.ctx, cqueue, solve.rhs, solve.boundary, scale, size, 0.000001f);
+        u_arg = laplace_solver(clctx.ctx, cqueue, solve.rhs, solve.boundary, solve.fetcher, solve.storer, scale, size, 0.000001f);
 
         cqueue.block();
     };
