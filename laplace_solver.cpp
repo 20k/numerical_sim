@@ -267,12 +267,26 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
 
     cl::kernel calculate_djbj(t_program, "calculate_djbj");
     cl::kernel iterate(t_program, "iterative_sandwich");
+    cl::kernel u_to_phi(t_program, "u_to_phi");
 
     cl::buffer u_arg = data.u_arg;
 
     cl::buffer phi(clctx);
     phi.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
     phi.fill(cqueue, cl_float{1.f});
+
+    vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
+
+    {
+        cl::args u_to_phi_args;
+        u_to_phi_args.push_back(u_arg);
+        u_to_phi_args.push_back(phi);
+        u_to_phi_args.push_back(clsize);
+
+        u_to_phi.set_args(u_to_phi_args);
+
+        cqueue.exec(u_to_phi, {dim.x(), dim.y(), dim.z()}, {8, 8, 1}, {});
+    }
 
     cl::buffer djbj{clctx};
     djbj.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
