@@ -256,6 +256,7 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 __kernel
 void iterative_u_solve3(__global float* buffer_in0, __global float* buffer_in1, __global float* buffer_in2,
                         __global float* buffer_out0, __global float* buffer_out1, __global float* buffer_out2,
+                        __global float* u_arg,
                         float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol)
 {
     if(*last_still_going == 0)
@@ -278,28 +279,28 @@ void iterative_u_solve3(__global float* buffer_in0, __global float* buffer_in1, 
     float oz = offset.z;
 
     {
-        int bufidx = 0;
-
-        float RHS = U_RHS;
+        float RHS = U_RHS0;
         float h2f0 = scale * scale * RHS;
+
+        float djbj = DJBJ;
 
         laplace_interior(buffer_in0, buffer_out0, h2f0, ix, iy, iz, scale, dim, still_going, etol);
     }
 
     {
-        int bufidx = 1;
-
-        float RHS = U_RHS;
+        float RHS = U_RHS1;
         float h2f0 = scale * scale * RHS;
+
+        float djbj = DJBJ;
 
         laplace_interior(buffer_in1, buffer_out1, h2f0, ix, iy, iz, scale, dim, still_going, etol);
     }
 
     {
-        int bufidx = 2;
-
-        float RHS = U_RHS;
+        float RHS = U_RHS2;
         float h2f0 = scale * scale * RHS;
+
+        float djbj = DJBJ;
 
         laplace_interior(buffer_in2, buffer_out2, h2f0, ix, iy, iz, scale, dim, still_going, etol);
     }

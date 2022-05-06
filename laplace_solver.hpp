@@ -7,7 +7,7 @@
 struct laplace_data
 {
     value boundary;
-    value rhs;
+    std::vector<value> rhs;
     int dimension = 1;
     std::vector<cl::buffer> extra_args;
 };

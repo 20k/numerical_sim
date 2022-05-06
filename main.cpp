@@ -2118,6 +2118,62 @@ value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<b
     return BL_s;
 }
 
+#if 0
+laplace_data setup_gB_laplace(cl::context& clctx, const std::vector<black_hole<float>>& cpu_holes)
+{
+    tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+    metric<value, 3, 3> flat_metric;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            flat_metric.idx(i, j) = (i == j) ? 1 : 0;
+        }
+    }
+
+    value u_value = dual_types::apply("buffer_index", "u_arg", "ix", "iy", "iz", "dim");
+
+    equation_context eqs;
+
+    //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
+    value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
+    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij(pos, cpu_holes);
+    value aij_aIJ_dyn = calculate_aij_aIJ(flat_metric, bcAij_dyn, cpu_holes);
+
+    ///https://arxiv.org/pdf/1606.04881.pdf 74
+    value phi = BL_s_dyn + u_value;
+
+    tensor<value, 3> gB;
+
+    for(int i=0; i < 3; i++)
+    {
+        value this_gB = dual_types::apply("buffer_index", "buffer_in" + std::to_string(i), "ix", "iy", "iz", "dim");
+
+        gB.idx(i) = this_gB;
+    }
+
+    value diffidx = "bufidx";
+
+    value gB_sum = 0;
+
+    for(int j=0; j < 3; j++)
+    {
+        gB_sum += diff1(eqs, gB.idx(j), j);
+    }
+
+    value gB_sum_diff = diff1_d(eqs, gB_sum, )
+
+    laplace_data solve;
+    solve.rhs = U_RHS;
+    solve.boundary = 0;
+    solve.dimension = 3;
+
+    return solve;
+}
+#endif // 0
+
 laplace_data setup_u_laplace(cl::context& clctx, const std::vector<black_hole<float>>& cpu_holes)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
@@ -2147,7 +2203,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<black_hole<fl
     value U_RHS = (-1.f/8.f) * aij_aIJ_dyn * pow(phi, -7);
 
     laplace_data solve;
-    solve.rhs = U_RHS;
+    solve.rhs = {U_RHS};
     solve.boundary = 1;
     solve.dimension = 1;
 

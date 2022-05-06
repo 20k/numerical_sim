@@ -237,7 +237,17 @@ std::vector<cl::buffer> laplace_solver(cl::context& clctx, cl::command_queue& cq
     equation_context ctx;
 
     ctx.add("U_BASE", dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim"));
-    ctx.add("U_RHS", data.rhs);
+
+    if(data.dimension == 1)
+        ctx.add("U_RHS", data.rhs[0]);
+    else
+    {
+        for(int i=0; i < data.dimension; i++)
+        {
+            ctx.add("U_RHS" + std::to_string(i), data.rhs[i]);
+        }
+    }
+
     ctx.add("U_BOUNDARY", data.boundary);
 
     if(data.dimension == 1)
