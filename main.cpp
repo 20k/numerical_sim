@@ -2215,7 +2215,6 @@ laplace_data setup_u_laplace(cl::context& clctx, int holes)
     return solve;
 }
 
-
 std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& holes, cl::context& ctx, cl::command_queue& cqueue, float err = 0.0001f)
 {
     std::vector<float> ret;
@@ -2416,7 +2415,8 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #ifdef USE_ADM_HOLE
     std::vector<adm_black_hole> adm_holes;
 
-    #ifdef TEST_CSE
+    //#define TEST_CASE
+    #ifdef TEST_CASE
     adm_black_hole adm1;
     adm1.position = {-4, 0, 0};
     adm1.adm_mass = 0.5f;
