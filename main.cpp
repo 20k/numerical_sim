@@ -2658,6 +2658,8 @@ void create_u_program(cl::context& clctx, int holes, const std::string& u_argume
         }
     }
 
+    value u_value = bidx("u_offset_in", false, false);
+
     equation_context eqs;
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
@@ -2665,8 +2667,13 @@ void create_u_program(cl::context& clctx, int holes, const std::string& u_argume
     tensor<value, 3, 3> bcAij_dyn = calculate_bcAij(pos, gpu_holes);
     value aij_aIJ_dyn = calculate_aij_aIJ(flat_metric, bcAij_dyn, gpu_holes);
 
-    eqs.add("init_aij_aIJ_dyn", aij_aIJ_dyn);
-    eqs.add("init_BL_val_dyn", BL_s_dyn);
+    ///https://arxiv.org/pdf/1606.04881.pdf 74
+    value phi = BL_s_dyn + u_value;
+
+    value U_RHS = (-1.f/8.f) * aij_aIJ_dyn * pow(phi, -7);
+
+    eqs.add("U_BASE", u_value);
+    eqs.add("U_RHS", U_RHS);
 
     std::string local_build_str = u_argument_string;
 

@@ -154,25 +154,7 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     float oy = offset.y;
     float oz = offset.z;
 
-    float bl_s = init_BL_val_dyn;
-
-    float aij_aIJ = init_aij_aIJ_dyn;
-
-    float u = u_offset_in[IDX(ix, iy, iz)];
-
-    ///https://arxiv.org/pdf/gr-qc/0007085.pdf (78) implies that the two formulations are not equivalent
-    /*float X = 1/bl_s;
-    float B = (1.f/8.f) * pow(X, 7.f) * aij_aIJ;
-    float RHS = -B * pow(1 + X * u, -7);*/
-
-    ///https://arxiv.org/pdf/1606.04881.pdf (66)
-    float RHS = -(1/8.f) * aij_aIJ * pow(bl_s + u, -7);
-
-    //#define UNCONDITIONAL_MATTER
-    #if defined(USE_MATTER) || defined(UNCONDITIONAL_MATTER)
-    ///https://arxiv.org/pdf/1606.04881.pdf (66)
-    RHS += -2 * M_PI * pow(bl_s + u, -3.f) * PPW2_P;
-    #endif // USE_MATTER
+    float RHS = U_RHS;
 
     float h2f0 = scale * scale * RHS;
 
@@ -276,6 +258,8 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
             printf("Val %.24f %i\n", u0n1, iz);
         }
     }*/
+
+    float u = U_BASE;
 
     float err = u0n1 - u;
 
