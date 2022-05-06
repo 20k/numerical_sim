@@ -254,8 +254,8 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
 #ifdef LAPLACE_SOLVE_3
 __kernel
-void iterative_u_solve3(__global float* gB0_in, __global float* gB1_in, __global float* gB2_in,
-                        __global float* gB0_out, __global float* gB1_out, __global float* gB2_out,
+void iterative_u_solve3(__global float* buffer_in0, __global float* buffer_in1, __global float* buffer_in2,
+                        __global float* buffer_out0, __global float* buffer_out1, __global float* buffer_out2,
                         float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol)
 {
     if(*last_still_going == 0)
@@ -283,7 +283,7 @@ void iterative_u_solve3(__global float* gB0_in, __global float* gB1_in, __global
         float RHS = U_RHS;
         float h2f0 = scale * scale * RHS;
 
-        laplace_interior(gB0_in, gB0_out, h2f0_0, ix, iy, iz, scale, dim, still_going, etol);
+        laplace_interior(buffer_in0, buffer_out0, h2f0, ix, iy, iz, scale, dim, still_going, etol);
     }
 
     {
@@ -292,7 +292,7 @@ void iterative_u_solve3(__global float* gB0_in, __global float* gB1_in, __global
         float RHS = U_RHS;
         float h2f0 = scale * scale * RHS;
 
-        laplace_interior(gB0_in, gB0_out, h2f0_0, ix, iy, iz, scale, dim, still_going, etol);
+        laplace_interior(buffer_in1, buffer_out1, h2f0, ix, iy, iz, scale, dim, still_going, etol);
     }
 
     {
@@ -301,7 +301,7 @@ void iterative_u_solve3(__global float* gB0_in, __global float* gB1_in, __global
         float RHS = U_RHS;
         float h2f0 = scale * scale * RHS;
 
-        laplace_interior(gB0_in, gB0_out, h2f0_0, ix, iy, iz, scale, dim, still_going, etol);
+        laplace_interior(buffer_in2, buffer_out2, h2f0, ix, iy, iz, scale, dim, still_going, etol);
     }
 }
 #endif
