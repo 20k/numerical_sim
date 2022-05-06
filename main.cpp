@@ -17,6 +17,8 @@
 #include "mesh_manager.hpp"
 #include "spherical_harmonics.hpp"
 #include "spherical_integration.hpp"
+#include "equation_context.hpp"
+#include "laplace_solver.hpp"
 
 /**
 current paper set
@@ -229,275 +231,6 @@ tensor<T, N...> raise_index_generic(const tensor<T, N...>& mT, const inverse_met
 {
     return raise_index_impl(mT, met, index);
 }
-
-struct equation_context
-{
-    std::vector<std::pair<std::string, value>> values;
-    std::vector<std::pair<std::string, value>> temporaries;
-    std::vector<std::pair<value, value>> aliases;
-    bool uses_linear = false;
-    bool debug = false;
-    bool use_precise_differentiation = true;
-    bool always_directional_derivatives = false;
-
-    int order = 2;
-
-    void pin(value& v)
-    {
-        for(auto& i : temporaries)
-        {
-            if(dual_types::equivalent(v, i.second))
-            {
-                value facade;
-                facade.make_value(i.first);
-
-                v = facade;
-                return;
-            }
-        }
-
-        std::string name = "pv" + std::to_string(temporaries.size());
-        //std::string name = "pv[" + std::to_string(temporaries.size()) + "]";
-
-        value old = v;
-
-        temporaries.push_back({name, old});
-
-        value facade;
-        facade.make_value(name);
-
-        v = facade;
-    }
-
-    template<typename T, int N>
-    void pin(tensor<T, N>& mT)
-    {
-        for(int i=0; i < N; i++)
-        {
-            pin(mT.idx(i));
-        }
-    }
-
-    template<typename T, int N>
-    void pin(vec<N, T>& mT)
-    {
-        for(int i=0; i < N; i++)
-        {
-            pin(mT[i]);
-        }
-    }
-
-    template<typename T, int N>
-    void pin(tensor<T, N, N>& mT)
-    {
-        for(int i=0; i < N; i++)
-        {
-            for(int j=0; j < N; j++)
-            {
-                pin(mT.idx(i, j));
-            }
-        }
-    }
-
-    template<typename T, int N>
-    void pin(tensor<T, N, N, N>& mT)
-    {
-        for(int i=0; i < N; i++)
-        {
-            for(int j=0; j < N; j++)
-            {
-                for(int k=0; k < N; k++)
-                {
-                    pin(mT.idx(i, j, k));
-                }
-            }
-        }
-    }
-
-    template<typename T, int N>
-    void pin(inverse_metric<T, N, N>& mT)
-    {
-        for(int i=0; i < N; i++)
-        {
-            for(int j=0; j < N; j++)
-            {
-                pin(mT.idx(i, j));
-            }
-        }
-    }
-
-    template<typename T, int N>
-    void pin(metric<T, N, N>& mT)
-    {
-        for(int i=0; i < N; i++)
-        {
-            for(int j=0; j < N; j++)
-            {
-                pin(mT.idx(i, j));
-            }
-        }
-    }
-
-    /*template<typename T>
-    void pin(T& mT)
-    {
-        pin(mT.to_concrete());
-    }*/
-
-    void alias(const value& concrete, const value& alias)
-    {
-        for(auto& i : aliases)
-        {
-            if(dual_types::equivalent(concrete, i.first))
-            {
-                //std::cout << "CONC " << type_to_string(concrete)  << " ALIAS " << type_to_string(alias) << std::endl;
-                //std::cout << "ALIAS " << type_to_string(alias) << " WITH " << type_to_string(i.second) << std::endl;
-
-                assert(dual_types::equivalent(alias, i.second));
-                return;
-            }
-        }
-
-        aliases.push_back({concrete, alias});
-    }
-
-    void add(const std::string& name, const value& v)
-    {
-        values.push_back({name, v});
-    }
-
-    void strip_unused()
-    {
-        std::set<std::string> used_names;
-
-        for(auto& i : values)
-        {
-            auto& name = i.first;
-            value& v = i.second;
-
-            used_names.insert(name);
-
-            std::vector<std::string> all_used = v.get_all_variables();
-
-            for(auto& k : all_used)
-            {
-                used_names.insert(k);
-            }
-        }
-
-        std::vector<std::pair<std::string, value>> unprocessed_temporaries = temporaries;
-
-        bool any_change = true;
-
-        while(any_change && unprocessed_temporaries.size() > 0)
-        {
-            any_change = false;
-
-            for(int i=0; i < (int)unprocessed_temporaries.size(); i++)
-            {
-                std::pair<std::string, value>& next = unprocessed_temporaries[i];
-
-                //unprocessed_temporaries.erase(unprocessed_temporaries.begin());
-
-                if(used_names.find(next.first) != used_names.end())
-                {
-                    std::vector<std::string> all_used = next.second.get_all_variables();
-
-                    used_names.insert(next.first);
-
-                    for(auto& kk : all_used)
-                    {
-                        used_names.insert(kk);
-                    }
-
-                    any_change = true;
-
-                    unprocessed_temporaries.erase(unprocessed_temporaries.begin() + i);
-                    i--;
-                    continue;
-                }
-            }
-        }
-
-        std::set<std::string> to_erase;
-
-        for(auto& i : unprocessed_temporaries)
-        {
-            to_erase.insert(i.first);
-        }
-
-        for(int i=0; i < (int)temporaries.size(); i++)
-        {
-            if(to_erase.find(temporaries[i].first) != to_erase.end())
-            {
-                temporaries.erase(temporaries.begin() + i);
-                i--;
-                continue;
-            }
-        }
-    }
-
-    void substutite_aliases()
-    {
-        for(auto& [name, v] : values)
-        {
-            v.substitute(aliases);
-        }
-
-        for(auto& [name, v] : temporaries)
-        {
-            v.substitute(aliases);
-        }
-    }
-
-    void build_impl(std::string& argument_string, const std::string& str)
-    {
-        strip_unused();
-        substutite_aliases();
-
-        for(auto& i : values)
-        {
-            std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
-
-            argument_string += str;
-        }
-
-        if(temporaries.size() == 0)
-        {
-            argument_string += "-DTEMPORARIES" + str + "=DUMMY ";
-            return;
-        }
-
-        std::string temporary_string;
-
-        for(auto& [current_name, value] : temporaries)
-        {
-            temporary_string += current_name + "=" + type_to_string(value) + ",";
-        }
-
-        ///remove trailing comma
-        if(temporary_string.size() > 0)
-            temporary_string.pop_back();
-
-        argument_string += "-DTEMPORARIES" + str + "=" + temporary_string + " ";
-    }
-
-    void build(std::string& argument_string, const std::string& str)
-    {
-        int old_length = argument_string.size();
-
-        build_impl(argument_string, str);
-
-        int new_length = argument_string.size();
-
-        std::cout << "EXTRA LENGTH " << (new_length - old_length) << " " << str << std::endl;
-    }
-
-    void build(std::string& argument_string, int idx)
-    {
-        build(argument_string, std::to_string(idx));
-    }
-};
 
 //#define SYMMETRY_BOUNDARY
 #define BORDER_WIDTH 4
@@ -2388,191 +2121,6 @@ value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<b
     return BL_s;
 }
 
-
-void check_symmetry(const std::string& debug_name, cl::command_queue& cqueue, cl::buffer& arg, vec<4, cl_int> size)
-{
-    //#define CHECK_SYMMETRY
-    #ifdef CHECK_SYMMETRY
-    std::cout << debug_name << std::endl;
-
-    cl::args check;
-    check.push_back(arg);
-    check.push_back(size);
-
-    cqueue.exec("check_z_symmetry", check, {size.x(), size.y(), size.z()}, {8, 8, 1});
-
-    cqueue.block();
-    #endif // CHECK_SYMMETRY
-}
-
-cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, vec<4, cl_int> base_size, float c_at_max, int scale_factor, cl::buffer& gpu_holes, std::optional<cl::buffer> base, cl_float etol)
-{
-    vec<4, cl_int> reduced_clsize = ((base_size - 1) / scale_factor) + 1;
-
-    std::array<cl::buffer, 2> reduced_u_args{ctx, ctx};
-
-    if(base.has_value())
-        reduced_u_args[0] = base.value();
-    else
-        reduced_u_args[0].alloc(reduced_clsize.x() * reduced_clsize.y() * reduced_clsize.z() * sizeof(cl_float));
-
-    reduced_u_args[1].alloc(reduced_clsize.x() * reduced_clsize.y() * reduced_clsize.z() * sizeof(cl_float));
-
-    int which_reduced = 0;
-
-    if(!base.has_value())
-    {
-        cl::args initial_u_args;
-        initial_u_args.push_back(reduced_u_args[0]);
-        initial_u_args.push_back(reduced_clsize);
-
-        cqueue.exec("setup_u_offset", initial_u_args, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1});
-    }
-
-    cl::copy(cqueue, reduced_u_args[0], reduced_u_args[1]);
-
-    int N = 8000;
-
-    #ifdef GPU_PROFILE
-    N = 1000;
-    #endif // GPU_PROFILE
-
-    #ifdef QUICKSTART
-    N = 200;
-    #endif // QUICKSTART
-
-    //cl_int still_going = 0;
-
-    std::array<cl::buffer, 2> still_going{ctx, ctx};
-
-    cl_int one = 1;
-
-    for(int i=0; i < 2; i++)
-    {
-        still_going[i].alloc(sizeof(cl_int));
-        still_going[i].fill(cqueue, one);
-    }
-
-    int which_still_going = 0;
-
-    for(int i=0; i < N; i++)
-    {
-        float local_scale = calculate_scale(c_at_max, reduced_clsize);
-
-        cl::args iterate_u_args;
-        iterate_u_args.push_back(reduced_u_args[which_reduced]);
-        iterate_u_args.push_back(reduced_u_args[(which_reduced + 1) % 2]);
-        iterate_u_args.push_back(local_scale);
-        iterate_u_args.push_back(reduced_clsize);
-        iterate_u_args.push_back(still_going[which_still_going]);
-        iterate_u_args.push_back(still_going[(which_still_going + 1) % 2]);
-        iterate_u_args.push_back(etol);
-        iterate_u_args.push_back(gpu_holes);
-
-        cqueue.exec("iterative_u_solve", iterate_u_args, {reduced_clsize.x(), reduced_clsize.y(), reduced_clsize.z()}, {8, 8, 1});
-
-        if(((i % 50) == 0) && still_going[(which_still_going + 1) % 2].read<cl_int>(cqueue)[0] == 0)
-            break;
-
-        still_going[which_still_going].set_to_zero(cqueue);
-
-        which_reduced = (which_reduced + 1) % 2;
-        which_still_going = (which_still_going + 1) % 2;
-    }
-
-    check_symmetry("post_iterate", cqueue, reduced_u_args[which_reduced], reduced_clsize);
-
-    return reduced_u_args[which_reduced];
-}
-
-#ifdef OLD_FAST_U
-cl::buffer upscale_u(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& source_buffer, vec<4, cl_int> base_size, int upscale_scale, int source_scale)
-{
-    vec<4, cl_int> reduced_clsize = ((base_size - 1) / source_scale) + 1;
-    vec<4, cl_int> upper_clsize = ((base_size - 1) / upscale_scale) + 1;
-
-    check_symmetry("pre_iterate", cqueue, source_buffer, reduced_clsize);
-
-    cl::buffer u_arg(ctx);
-    u_arg.alloc(upper_clsize.x() * upper_clsize.y() * upper_clsize.z() * sizeof(cl_float));
-
-    cl::args upscale_args;
-    upscale_args.push_back(source_buffer);
-    upscale_args.push_back(u_arg);
-    upscale_args.push_back(reduced_clsize);
-    upscale_args.push_back(upper_clsize);
-
-    cqueue.exec("upscale_u", upscale_args, {upper_clsize.x(), upper_clsize.y(), upper_clsize.z()}, {8, 8, 1});
-
-    check_symmetry("post_upscale", cqueue, u_arg, upper_clsize);
-
-    return u_arg;
-}
-
-cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, float c_at_max)
-{
-    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
-
-    std::optional<cl::buffer> last;
-
-    for(int i=2; i >= 0; i--)
-    {
-        int up_size = pow(2, i+1);
-        int current_size = pow(2, i);
-
-        cl::buffer reduced = solve_for_u(ctx, cqueue, clsize, c_at_max, up_size, last);
-
-        cl::buffer upscaled = upscale_u(ctx, cqueue, reduced, clsize, current_size, up_size);
-
-        last = upscaled;
-    }
-
-    return solve_for_u(ctx, cqueue, clsize, c_at_max, 1, last);
-}
-#endif // OLD_FAST_U
-
-cl::buffer extract_u_region(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& in, float c_at_max_in, float c_at_max_out, vec<4, cl_int> clsize)
-{
-    cl::buffer out(ctx);
-    out.alloc(in.alloc_size);
-
-    cl::args upscale_args;
-    upscale_args.push_back(in);
-    upscale_args.push_back(out);
-    upscale_args.push_back(c_at_max_in);
-    upscale_args.push_back(c_at_max_out);
-    upscale_args.push_back(clsize);
-
-    cqueue.exec("extract_u_region", upscale_args, {clsize.x(), clsize.y(), clsize.z()}, {8, 8, 1});
-
-    check_symmetry("extract_u_region", cqueue, out, clsize);
-
-    return out;
-}
-
-cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, vec3i size, float c_at_max, cl::buffer& gpu_holes, cl_float etol)
-{
-    float boundaries[4] = {c_at_max, c_at_max * 4, c_at_max * 8, c_at_max * 16};
-
-    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
-
-    std::optional<cl::buffer> last;
-
-    for(int i=2; i >= 0; i--)
-    {
-        float current_boundary = boundaries[i + 1];
-        float next_boundary = boundaries[i];
-
-        cl::buffer reduced = solve_for_u(ctx, cqueue, clsize, current_boundary, 1, gpu_holes, last, etol);
-
-        cl::buffer extracted = extract_u_region(ctx, cqueue, reduced, current_boundary, next_boundary, clsize);
-
-        last = extracted;
-    }
-
-    return solve_for_u(ctx, cqueue, clsize, c_at_max, 1, gpu_holes, last, etol);
-}
-
 cl::buffer construct_black_holes(cl::context& ctx, cl::command_queue& cqueue, const std::vector<black_hole<float>>& holes)
 {
     cl::buffer gpu_holes(ctx);
@@ -2604,25 +2152,13 @@ cl::buffer construct_black_holes(cl::context& ctx, cl::command_queue& cqueue, co
     return gpu_holes;
 }
 
-std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& holes, cl::context& ctx, cl::command_queue& cqueue, float err = 0.0001f)
+struct laplace_data
 {
-    std::vector<float> ret;
+    value boundary;
+    value rhs;
+};
 
-    cl::buffer buf = construct_black_holes(ctx, cqueue, holes);
-
-    vec3i dim = {281, 281, 281};
-
-    cl::buffer u_arg = iterate_u(ctx, cqueue, dim, get_c_at_max(), buf, err);
-
-    for(int i=0; i < (int)holes.size(); i++)
-    {
-        ret.push_back(get_nonspinning_adm_mass(cqueue, i, holes, dim, calculate_scale(get_c_at_max(), dim), u_arg));
-    }
-
-    return ret;
-}
-
-void create_u_program(cl::context& clctx, int holes, const std::string& u_argument_string)
+laplace_data setup_u_laplace(cl::context& clctx, int holes)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
@@ -2672,20 +2208,32 @@ void create_u_program(cl::context& clctx, int holes, const std::string& u_argume
 
     value U_RHS = (-1.f/8.f) * aij_aIJ_dyn * pow(phi, -7);
 
-    eqs.add("U_BASE", u_value);
-    eqs.add("U_RHS", U_RHS);
-    eqs.add("U_BOUNDARY", 1);
+    laplace_data solve;
+    solve.rhs = U_RHS;
+    solve.boundary = 1;
 
-    std::string local_build_str = u_argument_string;
+    return solve;
+}
 
-    eqs.build(local_build_str, 8);
 
+std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& holes, cl::context& ctx, cl::command_queue& cqueue, float err = 0.0001f)
+{
+    std::vector<float> ret;
+
+    cl::buffer buf = construct_black_holes(ctx, cqueue, holes);
+
+    vec3i dim = {281, 281, 281};
+
+    laplace_data solve = setup_u_laplace(ctx, holes.size());
+
+    cl::buffer u_arg = laplace_solver(ctx, cqueue, buf, solve.rhs, solve.boundary, calculate_scale(get_c_at_max(), dim), dim, err);
+
+    for(int i=0; i < (int)holes.size(); i++)
     {
-        cl::program u_program(clctx, "u_solver.cl");
-        u_program.build(clctx, local_build_str);
-
-        clctx.register_program(u_program);
+        ret.push_back(get_nonspinning_adm_mass(cqueue, i, holes, dim, calculate_scale(get_c_at_max(), dim), u_arg));
     }
+
+    return ret;
 }
 
 inline
@@ -2782,7 +2330,7 @@ initial_conditions get_adm_initial_conditions(cl::context& clctx, cl::command_qu
 }
 
 inline
-initial_conditions setup_dynamic_initial_conditions(const std::string& u_argument_string, cl::context& clctx, cl::command_queue& cqueue, vec3f centre, float scale)
+initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, vec3f centre, float scale)
 {
     initial_conditions ret(clctx);
 
@@ -2861,8 +2409,6 @@ initial_conditions setup_dynamic_initial_conditions(const std::string& u_argumen
     holes.push_back(h2);
     #endif // PAPER_0610128
 
-    create_u_program(clctx, holes.size(), u_argument_string);
-
     return get_bare_initial_conditions(clctx, cqueue, scale, holes);
     #endif
 
@@ -2922,8 +2468,6 @@ initial_conditions setup_dynamic_initial_conditions(const std::string& u_argumen
     adm_holes.push_back(adm1);
     adm_holes.push_back(adm2);
     #endif // KICK
-
-    create_u_program(clctx, adm_holes.size(), u_argument_string);
 
     return get_adm_initial_conditions(clctx, cqueue, scale, adm_holes);
     #endif // USE_ADM_HOLE
@@ -5643,12 +5187,6 @@ int main()
 
     std::string argument_string = "-I ./ -O3 -cl-std=CL2.0 -cl-mad-enable -cl-finite-math-only -cl-denorms-are-zero ";
 
-    #ifdef USE_MATTER
-    argument_string += "-DUSE_MATTER ";
-    #endif // USE_MATTER
-
-    std::string u_argument_string = argument_string;
-
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
@@ -5659,7 +5197,7 @@ int main()
     float scale = calculate_scale(c_at_max, size);
     vec3f centre = {size.x()/2.f, size.y()/2.f, size.z()/2.f};
 
-    initial_conditions holes = setup_dynamic_initial_conditions(u_argument_string, clctx.ctx, clctx.cqueue, centre, scale);
+    initial_conditions holes = setup_dynamic_initial_conditions(clctx.ctx, clctx.cqueue, centre, scale);
 
     equation_context setup_static;
 
@@ -5669,11 +5207,13 @@ int main()
 
     cl::buffer u_arg(clctx.ctx);
 
-    auto u_thread = [c_at_max, size, &clctx, &u_arg, &gpu_holes]()
+    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &gpu_holes, &holes]()
     {
         cl::command_queue cqueue(clctx.ctx);
 
-        u_arg = iterate_u(clctx.ctx, cqueue, size, c_at_max, gpu_holes, 0.000001f).as_read_only();
+        laplace_data solve = setup_u_laplace(clctx.ctx, holes.holes.size());
+
+        u_arg = laplace_solver(clctx.ctx, cqueue, gpu_holes, solve.rhs, solve.boundary, scale, size, 0.000001f);
 
         cqueue.block();
     };

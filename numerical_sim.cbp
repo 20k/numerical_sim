@@ -149,8 +149,11 @@
 		<Unit filename="deps/toolkit/vertex.hpp" />
 		<Unit filename="deps/vec/tensor.hpp" />
 		<Unit filename="deps/vec/vec.hpp" />
+		<Unit filename="equation_context.hpp" />
 		<Unit filename="gravitational_waves.cpp" />
 		<Unit filename="gravitational_waves.hpp" />
+		<Unit filename="laplace_solver.cpp" />
+		<Unit filename="laplace_solver.hpp" />
 		<Unit filename="legendre_nodes.h" />
 		<Unit filename="legendre_weights.h" />
 		<Unit filename="main.cpp" />
