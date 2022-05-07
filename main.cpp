@@ -101,6 +101,7 @@ https://air.unipr.it/retrieve/handle/11381/2783927/20540/0912.2920.pdf - contain
 https://arxiv.org/pdf/gr-qc/0003101.pdf - fat hydrodynamic paper
 https://arxiv.org/pdf/1606.04881.pdf - this provides mixed neutron star black hole initial conditions
 https://www.hindawi.com/journals/aa/2017/6127031/ - neutron star initial conditions
+https://www.aanda.org/articles/aa/pdf/2010/06/aa12738-09.pdf - this gives exact formulas for pressure and density
 */
 
 ///notes:
