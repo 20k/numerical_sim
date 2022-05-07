@@ -1328,6 +1328,67 @@ T eos_polytropic(const T& rest_mass_density) ///aka p0
     return K * pow(rest_mass_density, Gamma);
 }
 
+template<typename T>
+struct neutron_star_data
+{
+    T Gamma = 2;
+    T pressure = 0;
+    T density = 0; /// I think this is rest mass?
+    T k = 0;
+
+    T compactness = 0;
+    T radius =  0; ///neutron star parameter
+    T mass = 0;
+};
+
+inline
+float neutron_star_compactness()
+{
+    return 0.180f;
+}
+
+template<typename T>
+inline
+T neutron_star_mass_to_radius(const T& mass)
+{
+    T radius = mass / neutron_star_compactness();
+
+    return radius;
+}
+
+///https://www.aanda.org/articles/aa/pdf/2010/06/aa12738-09.pdf
+///this is only valid for coordinate radius < radius
+template<typename T>
+inline
+neutron_star_data<T> sample_within_neutron_star(const T& coordinate_radius, const T& mass)
+{
+    T radius = neutron_star_mass_to_radius(mass);
+
+    T xi = M_PI * coordinate_radius / (radius + 0.0001f);
+
+    ///oh thank god
+    T pc = mass / ((4 / M_PI) * pow(radius, 3.f));
+
+    ///todo: limit at 0 is 1
+    T p_xi = pc * sin(xi) / xi;
+
+    T k = (2 / M_PI) * radius * radius;
+
+    T pressure = k * p_xi * p_xi;
+
+    neutron_star_data<T> ret;
+    ret.pressure = pressure;
+    ret.density = p_xi;
+    ret.k = k;
+
+    ret.compactness = neutron_star_compactness();
+    ret.radius = radius;
+    ret.mass = mass;
+
+    return ret;
+
+}
+
 //#define USE_MATTER
 
 ///https://arxiv.org/pdf/0812.0641.pdf just before 23
