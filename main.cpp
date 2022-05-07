@@ -90,6 +90,7 @@ https://arxiv.org/pdf/2108.05119.pdf - apparently horizons
 https://arxiv.org/pdf/gr-qc/0209066.pdf - hamiltonian constraint damping
 https://air.unipr.it/retrieve/handle/11381/2783927/20540/0912.2920.pdf - relativistic hydrodynamics
 https://arxiv.org/pdf/gr-qc/9910044.pdf - the volume smeary integral thing for w4
+https://orca.cardiff.ac.uk/id/eprint/114952/1/PhysRevD.98.044014.pdf - trumpet data, claims reduced junk
 
 ///neutron stars
 https://arxiv.org/pdf/gr-qc/0209102.pdf - basic paper
@@ -1404,7 +1405,7 @@ namespace neutron_star
 
 
         ///ok so. https://gwic.ligo.org/assets/docs/theses/Read_Thesis.pdf 1.5 defines h as (little1 + pressure) / rest_density
-        ///https://arxiv.org/pdf/1606.04881.pdf#page=4&zoom=100,538,624 defines h as 1 + little2 + pressure / rest_density
+        ///https://arxiv.org/pdf/1606.04881.pdf defines h as 1 + little2 + pressure / rest_density
 
         ///so 1 + little2 + pressure / rest_density = (little1 + pressure) / rest_density
 
@@ -1416,7 +1417,19 @@ namespace neutron_star
         ret.mass_energy_density = ret.rest_mass_density * (1 + ret.specific_energy_density);
 
         return ret;
+    }
 
+    ///https://arxiv.org/pdf/1606.04881.pdf (59)
+    float calculate_M(float mass)
+    {
+        float radius = mass_to_radius(mass);
+
+        auto integration_func = [&](float coordinate_radius)
+        {
+            data<float> neutron_data = sample_interior(coordinate_radius, mass);
+
+
+        }
     }
 }
 
