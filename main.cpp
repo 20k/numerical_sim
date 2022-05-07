@@ -1339,7 +1339,8 @@ namespace neutron_star
     {
         T Gamma = 2;
         T pressure = 0;
-        T density = 0; /// I think this is rest mass?
+        T rest_mass_density = 0; ///p0
+        T mass_energy_density = 0; /// = rho, looks like p
         T k = 0;
 
         T compactness = 0;
@@ -1390,7 +1391,7 @@ namespace neutron_star
         data<T> ret;
         ret.Gamma = 2;
         ret.pressure = pressure;
-        ret.density = p_xi;
+        ret.rest_mass_density = p_xi;
         ret.k = k;
 
         ret.compactness = compactness();
@@ -1410,6 +1411,9 @@ namespace neutron_star
         ///little2 = (little1 / rest_density) - 1
 
         ret.specific_energy_density = (ret.energy_density / ret.density) - 1;
+
+        ///https://arxiv.org/pdf/1606.04881.pdf (before 6)
+        ret.mass_energy_density = ret.rest_mass_density * (1 + ret.specific_energy_density);
 
         return ret;
 
