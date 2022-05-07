@@ -1315,6 +1315,18 @@ tensor<value, 3> calculate_dPhi(const value& chi, const tensor<value, 3>& dchi)
     return -dchi/(4 * max(chi, 0.001f));
 }
 
+///https://arxiv.org/pdf/1606.04881.pdf (72)
+///this relates rest mass density to pressure
+template<typename T>
+inline
+T eos_polytropic(const T& rest_mass_density) ///aka p0
+{
+    float Gamma = 2;
+    float K = 123.641f;
+
+    return K * pow(rest_mass_density, Gamma);
+}
+
 //#define USE_MATTER
 
 ///https://arxiv.org/pdf/0812.0641.pdf just before 23
