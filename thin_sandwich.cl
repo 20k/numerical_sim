@@ -90,10 +90,6 @@ void gA_phi_to_gA(__global float* gA_phi, __global float* phi, __global float* g
     float oz = offset.z;
 
     gA_out[IDX(ix, iy, iz)] = gA_phi[IDX(ix, iy, iz)] / phi[IDX(ix, iy, iz)];
-
-    //gA_out[IDX(ix,iy,iz)] = 1;
-
-    //printf("Ga %i %i %i %f\n", ix, iy, iz, gA_out[IDX(ix,iy,iz)]);
 }
 
 __kernel
@@ -165,41 +161,6 @@ void iterative_sandwich(__global float* gB0_in, __global float* gB1_in, __global
     laplace_interior(gB1_in, gB1_out, scale * scale * gB1_RHS, ix, iy, iz, scale, dim, still_going, etol);
     laplace_interior(gB2_in, gB2_out, scale * scale * gB2_RHS, ix, iy, iz, scale, dim, still_going, etol);
     laplace_interior(gA_phi_in, gA_phi_out, scale * scale * gA_PHI_RHS, ix, iy, iz, scale, dim, still_going, etol);
-
-    /*if(ix == dim.x/2 && iy == dim.y/2 && iz == dim.z/2)
-    {
-        printf("Gb %f\n", gB0_out[IDX(ix,iy,iz)]);
-    }*/
-
-    /*if(ix == 40 && iy == 8 && (iz == 0 || iz == 1 || iz == 250 || iz == 249))
-    {
-        int index = IDX(ix,iy,iz);
-
-        float gB0 = gB0_out[index];
-        float gB1 = gB1_out[index];
-        float gB2 = gB2_out[index];
-
-        printf("GB %.24f %.24f %.24f %i %i %i\n", gB0, gB1, gB2, ix, iy, iz);
-
-        //printf("Val %i %i %i %.24f %.24f %i\n", ix, iy, iz, djbj_out[IDX(ix,iy,iz)], v0, order);
-    }*/
-
-    ///176 1 1 against 0.00000000000000000000000 176 1 249
-
-    #if 0
-    if(ix == 32 && iy == 1 && (iz == 1 || iz == 249))
-    {
-        int index = IDX(ix,iy,iz);
-
-        /*float gB0 = gB0_in[IDX(ix,iy,iz+1)];
-        float gB1 = gB0_in[IDX(ix,iy,iz-1)];
-        float gB2 = gB0_in[index];
-
-        printf("Val %.24f %.24f %.24f %i %i %i\n", gB0, gB1, gB2, ix, iy, iz);*/
-
-        printf("%.24f %.24f %i %i %i\n", gB2_RHS, gB2_out[index], ix, iy, iz);
-    }
-    #endif // 0
 
     //gB0_out[IDX(ix,iy,iz)] = max(gB0_out[IDX(ix,iy,iz)], 0.f);
     //gB1_out[IDX(ix,iy,iz)] = max(gB1_out[IDX(ix,iy,iz)], 0.f);
