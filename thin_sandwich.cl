@@ -171,7 +171,7 @@ void iterative_sandwich(__global float* gB0_in, __global float* gB1_in, __global
         printf("Gb %f\n", gB0_out[IDX(ix,iy,iz)]);
     }*/
 
-    if(ix == 40 && iy == 8 && (iz == 0 || iz == 1 || iz == 250 || iz == 249))
+    /*if(ix == 40 && iy == 8 && (iz == 0 || iz == 1 || iz == 250 || iz == 249))
     {
         int index = IDX(ix,iy,iz);
 
@@ -182,11 +182,28 @@ void iterative_sandwich(__global float* gB0_in, __global float* gB1_in, __global
         printf("GB %.24f %.24f %.24f %i %i %i\n", gB0, gB1, gB2, ix, iy, iz);
 
         //printf("Val %i %i %i %.24f %.24f %i\n", ix, iy, iz, djbj_out[IDX(ix,iy,iz)], v0, order);
-    }
+    }*/
 
-    gB0_out[IDX(ix,iy,iz)] = max(gB0_out[IDX(ix,iy,iz)], 0.f);
-    gB1_out[IDX(ix,iy,iz)] = max(gB1_out[IDX(ix,iy,iz)], 0.f);
-    gB2_out[IDX(ix,iy,iz)] = max(gB2_out[IDX(ix,iy,iz)], 0.f);
+    ///176 1 1 against 0.00000000000000000000000 176 1 249
+
+    #if 0
+    if(ix == 32 && iy == 1 && (iz == 1 || iz == 249))
+    {
+        int index = IDX(ix,iy,iz);
+
+        /*float gB0 = gB0_in[IDX(ix,iy,iz+1)];
+        float gB1 = gB0_in[IDX(ix,iy,iz-1)];
+        float gB2 = gB0_in[index];
+
+        printf("Val %.24f %.24f %.24f %i %i %i\n", gB0, gB1, gB2, ix, iy, iz);*/
+
+        printf("%.24f %.24f %i %i %i\n", gB2_RHS, gB2_out[index], ix, iy, iz);
+    }
+    #endif // 0
+
+    //gB0_out[IDX(ix,iy,iz)] = max(gB0_out[IDX(ix,iy,iz)], 0.f);
+    //gB1_out[IDX(ix,iy,iz)] = max(gB1_out[IDX(ix,iy,iz)], 0.f);
+    //gB2_out[IDX(ix,iy,iz)] = max(gB2_out[IDX(ix,iy,iz)], 0.f);
 
     gA_phi_out[IDX(ix,iy,iz)] = clamp(gA_phi_out[IDX(ix,iy,iz)], 0.f, phi[IDX(ix,iy,iz)]);
 
