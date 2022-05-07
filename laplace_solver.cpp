@@ -262,7 +262,7 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
 
     ctx.add("BDJBJ", data.djbj);
 
-    std::string local_build_str = "-I ./ -O3 -cl-std=CL2.0 -cl-mad-enable -cl-finite-math-only ";
+    std::string local_build_str = "-I ./ -O3 -cl-std=CL2.0 -cl-finite-math-only ";
 
     ctx.build(local_build_str, "UNUSEDTHIN");
 

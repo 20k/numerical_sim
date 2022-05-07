@@ -2189,6 +2189,7 @@ sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cq
 
     equation_context ctx;
     ctx.order = 1;
+    ctx.always_directional_derivatives = true;
 
     equation_context precise;
     precise.always_directional_derivatives = true;
@@ -2221,6 +2222,15 @@ sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cq
 
     value aij_aIJ = calculate_aij_aIJ(flat_metric, bcAij, cpu_holes);
 
+    tensor<value, 3> djaphi;
+
+    for(int j=0; j < 3; j++)
+    {
+        //djaphi.idx(j) = diff1(ctx, gA * pow(phi, -6.f), j);;
+
+        djaphi.idx(j) = (phi * diff1(ctx, gA, j) - 6 * gA * diff1(ctx, phi, j)) / pow(phi, 7);
+    }
+
     tensor<value, 3> gB_rhs;
 
     for(int i=0; i < 3; i++)
@@ -2231,7 +2241,7 @@ sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cq
 
         for(int j=0; j < 3; j++)
         {
-            p2 += 2 * ibcAij.idx(i, j) * diff1(ctx, gA * pow(phi, -6.f), j);
+            p2 += 2 * ibcAij.idx(i, j) * djaphi.idx(j);//diff1(ctx, gA * pow(phi, -6.f), j);
         }
 
         ///value p3 = matter
