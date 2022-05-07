@@ -1345,6 +1345,11 @@ namespace neutron_star
         T compactness = 0;
         T radius =  0; ///neutron star parameter
         T mass = 0;
+
+        ///this is not littlee
+        T energy_density = 0;
+        ///this is littlee
+        T specific_energy_density = 0;
     };
 
     inline
@@ -1383,6 +1388,7 @@ namespace neutron_star
         T pressure = k * p_xi * p_xi;
 
         data<T> ret;
+        ret.Gamma = 2;
         ret.pressure = pressure;
         ret.density = p_xi;
         ret.k = k;
@@ -1390,6 +1396,20 @@ namespace neutron_star
         ret.compactness = compactness();
         ret.radius = radius;
         ret.mass = mass;
+
+        ///https://arxiv.org/pdf/gr-qc/0403029.pdf
+
+        ret.energy_density = ret.density + (ret.pressure / (ret.Gamma - 1));
+
+
+        ///ok so. https://gwic.ligo.org/assets/docs/theses/Read_Thesis.pdf 1.5 defines h as (little1 + pressure) / rest_density
+        ///https://arxiv.org/pdf/1606.04881.pdf#page=4&zoom=100,538,624 defines h as 1 + little2 + pressure / rest_density
+
+        ///so 1 + little2 + pressure / rest_density = (little1 + pressure) / rest_density
+
+        ///little2 = (little1 / rest_density) - 1
+
+        ret.specific_energy_density = (ret.energy_density / ret.density) - 1;
 
         return ret;
 
