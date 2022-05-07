@@ -363,15 +363,15 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
         sandwich_args.push_back(err);
         sandwich_args.push_back(order_ptr);
 
+        iterate.set_args(sandwich_args);
+
+        cqueue.exec(iterate, {dim.x(), dim.y(), dim.z()}, {8, 8, 1}, {});
+
         check_symmetry("djbj", check_z_symmetry, cqueue, djbj, clsize);
         check_symmetry("gB0", check_z_symmetry, cqueue, args_out.gB0, clsize);
         check_symmetry("gB1", check_z_symmetry, cqueue, args_out.gB1, clsize);
         check_symmetry("gB2", check_z_symmetry, cqueue, args_out.gB2, clsize);
         check_symmetry("gA_phi", check_z_symmetry, cqueue, args_out.gA_phi, clsize);
-
-        iterate.set_args(sandwich_args);
-
-        cqueue.exec(iterate, {dim.x(), dim.y(), dim.z()}, {8, 8, 1}, {});
 
         std::swap(args_out, args_in);
 
