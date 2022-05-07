@@ -2960,7 +2960,7 @@ void build_sommerfeld(equation_context& ctx)
     float asy_cGi1 = 0;
     float asy_cGi2 = 0;
 
-    auto sommerfeld = [&](value f, value f0, value v)
+    auto sommerfeld = [&](value f, float f0, value v)
     {
         value sum = 0;
 
