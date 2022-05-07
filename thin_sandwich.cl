@@ -117,6 +117,14 @@ void calculate_djbj(__global float* gB0_in, __global float* gB1_in, __global flo
     float oy = offset.y;
     float oz = offset.z;
 
+    if(ix == 40 && iy == 8 && (iz == 0 || iz == 250))
+    {
+        if(iz == 0)
+            printf("Val %i %i %i %.24f %.24f\n", ix, iy, iz, djbj_out[IDX(ix,iy,iz)], djbj_out[IDX(ix,iy,iz+1)]);
+        else
+            printf("Val %i %i %i %.24f %.24f\n", ix, iy, iz, djbj_out[IDX(ix,iy,iz)], djbj_out[IDX(ix,iy,iz-1)]);
+    }
+
     int order = order_ptr[IDX(ix,iy,iz)];
 
     float v0 = BDJBJ;
