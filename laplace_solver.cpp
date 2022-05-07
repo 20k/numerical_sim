@@ -274,14 +274,31 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
     cl::kernel iterate(t_program, "iterative_sandwich");
     cl::kernel gA_phi_to_gA(t_program, "gA_phi_to_gA");
     cl::kernel check_z_symmetry(t_program, "check_z_symmetry");
+    cl::kernel generate_order(t_program, "generate_order");
+
+    vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
+
+    cl::buffer order_ptr(clctx);
+
+    {
+        order_ptr.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_ushort));
+
+        order_ptr.set_to_zero(cqueue);
+
+        cl::args order_arg;
+        order_arg.push_back(order_ptr);
+        order_arg.push_back(clsize);
+
+        generate_order.set_args(order_arg);
+
+        cqueue.exec(generate_order, {dim.x(), dim.y(), dim.z()}, {8, 8, 1}, {});
+    }
 
     cl::buffer u_arg = data.u_arg;
 
     cl::buffer phi(clctx);
     phi.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
     phi.fill(cqueue, cl_float{1.f});
-
-    vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
 
     {
         cl::args u_to_phi_args;
@@ -322,7 +339,7 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
         djbj_args.push_back(scale);
         djbj_args.push_back(clsize);
         djbj_args.push_back(still_going);
-        djbj_args.push_back(data.order_ptr);
+        djbj_args.push_back(order_ptr);
 
         calculate_djbj.set_args(djbj_args);
 
@@ -344,7 +361,7 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
         sandwich_args.push_back(last_still_going);
         sandwich_args.push_back(still_going);
         sandwich_args.push_back(err);
-        sandwich_args.push_back(data.order_ptr);
+        sandwich_args.push_back(order_ptr);
 
         check_symmetry("djbj", check_z_symmetry, cqueue, djbj, clsize);
         check_symmetry("gB0", check_z_symmetry, cqueue, args_out.gB0, clsize);
