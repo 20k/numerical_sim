@@ -2603,6 +2603,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
 
     //assert(cpu_holes[0].t == compact_object::NEUTRON_STAR);
 
+    ///https://arxiv.org/pdf/1606.04881.pdf I think I need to do (85)
     value U_RHS = (-1.f/8.f) * aij_aIJ_dyn * pow(phi, -7) - 2 * M_PI * pow(phi, -3) * ppw2p;
 
     /*tensor<value, 3> vpos = {cpu_holes[0].position.x(), cpu_holes[0].position.y(), cpu_holes[0].position.z()};
