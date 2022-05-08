@@ -1502,9 +1502,9 @@ namespace neutron_star
 
         T integrated = integrate_1d(integral_func, 16, coordinate_radius, T{0.f});
 
-        return if_v(coordinate_radius > mass_to_radius(mass),
-                    1,
-                    integrated);
+        return dual_types::if_v(coordinate_radius > mass_to_radius(mass),
+                                1.f,
+                                integrated);
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (45)
@@ -1521,9 +1521,9 @@ namespace neutron_star
 
         T integrated = integrate_1d(integral_func, 16, coordinate_radius, T{0.f});
 
-        return if_v(coordinate_radius > mass_to_radius(mass),
-                    0,
-                    integrated);
+        return dual_types::if_v(coordinate_radius > mass_to_radius(mass),
+                                0.f,
+                                integrated);
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (55)
@@ -1570,7 +1570,7 @@ namespace neutron_star
 
         value r = relative_pos.length();
 
-        r = max(r, 1e-6f);
+        r = max(r, 1e-3f);
 
         tensor<value, 3> li = relative_pos / r;
 
@@ -1640,6 +1640,20 @@ namespace neutron_star
             printf("Test integral %f\n", test_integral);
         }
         #endif // 0
+
+        #if 0
+        {
+            float Q_test = calculate_integral_Q(mass_to_radius(param.mass) * 10, param.mass, M_factor);
+
+            printf("QT %f\n", Q_test);
+        }
+        #endif // 0
+
+        /*{
+            float Q_test = calculate_integral_Q(mass_to_radius(param.mass) * 0.5f, param.mass, M_factor);
+
+            printf("QT %f\n", Q_test);
+        }*/
 
         float W2 = calculate_W2_linear_momentum(flat, param.linear_momentum, M_factor);
 
