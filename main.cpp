@@ -2256,7 +2256,7 @@ namespace compact_object
     {
         ///in coordinate space
         tensor<T, 3> position;
-        ///for black holes is
+        ///for black holes this is bare mass. For neutron stars its a solid 'something'
         T bare_mass = 0;
         tensor<T, 3> momentum;
         tensor<T, 3> angular_momentum;
@@ -2341,22 +2341,52 @@ namespace black_hole
 
         return bcAij;
     }
+}
 
-    ///this does not return the same kind of conformal cAij as bssn uses, need to reconstruct Kij!
-    template<typename T>
-    inline
-    tensor<value, 3, 3> calculate_bcAij(const tensor<value, 3>& pos, const std::vector<compact_object::data<T>>& holes)
+template<typename T>
+inline
+tensor<value, 3, 3> calculate_bcAij_generic(const tensor<value, 3>& pos, const std::vector<compact_object::data<T>>& objs)
+{
+    tensor<value, 3, 3> bcAij;
+
+    for(const compact_object::data<T>& obj : objs)
     {
-        tensor<value, 3, 3> bcAij;
-
-        for(const compact_object::data<T>& hole : holes)
+        if(obj.t == compact_object::BLACK_HOLE)
         {
-            bcAij += calculate_single_bcAij(pos, hole);
+            tensor<value, 3, 3> bcAij_single = black_hole::calculate_single_bcAij(pos, obj);
 
+            bcAij += bcAij_single;
         }
 
-        return bcAij;
+        if(obj.t == compact_object::NEUTRON_STAR)
+        {
+            neutron_star::params p;
+            p.position = obj.position;
+            p.mass = obj.bare_mass;
+            p.linear_momentum = obj.momentum;
+            p.angular_momentum = obj.angular_momentum;
+
+            metric<float, 3, 3> flat;
+            metric<value, 3, 3> flatv; ///ugh, todo: FIXME
+
+            for(int i=0; i < 3; i++)
+            {
+                for(int j=0; j < 3; j++)
+                {
+                    flat.idx(i, j) = (i == j) ? 1 : 0;
+                    flatv.idx(i, j) = (i == j) ? 1 : 0;
+                }
+            }
+
+            tensor<value, 3, 3> bcAIJ_single = neutron_star::calculate_aij_single(pos, flat, p);
+
+            tensor<value, 3, 3> bcAij_single = lower_both(bcAIJ_single, flatv);
+
+            bcAij += bcAij_single;
+        }
     }
+
+    return bcAij;
 }
 
 
@@ -2468,7 +2498,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
-    tensor<value, 3, 3> bcAij_dyn = black_hole::calculate_bcAij(pos, cpu_holes);
+    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(pos, cpu_holes);
     value aij_aIJ_dyn = calculate_aij_aIJ(flat_metric, bcAij_dyn);
 
     ///https://arxiv.org/pdf/1606.04881.pdf 74
@@ -2873,7 +2903,7 @@ void setup_static_conditions(cl::context& clctx, cl::command_queue& cqueue, equa
     }
 
     value BL_s = calculate_conformal_guess(pos, holes);
-    tensor<value, 3, 3> bcAij_static = black_hole::calculate_bcAij(pos, holes);
+    tensor<value, 3, 3> bcAij_static = calculate_bcAij_generic(pos, holes);
     value aij_aIJ_static = calculate_aij_aIJ(flat_metric, bcAij_static);
 
     ctx.add("init_BL_val", BL_s);
