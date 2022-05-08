@@ -1463,34 +1463,37 @@ namespace neutron_star
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (57)
-    value calculate_sigma(const value& coordinate_radius, float mass, float M_factor)
+    template<typename T>
+    T calculate_sigma(const T& coordinate_radius, float mass, float M_factor)
     {
-        data<value> ndata = sample_interior<value>(coordinate_radius, value{mass});
+        data<T> ndata = sample_interior<T>(coordinate_radius, T{mass});
 
         return (ndata.mass_energy_density + ndata.pressure) / M_factor;
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (62)
-    value calculate_kappa(const value& coordinate_radius, float mass, float N_factor)
+    template<typename T>
+    T calculate_kappa(const T& coordinate_radius, float mass, float N_factor)
     {
-        data<value> ndata = sample_interior<value>(coordinate_radius, value{mass});
+        data<T> ndata = sample_interior<T>(coordinate_radius, T{mass});
 
         return (ndata.mass_energy_density + ndata.pressure) / N_factor;
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (43)
-    value calculate_integral_Q(const value& coordinate_radius, float mass, float M_factor)
+    template<typename T>
+    T calculate_integral_Q(const T& coordinate_radius, float mass, float M_factor)
     {
         ///currently impossible, but might as well
         if(mass_to_radius(mass) == 0)
             return 1;
 
-        auto integral_func = [mass, M_factor](const value& rp)
+        auto integral_func = [mass, M_factor](const T& rp)
         {
             return 4 * M_PI * calculate_sigma(rp, mass, M_factor) * pow(rp, 2.f);
         };
 
-        value integrated = integrate_1d(integral_func, 16, coordinate_radius, value{0.f});
+        T integrated = integrate_1d(integral_func, 16, coordinate_radius, T{0.f});
 
         return if_v(coordinate_radius > mass_to_radius(mass),
                     1,
@@ -1498,17 +1501,18 @@ namespace neutron_star
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (45)
-    value calculate_integral_C(value coordinate_radius, float mass, float M_factor)
+    template<typename T>
+    T calculate_integral_C(const T& coordinate_radius, float mass, float M_factor)
     {
         if(mass_to_radius(mass) == 0)
             return 0;
 
-        auto integral_func = [mass, M_factor](const value& rp)
+        auto integral_func = [mass, M_factor](const T& rp)
         {
             return (2.f/3.f) * M_PI * calculate_sigma(rp, mass, M_factor) * pow(rp, 4.f);
         };
 
-        value integrated = integrate_1d(integral_func, 16, coordinate_radius, value{0.f});
+        T integrated = integrate_1d(integral_func, 16, coordinate_radius, T{0.f});
 
         return if_v(coordinate_radius > mass_to_radius(mass),
                     0,
@@ -1516,14 +1520,15 @@ namespace neutron_star
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (55)
-    value calculate_integral_N(value coordinate_radius, float mass, float N_factor)
+    template<typename T>
+    T calculate_integral_N(const T& coordinate_radius, float mass, float N_factor)
     {
-        auto integral_func = [mass, N_factor](const value& rp)
+        auto integral_func = [mass, N_factor](const T& rp)
         {
             return (8 * M_PI / 3.f) * calculate_kappa(rp, mass, N_factor) * pow(rp, 4.f);
         };
 
-        value integrated = integrate_1d(integral_func, 16, coordinate_radius, value{0.f});
+        T integrated = integrate_1d(integral_func, 16, coordinate_radius, T{0.f});
 
         return if_v(coordinate_radius > mass_to_radius(mass),
                     1.f,
