@@ -1531,6 +1531,7 @@ namespace neutron_star
     }
 
     ///only handles linear momentum currently
+    ///https://arxiv.org/pdf/2101.10252.pdf (20)
     tensor<value, 3, 3> calculate_aij_single(const tensor<value, 3>& coordinate, const metric<float, 3, 3>& flat, const params& param)
     {
         tensor<value, 3> vposition = {param.position.x(), param.position.y(), param.position.z()};
