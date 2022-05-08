@@ -2482,13 +2482,16 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
+    ///TODO: FIXME
     metric<value, 3, 3> flat_metric;
+    metric<float, 3, 3> flat_metricf;
 
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
             flat_metric.idx(i, j) = (i == j) ? 1 : 0;
+            flat_metricf.idx(i, j) = (i == j) ? 1 : 0;
         }
     }
 
@@ -2504,7 +2507,24 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     ///https://arxiv.org/pdf/1606.04881.pdf 74
     value phi = BL_s_dyn + u_value;
 
-    value U_RHS = (-1.f/8.f) * aij_aIJ_dyn * pow(phi, -7);
+    value ppw2p = 0;
+
+    for(const compact_object::data<float>& obj : cpu_holes)
+    {
+        if(obj.t == compact_object::NEUTRON_STAR)
+        {
+            ///todo: remove the duplication?
+            neutron_star::params p;
+            p.position = obj.position;
+            p.mass = obj.bare_mass;
+            p.linear_momentum = obj.momentum;
+            p.angular_momentum = obj.angular_momentum;
+
+            ppw2p += neutron_star::calculate_ppw2_p(pos, flat_metricf, p);
+        }
+    }
+
+    value U_RHS = (-1.f/8.f) * aij_aIJ_dyn * pow(phi, -7) - 2 * M_PI * pow(phi, -3) * ppw2p;
 
     laplace_data solve;
     solve.rhs = U_RHS;
