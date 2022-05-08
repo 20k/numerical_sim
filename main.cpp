@@ -2827,7 +2827,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #ifdef PAPER_0610128
     compact_object::data<float> h1;
     h1.t = compact_object::NEUTRON_STAR;
-    h1.bare_mass = 0.2;
+    h1.bare_mass = 0.05;
     h1.momentum = {0, 0.133 * 0.8, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
@@ -5872,7 +5872,7 @@ int main()
     int steps = 0;
 
     bool run = false;
-    bool should_render = true;
+    bool should_render = false;
 
     vec3f camera_pos = {0, 0, -c_at_max/2.f + 1};
     quat camera_quat;
@@ -6123,28 +6123,6 @@ int main()
 
             std::tie(last_valid_buffer, last_valid_thin) = base_mesh.full_step(clctx.ctx, clctx.cqueue, mqueue, timestep, thin_pool, u_arg);
 
-            if(!should_render)
-            {
-                cl::args render;
-
-                for(auto& i : last_valid_buffer)
-                {
-                    render.push_back(i.as_device_read_only());
-                }
-
-                for(auto& i : last_valid_thin)
-                {
-                    render.push_back(i.as_device_read_only());
-                }
-
-                //render.push_back(bssnok_datas[which_data]);
-                render.push_back(scale);
-                render.push_back(clsize);
-                render.push_back(rtex[which_texture]);
-
-                clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
-            }
-
             {
                 wave_manager.issue_extraction(clctx.cqueue, last_valid_buffer, last_valid_thin, scale, clsize, rtex[which_texture]);
 
@@ -6161,6 +6139,28 @@ int main()
             current_simulation_boundary += DIFFERENTIATION_WIDTH;
 
             current_simulation_boundary = clamp(current_simulation_boundary, 0, size.x()/2);
+        }
+
+        if(!should_render)
+        {
+            cl::args render;
+
+            for(auto& i : last_valid_buffer)
+            {
+                render.push_back(i.as_device_read_only());
+            }
+
+            for(auto& i : last_valid_thin)
+            {
+                render.push_back(i.as_device_read_only());
+            }
+
+            //render.push_back(bssnok_datas[which_data]);
+            render.push_back(scale);
+            render.push_back(clsize);
+            render.push_back(rtex[which_texture]);
+
+            clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
         }
 
         if(should_render || snap)
