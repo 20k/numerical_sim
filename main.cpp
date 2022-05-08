@@ -5526,13 +5526,13 @@ int main()
 
     evolution_points evolve_points = generate_evolution_points(clctx.ctx, clctx.cqueue, scale, size);
 
-    sandwich_result sandwich(clctx.ctx);
+    //sandwich_result sandwich(clctx.ctx);
 
-    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes, &sandwich]()
+    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes]()
     {
         cl::command_queue cqueue(clctx.ctx);
 
-        sandwich = setup_sandwich_laplace(clctx.ctx, clctx.cqueue, holes.holes, scale, size);
+        //sandwich = setup_sandwich_laplace(clctx.ctx, clctx.cqueue, holes.holes, scale, size);
 
         laplace_data solve = setup_u_laplace(clctx.ctx, holes.holes);
         u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.000001f);
@@ -5741,7 +5741,7 @@ int main()
 
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
 
-    base_mesh.init(clctx.cqueue, u_arg, sandwich.gA, sandwich.gB0, sandwich.gB1, sandwich.gB2);
+    base_mesh.init(clctx.cqueue, u_arg);
 
     std::vector<float> real_graph;
     std::vector<float> real_decomp;
