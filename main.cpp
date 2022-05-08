@@ -1600,6 +1600,27 @@ namespace neutron_star
 
         return aIJ;
     }
+
+    value calculate_ppw2_p(const tensor<value, 3>& coordinate, const metric<float, 3, 3>& flat, const params& param)
+    {
+        tensor<value, 3> vposition = {param.position.x(), param.position.y(), param.position.z()};
+
+        tensor<value, 3> relative_pos = coordinate - vposition;
+
+        value r = relative_pos.length();
+
+        data<value> dat = sample_interior<value>(r, value{param.mass});
+
+        float M_factor = calculate_M_factor(param.mass);
+
+        float W2 = calculate_W2_linear_momentum(flat, param.linear_momentum, M_factor);
+
+        value ppw2p = (dat.mass_energy_density + dat.pressure) * W2 - dat.pressure;
+
+        return if_v(r > mass_to_radius(param.mass),
+                    value{0},
+                    ppw2p);
+    }
 }
 
 //#define USE_MATTER
