@@ -1390,13 +1390,27 @@ namespace neutron_star
     {
         T radius = mass_to_radius(mass);
 
-        T xi = M_PI * coordinate_radius / (radius + 0.01f);
+        T xi = M_PI * coordinate_radius / radius;
 
         ///oh thank god
-        T pc = mass / ((4 / M_PI) * pow(radius + 0.01f, 3.f));
+        T pc = mass / ((4 / M_PI) * pow(radius, 3.f));
 
-        ///todo: limit at 0 is 1
-        T p_xi = pc * sin(xi) / xi;
+        float xi_boundary = 0.0001f;
+        float value_at_boundary = sin(xi_boundary) / xi_boundary;
+
+        T xi_fraction = xi / xi_boundary;
+
+        auto lmix = [](const T& v1, const T& v2, const T& a)
+        {
+            return (1-a) * v1 + a * v2;
+        };
+
+        ///piecewise sin(x) / x, enforce sin(x)/x = 1 at x = 0
+        T sin_fraction = dual_types::if_v(xi <= xi_boundary,
+                                          lmix(value_at_boundary, 1.f, 1.f - xi_fraction),
+                                          sin(xi) / xi);
+
+        T p_xi = pc * sin_fraction;
 
         T k = (2 / M_PI) * radius * radius;
 
@@ -2571,9 +2585,29 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
         }
     }
 
+    /*data<value> dat = sample_interior<value>(r, value{param.mass});*/
+
+    /*{
+        const compact_object::data<float>& obj = cpu_holes[0];
+
+        neutron_star::params p;
+        p.position = obj.position;
+        p.mass = obj.bare_mass;
+        p.linear_momentum = obj.momentum;
+        p.angular_momentum = obj.angular_momentum;
+
+        neutron_star::data<float> result = neutron_star::sample_interior(0.f, p.mass);
+
+        printf("Dat %f %f %f\n", result.mass_energy_density, result.pressure, result.rest_mass_density);
+    }*/
+
+    //assert(cpu_holes[0].t == compact_object::NEUTRON_STAR);
+
     value U_RHS = (-1.f/8.f) * aij_aIJ_dyn * pow(phi, -7) - 2 * M_PI * pow(phi, -3) * ppw2p;
 
-    solve.extras.push_back({"debug0", aij_aIJ_dyn});
+    /*tensor<value, 3> vpos = {cpu_holes[0].position.x(), cpu_holes[0].position.y(), cpu_holes[0].position.z()};
+
+    solve.extras.push_back({"debug0", (pos - vpos).length()});*/
 
     solve.rhs = U_RHS;
     solve.boundary = 1;

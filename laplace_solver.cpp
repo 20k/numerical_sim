@@ -51,7 +51,7 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& 
 
     cl::copy(cqueue, reduced_u_args[0], reduced_u_args[1]);
 
-    int N = 100;
+    int N = 8000;
 
     #ifdef GPU_PROFILE
     N = 1000;

@@ -155,10 +155,10 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     }*/
 
     ///107 125 125
-    if(ix == 107 && iy == 125 && iz == 125)
+    /*if(ix == 107 && iy == 125 && iz == 125)
     {
         printf("RHS %f %f %.24f\n", RHS, u_offset_in[IDX(ix,iy,iz)], dbg_a0);
-    }
+    }*/
 
     /*if((ix == 107 || ix == 106 || ix == 108) && (iy == 125 || iy == 124 || iy == 126) && (iz == 125 || iz == 124 || iz == 126))
     {
