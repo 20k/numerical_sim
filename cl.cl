@@ -208,10 +208,10 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     K[index] = init_K;
     X[index] = init_X;
 
-    /*gA[index] = init_gA;
+    gA[index] = init_gA;
     gB0[index] = init_gB0;
     gB1[index] = init_gB1;
-    gB2[index] = init_gB2;*/
+    gB2[index] = init_gB2;
 
     #ifdef USE_GBB
     gBB0[index] = init_gBB0;
