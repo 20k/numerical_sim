@@ -1511,7 +1511,7 @@ namespace neutron_star
 
         auto integral_func = [mass, N_factor](float rp)
         {
-            return (2.f/3.f) * M_PI * calculate_kappa(rp, mass, N_factor) * pow(rp, 4.f);
+            return (8 * M_PI / 3.f) * calculate_kappa(rp, mass, N_factor) * pow(rp, 4.f);
         };
 
         return integrate_1d(integral_func, 64, coordinate_radius, 0.f);
