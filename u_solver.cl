@@ -141,5 +141,17 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
     float h2f0 = scale * scale * RHS;
 
+    //if(ix == dim.x/2 && iy == dim.y/2 && iz == dim.z/2)
+    /*{
+        if(isnan(RHS))
+            printf("RHS %f %i %i %i\n", RHS, ix, iy, iz);
+    }*/
+
+    ///107 125 125
+    if(ix == 107 && iy == 125 && iz == 125)
+    {
+        printf("RHS %f\n", RHS);
+    }
+
     laplace_interior(u_offset_in, u_offset_out, h2f0, ix, iy, iz, scale, dim, still_going, etol);
 }

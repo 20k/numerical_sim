@@ -206,7 +206,7 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const l
     ctx.add("U_RHS", data.rhs);
     ctx.add("U_BOUNDARY", data.boundary);
 
-    std::string local_build_str = "-I ./ -O3 -cl-std=CL2.0 -cl-mad-enable -cl-finite-math-only ";
+    std::string local_build_str = "-I ./ -O3 -cl-std=CL2.0 -cl-mad-enable ";
 
     ctx.build(local_build_str, "UNUSEDLAPLACE");
 
