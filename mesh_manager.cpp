@@ -329,6 +329,49 @@ ref_counted_buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::managed_comma
         return pool.request(ctx, cqueue, dim, sizeof(cl_float));
 }
 
+std::vector<ref_counted_buffer> cpu_mesh::get_derivatives_of(cl::context& ctx, buffer_set& generic_in, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool)
+{
+    cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
+
+    std::vector<ref_counted_buffer> intermediates;
+
+    auto differentiate = [&](cl::managed_command_queue& cqueue, cl::buffer in_buffer, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
+    {
+        cl::args thin;
+        thin.push_back(points_set.all_points);
+        thin.push_back(points_set.all_count);
+        thin.push_back(in_buffer.as_device_read_only());
+        thin.push_back(out1);
+        thin.push_back(out2);
+        thin.push_back(out3);
+        thin.push_back(scale);
+        thin.push_back(clsize);
+        thin.push_back(points_set.order);
+
+        cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.all_count}, {128});
+    };
+
+    std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
+                          "gA", "gB0", "gB1", "gB2", "X"};
+
+    for(int idx = 0; idx < (int)buffers.size(); idx++)
+    {
+        ref_counted_buffer b1 = get_thin_buffer(ctx, mqueue, pool);
+        ref_counted_buffer b2 = get_thin_buffer(ctx, mqueue, pool);
+        ref_counted_buffer b3 = get_thin_buffer(ctx, mqueue, pool);
+
+        cl::buffer found = generic_in.lookup(buffers[idx]).buf;
+
+        differentiate(mqueue, found, b1, b2, b3);
+
+        intermediates.push_back(b1);
+        intermediates.push_back(b2);
+        intermediates.push_back(b3);
+    }
+
+    return intermediates;
+}
+
 ///returns buffers and intermediates
 std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, cl::buffer& u_arg)
 {
@@ -406,41 +449,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
             last_valid_thin_buffer.push_back(i.buf);
         }
 
-        {
-            auto differentiate = [&](cl::managed_command_queue& cqueue, cl::buffer in_buffer, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
-            {
-                cl::args thin;
-                thin.push_back(points_set.all_points);
-                thin.push_back(points_set.all_count);
-                thin.push_back(in_buffer.as_device_read_only());
-                thin.push_back(out1);
-                thin.push_back(out2);
-                thin.push_back(out3);
-                thin.push_back(scale);
-                thin.push_back(clsize);
-                thin.push_back(points_set.order);
-
-                cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.all_count}, {128});
-            };
-
-            std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
-                                  "gA", "gB0", "gB1", "gB2", "X"};
-
-            for(int idx = 0; idx < (int)buffers.size(); idx++)
-            {
-                ref_counted_buffer b1 = get_thin_buffer(ctx, mqueue, pool);
-                ref_counted_buffer b2 = get_thin_buffer(ctx, mqueue, pool);
-                ref_counted_buffer b3 = get_thin_buffer(ctx, mqueue, pool);
-
-                cl::buffer found = generic_in.lookup(buffers[idx]).buf;
-
-                differentiate(mqueue, found, b1, b2, b3);
-
-                intermediates.push_back(b1);
-                intermediates.push_back(b2);
-                intermediates.push_back(b3);
-            }
-        }
+        intermediates = get_derivatives_of(ctx, generic_in, mqueue, pool);
 
         ///end all the differentiation work before we move on
         if(sett.calculate_momentum_constraint)

@@ -2826,7 +2826,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data<float> h1;
-    h1.t = compact_object::NEUTRON_STAR;
+    h1.t = compact_object::BLACK_HOLE;
     h1.bare_mass = 0.483;
     h1.momentum = {0, 0.133 * 0.8, 0};
     h1.position = {-3.257, 0.f, 0.f};
@@ -5892,12 +5892,22 @@ int main()
 
     clctx.cqueue.block();
 
-    bool ever_stepped = false;
-
     std::cout << "Init time " << time_to_main.get_elapsed_time_s() << std::endl;
 
-    std::vector<ref_counted_buffer> last_valid_thin;
     std::vector<cl::buffer> last_valid_buffer;
+
+    {
+        buffer_set& base_buf = base_mesh.get_input();
+
+        for(named_buffer& b : base_buf.buffers)
+        {
+            last_valid_buffer.push_back(b.buf);
+        }
+    }
+
+    std::vector<ref_counted_buffer> last_valid_thin = base_mesh.get_derivatives_of(clctx.ctx, base_mesh.get_input(), mqueue, thin_pool);
+
+    mqueue.block();
 
     float rendering_err = 0.01f;
 
@@ -6103,10 +6113,8 @@ int main()
         if(pao && time_elapsed_s > 250)
             step = false;
 
-        if(step || !ever_stepped)
+        if(step)
         {
-            ever_stepped = true;
-
             steps++;
 
             ///kill ref counting
