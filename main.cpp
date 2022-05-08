@@ -1429,6 +1429,13 @@ namespace neutron_star
         ///https://arxiv.org/pdf/1606.04881.pdf (before 6)
         ret.mass_energy_density = ret.rest_mass_density * (1 + ret.specific_energy_density);
 
+
+        ret.pressure = dual_types::if_v(coordinate_radius >= radius, 0.f, ret.pressure);
+        ret.rest_mass_density = dual_types::if_v(coordinate_radius >= radius, 0.f, ret.rest_mass_density);
+        ret.energy_density = dual_types::if_v(coordinate_radius >= radius, 0.f, ret.energy_density);
+        ret.specific_energy_density = dual_types::if_v(coordinate_radius >= radius, 0.f, ret.specific_energy_density);
+        ret.mass_energy_density = dual_types::if_v(coordinate_radius >= radius, 0.f, ret.mass_energy_density);
+
         return ret;
     }
 
@@ -1620,6 +1627,19 @@ namespace neutron_star
         data<value> dat = sample_interior<value>(r, value{param.mass});
 
         float M_factor = calculate_M_factor(param.mass);
+
+        #if 0
+        {
+            auto ifunc = [&](float cr)
+            {
+                return calculate_sigma(cr, param.mass, M_factor) * cr * cr;
+            };
+
+            float test_integral = 4 * M_PI * integrate_1d(ifunc, 64, mass_to_radius(param.mass) * 10, 0.f);
+
+            printf("Test integral %f\n", test_integral);
+        }
+        #endif // 0
 
         float W2 = calculate_W2_linear_momentum(flat, param.linear_momentum, M_factor);
 
