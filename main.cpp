@@ -2618,6 +2618,71 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     return solve;
 }
 
+void construct_adm_source_quantities(equation_context& ctx, const std::vector<compact_object::data<float>>& cpu_holes)
+{
+    tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+    ///TODO: FIXME
+    metric<float, 3, 3> flat_metricf;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            flat_metricf.idx(i, j) = (i == j) ? 1 : 0;
+        }
+    }
+
+    value u_value = dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim");
+
+    equation_context eqs;
+
+    //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
+    value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
+    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(pos, cpu_holes);
+
+    ///https://arxiv.org/pdf/1606.04881.pdf 74
+    value phi = BL_s_dyn + u_value;
+
+    ///we need respectively
+    ///(rhoH, Si, Sij), all lower indices
+
+    ///pH is the adm variable, NOT P
+
+    value rhoH_conformal = 0;
+    tensor<value, 3> Si_conformal;
+
+    for(const compact_object::data<float>& obj : cpu_holes)
+    {
+        if(obj.t == compact_object::NEUTRON_STAR)
+        {
+            tensor<value, 3> vloc = {obj.position.x(), obj.position.y(), obj.position.z()};
+
+            value rad = (pos - vloc).length();
+
+            ///todo: remove the duplication?
+            neutron_star::params p;
+            p.position = obj.position;
+            p.mass = obj.bare_mass;
+            p.linear_momentum = obj.momentum;
+            p.angular_momentum = obj.angular_momentum;
+
+            float M_factor = neutron_star::calculate_M_factor(p.mass);
+
+            tensor<value, 3> vmomentum = {obj.momentum.x(), obj.momentum.y(), obj.momentum.z()};
+
+            float W2_factor = neutron_star::calculate_W2_linear_momentum(flat_metricf, obj.momentum, M_factor);
+
+            neutron_star::data<value> sampled = neutron_star::sample_interior<value>(rad, value{p.mass});
+
+            rhoH_conformal += (sampled.mass_energy_density + sampled.pressure) * W2_factor - sampled.pressure;
+
+            ///https://arxiv.org/pdf/1606.04881.pdf (56)
+            Si_conformal += vmomentum * neutron_star::calculate_sigma(rad, p.mass, M_factor);
+        }
+    }
+}
+
 #if 0
 sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data<float>>& cpu_holes, float scale, vec3i dim)
 {
