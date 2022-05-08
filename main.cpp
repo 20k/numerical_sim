@@ -91,6 +91,7 @@ https://arxiv.org/pdf/gr-qc/0209066.pdf - hamiltonian constraint damping
 https://air.unipr.it/retrieve/handle/11381/2783927/20540/0912.2920.pdf - relativistic hydrodynamics
 https://arxiv.org/pdf/gr-qc/9910044.pdf - the volume smeary integral thing for w4
 https://orca.cardiff.ac.uk/id/eprint/114952/1/PhysRevD.98.044014.pdf - trumpet data, claims reduced junk
+https://arxiv.org/pdf/0912.1285.pdf - cauchy gravitational waves
 
 ///neutron stars
 https://arxiv.org/pdf/gr-qc/0209102.pdf - basic paper
@@ -1465,6 +1466,55 @@ namespace neutron_star
         data<float> ndata = sample_interior(coordinate_radius, mass);
 
         return (ndata.mass_energy_density + ndata.pressure) / N_factor;
+    }
+
+    ///https://arxiv.org/pdf/1606.04881.pdf (43)
+    float calculate_integral_Q(float coordinate_radius, float mass, float M_factor)
+    {
+        if(coordinate_radius > mass_to_radius(mass))
+            return 1;
+
+        ///currently impossible, but might as well
+        if(mass_to_radius(mass) == 0)
+            return 1;
+
+        auto integral_func = [mass, M_factor](float rp)
+        {
+            return 4 * M_PI * calculate_sigma(rp, mass, M_factor) * pow(rp, 2.f);
+        };
+
+        return integrate_1d(integral_func, 64, coordinate_radius, 0.f);
+    }
+
+    ///https://arxiv.org/pdf/1606.04881.pdf (45)
+    float calculate_integral_C(float coordinate_radius, float mass, float M_factor)
+    {
+        if(coordinate_radius > mass_to_radius(mass))
+            return 0;
+
+        if(mass_to_radius(mass) == 0)
+            return 0;
+
+        auto integral_func = [mass, M_factor](float rp)
+        {
+            return (2.f/3.f) * M_PI * calculate_sigma(rp, mass, M_factor) * pow(rp, 4.f);
+        };
+
+        return integrate_1d(integral_func, 64, coordinate_radius, 0.f);
+    }
+
+    ///https://arxiv.org/pdf/1606.04881.pdf (55)
+    float calculate_integral_N(float coordinate_radius, float mass, float N_factor)
+    {
+        if(coordinate_radius > mass_to_radius(mass))
+            return 1;
+
+        auto integral_func = [mass, N_factor](float rp)
+        {
+            return (2.f/3.f) * M_PI * calculate_kappa(rp, mass, N_factor) * pow(rp, 4.f);
+        };
+
+        return integrate_1d(integral_func, 64, coordinate_radius, 0.f);
     }
 }
 
