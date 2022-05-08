@@ -1012,6 +1012,7 @@ tensor<T, N, N> raise_second_index(const tensor<T, N, N>& mT, const metric<T, N,
 }
 
 template<typename T, int N>
+inline
 tensor<T, N> raise_index(const tensor<T, N>& mT, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
 {
     tensor<T, N> ret;
@@ -1031,14 +1032,15 @@ tensor<T, N> raise_index(const tensor<T, N>& mT, const metric<T, N, N>& met, con
     return ret;
 }
 
-template<int N>
-tensor<value, N> lower_index(const tensor<value, N>& mT, const metric<value, N, N>& met)
+template<typename T, int N>
+inline
+tensor<T, N> lower_index(const tensor<T, N>& mT, const metric<T, N, N>& met)
 {
-    tensor<value, N> ret;
+    tensor<T, N> ret;
 
     for(int i=0; i < N; i++)
     {
-        value sum = 0;
+        T sum = 0;
 
         for(int j=0; j < N; j++)
         {
@@ -1337,6 +1339,14 @@ T eos_polytropic(const T& rest_mass_density) ///aka p0
 
 namespace neutron_star
 {
+    struct params
+    {
+        float mass = 0; ///... bare mass? adm mass? rest mass?
+        tensor<float, 3> position;
+        tensor<float, 3> linear_momentum;
+        tensor<float, 3> angular_momentum;
+    };
+
     template<typename T>
     struct data
     {
@@ -1515,6 +1525,28 @@ namespace neutron_star
         };
 
         return integrate_1d(integral_func, 64, coordinate_radius, 0.f);
+    }
+
+    ///only handles linear momentum currently
+    tensor<value, 3, 3> calculate_aij_single(const tensor<value, 3>& coordinate, const metric<float, 3, 3>& flat, const params& param)
+    {
+        tensor<value, 3> vposition = {param.position.x(), param.position.y(), param.position.z()};
+
+        tensor<value, 3> relative_pos = coordinate - vposition;
+
+        value r = relative_pos.length();
+
+        r = max(r, 1e-6f);
+
+        tensor<value, 3> li = relative_pos / r;
+
+        tensor<float, 3> linear_momentum_lower = lower_index(param.linear_momentum, flat);
+
+        float M_factor = calculate_M_factor(param.mass);
+        float iQ = calculate_integral_Q(r, param.mass, M_factor);
+        float iC = calculate_integral_C(r, param.mass, M_factor);
+
+
     }
 }
 
