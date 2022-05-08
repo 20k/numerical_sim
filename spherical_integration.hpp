@@ -55,6 +55,47 @@ auto integrate_1d(const T& func, int n, float upper, float lower)
 
 template<typename T>
 inline
+auto integrate_1d_raw_value(const T& func, int n, const value& upper, const value& lower)
+{
+    std::vector<float> weights = get_legendre_weights(n);
+    std::vector<float> nodes = get_legendre_nodes(n);
+
+    value sum = 0;
+
+    for(int j=0; j < n; j++)
+    {
+        float w = weights[j];
+        float xj = nodes[j];
+
+        value v = ((upper - lower)/2.f) * xj + (upper + lower) / 2.f;
+
+        auto func_eval = w * func(v);
+
+        sum = sum + func_eval;
+    }
+
+    return ((upper - lower) / 2.f) * sum;
+}
+
+template<typename T>
+inline
+auto integrate_1d_value(const T& func, int n, const value& upper, const value& lower)
+{
+    value sum =  0;
+
+    int pieces = 1;
+    value step = (upper - lower) / pieces;
+
+    for(int i=0; i < pieces; i++)
+    {
+        sum += integrate_1d_raw_value(func, n, i * step + lower, (i + 1) * step + lower);
+    }
+
+    return sum;
+}
+
+template<typename T>
+inline
 auto spherical_integrate(const T& f_theta_phi, int n)
 {
     float iupper = 2 * M_PI;

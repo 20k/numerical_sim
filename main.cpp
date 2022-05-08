@@ -1463,68 +1463,71 @@ namespace neutron_star
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (57)
-    float calculate_sigma(float coordinate_radius, float mass, float M_factor)
+    value calculate_sigma(value coordinate_radius, float mass, float M_factor)
     {
-        data<float> ndata = sample_interior(coordinate_radius, mass);
+        data<value> ndata = sample_interior<value>(coordinate_radius, value{mass});
 
         return (ndata.mass_energy_density + ndata.pressure) / M_factor;
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (62)
-    float calculate_kappa(float coordinate_radius, float mass, float N_factor)
+    value calculate_kappa(value coordinate_radius, float mass, float N_factor)
     {
-        data<float> ndata = sample_interior(coordinate_radius, mass);
+        data<value> ndata = sample_interior<value>(coordinate_radius, value{mass});
 
         return (ndata.mass_energy_density + ndata.pressure) / N_factor;
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (43)
-    float calculate_integral_Q(float coordinate_radius, float mass, float M_factor)
+    value calculate_integral_Q(value coordinate_radius, float mass, float M_factor)
     {
-        if(coordinate_radius > mass_to_radius(mass))
-            return 1;
-
         ///currently impossible, but might as well
         if(mass_to_radius(mass) == 0)
             return 1;
 
-        auto integral_func = [mass, M_factor](float rp)
+        auto integral_func = [mass, M_factor](const value& rp)
         {
             return 4 * M_PI * calculate_sigma(rp, mass, M_factor) * pow(rp, 2.f);
         };
 
-        return integrate_1d(integral_func, 64, coordinate_radius, 0.f);
+        value integrated = integrate_1d_value(integral_func, 16, coordinate_radius, value{0.f});
+
+        return if_v(coordinate_radius > mass_to_radius(mass),
+                    1,
+                    integrated);
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (45)
-    float calculate_integral_C(float coordinate_radius, float mass, float M_factor)
+    value calculate_integral_C(value coordinate_radius, float mass, float M_factor)
     {
-        if(coordinate_radius > mass_to_radius(mass))
-            return 0;
-
         if(mass_to_radius(mass) == 0)
             return 0;
 
-        auto integral_func = [mass, M_factor](float rp)
+        auto integral_func = [mass, M_factor](const value& rp)
         {
             return (2.f/3.f) * M_PI * calculate_sigma(rp, mass, M_factor) * pow(rp, 4.f);
         };
 
-        return integrate_1d(integral_func, 64, coordinate_radius, 0.f);
+        value integrated = integrate_1d_value(integral_func, 16, coordinate_radius, value{0.f});
+
+        return if_v(coordinate_radius > mass_to_radius(mass),
+                    0,
+                    integrated);
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (55)
-    float calculate_integral_N(float coordinate_radius, float mass, float N_factor)
+    value calculate_integral_N(value coordinate_radius, float mass, float N_factor)
     {
-        if(coordinate_radius > mass_to_radius(mass))
-            return 1;
-
-        auto integral_func = [mass, N_factor](float rp)
+        auto integral_func = [mass, N_factor](const value& rp)
         {
             return (8 * M_PI / 3.f) * calculate_kappa(rp, mass, N_factor) * pow(rp, 4.f);
         };
 
-        return integrate_1d(integral_func, 64, coordinate_radius, 0.f);
+        value integrated = integrate_1d_value(integral_func, 16, coordinate_radius, value{0.f});
+
+        return if_v(coordinate_radius > mass_to_radius(mass),
+                    1.f,
+                    integrated);
     }
 
     ///only handles linear momentum currently
@@ -1543,8 +1546,8 @@ namespace neutron_star
         tensor<float, 3> linear_momentum_lower = lower_index(param.linear_momentum, flat);
 
         float M_factor = calculate_M_factor(param.mass);
-        float iQ = calculate_integral_Q(r, param.mass, M_factor);
-        float iC = calculate_integral_C(r, param.mass, M_factor);
+        value iQ = calculate_integral_Q(r, param.mass, M_factor);
+        value iC = calculate_integral_C(r, param.mass, M_factor);
 
 
     }
