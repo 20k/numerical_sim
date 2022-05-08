@@ -1348,9 +1348,9 @@ namespace neutron_star
         T radius =  0; ///neutron star parameter
         T mass = 0;
 
-        ///this is not littlee
+        ///this is not littlee. This is the convention that h = (e + p)/p0
         T energy_density = 0;
-        ///this is littlee
+        ///this is littlee. This is the convention that h = 1 + e + p/p0
         T specific_energy_density = 0;
     };
 
@@ -1399,9 +1399,9 @@ namespace neutron_star
         ret.radius = radius;
         ret.mass = mass;
 
-        ///https://arxiv.org/pdf/gr-qc/0403029.pdf
+        ///https://arxiv.org/pdf/gr-qc/0403029.pdf (2.13)
 
-        ret.energy_density = ret.density + (ret.pressure / (ret.Gamma - 1));
+        ret.energy_density = ret.rest_mass_density + (ret.pressure / (ret.Gamma - 1));
 
 
         ///ok so. https://gwic.ligo.org/assets/docs/theses/Read_Thesis.pdf 1.5 defines h as (little1 + pressure) / rest_density
@@ -1411,7 +1411,7 @@ namespace neutron_star
 
         ///little2 = (little1 / rest_density) - 1
 
-        ret.specific_energy_density = (ret.energy_density / ret.density) - 1;
+        ret.specific_energy_density = (ret.energy_density / ret.rest_mass_density) - 1;
 
         ///https://arxiv.org/pdf/1606.04881.pdf (before 6)
         ret.mass_energy_density = ret.rest_mass_density * (1 + ret.specific_energy_density);
@@ -1420,16 +1420,18 @@ namespace neutron_star
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (59)
-    float calculate_M(float mass)
+    float calculate_M_factor(float mass)
     {
         float radius = mass_to_radius(mass);
 
         auto integration_func = [&](float coordinate_radius)
         {
-            data<float> neutron_data = sample_interior(coordinate_radius, mass);
+            data<float> ndata = sample_interior(coordinate_radius, mass);
 
+            return (ndata.mass_energy_density + ndata.pressure) * coordinate_radius * coordinate_radius;
+        };
 
-        }
+        return integrate_1d(integration_func, 64, radius, 0.f);
     }
 }
 
