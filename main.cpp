@@ -2649,6 +2649,8 @@ void construct_adm_source_quantities(equation_context& ctx, const std::vector<co
 
     ///pH is the adm variable, NOT P
 
+    value pressure_conformal = 0;
+    value rho_conformal = 0;
     value rhoH_conformal = 0;
     tensor<value, 3> Si_conformal;
 
@@ -2675,12 +2677,21 @@ void construct_adm_source_quantities(equation_context& ctx, const std::vector<co
 
             neutron_star::data<value> sampled = neutron_star::sample_interior<value>(rad, value{p.mass});
 
+            pressure_conformal += sampled.pressure;
+            rho_conformal += sampled.mass_energy_density;
             rhoH_conformal += (sampled.mass_energy_density + sampled.pressure) * W2_factor - sampled.pressure;
 
             ///https://arxiv.org/pdf/1606.04881.pdf (56)
             Si_conformal += vmomentum * neutron_star::calculate_sigma(rad, p.mass, M_factor);
         }
     }
+
+    value pressure = pow(phi, -8.f) * pressure_conformal;
+    value rho = pow(phi, -8.f) * rho_conformal;
+    value rhoH = pow(phi, -8.f) * rhoH_conformal;
+    tensor<value, 3> Si = pow(phi,-10) * Si_conformal;
+
+    value W2 = (rhoH / (rho + pressure)) + pressure;
 }
 
 #if 0
