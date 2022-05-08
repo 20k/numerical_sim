@@ -1530,6 +1530,24 @@ namespace neutron_star
                     integrated);
     }
 
+    ///https://arxiv.org/pdf/1606.04881.pdf (60)
+    float calculate_W2_linear_momentum(const metric<float, 3, 3>& flat, const tensor<float, 3>& linear_momentum, float M_factor)
+    {
+        float p2 = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                p2 += flat.idx(i, j) * linear_momentum.idx(i) * linear_momentum.idx(j);
+            }
+        }
+
+        float M2 = M_factor * M_factor;
+
+        return 0.5f * (1 + sqrt(1 + (4 * p2 / M2)));
+    }
+
     ///only handles linear momentum currently
     ///https://arxiv.org/pdf/2101.10252.pdf (20)
     tensor<value, 3, 3> calculate_aij_single(const tensor<value, 3>& coordinate, const metric<float, 3, 3>& flat, const params& param)
