@@ -47,7 +47,7 @@ auto integrate_1d(const T& func, int n, float upper, float lower)
 
     for(int i=0; i < pieces; i++)
     {
-        sum += integrate_1d_raw(func, n, i * step + lower, (i + 1) * step + lower);
+        sum += integrate_1d_raw(func, n, (i + 1) * step + lower, i * step + lower);
     }
 
     return sum;
@@ -88,7 +88,7 @@ auto integrate_1d_value(const T& func, int n, const value& upper, const value& l
 
     for(int i=0; i < pieces; i++)
     {
-        sum += integrate_1d_raw_value(func, n, i * step + lower, (i + 1) * step + lower);
+        sum += integrate_1d_raw_value(func, n, (i + 1) * step + lower, i * step + lower);
     }
 
     return sum;
