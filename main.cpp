@@ -1390,10 +1390,10 @@ namespace neutron_star
     {
         T radius = mass_to_radius(mass);
 
-        T xi = M_PI * coordinate_radius / (radius + 0.0001f);
+        T xi = M_PI * coordinate_radius / (radius + 0.01f);
 
         ///oh thank god
-        T pc = mass / ((4 / M_PI) * pow(radius, 3.f));
+        T pc = mass / ((4 / M_PI) * pow(radius + 0.01f, 3.f));
 
         ///todo: limit at 0 is 1
         T p_xi = pc * sin(xi) / xi;
@@ -1424,7 +1424,7 @@ namespace neutron_star
 
         ///little2 = (little1 / rest_density) - 1
 
-        ret.specific_energy_density = (ret.energy_density / ret.rest_mass_density) - 1;
+        ret.specific_energy_density = (ret.energy_density / (ret.rest_mass_density + 0.001f)) - 1;
 
         ///https://arxiv.org/pdf/1606.04881.pdf (before 6)
         ret.mass_energy_density = ret.rest_mass_density * (1 + ret.specific_energy_density);
@@ -1463,7 +1463,7 @@ namespace neutron_star
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (57)
-    value calculate_sigma(value coordinate_radius, float mass, float M_factor)
+    value calculate_sigma(const value& coordinate_radius, float mass, float M_factor)
     {
         data<value> ndata = sample_interior<value>(coordinate_radius, value{mass});
 
@@ -1471,7 +1471,7 @@ namespace neutron_star
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (62)
-    value calculate_kappa(value coordinate_radius, float mass, float N_factor)
+    value calculate_kappa(const value& coordinate_radius, float mass, float N_factor)
     {
         data<value> ndata = sample_interior<value>(coordinate_radius, value{mass});
 
@@ -1479,7 +1479,7 @@ namespace neutron_star
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (43)
-    value calculate_integral_Q(value coordinate_radius, float mass, float M_factor)
+    value calculate_integral_Q(const value& coordinate_radius, float mass, float M_factor)
     {
         ///currently impossible, but might as well
         if(mass_to_radius(mass) == 0)
@@ -1490,7 +1490,7 @@ namespace neutron_star
             return 4 * M_PI * calculate_sigma(rp, mass, M_factor) * pow(rp, 2.f);
         };
 
-        value integrated = integrate_1d_value(integral_func, 16, coordinate_radius, value{0.f});
+        value integrated = integrate_1d(integral_func, 16, coordinate_radius, value{0.f});
 
         return if_v(coordinate_radius > mass_to_radius(mass),
                     1,
@@ -1508,7 +1508,7 @@ namespace neutron_star
             return (2.f/3.f) * M_PI * calculate_sigma(rp, mass, M_factor) * pow(rp, 4.f);
         };
 
-        value integrated = integrate_1d_value(integral_func, 16, coordinate_radius, value{0.f});
+        value integrated = integrate_1d(integral_func, 16, coordinate_radius, value{0.f});
 
         return if_v(coordinate_radius > mass_to_radius(mass),
                     0,
@@ -1523,7 +1523,7 @@ namespace neutron_star
             return (8 * M_PI / 3.f) * calculate_kappa(rp, mass, N_factor) * pow(rp, 4.f);
         };
 
-        value integrated = integrate_1d_value(integral_func, 16, coordinate_radius, value{0.f});
+        value integrated = integrate_1d(integral_func, 16, coordinate_radius, value{0.f});
 
         return if_v(coordinate_radius > mass_to_radius(mass),
                     1.f,
@@ -1565,6 +1565,9 @@ namespace neutron_star
         tensor<float, 3> linear_momentum_lower = lower_index(param.linear_momentum, flat);
 
         float M_factor = calculate_M_factor(param.mass);
+
+        printf("M fac %f\n", M_factor);
+
         value iQ = calculate_integral_Q(r, param.mass, M_factor);
         value iC = calculate_integral_C(r, param.mass, M_factor);
 
@@ -1614,6 +1617,9 @@ namespace neutron_star
         float M_factor = calculate_M_factor(param.mass);
 
         float W2 = calculate_W2_linear_momentum(flat, param.linear_momentum, M_factor);
+
+        //dat.mass_energy_density = 1;
+        //dat.pressure = 0;
 
         value ppw2p = (dat.mass_energy_density + dat.pressure) * W2 - dat.pressure;
 
@@ -2838,7 +2844,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     h2.position = {3.257, 0.f, 0.f};
 
     objects.push_back(h1);
-    objects.push_back(h2);
+    //objects.push_back(h2);
     #endif // PAPER_0610128
 
     return get_bare_initial_conditions(clctx, cqueue, scale, objects);

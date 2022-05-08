@@ -9,9 +9,9 @@
 ///https://pomax.github.io/bezierinfo/legendre-gauss.html
 ///https://cbeentjes.github.io/files/Ramblings/QuadratureSphere.pdf
 ///http://homepage.divms.uiowa.edu/~atkinson/papers/SphereQuad1982.pdf
-template<typename T>
+template<typename T, typename U>
 inline
-auto integrate_1d_raw(const T& func, int n, float upper, float lower)
+auto integrate_1d_raw(const T& func, int n, const U& upper, const U& lower)
 {
     std::vector<float> weights = get_legendre_weights(n);
     std::vector<float> nodes = get_legendre_nodes(n);
@@ -25,7 +25,7 @@ auto integrate_1d_raw(const T& func, int n, float upper, float lower)
         float w = weights[j];
         float xj = nodes[j];
 
-        float value = ((upper - lower)/2.f) * xj + (upper + lower) / 2.f;
+        U value = ((upper - lower)/2.f) * xj + (upper + lower) / 2.f;
 
         auto func_eval = w * func(value);
 
@@ -35,60 +35,19 @@ auto integrate_1d_raw(const T& func, int n, float upper, float lower)
     return ((upper - lower) / 2.f) * sum;
 }
 
-template<typename T>
+template<typename T, typename U>
 inline
-auto integrate_1d(const T& func, int n, float upper, float lower)
+auto integrate_1d(const T& func, int n, const U& upper, const U& lower)
 {
     using variable_type = decltype(func(0.f));
     variable_type sum =  0;
 
     int pieces = 1;
-    float step = (upper - lower) / pieces;
+    U step = (upper - lower) / pieces;
 
     for(int i=0; i < pieces; i++)
     {
         sum += integrate_1d_raw(func, n, (i + 1) * step + lower, i * step + lower);
-    }
-
-    return sum;
-}
-
-template<typename T>
-inline
-auto integrate_1d_raw_value(const T& func, int n, const value& upper, const value& lower)
-{
-    std::vector<float> weights = get_legendre_weights(n);
-    std::vector<float> nodes = get_legendre_nodes(n);
-
-    value sum = 0;
-
-    for(int j=0; j < n; j++)
-    {
-        float w = weights[j];
-        float xj = nodes[j];
-
-        value v = ((upper - lower)/2.f) * xj + (upper + lower) / 2.f;
-
-        auto func_eval = w * func(v);
-
-        sum = sum + func_eval;
-    }
-
-    return ((upper - lower) / 2.f) * sum;
-}
-
-template<typename T>
-inline
-auto integrate_1d_value(const T& func, int n, const value& upper, const value& lower)
-{
-    value sum =  0;
-
-    int pieces = 1;
-    value step = (upper - lower) / pieces;
-
-    for(int i=0; i < pieces; i++)
-    {
-        sum += integrate_1d_raw_value(func, n, (i + 1) * step + lower, i * step + lower);
     }
 
     return sum;
