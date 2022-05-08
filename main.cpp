@@ -1549,7 +1549,37 @@ namespace neutron_star
         value iQ = calculate_integral_Q(r, param.mass, M_factor);
         value iC = calculate_integral_C(r, param.mass, M_factor);
 
+        value coeff1 = 3 * iQ / (2 * r * r);
+        value coeff2 = 3 * iC / pow(r, 4);
 
+        tensor<value, 3, 3> aIJ;
+
+        tensor<float, 3> P = param.linear_momentum;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                value p1 = 2 * (0.5f * P.idx(i) * li.idx(j) + 0.5f * P.idx(j) * li.idx(i));
+
+                value pklk = 0;
+
+                for(int k=0; k < 3; k++)
+                {
+                    pklk += linear_momentum_lower.idx(k) * li.idx(k);
+                }
+
+                value p2 = (flat.idx(i, j) - li.idx(i) * li.idx(j)) * pklk;
+
+                value p3 = p1;
+
+                value p4 = (flat.idx(i, j) - 5 * li.idx(i) * li.idx(j)) * pklk;
+
+                aIJ.idx(i, j) = coeff1 * (p1 - p2) + coeff2 * (p3 + p4);
+            }
+        }
+
+        return aIJ;
     }
 }
 
