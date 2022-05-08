@@ -2243,17 +2243,31 @@ struct standard_arguments
     }
 };
 
-template<typename T>
-struct black_hole
+namespace compact_object
 {
-    ///in world coordinates
-    tensor<T, 3> position;
-    ///this is not a parameter that maps to any straightforward concept of mass
-    T bare_mass = 0;
-    tensor<T, 3> momentum;
-    tensor<T, 3> angular_momentum;
-};
+    enum type
+    {
+        BLACK_HOLE,
+        NEUTRON_STAR,
+    };
 
+    template<typename T>
+    struct data
+    {
+        ///in coordinate space
+        tensor<T, 3> position;
+        ///for black holes is
+        T bare_mass = 0;
+        tensor<T, 3> momentum;
+        tensor<T, 3> angular_momentum;
+
+        type t = BLACK_HOLE;
+    };
+
+}
+
+#if 0
+///come back to adm
 struct adm_black_hole
 {
     float bare_mass_guess = 0.5f;
@@ -2263,81 +2277,88 @@ struct adm_black_hole
     tensor<float, 3> velocity;
     tensor<float, 3> angular_velocity;
 };
+#endif // 0
 
-///https://arxiv.org/pdf/gr-qc/0610128.pdf initial conditions, see (7)
-template<typename T>
-inline
-tensor<value, 3, 3> calculate_single_bcAij(const tensor<value, 3>& pos, const black_hole<T>& hole)
+namespace black_hole
 {
-    tensor<value, 3, 3, 3> eijk = get_eijk();
-
-    tensor<value, 3, 3> bcAij;
-
-    metric<value, 3, 3> flat;
-
-    for(int i=0; i < 3; i++)
+    ///https://arxiv.org/pdf/gr-qc/0610128.pdf initial conditions, see (7)
+    template<typename T>
+    inline
+    tensor<value, 3, 3> calculate_single_bcAij(const tensor<value, 3>& pos, const compact_object::data<T>& hole)
     {
-        for(int j=0; j < 3; j++)
+        assert(hole.t == compact_object::BLACK_HOLE);
+
+        tensor<value, 3, 3, 3> eijk = get_eijk();
+
+        tensor<value, 3, 3> bcAij;
+
+        metric<value, 3, 3> flat;
+
+        for(int i=0; i < 3; i++)
         {
-            flat.idx(i, j) = (i == j) ? 1 : 0;
-            bcAij.idx(i, j) = 0;
-        }
-    }
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            tensor<value, 3> momentum_tensor = {hole.momentum.x(), hole.momentum.y(), hole.momentum.z()};
-
-            tensor<value, 3> vri = {hole.position.x(), hole.position.y(), hole.position.z()};
-
-            value ra = (pos - vri).length();
-
-            ra = max(ra, 1e-6);
-
-            tensor<value, 3> nia = (pos - vri) / ra;
-
-            tensor<value, 3> momentum_lower = lower_index(momentum_tensor, flat);
-            tensor<value, 3> nia_lower = lower_index(tensor<value, 3>{nia.x(), nia.y(), nia.z()}, flat);
-
-            bcAij.idx(i, j) += (3 / (2.f * ra * ra)) * (momentum_lower.idx(i) * nia_lower.idx(j) + momentum_lower.idx(j) * nia_lower.idx(i) - (flat.idx(i, j) - nia_lower.idx(i) * nia_lower.idx(j)) * sum_multiply(momentum_tensor, nia_lower));
-
-            ///spin
-            value s1 = 0;
-            value s2 = 0;
-
-            for(int k=0; k < 3; k++)
+            for(int j=0; j < 3; j++)
             {
-                for(int l=0; l < 3; l++)
-                {
-                    s1 += eijk.idx(k, i, l) * hole.angular_momentum[l] * nia[k] * nia_lower.idx(j);
-                    s2 += eijk.idx(k, j, l) * hole.angular_momentum[l] * nia[k] * nia_lower.idx(i);
-                }
+                flat.idx(i, j) = (i == j) ? 1 : 0;
+                bcAij.idx(i, j) = 0;
             }
-
-            bcAij.idx(i, j) += (3 / (ra*ra*ra)) * (s1 + s2);
         }
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                tensor<value, 3> momentum_tensor = {hole.momentum.x(), hole.momentum.y(), hole.momentum.z()};
+
+                tensor<value, 3> vri = {hole.position.x(), hole.position.y(), hole.position.z()};
+
+                value ra = (pos - vri).length();
+
+                ra = max(ra, 1e-6);
+
+                tensor<value, 3> nia = (pos - vri) / ra;
+
+                tensor<value, 3> momentum_lower = lower_index(momentum_tensor, flat);
+                tensor<value, 3> nia_lower = lower_index(tensor<value, 3>{nia.x(), nia.y(), nia.z()}, flat);
+
+                bcAij.idx(i, j) += (3 / (2.f * ra * ra)) * (momentum_lower.idx(i) * nia_lower.idx(j) + momentum_lower.idx(j) * nia_lower.idx(i) - (flat.idx(i, j) - nia_lower.idx(i) * nia_lower.idx(j)) * sum_multiply(momentum_tensor, nia_lower));
+
+                ///spin
+                value s1 = 0;
+                value s2 = 0;
+
+                for(int k=0; k < 3; k++)
+                {
+                    for(int l=0; l < 3; l++)
+                    {
+                        s1 += eijk.idx(k, i, l) * hole.angular_momentum[l] * nia[k] * nia_lower.idx(j);
+                        s2 += eijk.idx(k, j, l) * hole.angular_momentum[l] * nia[k] * nia_lower.idx(i);
+                    }
+                }
+
+                bcAij.idx(i, j) += (3 / (ra*ra*ra)) * (s1 + s2);
+            }
+        }
+
+        return bcAij;
     }
 
-    return bcAij;
-}
-
-///this does not return the same kind of conformal cAij as bssn uses, need to reconstruct Kij!
-template<typename T>
-inline
-tensor<value, 3, 3> calculate_bcAij(const tensor<value, 3>& pos, const std::vector<black_hole<T>>& holes)
-{
-    tensor<value, 3, 3> bcAij;
-
-    for(const black_hole<T>& hole : holes)
+    ///this does not return the same kind of conformal cAij as bssn uses, need to reconstruct Kij!
+    template<typename T>
+    inline
+    tensor<value, 3, 3> calculate_bcAij(const tensor<value, 3>& pos, const std::vector<compact_object::data<T>>& holes)
     {
-        bcAij += calculate_single_bcAij(pos, hole);
+        tensor<value, 3, 3> bcAij;
 
+        for(const compact_object::data<T>& hole : holes)
+        {
+            bcAij += calculate_single_bcAij(pos, hole);
+
+        }
+
+        return bcAij;
     }
-
-    return bcAij;
 }
+
 
 tensor<float, 3> world_to_voxel(const tensor<float, 3>& world_pos, vec3i dim, float scale)
 {
@@ -2346,6 +2367,7 @@ tensor<float, 3> world_to_voxel(const tensor<float, 3>& world_pos, vec3i dim, fl
     return (world_pos / scale) + centre;
 }
 
+#if 0
 //https://arxiv.org/pdf/gr-qc/0610128.pdf (6)
 float get_nonspinning_adm_mass(cl::command_queue& cqueue, int idx, const std::vector<black_hole<float>>& holes, vec3i dim, float scale, cl::buffer& u_buffer)
 {
@@ -2379,15 +2401,15 @@ float get_nonspinning_adm_mass(cl::command_queue& cqueue, int idx, const std::ve
     ///the reason this isn't 1+ is the differences in definition of u
     return holes[idx].bare_mass * (u_read + sum);
 }
+#endif // 0
 
 struct initial_conditions
 {
-    std::vector<black_hole<float>> holes;
+    std::vector<compact_object::data<float>> objs;
 };
 
-template<typename T>
 inline
-value calculate_aij_aIJ(const metric<value, 3, 3>& flat_metric, const tensor<value, 3, 3>& bcAij, const std::vector<black_hole<T>>& holes)
+value calculate_aij_aIJ(const metric<value, 3, 3>& flat_metric, const tensor<value, 3, 3>& bcAij)
 {
     value aij_aIJ = 0;
 
@@ -2406,12 +2428,12 @@ value calculate_aij_aIJ(const metric<value, 3, 3>& flat_metric, const tensor<val
 
 template<typename T>
 inline
-value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<black_hole<T>>& holes)
+value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<compact_object::data<T>>& holes)
 {
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     value BL_s = 0;
 
-    for(const black_hole<T>& hole : holes)
+    for(const compact_object::data<T>& hole : holes)
     {
         value Mi = hole.bare_mass;
         tensor<value, 3> ri = {hole.position.x(), hole.position.y(), hole.position.z()};
@@ -2426,7 +2448,7 @@ value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<b
     return BL_s;
 }
 
-laplace_data setup_u_laplace(cl::context& clctx, const std::vector<black_hole<float>>& cpu_holes)
+laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_object::data<float>>& cpu_holes)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
@@ -2446,8 +2468,8 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<black_hole<fl
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
-    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij(pos, cpu_holes);
-    value aij_aIJ_dyn = calculate_aij_aIJ(flat_metric, bcAij_dyn, cpu_holes);
+    tensor<value, 3, 3> bcAij_dyn = black_hole::calculate_bcAij(pos, cpu_holes);
+    value aij_aIJ_dyn = calculate_aij_aIJ(flat_metric, bcAij_dyn);
 
     ///https://arxiv.org/pdf/1606.04881.pdf 74
     value phi = BL_s_dyn + u_value;
@@ -2461,7 +2483,8 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<black_hole<fl
     return solve;
 }
 
-sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cqueue, const std::vector<black_hole<float>>& cpu_holes, float scale, vec3i dim)
+#if 0
+sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data<float>>& cpu_holes, float scale, vec3i dim)
 {
     cl::buffer u_arg(clctx);
 
@@ -2570,7 +2593,9 @@ sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cq
 
     return result;
 }
+#endif // 0
 
+#if 0
 std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& holes, cl::context& ctx, cl::command_queue& cqueue, float err = 0.0001f)
 {
     std::vector<float> ret;
@@ -2588,31 +2613,33 @@ std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& hole
 
     return ret;
 }
+#endif // 0
 
 inline
-initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, float scale, std::vector<black_hole<float>> holes)
+initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, float scale, std::vector<compact_object::data<float>> objs)
 {
     initial_conditions ret;
 
     float bulge = 1;
 
-    auto san_black_hole_pos = [&](const tensor<float, 3>& in)
+    auto san_pos = [&](const tensor<float, 3>& in)
     {
         tensor<float, 3> scaled = round((in / scale) * bulge);
 
         return scaled * scale / bulge;
     };
 
-    for(black_hole<float>& hole : holes)
+    for(compact_object::data<float>& obj : objs)
     {
-        hole.position = san_black_hole_pos(hole.position);
+        obj.position = san_pos(obj.position);
     }
 
-    ret.holes = holes;
+    ret.objs = objs;
 
     return ret;
 }
 
+#if 0
 inline
 initial_conditions get_adm_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, float scale, std::vector<adm_black_hole> adm_holes)
 {
@@ -2680,6 +2707,7 @@ initial_conditions get_adm_initial_conditions(cl::context& clctx, cl::command_qu
 
     return get_bare_initial_conditions(clctx, cqueue, scale, raw_holes);
 }
+#endif // 0
 
 inline
 initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, vec3f centre, float scale)
@@ -2742,26 +2770,28 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     #define BARE_BLACK_HOLES
     #ifdef BARE_BLACK_HOLES
-    std::vector<black_hole<float>> holes;
+    std::vector<compact_object::data<float>> objects;
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     #define PAPER_0610128
     #ifdef PAPER_0610128
-    black_hole<float> h1;
+    compact_object::data<float> h1;
+    h1.t = compact_object::BLACK_HOLE;
     h1.bare_mass = 0.483;
     h1.momentum = {0, 0.133 * 0.8, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
-    black_hole<float> h2;
+    compact_object::data<float> h2;
+    h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.483;
     h2.momentum = {0, -0.133 * 0.8, 0};
     h2.position = {3.257, 0.f, 0.f};
 
-    holes.push_back(h1);
-    holes.push_back(h2);
+    objects.push_back(h1);
+    objects.push_back(h2);
     #endif // PAPER_0610128
 
-    return get_bare_initial_conditions(clctx, cqueue, scale, holes);
+    return get_bare_initial_conditions(clctx, cqueue, scale, objects);
     #endif
 
     //#define USE_ADM_HOLE
@@ -2828,7 +2858,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     assert(false);
 }
 
-void setup_static_conditions(cl::context& clctx, cl::command_queue& cqueue, equation_context& ctx, const std::vector<black_hole<float>>& holes)
+void setup_static_conditions(cl::context& clctx, cl::command_queue& cqueue, equation_context& ctx, const std::vector<compact_object::data<float>>& holes)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
@@ -2843,8 +2873,8 @@ void setup_static_conditions(cl::context& clctx, cl::command_queue& cqueue, equa
     }
 
     value BL_s = calculate_conformal_guess(pos, holes);
-    tensor<value, 3, 3> bcAij_static = calculate_bcAij(pos, holes);
-    value aij_aIJ_static = calculate_aij_aIJ(flat_metric, bcAij_static, holes);
+    tensor<value, 3, 3> bcAij_static = black_hole::calculate_bcAij(pos, holes);
+    value aij_aIJ_static = calculate_aij_aIJ(flat_metric, bcAij_static);
 
     ctx.add("init_BL_val", BL_s);
     ctx.add("init_aij_aIJ", aij_aIJ_static);
@@ -5554,7 +5584,7 @@ int main()
 
     equation_context setup_static;
 
-    setup_static_conditions(clctx.ctx, clctx.cqueue, setup_static, holes.holes);
+    setup_static_conditions(clctx.ctx, clctx.cqueue, setup_static, holes.objs);
 
     cl::buffer u_arg(clctx.ctx);
 
@@ -5573,7 +5603,7 @@ int main()
 
         //sandwich = setup_sandwich_laplace(clctx.ctx, clctx.cqueue, holes.holes, scale, size);
 
-        laplace_data solve = setup_u_laplace(clctx.ctx, holes.holes);
+        laplace_data solve = setup_u_laplace(clctx.ctx, holes.objs);
         u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.000001f);
 
         cqueue.block();
@@ -5717,10 +5747,12 @@ int main()
 
     async_u.join();
 
+    #if 0
     for(int i=0; i < (int)holes.holes.size(); i++)
     {
         printf("Black hole test mass %f %i\n", get_nonspinning_adm_mass(clctx.cqueue, i, holes.holes, size, scale, u_arg), i);
     }
+    #endif // 0
 
     ///this is not thread safe
     clctx.ctx.register_program(prog);
