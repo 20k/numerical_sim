@@ -2525,6 +2525,8 @@ value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<c
 
 laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_object::data<float>>& cpu_holes)
 {
+    laplace_data solve;
+
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
     ///TODO: FIXME
@@ -2571,7 +2573,8 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
 
     value U_RHS = (-1.f/8.f) * aij_aIJ_dyn * pow(phi, -7) - 2 * M_PI * pow(phi, -3) * ppw2p;
 
-    laplace_data solve;
+    solve.extras.push_back({"debug0", aij_aIJ_dyn});
+
     solve.rhs = U_RHS;
     solve.boundary = 1;
 

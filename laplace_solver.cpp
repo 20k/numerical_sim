@@ -206,7 +206,12 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const l
     ctx.add("U_RHS", data.rhs);
     ctx.add("U_BOUNDARY", data.boundary);
 
-    std::string local_build_str = "-I ./ -O3 -cl-std=CL2.0 -cl-mad-enable ";
+    for(const auto& [name, what] : data.extras)
+    {
+        ctx.add(name, what);
+    }
+
+    std::string local_build_str = "-I ./ -O3 -cl-std=CL2.0 ";
 
     ctx.build(local_build_str, "UNUSEDLAPLACE");
 
@@ -220,7 +225,11 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const l
 
     float c_at_max = scale * dim.largest_elem();
 
-    return iterate_u(clctx, cqueue, setup, iterate, extract, dim, c_at_max, err);
+    vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
+
+    return solve_for_u(clctx, cqueue, setup, iterate, clsize, c_at_max, 1, std::nullopt, err);
+
+    //return iterate_u(clctx, cqueue, setup, iterate, extract, dim, c_at_max, err);
 }
 
 struct sandwich_state
