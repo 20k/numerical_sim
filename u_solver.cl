@@ -141,7 +141,7 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
     float h2f0 = scale * scale * RHS;
 
-    float dbg_a0 = debug0;
+    //float dbg_a0 = debug0;
 
     /*if(isnan(u_offset_in[IDX(ix,iy,iz)]))
     {
