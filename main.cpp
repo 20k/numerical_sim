@@ -1371,6 +1371,7 @@ namespace neutron_star
 
     ///https://www.aanda.org/articles/aa/pdf/2010/06/aa12738-09.pdf
     ///this is only valid for coordinate radius < radius
+    ///todo: make a general sampler
     template<typename T>
     inline
     data<T> sample_interior(const T& coordinate_radius, const T& mass)
@@ -1428,10 +1429,41 @@ namespace neutron_star
         {
             data<float> ndata = sample_interior(coordinate_radius, mass);
 
-            return (ndata.mass_energy_density + ndata.pressure) * coordinate_radius * coordinate_radius;
+            return (ndata.mass_energy_density + ndata.pressure) * pow(coordinate_radius, 2);
         };
 
-        return integrate_1d(integration_func, 64, radius, 0.f);
+        return 4 * M_PI * integrate_1d(integration_func, 64, radius, 0.f);
+    }
+
+    ///https://arxiv.org/pdf/1606.04881.pdf (64)
+    float calculate_N_factor(float mass)
+    {
+        float radius = mass_to_radius(mass);
+
+        auto integration_func = [&](float coordinate_radius)
+        {
+            data<float> ndata = sample_interior(coordinate_radius, mass);
+
+            return (ndata.mass_energy_density + ndata.pressure) * pow(coordinate_radius, 4.f);
+        };
+
+        return (8 * M_PI/3) * integrate_1d(integration_func, 64, radius, 0.f);
+    }
+
+    ///https://arxiv.org/pdf/1606.04881.pdf (57)
+    float calculate_sigma(float coordinate_radius, float mass, float M_factor)
+    {
+        data<float> ndata = sample_interior(coordinate_radius, mass);
+
+        return (ndata.mass_energy_density + ndata.pressure) / M_factor;
+    }
+
+    ///https://arxiv.org/pdf/1606.04881.pdf (62)
+    float calculate_kappa(float coordinate_radius, float mass, float N_factor)
+    {
+        data<float> ndata = sample_interior(coordinate_radius, mass);
+
+        return (ndata.mass_energy_density + ndata.pressure) / N_factor;
     }
 }
 
