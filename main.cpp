@@ -5736,7 +5736,7 @@ int main()
         //sandwich = setup_sandwich_laplace(clctx.ctx, clctx.cqueue, holes.holes, scale, size);
 
         laplace_data solve = setup_u_laplace(clctx.ctx, holes.objs);
-        u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.000001f);
+        u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.0001f);
 
         cqueue.block();
     };
