@@ -318,6 +318,8 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
     float cS1 = build_sk1;
     float cS2 = build_sk2;
 
+    //printf("w2 %f %i %i %i\n", debug_w2, ix, iy,iz);
+
     ///dp_val and cS are both regular
     if(dp_val < 0.0001f)
     {

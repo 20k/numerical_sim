@@ -2705,7 +2705,9 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
     value rhoH = pow(phi, -8.f) * rhoH_conformal;
     tensor<value, 3> Si = pow(phi, -10.f) * Si_conformal; // upper
 
-    value W2 = (rhoH / (rho + pressure)) + pressure;
+    value is_degenerate = rho < 0.0001f;
+
+    value W2 = if_v(is_degenerate, 0.f, (rhoH / (rho + pressure)) + pressure);
 
     ///https://arxiv.org/pdf/1606.04881.pdf (70)
     tensor<value, 3> u_upper = (Si / (rho + pressure) * sqrt(W2));
@@ -2729,22 +2731,37 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
         tensor<value, 3> u_lower = lower_index(u_upper, Yij);
 
-        value h = chi_to_e_6phi(X) * (rhoH + pressure) / sqrt(W2);
+        value h = if_v(is_degenerate, 0.f, chi_to_e_6phi(X) * (rhoH + pressure) / sqrt(W2));
 
-        value p_star = 0;
+        ///rho + pressure = p0h
+
+        value p0 = if_v(is_degenerate, 0.f, (rho + pressure) / h);
+
+        ctx.add("debug_w2", W2);
+        ctx.add("debug_h", h);
+
+        ctx.add("debug_p0", p0);
+
+        //value eps = (h - 1) / Gamma;
+
+        //value p0 = -pressure / (1 + eps - h);
+
+        /*value p_star = 0;
 
         for(int k=0; k < 3; k++)
         {
             value p_star_elem = cSi_lower.idx(k) / (h * u_lower.idx(k));
 
             p_star += if_v(fabs(u_lower.idx(k) * h) > 0.0001f, p_star_elem, 0.f);
-        }
+        }*/
+
+        value p_star = sqrt(p0 * sqrt(W2) * chi_to_e_6phi(X));
 
         ///so: Si_lower and p_star are both enforced to be regular
         ///anything from this point onwards is not enforced *here*, but the values are set to 0
         value gA_u0 = sqrt(W2) / p_star;
 
-        value p0 = p_star * chi_to_e_m6phi(X) / (gA_u0);
+        //value p0 = p_star * chi_to_e_m6phi(X) / (gA_u0);
 
         value eps = (h - pressure/p0) - 1;
 
