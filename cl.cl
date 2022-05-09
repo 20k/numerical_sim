@@ -327,6 +327,13 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
         de_val = 0;
     }
 
+    float eps = eps_p0;
+
+    if(isnan(eps))
+    {
+        printf("Eppy %f\n", eps);
+    }
+
     Dp_star[index] = dp_val;
     De_star[index] = de_val;
 

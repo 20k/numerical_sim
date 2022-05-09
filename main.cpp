@@ -1683,15 +1683,15 @@ namespace neutron_star
 }
 
 inline
-value chi_to_e_6phi(value chi)
+value chi_to_e_6phi(const value& chi)
 {
-    return pow(1/(chi + 0.0001f), (3.f/2.f));
+    return pow(1/(chi + 0.001f), (3.f/2.f));
 }
 
 inline
-value chi_to_e_m6phi(value chi)
+value chi_to_e_m6phi(const value& chi)
 {
-    return pow(chi + 0.0001f, (3.f/2.f));
+    return pow(chi + 0.001f, (3.f/2.f));
 }
 
 inline
@@ -2742,9 +2742,13 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
         //value p0 = p_star * chi_to_e_m6phi(X) / (gA_u0);
 
-        value eps = (h - pressure/p0) - 1;
+        //value eps = (h - pressure/p0) - 1;
 
-        value e_star = pow(p0 * eps, 1/Gamma) * gA_u0 * chi_to_e_6phi(X);
+        value eps_p0 = h * p0 - pressure - p0;
+
+        ctx.add("eps_p0", eps_p0);
+
+        value e_star = pow(eps_p0, 1/Gamma) * gA_u0 * chi_to_e_6phi(X);
 
         ctx.add("build_p_star", p_star);
         ctx.add("build_e_star", e_star);
