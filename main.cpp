@@ -1849,10 +1849,6 @@ struct matter
 
     value calculate_adm_p(const value& chi, const value& W)
     {
-        #ifndef USE_MATTER
-        return 0;
-        #endif // USE_MATTER
-
         value h = calculate_h_with_gamma_eos(chi, W);
         value em6phi = chi_to_e_m6phi(chi);
 
@@ -1864,10 +1860,6 @@ struct matter
 
     tensor<value, 3> calculate_adm_Si(const value& chi)
     {
-        #ifndef USE_MATTER
-        return {0,0,0};
-        #endif // USE_MATTER
-
         value em6phi = chi_to_e_m6phi(chi);
 
         return cS * em6phi;
@@ -1876,10 +1868,6 @@ struct matter
     ///the reason to calculate X_Sij is that its regular in terms of chi
     tensor<value, 3, 3> calculate_adm_X_Sij(const value& chi, const value& W, const unit_metric<value, 3, 3>& cY)
     {
-        #ifndef USE_MATTER
-        return {};
-        #endif // USE_MATTER
-
         value em6phi = chi_to_e_m6phi(chi);
         value h = calculate_h_with_gamma_eos(chi, W);
 
@@ -1903,10 +1891,6 @@ struct matter
 
     value calculate_adm_S(const unit_metric<value, 3, 3>& cY, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
     {
-        #ifndef USE_MATTER
-        return 0;
-        #endif // USE_MATTER
-
         ///so. Raise Sij with iYij, which is X * cY
         ///now I'm actually raising X * Sij which means....... i can use cY?
         ///because iYij * Sjk = X * icYij * Sjk, and icYij * X * Sjk = X * icYij * Sjk
@@ -4034,7 +4018,7 @@ value calculate_hamiltonian(equation_context& ctx, standard_arguments& args)
 
 
 inline
-void build_cA(equation_context& ctx)
+void build_cA(equation_context& ctx, bool use_matter)
 {
     standard_arguments args(ctx);
 
@@ -4257,6 +4241,7 @@ void build_cA(equation_context& ctx)
             #endif // AIJ_SIGMA
 
             ///matter
+            if(use_matter)
             {
                 tensor<value, 3, 3> xSij = args.matt.calculate_adm_X_Sij(X, args.matt.stashed_W, cY);
 
@@ -4276,7 +4261,7 @@ void build_cA(equation_context& ctx)
 }
 
 inline
-void build_cGi(equation_context& ctx)
+void build_cGi(equation_context& ctx, bool use_matter)
 {
     standard_arguments args(ctx);
 
@@ -4469,7 +4454,7 @@ void build_cGi(equation_context& ctx)
         }
         #endif // YBS
 
-        ///matter
+        if(use_matter)
         {
             tensor<value, 3> ji_lower = args.matt.calculate_adm_Si(X);
 
@@ -4494,7 +4479,7 @@ void build_cGi(equation_context& ctx)
 }
 
 inline
-void build_K(equation_context& ctx)
+void build_K(equation_context& ctx, bool use_matter)
 {
     standard_arguments args(ctx);
 
@@ -4547,7 +4532,7 @@ void build_K(equation_context& ctx)
 
     value dtK = sum(tensor_upwind(ctx, gB, K)) - sum_multiply(icY.to_tensor(), Xdidja) + gA * (sum_multiply(icAij, cA) + (1/3.f) * K * K);
 
-    ///matter
+    if(use_matter)
     {
         value matter_s = args.matt.calculate_adm_S(cY, icY, X, args.matt.stashed_W);
         value matter_p = args.matt.calculate_adm_p(X, args.matt.stashed_W);
@@ -5929,13 +5914,13 @@ int main()
     build_cY(dtcY);
 
     equation_context dtcA;
-    build_cA(dtcA);
+    build_cA(dtcA, holes.use_matter);
 
     equation_context dtcGi;
-    build_cGi(dtcGi);
+    build_cGi(dtcGi, holes.use_matter);
 
     equation_context dtK;
-    build_K(dtK);
+    build_K(dtK, holes.use_matter);
 
     equation_context dtX;
     build_X(dtX);
