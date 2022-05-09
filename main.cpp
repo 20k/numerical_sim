@@ -2628,7 +2628,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     return solve;
 }
 
-void construct_adm_source_quantities(equation_context& ctx, const std::vector<compact_object::data<float>>& cpu_holes)
+void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<compact_object::data<float>>& cpu_holes)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
