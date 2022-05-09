@@ -314,6 +314,22 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg)
         cqueue.exec("calculate_initial_conditions", init, {dim.x(), dim.y(), dim.z()}, {8, 8, 1});
     }
 
+    if(sett.use_matter)
+    {
+        cl::args hydro_init;
+
+        for(auto& i : data[0].buffers)
+        {
+            hydro_init.push_back(i.buf);
+        }
+
+        hydro_init.push_back(u_arg);
+        hydro_init.push_back(scale);
+        hydro_init.push_back(clsize);
+
+        cqueue.exec("calculate_hydrodynamic_initial_conditions", hydro_init, {dim.x(), dim.y(), dim.z()}, {8, 8, 1});
+    }
+
     for(int i=0; i < (int)data[0].buffers.size(); i++)
     {
         cl::copy(cqueue, data[0].buffers[i].buf, data[1].buffers[i].buf);
