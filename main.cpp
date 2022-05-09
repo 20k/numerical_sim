@@ -2647,6 +2647,8 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
     ///pH is the adm variable, NOT P
 
+    value unused_conformal_rest_mass = 0;
+
     value pressure_conformal = 0;
     value rho_conformal = 0;
     value rhoH_conformal = 0;
@@ -2676,6 +2678,8 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
             neutron_star::data<value> sampled = neutron_star::sample_interior<value>(rad, value{p.mass});
 
             pressure_conformal += sampled.pressure;
+            unused_conformal_rest_mass += sampled.mass_energy_density;
+
             rho_conformal += sampled.mass_energy_density;
             rhoH_conformal += (sampled.mass_energy_density + sampled.pressure) * W2_factor - sampled.pressure;
 
@@ -2691,7 +2695,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
     value is_degenerate = rho < 0.0001f;
 
-    value W2 = if_v(is_degenerate, 0.f, (rhoH / (rho + pressure)) + pressure);
+    value W2 = if_v(is_degenerate, 0.f, ((rhoH + pressure) / (rho + pressure)));
 
     ///https://arxiv.org/pdf/1606.04881.pdf (70)
     tensor<value, 3> u_upper = (Si / (rho + pressure) * sqrt(W2));
@@ -2740,13 +2744,22 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
         ///anything from this point onwards is not enforced *here*, but the values are set to 0
         value gA_u0 = sqrt(W2) / p_star;
 
+        gA_u0 = if_v(is_degenerate, 0.f, gA_u0);
+
         //value p0 = p_star * chi_to_e_m6phi(X) / (gA_u0);
 
         //value eps = (h - pressure/p0) - 1;
 
         value eps_p0 = h * p0 - pressure - p0;
 
-        ctx.add("eps_p0", eps_p0);
+        ctx.add("D_conformal_rest_mass", unused_conformal_rest_mass);
+        ctx.add("D_conformal_pressure", pressure_conformal);
+        ctx.add("D_p_star", p_star);
+        ctx.add("D_eps_p0", eps_p0);
+        ctx.add("D_p0", p0);
+        ctx.add("D_h", h);
+        ctx.add("D_pressure", pressure);
+        ctx.add("D_gA_u0", gA_u0);
 
         value e_star = pow(eps_p0, 1/Gamma) * gA_u0 * chi_to_e_6phi(X);
 

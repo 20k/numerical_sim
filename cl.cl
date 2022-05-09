@@ -290,7 +290,9 @@ void calculate_initial_conditions(STANDARD_ARGS(),
         printf("TESTK %f\n", f->K);
     }*/
 }
+
 #define NANCHECK(w) if(isnan(w[index])){printf("NAN " #w " %i %i %i\n", ix, iy, iz);}
+#define LNANCHECK(w)  if(isnan(w)){printf("NAN " #w " %i %i %i\n", ix, iy, iz);}
 
 __kernel
 void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
@@ -327,11 +329,15 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
         de_val = 0;
     }
 
-    float eps = eps_p0;
+    LNANCHECK(D_eps_p0);
+    LNANCHECK(D_p0);
+    LNANCHECK(D_h);
+    LNANCHECK(D_pressure);
+    LNANCHECK(D_gA_u0);
 
-    if(isnan(eps))
+    if(D_eps_p0 < 0)
     {
-        printf("Eppy %f\n", eps);
+        printf("%f %f %f %f %f conf %f %f\n", D_eps_p0, D_h, D_p0, D_pressure, D_p_star, D_conformal_pressure, D_conformal_rest_mass);
     }
 
     Dp_star[index] = dp_val;
