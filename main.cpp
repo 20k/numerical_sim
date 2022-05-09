@@ -1682,6 +1682,18 @@ namespace neutron_star
     }
 }
 
+inline
+value chi_to_e_6phi(value chi)
+{
+    return pow(1/(chi + 0.0001f), (3.f/2.f));
+}
+
+inline
+value chi_to_e_m6phi(value chi)
+{
+    return pow(chi + 0.0001f, (3.f/2.f));
+}
+
 //#define USE_MATTER
 
 ///https://arxiv.org/pdf/0812.0641.pdf just before 23
@@ -1743,16 +1755,6 @@ struct matter
     value e_star_clamped()
     {
         return min(e_star, 10 * p_star);
-    }
-
-    value chi_to_e_6phi(value chi)
-    {
-        return pow(1/chi, (3.f/2.f));
-    }
-
-    value chi_to_e_m6phi(value chi)
-    {
-        return pow(chi, (3.f/2.f));
     }
 
     value calculate_p0(const value& chi, const value& W)
@@ -2624,12 +2626,14 @@ void construct_adm_source_quantities(equation_context& ctx, const std::vector<co
 
     ///TODO: FIXME
     metric<float, 3, 3> flat_metricf;
+    metric<value, 3, 3> flat_metricv;
 
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
             flat_metricf.idx(i, j) = (i == j) ? 1 : 0;
+            flat_metricv.idx(i, j) = (i == j) ? 1 : 0;
         }
     }
 
@@ -2689,9 +2693,32 @@ void construct_adm_source_quantities(equation_context& ctx, const std::vector<co
     value pressure = pow(phi, -8.f) * pressure_conformal;
     value rho = pow(phi, -8.f) * rho_conformal;
     value rhoH = pow(phi, -8.f) * rhoH_conformal;
-    tensor<value, 3> Si = pow(phi,-10) * Si_conformal;
+    tensor<value, 3> Si = pow(phi, -10.f) * Si_conformal; // upper
+
 
     value W2 = (rhoH / (rho + pressure)) + pressure;
+
+    ///https://arxiv.org/pdf/1606.04881.pdf (70)
+    tensor<value, 3> u_upper = (Si / (rho + pressure) * sqrt(W2));
+
+    ///conformal hydrodynamical quantities
+    {
+        /// https://arxiv.org/pdf/1606.04881.pdf (8), Yij = phi^4 * cYij
+        ///in bssn, the conformal decomposition is chi * Yij = cYij
+        ///or see initial conditions, its 1/12th Yij.det()
+        metric<value, 3, 3> Yij = pow(phi, 4) * flat_metricv;
+
+        value X = pow(Yij.det(), -1.f/3.f);
+
+        metric<value, 3, 3> cY = X * Yij;
+
+        tensor<value, 3> Si_lower = lower_index(Si, Yij);
+
+        ///UPPER INDICES
+        //tensor<value, 3> cSi = Si * chi_to_e_6phi(chi);
+
+
+    }
 }
 
 #if 0
