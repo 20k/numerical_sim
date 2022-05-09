@@ -290,6 +290,7 @@ void calculate_initial_conditions(STANDARD_ARGS(),
         printf("TESTK %f\n", f->K);
     }*/
 }
+#define NANCHECK(w) if(isnan(w[index])){printf("NAN " #w " %i %i %i\n", ix, iy, iz);}
 
 __kernel
 void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
@@ -335,6 +336,11 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
 
     DW_stashed[index] = 0;
 
+    NANCHECK(Dp_star);
+    NANCHECK(De_star);
+    NANCHECK(DcS0);
+    NANCHECK(DcS1);
+    NANCHECK(DcS2);
 }
 
 __kernel
@@ -707,8 +713,6 @@ void clean_data(__global ushort4* points, int point_count,
     #endif // USE_GBB
     #endif // 0
 }
-
-#define NANCHECK(w) if(isnan(w[index])){printf("NAN " #w " %i %i %i\n", ix, iy, iz); debug = true;}
 
 __kernel
 void evolve_cY(__global ushort4* points, int point_count,
