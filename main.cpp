@@ -2737,11 +2737,6 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
         value p0 = if_v(is_degenerate, 0.f, (rho + pressure) / h);
 
-        ctx.add("debug_w2", W2);
-        ctx.add("debug_h", h);
-
-        ctx.add("debug_p0", p0);
-
         //value eps = (h - 1) / Gamma;
 
         //value p0 = -pressure / (1 + eps - h);
@@ -6559,6 +6554,7 @@ int main()
                     render_args.push_back(background_mipped);
                     render_args.push_back(texture_coordinates);
                     render_args.push_back(sam);
+                    render_args.push_back(ccamera_pos);
 
                     clctx.cqueue.exec("render_rays", render_args, {width * height}, {128});
                 }

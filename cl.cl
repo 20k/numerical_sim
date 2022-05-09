@@ -1871,6 +1871,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         if(pstar_val > 0.001f)
         {
+            Xpos_last = Xpos;
             hit_type = 2;
             break;
         }
@@ -1958,7 +1959,7 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
                           STANDARD_DERIVS(),
                           float scale, int4 dim, int width, int height,
                           __read_only image2d_t mip_background,
-                          __global float2* texture_coordinates, sampler_t sam)
+                          __global float2* texture_coordinates, sampler_t sam, float3 camera_pos)
 {
     int idx = get_global_id(0);
 
@@ -2222,7 +2223,46 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
     {
         float3 val = (float3)(0.5f,0.5f,0.5f);
 
-        write_imagef(screen, (int2){x, y}, (float4)(val.xyz,1));
+        float3 Xpos = (float3)(ray_in.lp1, ray_in.lp2, ray_in.lp3);
+
+        float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+        voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+        float3 px = (float3)(1, 0, 0);
+        float3 nx = (float3)(-1, 0, 0);
+        float3 py = (float3)(0, 1, 0);
+        float3 ny = (float3)(0, -1, 0);
+        float3 pz = (float3)(0, 0, 1);
+        float3 nz = (float3)(0, 0, -1);
+
+        float pxv = buffer_read_linear(Dp_star, voxel_pos + px, dim);
+        float nxv = buffer_read_linear(Dp_star, voxel_pos + nx, dim);
+        float pyv = buffer_read_linear(Dp_star, voxel_pos + py, dim);
+        float nyv = buffer_read_linear(Dp_star, voxel_pos + ny, dim);
+        float pzv = buffer_read_linear(Dp_star, voxel_pos + pz, dim);
+        float nzv = buffer_read_linear(Dp_star, voxel_pos + nz, dim);
+
+        float3 normal = {pxv - nxv, pyv - nyv, pzv - nzv};
+
+        normal = normalize(normal);
+
+        //float pstar_val = buffer_read_linear(Dp_star, voxel_pos, dim);
+
+        float3 to_point = camera_pos - Xpos;
+
+        //printf("Normal %f %f %f\n", normal.x, normal.y, normal.z);
+
+        //printf("Cam %f %f %f\n", camera_voxel_pos.x, camera_voxel_pos.y, camera_voxel_pos.z);
+
+        float light = dot(normalize(to_point), normal);
+
+        light = clamp(fabs(light), 0.f, 1.f);
+
+        float3 col = (float3){1,1,1} * light;
+
+        //col = fabs(normal);
+
+        write_imagef(screen, (int2){x, y}, (float4)(col.xyz, 1));
     }
 }
 
