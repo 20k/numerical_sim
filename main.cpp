@@ -1438,7 +1438,7 @@ namespace neutron_star
 
         ///little2 = (little1 / rest_density) - 1
 
-        ret.specific_energy_density = (ret.energy_density / (ret.rest_mass_density + 0.001f)) - 1;
+        ret.specific_energy_density = (ret.energy_density / ret.rest_mass_density) - 1;
 
         ///https://arxiv.org/pdf/1606.04881.pdf (before 6)
         ret.mass_energy_density = ret.rest_mass_density * (1 + ret.specific_energy_density);
@@ -2648,6 +2648,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
     ///pH is the adm variable, NOT P
 
     value unused_conformal_rest_mass = 0;
+    value unused_littlee = 0;
 
     value pressure_conformal = 0;
     value rho_conformal = 0;
@@ -2682,6 +2683,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
             rho_conformal += sampled.mass_energy_density;
             rhoH_conformal += (sampled.mass_energy_density + sampled.pressure) * W2_factor - sampled.pressure;
+            unused_littlee += sampled.specific_energy_density;
 
             ///https://arxiv.org/pdf/1606.04881.pdf (56)
             Si_conformal += vmomentum * neutron_star::calculate_sigma(rad, p.mass, M_factor);
@@ -2719,7 +2721,8 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
         tensor<value, 3> u_lower = lower_index(u_upper, Yij);
 
-        value h = if_v(is_degenerate, 0.f, chi_to_e_6phi(X) * (rhoH + pressure) / sqrt(W2));
+        ///Ok! Their w is not my W. FINALLY
+        //value h = if_v(is_degenerate, 0.f, chi_to_e_6phi(X) * (rhoH + pressure) / sqrt(W2));
 
         ///rho + pressure = p0h
 
@@ -2748,10 +2751,12 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
         //value p0 = p_star * chi_to_e_m6phi(X) / (gA_u0);
 
-        //value eps = (h - pressure/p0) - 1;
+        value eps = (h - pressure/p0) - 1;
 
         value eps_p0 = h * p0 - pressure - p0;
 
+        ctx.add("D_rho", rho);
+        ctx.add("D_rhoH", rhoH);
         ctx.add("D_conformal_rest_mass", unused_conformal_rest_mass);
         ctx.add("D_conformal_pressure", pressure_conformal);
         ctx.add("D_p_star", p_star);
@@ -2760,6 +2765,10 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
         ctx.add("D_h", h);
         ctx.add("D_pressure", pressure);
         ctx.add("D_gA_u0", gA_u0);
+        ctx.add("D_phi", phi);
+        ctx.add("D_W2", W2);
+        ctx.add("D_littlee", unused_littlee);
+        ctx.add("D_eps", eps);
 
         value e_star = pow(eps_p0, 1/Gamma) * gA_u0 * chi_to_e_6phi(X);
 

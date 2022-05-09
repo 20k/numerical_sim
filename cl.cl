@@ -337,7 +337,7 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
 
     if(D_eps_p0 < 0)
     {
-        printf("%f %f %f %f %f conf %f %f\n", D_eps_p0, D_h, D_p0, D_pressure, D_p_star, D_conformal_pressure, D_conformal_rest_mass);
+        printf("ep0 %f h %f p0 %f press %f p* %f rho %f rhoH %f conf press %f p0 %f phi %f W2 %f littlee %f eps %f\n", D_eps_p0, D_h, D_p0, D_pressure, D_p_star, D_rho, D_rhoH, D_conformal_pressure, D_conformal_rest_mass, D_phi, D_W2, D_littlee, D_eps);
     }
 
     Dp_star[index] = dp_val;
