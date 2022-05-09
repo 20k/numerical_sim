@@ -1694,6 +1694,14 @@ value chi_to_e_m6phi(value chi)
     return pow(chi + 0.0001f, (3.f/2.f));
 }
 
+inline
+value calculate_h_with_gamma_eos(const value& eps)
+{
+    float Gamma = 2;
+
+    return 1 + Gamma * eps;
+}
+
 //#define USE_MATTER
 
 ///https://arxiv.org/pdf/0812.0641.pdf just before 23
@@ -1776,7 +1784,7 @@ struct matter
 
     value calculate_h_with_gamma_eos(const value& chi, const value& W)
     {
-        return 1 + Gamma * calculate_eps(chi, W);
+        return ::calculate_h_with_gamma_eos(calculate_eps(chi, W));
     }
 
     tensor<value, 3> get_u_lower(const value& chi, const value& W)
@@ -2695,7 +2703,6 @@ void construct_adm_source_quantities(equation_context& ctx, const std::vector<co
     value rhoH = pow(phi, -8.f) * rhoH_conformal;
     tensor<value, 3> Si = pow(phi, -10.f) * Si_conformal; // upper
 
-
     value W2 = (rhoH / (rho + pressure)) + pressure;
 
     ///https://arxiv.org/pdf/1606.04881.pdf (70)
@@ -2703,6 +2710,8 @@ void construct_adm_source_quantities(equation_context& ctx, const std::vector<co
 
     ///conformal hydrodynamical quantities
     {
+        float Gamma = 2;
+
         /// https://arxiv.org/pdf/1606.04881.pdf (8), Yij = phi^4 * cYij
         ///in bssn, the conformal decomposition is chi * Yij = cYij
         ///or see initial conditions, its 1/12th Yij.det()
@@ -2714,10 +2723,31 @@ void construct_adm_source_quantities(equation_context& ctx, const std::vector<co
 
         tensor<value, 3> Si_lower = lower_index(Si, Yij);
 
-        ///UPPER INDICES
-        //tensor<value, 3> cSi = Si * chi_to_e_6phi(chi);
+        tensor<value, 3> cSi_lower = Si_lower * chi_to_e_6phi(X);
 
+        tensor<value, 3> u_lower = lower_index(u_upper, Yij);
 
+        value h = chi_to_e_6phi(X) * (rhoH + pressure) / sqrt(W2);
+
+        value p_star = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            value p_star_elem = cSi_lower.idx(k) / (h * u_lower.idx(k));
+
+            p_star += if_v(fabs(u_lower.idx(k)) > 0.0001f, p_star_elem, 0.f);
+        }
+
+        ///so: Si_lower and p_star are both enforced to be regular
+        ///anything from this point onwards is not enforced *here*, but the values are set to 0
+
+        value gA_u0 = sqrt(W2) / p_star;
+
+        value p0 = p_star * chi_to_e_m6phi(X) / (gA_u0);
+
+        value eps = (h - pressure/p0) - 1;
+
+        value e_star = pow(p0 * eps, 1/Gamma) * gA_u0 * chi_to_e_6phi(X);
     }
 }
 
