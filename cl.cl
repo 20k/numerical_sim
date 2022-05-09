@@ -1518,7 +1518,7 @@ struct lightray_simple
     int x, y;
 
     float iter_frac;
-    int hit_singularity;
+    int hit_type;
 };
 
 enum ds_result
@@ -1740,7 +1740,7 @@ void init_rays(__global struct lightray_simple* rays, __global int* ray_count0,
     out.x = x;
     out.y = y;
     out.iter_frac = 0;
-    out.hit_singularity = 0;
+    out.hit_type = 0;
 
     rays[y * width + x] = out;
 
@@ -1767,7 +1767,7 @@ float get_static_verlet_ds(float3 Xpos, __global float* X, float scale, int4 dim
 
     my_fraction = clamp(my_fraction, 0.f, 1.f);
 
-    return mix(0.4f, 4.f, my_fraction);
+    return mix(0.4f, 4.f, my_fraction) * 0.1f;
 }
 
 __kernel
@@ -1788,7 +1788,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     float3 vel = {ray_in.V0, ray_in.V1, ray_in.V2};
     float3 Xpos_last = Xpos;
 
-    bool hit_singularity = false;
+    int hit_type = 0;
 
     float u_sq = (universe_size * RENDERING_CUTOFF_MULT) * (universe_size * RENDERING_CUTOFF_MULT);
 
@@ -1861,6 +1861,20 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
             break;
         }
 
+        #ifdef RENDER_MATTER
+        float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+        voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+        float pstar_val = buffer_read_linear(Dp_star, voxel_pos, dim);
+
+        if(pstar_val > 0.001f)
+        {
+            hit_type = 2;
+            break;
+        }
+
+        #endif // RENDER_MATTER
+
         #endif // VERLET_2
 
         //#define EULER
@@ -1891,7 +1905,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         if(length_sq(XDiff) < 0.2f * 0.2f)
         {
-            hit_singularity = true;
+            hit_type = 1;
             break;
         }
     }
@@ -1909,7 +1923,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     ray_out.V2 = vel.z;
 
     ray_out.iter_frac = 0;
-    ray_out.hit_singularity = hit_singularity;
+    ray_out.hit_type = hit_type;
 
     rays_terminated[y * width + x] = ray_out;
 }
@@ -1970,7 +1984,7 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
 
     float uni_size = universe_size;
 
-    if(!ray_in.hit_singularity)
+    if(ray_in.hit_type == 0)
     {
         cpos = fix_ray_position(cpos, XDiff, uni_size * RENDERING_CUTOFF_MULT);
 
@@ -2194,11 +2208,17 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
 
         write_imagef(screen, (int2){x, y}, (float4)(srgb_to_lin(end_result.xyz), 1.f));
     }
-    else
+    else if(ray_in.hit_type == 1)
     {
         float3 val = (float3)(0,0,0);
 
         //val.xyz = clamp(ray_in.iter_frac, 0.f, 1.f);
+
+        write_imagef(screen, (int2){x, y}, (float4)(val.xyz,1));
+    }
+    else if(ray_in.hit_type == 2)
+    {
+        float3 val = (float3)(0.5f,0.5f,0.5f);
 
         write_imagef(screen, (int2){x, y}, (float4)(val.xyz,1));
     }

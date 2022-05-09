@@ -6010,6 +6010,11 @@ int main()
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 
+    if(holes.use_matter)
+    {
+        argument_string += "-DRENDER_MATTER ";
+    }
+
     #ifdef USE_GBB
     argument_string += "-DUSE_GBB ";
     #endif // USE_GBB
