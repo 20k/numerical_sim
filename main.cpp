@@ -107,6 +107,7 @@ https://www.aanda.org/articles/aa/pdf/2010/06/aa12738-09.pdf - this gives exact 
 https://gwic.ligo.org/assets/docs/theses/Read_Thesis.pdf - 3.4 definition of e. This also contains some interesting post newtonian expansions
 https://arxiv.org/pdf/gr-qc/0403029.pdf - 2.13 definition of e. I don't think they're the same as the other e, but I think this is fixable
 https://arxiv.org/pdf/2101.10252.pdf - another source which uses this bowen-york data with different notation (yay!)
+https://arxiv.org/pdf/gr-qc/9908027.pdf - hydrodynamic paper off which the one I'm implementing is based
 */
 
 ///notes:
@@ -2633,6 +2634,8 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
     value u_value = dual_types::apply("buffer_index", "u_value", "ix", "iy", "iz", "dim");
 
+    value gA = bidx("gA", false, false);
+
     equation_context eqs;
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
@@ -2647,8 +2650,11 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
     ///pH is the adm variable, NOT P
 
-    value unused_conformal_rest_mass = 0;
-    value unused_littlee = 0;
+    value rest_mass = 0;
+    value eps = 0;
+
+    //value enthalpy = 0;
+    value p0_conformal = 0;
 
     value pressure_conformal = 0;
     value rho_conformal = 0;
@@ -2679,11 +2685,15 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
             neutron_star::data<value> sampled = neutron_star::sample_interior<value>(rad, value{p.mass});
 
             pressure_conformal += sampled.pressure;
-            unused_conformal_rest_mass += sampled.mass_energy_density;
+            //unused_conformal_rest_mass += sampled.mass_energy_density;
 
             rho_conformal += sampled.mass_energy_density;
             rhoH_conformal += (sampled.mass_energy_density + sampled.pressure) * W2_factor - sampled.pressure;
-            unused_littlee += sampled.specific_energy_density;
+            eps += sampled.specific_energy_density;
+
+            //enthalpy += 1 + sampled.specific_energy_density + pressure_conformal / sampled.mass_energy_density;
+
+            p0_conformal += sampled.mass_energy_density;
 
             ///https://arxiv.org/pdf/1606.04881.pdf (56)
             Si_conformal += vmomentum * neutron_star::calculate_sigma(rad, p.mass, M_factor);
@@ -2693,11 +2703,12 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
     value pressure = pow(phi, -8.f) * pressure_conformal;
     value rho = pow(phi, -8.f) * rho_conformal;
     value rhoH = pow(phi, -8.f) * rhoH_conformal;
+    value p0 = pow(phi, -8.f) * p0_conformal;
     tensor<value, 3> Si = pow(phi, -10.f) * Si_conformal; // upper
 
     value is_degenerate = rho < 0.0001f;
 
-    value W2 = if_v(is_degenerate, 0.f, ((rhoH + pressure) / (rho + pressure)));
+    value W2 = if_v(is_degenerate, 1.f, ((rhoH + pressure) / (rho + pressure)));
 
     ///https://arxiv.org/pdf/1606.04881.pdf (70)
     tensor<value, 3> u_upper = (Si / (rho + pressure) * sqrt(W2));
@@ -2721,12 +2732,47 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
         tensor<value, 3> u_lower = lower_index(u_upper, Yij);
 
+        ///https://arxiv.org/pdf/2012.13954.pdf (7)
+
+        value u0 = sqrt(W2);
+        value gA_u0 = gA * u0;
+
+        gA_u0 = if_v(is_degenerate, 0.f, gA_u0);
+
+        value p_star = p0 * gA * u0 * chi_to_e_6phi(X);
+
+        value littleW = p_star * gA * u0;
+
+        value h = (rhoH + pressure) * chi_to_e_6phi(X) / littleW;
+
+        value p0e = p0 * h - p0 + pressure;
+
+        value e_star = pow(p0e, 1/Gamma) * gA * u0 * chi_to_e_6phi(X);
+
+        #if 0
+        ctx.add("D_enthalpy", enthalpy);
+        ctx.add("D_gA_u0", gA_u0);
+
+        value littleW = chi_to_e_6phi(X) * (rhoH + pressure) / enthalpy;
+
+        value p_star = littleW / (gA_u0 + 0.0001f);
+
+        value p0 = chi_to_e_m6phi(X) * p_star / (gA_u0 + 0.0001f);
+
+        value eps = (enthalpy - pressure/p0) - 1;
+
+        value eps_p0 = enthalpy * p0 - pressure - p0;
+        #endif // 0
+
+        //value p_star = sqrt(p0 * littleW * chi_to_e_6phi(X));
+
+        #if 0
         ///Ok! Their w is not my W. FINALLY
         //value h = if_v(is_degenerate, 0.f, chi_to_e_6phi(X) * (rhoH + pressure) / sqrt(W2));
 
         ///rho + pressure = p0h
 
-        value p0 = if_v(is_degenerate, 0.f, (rho + pressure) / h);
+        //value p0 = if_v(is_degenerate, 0.f, (rho + pressure) / h);
 
         //value eps = (h - 1) / Gamma;
 
@@ -2754,8 +2800,9 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
         value eps = (h - pressure/p0) - 1;
 
         value eps_p0 = h * p0 - pressure - p0;
+        #endif // 0
 
-        ctx.add("D_rho", rho);
+        /*ctx.add("D_rho", rho);
         ctx.add("D_rhoH", rhoH);
         ctx.add("D_conformal_rest_mass", unused_conformal_rest_mass);
         ctx.add("D_conformal_pressure", pressure_conformal);
@@ -2768,9 +2815,9 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
         ctx.add("D_phi", phi);
         ctx.add("D_W2", W2);
         ctx.add("D_littlee", unused_littlee);
-        ctx.add("D_eps", eps);
+        ctx.add("D_eps", eps);*/
 
-        value e_star = pow(eps_p0, 1/Gamma) * gA_u0 * chi_to_e_6phi(X);
+        //value e_star = pow(eps_p0, 1/Gamma) * gA_u0 * chi_to_e_6phi(X);
 
         ctx.add("build_p_star", p_star);
         ctx.add("build_e_star", e_star);

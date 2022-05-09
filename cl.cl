@@ -329,7 +329,7 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
         de_val = 0;
     }
 
-    LNANCHECK(D_eps_p0);
+    /*LNANCHECK(D_eps_p0);
     LNANCHECK(D_p0);
     LNANCHECK(D_h);
     LNANCHECK(D_pressure);
@@ -338,7 +338,9 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
     if(D_eps_p0 < 0)
     {
         printf("ep0 %f h %f p0 %f press %f p* %f rho %f rhoH %f conf press %f p0 %f phi %f W2 %f littlee %f eps %f\n", D_eps_p0, D_h, D_p0, D_pressure, D_p_star, D_rho, D_rhoH, D_conformal_pressure, D_conformal_rest_mass, D_phi, D_W2, D_littlee, D_eps);
-    }
+    }*/
+
+    //printf("%f %f\n", D_enthalpy, D_gA_u0);
 
     Dp_star[index] = dp_val;
     De_star[index] = de_val;
@@ -347,7 +349,7 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
     DcS1[index] = cS1;
     DcS2[index] = cS2;
 
-    DW_stashed[index] = 0;
+    DW_stashed[index] = 1;
 
     NANCHECK(Dp_star);
     NANCHECK(De_star);
