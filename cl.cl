@@ -292,6 +292,50 @@ void calculate_initial_conditions(STANDARD_ARGS(),
 }
 
 __kernel
+void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
+                                               __global float* u_value,
+                                               float scale, int4 dim)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    int index = IDX(ix,iy,iz);
+
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
+
+    float ox = offset.x;
+    float oy = offset.y;
+    float oz = offset.z;
+
+    float dp_val = build_p_star;
+    float de_val = build_e_star;
+
+    float cS0 = build_sk0;
+    float cS1 = build_sk1;
+    float cS2 = build_sk2;
+
+    ///dp_val and cS are both regular
+    if(dp_val < 0.0001f)
+    {
+        de_val = 0;
+    }
+
+    Dp_star[index] = dp_val;
+    De_star[index] = de_val;
+
+    DcS0[index] = cS0;
+    DcS1[index] = cS1;
+    DcS2[index] = cS2;
+
+    DW_stashed[index] = 0;
+
+}
+
+__kernel
 void enforce_algebraic_constraints(__global ushort4* points, int point_count,
                                    STANDARD_ARGS(),
                                    float scale, int4 dim)

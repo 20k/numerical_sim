@@ -2504,6 +2504,8 @@ float get_nonspinning_adm_mass(cl::command_queue& cqueue, int idx, const std::ve
 
 struct initial_conditions
 {
+    bool use_matter = false;
+
     std::vector<compact_object::data<float>> objs;
 };
 
@@ -2645,7 +2647,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
         }
     }
 
-    value u_value = dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim");
+    value u_value = dual_types::apply("buffer_index", "u_value", "ix", "iy", "iz", "dim");
 
     equation_context eqs;
 
@@ -2740,7 +2742,6 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
         ///so: Si_lower and p_star are both enforced to be regular
         ///anything from this point onwards is not enforced *here*, but the values are set to 0
-
         value gA_u0 = sqrt(W2) / p_star;
 
         value p0 = p_star * chi_to_e_m6phi(X) / (gA_u0);
@@ -2908,6 +2909,14 @@ initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_q
     for(compact_object::data<float>& obj : objs)
     {
         obj.position = san_pos(obj.position);
+    }
+
+    for(const compact_object::data<float>& obj : objs)
+    {
+        if(obj.t == compact_object::NEUTRON_STAR)
+        {
+            ret.use_matter = true;
+        }
     }
 
     ret.objs = objs;
@@ -5969,6 +5978,9 @@ int main()
     equation_context hydro_final;
     hydrodynamics::build_equations(hydro_final);
 
+    equation_context build_hydro_quantities;
+    construct_hydrodynamic_quantities(build_hydro_quantities, holes.objs);
+
     ctx1.build(argument_string, 0);
     ctx4.build(argument_string, 3);
     ctx5.build(argument_string, 4);
@@ -5994,6 +6006,7 @@ int main()
     hydro_W.build(argument_string, "hydrow");
     hydro_intermediates.build(argument_string, "hydrointermediates");
     hydro_final.build(argument_string, "hydrofinal");
+    build_hydro_quantities.build(argument_string, "hydroconvert");
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 
@@ -6072,9 +6085,7 @@ int main()
     base_settings.use_half_intermediates = false;
     #endif // USE_HALF_INTERMEDIATE
 
-    #ifdef USE_MATTER
-    base_settings.use_matter = true;
-    #endif // USE_MATTER
+    base_settings.use_matter = holes.use_matter;
 
     #ifdef CALCULATE_MOMENTUM_CONSTRAINT
     base_settings.calculate_momentum_constraint = true;
