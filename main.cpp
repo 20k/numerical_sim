@@ -2748,6 +2748,14 @@ void construct_adm_source_quantities(equation_context& ctx, const std::vector<co
         value eps = (h - pressure/p0) - 1;
 
         value e_star = pow(p0 * eps, 1/Gamma) * gA_u0 * chi_to_e_6phi(X);
+
+        ctx.add("build_p_star", p_star);
+        ctx.add("build_e_star", e_star);
+
+        for(int k=0; k < 3; k++)
+        {
+            ctx.add("build_sk" + std::to_string(k), Si_lower.idx(k));
+        }
     }
 }
 
