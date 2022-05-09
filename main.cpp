@@ -2735,7 +2735,7 @@ void construct_adm_source_quantities(equation_context& ctx, const std::vector<co
         {
             value p_star_elem = cSi_lower.idx(k) / (h * u_lower.idx(k));
 
-            p_star += if_v(fabs(u_lower.idx(k)) > 0.0001f, p_star_elem, 0.f);
+            p_star += if_v(fabs(u_lower.idx(k) * h) > 0.0001f, p_star_elem, 0.f);
         }
 
         ///so: Si_lower and p_star are both enforced to be regular
