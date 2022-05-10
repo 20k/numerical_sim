@@ -3433,7 +3433,16 @@ namespace hydrodynamics
 
         inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-        value W = matt.calculate_W(icY, args.X);
+        value W = 0.5f;
+
+        int iterations = 5;
+
+        for(int i=0; i < iterations; i++)
+        {
+            ctx.pin(W);
+
+            W = w_next(W, matt.p_star, args.X, icY, matt.cS, matt.Gamma, matt.e_star);
+        }
 
         ctx.add("init_hydro_W", W);
     }

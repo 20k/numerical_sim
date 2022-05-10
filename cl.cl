@@ -1155,6 +1155,8 @@ void calculate_hydro_W(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
+    float TEMPORARIEShydrow;
+
     DW_stashed[index] = init_hydro_W;
 
     NANCHECK(DW_stashed);
