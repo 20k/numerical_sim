@@ -1299,6 +1299,13 @@ T chi_to_e_m6phi(const T& chi)
     return pow(chi + 0.001f, (3.f/2.f));
 }
 
+template<typename T>
+inline
+T chi_to_e_m6phi_unclamped(const T& chi)
+{
+    return pow(chi, (3.f/2.f));
+}
+
 ///constant_1 is chi * icYij * cSi cSj
 template<typename T>
 inline
@@ -1306,11 +1313,18 @@ T w_next_interior(const T& w_in, const T& p_star, const T& chi, const T& constan
 {
     ///p*^(2-G) * (w e6phi)^G-1 is equivalent to the divisor
 
+    T em6_phi_G = pow(chi_to_e_m6phi_unclamped(chi), gamma - 1);
+
     T geg = gamma * pow(e_star, gamma);
 
-    T divisor = pow(p_star, 2 - gamma) * pow(w_in * chi_to_e_6phi(chi), gamma - 1);
+    T divisor = pow(p_star, 2 - gamma) * pow(w_in, gamma - 1);
 
-    return sqrt(p_star * p_star + constant_1 * pow(1 + geg / divisor, -2));
+    if constexpr(std::is_same_v<T, float>)
+    {
+        printf("Divi %f %f %f %f\n", divisor, p_star, em6_phi_G, chi);
+    }
+
+    return sqrt(p_star * p_star + constant_1 * pow(1 + em6_phi_G * geg / divisor, -2));
 }
 
 float w_next_interior_nonregular(float w_in, float p_star, float chi, float constant_1, float gamma, float e_star)
