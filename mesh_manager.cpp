@@ -35,10 +35,10 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size, bool use_matter)
 
         {"Dp_star", "evolve_hydro_all", 0.01f, true},
         {"De_star", "evolve_hydro_all", 0.025f, true},
-        {"DcS0", "evolve_hydro_all", 0.15f, true},
-        {"DcS1", "evolve_hydro_all", 0.15f, true},
-        {"DcS2", "evolve_hydro_all", 0.15f, true},
-        {"DW_stashed", "calculate_hydro_W", 0.1f, true},
+        {"DcS0", "evolve_hydro_all", 0.25f, true},
+        {"DcS1", "evolve_hydro_all", 0.25f, true},
+        {"DcS2", "evolve_hydro_all", 0.25f, true},
+        {"DW_stashed", "calculate_hydro_W", 0.f, true},
     };
 
     for(int kk=0; kk < (int)values.size(); kk++)
@@ -912,7 +912,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     auto& b1 = get_input();
     auto& b2 = get_output();
 
-    int iterations = 3;
+    int iterations = 2;
 
     if(iterations == 1)
     {
