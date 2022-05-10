@@ -1313,6 +1313,14 @@ T chi_to_e_m6phi_unclamped(const T& chi)
     return pow(chi, (3.f/2.f));
 }
 
+template<typename T>
+inline
+T divide_with_limit(const T& top, const T& bottom, const T& limit)
+{
+    return dual_types::if_v(bottom >= 0.0001f, top / bottom, limit);
+}
+
+///https://arxiv.org/pdf/gr-qc/0209102.pdf (29)
 ///constant_1 is chi * icYij * cSi cSj
 template<typename T>
 inline
@@ -1326,17 +1334,17 @@ T w_next_interior(const T& w_in, const T& p_star, const T& chi, const T& constan
 
     T divisor = pow(w_in, gamma - 1);
 
-    if constexpr(std::is_same_v<T, float>)
-    {
-        printf("Divi %f %f %f %f\n", divisor, p_star, em6_phi_G, chi);
-    }
-
     ///so: Limits
     ///when w -> 0, w = 0
     ///when p_star -> 0, w = 0
     ///when e_star -> 0.... I think pstar and w have to tend to 0?
 
-    T non_regular_interior = divisor / (divisor + em6_phi_G * geg * pow(p_star, gamma - 2));
+    ///So! I think this equation has a regular fomulation. The non finite quantities are em6_phi_G which tends to 0, geg which can be zero
+    ///pstar doesn't actually matter here, though theoretically it might
+    //T non_regular_interior = divisor / (divisor + em6_phi_G * geg * pow(p_star, gamma - 2));
+
+    ///I'm not sure this equation tends to 0, but constant_1 tends to 0 because Si = p* h uk
+    T non_regular_interior = divide_with_limit(divisor, divisor + em6_phi_G * geg * pow(p_star, gamma - 2), T{0.f});
 
     return sqrt(p_star * p_star + constant_1 * pow(non_regular_interior, 2));
     //return sqrt(p_star * p_star + constant_1 * pow(1 + em6_phi_G * geg * pow(p_star, gamma - 2) / divisor, -2));
