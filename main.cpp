@@ -1806,14 +1806,14 @@ struct matter
 
     value calculate_p0(const value& chi, const value& W)
     {
-        return chi_to_e_m6phi(chi) * p_star * p_star / W;
+        return divide_with_limit(chi_to_e_m6phi(chi) * p_star * p_star, W, 0.f);
     }
 
     value calculate_eps(const value& chi, const value& W)
     {
         value e_m6phi = chi_to_e_m6phi(chi);
 
-        return pow(e_m6phi / W, Gamma - 1) * pow(e_star, Gamma) * pow(p_star, Gamma - 2);
+        return pow(divide_with_limit(e_m6phi, W, 0.f), Gamma - 1) * pow(e_star, Gamma) * pow(p_star, Gamma - 2);
     }
 
     value gamma_eos(const value& p0, const value& eps)
@@ -1921,7 +1921,7 @@ struct matter
         {
             for(int j=0; j < 3; j++)
             {
-                Sij.idx(i, j) = (em6phi / (W * h)) * cS.idx(i) * cS.idx(j);
+                Sij.idx(i, j) = divide_with_limit(em6phi, W * h, 0.f) * cS.idx(i) * cS.idx(j);
             }
         }
 

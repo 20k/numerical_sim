@@ -355,7 +355,7 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
     DcS1[index] = cS1;
     DcS2[index] = cS2;
 
-    DW_stashed[index] = 1;
+    DW_stashed[index] = 0;
 
     NANCHECK(Dp_star);
     NANCHECK(De_star);
