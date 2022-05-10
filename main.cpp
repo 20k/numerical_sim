@@ -3454,12 +3454,47 @@ namespace hydrodynamics
 
         int iterations = 5;
 
+        value constant_1 = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                constant_1 += args.X * icY.idx(i, j) * matt.cS.idx(i) * matt.cS.idx(j);
+            }
+        }
+
         for(int i=0; i < iterations; i++)
         {
             ctx.pin(W);
 
             W = w_next(W, matt.p_star, args.X, icY, matt.cS, matt.Gamma, matt.e_star);
         }
+
+        /*T constant_1 = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                constant_1 += chi * icY.idx(i, j) * cS.idx(i) * cS.idx(j);
+            }
+        }*/
+
+
+        ctx.add("W_p_star", matt.p_star);
+        ctx.add("W_X", args.X);
+        ctx.add("W_C1", constant_1);
+        ctx.add("W_e_star", matt.e_star);
+        ctx.add("W_cS0", matt.cS.idx(0));
+        ctx.add("W_cS1", matt.cS.idx(1));
+        ctx.add("W_cS2", matt.cS.idx(2));
+        ctx.add("W_cY0", args.cY.idx(0, 0));
+        ctx.add("W_cY1", args.cY.idx(1, 0));
+        ctx.add("W_cY2", args.cY.idx(2, 0));
+        ctx.add("W_cY3", args.cY.idx(1, 1));
+        ctx.add("W_cY4", args.cY.idx(1, 2));
+        ctx.add("W_cY5", args.cY.idx(2, 2));
 
         ctx.add("init_hydro_W", W);
     }
@@ -6001,6 +6036,28 @@ int main()
             assert(isfinite(w));
         }
     }
+
+    /*{
+        for(float p1 = 0; p1 <= 1; p1 += 0.01f)
+        {
+            for(float p2 = 0; p2 <= 1; p2 += 0.01f)
+            {
+                for(float p3 = 0; p3 <= 1; p3 += 0.01f)
+                {
+                    for(float p4 = 0; p4 <= 1; p4 += 0.01f)
+                    {
+                        float w = 0.5f;
+
+                        for(int i=0; i < 6; i++)
+                        {
+                            w = w_next_interior(w, p1, p2, p3, 2, p4);
+                            assert(isfinite(w));
+                        }
+                    }
+                }
+            }
+        }
+    }*/
 
     steady_timer time_to_main;
 

@@ -1166,6 +1166,11 @@ void calculate_hydro_W(__global ushort4* points, int point_count,
     DW_stashed[index] = init_hydro_W;
 
     NANCHECK(DW_stashed);
+
+    if(isnan(DW_stashed[index]))
+    {
+        printf("Vals p_star %f X %f C1 %f e* %f cS %f %f %f cY %f %f %f %f %f %f\n", W_p_star, W_X, W_C1, W_e_star, W_cS0, W_cS1, W_cS2, W_cY0, W_cY1, W_cY2, W_cY3, W_cY4, W_cY5);
+    }
 }
 
 ///does not use any derivatives
