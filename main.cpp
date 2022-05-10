@@ -1313,13 +1313,6 @@ T chi_to_e_m6phi_unclamped(const T& chi)
     return pow(chi, (3.f/2.f));
 }
 
-template<typename T>
-inline
-T divide_with_limit(const T& top, const T& bottom, const T& limit)
-{
-    return dual_types::if_v(bottom >= 0.0001f, top / bottom, limit);
-}
-
 ///https://arxiv.org/pdf/gr-qc/0209102.pdf (29)
 ///constant_1 is chi * icYij * cSi cSj
 template<typename T>
@@ -1344,7 +1337,7 @@ T w_next_interior(const T& w_in, const T& p_star, const T& chi, const T& constan
     //T non_regular_interior = divisor / (divisor + em6_phi_G * geg * pow(p_star, gamma - 2));
 
     ///I'm not sure this equation tends to 0, but constant_1 tends to 0 because Si = p* h uk
-    T non_regular_interior = divide_with_limit(divisor, divisor + em6_phi_G * geg * pow(p_star, gamma - 2), T{0.f});
+    T non_regular_interior = dual_types::divide_with_limit(divisor, divisor + em6_phi_G * geg * pow(p_star, gamma - 2), T{0.f});
 
     return sqrt(p_star * p_star + constant_1 * pow(non_regular_interior, 2));
     //return sqrt(p_star * p_star + constant_1 * pow(1 + em6_phi_G * geg * pow(p_star, gamma - 2) / divisor, -2));
