@@ -587,20 +587,6 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
         last_valid_thin_buffer.clear();
 
-
-        {
-            mqueue.block();
-
-            int whomst = 125 * dim.x() * dim.y() + 125 * dim.x() + 111;
-
-            float val = 0;
-            generic_in.lookup("cY0").buf.read(main_queue, (char*)&val, sizeof(cl_float), whomst * sizeof(cl_float));
-
-            main_queue.block();
-
-            printf("Found val %f\n", val);
-        }
-
         step_hydro(ctx, mqueue, pool, generic_in, generic_out, base_yn, current_timestep);
 
         for(auto& i : generic_in.buffers)
@@ -698,19 +684,6 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
         clean(generic_in, generic_out);
 
-        {
-            mqueue.block();
-
-            int whomst = 125 * dim.x() * dim.y() + 125 * dim.x() + 111;
-
-            float val = 0;
-            generic_out.lookup("cY0").buf.read(main_queue, (char*)&val, sizeof(cl_float), whomst * sizeof(cl_float));
-
-            main_queue.block();
-
-            printf("Found val2 %f\n", val);
-        }
-
         //copy_border(generic_in, generic_out);
     };
 
@@ -736,19 +709,6 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
         for(auto& i : generic_out.buffers)
         {
             check_for_nans(i.name + "_constrain", i.buf);
-        }
-
-        {
-            mqueue.block();
-
-            int whomst = 125 * dim.x() * dim.y() + 125 * dim.x() + 111;
-
-            float val = 0;
-            generic_out.lookup("cY0").buf.read(main_queue, (char*)&val, sizeof(cl_float), whomst * sizeof(cl_float));
-
-            main_queue.block();
-
-            printf("Found valC %f\n", val);
         }
     };
 
@@ -849,19 +809,6 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
             mqueue.exec("dissipate_single_unidir", diss, {points_set.all_count}, {128});
 
             check_for_nans(in.buffers[i].name + "_diss", out.buffers[i].buf);
-        }
-
-        {
-            mqueue.block();
-
-            int whomst = 125 * dim.x() * dim.y() + 125 * dim.x() + 111;
-
-            float val = 0;
-            out.lookup("cY0").buf.read(main_queue, (char*)&val, sizeof(cl_float), whomst * sizeof(cl_float));
-
-            main_queue.block();
-
-            printf("Found valD %f\n", val);
         }
     };
     ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
