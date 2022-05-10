@@ -817,12 +817,12 @@ void evolve_cY(__global ushort4* points, int point_count,
     ocY4[index] = f_dtcYij4 * timestep + b4;
     ocY5[index] = f_dtcYij5 * timestep + b5;
 
-    /*NANCHECK(ocY0);
+    NANCHECK(ocY0);
     NANCHECK(ocY1);
     NANCHECK(ocY2);
     NANCHECK(ocY3);
     NANCHECK(ocY4);
-    NANCHECK(ocY5);*/
+    NANCHECK(ocY5);
 }
 
 __kernel
@@ -887,12 +887,12 @@ void evolve_cA(__global ushort4* points, int point_count,
 
     ///NAN ocA0 107 125 125
 
-    /*NANCHECK(ocA0);
+    NANCHECK(ocA0);
     NANCHECK(ocA1);
     NANCHECK(ocA2);
     NANCHECK(ocA3);
     NANCHECK(ocA4);
-    NANCHECK(ocA5);*/
+    NANCHECK(ocA5);
 }
 
 __kernel
@@ -949,9 +949,9 @@ void evolve_cGi(__global ushort4* points, int point_count,
         ocGi2[index] = f_dtcGi2 * timestep + b2;
     }
 
-    /*NANCHECK(ocGi0);
+    NANCHECK(ocGi0);
     NANCHECK(ocGi1);
-    NANCHECK(ocGi2);*/
+    NANCHECK(ocGi2);
 
     #ifdef USE_GBB
     {
@@ -1005,7 +1005,7 @@ void evolve_K(__global ushort4* points, int point_count,
 
     oK[index] = f_dtK * timestep + b0;
 
-    //NANCHECK(oK);
+    NANCHECK(oK);
 }
 
 
@@ -1047,7 +1047,7 @@ void evolve_X(__global ushort4* points, int point_count,
 
     oX[index] = f_dtX * timestep + b0;
 
-    //NANCHECK(oX);
+    NANCHECK(oX);
 }
 
 __kernel
@@ -1087,6 +1087,8 @@ void evolve_gA(__global ushort4* points, int point_count,
     float b0 = base_gA[index];
 
     ogA[index] = f_dtgA * timestep + b0;
+
+    NANCHECK(ogA);
 }
 
 
@@ -1135,6 +1137,10 @@ void evolve_gB(__global ushort4* points, int point_count,
     ogB0[index] = f_dtgB0 * timestep + b0;
     ogB1[index] = f_dtgB1 * timestep + b1;
     ogB2[index] = f_dtgB2 * timestep + b2;
+
+    NANCHECK(ogB0);
+    NANCHECK(ogB1);
+    NANCHECK(ogB2);
 }
 
 ///does not use derivatives
