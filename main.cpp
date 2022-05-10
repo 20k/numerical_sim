@@ -1850,7 +1850,7 @@ struct matter
 
     value calculate_adm_p(const value& chi, const value& W)
     {
-        return {};
+        //return {};
 
         value h = calculate_h_with_gamma_eos(chi, W);
         value em6phi = chi_to_e_m6phi(chi);
@@ -1863,8 +1863,6 @@ struct matter
 
     tensor<value, 3> calculate_adm_Si(const value& chi)
     {
-        return {};
-
         value em6phi = chi_to_e_m6phi(chi);
 
         return cS * em6phi;
@@ -1873,8 +1871,6 @@ struct matter
     ///the reason to calculate X_Sij is that its regular in terms of chi
     tensor<value, 3, 3> calculate_adm_X_Sij(const value& chi, const value& W, const unit_metric<value, 3, 3>& cY)
     {
-        return {};
-
         value em6phi = chi_to_e_m6phi(chi);
         value h = calculate_h_with_gamma_eos(chi, W);
 
@@ -1898,8 +1894,6 @@ struct matter
 
     value calculate_adm_S(const unit_metric<value, 3, 3>& cY, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
     {
-        return {};
-
         ///so. Raise Sij with iYij, which is X * cY
         ///now I'm actually raising X * Sij which means....... i can use cY?
         ///because iYij * Sjk = X * icYij * Sjk, and icYij * X * Sjk = X * icYij * Sjk
@@ -5902,6 +5896,17 @@ int main()
             printf("W %f\n", w);
         }
     }*/
+
+    {
+        float w = 0.5f;
+
+        for(int i=0; i < 50; i++)
+        {
+            w = w_next_interior(w, 0.f, 0.f, 0.f, 2, 0.f);
+
+            printf("W %f\n", w);
+        }
+    }
 
     steady_timer time_to_main;
 
