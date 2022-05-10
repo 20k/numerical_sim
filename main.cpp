@@ -1966,6 +1966,46 @@ struct matter
         return sum;
     }
 
+    value estar_vi_rhs(equation_context& ctx, const value& gA, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
+    {
+        value e_m6phi = chi_to_e_m6phi(chi);
+        value e_6phi = chi_to_e_6phi(chi);
+
+        tensor<value, 3> vk = get_v_upper(icY, gA, chi, W);
+
+        value scale = "scale";
+
+        value dkvk = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            dkvk += 2 * diff1(ctx, vk.idx(k), k);
+        }
+
+        value littledv = dkvk * scale;
+
+        value A = divide_with_limit(pow(e_star, Gamma) * pow(p_star, Gamma - 1), pow(W * e_6phi, Gamma - 1), 0.f);
+
+        ///[0.1, 1.0}
+        value CQvis = 0.5f;
+
+        value PQvis = if_v(dkvk < 0, CQvis * A * pow(dkvk, 2), 0.f);
+
+        value p0 = calculate_p0(chi, W);
+        value eps = calculate_eps(chi, W);
+
+        value sum_interior_rhs = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            value to_diff = divide_with_limit(W * e_6phi * vk.idx(k), p_star, 0.f);
+
+            sum_interior_rhs += diff1(ctx, to_diff, k);
+        }
+
+        return -pow(p0 * eps, -1 + 1/Gamma) * (PQvis / Gamma) * sum_interior_rhs;
+    }
+
     tensor<value, 3> cSkvi_rhs(equation_context& ctx, const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const value& P, const value& W)
     {
         tensor<value, 3> dX;
@@ -3203,7 +3243,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #ifdef PAPER_0610128
     compact_object::data<float> h1;
     h1.t = compact_object::NEUTRON_STAR;
-    h1.bare_mass = 0.05;
+    h1.bare_mass = 0.1;
     h1.momentum = {0, 0.133 * 0.8 * 0, 0};
     h1.position = {-2.257, 0.f, 0.f};
 
@@ -3596,6 +3636,8 @@ namespace hydrodynamics
             lhs_dte_star += diff1(ctx, e_star_vi.idx(i), i);
         }
 
+        value rhs_dte_star = args.matt.estar_vi_rhs(ctx, args.gA, icY, args.X, matt.stashed_W);
+
         tensor<value, 3> lhs_dtSk;
 
         for(int k=0; k < 3; k++)
@@ -3610,12 +3652,12 @@ namespace hydrodynamics
             lhs_dtSk.idx(k) = sum;
         }
 
-        tensor<value, 3> rhs = matt.cSkvi_rhs(ctx, icY, args.gA, args.gB, args.X, P, matt.stashed_W);
+        tensor<value, 3> rhs_dtSk = matt.cSkvi_rhs(ctx, icY, args.gA, args.gB, args.X, P, matt.stashed_W);
 
         value dtp_star = -lhs_dtp_star;
-        value dte_star = -lhs_dte_star;
+        value dte_star = -lhs_dte_star + rhs_dte_star;
 
-        tensor<value, 3> dtSk = -lhs_dtSk + rhs;
+        tensor<value, 3> dtSk = -lhs_dtSk + rhs_dtSk;
 
         ctx.add("init_dtp_star", dtp_star);
         ctx.add("init_dte_star", dte_star);
