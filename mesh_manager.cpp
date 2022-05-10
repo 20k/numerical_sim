@@ -337,6 +337,108 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg)
     }
 }
 
+void cpu_mesh::calculate_hydro_w(cl::managed_command_queue& cqueue)
+{
+    if(!sett.use_matter)
+        return;
+
+    cl::args hyd;
+    hyd.push_back(points_set.all_points);
+    hyd.push_back(points_set.all_count);
+
+    for(auto& i : get_input().buffers)
+    {
+        hyd.push_back(i.buf);
+    }
+
+    vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
+
+    hyd.push_back(scale);
+    hyd.push_back(clsize);
+    hyd.push_back(points_set.order);
+
+    cqueue.exec("calculate_hydro_W", hyd, {points_set.all_count}, {128});
+}
+
+void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep)
+{
+    cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
+
+    if(!sett.use_matter)
+        return;
+
+    calculate_hydro_w(cqueue);
+
+    int intermediate_count = 13;
+
+    std::vector<ref_counted_buffer> intermediates;
+
+    for(int i=0; i < intermediate_count; i++)
+    {
+        intermediates.push_back(pool.request(ctx, cqueue, dim, sizeof(cl_float)));
+
+        intermediates.back().set_to_zero(cqueue);
+    }
+
+    {
+        cl::args calc_intermediates;
+        calc_intermediates.push_back(points_set.all_points);
+        calc_intermediates.push_back(points_set.all_count);
+
+        for(auto& buf : in.buffers)
+        {
+            calc_intermediates.push_back(buf.buf.as_device_read_only());
+        }
+
+        for(auto& i : intermediates)
+        {
+            calc_intermediates.push_back(i);
+        }
+
+        calc_intermediates.push_back(scale);
+        calc_intermediates.push_back(clsize);
+        calc_intermediates.push_back(points_set.order);
+
+        cqueue.exec("calculate_hydro_intermediates", calc_intermediates, {points_set.all_count}, {128});
+    }
+
+    {
+        cl::args evolve;
+        evolve.push_back(points_set.all_points);
+        evolve.push_back(points_set.all_count);
+
+        for(auto& buf : in.buffers)
+        {
+            evolve.push_back(buf.buf.as_device_read_only());
+        }
+
+        for(auto& buf : out.buffers)
+        {
+            evolve.push_back(buf.buf.as_device_write_only());
+        }
+
+        for(auto& buf : base.buffers)
+        {
+            evolve.push_back(buf.buf.as_device_read_only());
+        }
+
+        for(auto& buf : intermediates)
+        {
+            evolve.push_back(buf.as_device_read_only());
+        }
+
+        evolve.push_back(scale);
+        evolve.push_back(clsize);
+        evolve.push_back(points_set.order);
+        evolve.push_back(timestep);
+
+        cqueue.exec("evolve_hydro_all", evolve, {points_set.all_count}, {128});
+    }
+
+    ///temporary
+    calculate_hydro_w(cqueue);
+}
+
 ref_counted_buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool)
 {
     if(sett.use_half_intermediates)

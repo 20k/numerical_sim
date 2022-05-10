@@ -3440,6 +3440,9 @@ namespace hydrodynamics
 
     void build_intermediate_variables_derivatives(equation_context& ctx)
     {
+        ctx.use_precise_differentiation = true;
+        ctx.always_directional_derivatives = true;
+
         standard_arguments args(ctx);
         matter& matt = args.matt;
 
@@ -3560,7 +3563,7 @@ namespace hydrodynamics
     }
 }
 
-void build_sommerfeld(equation_context& ctx)
+void build_sommerfeld(equation_context& ctx, bool use_matter)
 {
     ctx.order = 1;
     ctx.always_directional_derivatives = true;
@@ -3600,6 +3603,12 @@ void build_sommerfeld(equation_context& ctx)
     float asy_cGi1 = 0;
     float asy_cGi2 = 0;
 
+    float asy_p_star = 0;
+    float asy_e_star = 0;
+    float asy_cS0 = 0;
+    float asy_cS1 = 0;
+    float asy_cS2 = 0;
+
     auto sommerfeld = [&](value f, float f0, value v)
     {
         value sum = 0;
@@ -3638,6 +3647,12 @@ void build_sommerfeld(equation_context& ctx)
     value dtcGi1 = sommerfeld(args.cGi.idx(1), asy_cGi1, 1);
     value dtcGi2 = sommerfeld(args.cGi.idx(2), asy_cGi2, 1);
 
+    value dtcp_star = sommerfeld(args.matt.p_star, asy_p_star, 1);
+    value dtce_star = sommerfeld(args.matt.e_star, asy_e_star, 1);
+    value dtcS0 = sommerfeld(args.matt.cS.idx(0), asy_cS0, 1);
+    value dtcS1 = sommerfeld(args.matt.cS.idx(1), asy_cS1, 1);
+    value dtcS2 = sommerfeld(args.matt.cS.idx(2), asy_cS2, 1);
+
     ctx.add("sommer_dtcY0", dtcY0);
     ctx.add("sommer_dtcY1", dtcY1);
     ctx.add("sommer_dtcY2", dtcY2);
@@ -3663,6 +3678,16 @@ void build_sommerfeld(equation_context& ctx)
     ctx.add("sommer_dtcGi0", dtcGi0);
     ctx.add("sommer_dtcGi1", dtcGi1);
     ctx.add("sommer_dtcGi2", dtcGi2);
+
+    if(use_matter)
+    {
+        ctx.add("sommer_dtcp_star", dtcp_star);
+        ctx.add("sommer_dtce_star", dtce_star);
+
+        ctx.add("sommer_dtcS0", dtcS0);
+        ctx.add("sommer_dtcS1", dtcS1);
+        ctx.add("sommer_dtcS2", dtcS2);
+    }
 }
 
 ///algebraic_constraints
@@ -6102,7 +6127,7 @@ int main()
     //build_hamiltonian_constraint(ctx14);
 
     equation_context ctxsommer;
-    build_sommerfeld(ctxsommer);
+    build_sommerfeld(ctxsommer, holes.use_matter);
 
     equation_context hydro_W;
     hydrodynamics::build_W(hydro_W);
@@ -6148,6 +6173,7 @@ int main()
     if(holes.use_matter)
     {
         argument_string += "-DRENDER_MATTER ";
+        argument_string += "-DSOMMER_MATTER ";
     }
 
     #ifdef USE_GBB

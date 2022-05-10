@@ -355,7 +355,7 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
     DcS1[index] = cS1;
     DcS2[index] = cS2;
 
-    DW_stashed[index] = 0;
+    //DW_stashed[index] = 0;
 
     NANCHECK(Dp_star);
     NANCHECK(De_star);
@@ -363,11 +363,11 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
     NANCHECK(DcS1);
     NANCHECK(DcS2);
 
-    Dp_star[index] = 0;
+    /*Dp_star[index] = 0;
     De_star[index] = 0;
     DcS0[index] = 0;
     DcS1[index] = 0;
-    DcS2[index] = 0;
+    DcS2[index] = 0;*/
 }
 
 __kernel
@@ -671,6 +671,15 @@ void clean_data(__global ushort4* points, int point_count,
         float s_dtcGi1 = sommer_dtcGi1;
         float s_dtcGi2 = sommer_dtcGi2;
 
+        #ifdef SOMMER_MATTER
+        float s_dtcp_star = sommer_dtcp_star;
+        float s_dtce_star = sommer_dtce_star;
+
+        float s_dtcS0 = sommer_dtcS0;
+        float s_dtcS1 = sommer_dtcS1;
+        float s_dtcS2 = sommer_dtcS2;
+        #endif // SOMMER_MATTER
+
         ocY0[index] = s_dtcY0 * timestep + base_cY0[index];
         ocY1[index] = s_dtcY1 * timestep + base_cY1[index];
         ocY2[index] = s_dtcY2 * timestep + base_cY2[index];
@@ -696,6 +705,15 @@ void clean_data(__global ushort4* points, int point_count,
         ocGi0[index] = s_dtcGi0 * timestep + base_cGi0[index];
         ocGi1[index] = s_dtcGi1 * timestep + base_cGi1[index];
         ocGi2[index] = s_dtcGi2 * timestep + base_cGi2[index];
+
+        #ifdef SOMMER_MATTER
+        oDp_star[index] = s_dtcp_star * timestep + base_Dp_star[index];
+        oDe_star[index] = s_dtce_star * timestep + base_De_star[index];
+
+        oDcS0[index] = s_dtcS0 * timestep + base_DcS0[index];
+        oDcS1[index] = s_dtcS1 * timestep + base_DcS1[index];
+        oDcS2[index] = s_dtcS2 * timestep + base_DcS2[index];
+        #endif // SOMMER_MATTER
     }
 
     #if 0
@@ -1119,6 +1137,7 @@ void evolve_gB(__global ushort4* points, int point_count,
     ogB2[index] = f_dtgB2 * timestep + b2;
 }
 
+///does not use derivatives
 __kernel
 void calculate_hydro_W(__global ushort4* points, int point_count,
                        STANDARD_ARGS(),
@@ -1139,6 +1158,7 @@ void calculate_hydro_W(__global ushort4* points, int point_count,
     DW_stashed[index] = init_hydro_W;
 }
 
+///does not use any derivatives
 __kernel
 void calculate_hydro_intermediates(__global ushort4* points, int point_count,
                                    STANDARD_ARGS(),
@@ -1195,6 +1215,7 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
     pressure[index] = cpress;
 }
 
+///does use derivatives
 __kernel
 void evolve_hydro_all(__global ushort4* points, int point_count,
                       STANDARD_ARGS(),
@@ -1217,6 +1238,17 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
+
+    if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
+    {
+        oDp_star[index] = base_Dp_star[index];
+        oDe_star[index] = base_De_star[index];
+
+        oDcS0[index] = base_DcS0[index];
+        oDcS1[index] = base_DcS1[index];
+        oDcS2[index] = base_DcS2[index];
+        return;
+    }
 
     float f_dtp_star = init_dtp_star;
     float f_dte_star = init_dte_star;

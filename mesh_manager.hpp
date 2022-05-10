@@ -115,6 +115,10 @@ struct cpu_mesh
 
     void init(cl::command_queue& cqueue, cl::buffer& u_arg);
 
+    void calculate_hydro_w(cl::managed_command_queue& cqueue);
+
+    void step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep);
+
     ref_counted_buffer get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool);
 
     std::vector<ref_counted_buffer> get_derivatives_of(cl::context& ctx, buffer_set& bufs, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool);
