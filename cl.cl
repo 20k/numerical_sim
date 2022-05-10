@@ -1336,12 +1336,12 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     float fin_cS1 = f_dtSk1 * timestep + base_cS1;
     float fin_cS2 = f_dtSk2 * timestep + base_cS2;
 
-    if(fin_p_star < 1e-4 * p_star_max)
+    if(fin_p_star < 1e-5 * p_star_max)
     {
         fin_e_star = min(fin_e_star, 10 * fin_p_star);
     }
 
-    if(fin_p_star < 1e-4 * p_star_max)
+    if(fin_p_star < 1e-5 * p_star_max)
     {
         fin_p_star = 0;
         fin_e_star = 0;
@@ -1688,6 +1688,7 @@ struct lightray_simple
 
     float iter_frac;
     int hit_type;
+    float density;
 };
 
 enum ds_result
@@ -1939,6 +1940,8 @@ float get_static_verlet_ds(float3 Xpos, __global float* X, float scale, int4 dim
     return mix(0.4f, 4.f, my_fraction) * 0.1f;
 }
 
+#define SOLID_DENSITY 0.1
+
 __kernel
 void trace_rays(__global struct lightray_simple* rays_in, __global struct lightray_simple* rays_terminated,
                 STANDARD_ARGS(),
@@ -1990,6 +1993,8 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     }
     #endif // VERLET_2
 
+    float density = 0;
+
     #pragma unroll(16)
     for(int iteration=0; iteration < 256; iteration++)
     {
@@ -2036,7 +2041,16 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         float pstar_val = buffer_read_linear(Dp_star, voxel_pos, dim);
 
-        if(pstar_val > 0.001f)
+        /*if(pstar_val > 0.001f)
+        {
+            Xpos_last = Xpos;
+            hit_type = 2;
+            break;
+        }*/
+
+        density += pstar_val;
+
+        if(density > SOLID_DENSITY)
         {
             Xpos_last = Xpos;
             hit_type = 2;
@@ -2094,6 +2108,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
     ray_out.iter_frac = 0;
     ray_out.hit_type = hit_type;
+    ray_out.density = density;
 
     rays_terminated[y * width + x] = ray_out;
 }
@@ -2151,6 +2166,10 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
 
     float3 XDiff;
     velocity_to_XDiff(&XDiff, cpos, cvel, scale, dim, ALL_ARGS());
+
+    float density_frac = clamp(ray_in.density / SOLID_DENSITY, 0.f, 1.f);
+
+    float3 density_col = (float3)(1,1,1) * density_frac;
 
     float uni_size = universe_size;
 
@@ -2376,11 +2395,15 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
         #endif // TRILINEAR
         #endif // MIPMAPPING
 
-        write_imagef(screen, (int2){x, y}, (float4)(srgb_to_lin(end_result.xyz), 1.f));
+        float3 with_density = clamp(srgb_to_lin(end_result.xyz) + density_col, 0.f, 1.f);
+
+        write_imagef(screen, (int2){x, y}, (float4)(with_density, 1.f));
     }
     else if(ray_in.hit_type == 1)
     {
         float3 val = (float3)(0,0,0);
+
+        val = density_col;
 
         //val.xyz = clamp(ray_in.iter_frac, 0.f, 1.f);
 
@@ -2425,7 +2448,9 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
 
         light = clamp(fabs(light), 0.f, 1.f);
 
-        float3 col = (float3){1,1,1} * light;
+        float3 col = (float3){1,1,1} * light + density_col;
+
+        col = clamp(col, 0.f, 1.f);
 
         //col = fabs(normal);
 

@@ -3367,7 +3367,8 @@ void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf (95)
     //value gA = 1/(pow(bl_conformal + 1, 2));
 
-    value gA = 1/(pow(bl_conformal + u, 2));
+    value gA = 1;
+    //value gA = 1/(pow(bl_conformal + u, 2));
     value gB0 = 0;
     value gB1 = 0;
     value gB2 = 0;
@@ -6332,11 +6333,11 @@ int main()
     rtex[1].create_from_texture(tex[1].handle);
 
     std::array<cl::buffer, 2> ray_buffer{clctx.ctx, clctx.ctx};
-    ray_buffer[0].alloc(sizeof(cl_float) * 10 * width * height);
-    ray_buffer[1].alloc(sizeof(cl_float) * 10 * width * height);
+    ray_buffer[0].alloc(sizeof(cl_float) * 20 * width * height);
+    ray_buffer[1].alloc(sizeof(cl_float) * 20 * width * height);
 
     cl::buffer rays_terminated(clctx.ctx);
-    rays_terminated.alloc(sizeof(cl_float) * 10 * width * height);
+    rays_terminated.alloc(sizeof(cl_float) * 20 * width * height);
 
     std::array<cl::buffer, 2> ray_count{clctx.ctx, clctx.ctx};
     ray_count[0].alloc(sizeof(cl_int));
@@ -6537,9 +6538,9 @@ int main()
             rtex[0].create_from_texture(tex[0].handle);
             rtex[1].create_from_texture(tex[1].handle);
 
-            ray_buffer[0].alloc(sizeof(cl_float) * 10 * width * height);
-            ray_buffer[1].alloc(sizeof(cl_float) * 10 * width * height);
-            rays_terminated.alloc(sizeof(cl_float) * 10 * width * height);
+            ray_buffer[0].alloc(sizeof(cl_float) * 20 * width * height);
+            ray_buffer[1].alloc(sizeof(cl_float) * 20 * width * height);
+            rays_terminated.alloc(sizeof(cl_float) * 20 * width * height);
 
             texture_coordinates.alloc(sizeof(cl_float2) * width * height);
         }
