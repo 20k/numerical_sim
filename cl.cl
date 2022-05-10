@@ -1231,7 +1231,7 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
     NANCHECK(skvi4);
     NANCHECK(skvi5);
 
-    pressure(skvi5);
+    NANCHECK(pressure);
 }
 
 ///does use derivatives
