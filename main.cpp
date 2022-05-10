@@ -1304,14 +1304,7 @@ template<typename T>
 inline
 T w_next_interior(const T& w_in, const T& p_star, const T& chi, const T& constant_1, float gamma, const T& e_star)
 {
-    ///equations aren't properly regularised yet, because we have a power of -2
-    T e_m6phi = pow(max(chi, 0.001f), (3.f/2.f));
-    T p_term = pow(p_star, 2 - gamma);
-
-    ///pterm^ whatever * (w eterm)^G-1
-
-    ///w^(g-1) * eterm^(g-1)
-    ///negeterm^(g - 1) / (w^(g-1))
+    ///p*^(2-G) * (w e6phi)^G-1 is equivalent to the divisor
 
     T geg = gamma * pow(e_star, gamma);
 
