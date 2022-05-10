@@ -1301,6 +1301,13 @@ T chi_to_e_m6phi(const T& chi)
 
 template<typename T>
 inline
+T chi_to_e_6phi_unclamped(const T& chi)
+{
+    return pow(1/(chi), (3.f/2.f));
+}
+
+template<typename T>
+inline
 T chi_to_e_m6phi_unclamped(const T& chi)
 {
     return pow(chi, (3.f/2.f));
@@ -1318,11 +1325,17 @@ T w_next_interior(const T& w_in, const T& p_star, const T& chi, const T& constan
     T geg = gamma * pow(e_star, gamma);
 
     T divisor = pow(p_star, 2 - gamma) * pow(w_in, gamma - 1);
+    //T divisor = pow(p_star, 2 - gamma) * pow(w_in, gamma - 1);
 
     if constexpr(std::is_same_v<T, float>)
     {
         printf("Divi %f %f %f %f\n", divisor, p_star, em6_phi_G, chi);
     }
+
+    ///so: Limits
+    ///when w -> 0, w = 0
+    ///when p_star -> 0, w = 0
+    ///when e_star -> 0.... I think pstar and w have to tend to 0?
 
     return sqrt(p_star * p_star + constant_1 * pow(1 + em6_phi_G * geg / divisor, -2));
 }
@@ -1331,7 +1344,7 @@ float w_next_interior_nonregular(float w_in, float p_star, float chi, float cons
 {
     float geg = gamma * pow(e_star, gamma);
 
-    float pstarwe6phipstar = p_star * pow(w_in * chi_to_e_6phi(chi)/p_star, gamma - 1);
+    float pstarwe6phipstar = p_star * pow(w_in * chi_to_e_6phi_unclamped(chi)/p_star, gamma - 1);
 
     return sqrt(p_star * p_star + constant_1 * pow(1 + geg / pstarwe6phipstar, -2));
 }
