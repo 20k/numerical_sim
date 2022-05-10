@@ -115,7 +115,7 @@ struct cpu_mesh
 
     void init(cl::command_queue& cqueue, cl::buffer& u_arg);
 
-    void calculate_hydro_w(cl::managed_command_queue& cqueue);
+    void calculate_hydro_w(cl::managed_command_queue& cqueue, buffer_set& in);
 
     void step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep);
 

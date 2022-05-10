@@ -337,7 +337,7 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg)
     }
 }
 
-void cpu_mesh::calculate_hydro_w(cl::managed_command_queue& cqueue)
+void cpu_mesh::calculate_hydro_w(cl::managed_command_queue& cqueue, buffer_set& in)
 {
     if(!sett.use_matter)
         return;
@@ -346,7 +346,7 @@ void cpu_mesh::calculate_hydro_w(cl::managed_command_queue& cqueue)
     hyd.push_back(points_set.all_points);
     hyd.push_back(points_set.all_count);
 
-    for(auto& i : get_input().buffers)
+    for(auto& i : in.buffers)
     {
         hyd.push_back(i.buf);
     }
@@ -367,7 +367,7 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
 
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
-    calculate_hydro_w(cqueue);
+    calculate_hydro_w(cqueue, in);
 
     int intermediate_count = 13;
 
