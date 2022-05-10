@@ -1313,7 +1313,11 @@ T w_next_interior(const T& w_in, const T& p_star, const T& chi, const T& constan
     ///w^(g-1) * eterm^(g-1)
     ///negeterm^(g - 1) / (w^(g-1))
 
-    return sqrt(p_star * p_star + constant_1 * pow(1 + (gamma * pow(e_star, gamma)) * pow(e_m6phi, gamma - 1) / (p_term * pow(w_in, gamma - 1)), -2));
+    T geg = gamma * pow(e_star, gamma);
+
+    T divisor = pow(p_star, 2 - gamma) * pow(w_in * chi_to_e_6phi(chi), gamma - 1);
+
+    return sqrt(p_star * p_star + constant_1 * pow(1 + geg / divisor, -2));
 }
 
 float w_next_interior_nonregular(float w_in, float p_star, float chi, float constant_1, float gamma, float e_star)
