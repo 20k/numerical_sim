@@ -362,10 +362,10 @@ void cpu_mesh::calculate_hydro_w(cl::managed_command_queue& cqueue)
 
 void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep)
 {
-    cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
-
     if(!sett.use_matter)
         return;
+
+    cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
     calculate_hydro_w(cqueue);
 
@@ -561,6 +561,8 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
         intermediates.clear();
 
         last_valid_thin_buffer.clear();
+
+        step_hydro(ctx, mqueue, pool, generic_in, generic_out, base_yn, current_timestep);
 
         for(auto& i : generic_in.buffers)
         {
