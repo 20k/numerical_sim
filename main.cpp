@@ -3199,7 +3199,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.2;
     h1.momentum = {0, 0.133 * 0.8 * 0, 0};
-    h1.position = {-3.257, 0.f, 0.f};
+    h1.position = {-3.257 * 0.25, 0.f, 0.f};
 
     compact_object::data<float> h2;
     h2.t = compact_object::BLACK_HOLE;
@@ -6586,7 +6586,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.035;
+        float timestep = 0.015;
 
         //timestep = 0.04;
 
