@@ -2768,7 +2768,12 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
     value W2 = if_v(is_degenerate, 1.f, ((rhoH + pressure) / (rho + pressure)));
 
     ///https://arxiv.org/pdf/1606.04881.pdf (70)
-    tensor<value, 3> u_upper = (Si / (rho + pressure) * sqrt(W2));
+    tensor<value, 3> u_upper;
+
+    for(int k=0; k < 3; k++)
+    {
+        u_upper.idx(k) = divide_with_limit(Si.idx(k), rho + pressure, 0.f) * sqrt(W2);
+    }
 
     ///conformal hydrodynamical quantities
     {
@@ -2809,7 +2814,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
         value littleW = p_star * gA * u0;
 
-        value h = (rhoH + pressure) * chi_to_e_6phi(X) / littleW;
+        value h = if_v(is_degenerate, 0.f, (rhoH + pressure) * chi_to_e_6phi(X) / littleW);
 
         value p0e = p0 * h - p0 + pressure;
 
@@ -3055,6 +3060,7 @@ initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_q
     }
 
     ret.objs = objs;
+    ret.use_matter = true;
 
     return ret;
 }
@@ -3197,9 +3203,9 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #ifdef PAPER_0610128
     compact_object::data<float> h1;
     h1.t = compact_object::NEUTRON_STAR;
-    h1.bare_mass = 0.1;
+    h1.bare_mass = 0.05;
     h1.momentum = {0, 0.133 * 0.8 * 0, 0};
-    h1.position = {-3.257, 0.f, 0.f};
+    h1.position = {-3.257 * 0, 0.f, 0.f};
 
     compact_object::data<float> h2;
     h2.t = compact_object::BLACK_HOLE;
@@ -3207,7 +3213,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     h2.momentum = {0, -0.133 * 0.8 * 0, 0};
     h2.position = {3.257, 0.f, 0.f};
 
-    objects.push_back(h1);
+    //objects.push_back(h1);
     objects.push_back(h2);
     #endif // PAPER_0610128
 
@@ -6235,17 +6241,27 @@ int main()
     equation_context ctxsommer;
     build_sommerfeld(ctxsommer, holes.use_matter);
 
+    printf("Begin hydro\n");
+
     equation_context hydro_W;
     hydrodynamics::build_W(hydro_W);
+
+    printf("Post W\n");
 
     equation_context hydro_intermediates;
     hydrodynamics::build_intermediate_variables_derivatives(hydro_intermediates);
 
+    printf("Post interm\n");
+
     equation_context hydro_final;
     hydrodynamics::build_equations(hydro_final);
 
+    printf("Post build\n");
+
     equation_context build_hydro_quantities;
     construct_hydrodynamic_quantities(build_hydro_quantities, holes.objs);
+
+    printf("End hydro\n");
 
     ctx1.build(argument_string, 0);
     ctx4.build(argument_string, 3);

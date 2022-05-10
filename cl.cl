@@ -346,6 +346,9 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
         de_val = 0;
     }
 
+    dp_val = max(dp_val, 0.f);
+    de_val = max(de_val, 0.f);
+
     /*LNANCHECK(D_eps_p0);
     LNANCHECK(D_p0);
     LNANCHECK(D_h);
@@ -372,7 +375,11 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
     DcS1[index] = cS1;
     DcS2[index] = cS2;
 
-    //DW_stashed[index] = 0;
+    {
+        float TEMPORARIEShydrow;
+
+        DW_stashed[index] = init_hydro_W;
+    }
 
     NANCHECK(Dp_star);
     NANCHECK(De_star);
