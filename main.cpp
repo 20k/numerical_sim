@@ -4746,6 +4746,28 @@ void build_K(equation_context& ctx, bool use_matter)
         value matter_p = args.matt.calculate_adm_p(X, args.matt.stashed_W);
 
         dtK += (8 * M_PI / 2) * gA * (matter_s + matter_p);
+
+        /*value h = calculate_h_with_gamma_eos(chi, W);
+        value em6phi = chi_to_e_m6phi(chi);
+
+        value p0 = calculate_p0(chi, W);
+        value eps = calculate_eps(chi, W);
+
+        return h * W * em6phi - gamma_eos(p0, eps);*/
+
+        /*value h = args.matt.calculate_h_with_gamma_eos(X, args.matt.stashed_W);
+        value em6phi = chi_to_e_m6phi(X);
+        value p0 = args.matt.calculate_p0(X, args.matt.stashed_W);
+        value eps = args.matt.calculate_eps(X, args.matt.stashed_W);
+
+        ctx.add("Dbg_matter_s", matter_s);
+        ctx.add("Dbg_matter_p", matter_p);
+
+        ctx.add("Dbg_h", h);
+        ctx.add("Dbg_em", em6phi);
+        ctx.add("Dbg_p0", p0);
+        ctx.add("Dbg_eps", eps);
+        ctx.add("Dbg_X", X);*/
     }
 
     ctx.add("dtK", dtK);

@@ -1023,6 +1023,11 @@ void evolve_K(__global ushort4* points, int point_count,
     oK[index] = f_dtK * timestep + b0;
 
     NANCHECK(oK);
+
+    /*if(ix == 109 && iy == 125 && iz == 125)
+    {
+        printf("K s %f p %f h %f em %f p0 %f eps %f %f\n", Dbg_matter_s, Dbg_matter_p, Dbg_h, Dbg_em, Dbg_p0, Dbg_eps, Dbg_X);
+    }*/
 }
 
 
@@ -1062,7 +1067,7 @@ void evolve_X(__global ushort4* points, int point_count,
 
     float b0 = base_X[index];
 
-    oX[index] = f_dtX * timestep + b0;
+    oX[index] = max(f_dtX * timestep + b0, 0.f);
 
     NANCHECK(oX);
 }
@@ -1103,7 +1108,7 @@ void evolve_gA(__global ushort4* points, int point_count,
 
     float b0 = base_gA[index];
 
-    ogA[index] = f_dtgA * timestep + b0;
+    ogA[index] = max(f_dtgA * timestep + b0, 0.f);
 
     NANCHECK(ogA);
 }
