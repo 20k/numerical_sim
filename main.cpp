@@ -1836,7 +1836,14 @@ struct matter
 
     tensor<value, 3> get_u_lower(const value& chi, const value& W)
     {
-        return cS / (p_star * calculate_h_with_gamma_eos(chi, W));
+        tensor<value, 3> ret;
+
+        for(int i=0; i < 3; i++)
+        {
+            ret.idx(i) = divide_with_limit(cS.idx(i), p_star * calculate_h_with_gamma_eos(chi, W), 0.f);
+        }
+
+        return ret;
     }
 
     tensor<value, 3> get_u_upper(const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
@@ -1848,7 +1855,7 @@ struct matter
 
     tensor<value, 3> get_v_upper(const inverse_metric<value, 3, 3>& icY, const value& gA, const value& chi, const value& W)
     {
-        value u0 = W / (p_star * gA);
+        value u0 = divide_with_limit(W, (p_star * gA), 0);
 
         tensor<value, 3> u_up = get_u_upper(icY, chi, W);
 
@@ -1856,8 +1863,10 @@ struct matter
 
         for(int i=0; i < 3; i++)
         {
+            clamped.idx(i) = divide_with_limit(u_up.idx(i), u0, 0.f);
+
             ///todo: tensor if_v
-            clamped.idx(i) = dual_types::if_v(p_star_is_degenerate(), 0.f, u_up.idx(i) / u0);
+            //clamped.idx(i) = dual_types::if_v(p_star_is_degenerate(), 0.f, u_up.idx(i) / u0);
         }
 
         return clamped;
