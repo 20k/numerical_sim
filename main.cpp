@@ -1336,7 +1336,10 @@ T w_next_interior(const T& w_in, const T& p_star, const T& chi, const T& constan
     ///when p_star -> 0, w = 0
     ///when e_star -> 0.... I think pstar and w have to tend to 0?
 
-    return sqrt(p_star * p_star + constant_1 * pow(1 + em6_phi_G * geg * pow(p_star, gamma - 2) / divisor, -2));
+    T non_regular_interior = divisor / (divisor + em6_phi_G * geg * pow(p_star, gamma - 2));
+
+    return sqrt(p_star * p_star + constant_1 * pow(non_regular_interior, 2));
+    //return sqrt(p_star * p_star + constant_1 * pow(1 + em6_phi_G * geg * pow(p_star, gamma - 2) / divisor, -2));
 }
 
 float w_next_interior_nonregular(float w_in, float p_star, float chi, float constant_1, float gamma, float e_star)
