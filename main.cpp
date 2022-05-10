@@ -6096,7 +6096,7 @@ int main()
 
     std::cout << "EXT " << cl::get_extensions(clctx.ctx) << std::endl;
 
-    std::string argument_string = "-I ./ -O3 -cl-std=CL2.0 -cl-mad-enable -cl-finite-math-only -cl-denorms-are-zero ";
+    std::string argument_string = "-I ./ -O3 -cl-std=CL2.0 -cl-mad-enable ";
 
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;

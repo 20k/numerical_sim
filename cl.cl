@@ -295,6 +295,23 @@ void calculate_initial_conditions(STANDARD_ARGS(),
 #define LNANCHECK(w)  if(isnan(w)){printf("NAN " #w " %i %i %i\n", ix, iy, iz);}
 
 __kernel
+void nan_checker(__global ushort4* points, int point_count, __global float* arg, float scale, int4 dim)
+{
+    int idx = get_global_id(0);
+
+    if(idx >= point_count)
+        return;
+
+    int ix = points[idx].x;
+    int iy = points[idx].y;
+    int iz = points[idx].z;
+
+    int index = IDX(ix,iy,iz);
+
+    NANCHECK(arg);
+}
+
+__kernel
 void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
                                                __global float* u_value,
                                                float scale, int4 dim)
