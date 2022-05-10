@@ -2526,7 +2526,7 @@ value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<c
 
         value dist = (pos - ri).length();
 
-        dist = max(dist, 1e-6);
+        dist = max(dist, 1e-3);
 
         BL_s += Mi / (2 * dist);
     }
@@ -2740,6 +2740,15 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
         gA_u0 = if_v(is_degenerate, 0.f, gA_u0);
 
         value p_star = p0 * gA * u0 * chi_to_e_6phi(X);
+
+        /*ctx.add("D_p0", p0);
+        ctx.add("D_gA", gA);
+        ctx.add("D_u0", u0);
+        ctx.add("D_chip", chi_to_e_6phi(X));
+        ctx.add("D_X", X);
+        ctx.add("D_phi", phi);
+        ctx.add("D_u", u_value);
+        ctx.add("D_DYN", BL_s_dyn);*/
 
         value littleW = p_star * gA * u0;
 

@@ -342,6 +342,12 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
 
     //printf("%f %f\n", D_enthalpy, D_gA_u0);
 
+    /*if(ix == 107 && iy == 125 && iz == 125)
+    {
+        printf("Dtc %f %f %f %f %f %f %f %f\n", D_p0, D_gA, D_u0, D_chip, D_X, D_phi, D_u, D_DYN);
+    }*/
+
+
     Dp_star[index] = dp_val;
     De_star[index] = de_val;
 
@@ -786,6 +792,13 @@ void evolve_cY(__global ushort4* points, int point_count,
     ocY3[index] = f_dtcYij3 * timestep + b3;
     ocY4[index] = f_dtcYij4 * timestep + b4;
     ocY5[index] = f_dtcYij5 * timestep + b5;
+
+    /*NANCHECK(ocY0);
+    NANCHECK(ocY1);
+    NANCHECK(ocY2);
+    NANCHECK(ocY3);
+    NANCHECK(ocY4);
+    NANCHECK(ocY5);*/
 }
 
 __kernel
@@ -847,6 +860,15 @@ void evolve_cA(__global ushort4* points, int point_count,
     #endif // NO_CAIJYY
     ocA4[index] = f_dtcAij4 * timestep + b4;
     ocA5[index] = f_dtcAij5 * timestep + b5;
+
+    ///NAN ocA0 107 125 125
+
+    /*NANCHECK(ocA0);
+    NANCHECK(ocA1);
+    NANCHECK(ocA2);
+    NANCHECK(ocA3);
+    NANCHECK(ocA4);
+    NANCHECK(ocA5);*/
 }
 
 __kernel
@@ -903,6 +925,10 @@ void evolve_cGi(__global ushort4* points, int point_count,
         ocGi2[index] = f_dtcGi2 * timestep + b2;
     }
 
+    /*NANCHECK(ocGi0);
+    NANCHECK(ocGi1);
+    NANCHECK(ocGi2);*/
+
     #ifdef USE_GBB
     {
         float b0 = base_gBB0[index];
@@ -954,6 +980,8 @@ void evolve_K(__global ushort4* points, int point_count,
     float b0 = base_K[index];
 
     oK[index] = f_dtK * timestep + b0;
+
+    //NANCHECK(oK);
 }
 
 
@@ -994,6 +1022,8 @@ void evolve_X(__global ushort4* points, int point_count,
     float b0 = base_X[index];
 
     oX[index] = f_dtX * timestep + b0;
+
+    //NANCHECK(oX);
 }
 
 __kernel
