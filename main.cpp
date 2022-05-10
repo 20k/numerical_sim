@@ -1813,6 +1813,14 @@ struct matter
     {
         value e_m6phi = chi_to_e_m6phi(chi);
 
+        /*value p0 = calculate_p0(chi, W);
+
+        value au0 = divide_with_limit(W, p_star, 0.f);
+
+        value lhs = divide_with_limit(pow(divide_with_limit(e_star * e_m6phi, au0, 0.f), Gamma), p0, 0.f);
+
+        return lhs;*/
+
         return pow(divide_with_limit(e_m6phi, W, 0.f), Gamma - 1) * pow(e_star, Gamma) * pow(p_star, Gamma - 2);
     }
 
