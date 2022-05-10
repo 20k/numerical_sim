@@ -780,7 +780,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
         {
             if(in.buffers[i].buf.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z() || in.buffers[i].dissipation_coeff == 0.f)
             {
-                assert(false);
+                //assert(false);
                 //printf("hi\n");
 
                 std::swap(in.buffers[i], out.buffers[i]);

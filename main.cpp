@@ -3060,7 +3060,7 @@ initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_q
     }
 
     ret.objs = objs;
-    ret.use_matter = true;
+    //ret.use_matter = true;
 
     return ret;
 }
@@ -3203,7 +3203,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #ifdef PAPER_0610128
     compact_object::data<float> h1;
     h1.t = compact_object::NEUTRON_STAR;
-    h1.bare_mass = 0.05;
+    h1.bare_mass = 0.2;
     h1.momentum = {0, 0.133 * 0.8 * 0, 0};
     h1.position = {-3.257 * 0, 0.f, 0.f};
 
@@ -3213,8 +3213,8 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     h2.momentum = {0, -0.133 * 0.8 * 0, 0};
     h2.position = {3.257, 0.f, 0.f};
 
-    //objects.push_back(h1);
-    objects.push_back(h2);
+    objects.push_back(h1);
+    //objects.push_back(h2);
     #endif // PAPER_0610128
 
     return get_bare_initial_conditions(clctx, cqueue, scale, objects);
@@ -6303,7 +6303,7 @@ int main()
     #endif // USE_GBB
 
     ///seems to make 0 difference to instability time
-    #define USE_HALF_INTERMEDIATE
+    //#define USE_HALF_INTERMEDIATE
     #ifdef USE_HALF_INTERMEDIATE
     int intermediate_data_size = sizeof(cl_half);
     argument_string += "-DDERIV_PRECISION=half ";

@@ -228,9 +228,9 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const l
     vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
 
     ///todo: use iterate
-    return solve_for_u(clctx, cqueue, setup, iterate, clsize, c_at_max, 1, std::nullopt, err);
+    //return solve_for_u(clctx, cqueue, setup, iterate, clsize, c_at_max, 1, std::nullopt, err);
 
-    //return iterate_u(clctx, cqueue, setup, iterate, extract, dim, c_at_max, err);
+    return iterate_u(clctx, cqueue, setup, iterate, extract, dim, c_at_max, err);
 }
 
 struct sandwich_state
