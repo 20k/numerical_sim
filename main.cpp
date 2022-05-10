@@ -1325,7 +1325,6 @@ T w_next_interior(const T& w_in, const T& p_star, const T& chi, const T& constan
     T geg = gamma * pow(e_star, gamma);
 
     T divisor = pow(w_in, gamma - 1);
-    //T divisor = pow(p_star, 2 - gamma) * pow(w_in, gamma - 1);
 
     if constexpr(std::is_same_v<T, float>)
     {
