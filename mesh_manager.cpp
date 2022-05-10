@@ -33,12 +33,12 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size, bool use_matter)
         {"gB1", "evolve_gB", cpu_mesh::dissipate_gauge, false},
         {"gB2", "evolve_gB", cpu_mesh::dissipate_gauge, false},
 
-        {"Dp_star", "evolve_hydro_all", 0.f, true},
-        {"De_star", "evolve_hydro_all", 0.f, true},
-        {"DcS0", "evolve_hydro_all", 0.f, true},
-        {"DcS1", "evolve_hydro_all", 0.f, true},
-        {"DcS2", "evolve_hydro_all", 0.f, true},
-        {"DW_stashed", "calculate_hydro_W", 0.f, true},
+        {"Dp_star", "evolve_hydro_all", 0.01f, true},
+        {"De_star", "evolve_hydro_all", 0.01f, true},
+        {"DcS0", "evolve_hydro_all", 0.01f, true},
+        {"DcS1", "evolve_hydro_all", 0.01f, true},
+        {"DcS2", "evolve_hydro_all", 0.01f, true},
+        {"DW_stashed", "calculate_hydro_W", 0.01f, true},
     };
 
     for(int kk=0; kk < (int)values.size(); kk++)
@@ -436,7 +436,7 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
     }
 
     ///temporary
-    calculate_hydro_w(cqueue);
+    //calculate_hydro_w(cqueue);
 }
 
 ref_counted_buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool)
@@ -742,6 +742,9 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
         {
             if(in.buffers[i].buf.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z() || in.buffers[i].dissipation_coeff == 0.f)
             {
+                assert(false);
+                //printf("hi\n");
+
                 std::swap(in.buffers[i], out.buffers[i]);
                 continue;
             }
@@ -869,7 +872,12 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     auto& b1 = get_input();
     auto& b2 = get_output();
 
-    int iterations = 1;
+    int iterations = 2;
+
+    if(iterations == 1)
+    {
+        printf("You're going to forget every single time when you change this for debugging reasons, this will cause everything to break\n");
+    }
 
     for(int i=0; i < iterations; i++)
     {

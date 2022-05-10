@@ -1986,14 +1986,14 @@ struct matter
                 {
                     for(int j=0; j < 3; j++)
                     {
-                        sum += (gA * chi * cS.idx(i) * cS.idx(j) / (2 * W * h)) * diff1(ctx, icY.idx(i, j), k);
+                        sum += divide_with_limit(gA * chi * cS.idx(i) * cS.idx(j), (2 * W * h), 0.f) * diff1(ctx, icY.idx(i, j), k);
                     }
                 }
 
                 ret.idx(k) += sum;
             }
 
-            ret.idx(k) += -((2 * gA * h * (W * W - p_star * p_star)) / W) * calculate_dPhi(chi, dX).idx(k);
+            ret.idx(k) += -divide_with_limit((2 * gA * h * (W * W - p_star * p_star)), W, 0.f) * calculate_dPhi(chi, dX).idx(k);
         }
 
         return ret;
