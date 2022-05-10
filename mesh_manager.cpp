@@ -765,7 +765,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     auto& b1 = get_input();
     auto& b2 = get_output();
 
-    int iterations = 1;
+    int iterations = 2;
 
     for(int i=0; i < iterations; i++)
     {
