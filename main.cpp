@@ -1285,6 +1285,20 @@ value bidx(const std::string& buf, bool interpolate, bool is_derivative)
     }
 }
 
+template<typename T>
+inline
+T chi_to_e_6phi(const T& chi)
+{
+    return pow(1/(chi + 0.001f), (3.f/2.f));
+}
+
+template<typename T>
+inline
+T chi_to_e_m6phi(const T& chi)
+{
+    return pow(chi + 0.001f, (3.f/2.f));
+}
+
 ///constant_1 is chi * icYij * cSi cSj
 template<typename T>
 inline
@@ -1300,6 +1314,15 @@ T w_next_interior(const T& w_in, const T& p_star, const T& chi, const T& constan
     ///negeterm^(g - 1) / (w^(g-1))
 
     return sqrt(p_star * p_star + constant_1 * pow(1 + (gamma * pow(e_star, gamma)) * pow(e_m6phi, gamma - 1) / (p_term * pow(w_in, gamma - 1)), -2));
+}
+
+float w_next_interior_nonregular(float w_in, float p_star, float chi, float constant_1, float gamma, float e_star)
+{
+    float geg = gamma * pow(e_star, gamma);
+
+    float pstarwe6phipstar = p_star * pow(w_in * chi_to_e_6phi(chi)/p_star, gamma - 1);
+
+    return sqrt(p_star * p_star + constant_1 * pow(1 + geg / pstarwe6phipstar, -2));
 }
 
 template<typename T>
@@ -1681,18 +1704,6 @@ namespace neutron_star
                     value{0},
                     ppw2p);
     }
-}
-
-inline
-value chi_to_e_6phi(const value& chi)
-{
-    return pow(1/(chi + 0.001f), (3.f/2.f));
-}
-
-inline
-value chi_to_e_m6phi(const value& chi)
-{
-    return pow(chi + 0.001f, (3.f/2.f));
 }
 
 inline
@@ -5886,25 +5897,30 @@ struct lightray
 ///if i didn't evolve where sponge = 1, would be massively faster
 int main()
 {
-    /*{
+    {
         float w = 0.5f;
+        float w1 = 0.5f;
 
         for(int i=0; i < 50; i++)
         {
-            w = w_next(w, 0.3f, 0.5f, 0.1f, 2.0f, 0.1f);
-
-            printf("W %f\n", w);
+            w =              w_next_interior(w, 0.234f, 1.12f, 0.25f, 2.f, 0.1f);
+            w1 = w_next_interior_nonregular(w1, 0.234f, 1.12f, 0.25f, 2.f, 0.1f);
         }
-    }*/
+
+        assert(approx_equal(w, w1));
+
+        printf("reg check %f %f\n", w, w1);
+    }
 
     {
         float w = 0.5f;
 
         for(int i=0; i < 50; i++)
         {
+            ///by the property that w = p*au0, perhaps set to 0 if p* < crit
             w = w_next_interior(w, 0.f, 0.f, 0.f, 2, 0.f);
 
-            printf("W %f\n", w);
+            assert(isfinite(w));
         }
     }
 
