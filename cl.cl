@@ -362,6 +362,12 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
     NANCHECK(DcS0);
     NANCHECK(DcS1);
     NANCHECK(DcS2);
+
+    Dp_star[index] = 0;
+    De_star[index] = 0;
+    DcS0[index] = 0;
+    DcS1[index] = 0;
+    DcS2[index] = 0;
 }
 
 __kernel
