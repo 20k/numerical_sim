@@ -1156,6 +1156,8 @@ void calculate_hydro_W(__global ushort4* points, int point_count,
     int order = order_ptr[index];
 
     DW_stashed[index] = init_hydro_W;
+
+    NANCHECK(DW_stashed);
 }
 
 ///does not use any derivatives
@@ -1213,6 +1215,23 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
     skvi5[index] = lskvi5;
 
     pressure[index] = cpress;
+
+    NANCHECK(p_star_vi0);
+    NANCHECK(p_star_vi1);
+    NANCHECK(p_star_vi2);
+
+    NANCHECK(e_star_vi0);
+    NANCHECK(e_star_vi1);
+    NANCHECK(e_star_vi2);
+
+    NANCHECK(skvi0);
+    NANCHECK(skvi1);
+    NANCHECK(skvi2);
+    NANCHECK(skvi3);
+    NANCHECK(skvi4);
+    NANCHECK(skvi5);
+
+    pressure(skvi5);
 }
 
 ///does use derivatives
@@ -1283,6 +1302,12 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     oDcS0[index] = f_dtSk0 * timestep + base_cS0;
     oDcS1[index] = f_dtSk1 * timestep + base_cS1;
     oDcS2[index] = f_dtSk2 * timestep + base_cS2;
+
+    NANCHECK(oDp_star);
+    NANCHECK(oDe_star);
+    NANCHECK(oDcS0);
+    NANCHECK(oDcS1);
+    NANCHECK(oDcS2);
 }
 
 __kernel
