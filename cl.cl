@@ -919,6 +919,11 @@ void evolve_cA(__global ushort4* points, int point_count,
     NANCHECK(ocA3);
     NANCHECK(ocA4);
     NANCHECK(ocA5);
+
+    /*if(ix == 97 && iy == 124 && iz == 124)
+    {
+        printf("Here we go again xsij %f %f %f cS0 %f\n", DBGXGA, cA0[index], cY0[index], Debug_cS0);
+    }*/
 }
 
 __kernel
@@ -1345,7 +1350,6 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     float fin_cS1 = f_dtSk1 * timestep + base_cS1;
     float fin_cS2 = f_dtSk2 * timestep + base_cS2;
 
-    bool debug = ix == 98 && iy == 125 && iz == 125;
 
     if(fin_p_star < 1e-5 * p_star_max)
     {
@@ -1374,6 +1378,12 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     NANCHECK(oDcS0);
     NANCHECK(oDcS1);
     NANCHECK(oDcS2);
+
+    if(ix == 97 && iy == 124 && iz == 124)
+    {
+        printf("McSigh p* %f e* %f cS0 %f cS1 %f cS2 %f\n", oDp_star[index], oDe_star[index], oDcS0[index], oDcS1[index], oDcS2[index]);
+    }
+
 
     /*if(ix == 98 && iy == 125 && iz == 125)
     {
