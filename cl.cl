@@ -1345,6 +1345,8 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     float fin_cS1 = f_dtSk1 * timestep + base_cS1;
     float fin_cS2 = f_dtSk2 * timestep + base_cS2;
 
+    bool debug = ix == 98 && iy == 125 && iz == 125;
+
     if(fin_p_star < 1e-5 * p_star_max)
     {
         fin_e_star = min(fin_e_star, 10 * fin_p_star);
@@ -1372,6 +1374,15 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     NANCHECK(oDcS0);
     NANCHECK(oDcS1);
     NANCHECK(oDcS2);
+
+    /*if(ix == 98 && iy == 125 && iz == 125)
+    {
+        printf("Base? %f\n", base_e_star);
+
+        printf("dg1 %.24f %f %f\n", DINTERIOR, DP1, DP2);
+
+        printf("AVAL %f pq %f irhs %f p0eps %f rhsdte %f lhs %f estar %f %f %f\n", DBG_A, DBG_PQVIS, DBG_IRHS, DBG_p0eps, DBG_RHS_DTESTAR, DBG_LHS_DTESTAR, DBG_ESTARVI0, DBG_ESTARVI1, DBG_ESTARVI2);
+    }*/
 }
 
 __kernel

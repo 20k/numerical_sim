@@ -1986,10 +1986,14 @@ struct matter
 
         value A = divide_with_limit(pow(e_star, Gamma) * pow(p_star, Gamma - 1), pow(W * e_6phi, Gamma - 1), 0.f);
 
+        //ctx.add("DBG_A", A);
+
         ///[0.1, 1.0}
         value CQvis = 0.5f;
 
         value PQvis = if_v(dkvk < 0, CQvis * A * pow(dkvk, 2), 0.f);
+
+        //ctx.add("DBG_PQVIS", PQvis);
 
         value p0 = calculate_p0(chi, W);
         value eps = calculate_eps(chi, W);
@@ -1998,12 +2002,26 @@ struct matter
 
         for(int k=0; k < 3; k++)
         {
-            value to_diff = divide_with_limit(W * e_6phi * vk.idx(k), p_star, 0.f);
+            value to_diff = divide_with_limit(W * vk.idx(k), p_star * e_m6phi, 0.f);
 
             sum_interior_rhs += diff1(ctx, to_diff, k);
         }
 
-        return -pow(p0 * eps, -1 + 1/Gamma) * (PQvis / Gamma) * sum_interior_rhs;
+
+        value degenerate = divide_with_limit(value{1}, pow(p0 * eps, 1 - 1/Gamma), 0.f);
+
+        /*ctx.add("DBG_IRHS", sum_interior_rhs);
+
+        ctx.add("DBG_p0eps", p0 * eps);
+
+        ctx.add("DINTERIOR", p0 * eps);
+
+        ctx.add("DP2", PQvis / Gamma);
+
+        ctx.add("DP1", degenerate);*/
+
+        return -degenerate * (PQvis / Gamma) * sum_interior_rhs;
+        //return -pow(p0 * eps, -1 + 1/Gamma) * (PQvis / Gamma) * sum_interior_rhs;
     }
 
     tensor<value, 3> cSkvi_rhs(equation_context& ctx, const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const value& P, const value& W)
@@ -3637,6 +3655,13 @@ namespace hydrodynamics
         }
 
         value rhs_dte_star = args.matt.estar_vi_rhs(ctx, args.gA, icY, args.X, matt.stashed_W);
+
+        /*ctx.add("DBG_RHS_DTESTAR", rhs_dte_star);
+
+        ctx.add("DBG_LHS_DTESTAR", lhs_dte_star);
+        ctx.add("DBG_ESTARVI0", e_star_vi.idx(0));
+        ctx.add("DBG_ESTARVI1", e_star_vi.idx(1));
+        ctx.add("DBG_ESTARVI2", e_star_vi.idx(2));*/
 
         tensor<value, 3> lhs_dtSk;
 
