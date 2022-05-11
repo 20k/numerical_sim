@@ -1968,6 +1968,10 @@ struct matter
 
     value estar_vi_rhs(equation_context& ctx, const value& gA, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
     {
+        #ifndef QUADRATIC_VISCOSITY
+        return 0;
+        #endif // QUADRATIC_VISCOSITY
+
         value e_m6phi = chi_to_e_m6phi(chi);
         value e_6phi = chi_to_e_6phi(chi);
 
@@ -1984,12 +1988,13 @@ struct matter
 
         value littledv = dkvk * scale;
 
-        value A = divide_with_limit(pow(e_star, Gamma) * pow(p_star, Gamma - 1), pow(W * e_6phi, Gamma - 1), 0.f);
+        value A = divide_with_limit(pow(e_star, Gamma) * pow(p_star, Gamma - 1) * pow(e_m6phi, Gamma - 1), pow(W, Gamma - 1), 0.f);
+        //value A = divide_with_limit(pow(e_star, Gamma) * pow(p_star, Gamma - 1), pow(W * e_6phi, Gamma - 1), 0.f);
 
         //ctx.add("DBG_A", A);
 
         ///[0.1, 1.0}
-        value CQvis = 0.5f;
+        value CQvis = 0.1f;
 
         value PQvis = if_v(dkvk < 0, CQvis * A * pow(dkvk, 2), 0.f);
 
@@ -2039,7 +2044,7 @@ struct matter
 
         for(int k=0; k < 3; k++)
         {
-            ret.idx(k) += -gA * chi_to_e_6phi(chi) * diff1(ctx, P, k);
+            ret.idx(k) += -gA * divide_with_limit(value{1}, chi_to_e_m6phi(chi), 0.f) * diff1(ctx, P, k);
 
             ret.idx(k) += -W * h * diff1(ctx, gA, k);
 
