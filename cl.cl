@@ -291,8 +291,10 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     }*/
 }
 
-#define NANCHECK(w) if(isnan(w[index])){printf("NAN " #w " %i %i %i\n", ix, iy, iz);}
-#define LNANCHECK(w)  if(isnan(w)){printf("NAN " #w " %i %i %i\n", ix, iy, iz);}
+#define IS_DEGENERATE(x) (isnan(x) || !isfinite(x))
+
+#define NANCHECK(w) if(IS_DEGENERATE(w[index])){printf("NAN " #w " %i %i %i %f\n", ix, iy, iz, w[index]);}
+#define LNANCHECK(w)  if(IS_DEGENERATE(w)){printf("NAN " #w " %i %i %i %f\n", ix, iy, iz, w);}
 
 __kernel
 void nan_checker(__global ushort4* points, int point_count, __global float* arg, float scale, int4 dim)
