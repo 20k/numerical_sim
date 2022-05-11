@@ -1289,28 +1289,28 @@ template<typename T>
 inline
 T chi_to_e_6phi(const T& chi)
 {
-    return pow(1/(chi + 0.001f), (3.f/2.f));
+    return pow(1/(max(chi, T{0.f}) + 0.001f), (3.f/2.f));
 }
 
 template<typename T>
 inline
 T chi_to_e_m6phi(const T& chi)
 {
-    return pow(chi + 0.001f, (3.f/2.f));
+    return pow(max(chi, T{0.f}) + 0.001f, (3.f/2.f));
 }
 
 template<typename T>
 inline
 T chi_to_e_6phi_unclamped(const T& chi)
 {
-    return pow(1/(chi), (3.f/2.f));
+    return pow(1/(max(chi, T{0.f})), (3.f/2.f));
 }
 
 template<typename T>
 inline
 T chi_to_e_m6phi_unclamped(const T& chi)
 {
-    return pow(chi, (3.f/2.f));
+    return pow(max(chi, T{0.f}), (3.f/2.f));
 }
 
 ///https://arxiv.org/pdf/gr-qc/0209102.pdf (29)
@@ -1843,6 +1843,11 @@ struct matter
             ret.idx(i) = divide_with_limit(cS.idx(i), p_star * calculate_h_with_gamma_eos(chi, W), 0.f);
         }
 
+        /*for(int i=0; i < 3; i++)
+        {
+            ret.idx(i) = dual_types::clamp(ret.idx(i), value{-0.1f}, value{0.1f});
+        }*/
+
         return ret;
     }
 
@@ -1918,7 +1923,7 @@ struct matter
 
     tensor<value, 3> calculate_adm_Si(const value& chi)
     {
-        value em6phi = chi_to_e_m6phi(chi);
+        value em6phi = chi_to_e_m6phi_unclamped(chi);
 
         return cS * em6phi;
     }
@@ -1994,7 +1999,7 @@ struct matter
         //ctx.add("DBG_A", A);
 
         ///[0.1, 1.0}
-        value CQvis = 0.1f;
+        value CQvis = 0.5f;
 
         value PQvis = if_v(dkvk < 0, CQvis * A * pow(dkvk, 2), 0.f);
 
@@ -3686,6 +3691,9 @@ namespace hydrodynamics
 
         value dtp_star = -lhs_dtp_star;
         value dte_star = -lhs_dte_star + rhs_dte_star;
+
+        ctx.add("lhs_dtsk0", -lhs_dtSk.idx(0));
+        ctx.add("rhs_dtsk0", rhs_dtSk.idx(0));
 
         tensor<value, 3> dtSk = -lhs_dtSk + rhs_dtSk;
 

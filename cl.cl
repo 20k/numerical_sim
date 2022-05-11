@@ -1379,9 +1379,10 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     NANCHECK(oDcS1);
     NANCHECK(oDcS2);
 
-    if(ix == 97 && iy == 124 && iz == 124)
+    //if(ix == 97 && iy == 124 && iz == 124)
+    if(ix == 94 && iy == 123 && iz == 125)
     {
-        printf("McSigh p* %f e* %f cS0 %f cS1 %f cS2 %f\n", oDp_star[index], oDe_star[index], oDcS0[index], oDcS1[index], oDcS2[index]);
+        printf("McSigh p* %f e* %f cS0 %f cS1 %f cS2 %f lhs %f rhs %f fulldt %f\n", oDp_star[index], oDe_star[index], oDcS0[index], oDcS1[index], oDcS2[index], lhs_dtsk0, rhs_dtsk0, f_dtSk0);
     }
 
 
