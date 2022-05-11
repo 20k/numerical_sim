@@ -1231,39 +1231,78 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
-    float pstarvi0 = init_p_star_vi0;
-    float pstarvi1 = init_p_star_vi1;
-    float pstarvi2 = init_p_star_vi2;
+    if((order & D_FULL) > 0 || ((order & D_LOW) > 0))
+    {
+        float pstarvi0 = init_p_star_vi0raw;
+        float pstarvi1 = init_p_star_vi1raw;
+        float pstarvi2 = init_p_star_vi2raw;
 
-    float estarvi0 = init_e_star_vi0;
-    float estarvi1 = init_e_star_vi1;
-    float estarvi2 = init_e_star_vi2;
+        float estarvi0 = init_e_star_vi0raw;
+        float estarvi1 = init_e_star_vi1raw;
+        float estarvi2 = init_e_star_vi2raw;
 
-    float lskvi0 = init_skvi0;
-    float lskvi1 = init_skvi1;
-    float lskvi2 = init_skvi2;
-    float lskvi3 = init_skvi3;
-    float lskvi4 = init_skvi4;
-    float lskvi5 = init_skvi5;
+        float lskvi0 = init_skvi0raw;
+        float lskvi1 = init_skvi1raw;
+        float lskvi2 = init_skvi2raw;
+        float lskvi3 = init_skvi3raw;
+        float lskvi4 = init_skvi4raw;
+        float lskvi5 = init_skvi5raw;
 
-    float cpress = init_pressure;
+        float cpress = init_pressureraw;
 
-    p_star_vi0[index] = pstarvi0;
-    p_star_vi1[index] = pstarvi1;
-    p_star_vi2[index] = pstarvi2;
+        p_star_vi0[index] = pstarvi0;
+        p_star_vi1[index] = pstarvi1;
+        p_star_vi2[index] = pstarvi2;
 
-    e_star_vi0[index] = estarvi0;
-    e_star_vi1[index] = estarvi1;
-    e_star_vi2[index] = estarvi2;
+        e_star_vi0[index] = estarvi0;
+        e_star_vi1[index] = estarvi1;
+        e_star_vi2[index] = estarvi2;
 
-    skvi0[index] = lskvi0;
-    skvi1[index] = lskvi1;
-    skvi2[index] = lskvi2;
-    skvi3[index] = lskvi3;
-    skvi4[index] = lskvi4;
-    skvi5[index] = lskvi5;
+        skvi0[index] = lskvi0;
+        skvi1[index] = lskvi1;
+        skvi2[index] = lskvi2;
+        skvi3[index] = lskvi3;
+        skvi4[index] = lskvi4;
+        skvi5[index] = lskvi5;
 
-    pressure[index] = cpress;
+        pressure[index] = cpress;
+    }
+    else
+    {
+        float pstarvi0 = init_p_star_vi0precise;
+        float pstarvi1 = init_p_star_vi1precise;
+        float pstarvi2 = init_p_star_vi2precise;
+
+        float estarvi0 = init_e_star_vi0precise;
+        float estarvi1 = init_e_star_vi1precise;
+        float estarvi2 = init_e_star_vi2precise;
+
+        float lskvi0 = init_skvi0precise;
+        float lskvi1 = init_skvi1precise;
+        float lskvi2 = init_skvi2precise;
+        float lskvi3 = init_skvi3precise;
+        float lskvi4 = init_skvi4precise;
+        float lskvi5 = init_skvi5precise;
+
+        float cpress = init_pressureprecise;
+
+        p_star_vi0[index] = pstarvi0;
+        p_star_vi1[index] = pstarvi1;
+        p_star_vi2[index] = pstarvi2;
+
+        e_star_vi0[index] = estarvi0;
+        e_star_vi1[index] = estarvi1;
+        e_star_vi2[index] = estarvi2;
+
+        skvi0[index] = lskvi0;
+        skvi1[index] = lskvi1;
+        skvi2[index] = lskvi2;
+        skvi3[index] = lskvi3;
+        skvi4[index] = lskvi4;
+        skvi5[index] = lskvi5;
+
+        pressure[index] = cpress;
+    }
 
     NANCHECK(p_star_vi0);
     NANCHECK(p_star_vi1);
