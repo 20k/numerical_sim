@@ -3574,6 +3574,39 @@ namespace hydrodynamics
         ctx.add("init_hydro_W", W);
     }
 
+    /*void build_intermediate_thin(equation_context& ctx)
+    {
+        standard_arguments args(ctx);
+
+        value buffer = dual_types::apply("buffer_index", "buffer", "ix", "iy", "iz", "dim");
+
+        value v1 = diff1(ctx, buffer, 0);
+        value v2 = diff1(ctx, buffer, 1);
+        value v3 = diff1(ctx, buffer, 2);
+
+        ctx.add("init_buffer_intermediate0", v1);
+        ctx.add("init_buffer_intermediate1", v2);
+        ctx.add("init_buffer_intermediate2", v3);
+    }
+
+    void build_intermediate_thin_directional(equation_context& ctx)
+    {
+        ctx.always_directional_derivatives = true;
+
+        standard_arguments args(ctx);
+
+        value buffer = dual_types::apply("buffer_index", "buffer", "ix", "iy", "iz", "dim");
+
+        value v1 = diff1(ctx, buffer, 0);
+        value v2 = diff1(ctx, buffer, 1);
+        value v3 = diff1(ctx, buffer, 2);
+
+        ctx.add("init_buffer_intermediate0_directional", v1);
+        ctx.add("init_buffer_intermediate1_directional", v2);
+        ctx.add("init_buffer_intermediate2_directional", v3);
+    }
+    */
+
     void build_intermediate_variables_derivatives(equation_context& ctx)
     {
         ctx.use_precise_differentiation = true;
@@ -3904,6 +3937,7 @@ void build_intermediate_thin(equation_context& ctx)
 void build_intermediate_thin_directional(equation_context& ctx)
 {
     ctx.always_directional_derivatives = true;
+    ctx.use_precise_differentiation = true;
 
     standard_arguments args(ctx);
 
