@@ -1845,10 +1845,10 @@ struct matter
             ret.idx(i) = divide_with_limit(cS.idx(i), p_star * calculate_h_with_gamma_eos(chi, W), 0.f);
         }
 
-        /*for(int i=0; i < 3; i++)
+        for(int i=0; i < 3; i++)
         {
-            ret.idx(i) = dual_types::clamp(ret.idx(i), value{-0.1f}, value{0.1f});
-        }*/
+            //ret.idx(i) = dual_types::clamp(ret.idx(i), value{-0.1f}, value{0.1f});
+        }
 
         return ret;
     }

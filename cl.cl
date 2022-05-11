@@ -1389,6 +1389,9 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     float fin_cS1 = f_dtSk1 * timestep + base_cS1;
     float fin_cS2 = f_dtSk2 * timestep + base_cS2;
 
+    fin_cS0 = clamp(fin_cS0, -0.35f, 0.35f);
+    fin_cS1 = clamp(fin_cS1, -0.35f, 0.35f);
+    fin_cS2 = clamp(fin_cS2, -0.35f, 0.35f);
 
     if(fin_p_star < 1e-5 * p_star_max)
     {
@@ -1419,10 +1422,10 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     NANCHECK(oDcS2);
 
     //if(ix == 97 && iy == 124 && iz == 124)
-    if(ix == 94 && iy == 123 && iz == 125)
+    /*if(ix == 94 && iy == 123 && iz == 125)
     {
         printf("McSigh p* %f e* %f cS0 %f cS1 %f cS2 %f lhs %f rhs %f fulldt %f\n", oDp_star[index], oDe_star[index], oDcS0[index], oDcS1[index], oDcS2[index], lhs_dtsk0, rhs_dtsk0, f_dtSk0);
-    }
+    }*/
 
 
     /*if(ix == 98 && iy == 125 && iz == 125)
@@ -1545,9 +1548,12 @@ void render(STANDARD_ARGS(),
 
     float max_scalar = 0;
 
+    float matter = Dp_star[IDX(ix,iy,iz)];
+
     //for(int z = 20; z < dim.z-20; z++)
 
     {
+
         float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim);
 
         #define SOMMER_RENDER
@@ -1608,11 +1614,13 @@ void render(STANDARD_ARGS(),
         printf("scalar %f\n", max_scalar);
     }*/
 
+    matter = clamp(matter * 5, 0.f, 1.f);
+
     max_scalar = max_scalar * 40;
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 
-    float3 col = {real, max_scalar, max_scalar};
+    float3 col = {matter, matter, matter};
 
     float3 lin_col = srgb_to_lin(col);
 
