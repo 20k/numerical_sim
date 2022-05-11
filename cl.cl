@@ -343,7 +343,7 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
     //printf("w2 %f %i %i %i\n", debug_w2, ix, iy,iz);
 
     ///dp_val and cS are both regular
-    if(dp_val < 0.0001f)
+    if(dp_val < 0.00001f)
     {
         de_val = 0;
     }
@@ -369,6 +369,11 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
         printf("Dtc %f %f %f %f %f %f %f %f\n", D_p0, D_gA, D_u0, D_chip, D_X, D_phi, D_u, D_DYN);
     }*/
 
+
+    /*if((ix == 98 || ix == 99) && iy == 125 && iz == 125)
+    {
+        printf("Debugging yay %f %f %f\n", p0D, pD, phiasdf);
+    }*/
 
     Dp_star[index] = dp_val;
     De_star[index] = de_val;

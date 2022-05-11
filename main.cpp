@@ -2653,7 +2653,10 @@ value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<c
 
         value dist = (pos - ri).length();
 
-        dist = max(dist, 1e-3);
+        if(hole.t == compact_object::BLACK_HOLE)
+            dist = max(dist, 1e-3);
+        else
+            dist = max(dist, 1e-1);
 
         BL_s += Mi / (2 * dist);
     }
@@ -2826,6 +2829,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
             Si_conformal += vmomentum * neutron_star::calculate_sigma(rad, p.mass, M_factor);
         }
     }
+
 
     value pressure = pow(phi, -8.f) * pressure_conformal;
     value rho = pow(phi, -8.f) * rho_conformal;
@@ -6227,6 +6231,13 @@ int main()
     vec3f centre = {size.x()/2.f, size.y()/2.f, size.z()/2.f};
 
     initial_conditions holes = setup_dynamic_initial_conditions(clctx.ctx, clctx.cqueue, centre, scale);
+
+    for(auto& obj : holes.objs)
+    {
+        tensor<float, 3> pos = world_to_voxel(obj.position, size, scale);
+
+        printf("Voxel pos %f %f %f\n", pos.x(), pos.y(), pos.z());
+    }
 
     equation_context setup_static;
 
