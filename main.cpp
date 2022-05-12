@@ -2746,6 +2746,41 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     return solve;
 }
 
+tov_input setup_tov_solver(cl::context& clctx, const std::vector<compact_object::data<float>>& objs)
+{
+    tov_input ret;
+
+    tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+    value phi = bidx("phi_in", false, false);
+    value gA_phi = bidx("gA_phi_in", false, false);
+
+    value rho = 0;
+    value pressure = 0;
+
+    for(const compact_object::data<float>& obj : objs)
+    {
+        tensor<value, 3> vposition = {obj.position.x(), obj.position.y(), obj.position.z()};
+
+        tensor<value, 3> from_object = pos - vposition;
+
+        value coordinate_radius = from_object.length();
+
+        neutron_star::data<value> dat = neutron_star::sample_interior(coordinate_radius, value{obj.bare_mass});
+
+        rho += dat.mass_energy_density;
+        pressure += dat.pressure;
+    }
+
+    value rhs_phi = -2 * M_PI * pow(phi, 5) * rho;
+    value rhs_gA_phi = 2 * M_PI * gA_phi * pow(phi, 4) * (rho + 6 * pressure);
+
+    ret.phi_rhs = rhs_phi;
+    ret.gA_phi_rhs = rhs_gA_phi;
+
+    return ret;
+}
+
 void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<compact_object::data<float>>& cpu_holes)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
