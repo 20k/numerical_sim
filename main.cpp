@@ -1513,15 +1513,19 @@ namespace neutron_star
         return ret;
     }
 
+    ///remember tov_phi_at_coordinate samples in WORLD coordinates
     template<typename T>
     inline
-    conformal_data sample_conformal(const tensor<value, 3>& coordinate_position, const tensor<value, 3>& object_position, float mass, T&& tov_phi_at_coordinate)
+    conformal_data sample_conformal(const value& coordinate_radius, const params& p, T&& tov_phi_at_coordinate)
     {
-        value coordinate_radius = (coordinate_position - object_position).length();
+        ///samples phi at pos + z * radius. Assumes that phi is symmetric
+        tensor<value, 3> direction = {0, 0, 1};
+        tensor<value, 3> vposition = {p.position.x(), p.position.y(), p.position.z()};
+        tensor<value, 3> phi_position = direction * coordinate_radius + vposition;
 
-        data<value> non_conformal = sample_interior(coordinate_radius, value{mass});
+        data<value> non_conformal = sample_interior(coordinate_radius, value{p.mass});
 
-        value phi = tov_phi_at_coordinate(coordinate_position);
+        value phi = tov_phi_at_coordinate(phi_position);
 
         conformal_data cret;
         cret.pressure = pow(phi, 8) * non_conformal.pressure;
@@ -1532,13 +1536,15 @@ namespace neutron_star
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (59)
-    float calculate_M_factor(float mass)
+    template<typename T>
+    inline
+    value calculate_M_factor(const params& p, T&& tov_phi_at_coordinate)
     {
-        float radius = mass_to_radius(mass);
+        float radius = mass_to_radius(p.mass);
 
         auto integration_func = [&](float coordinate_radius)
         {
-            data<float> ndata = sample_interior(coordinate_radius, mass);
+            conformal_data ndata = sample_conformal(coordinate_radius, p, tov_phi_at_coordinate);
 
             return (ndata.mass_energy_density + ndata.pressure) * pow(coordinate_radius, 2);
         };
@@ -1546,6 +1552,155 @@ namespace neutron_star
         return 4 * M_PI * integrate_1d(integration_func, 64, radius, 0.f);
     }
 
+    ///https://arxiv.org/pdf/1606.04881.pdf (57)
+    template<typename T>
+    inline
+    value calculate_sigma(const value& coordinate_radius, const params& p, const value& M_factor, T&& tov_phi_at_coordinate)
+    {
+        conformal_data cdata = sample_conformal(coordinate_radius, p, tov_phi_at_coordinate);
+
+        return (cdata.mass_energy_density + cdata.pressure) / M_factor;
+    }
+
+    ///https://arxiv.org/pdf/1606.04881.pdf (43)
+    template<typename T>
+    inline
+    value calculate_integral_Q(const value& coordinate_radius, const params& p, const value& M_factor, T&& tov_phi_at_coordinate)
+    {
+        ///currently impossible, but might as well
+        if(mass_to_radius(p.mass) == 0)
+            return 1;
+
+        auto integral_func = [p, M_factor, tov_phi_at_coordinate](const value& rp)
+        {
+            return 4 * M_PI * calculate_sigma(rp, p, M_factor, tov_phi_at_coordinate) * pow(rp, 2.f);
+        };
+
+        value integrated = integrate_1d(integral_func, 16, coordinate_radius, value{0.f});
+
+        return dual_types::if_v(coordinate_radius > value{mass_to_radius(p.mass)},
+                                1.f,
+                                integrated);
+    }
+
+    ///https://arxiv.org/pdf/1606.04881.pdf (45)
+    template<typename T>
+    inline
+    value calculate_integral_C(const value& coordinate_radius, const params& p, const value& M_factor, T&& tov_phi_at_coordinate)
+    {
+        if(mass_to_radius(p.mass) == 0)
+            return 0;
+
+        auto integral_func = [p, M_factor, tov_phi_at_coordinate](const value& rp)
+        {
+            return (2.f/3.f) * M_PI * calculate_sigma(rp, p, M_factor, tov_phi_at_coordinate) * pow(rp, 4.f);
+        };
+
+        value integrated = integrate_1d(integral_func, 16, coordinate_radius, value{0.f});
+
+        return dual_types::if_v(coordinate_radius > mass_to_radius(p.mass),
+                                0.f,
+                                integrated);
+    }
+
+    ///https://arxiv.org/pdf/1606.04881.pdf (60)
+    value calculate_W2_linear_momentum(const metric<float, 3, 3>& flat, const tensor<float, 3>& linear_momentum, const value& M_factor)
+    {
+        float p2 = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                p2 += flat.idx(i, j) * linear_momentum.idx(i) * linear_momentum.idx(j);
+            }
+        }
+
+        value M2 = M_factor * M_factor;
+
+        return 0.5f * (1 + sqrt(1 + (4 * p2 / M2)));
+    }
+
+    ///only handles linear momentum currently
+    ///https://arxiv.org/pdf/2101.10252.pdf (20)
+    template<typename T>
+    inline
+    tensor<value, 3, 3> calculate_aij_single(const tensor<value, 3>& coordinate, const metric<float, 3, 3>& flat, const params& param, T&& tov_phi_at_coordinate)
+    {
+        tensor<value, 3> vposition = {param.position.x(), param.position.y(), param.position.z()};
+
+        tensor<value, 3> relative_pos = coordinate - vposition;
+
+        value r = relative_pos.length();
+
+        r = max(r, 1e-3f);
+
+        tensor<value, 3> li = relative_pos / r;
+
+        tensor<float, 3> linear_momentum_lower = lower_index(param.linear_momentum, flat);
+
+        value M_factor = calculate_M_factor(param, tov_phi_at_coordinate);
+
+        value iQ = calculate_integral_Q(r, param, M_factor, tov_phi_at_coordinate);
+        value iC = calculate_integral_C(r, param, M_factor, tov_phi_at_coordinate);
+
+        value coeff1 = 3 * iQ / (2 * r * r);
+        value coeff2 = 3 * iC / pow(r, 4);
+
+        tensor<value, 3, 3> aIJ;
+
+        tensor<float, 3> P = param.linear_momentum;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                value p1 = 2 * (0.5f * P.idx(i) * li.idx(j) + 0.5f * P.idx(j) * li.idx(i));
+
+                value pklk = 0;
+
+                for(int k=0; k < 3; k++)
+                {
+                    pklk += linear_momentum_lower.idx(k) * li.idx(k);
+                }
+
+                value p2 = (flat.idx(i, j) - li.idx(i) * li.idx(j)) * pklk;
+
+                value p3 = p1;
+
+                value p4 = (flat.idx(i, j) - 5 * li.idx(i) * li.idx(j)) * pklk;
+
+                aIJ.idx(i, j) = coeff1 * (p1 - p2) + coeff2 * (p3 + p4);
+            }
+        }
+
+        return aIJ;
+    }
+
+    template<typename T>
+    inline
+    value calculate_ppw2_p(const tensor<value, 3>& coordinate, const metric<float, 3, 3>& flat, const params& param, T&& tov_phi_at_coordinate)
+    {
+        tensor<value, 3> vposition = {param.position.x(), param.position.y(), param.position.z()};
+
+        tensor<value, 3> relative_pos = coordinate - vposition;
+
+        value r = relative_pos.length();
+
+        value M_factor = calculate_M_factor(param, tov_phi_at_coordinate);
+
+        value W2 = calculate_W2_linear_momentum(flat, param.linear_momentum, M_factor);
+
+        conformal_data cdata = sample_conformal(r, param, tov_phi_at_coordinate);
+
+        value ppw2p = (cdata.mass_energy_density + cdata.pressure) * W2 - cdata.pressure;
+
+        return if_v(r > mass_to_radius(param.mass),
+                    value{0},
+                    ppw2p);
+    }
+
+    #if 0
     ///https://arxiv.org/pdf/1606.04881.pdf (64)
     float calculate_N_factor(float mass)
     {
@@ -1579,45 +1734,6 @@ namespace neutron_star
         return (ndata.mass_energy_density + ndata.pressure) / N_factor;
     }
 
-    ///https://arxiv.org/pdf/1606.04881.pdf (43)
-    template<typename T>
-    T calculate_integral_Q(const T& coordinate_radius, float mass, float M_factor)
-    {
-        ///currently impossible, but might as well
-        if(mass_to_radius(mass) == 0)
-            return 1;
-
-        auto integral_func = [mass, M_factor](const T& rp)
-        {
-            return 4 * M_PI * calculate_sigma(rp, mass, M_factor) * pow(rp, 2.f);
-        };
-
-        T integrated = integrate_1d(integral_func, 16, coordinate_radius, T{0.f});
-
-        return dual_types::if_v(coordinate_radius > mass_to_radius(mass),
-                                1.f,
-                                integrated);
-    }
-
-    ///https://arxiv.org/pdf/1606.04881.pdf (45)
-    template<typename T>
-    T calculate_integral_C(const T& coordinate_radius, float mass, float M_factor)
-    {
-        if(mass_to_radius(mass) == 0)
-            return 0;
-
-        auto integral_func = [mass, M_factor](const T& rp)
-        {
-            return (2.f/3.f) * M_PI * calculate_sigma(rp, mass, M_factor) * pow(rp, 4.f);
-        };
-
-        T integrated = integrate_1d(integral_func, 16, coordinate_radius, T{0.f});
-
-        return dual_types::if_v(coordinate_radius > mass_to_radius(mass),
-                                0.f,
-                                integrated);
-    }
-
     ///https://arxiv.org/pdf/1606.04881.pdf (55)
     template<typename T>
     T calculate_integral_N(const T& coordinate_radius, float mass, float N_factor)
@@ -1632,24 +1748,6 @@ namespace neutron_star
         return if_v(coordinate_radius > mass_to_radius(mass),
                     1.f,
                     integrated);
-    }
-
-    ///https://arxiv.org/pdf/1606.04881.pdf (60)
-    float calculate_W2_linear_momentum(const metric<float, 3, 3>& flat, const tensor<float, 3>& linear_momentum, float M_factor)
-    {
-        float p2 = 0;
-
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                p2 += flat.idx(i, j) * linear_momentum.idx(i) * linear_momentum.idx(j);
-            }
-        }
-
-        float M2 = M_factor * M_factor;
-
-        return 0.5f * (1 + sqrt(1 + (4 * p2 / M2)));
     }
 
     ///only handles linear momentum currently
@@ -1758,6 +1856,7 @@ namespace neutron_star
                     value{0},
                     ppw2p);
     }
+    #endif // 0
 }
 
 inline
@@ -2584,7 +2683,12 @@ tensor<value, 3, 3> calculate_bcAij_generic(const tensor<value, 3>& pos, const s
                 }
             }
 
-            tensor<value, 3, 3> bcAIJ_single = neutron_star::calculate_aij_single(pos, flat, p);
+            auto test_tov_phi = [](const tensor<value, 3>& world_coordinate)
+            {
+                return value{1.f};
+            };
+
+            tensor<value, 3, 3> bcAIJ_single = neutron_star::calculate_aij_single(pos, flat, p, test_tov_phi);
 
             tensor<value, 3, 3> bcAij_single = lower_both(bcAIJ_single, flatv);
 
@@ -2734,7 +2838,12 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
             p.linear_momentum = obj.momentum;
             p.angular_momentum = obj.angular_momentum;
 
-            ppw2p += neutron_star::calculate_ppw2_p(pos, flat_metricf, p);
+            auto tov_phi_at_coordinate = [](const tensor<value, 3>& world_position)
+            {
+                return value{1.f};
+            };
+
+            ppw2p += neutron_star::calculate_ppw2_p(pos, flat_metricf, p, tov_phi_at_coordinate);
         }
     }
 
@@ -2841,8 +2950,13 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
     ///pH is the adm variable, NOT P
 
-    value rest_mass = 0;
-    value eps = 0;
+    //value rest_mass = 0;
+    //value eps = 0;
+
+    auto tov_phi_at_coordinate = [](const tensor<value, 3>& world_position)
+    {
+        return value{1.f};
+    };
 
     //value enthalpy = 0;
     value p0_conformal = 0;
@@ -2867,27 +2981,29 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
             p.linear_momentum = obj.momentum;
             p.angular_momentum = obj.angular_momentum;
 
-            float M_factor = neutron_star::calculate_M_factor(p.mass);
+            value M_factor = neutron_star::calculate_M_factor(p, tov_phi_at_coordinate);
 
             tensor<value, 3> vmomentum = {obj.momentum.x(), obj.momentum.y(), obj.momentum.z()};
 
-            float W2_factor = neutron_star::calculate_W2_linear_momentum(flat_metricf, obj.momentum, M_factor);
+            value W2_factor = neutron_star::calculate_W2_linear_momentum(flat_metricf, obj.momentum, M_factor);
 
-            neutron_star::data<value> sampled = neutron_star::sample_interior<value>(rad, value{p.mass});
+            //neutron_star::data<value> sampled = neutron_star::sample_interior<value>(rad, value{p.mass});
 
-            pressure_conformal += sampled.pressure;
+            neutron_star::conformal_data cdata = neutron_star::sample_conformal(rad, p, tov_phi_at_coordinate);
+
+            pressure_conformal += cdata.pressure;
             //unused_conformal_rest_mass += sampled.mass_energy_density;
 
-            rho_conformal += sampled.mass_energy_density;
-            rhoH_conformal += (sampled.mass_energy_density + sampled.pressure) * W2_factor - sampled.pressure;
-            eps += sampled.specific_energy_density;
+            rho_conformal += cdata.mass_energy_density;
+            rhoH_conformal += (cdata.mass_energy_density + cdata.pressure) * W2_factor - cdata.pressure;
+            //eps += sampled.specific_energy_density;
 
             //enthalpy += 1 + sampled.specific_energy_density + pressure_conformal / sampled.mass_energy_density;
 
-            p0_conformal += sampled.mass_energy_density;
+            p0_conformal += cdata.mass_energy_density;
 
             ///https://arxiv.org/pdf/1606.04881.pdf (56)
-            Si_conformal += vmomentum * neutron_star::calculate_sigma(rad, p.mass, M_factor);
+            Si_conformal += vmomentum * neutron_star::calculate_sigma(rad, p, M_factor, tov_phi_at_coordinate);
         }
     }
 
