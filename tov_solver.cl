@@ -3,9 +3,10 @@
 #include "generic_laplace.cl"
 
 __kernel
-void simple_tov_solver(__global float* gA_phi_in,
+void simple_tov_solver(__global float* phi_in,
+                       __global float* phi_out,
+                       __global float* gA_phi_in,
                        __global float* gA_phi_out,
-                       __global float* phi,
                        float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol,
                         __global ushort* order_ptr)
 {
@@ -29,4 +30,12 @@ void simple_tov_solver(__global float* gA_phi_in,
     float oz = offset.z;
 
     int order = order_ptr[IDX(ix,iy,iz)];
+
+    float gA_PHI_RHS = B_gA_PHI_RHS;
+    float PHI_RHS = B_PHI_RHS;
+
+    laplace_interior(phi_in, phi_out, scale * scale * PHI_RHS, ix, iy, iz, scale, dim, still_going, etol);
+    laplace_interior(gA_phi_in, gA_phi_out, scale * scale * gA_PHI_RHS, ix, iy, iz, scale, dim, still_going, etol);
+
+    gA_phi_out[IDX(ix,iy,iz)] = clamp(gA_phi_out[IDX(ix,iy,iz)], 0.f, phi_out[IDX(ix,iy,iz)]);
 }

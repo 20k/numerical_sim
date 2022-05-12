@@ -412,3 +412,51 @@ sandwich_result sandwich_solver(cl::context& clctx, cl::command_queue& cqueue, c
 
     return result;
 }
+
+tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_input& solve, float scale, vec3i dim, float err)
+{
+    equation_context ctx;
+
+    tov_solver ret(clctx);
+
+    vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
+
+    std::string local_build_str = "-I ./ -O3 -cl-std=CL2.0 -cl-finite-math-only ";
+
+    ctx.build(local_build_str, "UNUSEDTOVSOLVE");
+
+    cl::program t_program(clctx, "tov_solver.cl");
+    t_program.build(clctx, local_build_str);
+
+    cl::kernel iterate(t_program, "simple_tov_solver");
+    cl::kernel generate_order(t_program, "generate_order");
+
+    cl::buffer order_ptr(clctx);
+
+    {
+        order_ptr.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_ushort));
+
+        order_ptr.set_to_zero(cqueue);
+
+        cl::args order_arg;
+        order_arg.push_back(order_ptr);
+        order_arg.push_back(clsize);
+
+        generate_order.set_args(order_arg);
+
+        cqueue.exec(generate_order, {dim.x(), dim.y(), dim.z()}, {8, 8, 1}, {});
+    }
+
+    cl::buffer phi(clctx);
+    cl::buffer gA_phi(clctx);
+
+    phi.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+    gA_phi.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+
+    cl_float boundary = 1;
+
+    phi.fill(cqueue, boundary);
+    gA_phi.fill(cqueue, boundary);
+
+    return ret;
+}

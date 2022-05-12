@@ -40,4 +40,18 @@ struct sandwich_result
 
 sandwich_result sandwich_solver(cl::context& clcltx, cl::command_queue& cqueue, const sandwich_data& data, float scale, vec3i dim, float err = 0.0001f);
 
+struct tov_input
+{
+
+};
+
+struct tov_solver
+{
+    tov_solver(cl::context& ctx) : phi(ctx){}
+
+    cl::buffer phi;
+};
+
+tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_input& solve, float scale, vec3i dim, float err = 0.0001f);
+
 #endif // LAPLACE_SOLVER_HPP_INCLUDED
