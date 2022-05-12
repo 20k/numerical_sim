@@ -465,5 +465,48 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
         gA_phi[i].fill(cqueue, boundary);
     }
 
+    std::array<cl::buffer, 2> still_going{clctx, clctx};
+
+    for(int i=0; i < 2; i++)
+    {
+        cl_int one = 1;
+        still_going[i].alloc(sizeof(cl_int));
+        still_going[i].fill(cqueue, one);
+    }
+
+    float c_at_max = scale * dim.largest_elem();
+
+    int iterations = 1000;
+
+    for(int i=0; i < iterations; i++)
+    {
+        float local_scale = calculate_scale(c_at_max, clsize);
+
+        cl::args iterate_u_args;
+        iterate_u_args.push_back(phi[which_data]);
+        iterate_u_args.push_back(phi[(which_data + 1) % 2]);
+        iterate_u_args.push_back(gA_phi[which_data]);
+        iterate_u_args.push_back(gA_phi[(which_data + 1) % 2]);
+        iterate_u_args.push_back(local_scale);
+        iterate_u_args.push_back(clsize);
+        iterate_u_args.push_back(still_going[which_data]);
+        iterate_u_args.push_back(still_going[(which_data + 1) % 2]);
+        iterate_u_args.push_back(err);
+        iterate_u_args.push_back(order_ptr);
+
+        iterate.set_args(iterate_u_args);
+
+        cqueue.exec(iterate, {clsize.x(), clsize.y(), clsize.z()}, {8, 8, 1}, {});
+
+        if(((i % 50) == 0) && still_going[(which_data + 1) % 2].read<cl_int>(cqueue)[0] == 0)
+            break;
+
+        still_going[which_data].set_to_zero(cqueue);
+
+        which_data = (which_data + 1) % 2;
+    }
+
+    ret.phi = phi[which_data];
+
     return ret;
 }
