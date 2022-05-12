@@ -2653,6 +2653,7 @@ value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<c
 
         value dist = (pos - ri).length();
 
+        ///I'm not sure this is correct to do for neutron stars
         if(hole.t == compact_object::BLACK_HOLE)
             dist = max(dist, 1e-3);
         else
