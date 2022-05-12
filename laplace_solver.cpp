@@ -417,6 +417,9 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
 {
     equation_context ctx;
 
+    ctx.add("B_gA_PHI_RHS", solve.gA_phi_rhs);
+    ctx.add("B_PHI_RHS", solve.phi_rhs);
+
     tov_solver ret(clctx);
 
     vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
@@ -447,16 +450,20 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
         cqueue.exec(generate_order, {dim.x(), dim.y(), dim.z()}, {8, 8, 1}, {});
     }
 
-    cl::buffer phi(clctx);
-    cl::buffer gA_phi(clctx);
+    std::array<cl::buffer, 2> phi{clctx, clctx};
+    std::array<cl::buffer, 2> gA_phi{clctx, clctx};
+    int which_data = 0;
 
-    phi.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
-    gA_phi.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+    for(int i=0; i < 2; i++)
+    {
+        phi[i].alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+        gA_phi[i].alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
 
-    cl_float boundary = 1;
+        cl_float boundary = 1;
 
-    phi.fill(cqueue, boundary);
-    gA_phi.fill(cqueue, boundary);
+        phi[i].fill(cqueue, boundary);
+        gA_phi[i].fill(cqueue, boundary);
+    }
 
     return ret;
 }
