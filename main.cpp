@@ -1419,6 +1419,13 @@ namespace neutron_star
         T specific_energy_density = 0;
     };
 
+    struct conformal_data
+    {
+        value pressure;
+        value rest_mass_density;
+        value mass_energy_density;
+    };
+
     inline
     float compactness()
     {
@@ -1504,6 +1511,24 @@ namespace neutron_star
         ret.mass_energy_density = dual_types::if_v(coordinate_radius >= radius, 0.f, ret.mass_energy_density);
 
         return ret;
+    }
+
+    template<typename T>
+    inline
+    conformal_data sample_conformal(const tensor<value, 3>& coordinate_position, const tensor<value, 3>& object_position, float mass, T&& tov_phi_at_coordinate)
+    {
+        value coordinate_radius = (coordinate_position - object_position).length();
+
+        data<value> non_conformal = sample_interior(coordinate_radius, value{mass});
+
+        value phi = tov_phi_at_coordinate(coordinate_position);
+
+        conformal_data cret;
+        cret.pressure = pow(phi, 8) * non_conformal.pressure;
+        cret.mass_energy_density = pow(phi, 8) * non_conformal.mass_energy_density;
+        cret.rest_mass_density = pow(phi, 8) * non_conformal.rest_mass_density;
+
+        return cret;
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (59)
