@@ -47,6 +47,7 @@ struct tov_input
 {
     value gA_phi_rhs;
     value phi_rhs;
+    value u_to_phi;
     std::vector<std::pair<std::string, value>> extras;
 };
 

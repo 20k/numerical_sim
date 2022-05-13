@@ -420,6 +420,7 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
 
     ctx.add("B_gA_PHI_RHS", solve.gA_phi_rhs);
     ctx.add("B_PHI_RHS", solve.phi_rhs);
+    ctx.add("B_U_TO_PHI", solve.u_to_phi);
 
     for(const auto& [name, what] : solve.extras)
     {
@@ -438,8 +439,9 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
     t_program.build(clctx, local_build_str);
 
     cl::kernel iterate_phi(t_program, "simple_tov_solver_phi");
-    cl::kernel iterate_gA_phi(t_program, "simple_tov_solver_gA_phi");
+    //cl::kernel iterate_gA_phi(t_program, "simple_tov_solver_gA_phi");
     cl::kernel generate_order(t_program, "generate_order");
+    cl::kernel u_to_phi(t_program, "tov_u_to_phi");
 
     cl::buffer order_ptr(clctx);
 
@@ -457,18 +459,18 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
         cqueue.exec(generate_order, {dim.x(), dim.y(), dim.z()}, {8, 8, 1}, {});
     }
 
-    std::array<cl::buffer, 2> phi{clctx, clctx};
+    std::array<cl::buffer, 2> u_offset{clctx, clctx};
     std::array<cl::buffer, 2> gA_phi{clctx, clctx};
     int which_data = 0;
 
     for(int i=0; i < 2; i++)
     {
-        phi[i].alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+        u_offset[i].alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
         gA_phi[i].alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
 
         cl_float boundary = 1;
 
-        phi[i].fill(cqueue, boundary);
+        u_offset[i].fill(cqueue, boundary);
         gA_phi[i].fill(cqueue, boundary);
     }
 
@@ -485,15 +487,13 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
 
     int iterations = 10000;
 
-    int last_phi = 0;
-
     for(int i=0; i < iterations; i++)
     {
         float local_scale = calculate_scale(c_at_max, clsize);
 
         cl::args iterate_u_args;
-        iterate_u_args.push_back(phi[which_data]);
-        iterate_u_args.push_back(phi[(which_data + 1) % 2]);
+        iterate_u_args.push_back(u_offset[which_data]);
+        iterate_u_args.push_back(u_offset[(which_data + 1) % 2]);
         iterate_u_args.push_back(local_scale);
         iterate_u_args.push_back(clsize);
         iterate_u_args.push_back(still_going[which_data]);
@@ -513,43 +513,23 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
         which_data = (which_data + 1) % 2;
     }
 
-    last_phi = which_data;
-    which_data = 0;
+    cl::buffer phi(clctx);
+    phi.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+    phi.fill(cqueue, cl_float{1.f});
 
-    for(int i=0; i < 2; i++)
     {
-        cl_int one = 1;
-        still_going[i].fill(cqueue, one);
+        cl::args to_phi;
+        to_phi.push_back(u_offset[which_data]);
+        to_phi.push_back(phi);
+        to_phi.push_back(scale);
+        to_phi.push_back(clsize);
+
+        u_to_phi.set_args(to_phi);
+
+        cqueue.exec(u_to_phi, {clsize.x(), clsize.y(), clsize.z()}, {8, 8, 1}, {});
     }
 
-    /*for(int i=0; i < iterations; i++)
-    {
-        float local_scale = calculate_scale(c_at_max, clsize);
-
-        cl::args iterate_u_args;
-        iterate_u_args.push_back(phi[last_phi]);
-        iterate_u_args.push_back(gA_phi[which_data]);
-        iterate_u_args.push_back(gA_phi[(which_data + 1) % 2]);
-        iterate_u_args.push_back(local_scale);
-        iterate_u_args.push_back(clsize);
-        iterate_u_args.push_back(still_going[which_data]);
-        iterate_u_args.push_back(still_going[(which_data + 1) % 2]);
-        iterate_u_args.push_back(err);
-        iterate_u_args.push_back(order_ptr);
-
-        iterate.set_args(iterate_u_args);
-
-        cqueue.exec(iterate_gA_phi, {clsize.x(), clsize.y(), clsize.z()}, {8, 8, 1}, {});
-
-        if(((i % 50) == 0) && still_going[(which_data + 1) % 2].read<cl_int>(cqueue)[0] == 0)
-            break;
-
-        still_going[which_data].set_to_zero(cqueue);
-
-        which_data = (which_data + 1) % 2;
-    }*/
-
-    ret.phi = phi[last_phi];
+    ret.phi = phi;
 
     return ret;
 }
