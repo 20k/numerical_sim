@@ -2135,7 +2135,7 @@ struct matter
         ///[0.1, 1.0}
         value CQvis = 0.5f;
 
-        value PQvis = if_v(dkvk < 0, CQvis * A * pow(dkvk, 2), 0.f);
+        value PQvis = if_v(littledv < 0, CQvis * A * pow(littledv, 2), 0.f);
 
         //ctx.add("DBG_PQVIS", PQvis);
 
