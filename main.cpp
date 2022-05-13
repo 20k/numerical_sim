@@ -1429,7 +1429,7 @@ namespace neutron_star
     inline
     float compactness()
     {
-        return 0.140f;
+        return 0.100f;
     }
 
     template<typename T>
@@ -3495,17 +3495,17 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data<float> h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.1;
-    h1.momentum = {0, 0.133 * 0.8 * -0.5, 0};
+    h1.momentum = {0, 0.133 * 0.8, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     compact_object::data<float> h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.3;
-    h2.momentum = {0, -0.133 * 0.8 * 0.5, 0};
+    h2.momentum = {0, -0.133 * 0.8, 0};
     h2.position = {2.257, 0.f, 0.f};
 
     objects.push_back(h1);
-    objects.push_back(h2);
+    //objects.push_back(h2);
     #endif // PAPER_0610128
 
     return get_bare_initial_conditions(clctx, cqueue, scale, objects);
