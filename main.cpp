@@ -1315,6 +1315,8 @@ T chi_to_e_m6phi_unclamped(const T& chi)
     return pow(max(chi, T{0.f}), (3.f/2.f));
 }
 
+#define DIVISION_TOL 0.0001f
+
 ///https://arxiv.org/pdf/gr-qc/0209102.pdf (29)
 ///constant_1 is chi * icYij * cSi cSj
 template<typename T>
@@ -1339,7 +1341,7 @@ T w_next_interior(const T& w_in, const T& p_star, const T& chi, const T& constan
     //T non_regular_interior = divisor / (divisor + em6_phi_G * geg * pow(p_star, gamma - 2));
 
     ///I'm not sure this equation tends to 0, but constant_1 tends to 0 because Si = p* h uk
-    T non_regular_interior = dual_types::divide_with_limit(divisor, divisor + em6_phi_G * geg * pow(p_star, gamma - 2), T{0.f});
+    T non_regular_interior = dual_types::divide_with_limit(divisor, divisor + em6_phi_G * geg * pow(p_star, gamma - 2), T{0.f}, DIVISION_TOL);
 
     return sqrt(p_star * p_star + constant_1 * pow(non_regular_interior, 2));
     //return sqrt(p_star * p_star + constant_1 * pow(1 + em6_phi_G * geg * pow(p_star, gamma - 2) / divisor, -2));
@@ -1939,7 +1941,7 @@ struct matter
 
     value calculate_p0(const value& chi, const value& W)
     {
-        return divide_with_limit(chi_to_e_m6phi(chi) * p_star * p_star, W, 0.f);
+        return divide_with_limit(chi_to_e_m6phi(chi) * p_star * p_star, W, 0.f, DIVISION_TOL);
     }
 
     value calculate_eps(const value& chi, const value& W)
@@ -1954,7 +1956,7 @@ struct matter
 
         return lhs;*/
 
-        return pow(divide_with_limit(e_m6phi, W, 0.f), Gamma - 1) * pow(e_star, Gamma) * pow(p_star, Gamma - 2);
+        return pow(divide_with_limit(e_m6phi, W, 0.f, DIVISION_TOL), Gamma - 1) * pow(e_star, Gamma) * pow(p_star, Gamma - 2);
     }
 
     value gamma_eos(const value& p0, const value& eps)
@@ -1973,7 +1975,7 @@ struct matter
 
         for(int i=0; i < 3; i++)
         {
-            ret.idx(i) = divide_with_limit(cS.idx(i), p_star * calculate_h_with_gamma_eos(chi, W), 0.f);
+            ret.idx(i) = divide_with_limit(cS.idx(i), p_star * calculate_h_with_gamma_eos(chi, W), 0.f, DIVISION_TOL);
         }
 
         for(int i=0; i < 3; i++)
@@ -2019,7 +2021,7 @@ struct matter
     {
         #define V_UPPER_PRIMARY
         #ifdef V_UPPER_PRIMARY
-        value u0 = divide_with_limit(W, (p_star * gA), 0);
+        value u0 = divide_with_limit(W, (p_star * gA), 0, DIVISION_TOL);
 
         tensor<value, 3> u_up = get_u_upper(icY, chi, W);
 
@@ -2027,7 +2029,7 @@ struct matter
 
         for(int i=0; i < 3; i++)
         {
-            clamped.idx(i) = divide_with_limit(u_up.idx(i), u0, 0.f);
+            clamped.idx(i) = divide_with_limit(u_up.idx(i), u0, 0.f, DIVISION_TOL);
 
             ///todo: tensor if_v
             //clamped.idx(i) = dual_types::if_v(p_star_is_degenerate(), 0.f, u_up.idx(i) / u0);
@@ -2049,7 +2051,7 @@ struct matter
 
             for(int j=0; j < 3; j++)
             {
-                sum += divide_with_limit(gA * icY.idx(i, j) * cS.idx(j) * e_m6phi, W * h, 0.f);
+                sum += divide_with_limit(gA * icY.idx(i, j) * cS.idx(j) * e_m6phi, W * h, 0.f, DIVISION_TOL);
             }
 
             ret.idx(i) += sum;
@@ -2125,7 +2127,7 @@ struct matter
         {
             for(int j=0; j < 3; j++)
             {
-                Sij.idx(i, j) = divide_with_limit(em6phi, W * h, 0.f) * cS.idx(i) * cS.idx(j);
+                Sij.idx(i, j) = divide_with_limit(em6phi, W * h, 0.f, DIVISION_TOL) * cS.idx(i) * cS.idx(j);
             }
         }
 
@@ -2234,7 +2236,7 @@ struct matter
 
         for(int k=0; k < 3; k++)
         {
-            ret.idx(k) += -gA * divide_with_limit(value{1}, chi_to_e_m6phi(chi), 0.f) * diff1(ctx, P, k);
+            ret.idx(k) += -gA * divide_with_limit(value{1}, chi_to_e_m6phi(chi), 0.f, DIVISION_TOL) * diff1(ctx, P, k);
 
             ret.idx(k) += -W * h * diff1(ctx, gA, k);
 
@@ -2256,14 +2258,14 @@ struct matter
                 {
                     for(int j=0; j < 3; j++)
                     {
-                        sum += divide_with_limit(gA * chi * cS.idx(i) * cS.idx(j), (2 * W * h), 0.f) * diff1(ctx, icY.idx(i, j), k);
+                        sum += divide_with_limit(gA * chi * cS.idx(i) * cS.idx(j), (2 * W * h), 0.f, DIVISION_TOL) * diff1(ctx, icY.idx(i, j), k);
                     }
                 }
 
                 ret.idx(k) += sum;
             }
 
-            ret.idx(k) += -divide_with_limit((2 * gA * h * (W * W - p_star * p_star)), W, 0.f) * calculate_dPhi(chi, dX).idx(k);
+            ret.idx(k) += -divide_with_limit((2 * gA * h * (W * W - p_star * p_star)), W, 0.f, DIVISION_TOL) * calculate_dPhi(chi, dX).idx(k);
         }
 
         return ret;
