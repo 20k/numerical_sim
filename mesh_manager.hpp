@@ -113,7 +113,7 @@ struct cpu_mesh
     buffer_set& get_output();
     buffer_set& get_scratch(int which);
 
-    void init(cl::command_queue& cqueue, cl::buffer& u_arg);
+    void init(cl::command_queue& cqueue, cl::buffer& u_arg, cl::buffer& tov_phi);
 
     void calculate_hydro_w(cl::managed_command_queue& cqueue, buffer_set& in);
 

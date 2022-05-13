@@ -8,10 +8,13 @@ struct laplace_data
 {
     value boundary;
     value rhs;
+    cl::buffer tov_phi;
     std::vector<std::pair<std::string, value>> extras;
+
+    laplace_data(cl::context& ctx) : tov_phi(ctx){}
 };
 
-cl::buffer laplace_solver(cl::context& clcltx, cl::command_queue& cqueue, const laplace_data& data, float scale, vec3i dim, float err = 0.0001f);
+cl::buffer laplace_solver(cl::context& clcltx, cl::command_queue& cqueue, laplace_data& data, float scale, vec3i dim, float err = 0.0001f);
 
 struct sandwich_data
 {

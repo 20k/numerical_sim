@@ -22,7 +22,7 @@ void check_symmetry(const std::string& debug_name, cl::kernel& kern, cl::command
     #endif // CHECK_SYMMETRY
 }
 
-cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& setup, cl::kernel& iterate,
+cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& setup, cl::kernel& iterate, cl::buffer& tov_phi,
                        vec<4, cl_int> base_size, float c_at_max, int scale_factor, std::optional<cl::buffer> base, cl_float etol)
 {
     vec<4, cl_int> reduced_clsize = ((base_size - 1) / scale_factor) + 1;
@@ -82,6 +82,7 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& 
         cl::args iterate_u_args;
         iterate_u_args.push_back(reduced_u_args[which_reduced]);
         iterate_u_args.push_back(reduced_u_args[(which_reduced + 1) % 2]);
+        iterate_u_args.push_back(tov_phi);
         iterate_u_args.push_back(local_scale);
         iterate_u_args.push_back(reduced_clsize);
         iterate_u_args.push_back(still_going[which_still_going]);
@@ -174,7 +175,7 @@ cl::buffer extract_u_region(cl::context& ctx, cl::command_queue& cqueue, cl::ker
     return out;
 }
 
-cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& setup, cl::kernel& iterate, cl::kernel& extract,
+/*cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& setup, cl::kernel& iterate, cl::kernel& extract,
                      vec3i size, float c_at_max, cl_float etol)
 {
     float boundaries[4] = {c_at_max, c_at_max * 4, c_at_max * 8, c_at_max * 16};
@@ -196,9 +197,9 @@ cl::buffer iterate_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& se
     }
 
     return solve_for_u(ctx, cqueue, setup, iterate, clsize, c_at_max, 1, last, etol);
-}
+}*/
 
-cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const laplace_data& data, float scale, vec3i dim, float err)
+cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, laplace_data& data, float scale, vec3i dim, float err)
 {
     equation_context ctx;
 
@@ -228,9 +229,9 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, const l
     vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
 
     ///todo: use iterate
-    //return solve_for_u(clctx, cqueue, setup, iterate, clsize, c_at_max, 1, std::nullopt, err);
+    return solve_for_u(clctx, cqueue, setup, iterate, data.tov_phi, clsize, c_at_max, 1, std::nullopt, err);
 
-    return iterate_u(clctx, cqueue, setup, iterate, extract, dim, c_at_max, err);
+    //return iterate_u(clctx, cqueue, setup, iterate, extract, dim, c_at_max, err);
 }
 
 struct sandwich_state

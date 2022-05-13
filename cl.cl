@@ -124,13 +124,6 @@ float3 voxel_to_world(float3 in, int4 dim, float scale)
     return transform_position(in.x, in.y, in.z, dim, scale);
 }
 
-float3 world_to_voxel(float3 world_pos, int4 dim, float scale)
-{
-    float3 centre = {(dim.x - 1)/2, (dim.y - 1)/2, (dim.z - 1)/2};
-
-    return (world_pos / scale) + centre;
-}
-
 float get_distance(int x1, int y1, int z1, int x2, int y2, int z2, int4 dim, float scale)
 {
     float3 d1 = transform_position(x1, y1, z1, dim, scale);
@@ -166,6 +159,7 @@ float get_distance(int x1, int y1, int z1, int x2, int y2, int z2, int4 dim, flo
 __kernel
 void calculate_initial_conditions(STANDARD_ARGS(),
                                   __global float* u_value,
+                                  __global float* tov_phi,
                                   float scale, int4 dim)
 {
     int ix = get_global_id(0);
@@ -316,6 +310,7 @@ void nan_checker(__global ushort4* points, int point_count, __global float* arg,
 __kernel
 void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
                                                __global float* u_value,
+                                               __global float* tov_phi,
                                                float scale, int4 dim)
 {
     int ix = get_global_id(0);

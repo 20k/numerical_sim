@@ -2648,9 +2648,9 @@ namespace black_hole
     }
 }
 
-template<typename T>
+template<typename T, typename U>
 inline
-tensor<value, 3, 3> calculate_bcAij_generic(const tensor<value, 3>& pos, const std::vector<compact_object::data<T>>& objs)
+tensor<value, 3, 3> calculate_bcAij_generic(const tensor<value, 3>& pos, const std::vector<compact_object::data<T>>& objs, U&& tov_phi_at_coordinate)
 {
     tensor<value, 3, 3> bcAij;
 
@@ -2683,12 +2683,7 @@ tensor<value, 3, 3> calculate_bcAij_generic(const tensor<value, 3>& pos, const s
                 }
             }
 
-            auto test_tov_phi = [](const tensor<value, 3>& world_coordinate)
-            {
-                return value{1.f};
-            };
-
-            tensor<value, 3, 3> bcAIJ_single = neutron_star::calculate_aij_single(pos, flat, p, test_tov_phi);
+            tensor<value, 3, 3> bcAIJ_single = neutron_star::calculate_aij_single(pos, flat, p, tov_phi_at_coordinate);
 
             tensor<value, 3, 3> bcAij_single = lower_both(bcAIJ_single, flatv);
 
@@ -2786,7 +2781,9 @@ value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<c
         if(hole.t == compact_object::BLACK_HOLE)
             dist = max(dist, 1e-3);
         else
-            dist = max(dist, 1e-1);
+            continue;
+
+            //dist = max(dist, 1e-1);
 
         BL_s += Mi / (2 * dist);
     }
@@ -2794,9 +2791,20 @@ value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<c
     return BL_s;
 }
 
-laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_object::data<float>>& cpu_holes)
+value tov_phi_at_coordinate_general(const tensor<value, 3>& world_position)
 {
-    laplace_data solve;
+    value fl3 = as_float3(world_position.x(), world_position.y(), world_position.z());
+
+    value vx = dual_types::apply("world_to_voxel_x", fl3, "dim", "scale");
+    value vy = dual_types::apply("world_to_voxel_y", fl3, "dim", "scale");
+    value vz = dual_types::apply("world_to_voxel_z", fl3, "dim", "scale");
+
+    return dual_types::apply("tov_phi", as_float3(vx, vy, vz), "dim");
+}
+
+laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_object::data<float>>& cpu_holes, cl::buffer& tov_phi)
+{
+    laplace_data solve(clctx);
 
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
@@ -2819,7 +2827,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
-    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(pos, cpu_holes);
+    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(pos, cpu_holes, tov_phi_at_coordinate_general);
     value aij_aIJ_dyn = calculate_aij_aIJ(flat_metric, bcAij_dyn);
 
     ///https://arxiv.org/pdf/1606.04881.pdf 74
@@ -2838,12 +2846,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
             p.linear_momentum = obj.momentum;
             p.angular_momentum = obj.angular_momentum;
 
-            auto tov_phi_at_coordinate = [](const tensor<value, 3>& world_position)
-            {
-                return value{1.f};
-            };
-
-            ppw2p += neutron_star::calculate_ppw2_p(pos, flat_metricf, p, tov_phi_at_coordinate);
+            ppw2p += neutron_star::calculate_ppw2_p(pos, flat_metricf, p, tov_phi_at_coordinate_general);
         }
     }
 
@@ -2876,6 +2879,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
 
     solve.rhs = U_RHS;
     solve.boundary = 1;
+    solve.tov_phi = tov_phi;
 
     return solve;
 }
@@ -2940,7 +2944,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
-    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(pos, cpu_holes);
+    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(pos, cpu_holes, tov_phi_at_coordinate_general);
 
     ///https://arxiv.org/pdf/1606.04881.pdf 74
     value phi = BL_s_dyn + u_value;
@@ -2952,11 +2956,6 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
     //value rest_mass = 0;
     //value eps = 0;
-
-    auto tov_phi_at_coordinate = [](const tensor<value, 3>& world_position)
-    {
-        return value{1.f};
-    };
 
     //value enthalpy = 0;
     value p0_conformal = 0;
@@ -2981,7 +2980,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
             p.linear_momentum = obj.momentum;
             p.angular_momentum = obj.angular_momentum;
 
-            value M_factor = neutron_star::calculate_M_factor(p, tov_phi_at_coordinate);
+            value M_factor = neutron_star::calculate_M_factor(p, tov_phi_at_coordinate_general);
 
             tensor<value, 3> vmomentum = {obj.momentum.x(), obj.momentum.y(), obj.momentum.z()};
 
@@ -2989,7 +2988,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
             //neutron_star::data<value> sampled = neutron_star::sample_interior<value>(rad, value{p.mass});
 
-            neutron_star::conformal_data cdata = neutron_star::sample_conformal(rad, p, tov_phi_at_coordinate);
+            neutron_star::conformal_data cdata = neutron_star::sample_conformal(rad, p, tov_phi_at_coordinate_general);
 
             pressure_conformal += cdata.pressure;
             //unused_conformal_rest_mass += sampled.mass_energy_density;
@@ -3003,7 +3002,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
             p0_conformal += cdata.mass_energy_density;
 
             ///https://arxiv.org/pdf/1606.04881.pdf (56)
-            Si_conformal += vmomentum * neutron_star::calculate_sigma(rad, p, M_factor, tov_phi_at_coordinate);
+            Si_conformal += vmomentum * neutron_star::calculate_sigma(rad, p, M_factor, tov_phi_at_coordinate_general);
         }
     }
 
@@ -3550,7 +3549,7 @@ void setup_static_conditions(cl::context& clctx, cl::command_queue& cqueue, equa
     }
 
     value BL_s = calculate_conformal_guess(pos, holes);
-    tensor<value, 3, 3> bcAij_static = calculate_bcAij_generic(pos, holes);
+    tensor<value, 3, 3> bcAij_static = calculate_bcAij_generic(pos, holes, tov_phi_at_coordinate_general);
     value aij_aIJ_static = calculate_aij_aIJ(flat_metric, bcAij_static);
 
     ctx.add("init_BL_val", BL_s);
@@ -6421,6 +6420,7 @@ int main()
     setup_static_conditions(clctx.ctx, clctx.cqueue, setup_static, holes.objs);
 
     cl::buffer u_arg(clctx.ctx);
+    cl::buffer tov_phi(clctx.ctx);
 
     cl::program evolve_prog(clctx.ctx, "evolve_points.cl");
     evolve_prog.build(clctx.ctx, argument_string + "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ");
@@ -6429,15 +6429,21 @@ int main()
 
     evolution_points evolve_points = generate_evolution_points(clctx.ctx, clctx.cqueue, scale, size);
 
+    tov_input tov_soln = setup_tov_solver(clctx.ctx, holes.objs);
+
     //sandwich_result sandwich(clctx.ctx);
 
-    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes]()
+    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes, &tov_phi, &tov_soln]()
     {
         cl::command_queue cqueue(clctx.ctx);
 
         //sandwich = setup_sandwich_laplace(clctx.ctx, clctx.cqueue, holes.holes, scale, size);
 
-        laplace_data solve = setup_u_laplace(clctx.ctx, holes.objs);
+        tov_solver tov_result = tov_solve(clctx.ctx, cqueue, tov_soln, scale, size, 0.0001f);
+
+        tov_phi = std::move(tov_result.phi);
+
+        laplace_data solve = setup_u_laplace(clctx.ctx, holes.objs, tov_phi);
         u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.0001f);
 
         cqueue.block();
@@ -6668,7 +6674,7 @@ int main()
 
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
 
-    base_mesh.init(clctx.cqueue, u_arg);
+    base_mesh.init(clctx.cqueue, u_arg, tov_phi);
 
     std::vector<float> real_graph;
     std::vector<float> real_decomp;
