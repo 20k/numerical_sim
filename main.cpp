@@ -1991,6 +1991,7 @@ struct matter
         return raise_index_generic(ui_lower, chi * icY, 0);
     }
 
+    #if 0
     tensor<value, 3> get_v_upper(const inverse_metric<value, 3, 3>& icY, const value& gA, const value& chi, const value& W)
     {
         value u0 = divide_with_limit(W, (p_star * gA), 0);
@@ -2009,24 +2010,72 @@ struct matter
 
         return clamped;
     }
+    #endif // 0
 
-    tensor<value, 3> p_star_vi(const inverse_metric<value, 3, 3>& icY, const value& gA, const value& chi, const value& W)
+    ///https://arxiv.org/pdf/gr-qc/9908027.pdf 2.12
+    ///except sk = p* h uj, and uhatj = h uj
+    ///and w = p* a u0 not a u0
+    tensor<value, 3> get_v_upper(const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const value& W)
     {
-        tensor<value, 3> v_upper = get_v_upper(icY, gA, chi, W);
+        #define V_UPPER_PRIMARY
+        #ifdef V_UPPER_PRIMARY
+        value u0 = divide_with_limit(W, (p_star * gA), 0);
+
+        tensor<value, 3> u_up = get_u_upper(icY, chi, W);
+
+        tensor<value, 3> clamped;
+
+        for(int i=0; i < 3; i++)
+        {
+            clamped.idx(i) = divide_with_limit(u_up.idx(i), u0, 0.f);
+
+            ///todo: tensor if_v
+            //clamped.idx(i) = dual_types::if_v(p_star_is_degenerate(), 0.f, u_up.idx(i) / u0);
+        }
+
+        return clamped;
+        #endif // V_UPPER_PRIMARY
+
+        #ifdef V_UPPER_ALT
+        value e_m6phi = chi_to_e_m6phi(chi);
+
+        value h = calculate_h_with_gamma_eos(chi, W);
+
+        tensor<value, 3> ret = -gB;
+
+        for(int i=0; i < 3; i++)
+        {
+            value sum = 0;
+
+            for(int j=0; j < 3; j++)
+            {
+                sum += divide_with_limit(gA * icY.idx(i, j) * cS.idx(j) * e_m6phi, W * h, 0.f);
+            }
+
+            ret.idx(i) += sum;
+        }
+
+        return ret;
+        #endif // V_UPPER_ALT
+    }
+
+    tensor<value, 3> p_star_vi(const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const value& W)
+    {
+        tensor<value, 3> v_upper = get_v_upper(icY, gA, gB, chi, W);
 
         return p_star * v_upper;
     }
 
-    tensor<value, 3> e_star_vi(const inverse_metric<value, 3, 3>& icY, const value& gA, const value& chi, const value& W)
+    tensor<value, 3> e_star_vi(const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const value& W)
     {
-        tensor<value, 3> v_upper = get_v_upper(icY, gA, chi, W);
+        tensor<value, 3> v_upper = get_v_upper(icY, gA, gB, chi, W);
 
         return e_star * v_upper;
     }
 
-    tensor<value, 3, 3> cSk_vi(const inverse_metric<value, 3, 3>& icY, const value& gA, const value& chi, const value& W)
+    tensor<value, 3, 3> cSk_vi(const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const value& W)
     {
-        tensor<value, 3> v_upper = get_v_upper(icY, gA, chi, W);
+        tensor<value, 3> v_upper = get_v_upper(icY, gA, gB, chi, W);
 
         tensor<value, 3, 3> cSk_vi;
 
@@ -2111,6 +2160,7 @@ struct matter
         return 0;
         #endif // QUADRATIC_VISCOSITY
 
+        #if 0
         value e_m6phi = chi_to_e_m6phi(chi);
         value e_6phi = chi_to_e_6phi(chi);
 
@@ -2166,6 +2216,7 @@ struct matter
 
         return -degenerate * (PQvis / Gamma) * sum_interior_rhs;
         //return -pow(p0 * eps, -1 + 1/Gamma) * (PQvis / Gamma) * sum_interior_rhs;
+        #endif // 0
     }
 
     tensor<value, 3> cSkvi_rhs(equation_context& ctx, const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const value& P, const value& W)
@@ -3808,10 +3859,10 @@ namespace hydrodynamics
 
         inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-        tensor<value, 3> p_star_vi = matt.p_star_vi(icY, args.gA, args.X, matt.stashed_W);
-        tensor<value, 3> e_star_vi = matt.e_star_vi(icY, args.gA, args.X, matt.stashed_W);
+        tensor<value, 3> p_star_vi = matt.p_star_vi(icY, args.gA, args.gB, args.X, matt.stashed_W);
+        tensor<value, 3> e_star_vi = matt.e_star_vi(icY, args.gA, args.gB, args.X, matt.stashed_W);
 
-        tensor<value, 3, 3> cSk_vi = matt.cSk_vi(icY, args.gA, args.X, matt.stashed_W);
+        tensor<value, 3, 3> cSk_vi = matt.cSk_vi(icY, args.gA, args.gB, args.X, matt.stashed_W);
 
         value p0 = matt.calculate_p0(args.X, matt.stashed_W);
         value eps = matt.calculate_eps(args.X, matt.stashed_W);
