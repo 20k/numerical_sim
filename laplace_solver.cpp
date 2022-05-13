@@ -505,8 +505,8 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
 
         cqueue.exec(iterate_phi, {clsize.x(), clsize.y(), clsize.z()}, {8, 8, 1}, {});
 
-        //if(((i % 50) == 0) && still_going[(which_data + 1) % 2].read<cl_int>(cqueue)[0] == 0)
-        //    break;
+        if(((i % 50) == 0) && still_going[(which_data + 1) % 2].read<cl_int>(cqueue)[0] == 0)
+            break;
 
         still_going[which_data].set_to_zero(cqueue);
 

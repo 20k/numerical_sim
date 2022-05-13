@@ -9,8 +9,8 @@ void simple_tov_solver_phi(__global float* u_offset_in,
                            float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol,
                            __global ushort* order_ptr)
 {
-    //if(*last_still_going == 0)
-    //    return;
+    if(*last_still_going == 0)
+        return;
 
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -39,15 +39,13 @@ void simple_tov_solver_phi(__global float* u_offset_in,
         u_offset_out[IDX(ix,iy,iz)] = INTEGRATION_CONSTANT;
     }
 
-    //u_offset_out[IDX(ix,iy,iz)] = clamp(u_offset_out[IDX(ix,iy,iz)], 0.f, 3.f);
-
-    if((ix == 98 || ix == 100 || ix == 102 || ix == 120 || ix == 160) && iy == dim.y/2 && iz == dim.z/2)
+    /*if((ix == 98 || ix == 100 || ix == 102 || ix == 120 || ix == 160) && iy == dim.y/2 && iz == dim.z/2)
     {
         float rho = DBG_RHO;
         float press = DBG_PRESSURE;
 
         printf("Tovs %i %f %f rho %f press %f\n", ix, u_offset_in[IDX(ix,iy,iz)], u_offset_out[IDX(ix,iy,iz)], rho, press);
-    }
+    }*/
 }
 
 #if 0
