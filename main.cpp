@@ -1429,7 +1429,7 @@ namespace neutron_star
     inline
     float compactness()
     {
-        return 0.180f;
+        return 0.140f;
     }
 
     template<typename T>
