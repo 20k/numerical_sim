@@ -591,10 +591,6 @@ void clean_data(__global ushort4* points, int point_count,
     int iy = points[idx].y;
     int iz = points[idx].z;
 
-    #ifdef SYMMETRY_BOUNDARY
-    return;
-    #endif // SYMMETRY_BOUNDARY
-
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
@@ -609,64 +605,8 @@ void clean_data(__global ushort4* points, int point_count,
     float oy = offset.y;
     float oz = offset.z;
 
-    float bl_conformal = init_BL_val;
-
-    float TEMPORARIES0;
-
-    float initial_cY0 = init_cY0;
-    float initial_cY1 = init_cY1;
-    float initial_cY2 = init_cY2;
-    float initial_cY3 = init_cY3;
-    float initial_cY4 = init_cY4;
-    float initial_cY5 = init_cY5;
-
-    float initial_cA0 = init_cA0;
-    float initial_cA1 = init_cA1;
-    float initial_cA2 = init_cA2;
-    float initial_cA3 = init_cA3;
-    float initial_cA4 = init_cA4;
-    float initial_cA5 = init_cA5;
-
-    float initial_X = init_X;
-
-    float fin_gA = init_gA;
-    float fin_gB0 = init_gB0;
-    float fin_gB1 = init_gB1;
-    float fin_gB2 = init_gB2;
-
-    #ifdef USE_GBB
-    float fin_gBB0 = init_gBB0;
-    float fin_gBB1 = init_gBB1;
-    float fin_gBB2 = init_gBB2;
-    #endif // USE_GBB
-
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
-
-    ///todo: investigate if 2 full orbits is possible on the non radiative condition
-    ///woooo
-    //#define RADIATIVE
-    #ifdef RADIATIVE
-    fin_gA = 1;
-    fin_gB0 = 0;
-    fin_gB1 = 0;
-    fin_gB2 = 0;
-
-    initial_cY0 = 1;
-    initial_cY1 = 0;
-    initial_cY2 = 0;
-    initial_cY3 = 1;
-    initial_cY4 = 0;
-
-    initial_cA0 = 0;
-    initial_cA1 = 0;
-    initial_cA2 = 0;
-    initial_cA3 = 0;
-    initial_cA4 = 0;
-    initial_cA5 = 0;
-
-    initial_X = 1;
-    #endif // RADIATIVE
 
     {
         float TEMPORARIESsommerfeld;

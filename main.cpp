@@ -1625,7 +1625,7 @@ namespace neutron_star
     ///https://arxiv.org/pdf/2101.10252.pdf (20)
     template<typename T>
     inline
-    tensor<value, 3, 3> calculate_aij_single(const tensor<value, 3>& coordinate, const metric<float, 3, 3>& flat, const params& param, T&& tov_phi_at_coordinate)
+    tensor<value, 3, 3> calculate_aij_single(equation_context& ctx, const tensor<value, 3>& coordinate, const metric<float, 3, 3>& flat, const params& param, T&& tov_phi_at_coordinate)
     {
         tensor<value, 3> vposition = {param.position.x(), param.position.y(), param.position.z()};
 
@@ -1641,8 +1641,13 @@ namespace neutron_star
 
         value M_factor = calculate_M_factor(param, tov_phi_at_coordinate);
 
+        ctx.pin(M_factor);
+
         value iQ = calculate_integral_Q(r, param, M_factor, tov_phi_at_coordinate);
         value iC = calculate_integral_C(r, param, M_factor, tov_phi_at_coordinate);
+
+        ctx.pin(iQ);
+        ctx.pin(iC);
 
         value coeff1 = 3 * iQ / (2 * r * r);
         value coeff2 = 3 * iC / pow(r, 4);
@@ -1671,6 +1676,8 @@ namespace neutron_star
                 value p4 = (flat.idx(i, j) - 5 * li.idx(i) * li.idx(j)) * pklk;
 
                 aIJ.idx(i, j) = coeff1 * (p1 - p2) + coeff2 * (p3 + p4);
+
+                ctx.pin(aIJ.idx(i, j));
             }
         }
 
@@ -2099,6 +2106,7 @@ struct matter
 
     value estar_vi_rhs(equation_context& ctx, const value& gA, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
     {
+        //#define QUADRATIC_VISCOSITY
         #ifndef QUADRATIC_VISCOSITY
         return 0;
         #endif // QUADRATIC_VISCOSITY
@@ -2650,7 +2658,7 @@ namespace black_hole
 
 template<typename T, typename U>
 inline
-tensor<value, 3, 3> calculate_bcAij_generic(const tensor<value, 3>& pos, const std::vector<compact_object::data<T>>& objs, U&& tov_phi_at_coordinate)
+tensor<value, 3, 3> calculate_bcAij_generic(equation_context& ctx, const tensor<value, 3>& pos, const std::vector<compact_object::data<T>>& objs, U&& tov_phi_at_coordinate)
 {
     tensor<value, 3, 3> bcAij;
 
@@ -2683,7 +2691,7 @@ tensor<value, 3, 3> calculate_bcAij_generic(const tensor<value, 3>& pos, const s
                 }
             }
 
-            tensor<value, 3, 3> bcAIJ_single = neutron_star::calculate_aij_single(pos, flat, p, tov_phi_at_coordinate);
+            tensor<value, 3, 3> bcAIJ_single = neutron_star::calculate_aij_single(ctx, pos, flat, p, tov_phi_at_coordinate);
 
             tensor<value, 3, 3> bcAij_single = lower_both(bcAIJ_single, flatv);
 
@@ -2829,7 +2837,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
-    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(pos, cpu_holes, tov_phi_at_coordinate_general);
+    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(solve.ectx, pos, cpu_holes, tov_phi_at_coordinate_general);
     value aij_aIJ_dyn = calculate_aij_aIJ(flat_metric, bcAij_dyn);
 
     ///https://arxiv.org/pdf/1606.04881.pdf 74
@@ -2977,7 +2985,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
-    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(pos, cpu_holes, tov_phi_at_coordinate_general);
+    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(ctx, pos, cpu_holes, tov_phi_at_coordinate_general);
 
     ///https://arxiv.org/pdf/1606.04881.pdf 74
     value phi = BL_s_dyn + u_value;
@@ -3487,13 +3495,13 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data<float> h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.1;
-    h1.momentum = {0, 0.133 * 0.8 * 0, 0};
-    h1.position = {-2.257, 0.f, 0.f};
+    h1.momentum = {0, 0.133 * 0.8 * -0.5, 0};
+    h1.position = {-3.257, 0.f, 0.f};
 
     compact_object::data<float> h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.3;
-    h2.momentum = {0, -0.133 * 0.8 * 0, 0};
+    h2.momentum = {0, -0.133 * 0.8 * 0.5, 0};
     h2.position = {2.257, 0.f, 0.f};
 
     objects.push_back(h1);
@@ -3582,7 +3590,7 @@ void setup_static_conditions(cl::context& clctx, cl::command_queue& cqueue, equa
     }
 
     value BL_s = calculate_conformal_guess(pos, holes);
-    tensor<value, 3, 3> bcAij_static = calculate_bcAij_generic(pos, holes, tov_phi_at_coordinate_general);
+    tensor<value, 3, 3> bcAij_static = calculate_bcAij_generic(ctx, pos, holes, tov_phi_at_coordinate_general);
     value aij_aIJ_static = calculate_aij_aIJ(flat_metric, bcAij_static);
 
     ctx.add("init_BL_val", BL_s);
@@ -3609,16 +3617,14 @@ void setup_static_conditions(cl::context& clctx, cl::command_queue& cqueue, equa
 ///todo: even schwarzschild explodes after t=7
 ///todo: this paper suggests having a very short timestep initially while the gauge conditions settle down: https://arxiv.org/pdf/1404.6523.pdf, then increasing it
 inline
-void get_initial_conditions_eqs(equation_context& ctx, vec3f centre, float scale)
+void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact_object::data<float>>& holes)
 {
+    tensor<value, 3> pos = {"ox", "oy", "oz"};
+
     value bl_conformal = "bl_conformal";
     value u = dual_types::apply("buffer_index", "u_value", "ix", "iy", "iz", "dim");
 
-    tensor<value, 3, 3> bcAij;
-
-    bcAij.idx(0, 0) = "init_bcA0"; bcAij.idx(0, 1) = "init_bcA1"; bcAij.idx(0, 2) = "init_bcA2";
-    bcAij.idx(1, 0) = "init_bcA1"; bcAij.idx(1, 1) = "init_bcA3"; bcAij.idx(1, 2) = "init_bcA4";
-    bcAij.idx(2, 0) = "init_bcA2"; bcAij.idx(2, 1) = "init_bcA4"; bcAij.idx(2, 2) = "init_bcA5";
+    tensor<value, 3, 3> bcAij = calculate_bcAij_generic(ctx, pos, holes, tov_phi_at_coordinate_general);
 
     metric<value, 3, 3> Yij;
 
@@ -6499,7 +6505,7 @@ int main()
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
     equation_context ctx1;
-    get_initial_conditions_eqs(ctx1, centre, scale);
+    get_initial_conditions_eqs(ctx1, holes.objs);
 
     equation_context dtcY;
     build_cY(dtcY);

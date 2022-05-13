@@ -137,6 +137,8 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     float oy = offset.y;
     float oz = offset.z;
 
+    float TEMPORARIESlaplacesolve;
+
     float RHS = U_RHS;
 
     float h2f0 = scale * scale * RHS;

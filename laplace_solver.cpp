@@ -201,7 +201,7 @@ cl::buffer extract_u_region(cl::context& ctx, cl::command_queue& cqueue, cl::ker
 
 cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, laplace_data& data, float scale, vec3i dim, float err)
 {
-    equation_context ctx;
+    equation_context ctx = data.ectx;
 
     ctx.add("U_BASE", dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim"));
     ctx.add("U_RHS", data.rhs);
@@ -214,7 +214,7 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, laplace
 
     std::string local_build_str = "-I ./ -O3 -cl-std=CL2.0 ";
 
-    ctx.build(local_build_str, "UNUSEDLAPLACE");
+    ctx.build(local_build_str, "laplacesolve");
 
     cl::program u_program(clctx, "u_solver.cl");
     u_program.build(clctx, local_build_str);

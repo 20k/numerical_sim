@@ -3,6 +3,7 @@
 
 #include <geodesic/dual_value.hpp>
 #include <toolkit/opencl.hpp>
+#include "equation_context.hpp"
 
 struct laplace_data
 {
@@ -10,6 +11,7 @@ struct laplace_data
     value rhs;
     cl::buffer tov_phi;
     std::vector<std::pair<std::string, value>> extras;
+    equation_context ectx;
 
     laplace_data(cl::context& ctx) : tov_phi(ctx){}
 };
