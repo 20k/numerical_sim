@@ -1,3 +1,6 @@
+#ifndef LAPLACE_ORDER_CL_INCLUDE
+#define LAPLACE_ORDER_CL_INCLUDE
+
 #include "common.cl"
 
 __kernel
@@ -49,3 +52,5 @@ void generate_order(__global ushort* order_ptr, int4 dim)
 
     order_ptr[IDX(ix,iy,iz)] = out;
 }
+
+#endif // LAPLACE_ORDER_CL_INCLUDE

@@ -1,6 +1,7 @@
 #include "common.cl"
 #include "transform_position.cl"
 #include "generic_laplace.cl"
+#include "laplace_order.cl"
 
 __kernel
 void simple_tov_solver(__global float* phi_in,

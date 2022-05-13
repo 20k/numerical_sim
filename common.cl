@@ -154,17 +154,17 @@ float3 world_to_voxel(float3 world_pos, int4 dim, float scale)
 
 float world_to_voxel_x(float3 world_pos, int4 dim, float scale)
 {
-    return voxel_to_world(world_pos, dim, scale).x;
+    return world_to_voxel(world_pos, dim, scale).x;
 }
 
 float world_to_voxel_y(float3 world_pos, int4 dim, float scale)
 {
-    return voxel_to_world(world_pos, dim, scale).y;
+    return world_to_voxel(world_pos, dim, scale).y;
 }
 
 float world_to_voxel_z(float3 world_pos, int4 dim, float scale)
 {
-    return voxel_to_world(world_pos, dim, scale).z;
+    return world_to_voxel(world_pos, dim, scale).z;
 }
 
 #endif // COMMON_CL_INCLUDED

@@ -2795,11 +2795,15 @@ value tov_phi_at_coordinate_general(const tensor<value, 3>& world_position)
 {
     value fl3 = as_float3(world_position.x(), world_position.y(), world_position.z());
 
-    value vx = dual_types::apply("world_to_voxel_x", fl3, "dim", "scale");
+    /*value vx = dual_types::apply("world_to_voxel_x", fl3, "dim", "scale");
     value vy = dual_types::apply("world_to_voxel_y", fl3, "dim", "scale");
-    value vz = dual_types::apply("world_to_voxel_z", fl3, "dim", "scale");
+    value vz = dual_types::apply("world_to_voxel_z", fl3, "dim", "scale");*/
 
-    return dual_types::apply("tov_phi", as_float3(vx, vy, vz), "dim");
+    value v = dual_types::apply("world_to_voxel", fl3, "dim", "scale");
+
+    return dual_types::apply("buffer_read_linear", "tov_phi", v, "dim");
+
+    //return dual_types::apply("tov_phi", as_float3(vx, vy, vz), "dim");
 }
 
 laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_object::data<float>>& cpu_holes, cl::buffer& tov_phi)
