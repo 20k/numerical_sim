@@ -34,7 +34,7 @@ void simple_tov_solver_phi(__global float* u_offset_in,
 
     laplace_interior(u_offset_in, u_offset_out, scale * scale * PHI_RHS, ix, iy, iz, scale, dim, still_going, etol);
 
-    if(!SHOULD_NOT_USE_INTEGRATION_CONSTANT)
+    if(SHOULD_NOT_USE_INTEGRATION_CONSTANT == 0)
     {
         u_offset_out[IDX(ix,iy,iz)] = INTEGRATION_CONSTANT;
     }
