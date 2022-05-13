@@ -2902,6 +2902,9 @@ tov_input setup_tov_solver(cl::context& clctx, const std::vector<compact_object:
 
     for(const compact_object::data<float>& obj : objs)
     {
+        if(obj.t != compact_object::NEUTRON_STAR)
+            continue;
+
         tensor<value, 3> vposition = {obj.position.x(), obj.position.y(), obj.position.z()};
 
         tensor<value, 3> from_object = pos - vposition;
@@ -2919,6 +2922,9 @@ tov_input setup_tov_solver(cl::context& clctx, const std::vector<compact_object:
 
     ret.phi_rhs = rhs_phi;
     ret.gA_phi_rhs = rhs_gA_phi;
+
+    ret.extras.push_back({"DBG_RHO", rho});
+    ret.extras.push_back({"DBG_PRESSURE", pressure});
 
     return ret;
 }

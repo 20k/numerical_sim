@@ -47,6 +47,7 @@ struct tov_input
 {
     value gA_phi_rhs;
     value phi_rhs;
+    std::vector<std::pair<std::string, value>> extras;
 };
 
 struct tov_solver

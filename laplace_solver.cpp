@@ -421,6 +421,11 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
     ctx.add("B_gA_PHI_RHS", solve.gA_phi_rhs);
     ctx.add("B_PHI_RHS", solve.phi_rhs);
 
+    for(const auto& [name, what] : solve.extras)
+    {
+        ctx.add(name, what);
+    }
+
     tov_solver ret(clctx);
 
     vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
@@ -432,7 +437,8 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
     cl::program t_program(clctx, "tov_solver.cl");
     t_program.build(clctx, local_build_str);
 
-    cl::kernel iterate(t_program, "simple_tov_solver");
+    cl::kernel iterate_phi(t_program, "simple_tov_solver_phi");
+    cl::kernel iterate_gA_phi(t_program, "simple_tov_solver_gA_phi");
     cl::kernel generate_order(t_program, "generate_order");
 
     cl::buffer order_ptr(clctx);
@@ -477,7 +483,9 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
 
     float c_at_max = scale * dim.largest_elem();
 
-    int iterations = 1000;
+    int iterations = 10000;
+
+    int last_phi = 0;
 
     for(int i=0; i < iterations; i++)
     {
@@ -486,6 +494,40 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
         cl::args iterate_u_args;
         iterate_u_args.push_back(phi[which_data]);
         iterate_u_args.push_back(phi[(which_data + 1) % 2]);
+        iterate_u_args.push_back(local_scale);
+        iterate_u_args.push_back(clsize);
+        iterate_u_args.push_back(still_going[which_data]);
+        iterate_u_args.push_back(still_going[(which_data + 1) % 2]);
+        iterate_u_args.push_back(err);
+        iterate_u_args.push_back(order_ptr);
+
+        iterate_phi.set_args(iterate_u_args);
+
+        cqueue.exec(iterate_phi, {clsize.x(), clsize.y(), clsize.z()}, {8, 8, 1}, {});
+
+        //if(((i % 50) == 0) && still_going[(which_data + 1) % 2].read<cl_int>(cqueue)[0] == 0)
+        //    break;
+
+        still_going[which_data].set_to_zero(cqueue);
+
+        which_data = (which_data + 1) % 2;
+    }
+
+    last_phi = which_data;
+    which_data = 0;
+
+    for(int i=0; i < 2; i++)
+    {
+        cl_int one = 1;
+        still_going[i].fill(cqueue, one);
+    }
+
+    /*for(int i=0; i < iterations; i++)
+    {
+        float local_scale = calculate_scale(c_at_max, clsize);
+
+        cl::args iterate_u_args;
+        iterate_u_args.push_back(phi[last_phi]);
         iterate_u_args.push_back(gA_phi[which_data]);
         iterate_u_args.push_back(gA_phi[(which_data + 1) % 2]);
         iterate_u_args.push_back(local_scale);
@@ -497,7 +539,7 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
 
         iterate.set_args(iterate_u_args);
 
-        cqueue.exec(iterate, {clsize.x(), clsize.y(), clsize.z()}, {8, 8, 1}, {});
+        cqueue.exec(iterate_gA_phi, {clsize.x(), clsize.y(), clsize.z()}, {8, 8, 1}, {});
 
         if(((i % 50) == 0) && still_going[(which_data + 1) % 2].read<cl_int>(cqueue)[0] == 0)
             break;
@@ -505,9 +547,9 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
         still_going[which_data].set_to_zero(cqueue);
 
         which_data = (which_data + 1) % 2;
-    }
+    }*/
 
-    ret.phi = phi[which_data];
+    ret.phi = phi[last_phi];
 
     return ret;
 }

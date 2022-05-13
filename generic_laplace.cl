@@ -103,5 +103,5 @@ void laplace_interior(__global float* buffer_in, __global float* buffer_out, flo
         atomic_xchg(still_going, 1);
     }
 
-    buffer_out[IDX(ix, iy, iz)] = mix(u, u0n1, 0.5f);
+    buffer_out[IDX(ix, iy, iz)] = mix(u, u0n1, 0.4f);
 }
