@@ -107,7 +107,7 @@ void extract_u_region(__global float* u_in, __global float* u_out, float c_at_ma
 }
 
 __kernel
-void calculate_cached_aij_aIJ(__global float* aij_aIJ, __global float* tov_phi, float scale, int4 dim)
+void calculate_cached_variables(__global float* aij_aIJ, __global float* ppw2p, __global float* tov_phi, float scale, int4 dim)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -125,9 +125,10 @@ void calculate_cached_aij_aIJ(__global float* aij_aIJ, __global float* tov_phi, 
     float oy = offset.y;
     float oz = offset.z;
 
-    float TEMPORARIEScachedaij;
+    float TEMPORARIEScachedvariables;
 
     aij_aIJ[IDX(ix,iy,iz)] = init_aij_aIJ;
+    ppw2p[IDX(ix,iy,iz)] = init_ppw2p;
 }
 
 ///https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan2008/Workbook33/33_2_elliptic_pde.pdf
@@ -139,7 +140,7 @@ void calculate_cached_aij_aIJ(__global float* aij_aIJ, __global float* tov_phi, 
 ///so with first order stencil, we get [1, -2, 1] in each direction, which is why we get a central -6
 ///todo: this, but second order, because memory reads are heavily cached
 __kernel
-void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out, __global float* tov_phi, __global float* cached_aij_aIJ,
+void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out, __global float* tov_phi, __global float* cached_aij_aIJ, __global float* cached_ppw2p,
                        float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol)
 {
     if(*last_still_going == 0)

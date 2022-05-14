@@ -2890,22 +2890,13 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     value u_value = dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim");
 
     equation_context eqs;
-    equation_context aij_cache;
+    equation_context cache;
 
-    auto pinning_tov_phi1 = [&](const tensor<value, 3>& world_position)
+    auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
     {
         value v = tov_phi_at_coordinate_general(world_position);
 
-        aij_cache.pin(v);
-
-        return v;
-    };
-
-    auto pinning_tov_phi2 = [&](const tensor<value, 3>& world_position)
-    {
-        value v = tov_phi_at_coordinate_general(world_position);
-
-        eqs.pin(v);
+        cache.pin(v);
 
         return v;
     };
@@ -2913,7 +2904,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     ///todo when I forget: I'm using the conformal guess here for neutron stars which probably isn't right
     value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
-    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(eqs, pos, cpu_holes, pinning_tov_phi1);
+    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(eqs, pos, cpu_holes, pinning_tov_phi);
     value aij_aIJ_dyn = calculate_aij_aIJ(flat_metric, bcAij_dyn);
 
     ///https://arxiv.org/pdf/1606.04881.pdf 74
@@ -2932,11 +2923,12 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
             p.linear_momentum = obj.momentum;
             p.angular_momentum = obj.angular_momentum;
 
-            ppw2p += neutron_star::calculate_ppw2_p(pos, flat_metricf, p, pinning_tov_phi2);
+            ppw2p += neutron_star::calculate_ppw2_p(pos, flat_metricf, p, pinning_tov_phi);
         }
     }
 
     value cached_aij_aIJ = bidx("cached_aij_aIJ", false, false);
+    value cached_ppw2p = bidx("cached_ppw2p", false, false);
 
     /*data<value> dat = sample_interior<value>(r, value{param.mass});*/
 
@@ -2959,7 +2951,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     ///https://arxiv.org/pdf/1606.04881.pdf I think I need to do (85)
     ///ok no: I think what it is is that they're solving for ph in ToV, which uses tov's conformally flat variable
     ///whereas I'm getting values directly out of an analytic solution
-    value U_RHS = (-1.f/8.f) * cached_aij_aIJ * pow(phi, -7) - 2 * M_PI * pow(phi, -3) * ppw2p;
+    value U_RHS = (-1.f/8.f) * cached_aij_aIJ * pow(phi, -7) - 2 * M_PI * pow(phi, -3) * cached_ppw2p;
 
     /*tensor<value, 3> vpos = {cpu_holes[0].position.x(), cpu_holes[0].position.y(), cpu_holes[0].position.z()};
 
@@ -2969,8 +2961,9 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     solve.boundary = 1;
     solve.tov_phi = tov_phi;
     solve.aij_aIJ = aij_aIJ_dyn;
+    solve.ppw2p = ppw2p;
     solve.ectx = eqs;
-    solve.eaij_aIJ = aij_cache;
+    solve.ecache = cache;
 
     return solve;
 }
