@@ -3570,7 +3570,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data<float> h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.1;
-    h1.momentum = {0, 0.133 * 0.8 * 0, 0};
+    h1.momentum = {0, 0.133 * 0.8 * 0.25, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     compact_object::data<float> h2;
