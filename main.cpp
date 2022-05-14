@@ -3559,7 +3559,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data<float> h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.3;
-    h2.momentum = {0, -0.133 * 0.8 * 0.01, 0};
+    h2.momentum = {0, -0.133 * 0.8 * 0.025, 0};
     h2.position = {2.257, 0.f, 0.f};
 
     objects.push_back(h1);
@@ -6974,7 +6974,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.015;
+        float timestep = 0.035;
 
         //timestep = 0.04;
 

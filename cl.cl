@@ -1334,9 +1334,9 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     float fin_cS1 = f_dtSk1 * timestep + base_cS1;
     float fin_cS2 = f_dtSk2 * timestep + base_cS2;
 
-    fin_cS0 = clamp(fin_cS0, -0.35f, 0.35f);
-    fin_cS1 = clamp(fin_cS1, -0.35f, 0.35f);
-    fin_cS2 = clamp(fin_cS2, -0.35f, 0.35f);
+    //fin_cS0 = clamp(fin_cS0, -0.35f, 0.35f);
+    //fin_cS1 = clamp(fin_cS1, -0.35f, 0.35f);
+    //fin_cS2 = clamp(fin_cS2, -0.35f, 0.35f);
 
     if(fin_p_star < 1e-5 * p_star_max)
     {
