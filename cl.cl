@@ -328,6 +328,8 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
     float oy = offset.y;
     float oz = offset.z;
 
+    float TEMPORARIEShydroconvert;
+
     float dp_val = build_p_star;
     float de_val = build_e_star;
 

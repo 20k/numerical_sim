@@ -2893,10 +2893,19 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
 
     equation_context eqs;
 
+    auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
+    {
+        value v = tov_phi_at_coordinate_general(world_position);
+
+        eqs.pin(v);
+
+        return v;
+    };
+
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     ///todo when I forget: I'm using the conformal guess here for neutron stars which probably isn't right
     value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
-    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(solve.ectx, pos, cpu_holes, tov_phi_at_coordinate_general);
+    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(solve.ectx, pos, cpu_holes, pinning_tov_phi);
     value aij_aIJ_dyn = calculate_aij_aIJ(flat_metric, bcAij_dyn);
 
     ///https://arxiv.org/pdf/1606.04881.pdf 74
@@ -2915,7 +2924,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
             p.linear_momentum = obj.momentum;
             p.angular_momentum = obj.angular_momentum;
 
-            ppw2p += neutron_star::calculate_ppw2_p(pos, flat_metricf, p, tov_phi_at_coordinate_general);
+            ppw2p += neutron_star::calculate_ppw2_p(pos, flat_metricf, p, pinning_tov_phi);
         }
     }
 
@@ -2949,6 +2958,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     solve.rhs = U_RHS;
     solve.boundary = 1;
     solve.tov_phi = tov_phi;
+    solve.ectx = eqs;
 
     return solve;
 }
@@ -3040,11 +3050,18 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
     value gA = bidx("gA", false, false);
 
-    equation_context eqs;
+    auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
+    {
+        value v = tov_phi_at_coordinate_general(world_position);
+
+        ctx.pin(v);
+
+        return v;
+    };
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
-    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(ctx, pos, cpu_holes, tov_phi_at_coordinate_general);
+    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(ctx, pos, cpu_holes, pinning_tov_phi);
 
     ///https://arxiv.org/pdf/1606.04881.pdf 74
     value phi = BL_s_dyn + u_value;
@@ -3080,7 +3097,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
             p.linear_momentum = obj.momentum;
             p.angular_momentum = obj.angular_momentum;
 
-            value M_factor = neutron_star::calculate_M_factor(p, tov_phi_at_coordinate_general);
+            value M_factor = neutron_star::calculate_M_factor(p, pinning_tov_phi);
 
             tensor<value, 3> vmomentum = {obj.momentum.x(), obj.momentum.y(), obj.momentum.z()};
 
@@ -3088,7 +3105,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
             //neutron_star::data<value> sampled = neutron_star::sample_interior<value>(rad, value{p.mass});
 
-            neutron_star::conformal_data cdata = neutron_star::sample_conformal(rad, p, tov_phi_at_coordinate_general);
+            neutron_star::conformal_data cdata = neutron_star::sample_conformal(rad, p, pinning_tov_phi);
 
             pressure_conformal += cdata.pressure;
             //unused_conformal_rest_mass += sampled.mass_energy_density;
@@ -3102,7 +3119,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
             p0_conformal += cdata.mass_energy_density;
 
             ///https://arxiv.org/pdf/1606.04881.pdf (56)
-            Si_conformal += vmomentum * neutron_star::calculate_sigma(rad, p, M_factor, tov_phi_at_coordinate_general);
+            Si_conformal += vmomentum * neutron_star::calculate_sigma(rad, p, M_factor, pinning_tov_phi);
         }
     }
 
