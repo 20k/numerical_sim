@@ -3061,7 +3061,6 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
-    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(ctx, pos, cpu_holes, pinning_tov_phi);
 
     ///https://arxiv.org/pdf/1606.04881.pdf 74
     value phi = BL_s_dyn + u_value;
