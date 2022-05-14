@@ -2890,8 +2890,18 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     value u_value = dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim");
 
     equation_context eqs;
+    equation_context aij_cache;
 
-    auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
+    auto pinning_tov_phi1 = [&](const tensor<value, 3>& world_position)
+    {
+        value v = tov_phi_at_coordinate_general(world_position);
+
+        aij_cache.pin(v);
+
+        return v;
+    };
+
+    auto pinning_tov_phi2 = [&](const tensor<value, 3>& world_position)
     {
         value v = tov_phi_at_coordinate_general(world_position);
 
@@ -2903,7 +2913,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     ///todo when I forget: I'm using the conformal guess here for neutron stars which probably isn't right
     value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
-    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(eqs, pos, cpu_holes, pinning_tov_phi);
+    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(eqs, pos, cpu_holes, pinning_tov_phi1);
     value aij_aIJ_dyn = calculate_aij_aIJ(flat_metric, bcAij_dyn);
 
     ///https://arxiv.org/pdf/1606.04881.pdf 74
@@ -2922,9 +2932,11 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
             p.linear_momentum = obj.momentum;
             p.angular_momentum = obj.angular_momentum;
 
-            ppw2p += neutron_star::calculate_ppw2_p(pos, flat_metricf, p, pinning_tov_phi);
+            ppw2p += neutron_star::calculate_ppw2_p(pos, flat_metricf, p, pinning_tov_phi2);
         }
     }
+
+    value cached_aij_aIJ = bidx("cached_aij_aIJ", false, false);
 
     /*data<value> dat = sample_interior<value>(r, value{param.mass});*/
 
@@ -2947,7 +2959,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     ///https://arxiv.org/pdf/1606.04881.pdf I think I need to do (85)
     ///ok no: I think what it is is that they're solving for ph in ToV, which uses tov's conformally flat variable
     ///whereas I'm getting values directly out of an analytic solution
-    value U_RHS = (-1.f/8.f) * aij_aIJ_dyn * pow(phi, -7) - 2 * M_PI * pow(phi, -3) * ppw2p;
+    value U_RHS = (-1.f/8.f) * cached_aij_aIJ * pow(phi, -7) - 2 * M_PI * pow(phi, -3) * ppw2p;
 
     /*tensor<value, 3> vpos = {cpu_holes[0].position.x(), cpu_holes[0].position.y(), cpu_holes[0].position.z()};
 
@@ -2956,7 +2968,9 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     solve.rhs = U_RHS;
     solve.boundary = 1;
     solve.tov_phi = tov_phi;
+    solve.aij_aIJ = aij_aIJ_dyn;
     solve.ectx = eqs;
+    solve.eaij_aIJ = aij_cache;
 
     return solve;
 }
@@ -3648,6 +3662,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     assert(false);
 }
 
+///todo: merge this into get_initial_conditions
 void setup_static_conditions(cl::context& clctx, cl::command_queue& cqueue, equation_context& ctx, const std::vector<compact_object::data<float>>& holes)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
@@ -3663,22 +3678,8 @@ void setup_static_conditions(cl::context& clctx, cl::command_queue& cqueue, equa
     }
 
     value BL_s = calculate_conformal_guess(pos, holes);
-    tensor<value, 3, 3> bcAij_static = calculate_bcAij_generic(ctx, pos, holes, tov_phi_at_coordinate_general);
-    value aij_aIJ_static = calculate_aij_aIJ(flat_metric, bcAij_static);
 
     ctx.add("init_BL_val", BL_s);
-    ctx.add("init_aij_aIJ", aij_aIJ_static);
-
-    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
-
-    for(int i=0; i < 6; i++)
-    {
-        ctx.add("init_bcA" + std::to_string(i), bcAij_static.idx(linear_indices[i].x(), linear_indices[i].y()));
-    }
-
-    ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 69
-    ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
-    ///phi
 }
 
 ///https://arxiv.org/pdf/gr-qc/0206072.pdf alternative initial conditions

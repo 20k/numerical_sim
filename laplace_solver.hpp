@@ -9,9 +9,11 @@ struct laplace_data
 {
     value boundary;
     value rhs;
+    value aij_aIJ;
     cl::buffer tov_phi;
     std::vector<std::pair<std::string, value>> extras;
     equation_context ectx;
+    equation_context eaij_aIJ;
 
     laplace_data(cl::context& ctx) : tov_phi(ctx){}
 };
