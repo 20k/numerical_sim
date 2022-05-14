@@ -2930,32 +2930,10 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     value cached_aij_aIJ = bidx("cached_aij_aIJ", false, false);
     value cached_ppw2p = bidx("cached_ppw2p", false, false);
 
-    /*data<value> dat = sample_interior<value>(r, value{param.mass});*/
-
-    /*{
-        const compact_object::data<float>& obj = cpu_holes[0];
-
-        neutron_star::params p;
-        p.position = obj.position;
-        p.mass = obj.bare_mass;
-        p.linear_momentum = obj.momentum;
-        p.angular_momentum = obj.angular_momentum;
-
-        neutron_star::data<float> result = neutron_star::sample_interior(0.f, p.mass);
-
-        printf("Dat %f %f %f\n", result.mass_energy_density, result.pressure, result.rest_mass_density);
-    }*/
-
-    //assert(cpu_holes[0].t == compact_object::NEUTRON_STAR);
-
     ///https://arxiv.org/pdf/1606.04881.pdf I think I need to do (85)
     ///ok no: I think what it is is that they're solving for ph in ToV, which uses tov's conformally flat variable
     ///whereas I'm getting values directly out of an analytic solution
     value U_RHS = (-1.f/8.f) * cached_aij_aIJ * pow(phi, -7) - 2 * M_PI * pow(phi, -3) * cached_ppw2p;
-
-    /*tensor<value, 3> vpos = {cpu_holes[0].position.x(), cpu_holes[0].position.y(), cpu_holes[0].position.z()};
-
-    solve.extras.push_back({"debug0", (pos - vpos).length()});*/
 
     solve.rhs = U_RHS;
     solve.boundary = 1;
