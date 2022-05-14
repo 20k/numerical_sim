@@ -2904,7 +2904,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     ///todo when I forget: I'm using the conformal guess here for neutron stars which probably isn't right
     value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
-    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(eqs, pos, cpu_holes, pinning_tov_phi);
+    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(cache, pos, cpu_holes, pinning_tov_phi);
     value aij_aIJ_dyn = calculate_aij_aIJ(flat_metric, bcAij_dyn);
 
     ///https://arxiv.org/pdf/1606.04881.pdf 74
