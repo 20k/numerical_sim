@@ -1567,13 +1567,13 @@ namespace neutron_star
     ///https://arxiv.org/pdf/1606.04881.pdf (43)
     template<typename T>
     inline
-    value calculate_integral_Q(const value& coordinate_radius, const params& p, const value& M_factor, T&& tov_phi_at_coordinate)
+    value calculate_integral_Q(equation_context& ctx, const value& coordinate_radius, const params& p, const value& M_factor, T&& tov_phi_at_coordinate)
     {
         ///currently impossible, but might as well
         if(mass_to_radius(p.mass) == 0)
             return 1;
 
-        auto integral_func = [p, M_factor, tov_phi_at_coordinate](const value& rp)
+        auto integral_func = [&ctx, p, &M_factor, tov_phi_at_coordinate](const value& rp)
         {
             return 4 * M_PI * calculate_sigma(rp, p, M_factor, tov_phi_at_coordinate) * pow(rp, 2.f);
         };
@@ -1588,12 +1588,12 @@ namespace neutron_star
     ///https://arxiv.org/pdf/1606.04881.pdf (45)
     template<typename T>
     inline
-    value calculate_integral_C(const value& coordinate_radius, const params& p, const value& M_factor, T&& tov_phi_at_coordinate)
+    value calculate_integral_C(equation_context& ctx, const value& coordinate_radius, const params& p, const value& M_factor, T&& tov_phi_at_coordinate)
     {
         if(mass_to_radius(p.mass) == 0)
             return 0;
 
-        auto integral_func = [p, M_factor, tov_phi_at_coordinate](const value& rp)
+        auto integral_func = [p, &M_factor, tov_phi_at_coordinate](const value& rp)
         {
             return (2.f/3.f) * M_PI * calculate_sigma(rp, p, M_factor, tov_phi_at_coordinate) * pow(rp, 4.f);
         };
@@ -1637,6 +1637,8 @@ namespace neutron_star
 
         r = max(r, 1e-3f);
 
+        ctx.pin(r);
+
         tensor<value, 3> li = relative_pos / r;
 
         tensor<float, 3> linear_momentum_lower = lower_index(param.linear_momentum, flat);
@@ -1645,8 +1647,8 @@ namespace neutron_star
 
         ctx.pin(M_factor);
 
-        value iQ = calculate_integral_Q(r, param, M_factor, tov_phi_at_coordinate);
-        value iC = calculate_integral_C(r, param, M_factor, tov_phi_at_coordinate);
+        value iQ = calculate_integral_Q(ctx, r, param, M_factor, tov_phi_at_coordinate);
+        value iC = calculate_integral_C(ctx, r, param, M_factor, tov_phi_at_coordinate);
 
         ctx.pin(iQ);
         ctx.pin(iC);
@@ -3552,7 +3554,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data<float> h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.1;
-    h1.momentum = {0, 0.133 * 0.8 * 0, 0};
+    h1.momentum = {0, 0.133 * 0.8 * 0.25, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     compact_object::data<float> h2;
