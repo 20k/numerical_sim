@@ -2157,18 +2157,17 @@ struct matter
         return sum;
     }
 
-    value estar_vi_rhs(equation_context& ctx, const value& gA, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
+    value estar_vi_rhs(equation_context& ctx, const value& gA, const tensor<value, 3>& gB, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
     {
         //#define QUADRATIC_VISCOSITY
         #ifndef QUADRATIC_VISCOSITY
         return 0;
         #endif // QUADRATIC_VISCOSITY
 
-        #if 0
         value e_m6phi = chi_to_e_m6phi(chi);
         value e_6phi = chi_to_e_6phi(chi);
 
-        tensor<value, 3> vk = get_v_upper(icY, gA, chi, W);
+        tensor<value, 3> vk = get_v_upper(icY, gA, gB, chi, W);
 
         value scale = "scale";
 
@@ -2220,7 +2219,6 @@ struct matter
 
         return -degenerate * (PQvis / Gamma) * sum_interior_rhs;
         //return -pow(p0 * eps, -1 + 1/Gamma) * (PQvis / Gamma) * sum_interior_rhs;
-        #endif // 0
     }
 
     tensor<value, 3> cSkvi_rhs(equation_context& ctx, const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const value& P, const value& W)
@@ -3961,7 +3959,7 @@ namespace hydrodynamics
             lhs_dte_star += diff1(ctx, e_star_vi.idx(i), i);
         }
 
-        value rhs_dte_star = args.matt.estar_vi_rhs(ctx, args.gA, icY, args.X, matt.stashed_W);
+        value rhs_dte_star = args.matt.estar_vi_rhs(ctx, args.gA, args.gB, icY, args.X, matt.stashed_W);
 
         /*ctx.add("DBG_RHS_DTESTAR", rhs_dte_star);
 
