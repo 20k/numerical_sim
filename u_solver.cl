@@ -168,31 +168,5 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
     float h2f0 = scale * scale * RHS;
 
-    //float dbg_a0 = debug0;
-
-    /*if(isnan(u_offset_in[IDX(ix,iy,iz)]))
-    {
-        printf("UOFF %f %i %i %i\n", u_offset_in[IDX(ix,iy,iz)], ix, iy, iz);
-    }
-
-    //if(ix == dim.x/2 && iy == dim.y/2 && iz == dim.z/2)
-    {
-        if(isnan(RHS))
-            printf("RHS %f %i %i %i\n", RHS, ix, iy, iz);
-    }*/
-
-    ///107 125 125
-    /*if(ix == 107 && iy == 125 && iz == 125)
-    {
-        printf("RHS %f %f %.24f\n", RHS, u_offset_in[IDX(ix,iy,iz)], dbg_a0);
-    }*/
-
-    /*if((ix == 107 || ix == 106 || ix == 108) && (iy == 125 || iy == 124 || iy == 126) && (iz == 125 || iz == 124 || iz == 126))
-    {
-        float u_in = u_offset_in[IDX(ix,iy,iz)];
-
-        printf("U %f %f %i %i %i\n", RHS, u_in, ix, iy, iz);
-    }*/
-
     laplace_interior(u_offset_in, u_offset_out, h2f0, ix, iy, iz, scale, dim, still_going, etol);
 }
