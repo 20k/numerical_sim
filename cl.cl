@@ -175,8 +175,6 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     float oy = offset.y;
     float oz = offset.z;
 
-    float bl_conformal = init_BL_val;
-
     float TEMPORARIES0;
 
     int index = IDX(ix, iy, iz);

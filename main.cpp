@@ -3633,26 +3633,6 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     assert(false);
 }
 
-///todo: merge this into get_initial_conditions
-void setup_static_conditions(cl::context& clctx, cl::command_queue& cqueue, equation_context& ctx, const std::vector<compact_object::data<float>>& holes)
-{
-    tensor<value, 3> pos = {"ox", "oy", "oz"};
-
-    metric<value, 3, 3> flat_metric;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            flat_metric.idx(i, j) = (i == j) ? 1 : 0;
-        }
-    }
-
-    value BL_s = calculate_conformal_guess(pos, holes);
-
-    ctx.add("init_BL_val", BL_s);
-}
-
 ///https://arxiv.org/pdf/gr-qc/0206072.pdf alternative initial conditions
 ///https://cds.cern.ch/record/337814/files/9711015.pdf
 ///https://cds.cern.ch/record/517706/files/0106072.pdf this paper has a lot of good info on soaking up boundary conditions
@@ -3666,7 +3646,7 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
-    value bl_conformal = "bl_conformal";
+    value bl_conformal = calculate_conformal_guess(pos, holes);
     value u = dual_types::apply("buffer_index", "u_value", "ix", "iy", "iz", "dim");
 
     tensor<value, 3, 3> bcAij = calculate_bcAij_generic(ctx, pos, holes, tov_phi_at_coordinate_general);
@@ -6500,8 +6480,6 @@ int main()
     }
 
     equation_context setup_static;
-
-    setup_static_conditions(clctx.ctx, clctx.cqueue, setup_static, holes.objs);
 
     cl::buffer u_arg(clctx.ctx);
     cl::buffer tov_phi(clctx.ctx);
