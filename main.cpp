@@ -2021,7 +2021,7 @@ struct matter
     ///and w = p* a u0 not a u0
     tensor<value, 3> get_v_upper(const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const value& W)
     {
-        #define V_UPPER_PRIMARY
+        //#define V_UPPER_PRIMARY
         #ifdef V_UPPER_PRIMARY
         value u0 = divide_with_limit(W, (p_star * gA), 0, DIVISION_TOL);
 
@@ -2040,9 +2040,8 @@ struct matter
         return clamped;
         #endif // V_UPPER_PRIMARY
 
+        #define V_UPPER_ALT
         #ifdef V_UPPER_ALT
-        value e_m6phi = chi_to_e_m6phi(chi);
-
         value h = calculate_h_with_gamma_eos(chi, W);
 
         tensor<value, 3> ret = -gB;
@@ -2053,7 +2052,7 @@ struct matter
 
             for(int j=0; j < 3; j++)
             {
-                sum += divide_with_limit(gA * icY.idx(i, j) * cS.idx(j) * e_m6phi, W * h, 0.f, DIVISION_TOL);
+                sum += divide_with_limit(gA * icY.idx(i, j) * cS.idx(j) * chi, W * h, 0.f, DIVISION_TOL);
             }
 
             ret.idx(i) += sum;
@@ -2109,7 +2108,7 @@ struct matter
 
     tensor<value, 3> calculate_adm_Si(const value& chi)
     {
-        value em6phi = chi_to_e_m6phi_unclamped(chi);
+        value em6phi = chi_to_e_m6phi(chi);
 
         return cS * em6phi;
     }
@@ -3553,13 +3552,13 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data<float> h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.1;
-    h1.momentum = {0, 0.133 * 0.8 * 0.3, 0};
+    h1.momentum = {0, 0.133 * 0.8 * 0.2, 0};
     h1.position = {-4.257, 0.f, 0.f};
 
     compact_object::data<float> h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.3;
-    h2.momentum = {0, -0.133 * 0.8 * 0.025, 0};
+    h2.momentum = {0, -0.133 * 0.8 * 0.045, 0};
     h2.position = {2.257, 0.f, 0.f};
 
     objects.push_back(h1);
@@ -4968,8 +4967,8 @@ void build_cGi(equation_context& ctx, bool use_matter)
             return dual_if(in >= 0,
             [](){return 1;},
             [](){return 0;});
-        };
 
+        };
         value bkk = 0;
 
         for(int k=0; k < 3; k++)
