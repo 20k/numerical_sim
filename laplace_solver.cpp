@@ -22,7 +22,7 @@ void check_symmetry(const std::string& debug_name, cl::kernel& kern, cl::command
     #endif // CHECK_SYMMETRY
 }
 
-cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& setup, cl::kernel& iterate, cl::buffer& tov_phi, cl::buffer& cached_aij_aIJ, cl::buffer& cached_ppw2p,
+cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& setup, cl::kernel& iterate, cl::buffer& cached_aij_aIJ, cl::buffer& cached_ppw2p,
                        vec<4, cl_int> base_size, float c_at_max, int scale_factor, std::optional<cl::buffer> base, cl_float etol)
 {
     vec<4, cl_int> reduced_clsize = ((base_size - 1) / scale_factor) + 1;
@@ -82,7 +82,6 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& 
         cl::args iterate_u_args;
         iterate_u_args.push_back(reduced_u_args[which_reduced]);
         iterate_u_args.push_back(reduced_u_args[(which_reduced + 1) % 2]);
-        iterate_u_args.push_back(tov_phi);
         iterate_u_args.push_back(cached_aij_aIJ);
         iterate_u_args.push_back(cached_ppw2p);
         iterate_u_args.push_back(local_scale);
@@ -204,14 +203,10 @@ cl::buffer extract_u_region(cl::context& ctx, cl::command_queue& cqueue, cl::ker
 cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, laplace_data& data, float scale, vec3i dim, float err)
 {
     equation_context ctx = data.ectx;
-    equation_context ctx2 = data.ecache;
 
     ctx.add("U_BASE", dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim"));
     ctx.add("U_RHS", data.rhs);
     ctx.add("U_BOUNDARY", data.boundary);
-
-    ctx2.add("init_aij_aIJ", data.aij_aIJ);
-    ctx2.add("init_ppw2p", data.ppw2p);
 
     for(const auto& [name, what] : data.extras)
     {
@@ -221,7 +216,6 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, laplace
     std::string local_build_str = "-I ./ -O3 -cl-std=CL2.0 ";
 
     ctx.build(local_build_str, "laplacesolve");
-    ctx2.build(local_build_str, "cachedvariables");
 
     cl::program u_program(clctx, "u_solver.cl");
     u_program.build(clctx, local_build_str);
@@ -230,36 +224,18 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, laplace
     cl::kernel iterate(u_program, "iterative_u_solve");
     cl::kernel extract(u_program, "extract_u_region");
     cl::kernel upscale(u_program, "upscale_u");
-    cl::kernel calculate_cached_variables(u_program, "calculate_cached_variables");
 
     vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
 
-    cl::buffer cached_aij_aIJ(clctx);
-    cl::buffer cached_ppw2p(clctx);
+    printf("hello %i\n", data.aij_aIJ.alloc_size);
 
-    {
-        cached_aij_aIJ.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
-        cached_aij_aIJ.set_to_zero(cqueue);
-
-        cached_ppw2p.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
-        cached_ppw2p.set_to_zero(cqueue);
-
-        cl::args cached;
-        cached.push_back(cached_aij_aIJ);
-        cached.push_back(cached_ppw2p);
-        cached.push_back(data.tov_phi);
-        cached.push_back(scale);
-        cached.push_back(clsize);
-
-        calculate_cached_variables.set_args(cached);
-
-        cqueue.exec(calculate_cached_variables, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
-    }
+    cl::buffer cached_aij_aIJ = data.aij_aIJ;
+    cl::buffer cached_ppw2p = data.ppw2p;
 
     float c_at_max = scale * dim.largest_elem();
 
     ///todo: use iterate
-    return solve_for_u(clctx, cqueue, setup, iterate, data.tov_phi, cached_aij_aIJ, cached_ppw2p, clsize, c_at_max, 1, std::nullopt, err);
+    return solve_for_u(clctx, cqueue, setup, iterate, cached_aij_aIJ, cached_ppw2p, clsize, c_at_max, 1, std::nullopt, err);
 
     //return iterate_u(clctx, cqueue, setup, iterate, extract, dim, c_at_max, err);
 }
@@ -557,4 +533,34 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
     ret.phi = phi;
 
     return ret;
+}
+
+void update_cached_variables(cl::context& clctx, cl::command_queue& cqueue, equation_context& cache, cl::buffer& tov_phi, cl::buffer& accum_aij_aIJ, cl::buffer& accum_ppw2p, const value& aij_aIJ, const value& ppw2p, float scale, vec3i dim)
+{
+    vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
+
+    std::string local_build_str = "-I ./ -O3 -cl-std=CL2.0 -cl-finite-math-only ";
+
+    cache.add("D_AIJ_AIJ", aij_aIJ);
+    cache.add("D_PPW2P", ppw2p);
+
+    cache.build(local_build_str, "accum");
+
+    cl::program program(clctx, "accum_cached_variables.cl");
+    program.build(clctx, local_build_str);
+
+    cl::kernel kern(program, "accum");
+
+    cl::args accum;
+    accum.push_back(tov_phi);
+    accum.push_back(accum_aij_aIJ);
+    accum.push_back(accum_ppw2p);
+    accum.push_back(scale);
+    accum.push_back(clsize);
+
+    kern.set_args(accum);
+
+    cqueue.exec(kern, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
+
+    printf("Postaccum\n");
 }

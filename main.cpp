@@ -2867,10 +2867,8 @@ value tov_phi_at_coordinate_general(const tensor<value, 3>& world_position)
     //return dual_types::apply("tov_phi", as_float3(vx, vy, vz), "dim");
 }
 
-laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_object::data<float>>& cpu_holes, cl::buffer& tov_phi)
+laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_object::data<float>>& cpu_holes, cl::buffer& aij_aIJ_buf, cl::buffer& ppw2p_buf)
 {
-    laplace_data solve(clctx);
-
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
     ///TODO: FIXME
@@ -2889,42 +2887,13 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     value u_value = dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim");
 
     equation_context eqs;
-    equation_context cache;
-
-    auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
-    {
-        value v = tov_phi_at_coordinate_general(world_position);
-
-        cache.pin(v);
-
-        return v;
-    };
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     ///todo when I forget: I'm using the conformal guess here for neutron stars which probably isn't right
     value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
-    tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(cache, pos, cpu_holes, pinning_tov_phi);
-    value aij_aIJ_dyn = calculate_aij_aIJ(flat_metric, bcAij_dyn);
 
     ///https://arxiv.org/pdf/1606.04881.pdf 74
     value phi = BL_s_dyn + u_value;
-
-    value ppw2p = 0;
-
-    for(const compact_object::data<float>& obj : cpu_holes)
-    {
-        if(obj.t == compact_object::NEUTRON_STAR)
-        {
-            ///todo: remove the duplication?
-            neutron_star::params p;
-            p.position = obj.position;
-            p.mass = obj.bare_mass;
-            p.linear_momentum = obj.momentum;
-            p.angular_momentum = obj.angular_momentum;
-
-            ppw2p += neutron_star::calculate_ppw2_p(pos, flat_metricf, p, pinning_tov_phi);
-        }
-    }
 
     value cached_aij_aIJ = bidx("cached_aij_aIJ", false, false);
     value cached_ppw2p = bidx("cached_ppw2p", false, false);
@@ -2934,17 +2903,16 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     ///whereas I'm getting values directly out of an analytic solution
     value U_RHS = (-1.f/8.f) * cached_aij_aIJ * pow(phi, -7) - 2 * M_PI * pow(phi, -3) * cached_ppw2p;
 
+    laplace_data solve(aij_aIJ_buf, ppw2p_buf);
+
     solve.rhs = U_RHS;
     solve.boundary = 1;
-    solve.tov_phi = tov_phi;
-    solve.aij_aIJ = aij_aIJ_dyn;
-    solve.ppw2p = ppw2p;
     solve.ectx = eqs;
-    solve.ecache = cache;
 
     return solve;
 }
 
+#if 0
 tov_input setup_tov_solver(cl::context& clctx, const std::vector<compact_object::data<float>>& objs)
 {
     tov_input ret;
@@ -2995,6 +2963,99 @@ tov_input setup_tov_solver(cl::context& clctx, const std::vector<compact_object:
     ret.extras.push_back({"DBG_RHO", rho});
 
     return ret;
+}
+#endif // 0
+
+std::pair<cl::buffer, cl::buffer> tov_solve_for_cached_variables(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data<float>>& objs, float scale, vec3i dim)
+{
+    cl::buffer aij_aIJ(clctx);
+    aij_aIJ.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+    aij_aIJ.fill(cqueue, cl_float{0.f});
+
+    cl::buffer ppw2p(clctx);
+    ppw2p.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+    ppw2p.fill(cqueue, cl_float{0.f});
+
+    metric<value, 3, 3> flat_metric;
+    metric<float, 3, 3> flat_metricf;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            flat_metric.idx(i, j) = (i == j) ? 1 : 0;
+            flat_metricf.idx(i, j) = (i == j) ? 1 : 0;
+        }
+    }
+
+    for(const compact_object::data<float>& obj : objs)
+    {
+        if(obj.t != compact_object::NEUTRON_STAR)
+            continue;
+
+        tov_input input;
+
+        tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+        value u_value = dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim");
+
+        ///https://arxiv.org/pdf/1606.04881.pdf 74
+        value phi = u_value;
+
+        tensor<value, 3> vposition = {obj.position.x(), obj.position.y(), obj.position.z()};
+
+        tensor<value, 3> from_object = pos - vposition;
+
+        value coordinate_radius = from_object.length();
+
+        float radius = neutron_star::mass_to_radius(obj.bare_mass);
+
+        neutron_star::data<value> dat = neutron_star::sample_interior(coordinate_radius, value{obj.bare_mass});
+
+        value rho = dat.mass_energy_density;
+
+        value cst =  1 + obj.bare_mass / (2 * max(coordinate_radius, 1e-3f));
+
+        value integration_constant = if_v(coordinate_radius > radius, cst, 0);
+        value within_star = if_v(coordinate_radius <= radius, value{1.f}, value{0.f});
+
+        input.extras.push_back({"SHOULD_NOT_USE_INTEGRATION_CONSTANT", within_star});
+        input.extras.push_back({"INTEGRATION_CONSTANT", integration_constant});
+
+        value rhs_phi = -2 * M_PI * pow(phi, 5) * rho;
+
+        input.phi_rhs = rhs_phi;
+        input.u_to_phi = phi;
+
+        input.extras.push_back({"DBG_RHO", rho});
+
+        tov_solver solved = tov_solve(clctx, cqueue, input, scale, dim);
+
+        equation_context cache;
+
+        auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
+        {
+            value v = tov_phi_at_coordinate_general(world_position);
+            cache.pin(v);
+            return v;
+        };
+
+        tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(cache, pos, std::vector{obj}, pinning_tov_phi);
+        value aij_aIJ_equation = calculate_aij_aIJ(flat_metric, bcAij_dyn);
+
+        ///todo: remove the duplication?
+        neutron_star::params p;
+        p.position = obj.position;
+        p.mass = obj.bare_mass;
+        p.linear_momentum = obj.momentum;
+        p.angular_momentum = obj.angular_momentum;
+
+        value ppw2p_equation = neutron_star::calculate_ppw2_p(pos, flat_metricf, p, pinning_tov_phi);
+
+        update_cached_variables(clctx, cqueue, cache, solved.phi, aij_aIJ, ppw2p, aij_aIJ_equation, ppw2p_equation, scale, dim);
+    }
+
+    return {aij_aIJ, ppw2p};
 }
 
 void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<compact_object::data<float>>& cpu_holes)
@@ -3548,7 +3609,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     h2.position = {3.257, 0.f, 0.f};
 
     objects.push_back(h1);
-    objects.push_back(h2);
+    //objects.push_back(h2);
     #endif // PAPER_0610128
 
     return get_bare_initial_conditions(clctx, cqueue, scale, objects);
@@ -6476,21 +6537,22 @@ int main()
 
     evolution_points evolve_points = generate_evolution_points(clctx.ctx, clctx.cqueue, scale, size);
 
-    tov_input tov_soln = setup_tov_solver(clctx.ctx, holes.objs);
 
     //sandwich_result sandwich(clctx.ctx);
 
-    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes, &tov_phi, &tov_soln]()
+    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes, &tov_phi]()
     {
         cl::command_queue cqueue(clctx.ctx);
 
+        auto [cached_aij_aIJ, cached_ppw2p] = tov_solve_for_cached_variables(clctx.ctx, cqueue, holes.objs, scale, size);
+
         //sandwich = setup_sandwich_laplace(clctx.ctx, clctx.cqueue, holes.holes, scale, size);
 
-        tov_solver tov_result = tov_solve(clctx.ctx, cqueue, tov_soln, scale, size, 0.0001f);
+        /*tov_solver tov_result = tov_solve(clctx.ctx, cqueue, tov_soln, scale, size, 0.0001f);
 
-        tov_phi = std::move(tov_result.phi);
+        tov_phi = std::move(tov_result.phi);*/
 
-        laplace_data solve = setup_u_laplace(clctx.ctx, holes.objs, tov_phi);
+        laplace_data solve = setup_u_laplace(clctx.ctx, holes.objs, cached_aij_aIJ, cached_ppw2p);
         u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.0001f);
 
         cqueue.block();

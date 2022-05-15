@@ -9,14 +9,12 @@ struct laplace_data
 {
     value boundary;
     value rhs;
-    value aij_aIJ;
-    value ppw2p;
-    cl::buffer tov_phi;
+    cl::buffer aij_aIJ;
+    cl::buffer ppw2p;
     std::vector<std::pair<std::string, value>> extras;
     equation_context ectx;
-    equation_context ecache;
 
-    laplace_data(cl::context& ctx) : tov_phi(ctx){}
+    laplace_data(cl::buffer& in_aij_aIJ, cl::buffer& in_ppw2p) : aij_aIJ(in_aij_aIJ), ppw2p(in_ppw2p){}
 };
 
 cl::buffer laplace_solver(cl::context& clcltx, cl::command_queue& cqueue, laplace_data& data, float scale, vec3i dim, float err = 0.0001f);
@@ -63,5 +61,7 @@ struct tov_solver
 };
 
 tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_input& solve, float scale, vec3i dim, float err = 0.0001f);
+
+void update_cached_variables(cl::context& clctx, cl::command_queue& cqueue, equation_context& cache, cl::buffer& tov_phi, cl::buffer& accum_aij_aIJ, cl::buffer& accum_ppw2p, const value& aij_aIJ, const value& ppw2p, float scale, vec3i dim);
 
 #endif // LAPLACE_SOLVER_HPP_INCLUDED
