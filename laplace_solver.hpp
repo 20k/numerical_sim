@@ -50,7 +50,6 @@ sandwich_result sandwich_solver(cl::context& clcltx, cl::command_queue& cqueue, 
 
 struct tov_input
 {
-    value gA_phi_rhs;
     value phi_rhs;
     value u_to_phi;
     std::vector<std::pair<std::string, value>> extras;

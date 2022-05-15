@@ -448,7 +448,6 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
 {
     equation_context ctx;
 
-    ctx.add("B_gA_PHI_RHS", solve.gA_phi_rhs);
     ctx.add("B_PHI_RHS", solve.phi_rhs);
     ctx.add("B_U_TO_PHI", solve.u_to_phi);
 
@@ -469,7 +468,6 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
     t_program.build(clctx, local_build_str);
 
     cl::kernel iterate_phi(t_program, "simple_tov_solver_phi");
-    //cl::kernel iterate_gA_phi(t_program, "simple_tov_solver_gA_phi");
     cl::kernel generate_order(t_program, "generate_order");
     cl::kernel u_to_phi(t_program, "tov_u_to_phi");
 
@@ -490,18 +488,15 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
     }
 
     std::array<cl::buffer, 2> u_offset{clctx, clctx};
-    std::array<cl::buffer, 2> gA_phi{clctx, clctx};
     int which_data = 0;
 
     for(int i=0; i < 2; i++)
     {
         u_offset[i].alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
-        gA_phi[i].alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
 
         cl_float boundary = 1;
 
         u_offset[i].fill(cqueue, boundary);
-        gA_phi[i].fill(cqueue, boundary);
     }
 
     std::array<cl::buffer, 2> still_going{clctx, clctx};
