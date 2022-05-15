@@ -1354,6 +1354,17 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
         fin_cS2 = 0;
     }
 
+    ///this *does* seem to help
+    /*if(X[index] < 0.2)
+    {
+        fin_p_star = 0;
+        fin_e_star = 0;
+
+        fin_cS0 = 0;
+        fin_cS1 = 0;
+        fin_cS2 = 0;
+    }*/
+
     oDp_star[index] = fin_p_star;
     oDe_star[index] = fin_e_star;
 
