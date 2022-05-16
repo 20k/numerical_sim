@@ -3085,6 +3085,8 @@ std::tuple<cl::buffer, cl::buffer, std::array<cl::buffer, 6>, cl::buffer> tov_so
 
             ppw2p_equation = 0;
             superimposed_tov_phi_eq = 0;
+
+            current_phi = dummy_tov_phi;
         }
 
         vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
@@ -3110,6 +3112,8 @@ std::tuple<cl::buffer, cl::buffer, std::array<cl::buffer, 6>, cl::buffer> tov_so
 
             args.bcAij_eq[i] = bcAij_dyn.idx(loc.x(), loc.y());
         }
+
+        args.superimposed_tov_phi = superimposed_tov_phi;
 
         update_cached_variables(clctx, cqueue, cache, args, scale, dim);
     }
