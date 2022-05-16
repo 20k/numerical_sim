@@ -3054,7 +3054,7 @@ std::tuple<cl::buffer, cl::buffer, std::array<cl::buffer, 6>, cl::buffer> tov_so
 
             input.extras.push_back({"DBG_RHO", rho});
 
-            tov_solver solved = tov_solve(clctx, cqueue, input, scale, dim);
+            tov_solver solved = tov_solve(clctx, cqueue, input, scale, dim, 0.000001f);
 
             auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
             {

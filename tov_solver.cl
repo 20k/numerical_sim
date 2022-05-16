@@ -41,11 +41,6 @@ void simple_tov_solver_phi(__global float* u_offset_in,
         laplace_interior(u_offset_in, u_offset_out, scale * scale * PHI_RHS, ix, iy, iz, scale, dim, still_going, etol);
     }
 
-    /*if(ix == 98 && iy == 125 && iz == 125)
-    {
-        printf("Hellothere2 %f\n", u_offset_out[IDX(ix,iy,iz)]);
-    }*/
-
     /*if((ix == 97 || ix == 100 || ix == 102 || ix == 120 || ix == 160) && iy == dim.y/2 && iz == dim.z/2)
     {
         float rho = DBG_RHO;
