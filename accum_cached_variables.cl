@@ -45,6 +45,9 @@ void accum(__global float* tov_phi, __global float* aij_aIJ, __global float* ppw
     bcAij4[IDX(ix,iy,iz)] += out_bcAij4;
     bcAij5[IDX(ix,iy,iz)] += out_bcAij5;
 
-    superimposed_tov_phi[IDX(ix,iy,iz)] += D_TOV_PHI;
+    float super_tov_phi = D_TOV_PHI;
+
+    if(super_tov_phi != 0)
+        superimposed_tov_phi[IDX(ix,iy,iz)] = super_tov_phi;
 }
 
