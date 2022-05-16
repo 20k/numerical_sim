@@ -1680,10 +1680,10 @@ namespace neutron_star
                 value p4 = (flat.idx(i, j) - 5 * li.idx(i) * li.idx(j)) * pklk;
 
                 aIJ.idx(i, j) = coeff1 * (p1 - p2) + coeff2 * (p3 + p4);
-
-                ctx.pin(aIJ.idx(i, j));
             }
         }
+
+        ctx.pin(aIJ);
 
         return aIJ;
     }
