@@ -2988,6 +2988,10 @@ std::tuple<cl::buffer, cl::buffer, std::array<cl::buffer, 6>, cl::buffer> tov_so
         bcAij[i].fill(cqueue, cl_float{0.f});
     }
 
+    cl::buffer dummy_tov_phi(clctx);
+    dummy_tov_phi.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+    dummy_tov_phi.set_to_zero(cqueue);
+
     metric<value, 3, 3> flat_metric;
     metric<float, 3, 3> flat_metricf;
 
@@ -3003,75 +3007,91 @@ std::tuple<cl::buffer, cl::buffer, std::array<cl::buffer, 6>, cl::buffer> tov_so
     ///todo: Need to solve aij_aIJ for black holes in here too!
     for(const compact_object::data<float>& obj : objs)
     {
-        if(obj.t != compact_object::NEUTRON_STAR)
-            continue;
+        cl::buffer current_phi = superimposed_tov_phi;
 
-        tov_input input;
+        value aij_aIJ_equation;
+        value ppw2p_equation;
+        value superimposed_tov_phi_eq;
+        tensor<value, 3, 3> bcAij_dyn;
 
         tensor<value, 3> pos = {"ox", "oy", "oz"};
 
-        value u_value = dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim");
-
-        ///https://arxiv.org/pdf/1606.04881.pdf 74
-        value phi = u_value;
-
-        tensor<value, 3> vposition = {obj.position.x(), obj.position.y(), obj.position.z()};
-
-        tensor<value, 3> from_object = pos - vposition;
-
-        value coordinate_radius = from_object.length();
-
-        float radius = neutron_star::mass_to_radius(obj.bare_mass);
-
-        neutron_star::data<value> dat = neutron_star::sample_interior(coordinate_radius, value{obj.bare_mass});
-
-        value rho = dat.mass_energy_density;
-
-        value cst =  1 + obj.bare_mass / (2 * max(coordinate_radius, 1e-3f));
-
-        value integration_constant = if_v(coordinate_radius > radius, cst, 0);
-        value within_star = if_v(coordinate_radius <= radius, value{1.f}, value{0.f});
-
-        input.extras.push_back({"SHOULD_NOT_USE_INTEGRATION_CONSTANT", within_star});
-        input.extras.push_back({"INTEGRATION_CONSTANT", integration_constant});
-
-        value rhs_phi = -2 * M_PI * pow(phi, 5) * rho;
-
-        input.phi_rhs = rhs_phi;
-        input.u_to_phi = phi;
-
-        input.extras.push_back({"DBG_RHO", rho});
-
-        tov_solver solved = tov_solve(clctx, cqueue, input, scale, dim);
-
         equation_context cache;
 
-        auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
+        if(obj.t == compact_object::NEUTRON_STAR)
         {
-            value v = tov_phi_at_coordinate_general(world_position);
-            cache.pin(v);
-            return v;
-        };
+            tov_input input;
 
-        tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(cache, pos, std::vector{obj}, pinning_tov_phi);
-        value aij_aIJ_equation = calculate_aij_aIJ(flat_metric, bcAij_dyn);
+            value u_value = dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim");
 
-        ///todo: remove the duplication?
-        neutron_star::params p;
-        p.position = obj.position;
-        p.mass = obj.bare_mass;
-        p.linear_momentum = obj.momentum;
-        p.angular_momentum = obj.angular_momentum;
+            ///https://arxiv.org/pdf/1606.04881.pdf 74
+            value phi = u_value;
 
-        value ppw2p_equation = neutron_star::calculate_ppw2_p(pos, flat_metricf, p, pinning_tov_phi);
+            tensor<value, 3> vposition = {obj.position.x(), obj.position.y(), obj.position.z()};
 
-        value superimposed_tov_phi_eq = dual_types::if_v(coordinate_radius <= radius, pinning_tov_phi(vposition), 0.f);
+            tensor<value, 3> from_object = pos - vposition;
+
+            value coordinate_radius = from_object.length();
+
+            float radius = neutron_star::mass_to_radius(obj.bare_mass);
+
+            neutron_star::data<value> dat = neutron_star::sample_interior(coordinate_radius, value{obj.bare_mass});
+
+            value rho = dat.mass_energy_density;
+
+            value cst =  1 + obj.bare_mass / (2 * max(coordinate_radius, 1e-3f));
+
+            value integration_constant = if_v(coordinate_radius > radius, cst, 0);
+            value within_star = if_v(coordinate_radius <= radius, value{1.f}, value{0.f});
+
+            input.extras.push_back({"SHOULD_NOT_USE_INTEGRATION_CONSTANT", within_star});
+            input.extras.push_back({"INTEGRATION_CONSTANT", integration_constant});
+
+            value rhs_phi = -2 * M_PI * pow(phi, 5) * rho;
+
+            input.phi_rhs = rhs_phi;
+            input.u_to_phi = phi;
+
+            input.extras.push_back({"DBG_RHO", rho});
+
+            tov_solver solved = tov_solve(clctx, cqueue, input, scale, dim);
+
+            auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
+            {
+                value v = tov_phi_at_coordinate_general(world_position);
+                cache.pin(v);
+                return v;
+            };
+
+            bcAij_dyn = calculate_bcAij_generic(cache, pos, std::vector{obj}, pinning_tov_phi);
+            aij_aIJ_equation = calculate_aij_aIJ(flat_metric, bcAij_dyn);
+
+            ///todo: remove the duplication?
+            neutron_star::params p;
+            p.position = obj.position;
+            p.mass = obj.bare_mass;
+            p.linear_momentum = obj.momentum;
+            p.angular_momentum = obj.angular_momentum;
+
+            ppw2p_equation = neutron_star::calculate_ppw2_p(pos, flat_metricf, p, pinning_tov_phi);
+            superimposed_tov_phi_eq = dual_types::if_v(coordinate_radius <= radius, pinning_tov_phi(vposition), 0.f);
+
+            current_phi = solved.phi;
+        }
+        else
+        {
+            bcAij_dyn = calculate_bcAij_generic(cache, pos, std::vector{obj}, [](auto& in){assert(false); return value(0.f);});
+            aij_aIJ_equation = calculate_aij_aIJ(flat_metric, bcAij_dyn);
+
+            ppw2p_equation = 0;
+            superimposed_tov_phi_eq = 0;
+        }
 
         vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
         cache_args args(clctx);
 
-        args.tov_phi = solved.phi;
+        args.tov_phi = current_phi;
         args.aij_aIJ = aij_aIJ;
         args.ppw2p = ppw2p;
 
@@ -3637,14 +3657,14 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data<float> h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.1;
-    h1.momentum = {0, 0.133 * 0.8 * 0.05, 0};
-    h1.position = {-3.257, 0.f, 0.f};
+    h1.momentum = {0, 0.133 * 0.8 * 0.045, 0};
+    h1.position = {-4.257, 0.f, 0.f};
 
     compact_object::data<float> h2;
-    h2.t = compact_object::NEUTRON_STAR;
-    h2.bare_mass = 0.1;
-    h2.momentum = {0, -0.133 * 0.8 * 0.05, 0};
-    h2.position = {3.257, 0.f, 0.f};
+    h2.t = compact_object::BLACK_HOLE;
+    h2.bare_mass = 0.3;
+    h2.momentum = {0, -0.133 * 0.8 * 0.045, 0};
+    h2.position = {4.257, 0.f, 0.f};
 
     objects.push_back(h1);
     objects.push_back(h2);
