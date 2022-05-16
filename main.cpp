@@ -3661,14 +3661,14 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data<float> h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.1;
-    h1.momentum = {0, 0.133 * 0.8 * 0.2, 0};
+    h1.momentum = {0, 0.133 * 0.8 * 0.1, 0};
     h1.position = {-4.257, 0.f, 0.f};
 
     compact_object::data<float> h2;
-    h2.t = compact_object::BLACK_HOLE;
-    h2.bare_mass = 0.3;
-    h2.momentum = {0, -0.133 * 0.8 * 0.045, 0};
-    h2.position = {2.257, 0.f, 0.f};
+    h2.t = compact_object::NEUTRON_STAR;
+    h2.bare_mass = 0.1;
+    h2.momentum = {0, -0.133 * 0.8 * 0.1, 0};
+    h2.position = {4.257, 0.f, 0.f};
 
     objects.push_back(h1);
     objects.push_back(h2);
@@ -6629,7 +6629,7 @@ int main()
         std::tie(cached_aij_aIJ, cached_ppw2p, bcAij, superimposed_tov_phi) = tov_solve_for_cached_variables(clctx.ctx, cqueue, holes.objs, scale, size);
 
         laplace_data solve = setup_u_laplace(clctx.ctx, holes.objs, cached_aij_aIJ, cached_ppw2p);
-        u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.00001f);
+        u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.000001f);
 
         cqueue.block();
     };
