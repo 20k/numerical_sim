@@ -47,6 +47,11 @@ void accum(__global float* tov_phi, __global float* aij_aIJ, __global float* ppw
 
     float super_tov_phi = D_TOV_PHI;
 
+    /*if(ix == 98 && iy == 125 && iz == 125)
+    {
+        printf("Hello %f\n", super_tov_phi);
+    }*/
+
     if(super_tov_phi != 0)
         superimposed_tov_phi[IDX(ix,iy,iz)] = super_tov_phi;
 }

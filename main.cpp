@@ -3074,7 +3074,7 @@ std::tuple<cl::buffer, cl::buffer, std::array<cl::buffer, 6>, cl::buffer> tov_so
             p.angular_momentum = obj.angular_momentum;
 
             ppw2p_equation = neutron_star::calculate_ppw2_p(pos, flat_metricf, p, pinning_tov_phi);
-            superimposed_tov_phi_eq = dual_types::if_v(coordinate_radius <= radius, pinning_tov_phi(vposition), 0.f);
+            superimposed_tov_phi_eq = dual_types::if_v(coordinate_radius <= radius, pinning_tov_phi(pos), 0.f);
 
             current_phi = solved.phi;
         }
