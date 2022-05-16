@@ -295,7 +295,7 @@ buffer_set& cpu_mesh::get_scratch(int which)
     return scratch;
 }
 
-void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, cl::buffer& tov_phi)
+void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, std::array<cl::buffer, 6>& bcAij, cl::buffer& superimposed_tov_phi)
 {
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
@@ -308,7 +308,12 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, cl::buffer& to
         }
 
         init.push_back(u_arg);
-        init.push_back(tov_phi);
+
+        for(int i = 0; i < (int)bcAij.size(); i++)
+        {
+            init.push_back(bcAij[i]);
+        }
+
         init.push_back(scale);
         init.push_back(clsize);
 
@@ -325,7 +330,7 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, cl::buffer& to
         }
 
         hydro_init.push_back(u_arg);
-        hydro_init.push_back(tov_phi);
+        hydro_init.push_back(superimposed_tov_phi);
         hydro_init.push_back(scale);
         hydro_init.push_back(clsize);
 

@@ -159,7 +159,12 @@ float get_distance(int x1, int y1, int z1, int x2, int y2, int z2, int4 dim, flo
 __kernel
 void calculate_initial_conditions(STANDARD_ARGS(),
                                   __global float* u_value,
-                                  __global float* tov_phi,
+                                  __global float* bcAij0,
+                                  __global float* bcAij1,
+                                  __global float* bcAij2,
+                                  __global float* bcAij3,
+                                  __global float* bcAij4,
+                                  __global float* bcAij5,
                                   float scale, int4 dim)
 {
     int ix = get_global_id(0);

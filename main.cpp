@@ -2966,7 +2966,7 @@ tov_input setup_tov_solver(cl::context& clctx, const std::vector<compact_object:
 }
 #endif // 0
 
-std::pair<cl::buffer, cl::buffer> tov_solve_for_cached_variables(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data<float>>& objs, float scale, vec3i dim)
+std::tuple<cl::buffer, cl::buffer, std::array<cl::buffer, 6>, cl::buffer> tov_solve_for_cached_variables(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data<float>>& objs, float scale, vec3i dim)
 {
     cl::buffer aij_aIJ(clctx);
     aij_aIJ.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
@@ -2975,6 +2975,18 @@ std::pair<cl::buffer, cl::buffer> tov_solve_for_cached_variables(cl::context& cl
     cl::buffer ppw2p(clctx);
     ppw2p.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
     ppw2p.fill(cqueue, cl_float{0.f});
+
+    std::array<cl::buffer, 6> bcAij{clctx, clctx, clctx, clctx, clctx, clctx};
+
+    cl::buffer superimposed_tov_phi(clctx);
+    superimposed_tov_phi.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+    superimposed_tov_phi.fill(cqueue, cl_float{1.f});
+
+    for(int i=0; i < (int)bcAij.size(); i++)
+    {
+        bcAij[i].alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+        bcAij[i].fill(cqueue, cl_float{0.f});
+    }
 
     metric<value, 3, 3> flat_metric;
     metric<float, 3, 3> flat_metricf;
@@ -2988,6 +3000,7 @@ std::pair<cl::buffer, cl::buffer> tov_solve_for_cached_variables(cl::context& cl
         }
     }
 
+    ///todo: Need to solve aij_aIJ for black holes in here too!
     for(const compact_object::data<float>& obj : objs)
     {
         if(obj.t != compact_object::NEUTRON_STAR)
@@ -3052,10 +3065,36 @@ std::pair<cl::buffer, cl::buffer> tov_solve_for_cached_variables(cl::context& cl
 
         value ppw2p_equation = neutron_star::calculate_ppw2_p(pos, flat_metricf, p, pinning_tov_phi);
 
-        update_cached_variables(clctx, cqueue, cache, solved.phi, aij_aIJ, ppw2p, aij_aIJ_equation, ppw2p_equation, scale, dim);
+        value superimposed_tov_phi_eq = dual_types::if_v(coordinate_radius <= radius, pinning_tov_phi(vposition), 0.f);
+
+        vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
+
+        cache_args args(clctx);
+
+        args.tov_phi = solved.phi;
+        args.aij_aIJ = aij_aIJ;
+        args.ppw2p = ppw2p;
+
+        for(int i=0; i < (int)bcAij.size(); i++)
+        {
+            args.bcAij[i] = bcAij[i];
+        }
+
+        args.aij_aIJ_eq = aij_aIJ_equation;
+        args.ppw2p_eq = ppw2p_equation;
+        args.superimposed_tov_phi_eq = superimposed_tov_phi_eq;
+
+        for(int i=0; i < (int)bcAij.size(); i++)
+        {
+            vec2i loc = linear_indices[i];
+
+            args.bcAij_eq[i] = bcAij_dyn.idx(loc.x(), loc.y());
+        }
+
+        update_cached_variables(clctx, cqueue, cache, args, scale, dim);
     }
 
-    return {aij_aIJ, ppw2p};
+    return {aij_aIJ, ppw2p, bcAij, superimposed_tov_phi};
 }
 
 void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<compact_object::data<float>>& cpu_holes)
@@ -3150,7 +3189,6 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
             Si_conformal += vmomentum * neutron_star::calculate_sigma(rad, p, M_factor, pinning_tov_phi);
         }
     }
-
 
     value pressure = pow(phi, -8.f) * pressure_conformal;
     value rho = pow(phi, -8.f) * rho_conformal;
@@ -3695,7 +3733,26 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     value bl_conformal = calculate_conformal_guess(pos, holes);
     value u = dual_types::apply("buffer_index", "u_value", "ix", "iy", "iz", "dim");
 
-    tensor<value, 3, 3> bcAij = calculate_bcAij_generic(ctx, pos, holes, tov_phi_at_coordinate_general);
+    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
+
+    std::array<int, 9> arg_table
+    {
+        0, 1, 2,
+        1, 3, 4,
+        2, 4, 5,
+    };
+
+    tensor<value, 3, 3> bcAij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            int index = arg_table[i * 3 + j];
+
+            bcAij.idx(i, j) = bidx("bcAij" + std::to_string(index), false, false);
+        }
+    }
 
     metric<value, 3, 3> Yij;
 
@@ -3747,8 +3804,6 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     value X = exp(-4 * conformal_factor);
 
     tensor<value, 3, 3> cAij = X * Aij;
-
-    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
     #define OLDFLAT
     #ifdef OLDFLAT
@@ -6528,7 +6583,8 @@ int main()
     equation_context setup_static;
 
     cl::buffer u_arg(clctx.ctx);
-    cl::buffer tov_phi(clctx.ctx);
+    std::array<cl::buffer, 6> bcAij{clctx.ctx, clctx.ctx, clctx.ctx, clctx.ctx, clctx.ctx, clctx.ctx};
+    cl::buffer superimposed_tov_phi(clctx.ctx);
 
     cl::program evolve_prog(clctx.ctx, "evolve_points.cl");
     evolve_prog.build(clctx.ctx, argument_string + "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ");
@@ -6537,20 +6593,16 @@ int main()
 
     evolution_points evolve_points = generate_evolution_points(clctx.ctx, clctx.cqueue, scale, size);
 
-
     //sandwich_result sandwich(clctx.ctx);
 
-    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes, &tov_phi]()
+    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes, &superimposed_tov_phi, &bcAij]()
     {
         cl::command_queue cqueue(clctx.ctx);
 
-        auto [cached_aij_aIJ, cached_ppw2p] = tov_solve_for_cached_variables(clctx.ctx, cqueue, holes.objs, scale, size);
+        cl::buffer cached_aij_aIJ(clctx.ctx);
+        cl::buffer cached_ppw2p(clctx.ctx);
 
-        //sandwich = setup_sandwich_laplace(clctx.ctx, clctx.cqueue, holes.holes, scale, size);
-
-        /*tov_solver tov_result = tov_solve(clctx.ctx, cqueue, tov_soln, scale, size, 0.0001f);
-
-        tov_phi = std::move(tov_result.phi);*/
+        std::tie(cached_aij_aIJ, cached_ppw2p, bcAij, superimposed_tov_phi) = tov_solve_for_cached_variables(clctx.ctx, cqueue, holes.objs, scale, size);
 
         laplace_data solve = setup_u_laplace(clctx.ctx, holes.objs, cached_aij_aIJ, cached_ppw2p);
         u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.0001f);
@@ -6783,7 +6835,7 @@ int main()
 
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
 
-    base_mesh.init(clctx.cqueue, u_arg, tov_phi);
+    base_mesh.init(clctx.cqueue, u_arg, bcAij, superimposed_tov_phi);
 
     std::vector<float> real_graph;
     std::vector<float> real_decomp;

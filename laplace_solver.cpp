@@ -535,14 +535,21 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
     return ret;
 }
 
-void update_cached_variables(cl::context& clctx, cl::command_queue& cqueue, equation_context& cache, cl::buffer& tov_phi, cl::buffer& accum_aij_aIJ, cl::buffer& accum_ppw2p, const value& aij_aIJ, const value& ppw2p, float scale, vec3i dim)
+void update_cached_variables(cl::context& clctx, cl::command_queue& cqueue, equation_context& cache, cache_args& args, float scale, vec3i dim)
 {
     vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
 
     std::string local_build_str = "-I ./ -O3 -cl-std=CL2.0 -cl-finite-math-only ";
 
-    cache.add("D_AIJ_AIJ", aij_aIJ);
-    cache.add("D_PPW2P", ppw2p);
+    cache.add("D_AIJ_AIJ", args.aij_aIJ_eq);
+    cache.add("D_PPW2P", args.ppw2p_eq);
+
+    for(int i=0; i < (int)args.bcAij.size(); i++)
+    {
+        cache.add("D_BCAIJ" + std::to_string(i), args.bcAij_eq[i]);
+    }
+
+    cache.add("D_TOV_PHI", args.superimposed_tov_phi_eq);
 
     cache.build(local_build_str, "accum");
 
@@ -552,9 +559,17 @@ void update_cached_variables(cl::context& clctx, cl::command_queue& cqueue, equa
     cl::kernel kern(program, "accum");
 
     cl::args accum;
-    accum.push_back(tov_phi);
-    accum.push_back(accum_aij_aIJ);
-    accum.push_back(accum_ppw2p);
+    accum.push_back(args.tov_phi);
+    accum.push_back(args.aij_aIJ);
+    accum.push_back(args.ppw2p);
+
+    for(int i=0; i < (int)args.bcAij.size(); i++)
+    {
+        accum.push_back(args.bcAij[i]);
+    }
+
+    accum.push_back(args.superimposed_tov_phi);
+
     accum.push_back(scale);
     accum.push_back(clsize);
 

@@ -62,6 +62,22 @@ struct tov_solver
 
 tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_input& solve, float scale, vec3i dim, float err = 0.0001f);
 
-void update_cached_variables(cl::context& clctx, cl::command_queue& cqueue, equation_context& cache, cl::buffer& tov_phi, cl::buffer& accum_aij_aIJ, cl::buffer& accum_ppw2p, const value& aij_aIJ, const value& ppw2p, float scale, vec3i dim);
+struct cache_args
+{
+    cl::buffer tov_phi;
+    cl::buffer aij_aIJ;
+    cl::buffer ppw2p;
+    std::array<cl::buffer, 6> bcAij;
+    cl::buffer superimposed_tov_phi;
+
+    value aij_aIJ_eq;
+    value ppw2p_eq;
+    std::array<value, 6> bcAij_eq;
+    value superimposed_tov_phi_eq;
+
+    cache_args(cl::context& ctx) : tov_phi(ctx), aij_aIJ(ctx), ppw2p(ctx), bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, superimposed_tov_phi(ctx) {}
+};
+
+void update_cached_variables(cl::context& clctx, cl::command_queue& cqueue, equation_context& cache, cache_args& args, float scale, vec3i dim);
 
 #endif // LAPLACE_SOLVER_HPP_INCLUDED
