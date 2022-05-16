@@ -576,6 +576,4 @@ void update_cached_variables(cl::context& clctx, cl::command_queue& cqueue, equa
     kern.set_args(accum);
 
     cqueue.exec(kern, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
-
-    printf("Postaccum\n");
 }
