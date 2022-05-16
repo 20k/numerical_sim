@@ -6629,7 +6629,7 @@ int main()
         std::tie(cached_aij_aIJ, cached_ppw2p, bcAij, superimposed_tov_phi) = tov_solve_for_cached_variables(clctx.ctx, cqueue, holes.objs, scale, size);
 
         laplace_data solve = setup_u_laplace(clctx.ctx, holes.objs, cached_aij_aIJ, cached_ppw2p);
-        u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.0001f);
+        u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.00001f);
 
         cqueue.block();
     };
