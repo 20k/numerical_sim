@@ -1431,7 +1431,7 @@ namespace neutron_star
     inline
     float compactness()
     {
-        return 0.05f;
+        return 0.1f;
     }
 
     template<typename T>
@@ -3906,7 +3906,7 @@ namespace hydrodynamics
         {
             for(int j=0; j < 3; j++)
             {
-                constant_1 += args.X * icY.idx(i, j) * matt.cS.idx(i) * matt.cS.idx(j);
+                constant_1 += max(args.X, 0.4f) * icY.idx(i, j) * matt.cS.idx(i) * matt.cS.idx(j);
             }
         }
 
@@ -3914,7 +3914,7 @@ namespace hydrodynamics
         {
             ctx.pin(W);
 
-            W = w_next(W, matt.p_star, args.X, icY, matt.cS, matt.Gamma, matt.e_star);
+            W = w_next(W, matt.p_star, max(args.X, 0.4f), icY, matt.cS, matt.Gamma, matt.e_star);
         }
 
         /*T constant_1 = 0;
@@ -3954,13 +3954,13 @@ namespace hydrodynamics
 
         inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-        tensor<value, 3> p_star_vi = matt.p_star_vi(icY, args.gA, args.gB, args.X, matt.stashed_W);
-        tensor<value, 3> e_star_vi = matt.e_star_vi(icY, args.gA, args.gB, args.X, matt.stashed_W);
+        tensor<value, 3> p_star_vi = matt.p_star_vi(icY, args.gA, args.gB, max(args.X, 0.4f), matt.stashed_W);
+        tensor<value, 3> e_star_vi = matt.e_star_vi(icY, args.gA, args.gB, max(args.X, 0.4f), matt.stashed_W);
 
-        tensor<value, 3, 3> cSk_vi = matt.cSk_vi(icY, args.gA, args.gB, args.X, matt.stashed_W);
+        tensor<value, 3, 3> cSk_vi = matt.cSk_vi(icY, args.gA, args.gB, max(args.X, 0.4f), matt.stashed_W);
 
-        value p0 = matt.calculate_p0(args.X, matt.stashed_W);
-        value eps = matt.calculate_eps(args.X, matt.stashed_W);
+        value p0 = matt.calculate_p0(max(args.X, 0.4f), matt.stashed_W);
+        value eps = matt.calculate_eps(max(args.X, 0.4f), matt.stashed_W);
 
         value pressure = matt.gamma_eos(p0, eps);
 
@@ -4036,7 +4036,7 @@ namespace hydrodynamics
             lhs_dte_star += diff1(ctx, e_star_vi.idx(i), i);
         }
 
-        value rhs_dte_star = args.matt.estar_vi_rhs(ctx, args.gA, args.gB, icY, args.X, matt.stashed_W);
+        value rhs_dte_star = args.matt.estar_vi_rhs(ctx, args.gA, args.gB, icY, max(args.X, 0.4f), matt.stashed_W);
 
         /*ctx.add("DBG_RHS_DTESTAR", rhs_dte_star);
 
@@ -4059,7 +4059,7 @@ namespace hydrodynamics
             lhs_dtSk.idx(k) = sum;
         }
 
-        tensor<value, 3> rhs_dtSk = matt.cSkvi_rhs(ctx, icY, args.gA, args.gB, args.X, P, matt.stashed_W);
+        tensor<value, 3> rhs_dtSk = matt.cSkvi_rhs(ctx, icY, args.gA, args.gB, max(args.X, 0.4f), P, matt.stashed_W);
 
         value dtp_star = -lhs_dtp_star;
         value dte_star = -lhs_dte_star + rhs_dte_star;
