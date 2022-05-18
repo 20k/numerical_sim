@@ -1340,9 +1340,9 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     float fin_cS2 = f_dtSk2 * timestep + base_cS2;
 
     ///this makes a big difference to stability around collisions
-    //fin_cS0 = clamp(fin_cS0, -0.01f, 0.01f);
-    //fin_cS1 = clamp(fin_cS1, -0.01f, 0.01f);
-    //fin_cS2 = clamp(fin_cS2, -0.01f, 0.01f);
+    /*fin_cS0 = clamp(fin_cS0, -0.15f, 0.15f);
+    fin_cS1 = clamp(fin_cS1, -0.15f, 0.15f);
+    fin_cS2 = clamp(fin_cS2, -0.15f, 0.15f);*/
 
     if(fin_p_star < 1e-5 * p_star_max)
     {

@@ -1291,14 +1291,14 @@ template<typename T>
 inline
 T chi_to_e_6phi(const T& chi)
 {
-    return pow(1/(max(chi, T{0.f}) + 0.001f), (3.f/2.f));
+    return pow(1/(max(chi, 0.001f)), (3.f/2.f));
 }
 
 template<typename T>
 inline
 T chi_to_e_m6phi(const T& chi)
 {
-    return pow(max(chi, T{0.f}) + 0.001f, (3.f/2.f));
+    return pow(max(chi, 0.001f), (3.f/2.f));
 }
 
 template<typename T>
@@ -2139,8 +2139,8 @@ struct matter
 
     value calculate_adm_S(const unit_metric<value, 3, 3>& cY, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
     {
-        ///so. Raise Sij with iYij, which is X * cY
-        ///now I'm actually raising X * Sij which means....... i can use cY?
+        ///so. Raise Sij with iYij, which is X * icY
+        ///now I'm actually raising X * Sij which means....... i can use icY?
         ///because iYij * Sjk = X * icYij * Sjk, and icYij * X * Sjk = X * icYij * Sjk
         tensor<value, 3, 3> XSij = calculate_adm_X_Sij(chi, W, cY);
 
@@ -3887,6 +3887,37 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     #endif // USE_GBB
 }
 
+inline
+value matter_X(const value& X)
+{
+    value LX = clamp(X, value{0.f}, value{1.f});
+
+    float cutoff_X = 0.45f;
+    float value_at_min = 0.35f;
+
+    ///when this is 1, X == absolute min
+    ///so eg if X == 0, we get 1
+    ///if X == cutoff, we get 0
+    value X_frac_to_absolute_min = (cutoff_X - LX) / cutoff_X;
+
+    value modified_X_value = X_frac_to_absolute_min * (value_at_min - cutoff_X) + cutoff_X;
+
+    return if_v(X >= cutoff_X,
+         X,
+         modified_X_value);
+
+    /*float min_X = 0.4f;
+    float max_X = 0.2f;
+
+    value extra = max(X, 1.f) - min_X;
+
+    value interpolated = (extra / (1.f - min_X)) * (max_X - min_X) + min_X;
+
+    value interp = dual_types::if_v(extra > 0, interpolated, X);
+
+    return interp;*/
+}
+
 namespace hydrodynamics
 {
     void build_W(equation_context& ctx)
@@ -3898,7 +3929,7 @@ namespace hydrodynamics
 
         value W = 0.5f;
 
-        int iterations = 5;
+        int iterations = 10;
 
         value constant_1 = 0;
 
@@ -3906,7 +3937,7 @@ namespace hydrodynamics
         {
             for(int j=0; j < 3; j++)
             {
-                constant_1 += max(args.X, 0.4f) * icY.idx(i, j) * matt.cS.idx(i) * matt.cS.idx(j);
+                constant_1 += matter_X(args.X) * icY.idx(i, j) * matt.cS.idx(i) * matt.cS.idx(j);
             }
         }
 
@@ -3914,7 +3945,7 @@ namespace hydrodynamics
         {
             ctx.pin(W);
 
-            W = w_next(W, matt.p_star, max(args.X, 0.4f), icY, matt.cS, matt.Gamma, matt.e_star);
+            W = w_next(W, matt.p_star, matter_X(args.X), icY, matt.cS, matt.Gamma, matt.e_star);
         }
 
         /*T constant_1 = 0;
@@ -3954,13 +3985,13 @@ namespace hydrodynamics
 
         inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-        tensor<value, 3> p_star_vi = matt.p_star_vi(icY, args.gA, args.gB, max(args.X, 0.4f), matt.stashed_W);
-        tensor<value, 3> e_star_vi = matt.e_star_vi(icY, args.gA, args.gB, max(args.X, 0.4f), matt.stashed_W);
+        tensor<value, 3> p_star_vi = matt.p_star_vi(icY, args.gA, args.gB, matter_X(args.X), matt.stashed_W);
+        tensor<value, 3> e_star_vi = matt.e_star_vi(icY, args.gA, args.gB, matter_X(args.X), matt.stashed_W);
 
-        tensor<value, 3, 3> cSk_vi = matt.cSk_vi(icY, args.gA, args.gB, max(args.X, 0.4f), matt.stashed_W);
+        tensor<value, 3, 3> cSk_vi = matt.cSk_vi(icY, args.gA, args.gB, matter_X(args.X), matt.stashed_W);
 
-        value p0 = matt.calculate_p0(max(args.X, 0.4f), matt.stashed_W);
-        value eps = matt.calculate_eps(max(args.X, 0.4f), matt.stashed_W);
+        value p0 = matt.calculate_p0(matter_X(args.X), matt.stashed_W);
+        value eps = matt.calculate_eps(matter_X(args.X), matt.stashed_W);
 
         value pressure = matt.gamma_eos(p0, eps);
 
@@ -4036,7 +4067,7 @@ namespace hydrodynamics
             lhs_dte_star += diff1(ctx, e_star_vi.idx(i), i);
         }
 
-        value rhs_dte_star = args.matt.estar_vi_rhs(ctx, args.gA, args.gB, icY, max(args.X, 0.4f), matt.stashed_W);
+        value rhs_dte_star = args.matt.estar_vi_rhs(ctx, args.gA, args.gB, icY, matter_X(args.X), matt.stashed_W);
 
         /*ctx.add("DBG_RHS_DTESTAR", rhs_dte_star);
 
@@ -4059,7 +4090,7 @@ namespace hydrodynamics
             lhs_dtSk.idx(k) = sum;
         }
 
-        tensor<value, 3> rhs_dtSk = matt.cSkvi_rhs(ctx, icY, args.gA, args.gB, max(args.X, 0.4f), P, matt.stashed_W);
+        tensor<value, 3> rhs_dtSk = matt.cSkvi_rhs(ctx, icY, args.gA, args.gB, matter_X(args.X), P, matt.stashed_W);
 
         value dtp_star = -lhs_dtp_star;
         value dte_star = -lhs_dte_star + rhs_dte_star;
