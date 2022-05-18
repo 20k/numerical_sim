@@ -2158,7 +2158,7 @@ struct matter
 
     value estar_vi_rhs(equation_context& ctx, const value& gA, const tensor<value, 3>& gB, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
     {
-        //#define QUADRATIC_VISCOSITY
+        #define QUADRATIC_VISCOSITY
         #ifndef QUADRATIC_VISCOSITY
         return 0;
         #endif // QUADRATIC_VISCOSITY
@@ -2185,7 +2185,7 @@ struct matter
         //ctx.add("DBG_A", A);
 
         ///[0.1, 1.0}
-        value CQvis = 0.5f;
+        value CQvis = 0.9f;
 
         value PQvis = if_v(littledv < 0, CQvis * A * pow(littledv, 2), 0.f);
 
