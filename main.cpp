@@ -3207,6 +3207,10 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
             neutron_star::conformal_data cdata = neutron_star::sample_conformal(rad, p, pinning_tov_phi);
 
+            ctx.pin(cdata.mass_energy_density);
+            ctx.pin(cdata.pressure);
+            ctx.pin(cdata.rest_mass_density);
+
             pressure_conformal += cdata.pressure;
             //unused_conformal_rest_mass += sampled.mass_energy_density;
 
@@ -3228,6 +3232,12 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
     value rhoH = pow(phi, -8.f) * rhoH_conformal;
     value p0 = pow(phi, -8.f) * p0_conformal;
     tensor<value, 3> Si = pow(phi, -10.f) * Si_conformal; // upper
+
+    ctx.pin(pressure);
+    ctx.pin(rho);
+    ctx.pin(rhoH);
+    ctx.pin(p0);
+    ctx.pin(Si);
 
     value is_degenerate = rho < 0.0001f;
 
