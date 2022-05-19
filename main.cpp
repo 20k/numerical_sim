@@ -1904,7 +1904,7 @@ struct matter
         stashed_W = bidx("DW_stashed", ctx.uses_linear, false);
     }
 
-    value calculate_W(const inverse_metric<value, 3, 3>& icY, const value& chi)
+    /*value calculate_W(const inverse_metric<value, 3, 3>& icY, const value& chi)
     {
         value W = 0.5f;
 
@@ -1916,7 +1916,7 @@ struct matter
         }
 
         return W;
-    }
+    }*/
 
     ///??? comes from initial conditions
     value p_star_max()
@@ -1961,9 +1961,20 @@ struct matter
         return pow(divide_with_limit(e_m6phi, W, 0.f, DIVISION_TOL), Gamma - 1) * pow(e_star, Gamma) * pow(p_star, Gamma - 2);
     }
 
-    value gamma_eos(const value& p0, const value& eps)
+    /*value gamma_eos(const value& p0, const value& eps)
     {
         return (Gamma - 1) * p0 * eps;
+    }*/
+
+    value gamma_eos_from_e_star(const value& chi, const value& W)
+    {
+        value iv_au0 = divide_with_limit(p_star, W, 0.f, DIVISION_TOL);
+
+        value e_m6phi = chi_to_e_m6phi(chi);
+
+        value p0e = pow(max(e_star * e_m6phi * iv_au0, 0.f), Gamma);
+
+        return p0e * (Gamma - 1);
     }
 
     value calculate_h_with_gamma_eos(const value& chi, const value& W)
@@ -2103,7 +2114,7 @@ struct matter
         value p0 = calculate_p0(chi, W);
         value eps = calculate_eps(chi, W);
 
-        return h * W * em6phi - gamma_eos(p0, eps);
+        return h * W * em6phi - gamma_eos_from_e_star(chi, W);
     }
 
     tensor<value, 3> calculate_adm_Si(const value& chi)
@@ -2119,9 +2130,6 @@ struct matter
         value em6phi = chi_to_e_m6phi(chi);
         value h = calculate_h_with_gamma_eos(chi, W);
 
-        value p0 = calculate_p0(chi, W);
-        value eps = calculate_eps(chi, W);
-
         tensor<value, 3, 3> Sij;
 
         for(int i=0; i < 3; i++)
@@ -2132,7 +2140,8 @@ struct matter
             }
         }
 
-        tensor<value, 3, 3> X_P_Yij = gamma_eos(p0, eps) * cY.to_tensor();
+        tensor<value, 3, 3> X_P_Yij = gamma_eos_from_e_star(chi, W) * cY.to_tensor();
+        //tensor<value, 3, 3> X_P_Yij = gamma_eos(p0, eps) * cY.to_tensor();
 
         return Sij * chi + X_P_Yij;
     }
@@ -2158,7 +2167,7 @@ struct matter
 
     value estar_vi_rhs(equation_context& ctx, const value& gA, const tensor<value, 3>& gB, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
     {
-        #define QUADRATIC_VISCOSITY
+        //#define QUADRATIC_VISCOSITY
         #ifndef QUADRATIC_VISCOSITY
         return 0;
         #endif // QUADRATIC_VISCOSITY
@@ -3998,10 +4007,12 @@ namespace hydrodynamics
 
         tensor<value, 3, 3> cSk_vi = matt.cSk_vi(icY, args.gA, args.gB, matter_X_2(args.X), matt.stashed_W);
 
-        value p0 = matt.calculate_p0(matter_X_1(args.X), matt.stashed_W);
+        /*value p0 = matt.calculate_p0(matter_X_1(args.X), matt.stashed_W);
         value eps = matt.calculate_eps(matter_X_1(args.X), matt.stashed_W);
 
-        value pressure = matt.gamma_eos(p0, eps);
+        value pressure = matt.gamma_eos(p0, eps);*/
+
+        value pressure = matt.gamma_eos_from_e_star(matter_X_2(args.X), matt.stashed_W);
 
         vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
