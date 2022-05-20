@@ -2376,7 +2376,7 @@ struct standard_arguments
 
         //cA.idx(1, 1) = -(raised_cAij.idx(0, 0) + raised_cAij.idx(2, 2) + cA.idx(0, 1) * icY.idx(0, 1) + cA.idx(1, 2) * icY.idx(1, 2)) / (icY.idx(1, 1));
 
-        X = bidx("X", interpolate, false);
+        X = max(bidx("X", interpolate, false), 0);
         K = bidx("K", interpolate, false);
 
         //X = max(X, 0.0001f);
