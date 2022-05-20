@@ -14,9 +14,6 @@ void accum(__global float* tov_phi, __global float* aij_aIJ, __global float* ppw
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    if(ix < 1 || iy < 1 || iz < 1 || ix >= dim.x - 1 || iy >= dim.y - 1 || iz >= dim.z - 1)
-        return;
-
     float3 offset = transform_position(ix, iy, iz, dim, scale);
 
     float ox = offset.x;

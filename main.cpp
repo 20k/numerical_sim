@@ -3687,13 +3687,13 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data<float> h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.2;
-    h1.momentum = {0, 0.133 * 0.8 * 0.2, 0};
+    h1.momentum = {0, 0.133 * 0.8 * 0.6, 0};
     h1.position = {-4.257, 0.f, 0.f};
 
     compact_object::data<float> h2;
     h2.t = compact_object::NEUTRON_STAR;
     h2.bare_mass = 0.2;
-    h2.momentum = {0, -0.133 * 0.8 * 0.2, 0};
+    h2.momentum = {0, -0.133 * 0.8 * 0.6, 0};
     h2.position = {4.257, 0.f, 0.f};
 
     objects.push_back(h1);
@@ -3916,7 +3916,7 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
 inline
 value matter_X_1(const value& X)
 {
-    return max(X, 0.3f);
+    return max(X, 0.2f);
 
     value LX = clamp(X, value{0.f}, value{1.f});
 
@@ -3949,7 +3949,7 @@ value matter_X_1(const value& X)
 inline
 value matter_X_2(const value& X)
 {
-    return max(X, 0.3f);
+    return max(X, 0.2f);
 }
 
 namespace hydrodynamics
