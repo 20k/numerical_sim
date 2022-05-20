@@ -3190,6 +3190,8 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
             value rad = (pos - vloc).length();
 
+            ctx.pin(rad);
+
             ///todo: remove the duplication?
             neutron_star::params p;
             p.position = obj.position;
@@ -3198,6 +3200,8 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
             p.angular_momentum = obj.angular_momentum;
 
             value M_factor = neutron_star::calculate_M_factor(p, pinning_tov_phi);
+
+            ctx.pin(M_factor);
 
             tensor<value, 3> vmomentum = {obj.momentum.x(), obj.momentum.y(), obj.momentum.z()};
 
