@@ -1902,6 +1902,9 @@ struct matter
         }
 
         stashed_W = bidx("DW_stashed", ctx.uses_linear, false);
+
+        p_star = max(p_star, 0.f);
+        e_star = max(e_star, 0.f);
     }
 
     /*value calculate_W(const inverse_metric<value, 3, 3>& icY, const value& chi)
@@ -3683,15 +3686,15 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #ifdef PAPER_0610128
     compact_object::data<float> h1;
     h1.t = compact_object::NEUTRON_STAR;
-    h1.bare_mass = 0.1;
-    h1.momentum = {0, 0.133 * 0.8 * 0.1, 0};
-    h1.position = {-3.257, 0.f, 0.f};
+    h1.bare_mass = 0.2;
+    h1.momentum = {0, 0.133 * 0.8 * 0.2, 0};
+    h1.position = {-4.257, 0.f, 0.f};
 
     compact_object::data<float> h2;
     h2.t = compact_object::NEUTRON_STAR;
-    h2.bare_mass = 0.1;
-    h2.momentum = {0, -0.133 * 0.8 * 0.1, 0};
-    h2.position = {3.257, 0.f, 0.f};
+    h2.bare_mass = 0.2;
+    h2.momentum = {0, -0.133 * 0.8 * 0.2, 0};
+    h2.position = {4.257, 0.f, 0.f};
 
     objects.push_back(h1);
     objects.push_back(h2);
@@ -3913,7 +3916,7 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
 inline
 value matter_X_1(const value& X)
 {
-    return max(X, 0.5f);
+    return max(X, 0.3f);
 
     value LX = clamp(X, value{0.f}, value{1.f});
 
@@ -6685,6 +6688,8 @@ int main()
 
     auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes, &superimposed_tov_phi, &bcAij]()
     {
+        steady_timer u_time;
+
         cl::command_queue cqueue(clctx.ctx);
 
         cl::buffer cached_aij_aIJ(clctx.ctx);
@@ -6696,6 +6701,8 @@ int main()
         u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.000001f);
 
         cqueue.block();
+
+        printf("U time %f\n", u_time.get_elapsed_time_s());
     };
 
     std::thread async_u(u_thread);
