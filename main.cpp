@@ -1551,7 +1551,7 @@ namespace neutron_star
             return (ndata.mass_energy_density + ndata.pressure) * pow(coordinate_radius, 2);
         };
 
-        return 4 * M_PI * integrate_1d(integration_func, 64, radius, 0.f);
+        return 4 * M_PI * integrate_1d(integration_func, 32, radius, 0.f);
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (57)
