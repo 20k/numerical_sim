@@ -2107,6 +2107,8 @@ struct matter
         return cSk_vi;
     }
 
+    #define ADM_CHI 0.3f
+
     value calculate_adm_p(const value& chi, const value& W)
     {
         //return {};
@@ -2117,12 +2119,14 @@ struct matter
         value p0 = calculate_p0(chi, W);
         value eps = calculate_eps(chi, W);
 
-        return h * W * em6phi - gamma_eos_from_e_star(chi, W);
+        return dual_types::if_v(chi > ADM_CHI, h * W * em6phi - gamma_eos_from_e_star(chi, W), 0.f);
     }
 
     tensor<value, 3> calculate_adm_Si(const value& chi)
     {
         value em6phi = chi_to_e_m6phi(chi);
+
+        em6phi = dual_types::if_v(chi > ADM_CHI, em6phi, 0.f);
 
         return cS * em6phi;
     }
@@ -2147,7 +2151,17 @@ struct matter
         tensor<value, 3, 3> X_P_Yij = gamma_eos_from_e_star(chi, W) * cY.to_tensor();
         //tensor<value, 3, 3> X_P_Yij = gamma_eos(p0, eps) * cY.to_tensor();
 
-        return Sij * chi + X_P_Yij;
+        tensor<value, 3, 3> result = Sij * chi + X_P_Yij;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                result.idx(i, j) = dual_types::if_v(chi > ADM_CHI, result.idx(i, j), 0.f);
+            }
+        }
+
+        return result;
     }
 
     value calculate_adm_S(const unit_metric<value, 3, 3>& cY, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
