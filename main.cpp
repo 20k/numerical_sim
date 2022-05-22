@@ -2150,14 +2150,42 @@ struct matter
         return Sij * chi + X_P_Yij;
     }
 
+    tensor<value, 3, 3> calculate_adm_Sij(const value& chi, const value& W, const metric<value, 3, 3>& Yij)
+    {
+        value em6phi = chi_to_e_m6phi(chi);
+        value h = calculate_h_with_gamma_eos(chi, W);
+
+        tensor<value, 3, 3> Sij;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                Sij.idx(i, j) = divide_with_limit(em6phi, W * h, 0.f, DIVISION_TOL) * cS.idx(i) * cS.idx(j);
+            }
+        }
+
+        ///this gamma eos is the specific problem
+        tensor<value, 3, 3> P_Yij = gamma_eos_from_e_star(chi, W) * Yij.to_tensor();
+        //tensor<value, 3, 3> X_P_Yij = gamma_eos(p0, eps) * cY.to_tensor();
+
+        return Sij + P_Yij;
+    }
+
     value calculate_adm_S(const unit_metric<value, 3, 3>& cY, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
     {
+        #if 0
         ///so. Raise Sij with iYij, which is X * icY
         ///now I'm actually raising X * Sij which means....... i can use icY?
         ///because iYij * Sjk = X * icYij * Sjk, and icYij * X * Sjk = X * icYij * Sjk
         tensor<value, 3, 3> XSij = calculate_adm_X_Sij(chi, W, cY);
+        #endif // 0
 
-        tensor<value, 3, 3> raised = raise_index_generic(XSij, icY, 0);
+        metric<value, 3, 3> Yij = cY / max(chi, 0.001f);
+
+        tensor<value, 3, 3> Sij = calculate_adm_Sij(chi, W, Yij);
+
+        tensor<value, 3, 3> raised = raise_index_generic(Sij, chi * icY, 0);
 
         value sum = 0;
 
@@ -4979,7 +5007,9 @@ void build_cA(equation_context& ctx, bool use_matter)
             ///matter
             if(use_matter)
             {
-                tensor<value, 3, 3> xSij = args.matt.calculate_adm_X_Sij(X, args.matt.stashed_W, cY);
+                //tensor<value, 3, 3> xSij = args.matt.calculate_adm_X_Sij(X, args.matt.stashed_W, cY);
+
+                tensor<value, 3, 3> xSij = X * args.matt.calculate_adm_Sij(X, args.matt.stashed_W, args.Yij);
 
                 tensor<value, 3, 3> xgASij = gpu_trace_free(-8 * M_PI * gA * xSij, cY, icY);
 
