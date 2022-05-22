@@ -2543,14 +2543,14 @@ initial_conditions setup_dynamic_initial_conditions(const std::string& u_argumen
     #define PAPER_0610128
     #ifdef PAPER_0610128
     black_hole<float> h1;
-    h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.8, 0};
-    h1.position = {-3.257, 0.f, 0.f};
+    h1.bare_mass = 0.15;
+    h1.momentum = {0, 0.133 * 0.8 * 0, 0};
+    h1.position = {-4.257, 0.f, 0.f};
 
     black_hole<float> h2;
-    h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.8, 0};
-    h2.position = {3.257, 0.f, 0.f};
+    h2.bare_mass = 0.15;
+    h2.momentum = {0, -0.133 * 0.8 * 0, 0};
+    h2.position = {4.257, 0.f, 0.f};
 
     holes.push_back(h1);
     holes.push_back(h2);
@@ -5246,7 +5246,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {251, 251, 251};
+    vec3i size = {281, 281, 281};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -5892,7 +5892,7 @@ int main()
             }
         }
 
-        if(rendering_method == 2 && snap)
+        /*if(rendering_method == 2 && snap)
         {
             cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
             cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
@@ -5943,7 +5943,7 @@ int main()
             step_args.push_back(timestep);
 
             clctx.cqueue.exec("step_accurate_rays", step_args, {width * height}, {128});
-        }
+        }*/
 
         cl::event next_event = rtex[which_texture].unacquire(clctx.cqueue);
 
