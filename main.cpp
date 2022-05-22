@@ -1973,7 +1973,7 @@ struct matter
     {
         value iv_au0 = divide_with_limit(p_star, W, 0.f, DIVISION_TOL);
 
-        value e_m6phi = chi_to_e_m6phi(chi);
+        value e_m6phi = chi_to_e_m6phi_unclamped(chi);
 
         value p0e = pow(max(e_star * e_m6phi * iv_au0, 0.f), Gamma);
 
