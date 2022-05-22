@@ -1582,9 +1582,7 @@ void render(STANDARD_ARGS(),
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 
-    float3 col = {real, 0.f, 0.f};
-
-    //float3 col = {matter, matter, matter};
+    float3 col = {matter, matter, matter};
 
     float3 lin_col = srgb_to_lin(col);
 
