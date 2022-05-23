@@ -3931,7 +3931,7 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
 inline
 value matter_X_1(const value& X)
 {
-    return max(X, 0.00f);
+    return max(X, 0.25f);
 
     value LX = clamp(X, value{0.f}, value{1.f});
 
@@ -3964,7 +3964,7 @@ value matter_X_1(const value& X)
 inline
 value matter_X_2(const value& X)
 {
-    return max(X, 0.00f);
+    return max(X, 0.25f);
 }
 
 namespace hydrodynamics
