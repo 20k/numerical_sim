@@ -972,10 +972,18 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
             dissipate(base_yn, b2.buffers);
             #endif
 
+            ///this is actually fundamentally different from below hmm
+            #ifdef DISS_UNIDIR
             dissipate_unidir(b2, scratch);
-
             enforce_constraints(scratch);
-            //std::swap(b2, scratch);
+            #else
+            ///b2 contains buffer
+            ///want to make scratch contain buffer
+            dissipate(base_yn, b2);
+            enforce_constraints(b2);
+
+            std::swap(b2, scratch);
+            #endif // DISS_UNIDIR
         }
     }
     #endif
@@ -1039,9 +1047,14 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     copy_valid(generic_data[(which_data + 1) % 2].buffers, generic_data[which_data].buffers);
     #endif // DISSIPATE_SELF
 
+    ///output is in b2
+    #ifdef DISS_UNIDIR
     dissipate_unidir(b2, scratch);
 
-    std::swap(b2, scratch);;
+    std::swap(b2, scratch);
+    #else
+    dissipate(base_yn, b2);
+    #endif
 
     //dissipate(get_input().buffers, get_output().buffers);
 
