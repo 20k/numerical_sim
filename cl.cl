@@ -1472,6 +1472,11 @@ void dissipate_single(__global ushort4* points, int point_count,
 
     float dissipate_single = KREISS_DISSIPATE_SINGULAR;
 
+    float tol = 1e-6;
+
+    if(dissipate_single <= tol && dissipate_single >= -tol)
+        return;
+
     obuffer[index] += damp * dissipate_single * timestep;
 }
 

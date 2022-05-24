@@ -1026,7 +1026,6 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
             clctx.cqueue.exec("trapezoidal_accumulate", trapezoidal, {evolution_positions_count}, {128});
         }
 
-
         //diff_to_input(f_y2.buffers, timestep);
         std::swap(f_y2, b2);
 
