@@ -445,22 +445,12 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
     float fixed_cA4 = fix_cA4;
     float fixed_cA5 = fix_cA5;
 
-    /*if(index == IDX(147, 122, 122))
-    {
-        printf("Cy det %f\n", CY_DET);
-    }*/
-
     cY0[index] = fixed_cY0;
     cY1[index] = fixed_cY1;
     cY2[index] = fixed_cY2;
     cY3[index] = fixed_cY3;
     cY4[index] = fixed_cY4;
     cY5[index] = fixed_cY5;
-
-    /*if(cY0[index] < 0 || cY3[index] < 0 || cY5[index] < 0)
-    {
-        printf("hi hi hi %f %f %f\n", cY0[index], cY3[index], cY5[index]);
-    }*/
 
     cA0[index] = fixed_cA0;
     cA1[index] = fixed_cA1;
@@ -814,11 +804,6 @@ void evolve_cY(__global ushort4* points, int point_count,
     NANCHECK(ocY3);
     NANCHECK(ocY4);
     NANCHECK(ocY5);
-
-    /*if(ocY0[index] < 0 || ocY3[index] < 0 || ocY5[index] < 0)
-    {
-        printf("less %f %f %f %f %f %f\n", ocY0[index], ocY1[index], ocY2[index], ocY3[index], ocY4[index], ocY5[index]);
-    }*/
 }
 
 __kernel
@@ -889,11 +874,6 @@ void evolve_cA(__global ushort4* points, int point_count,
     NANCHECK(ocA3);
     NANCHECK(ocA4);
     NANCHECK(ocA5);
-
-    /*if(index == IDX(147, 122, 122))
-    {
-        printf("CA: in %f %f %f %f %f %f out %f %f %f %f %f %f xS %f\n", cA0[index], cA1[index], cA2[index], cA3[index], cA4[index], cA5[index], ocA0[index], ocA1[index], ocA2[index], ocA3[index], ocA4[index], ocA5[index], DBGXGA);
-    }*/
 
     /*if(ix == 97 && iy == 124 && iz == 124)
     {
@@ -1059,11 +1039,6 @@ void evolve_X(__global ushort4* points, int point_count,
     oX[index] = max(f_dtX * timestep + b0, 0.f);
 
     NANCHECK(oX);
-
-    /*if(index == IDX(103, 128, 116))
-    {
-        printf("dX K_val %f iX_val %f oX_val %f\n", K[index], X[index], oX[index]);
-    }*/
 }
 
 __kernel
@@ -1187,14 +1162,6 @@ void calculate_hydro_W(__global ushort4* points, int point_count,
     {
         printf("Vals %i %i %i p_star %f X %f C1 %f e* %f cS %f %f %f cY %f %f %f %f %f %f K %f gA %f\n", ix, iy, iz, W_p_star, W_X, W_C1, W_e_star, W_cS0, W_cS1, W_cS2, W_cY0, W_cY1, W_cY2, W_cY3, W_cY4, W_cY5, K[index], gA[index]);
     }
-
-    ///103 128 116
-    ///147 122 116
-    //if(index == IDX(147, 122, 116))
-    /*if(index == IDX(103, 128, 116))
-    {
-        printf("K_val %f X_val %f\n", K[index], X[index]);
-    }*/
 }
 
 ///does not use any derivatives

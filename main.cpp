@@ -5005,7 +5005,7 @@ void build_cA(equation_context& ctx, bool use_matter)
 
                 tensor<value, 3, 3> xgASij = gpu_trace_free(-8 * M_PI * gA * xSij, cY, icY);
 
-                ctx.add("DBGXGA", xgASij.idx(0, 0));
+                //ctx.add("DBGXGA", xgASij.idx(0, 0));
                 //ctx.add("Debug_cS0", args.matt.cS.idx(0));
 
                 dtcAij.idx(i, j) += xgASij.idx(i, j);
