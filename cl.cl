@@ -290,9 +290,14 @@ void calculate_initial_conditions(STANDARD_ARGS(),
 
 #define IS_DEGENERATE(x) (isnan(x) || !isfinite(x))
 
+#define NANCHECK_IMPL(w) if(IS_DEGENERATE(w[index])){printf("NAN " #w " %i %i %i %f\n", ix, iy, iz, w[index]);}
+#define LNANCHECK_IMPL(w)  if(IS_DEGENERATE(w)){printf("NAN " #w " %i %i %i %f\n", ix, iy, iz, w);}
+
+
+//#define DEBUGGING
 #ifdef DEBUGGING
-#define NANCHECK(w) if(IS_DEGENERATE(w[index])){printf("NAN " #w " %i %i %i %f\n", ix, iy, iz, w[index]);}
-#define LNANCHECK(w)  if(IS_DEGENERATE(w)){printf("NAN " #w " %i %i %i %f\n", ix, iy, iz, w);}
+#define NANCHECK(w) NANCHECK_IMPL(w)
+#define LNANCHECK(w) LNANCHECK_IMPL(w)
 #else
 #define NANCHECK(w)
 #define LNANCHECK(w)
@@ -312,7 +317,7 @@ void nan_checker(__global ushort4* points, int point_count, __global float* arg,
 
     int index = IDX(ix,iy,iz);
 
-    NANCHECK(arg);
+    NANCHECK_IMPL(arg);
 }
 
 __kernel
@@ -1034,6 +1039,11 @@ void evolve_X(__global ushort4* points, int point_count,
     oX[index] = max(f_dtX * timestep + b0, 0.f);
 
     NANCHECK(oX);
+
+    if(index == IDX(103, 128, 116))
+    {
+        printf("dX K_val %f iX_val %f oX_val %f\n", K[index], X[index], oX[index]);
+    }
 }
 
 __kernel
@@ -1155,7 +1165,15 @@ void calculate_hydro_W(__global ushort4* points, int point_count,
 
     if(isnan(DW_stashed[index]))
     {
-        printf("Vals p_star %f X %f C1 %f e* %f cS %f %f %f cY %f %f %f %f %f %f\n", W_p_star, W_X, W_C1, W_e_star, W_cS0, W_cS1, W_cS2, W_cY0, W_cY1, W_cY2, W_cY3, W_cY4, W_cY5);
+        printf("Vals %i %i %i p_star %f X %f C1 %f e* %f cS %f %f %f cY %f %f %f %f %f %f K %f gA %f\n", ix, iy, iz, W_p_star, W_X, W_C1, W_e_star, W_cS0, W_cS1, W_cS2, W_cY0, W_cY1, W_cY2, W_cY3, W_cY4, W_cY5, K[index], gA[index]);
+    }
+
+    ///103 128 116
+    ///147 122 116
+    //if(index == IDX(147, 122, 116))
+    if(index == IDX(103, 128, 116))
+    {
+        printf("K_val %f X_val %f\n", K[index], X[index]);
     }
 }
 
@@ -1343,6 +1361,10 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     /*fin_cS0 = clamp(fin_cS0, -0.15f, 0.15f);
     fin_cS1 = clamp(fin_cS1, -0.15f, 0.15f);
     fin_cS2 = clamp(fin_cS2, -0.15f, 0.15f);*/
+
+    fin_cS0 = clamp(fin_cS0, -1.f, 1.f);
+    fin_cS1 = clamp(fin_cS1, -1.f, 1.f);
+    fin_cS2 = clamp(fin_cS2, -1.f, 1.f);
 
     if(fin_p_star < 1e-5 * p_star_max)
     {

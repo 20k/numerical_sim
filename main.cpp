@@ -4293,7 +4293,15 @@ void build_constraints(equation_context& ctx)
     ///it occurs to me here that the error is extremely non trivial
     ///and that rather than discarding it entirely, it could be applied to X as that is itself a scaling factor
     ///for cY
-    metric<value, 3, 3> fixed_cY = cY;// / det_cY_pow;
+    metric<value, 3, 3> fixed_cY = cY / det_cY_pow;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            fixed_cY.idx(i, j) = dual_types::clamp(fixed_cY.idx(i, j), value{-2}, value{2});
+        }
+    }
 
     /*tensor<value, 3, 3> fixed_cA = cA;
 
