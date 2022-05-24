@@ -445,10 +445,10 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
     float fixed_cA4 = fix_cA4;
     float fixed_cA5 = fix_cA5;
 
-    if(index == IDX(147, 122, 122))
+    /*if(index == IDX(147, 122, 122))
     {
         printf("Cy det %f\n", CY_DET);
-    }
+    }*/
 
     cY0[index] = fixed_cY0;
     cY1[index] = fixed_cY1;
@@ -890,10 +890,10 @@ void evolve_cA(__global ushort4* points, int point_count,
     NANCHECK(ocA4);
     NANCHECK(ocA5);
 
-    if(index == IDX(147, 122, 122))
+    /*if(index == IDX(147, 122, 122))
     {
         printf("CA: in %f %f %f %f %f %f out %f %f %f %f %f %f xS %f\n", cA0[index], cA1[index], cA2[index], cA3[index], cA4[index], cA5[index], ocA0[index], ocA1[index], ocA2[index], ocA3[index], ocA4[index], ocA5[index], DBGXGA);
-    }
+    }*/
 
     /*if(ix == 97 && iy == 124 && iz == 124)
     {
@@ -1060,10 +1060,10 @@ void evolve_X(__global ushort4* points, int point_count,
 
     NANCHECK(oX);
 
-    if(index == IDX(103, 128, 116))
+    /*if(index == IDX(103, 128, 116))
     {
         printf("dX K_val %f iX_val %f oX_val %f\n", K[index], X[index], oX[index]);
-    }
+    }*/
 }
 
 __kernel
@@ -1191,10 +1191,10 @@ void calculate_hydro_W(__global ushort4* points, int point_count,
     ///103 128 116
     ///147 122 116
     //if(index == IDX(147, 122, 116))
-    if(index == IDX(103, 128, 116))
+    /*if(index == IDX(103, 128, 116))
     {
         printf("K_val %f X_val %f\n", K[index], X[index]);
-    }
+    }*/
 }
 
 ///does not use any derivatives
