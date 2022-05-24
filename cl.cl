@@ -1427,7 +1427,7 @@ __kernel
 void dissipate_single(__global ushort4* points, int point_count,
                       __global float* buffer, __global float* obuffer,
                       float coefficient,
-                      float scale, int4 dim, float timestep)
+                      float scale, int4 dim, float timestep, __global ushort* order_ptr)
 {
     int local_idx = get_global_id(0);
 
@@ -1439,6 +1439,10 @@ void dissipate_single(__global ushort4* points, int point_count,
     int iz = points[local_idx].z;
 
     int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
+
+    if((order & D_FULL) == 0)
+        return;
 
     //#define VARIABLE_DAMP
     #ifdef VARIABLE_DAMP

@@ -779,6 +779,38 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     };
     #endif // 0
 
+    auto dissipate = [&](auto& base_reference, auto& inout)
+    {
+        for(int i=0; i < base_reference.buffers.size(); i++)
+        {
+            if(base_reference.buffers[i].buf.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z())
+                continue;
+
+            cl::args diss;
+
+            diss.push_back(points_set.all_points);
+            diss.push_back(points_set.all_count);
+
+            diss.push_back(base_reference.buffers[i].buf.as_device_read_only());
+            diss.push_back(inout.buffers[i].buf);
+
+            float coeff = inout.buffers[i].dissipation_coeff;
+
+            diss.push_back(coeff);
+            diss.push_back(scale);
+            diss.push_back(clsize);
+            diss.push_back(timestep);
+            diss.push_back(points_set.order);
+
+            if(coeff == 0)
+                continue;
+
+            mqueue.exec("dissipate_single", diss, {points_set.all_count}, {128});
+
+            check_for_nans(inout.buffers[i].name + "_diss_single", inout.buffers[i].buf);
+        }
+    };
+
     auto dissipate_unidir = [&](auto& in, auto& out)
     {
         assert(in.buffers.size() == out.buffers.size());
