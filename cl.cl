@@ -431,6 +431,14 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
 
     #ifndef NO_CAIJYY
+
+    float found_det = CY_DET;
+
+    float tol = 1e-6;
+
+    if(found_det <= 1 + tol && found_det >= 1 - tol)
+        return;
+
     float fixed_cY0 = fix_cY0;
     float fixed_cY1 = fix_cY1;
     float fixed_cY2 = fix_cY2;
