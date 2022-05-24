@@ -445,12 +445,22 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
     float fixed_cA4 = fix_cA4;
     float fixed_cA5 = fix_cA5;
 
+    if(index == IDX(147, 122, 122))
+    {
+        printf("Cy det %f\n", CY_DET);
+    }
+
     cY0[index] = fixed_cY0;
     cY1[index] = fixed_cY1;
     cY2[index] = fixed_cY2;
     cY3[index] = fixed_cY3;
     cY4[index] = fixed_cY4;
     cY5[index] = fixed_cY5;
+
+    /*if(cY0[index] < 0 || cY3[index] < 0 || cY5[index] < 0)
+    {
+        printf("hi hi hi %f %f %f\n", cY0[index], cY3[index], cY5[index]);
+    }*/
 
     cA0[index] = fixed_cA0;
     cA1[index] = fixed_cA1;
@@ -804,6 +814,11 @@ void evolve_cY(__global ushort4* points, int point_count,
     NANCHECK(ocY3);
     NANCHECK(ocY4);
     NANCHECK(ocY5);
+
+    /*if(ocY0[index] < 0 || ocY3[index] < 0 || ocY5[index] < 0)
+    {
+        printf("less %f %f %f %f %f %f\n", ocY0[index], ocY1[index], ocY2[index], ocY3[index], ocY4[index], ocY5[index]);
+    }*/
 }
 
 __kernel
@@ -874,6 +889,11 @@ void evolve_cA(__global ushort4* points, int point_count,
     NANCHECK(ocA3);
     NANCHECK(ocA4);
     NANCHECK(ocA5);
+
+    if(index == IDX(147, 122, 122))
+    {
+        printf("CA: in %f %f %f %f %f %f out %f %f %f %f %f %f xS %f\n", cA0[index], cA1[index], cA2[index], cA3[index], cA4[index], cA5[index], ocA0[index], ocA1[index], ocA2[index], ocA3[index], ocA4[index], ocA5[index], DBGXGA);
+    }
 
     /*if(ix == 97 && iy == 124 && iz == 124)
     {
@@ -1381,8 +1401,14 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
         fin_cS2 = 0;
     }
 
+    /*if(fin_p_star > 1)
+    {
+        fin_p_star = 1;
+        fin_e_star = min(fin_e_star, 10 * fin_p_star);
+    }*/
+
     ///this *does* seem to help
-    /*if(X[index] < 0.2)
+    if(X[index] < 0.1)
     {
         fin_p_star = 0;
         fin_e_star = 0;
@@ -1390,7 +1416,7 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
         fin_cS0 = 0;
         fin_cS1 = 0;
         fin_cS2 = 0;
-    }*/
+    }
 
     oDp_star[index] = fin_p_star;
     oDe_star[index] = fin_e_star;

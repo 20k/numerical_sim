@@ -4303,6 +4303,10 @@ void build_constraints(equation_context& ctx)
         }
     }
 
+    fixed_cY.idx(0, 0) = max(fixed_cY.idx(0, 0), value{0.001f});
+    fixed_cY.idx(1, 1) = max(fixed_cY.idx(1, 1), value{0.001f});
+    fixed_cY.idx(2, 2) = max(fixed_cY.idx(2, 2), value{0.001f});
+
     /*tensor<value, 3, 3> fixed_cA = cA;
 
     ///https://arxiv.org/pdf/0709.3559.pdf b.49
@@ -4322,8 +4326,16 @@ void build_constraints(equation_context& ctx)
     ctx.add("NO_CAIJYY", 1);
     #else
     ///https://arxiv.org/pdf/0709.3559.pdf b.48?? note: this defines a seemingly alternate method to do the below, but it doesn't work amazingly well
-    tensor<value, 3, 3> fixed_cA = gpu_trace_free(cA, cY, cY.invert());
+    tensor<value, 3, 3> fixed_cA = gpu_trace_free(cA, fixed_cY, fixed_cY.invert());
     #endif
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            fixed_cA.idx(i, j) = dual_types::clamp(fixed_cA.idx(i, j), value{-2}, value{2});
+        }
+    }
 
     for(int i=0; i < 6; i++)
     {
@@ -4332,6 +4344,8 @@ void build_constraints(equation_context& ctx)
         ctx.add("fix_cY" + std::to_string(i), fixed_cY.idx(idx.x(), idx.y()));
         ctx.add("fix_cA" + std::to_string(i), fixed_cA.idx(idx.x(), idx.y()));
     }
+
+    ctx.add("CY_DET", det_cY_pow);
 }
 
 void build_intermediate_thin(equation_context& ctx)
@@ -4589,7 +4603,7 @@ void build_cY(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            float sigma = 4/5.f;
+            value sigma = dual_types::clamp(args.X, value{0.f}, value{1.f}) * 4/5.f;
 
             dtcYij.idx(i, j) += sigma * 0.5f * (gB_lower.idx(i) * bigGi_lower.idx(j) + gB_lower.idx(j) * bigGi_lower.idx(i));
 
@@ -4991,7 +5005,7 @@ void build_cA(equation_context& ctx, bool use_matter)
 
                 tensor<value, 3, 3> xgASij = gpu_trace_free(-8 * M_PI * gA * xSij, cY, icY);
 
-                //ctx.add("DBGXGA", xgASij.idx(0, 0));
+                ctx.add("DBGXGA", xgASij.idx(0, 0));
                 //ctx.add("Debug_cS0", args.matt.cS.idx(0));
 
                 dtcAij.idx(i, j) += xgASij.idx(i, j);
