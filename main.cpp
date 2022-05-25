@@ -4295,17 +4295,17 @@ void build_constraints(equation_context& ctx)
     ///for cY
     metric<value, 3, 3> fixed_cY = cY / det_cY_pow;
 
-    for(int i=0; i < 3; i++)
+    /*for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
             fixed_cY.idx(i, j) = dual_types::clamp(fixed_cY.idx(i, j), value{-2}, value{2});
         }
-    }
+    }*/
 
-    fixed_cY.idx(0, 0) = max(fixed_cY.idx(0, 0), value{0.001f});
+    /*fixed_cY.idx(0, 0) = max(fixed_cY.idx(0, 0), value{0.001f});
     fixed_cY.idx(1, 1) = max(fixed_cY.idx(1, 1), value{0.001f});
-    fixed_cY.idx(2, 2) = max(fixed_cY.idx(2, 2), value{0.001f});
+    fixed_cY.idx(2, 2) = max(fixed_cY.idx(2, 2), value{0.001f});*/
 
     /*tensor<value, 3, 3> fixed_cA = cA;
 
@@ -4329,13 +4329,13 @@ void build_constraints(equation_context& ctx)
     tensor<value, 3, 3> fixed_cA = gpu_trace_free(cA, fixed_cY, fixed_cY.invert());
     #endif
 
-    for(int i=0; i < 3; i++)
+    /*for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
             fixed_cA.idx(i, j) = dual_types::clamp(fixed_cA.idx(i, j), value{-2}, value{2});
         }
-    }
+    }*/
 
     for(int i=0; i < 6; i++)
     {
