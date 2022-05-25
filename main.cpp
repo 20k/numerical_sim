@@ -4327,6 +4327,9 @@ void build_constraints(equation_context& ctx)
     #else
     ///https://arxiv.org/pdf/0709.3559.pdf b.48?? note: this defines a seemingly alternate method to do the below, but it doesn't work amazingly well
     tensor<value, 3, 3> fixed_cA = gpu_trace_free(cA, fixed_cY, fixed_cY.invert());
+
+    ///this seems to work well (https://arxiv.org/pdf/0709.3559.pdf) (b.49), but needs testing with bbh which is why its disabled
+    //tensor<value, 3, 3> fixed_cA = cA / det_cY_pow;
     #endif
 
     /*for(int i=0; i < 3; i++)
