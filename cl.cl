@@ -1353,13 +1353,13 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     float fin_cS2 = f_dtSk2 * timestep + base_cS2;
 
     ///this makes a big difference to stability around collisions
-    /*fin_cS0 = clamp(fin_cS0, -0.15f, 0.15f);
+    fin_cS0 = clamp(fin_cS0, -0.15f, 0.15f);
     fin_cS1 = clamp(fin_cS1, -0.15f, 0.15f);
-    fin_cS2 = clamp(fin_cS2, -0.15f, 0.15f);*/
+    fin_cS2 = clamp(fin_cS2, -0.15f, 0.15f);
 
-    fin_cS0 = clamp(fin_cS0, -1.f, 1.f);
+    /*fin_cS0 = clamp(fin_cS0, -1.f, 1.f);
     fin_cS1 = clamp(fin_cS1, -1.f, 1.f);
-    fin_cS2 = clamp(fin_cS2, -1.f, 1.f);
+    fin_cS2 = clamp(fin_cS2, -1.f, 1.f);*/
 
     if(fin_p_star < 1e-5 * p_star_max)
     {
@@ -1383,7 +1383,7 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     }*/
 
     ///this *does* seem to help
-    if(X[index] < 0.1)
+    /*if(X[index] < 0.1)
     {
         fin_p_star = 0;
         fin_e_star = 0;
@@ -1391,6 +1391,16 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
         fin_cS0 = 0;
         fin_cS1 = 0;
         fin_cS2 = 0;
+    }*/
+
+    if(X[index] < 0.2)
+    {
+        fin_p_star += (0 - fin_p_star) * timestep;
+        fin_e_star += (0 - fin_e_star) * timestep;
+
+        fin_cS0 += (0 - fin_cS0) * timestep;
+        fin_cS1 += (0 - fin_cS1) * timestep;
+        fin_cS2 += (0 - fin_cS2) * timestep;
     }
 
     oDp_star[index] = fin_p_star;
