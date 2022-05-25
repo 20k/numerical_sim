@@ -2112,7 +2112,7 @@ struct matter
         //return {};
 
         value h = calculate_h_with_gamma_eos(chi, W);
-        value em6phi = chi_to_e_m6phi(chi);
+        value em6phi = chi_to_e_m6phi_unclamped(chi);
 
         value p0 = calculate_p0(chi, W);
         value eps = calculate_eps(chi, W);
@@ -2122,7 +2122,7 @@ struct matter
 
     tensor<value, 3> calculate_adm_Si(const value& chi)
     {
-        value em6phi = chi_to_e_m6phi(chi);
+        value em6phi = chi_to_e_m6phi_unclamped(chi);
 
         return cS * em6phi;
     }
@@ -2130,7 +2130,7 @@ struct matter
     ///the reason to calculate X_Sij is that its regular in terms of chi
     tensor<value, 3, 3> calculate_adm_X_Sij(const value& chi, const value& W, const unit_metric<value, 3, 3>& cY)
     {
-        value em6phi = chi_to_e_m6phi(chi);
+        value em6phi = chi_to_e_m6phi_unclamped(chi);
         value h = calculate_h_with_gamma_eos(chi, W);
 
         tensor<value, 3, 3> Sij;
