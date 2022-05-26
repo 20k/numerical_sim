@@ -415,9 +415,6 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
 
         cqueue.exec("evolve_hydro_all", evolve, {points_set.all_count}, {128});
     }
-
-    ///temporary
-    //calculate_hydro_w(cqueue);
 }
 
 ref_counted_buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool)

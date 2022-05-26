@@ -1300,6 +1300,7 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
+    ///we're copying over base. Is that correct? Because sommerfeld
     if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
     {
         oDp_star[index] = base_Dp_star[index];
