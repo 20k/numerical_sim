@@ -3951,11 +3951,9 @@ value matter_X_2(const value& X)
 }
 
 inline
-value get_cacheable_W(equation_context& ctx, standard_arguments& args)
+value get_cacheable_W(equation_context& ctx, standard_arguments& args, matter& matt)
 {
     inverse_metric<value, 3, 3> icY = args.cY.invert();
-
-    matter& matt = args.matt;
 
     value W = 0.5f;
     int iterations = 5;
@@ -3981,7 +3979,7 @@ namespace hydrodynamics
 
         inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-        value sW = get_cacheable_W(ctx, args);
+        value sW = get_cacheable_W(ctx, args, args.matt);
 
         ctx.pin(sW);
 
@@ -4055,7 +4053,7 @@ namespace hydrodynamics
 
         value P = bidx("pressure", ctx.uses_linear, false);
 
-        value sW = get_cacheable_W(ctx, args);
+        value sW = get_cacheable_W(ctx, args, args.matt);
 
         ctx.pin(sW);
 
@@ -4973,7 +4971,7 @@ void build_cA(equation_context& ctx, bool use_matter)
             ///matter
             if(use_matter)
             {
-                value W = get_cacheable_W(ctx, args);
+                value W = get_cacheable_W(ctx, args, args.matt);
 
                 ctx.pin(W);
 
@@ -5273,7 +5271,7 @@ void build_K(equation_context& ctx, bool use_matter)
 
     if(use_matter)
     {
-        value W = get_cacheable_W(ctx, args);
+        value W = get_cacheable_W(ctx, args, args.matt);
         ctx.pin(W);
 
         value matter_s = args.matt.calculate_adm_S(cY, icY, X, W);
