@@ -3972,42 +3972,6 @@ value get_cacheable_W(equation_context& ctx, standard_arguments& args)
 
 namespace hydrodynamics
 {
-    void build_W(equation_context& ctx)
-    {
-        standard_arguments args(ctx);
-        matter& matt = args.matt;
-
-        inverse_metric<value, 3, 3> icY = args.cY.invert();
-
-        value constant_1 = 0;
-
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                constant_1 += matter_X_2(args.X) * icY.idx(i, j) * matt.cS.idx(i) * matt.cS.idx(j);
-            }
-        }
-
-        value W = get_cacheable_W(ctx, args);
-
-        ctx.add("W_p_star", matt.p_star);
-        ctx.add("W_X", args.X);
-        ctx.add("W_C1", constant_1);
-        ctx.add("W_e_star", matt.e_star);
-        ctx.add("W_cS0", matt.cS.idx(0));
-        ctx.add("W_cS1", matt.cS.idx(1));
-        ctx.add("W_cS2", matt.cS.idx(2));
-        ctx.add("W_cY0", args.cY.idx(0, 0));
-        ctx.add("W_cY1", args.cY.idx(1, 0));
-        ctx.add("W_cY2", args.cY.idx(2, 0));
-        ctx.add("W_cY3", args.cY.idx(1, 1));
-        ctx.add("W_cY4", args.cY.idx(1, 2));
-        ctx.add("W_cY5", args.cY.idx(2, 2));
-
-        ctx.add("init_hydro_W", W);
-    }
-
     void build_intermediate_variables_derivatives(equation_context& ctx, bool precise)
     {
         ctx.always_directional_derivatives = precise;
@@ -6820,11 +6784,6 @@ int main()
 
     printf("Begin hydro\n");
 
-    equation_context hydro_W;
-    hydrodynamics::build_W(hydro_W);
-
-    printf("Post W\n");
-
     equation_context hydro_intermediates_full;
     hydrodynamics::build_intermediate_variables_derivatives(hydro_intermediates_full, false);
 
@@ -6865,7 +6824,6 @@ int main()
     dtgA.build(argument_string, "tga");
     dtgB.build(argument_string, "tgb");
 
-    hydro_W.build(argument_string, "hydrow");
     hydro_intermediates_full.build(argument_string, "hydrointermediatesfull");
     hydro_intermediates_reduced.build(argument_string, "hydrointermediatesreduced");
     hydro_final.build(argument_string, "hydrofinal");
