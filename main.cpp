@@ -4071,7 +4071,10 @@ namespace hydrodynamics
             lhs_dte_star += diff1(ctx, e_star_vi.idx(i), i);
         }
 
-        value rhs_dte_star = args.matt.estar_vi_rhs(ctx, args.gA, args.gB, icY, matter_X_1(args.X), sW);
+        matter matt2 = matt;
+        matt2.p_star = "fin_p_star";
+
+        value rhs_dte_star = matt.estar_vi_rhs(ctx, args.gA, args.gB, icY, matter_X_1(args.X), sW);
 
         /*ctx.add("DBG_RHS_DTESTAR", rhs_dte_star);
 

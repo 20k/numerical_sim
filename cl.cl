@@ -1314,31 +1314,11 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     float TEMPORARIEShydrofinal;
 
     float f_dtp_star = init_dtp_star;
-    float f_dte_star = init_dte_star;
-
-    float f_dtSk0 = init_dtSk0;
-    float f_dtSk1 = init_dtSk1;
-    float f_dtSk2 = init_dtSk2;
-
-    /*float f_dtgA = dtgA;
-
-    float b0 = base_gA[index];
-
-    ogA[index] = f_dtgA * timestep + b0;*/
 
     float base_p_star =  base_Dp_star[index];
-    float base_e_star = base_De_star[index];
-    float base_cS0 = base_DcS0[index];
-    float base_cS1 = base_DcS1[index];
-    float base_cS2 = base_DcS2[index];
+    float fin_p_star = f_dtp_star * timestep + base_p_star;
 
     LNANCHECK(base_p_star);
-    LNANCHECK(base_e_star);
-    LNANCHECK(base_cS0);
-    LNANCHECK(base_cS1);
-    LNANCHECK(base_cS2);
-
-    float fin_p_star = f_dtp_star * timestep + base_p_star;
 
     if(fin_p_star <= MIN_P_STAR)
     {
@@ -1351,8 +1331,22 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
         return;
     }
 
-    float fin_e_star = f_dte_star * timestep + base_e_star;
+    float f_dte_star = init_dte_star;
+    float f_dtSk0 = init_dtSk0;
+    float f_dtSk1 = init_dtSk1;
+    float f_dtSk2 = init_dtSk2;
 
+    float base_e_star = base_De_star[index];
+    float base_cS0 = base_DcS0[index];
+    float base_cS1 = base_DcS1[index];
+    float base_cS2 = base_DcS2[index];
+
+    LNANCHECK(base_e_star);
+    LNANCHECK(base_cS0);
+    LNANCHECK(base_cS1);
+    LNANCHECK(base_cS2);
+
+    float fin_e_star = f_dte_star * timestep + base_e_star;
     float fin_cS0 = f_dtSk0 * timestep + base_cS0;
     float fin_cS1 = f_dtSk1 * timestep + base_cS1;
     float fin_cS2 = f_dtSk2 * timestep + base_cS2;
