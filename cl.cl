@@ -1172,6 +1172,8 @@ void calculate_hydro_W(__global ushort4* points, int point_count,
     }
 }
 
+#define MIN_P_STAR 1e-5f
+
 ///does not use any derivatives
 __kernel
 void calculate_hydro_intermediates(__global ushort4* points, int point_count,
@@ -1193,6 +1195,27 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
+
+    if(Dp_star[index] < MIN_P_STAR)
+    {
+        p_star_vi0[index] = 0;
+        p_star_vi1[index] = 0;
+        p_star_vi2[index] = 0;
+
+        e_star_vi0[index] = 0;
+        e_star_vi1[index] = 0;
+        e_star_vi2[index] = 0;
+
+        skvi0[index] = 0;
+        skvi1[index] = 0;
+        skvi2[index] = 0;
+        skvi3[index] = 0;
+        skvi4[index] = 0;
+        skvi5[index] = 0;
+
+        pressure[index] = 0;
+        return;
+    }
 
     if((order & D_FULL) > 0 || ((order & D_LOW) > 0))
     {
@@ -1347,7 +1370,7 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
 
     float fin_p_star = f_dtp_star * timestep + base_p_star;
 
-    if(fin_p_star <= 1e-5 * p_star_max)
+    if(fin_p_star <= MIN_P_STAR)
     {
         oDp_star[index] = 0;
         oDe_star[index] = 0;
