@@ -768,12 +768,12 @@ void evolve_cY(__global ushort4* points, int point_count,
 
     if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
     {
-        ocY0[index] = base_cY0[index];
-        ocY1[index] = base_cY1[index];
-        ocY2[index] = base_cY2[index];
-        ocY3[index] = base_cY3[index];
-        ocY4[index] = base_cY4[index];
-        ocY5[index] = base_cY5[index];
+        ocY0[index] = cY0[index];
+        ocY1[index] = cY1[index];
+        ocY2[index] = cY2[index];
+        ocY3[index] = cY3[index];
+        ocY4[index] = cY4[index];
+        ocY5[index] = cY5[index];
         return;
     }
 
@@ -834,12 +834,12 @@ void evolve_cA(__global ushort4* points, int point_count,
 
     if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
     {
-        ocA0[index] = base_cA0[index];
-        ocA1[index] = base_cA1[index];
-        ocA2[index] = base_cA2[index];
-        ocA3[index] = base_cA3[index];
-        ocA4[index] = base_cA4[index];
-        ocA5[index] = base_cA5[index];
+        ocA0[index] = cA0[index];
+        ocA1[index] = cA1[index];
+        ocA2[index] = cA2[index];
+        ocA3[index] = cA3[index];
+        ocA4[index] = cA4[index];
+        ocA5[index] = cA5[index];
         return;
     }
 
@@ -909,9 +909,9 @@ void evolve_cGi(__global ushort4* points, int point_count,
 
     if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
     {
-        ocGi0[index] = base_cGi0[index];
-        ocGi1[index] = base_cGi1[index];
-        ocGi2[index] = base_cGi2[index];
+        ocGi0[index] = cGi0[index];
+        ocGi1[index] = cGi1[index];
+        ocGi2[index] = cGi2[index];
         return;
     }
 
@@ -981,7 +981,7 @@ void evolve_K(__global ushort4* points, int point_count,
 
     if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
     {
-        oK[index] = base_K[index];
+        oK[index] = K[index];
         return;
     }
 
@@ -1028,7 +1028,7 @@ void evolve_X(__global ushort4* points, int point_count,
 
     if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
     {
-        oX[index] = base_X[index];
+        oX[index] = X[index];
         return;
     }
 
@@ -1069,7 +1069,7 @@ void evolve_gA(__global ushort4* points, int point_count,
 
     if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
     {
-        ogA[index] = base_gA[index];
+        ogA[index] = gA[index];
         return;
     }
 
@@ -1111,9 +1111,9 @@ void evolve_gB(__global ushort4* points, int point_count,
 
     if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
     {
-        ogB0[index] = base_gB0[index];
-        ogB1[index] = base_gB1[index];
-        ogB2[index] = base_gB2[index];
+        ogB0[index] = gB0[index];
+        ogB1[index] = gB1[index];
+        ogB2[index] = gB2[index];
         return;
     }
 
@@ -1303,12 +1303,12 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     ///we're copying over base. Is that correct? Because sommerfeld
     if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
     {
-        oDp_star[index] = base_Dp_star[index];
-        oDe_star[index] = base_De_star[index];
+        oDp_star[index] = Dp_star[index];
+        oDe_star[index] = De_star[index];
 
-        oDcS0[index] = base_DcS0[index];
-        oDcS1[index] = base_DcS1[index];
-        oDcS2[index] = base_DcS2[index];
+        oDcS0[index] = DcS0[index];
+        oDcS1[index] = DcS1[index];
+        oDcS2[index] = DcS2[index];
         return;
     }
 
