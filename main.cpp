@@ -1431,7 +1431,7 @@ namespace neutron_star
     inline
     float compactness()
     {
-        return 0.08f;
+        return 0.12f;
     }
 
     template<typename T>
@@ -3680,7 +3680,8 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     std::vector<compact_object::data<float>> objects;
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
-    #define PAPER_0610128
+    ///todo: revert the fact that I butchered this
+    /*#define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data<float> h1;
     h1.t = compact_object::NEUTRON_STAR;
@@ -3696,10 +3697,28 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     objects.push_back(h1);
     objects.push_back(h2);
-    #endif // PAPER_0610128
+    #endif // PAPER_0610128*/
+
+    #define NEUTRON_DOUBLE_COLLAPSE
+    #ifdef NEUTRON_DOUBLE_COLLAPSE
+    compact_object::data<float> h1;
+    h1.t = compact_object::NEUTRON_STAR;
+    h1.bare_mass = 0.35;
+    h1.momentum = {0, 0.133 * 0.8 * 0.6, 0};
+    h1.position = {-4.257, 0.f, 0.f};
+
+    compact_object::data<float> h2;
+    h2.t = compact_object::NEUTRON_STAR;
+    h2.bare_mass = 0.35;
+    h2.momentum = {0, -0.133 * 0.8 * 0.6, 0};
+    h2.position = {4.257, 0.f, 0.f};
+
+    objects = {h1, h2};
 
     return get_bare_initial_conditions(clctx, cqueue, scale, objects);
     #endif
+
+    #endif // BARE_BLACK_HOLES
 
     //#define USE_ADM_HOLE
     #ifdef USE_ADM_HOLE
@@ -4583,7 +4602,7 @@ void build_cY(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            value sigma = dual_types::clamp(args.X, value{0.f}, value{1.f}) * 4/5.f;
+            value sigma = 4/5.f;
 
             dtcYij.idx(i, j) += sigma * 0.5f * (gB_lower.idx(i) * bigGi_lower.idx(j) + gB_lower.idx(j) * bigGi_lower.idx(i));
 
