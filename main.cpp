@@ -4053,9 +4053,9 @@ namespace hydrodynamics
 
         value P = bidx("pressure", ctx.uses_linear, false);
 
-        value sW = get_cacheable_W(ctx, args, args.matt);
+        /*value sW = get_cacheable_W(ctx, args, args.matt);
 
-        ctx.pin(sW);
+        ctx.pin(sW);*/
 
         value lhs_dtp_star = 0;
 
@@ -4071,10 +4071,17 @@ namespace hydrodynamics
             lhs_dte_star += diff1(ctx, e_star_vi.idx(i), i);
         }
 
+        //#define IMMEDIATE_UPDATE
+        #ifdef IMMEDIATE_UPDATE
         matter matt2 = matt;
         matt2.p_star = "fin_p_star";
+        #else
+        matter& matt2 = matt;
+        #endif
 
-        value rhs_dte_star = matt.estar_vi_rhs(ctx, args.gA, args.gB, icY, matter_X_1(args.X), sW);
+        value sW = get_cacheable_W(ctx, args, matt2);
+
+        value rhs_dte_star = matt2.estar_vi_rhs(ctx, args.gA, args.gB, icY, matter_X_1(args.X), sW);
 
         /*ctx.add("DBG_RHS_DTESTAR", rhs_dte_star);
 
@@ -4097,7 +4104,7 @@ namespace hydrodynamics
             lhs_dtSk.idx(k) = sum;
         }
 
-        tensor<value, 3> rhs_dtSk = matt.cSkvi_rhs(ctx, icY, args.gA, args.gB, matter_X_2(args.X), P, sW);
+        tensor<value, 3> rhs_dtSk = matt2.cSkvi_rhs(ctx, icY, args.gA, args.gB, matter_X_2(args.X), P, sW);
 
         value dtp_star = -lhs_dtp_star;
         value dte_star = -lhs_dte_star + rhs_dte_star;

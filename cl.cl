@@ -1311,14 +1311,14 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
         return;
     }
 
-    float TEMPORARIEShydrofinal;
-
     float f_dtp_star = init_dtp_star;
 
     float base_p_star =  base_Dp_star[index];
     float fin_p_star = f_dtp_star * timestep + base_p_star;
 
     LNANCHECK(base_p_star);
+
+    float TEMPORARIEShydrofinal;
 
     if(fin_p_star <= MIN_P_STAR)
     {
