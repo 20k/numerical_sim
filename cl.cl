@@ -1347,7 +1347,7 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
 
     float fin_p_star = f_dtp_star * timestep + base_p_star;
 
-    if(fin_p_star <= 0)
+    if(fin_p_star <= 1e-5 * p_star_max)
     {
         oDp_star[index] = 0;
         oDe_star[index] = 0;
@@ -1373,19 +1373,10 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     fin_cS1 = clamp(fin_cS1, -1.f, 1.f);
     fin_cS2 = clamp(fin_cS2, -1.f, 1.f);*/
 
+    ///?
     if(fin_p_star < 1e-5 * p_star_max)
     {
         fin_e_star = min(fin_e_star, 10 * fin_p_star);
-    }
-
-    if(fin_p_star < 1e-5 * p_star_max)
-    {
-        fin_p_star = 0;
-        fin_e_star = 0;
-
-        fin_cS0 = 0;
-        fin_cS1 = 0;
-        fin_cS2 = 0;
     }
 
     /*if(fin_p_star > 1)
