@@ -137,7 +137,7 @@ float get_distance(int x1, int y1, int z1, int x2, int y2, int z2, int4 dim, flo
     #define GET_ARGLIST(a, p) a p##cY0, a p##cY1, a p##cY2, a p##cY3, a p##cY4, a p##cY5, \
                 a p##cA0, a p##cA1, a p##cA2, a p##cA3, a p##cA4, a p##cA5, \
                 a p##cGi0, a p##cGi1, a p##cGi2, a p##K, a p##X, a p##gA, a p##gB0, a p##gB1, a p##gB2, \
-                a p##Dp_star, a p##De_star, a p##DcS0, a p##DcS1, a p##DcS2, a p##DW_stashed
+                a p##Dp_star, a p##De_star, a p##DcS0, a p##DcS1, a p##DcS2
 
     #define GET_DERIVLIST(a, p) a p##dcYij0, a p##dcYij1, a p##dcYij2, a p##dcYij3, a p##dcYij4, a p##dcYij5, a p##dcYij6, a p##dcYij7, a p##dcYij8, a p##dcYij9, a p##dcYij10, a p##dcYij11, a p##dcYij12, a p##dcYij13, a p##dcYij14, a p##dcYij15, a p##dcYij16, a p##dcYij17, \
                         a p##digA0, a p##digA1, a p##digA2, \
@@ -391,12 +391,6 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
     DcS0[index] = cS0;
     DcS1[index] = cS1;
     DcS2[index] = cS2;
-
-    {
-        float TEMPORARIEShydrow;
-
-        DW_stashed[index] = init_hydro_W;
-    }
 
     NANCHECK(Dp_star);
     NANCHECK(De_star);
@@ -1142,36 +1136,6 @@ void evolve_gB(__global ushort4* points, int point_count,
     NANCHECK(ogB2);
 }
 
-///does not use derivatives
-__kernel
-void calculate_hydro_W(__global ushort4* points, int point_count,
-                       STANDARD_ARGS(),
-                       float scale, int4 dim, __global ushort* order_ptr)
-{
-    int local_idx = get_global_id(0);
-
-    if(local_idx >= point_count)
-        return;
-
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
-
-    int index = IDX(ix, iy, iz);
-    int order = order_ptr[index];
-
-    float TEMPORARIEShydrow;
-
-    DW_stashed[index] = init_hydro_W;
-
-    NANCHECK(DW_stashed);
-
-    if(isnan(DW_stashed[index]))
-    {
-        printf("Vals %i %i %i p_star %f X %f C1 %f e* %f cS %f %f %f cY %f %f %f %f %f %f K %f gA %f\n", ix, iy, iz, W_p_star, W_X, W_C1, W_e_star, W_cS0, W_cS1, W_cS2, W_cY0, W_cY1, W_cY2, W_cY3, W_cY4, W_cY5, K[index], gA[index]);
-    }
-}
-
 #define MIN_P_STAR 1e-5f
 
 ///does not use any derivatives
@@ -1219,6 +1183,8 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
 
     if((order & D_FULL) > 0 || ((order & D_LOW) > 0))
     {
+        float TEMPORARIEShydrointermediatesfull;
+
         float pstarvi0 = init_p_star_vi0raw;
         float pstarvi1 = init_p_star_vi1raw;
         float pstarvi2 = init_p_star_vi2raw;
@@ -1255,6 +1221,8 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
     }
     else
     {
+        float TEMPORARIEShydrointermediatesreduced;
+
         float pstarvi0 = init_p_star_vi0precise;
         float pstarvi1 = init_p_star_vi1precise;
         float pstarvi2 = init_p_star_vi2precise;
@@ -1342,6 +1310,8 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
         oDcS2[index] = base_DcS2[index];
         return;
     }
+
+    float TEMPORARIEShydrofinal;
 
     float f_dtp_star = init_dtp_star;
     float f_dte_star = init_dte_star;

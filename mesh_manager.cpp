@@ -38,7 +38,6 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size, bool use_matter)
         {"DcS0", "evolve_hydro_all", 0.25f, true},
         {"DcS1", "evolve_hydro_all", 0.25f, true},
         {"DcS2", "evolve_hydro_all", 0.25f, true},
-        {"DW_stashed", "calculate_hydro_W", 0.f, true},
     };
 
     for(int kk=0; kk < (int)values.size(); kk++)
@@ -344,37 +343,12 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, std::array<cl:
     }
 }
 
-void cpu_mesh::calculate_hydro_w(cl::managed_command_queue& cqueue, buffer_set& in)
-{
-    if(!sett.use_matter)
-        return;
-
-    cl::args hyd;
-    hyd.push_back(points_set.all_points);
-    hyd.push_back(points_set.all_count);
-
-    for(auto& i : in.buffers)
-    {
-        hyd.push_back(i.buf);
-    }
-
-    vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
-
-    hyd.push_back(scale);
-    hyd.push_back(clsize);
-    hyd.push_back(points_set.order);
-
-    cqueue.exec("calculate_hydro_W", hyd, {points_set.all_count}, {128});
-}
-
 void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep)
 {
     if(!sett.use_matter)
         return;
 
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
-
-    calculate_hydro_w(cqueue, in);
 
     int intermediate_count = 13;
 

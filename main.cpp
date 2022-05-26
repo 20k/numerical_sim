@@ -1887,7 +1887,6 @@ struct matter
     value p_star;
     value e_star;
     tensor<value, 3> cS;
-    value stashed_W;
 
     float Gamma = 2;
 
@@ -1900,8 +1899,6 @@ struct matter
         {
             cS.idx(i) = bidx("DcS" + std::to_string(i), ctx.uses_linear, false);
         }
-
-        stashed_W = bidx("DW_stashed", ctx.uses_linear, false);
 
         p_star = max(p_star, 0.f);
         e_star = max(e_star, 0.f);
@@ -3953,6 +3950,26 @@ value matter_X_2(const value& X)
     return max(X, 0.00f);
 }
 
+inline
+value get_cacheable_W(equation_context& ctx, standard_arguments& args)
+{
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+    matter& matt = args.matt;
+
+    value W = 0.5f;
+    int iterations = 5;
+
+    for(int i=0; i < iterations; i++)
+    {
+        ctx.pin(W);
+
+        W = w_next(W, matt.p_star, matter_X_2(args.X), icY, matt.cS, matt.Gamma, matt.e_star);
+    }
+
+    return W;
+}
+
 namespace hydrodynamics
 {
     void build_W(equation_context& ctx)
@@ -3961,10 +3978,6 @@ namespace hydrodynamics
         matter& matt = args.matt;
 
         inverse_metric<value, 3, 3> icY = args.cY.invert();
-
-        value W = 0.5f;
-
-        int iterations = 10;
 
         value constant_1 = 0;
 
@@ -3976,23 +3989,7 @@ namespace hydrodynamics
             }
         }
 
-        for(int i=0; i < iterations; i++)
-        {
-            ctx.pin(W);
-
-            W = w_next(W, matt.p_star, matter_X_2(args.X), icY, matt.cS, matt.Gamma, matt.e_star);
-        }
-
-        /*T constant_1 = 0;
-
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                constant_1 += chi * icY.idx(i, j) * cS.idx(i) * cS.idx(j);
-            }
-        }*/
-
+        value W = get_cacheable_W(ctx, args);
 
         ctx.add("W_p_star", matt.p_star);
         ctx.add("W_X", args.X);
@@ -4020,17 +4017,21 @@ namespace hydrodynamics
 
         inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-        tensor<value, 3> p_star_vi = matt.p_star_vi(icY, args.gA, args.gB, matter_X_2(args.X), matt.stashed_W);
-        tensor<value, 3> e_star_vi = matt.e_star_vi(icY, args.gA, args.gB, matter_X_2(args.X), matt.stashed_W);
+        value sW = get_cacheable_W(ctx, args);
 
-        tensor<value, 3, 3> cSk_vi = matt.cSk_vi(icY, args.gA, args.gB, matter_X_2(args.X), matt.stashed_W);
+        ctx.pin(sW);
+
+        tensor<value, 3> p_star_vi = matt.p_star_vi(icY, args.gA, args.gB, matter_X_2(args.X), sW);
+        tensor<value, 3> e_star_vi = matt.e_star_vi(icY, args.gA, args.gB, matter_X_2(args.X), sW);
+
+        tensor<value, 3, 3> cSk_vi = matt.cSk_vi(icY, args.gA, args.gB, matter_X_2(args.X), sW);
 
         /*value p0 = matt.calculate_p0(matter_X_1(args.X), matt.stashed_W);
         value eps = matt.calculate_eps(matter_X_1(args.X), matt.stashed_W);
 
         value pressure = matt.gamma_eos(p0, eps);*/
 
-        value pressure = matt.gamma_eos_from_e_star(matter_X_2(args.X), matt.stashed_W);
+        value pressure = matt.gamma_eos_from_e_star(matter_X_2(args.X), sW);
 
         vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
@@ -4090,6 +4091,10 @@ namespace hydrodynamics
 
         value P = bidx("pressure", ctx.uses_linear, false);
 
+        value sW = get_cacheable_W(ctx, args);
+
+        ctx.pin(sW);
+
         value lhs_dtp_star = 0;
 
         for(int i=0; i < 3; i++)
@@ -4104,7 +4109,7 @@ namespace hydrodynamics
             lhs_dte_star += diff1(ctx, e_star_vi.idx(i), i);
         }
 
-        value rhs_dte_star = args.matt.estar_vi_rhs(ctx, args.gA, args.gB, icY, matter_X_1(args.X), matt.stashed_W);
+        value rhs_dte_star = args.matt.estar_vi_rhs(ctx, args.gA, args.gB, icY, matter_X_1(args.X), sW);
 
         /*ctx.add("DBG_RHS_DTESTAR", rhs_dte_star);
 
@@ -4127,7 +4132,7 @@ namespace hydrodynamics
             lhs_dtSk.idx(k) = sum;
         }
 
-        tensor<value, 3> rhs_dtSk = matt.cSkvi_rhs(ctx, icY, args.gA, args.gB, matter_X_2(args.X), P, matt.stashed_W);
+        tensor<value, 3> rhs_dtSk = matt.cSkvi_rhs(ctx, icY, args.gA, args.gB, matter_X_2(args.X), P, sW);
 
         value dtp_star = -lhs_dtp_star;
         value dte_star = -lhs_dte_star + rhs_dte_star;
@@ -5004,7 +5009,11 @@ void build_cA(equation_context& ctx, bool use_matter)
             ///matter
             if(use_matter)
             {
-                tensor<value, 3, 3> xSij = args.matt.calculate_adm_X_Sij(X, args.matt.stashed_W, cY);
+                value W = get_cacheable_W(ctx, args);
+
+                ctx.pin(W);
+
+                tensor<value, 3, 3> xSij = args.matt.calculate_adm_X_Sij(X, W, cY);
 
                 tensor<value, 3, 3> xgASij = gpu_trace_free(-8 * M_PI * gA * xSij, cY, icY);
 
@@ -5300,8 +5309,11 @@ void build_K(equation_context& ctx, bool use_matter)
 
     if(use_matter)
     {
-        value matter_s = args.matt.calculate_adm_S(cY, icY, X, args.matt.stashed_W);
-        value matter_p = args.matt.calculate_adm_p(X, args.matt.stashed_W);
+        value W = get_cacheable_W(ctx, args);
+        ctx.pin(W);
+
+        value matter_s = args.matt.calculate_adm_S(cY, icY, X, W);
+        value matter_p = args.matt.calculate_adm_p(X, W);
 
         dtK += (8 * M_PI / 2) * gA * (matter_s + matter_p);
 
