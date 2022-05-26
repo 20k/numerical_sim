@@ -1609,13 +1609,15 @@ void render(STANDARD_ARGS(),
         printf("scalar %f\n", max_scalar);
     }*/
 
-    matter = clamp(matter * 5, 0.f, 1.f);
+    matter = clamp(matter * 10, 0.f, 1.f);
 
     max_scalar = max_scalar * 40;
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 
-    float3 col = {matter, matter, matter};
+    float3 col = {matter + real, matter, matter};
+
+    col = clamp(col, 0.f, 1.f);
 
     float3 lin_col = srgb_to_lin(col);
 
