@@ -1543,7 +1543,11 @@ void render(STANDARD_ARGS(),
 
     float max_scalar = 0;
 
+    #ifdef RENDER_MATTER
     float matter = Dp_star[IDX(ix,iy,iz)];
+    #else
+    float matter = 0;
+    #endif
 
     //for(int z = 20; z < dim.z-20; z++)
 
