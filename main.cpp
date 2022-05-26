@@ -4174,7 +4174,7 @@ void build_sommerfeld(equation_context& ctx, bool use_matter)
     float asy_cS1 = 0;
     float asy_cS2 = 0;
 
-    auto sommerfeld = [&](value f, float f0, value v)
+    auto sommerfeld = [&](const value& f, float f0, const value& v)
     {
         value sum = 0;
 
