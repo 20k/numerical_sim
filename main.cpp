@@ -1966,13 +1966,18 @@ struct matter
         return (Gamma - 1) * p0 * eps;
     }*/
 
-    value gamma_eos_from_e_star(const value& chi, const value& W)
+    value calculate_p0e(const value& chi, const value& W)
     {
         value iv_au0 = divide_with_limit(p_star, W, 0.f, DIVISION_TOL);
 
         value e_m6phi = chi_to_e_m6phi_unclamped(chi);
 
-        value p0e = pow(max(e_star * e_m6phi * iv_au0, 0.f), Gamma);
+        return pow(max(e_star * e_m6phi * iv_au0, 0.f), Gamma);
+    }
+
+    value gamma_eos_from_e_star(const value& chi, const value& W)
+    {
+        value p0e = calculate_p0e(chi, W);
 
         return p0e * (Gamma - 1);
     }
@@ -2173,7 +2178,7 @@ struct matter
         return 0;
         #endif // QUADRATIC_VISCOSITY
 
-        value e_m6phi = chi_to_e_m6phi(chi);
+        value e_m6phi = chi_to_e_m6phi_unclamped(chi);
         value e_6phi = chi_to_e_6phi(chi);
 
         tensor<value, 3> vk = get_v_upper(icY, gA, gB, chi, W);
@@ -2195,14 +2200,14 @@ struct matter
         //ctx.add("DBG_A", A);
 
         ///[0.1, 1.0}
-        value CQvis = 0.9f;
+        value CQvis = 0.1f;
 
         value PQvis = if_v(littledv < 0, CQvis * A * pow(littledv, 2), 0.f);
 
         //ctx.add("DBG_PQVIS", PQvis);
 
-        value p0 = calculate_p0(chi, W);
-        value eps = calculate_eps(chi, W);
+        //value p0 = calculate_p0(chi, W);
+        //value eps = calculate_eps(chi, W);
 
         value sum_interior_rhs = 0;
 
@@ -2213,8 +2218,9 @@ struct matter
             sum_interior_rhs += diff1(ctx, to_diff, k);
         }
 
+        value p0e = calculate_p0e(chi, W);
 
-        value degenerate = divide_with_limit(value{1}, pow(p0 * eps, 1 - 1/Gamma), 0.f);
+        value degenerate = divide_with_limit(value{1}, pow(p0e, 1 - 1/Gamma), 0.f);
 
         /*ctx.add("DBG_IRHS", sum_interior_rhs);
 
