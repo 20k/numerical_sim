@@ -1384,14 +1384,38 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
         fin_cS2 = 0;
     }*/
 
-    if(X[index] < 0.2)
-    {
-        fin_p_star += (0 - fin_p_star) * timestep;
-        fin_e_star += (0 - fin_e_star) * timestep;
+    float area_half_width = scale * max(max(dim.x, dim.y), dim.z) / 2.f;
 
-        fin_cS0 += (0 - fin_cS0) * timestep;
-        fin_cS1 += (0 - fin_cS1) * timestep;
-        fin_cS2 += (0 - fin_cS2) * timestep;
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
+
+    float my_radius = fast_length(offset);
+
+    float diss = 1;
+
+    /*float min_frac = 0.75;
+    float max_frac = 0.85;
+
+    if(my_radius >= area_half_width * min_frac)
+    {
+        float my_frac = my_radius / area_half_width;
+
+        my_frac = clamp(my_frac, 0.f, 1.f);
+
+        float diss_at_min = 1;
+        float diss_at_max = 5;
+
+        diss = mix(diss_at_min, diss_at_max, my_frac);;
+    }*/
+
+    ///either interior to the black hole, or near the border. The latter is kind of hacky
+    if(X[index] < 0.2 || my_radius >= area_half_width * 0.85f)
+    {
+        fin_p_star += (0 - fin_p_star) * timestep * diss;
+        fin_e_star += (0 - fin_e_star) * timestep * diss;
+
+        fin_cS0 += (0 - fin_cS0) * timestep * diss;
+        fin_cS1 += (0 - fin_cS1) * timestep * diss;
+        fin_cS2 += (0 - fin_cS2) * timestep * diss;
     }
 
     oDp_star[index] = fin_p_star;
