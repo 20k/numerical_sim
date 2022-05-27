@@ -2171,6 +2171,7 @@ struct matter
         return sum;
     }
 
+    ///I suspect we shouldn't quadratic viscosity near the event horizon, there's an infinite term to_diff
     value estar_vi_rhs(equation_context& ctx, const value& gA, const tensor<value, 3>& gB, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
     {
         //#define QUADRATIC_VISCOSITY
