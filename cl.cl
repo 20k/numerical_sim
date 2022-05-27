@@ -1392,21 +1392,6 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
 
     float diss = 1;
 
-    /*float min_frac = 0.75;
-    float max_frac = 0.85;
-
-    if(my_radius >= area_half_width * min_frac)
-    {
-        float my_frac = my_radius / area_half_width;
-
-        my_frac = clamp(my_frac, 0.f, 1.f);
-
-        float diss_at_min = 1;
-        float diss_at_max = 5;
-
-        diss = mix(diss_at_min, diss_at_max, my_frac);;
-    }*/
-
     ///either interior to the black hole, or near the border. The latter is kind of hacky
     if(X[index] < 0.2 || my_radius >= area_half_width * 0.85f)
     {
