@@ -2069,7 +2069,11 @@ float get_static_verlet_ds(float3 Xpos, __global float* X, float scale, int4 dim
 
     my_fraction = clamp(my_fraction, 0.f, 1.f);
 
+    #ifdef RENDER_MATTER
     return mix(0.4f, 4.f, my_fraction) * 0.1f;
+    #else
+    return mix(0.4f, 4.f, my_fraction);
+    #endif
 }
 
 #define SOLID_DENSITY 0.1
@@ -2092,7 +2096,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     float3 vel = {ray_in.V0, ray_in.V1, ray_in.V2};
     float3 Xpos_last = Xpos;
 
-    int hit_type = 0;
+    int hit_type = 1;
 
     float u_sq = (universe_size * RENDERING_CUTOFF_MULT) * (universe_size * RENDERING_CUTOFF_MULT);
 
@@ -2128,7 +2132,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     float density = 0;
 
     #pragma unroll(16)
-    for(int iteration=0; iteration < 256; iteration++)
+    for(int iteration=0; iteration < 512; iteration++)
     {
         #ifdef VERLET_2
         ///finish previous iteration
@@ -2164,6 +2168,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         if(length_sq(Xpos) >= u_sq)
         {
+            hit_type = 0;
             break;
         }
 
