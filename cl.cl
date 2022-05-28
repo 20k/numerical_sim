@@ -1161,7 +1161,7 @@ void calculate_hydro_evolved(__global ushort4* points, int point_count,
 
     bool any_valid = false;
 
-    if(Dp_star[index] >= MIN_P_STAR)
+    if(Dp_star[index] > 0)
         any_valid = true;
 
     ///differentiation order
@@ -1171,7 +1171,7 @@ void calculate_hydro_evolved(__global ushort4* points, int point_count,
         if(i == 0)
             continue;
 
-        if(Dp_star[IDX(ix + i, iy, iz)] >= MIN_P_STAR)
+        if(Dp_star[IDX(ix + i, iy, iz)] > 0)
             any_valid = true;
     }
 
@@ -1182,7 +1182,7 @@ void calculate_hydro_evolved(__global ushort4* points, int point_count,
         if(i == 0)
             continue;
 
-        if(Dp_star[IDX(ix, iy + i, iz)] >= MIN_P_STAR)
+        if(Dp_star[IDX(ix, iy + i, iz)] > 0)
             any_valid = true;
     }
 
@@ -1193,7 +1193,7 @@ void calculate_hydro_evolved(__global ushort4* points, int point_count,
         if(i == 0)
             continue;
 
-        if(Dp_star[IDX(ix, iy, iz + i)] >= MIN_P_STAR)
+        if(Dp_star[IDX(ix, iy, iz + i)] > 0)
             any_valid = true;
     }
 
