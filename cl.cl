@@ -1159,9 +1159,6 @@ void calculate_hydro_evolved(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
-    if(should_evolve[index] == 0)
-        return;
-
     if((order & D_FULL) == 0 && (order & D_LOW) == 0)
     {
         should_evolve[index] = false;
@@ -1462,29 +1459,6 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     NANCHECK(oDcS0);
     NANCHECK(oDcS1);
     NANCHECK(oDcS2);
-
-    bool next_se = fin_p_star > 0;
-
-    for(int i=-2; i <= 2; i++)
-    {
-        should_evolve[IDX(ix + i, iy, iz)] = 1;
-    }
-
-    for(int i=-2; i <= 2; i++)
-    {
-        if(i == 0)
-            continue;
-
-        should_evolve[IDX(ix, iy + i, iz)] = 1;
-    }
-
-    for(int i=-2; i <= 2; i++)
-    {
-        if(i == 0)
-            continue;
-
-        should_evolve[IDX(ix, iy, iz + i)] = 1;
-    }
 
     //if(ix == 97 && iy == 124 && iz == 124)
     /*if(ix == 94 && iy == 123 && iz == 125)
