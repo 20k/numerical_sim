@@ -361,7 +361,7 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
     {
         intermediates.push_back(pool.request(ctx, cqueue, dim, sizeof(cl_float)));
 
-        intermediates.back().set_to_zero(cqueue);
+        //intermediates.back().fill(cqueue, std::numeric_limits<float>::quiet_NaN());
     }
 
     {

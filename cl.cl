@@ -1138,6 +1138,8 @@ void evolve_gB(__global ushort4* points, int point_count,
 
 #define MIN_P_STAR 1e-5f
 
+#define HYDRO_ORDER 2
+
 ///this is incorrect due to intermediates needing to be 0 ?
 __kernel
 void calculate_hydro_evolved(__global ushort4* points, int point_count,
@@ -1168,16 +1170,14 @@ void calculate_hydro_evolved(__global ushort4* points, int point_count,
 
     float P_count = 0;
 
-    ///differentiation order
     #pragma unroll
-    for(int i=-2; i <= 2; i++)
+    for(int i=-HYDRO_ORDER; i <= HYDRO_ORDER; i++)
     {
         P_count += max(Dp_star[IDX(ix + i, iy, iz)], 0.f);
     }
 
-    ///differentiation order
     #pragma unroll
-    for(int i=-2; i <= 2; i++)
+    for(int i=-HYDRO_ORDER; i <= HYDRO_ORDER; i++)
     {
         if(i == 0)
             continue;
@@ -1185,9 +1185,8 @@ void calculate_hydro_evolved(__global ushort4* points, int point_count,
         P_count += max(Dp_star[IDX(ix, iy + i, iz)], 0.f);
     }
 
-    ///differentiation order
     #pragma unroll
-    for(int i=-2; i <= 2; i++)
+    for(int i=-HYDRO_ORDER; i <= HYDRO_ORDER; i++)
     {
         if(i == 0)
             continue;
@@ -1220,7 +1219,33 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
-    if(should_evolve[index] == 0)
+    int any_valid = 0;
+
+    #pragma unroll
+    for(int i=-HYDRO_ORDER; i <= HYDRO_ORDER; i++)
+    {
+        any_valid += should_evolve[IDX(ix + i, iy, iz)];
+    }
+
+    #pragma unroll
+    for(int i=-HYDRO_ORDER; i <= HYDRO_ORDER; i++)
+    {
+        if(i == 0)
+            continue;
+
+        any_valid += should_evolve[IDX(ix, iy + i, iz)];
+    }
+
+    #pragma unroll
+    for(int i=-HYDRO_ORDER; i <= HYDRO_ORDER; i++)
+    {
+        if(i == 0)
+            continue;
+
+        any_valid += should_evolve[IDX(ix, iy, iz + i)];
+    }
+
+    if(any_valid == 0)
         return;
 
     if(Dp_star[index] < MIN_P_STAR)
