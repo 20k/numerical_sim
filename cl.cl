@@ -742,6 +742,8 @@ void clean_data(__global ushort4* points, int point_count,
     #endif // 0
 }
 
+#define DISSB 0.1f
+
 __kernel
 void evolve_cY(__global ushort4* points, int point_count,
             STANDARD_ARGS(),
@@ -799,6 +801,16 @@ void evolve_cY(__global ushort4* points, int point_count,
     ocY3[index] = f_dtcYij3 * timestep + b3;
     ocY4[index] = f_dtcYij4 * timestep + b4;
     ocY5[index] = f_dtcYij5 * timestep + b5;
+
+    if(X[index] < DISSB)
+    {
+        ocY0[index] += (1 - ocY0[index]) * timestep;
+        ocY1[index] += (0 - ocY1[index]) * timestep;
+        ocY2[index] += (0 - ocY2[index]) * timestep;
+        ocY3[index] += (1 - ocY3[index]) * timestep;
+        ocY4[index] += (0 - ocY4[index]) * timestep;
+        ocY5[index] += (1 - ocY5[index]) * timestep;
+    }
 
     NANCHECK(ocY0);
     NANCHECK(ocY1);
@@ -870,6 +882,16 @@ void evolve_cA(__global ushort4* points, int point_count,
 
     ///NAN ocA0 107 125 125
 
+    /*if(X[index] < DISSB)
+    {
+        ocA0[index] += (0 - ocA0[index]) * timestep;
+        ocA1[index] += (0 - ocA1[index]) * timestep;
+        ocA2[index] += (0 - ocA2[index]) * timestep;
+        ocA3[index] += (0 - ocA3[index]) * timestep;
+        ocA4[index] += (0 - ocA4[index]) * timestep;
+        ocA5[index] += (0 - ocA5[index]) * timestep;
+    }*/
+
     NANCHECK(ocA0);
     NANCHECK(ocA1);
     NANCHECK(ocA2);
@@ -937,6 +959,13 @@ void evolve_cGi(__global ushort4* points, int point_count,
         ocGi2[index] = f_dtcGi2 * timestep + b2;
     }
 
+    /*if(X[index] < DISSB)
+    {
+        ocGi0[index] += (0 - ocGi0[index]) * timestep;
+        ocGi1[index] += (0 - ocGi1[index]) * timestep;
+        ocGi2[index] += (0 - ocGi2[index]) * timestep;
+    }*/
+
     NANCHECK(ocGi0);
     NANCHECK(ocGi1);
     NANCHECK(ocGi2);
@@ -993,6 +1022,11 @@ void evolve_K(__global ushort4* points, int point_count,
 
     oK[index] = f_dtK * timestep + b0;
 
+    /*if(X[index] < DISSB)
+    {
+        oK[index] += (0 - oK[index]) * timestep;
+    }*/
+
     NANCHECK(oK);
 
     /*if(ix == 109 && iy == 125 && iz == 125)
@@ -1039,6 +1073,8 @@ void evolve_X(__global ushort4* points, int point_count,
     float b0 = base_X[index];
 
     oX[index] = max(f_dtX * timestep + b0, 0.f);
+
+    /**/
 
     NANCHECK(oX);
 }
@@ -1672,7 +1708,7 @@ void render(STANDARD_ARGS(),
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 
-    float3 col = {matter + real, matter, matter};
+    float3 col = {matter + real + max_scalar, matter + max_scalar, matter + max_scalar};
 
     col = clamp(col, 0.f, 1.f);
 
