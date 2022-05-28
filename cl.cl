@@ -1172,7 +1172,7 @@ void calculate_hydro_evolved(__global ushort4* points, int point_count,
     #pragma unroll
     for(int i=-2; i <= 2; i++)
     {
-        P_count += Dp_star[IDX(ix + i, iy, iz)];
+        P_count += max(Dp_star[IDX(ix + i, iy, iz)], 0.f);
     }
 
     ///differentiation order
@@ -1182,7 +1182,7 @@ void calculate_hydro_evolved(__global ushort4* points, int point_count,
         if(i == 0)
             continue;
 
-        P_count += Dp_star[IDX(ix, iy + i, iz)];
+        P_count += max(Dp_star[IDX(ix, iy + i, iz)], 0.f);
     }
 
     ///differentiation order
@@ -1192,7 +1192,7 @@ void calculate_hydro_evolved(__global ushort4* points, int point_count,
         if(i == 0)
             continue;
 
-        P_count += Dp_star[IDX(ix, iy, iz + i)];
+        P_count += max(Dp_star[IDX(ix, iy, iz + i)], 0.f);
     }
 
     should_evolve[index] = P_count > 0;
