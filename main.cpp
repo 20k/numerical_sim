@@ -3690,25 +3690,24 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    //#define PAPER_0610128
+    #define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data<float> h1;
-    h1.t = compact_object::NEUTRON_STAR;
-    h1.bare_mass = 0.15;
-    h1.momentum = {0, 0.133 * 0.8 * 0.6, 0};
-    h1.position = {-5.257, 0.f, 0.f};
+    h1.t = compact_object::BLACK_HOLE;
+    h1.bare_mass = 0.483;
+    h1.momentum = {0, 0.133 * 0.9, 0};
+    h1.position = {-3.257, 0.f, 0.f};
 
     compact_object::data<float> h2;
     h2.t = compact_object::BLACK_HOLE;
-    h2.bare_mass = 0.4;
-    h2.momentum = {0, -0.133 * 0.8 * 0.1, 0};
-    h2.position = {2.257, 0.f, 0.f};
+    h2.bare_mass = 0.483;
+    h2.momentum = {0, -0.133 * 0.9, 0};
+    h2.position = {3.257, 0.f, 0.f};
 
-    objects.push_back(h1);
-    objects.push_back(h2);
+    objects = {h1, h2};
     #endif // PAPER_0610128
 
-    #define JET_CASE
+    //#define JET_CASE
     #ifdef JET_CASE
     compact_object::data<float> h1;
     h1.t = compact_object::NEUTRON_STAR;
@@ -3724,6 +3723,23 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     objects = {h1, h2};
     #endif // JET_CASE
+
+    //#define REALLYBIG
+    #ifdef REALLYBIG
+    compact_object::data<float> h1;
+    h1.t = compact_object::NEUTRON_STAR;
+    h1.bare_mass = 0.15;
+    h1.momentum = {0, 0.133 * 0.8 * 0.6, 0};
+    h1.position = {-5.257, 0.f, 0.f};
+
+    compact_object::data<float> h2;
+    h2.t = compact_object::NEUTRON_STAR;
+    h2.bare_mass = 0.15;
+    h2.momentum = {0, 00.133 * 0.8 * 0.6, 0};
+    h2.position = {5.257, 0.f, 0.f};
+
+    objects = {h1, h2};
+    #endif // REALLYBIG
 
     //#define NEUTRON_DOUBLE_COLLAPSE
     #ifdef NEUTRON_DOUBLE_COLLAPSE
