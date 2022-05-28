@@ -1138,15 +1138,11 @@ void evolve_gB(__global ushort4* points, int point_count,
 
 #define MIN_P_STAR 1e-5f
 
-///does not use any derivatives
 __kernel
-void calculate_hydro_intermediates(__global ushort4* points, int point_count,
-                                   STANDARD_ARGS(),
-                                   __global float* p_star_vi0, __global float* p_star_vi1, __global float* p_star_vi2,
-                                   __global float* e_star_vi0, __global float* e_star_vi1, __global float* e_star_vi2,
-                                   __global float* skvi0, __global float* skvi1, __global float* skvi2, __global float* skvi3, __global float* skvi4, __global float* skvi5,
-                                   __global float* pressure,
-                                   float scale, int4 dim, __global ushort* order_ptr)
+void calculate_hydro_evolved(__global ushort4* points, int point_count,
+                             STANDARD_ARGS(),
+                             float scale, int4 dim, __global ushort* order_ptr,
+                             __global ushort* should_evolve)
 {
     int local_idx = get_global_id(0);
 
@@ -1159,6 +1155,75 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
+
+    if((order & D_FULL) == 0 && (order & D_LOW) == 0)
+        return;
+
+    bool any_valid = false;
+
+    if(Dp_star[index] >= MIN_P_STAR)
+        any_valid = true;
+
+    ///differentiation order
+    #pragma unroll
+    for(int i=-2; i <= 2; i++)
+    {
+        if(i == 0)
+            continue;
+
+        if(Dp_star[IDX(ix + i, iy, iz)] >= MIN_P_STAR)
+            any_valid = true;
+    }
+
+    ///differentiation order
+    #pragma unroll
+    for(int i=-2; i <= 2; i++)
+    {
+        if(i == 0)
+            continue;
+
+        if(Dp_star[IDX(ix, iy + i, iz)] >= MIN_P_STAR)
+            any_valid = true;
+    }
+
+    ///differentiation order
+    #pragma unroll
+    for(int i=-2; i <= 2; i++)
+    {
+        if(i == 0)
+            continue;
+
+        if(Dp_star[IDX(ix, iy, iz + i)] >= MIN_P_STAR)
+            any_valid = true;
+    }
+
+    should_evolve[index] = any_valid;
+}
+
+///does not use any derivatives
+__kernel
+void calculate_hydro_intermediates(__global ushort4* points, int point_count,
+                                   STANDARD_ARGS(),
+                                   __global float* p_star_vi0, __global float* p_star_vi1, __global float* p_star_vi2,
+                                   __global float* e_star_vi0, __global float* e_star_vi1, __global float* e_star_vi2,
+                                   __global float* skvi0, __global float* skvi1, __global float* skvi2, __global float* skvi3, __global float* skvi4, __global float* skvi5,
+                                   __global float* pressure,
+                                   float scale, int4 dim, __global ushort* order_ptr, __global ushort* should_evolve)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
+
+    if(should_evolve[index] == 0)
+        return;
 
     if(Dp_star[index] < MIN_P_STAR)
     {
@@ -1286,7 +1351,7 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
                       __global float* e_star_vi0, __global float* e_star_vi1, __global float* e_star_vi2,
                       __global float* skvi0, __global float* skvi1, __global float* skvi2, __global float* skvi3, __global float* skvi4, __global float* skvi5,
                       __global float* pressure,
-                      float scale, int4 dim, __global ushort* order_ptr, float timestep)
+                      float scale, int4 dim, __global ushort* order_ptr, __global ushort* should_evolve, float timestep)
 {
     int local_idx = get_global_id(0);
 
@@ -1301,7 +1366,7 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     int order = order_ptr[index];
 
     ///we're copying over base. Is that correct? Because sommerfeld
-    if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
+    if(((order & D_FULL) == 0 && ((order & D_LOW) == 0)) || should_evolve[index] == 0)
     {
         oDp_star[index] = Dp_star[index];
         oDe_star[index] = De_star[index];

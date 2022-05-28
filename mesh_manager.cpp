@@ -361,6 +361,26 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
         intermediates.back().set_to_zero(cqueue);
     }
 
+    ref_counted_buffer should_evolve = pool.request(ctx, cqueue, dim, sizeof(cl_ushort));
+
+    {
+        cl::args build;
+        build.push_back(points_set.all_points);
+        build.push_back(points_set.all_count);
+
+        for(auto& buf : in.buffers)
+        {
+            build.push_back(buf.buf.as_device_read_only());
+        }
+
+        build.push_back(scale);
+        build.push_back(clsize);
+        build.push_back(points_set.order);
+        build.push_back(should_evolve);
+
+        cqueue.exec("calculate_hydro_evolved", build, {points_set.all_count}, {128});
+    }
+
     {
         cl::args calc_intermediates;
         calc_intermediates.push_back(points_set.all_points);
@@ -379,6 +399,7 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
         calc_intermediates.push_back(scale);
         calc_intermediates.push_back(clsize);
         calc_intermediates.push_back(points_set.order);
+        calc_intermediates.push_back(should_evolve);
 
         cqueue.exec("calculate_hydro_intermediates", calc_intermediates, {points_set.all_count}, {128});
     }
@@ -411,6 +432,7 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
         evolve.push_back(scale);
         evolve.push_back(clsize);
         evolve.push_back(points_set.order);
+        evolve.push_back(should_evolve);
         evolve.push_back(timestep);
 
         cqueue.exec("evolve_hydro_all", evolve, {points_set.all_count}, {128});
