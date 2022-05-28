@@ -361,7 +361,7 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
         intermediates.back().set_to_zero(cqueue);
     }
 
-    ref_counted_buffer should_evolve = pool.request(ctx, cqueue, dim, sizeof(cl_ushort));
+    ref_counted_buffer should_evolve = pool.request(ctx, cqueue, dim, sizeof(cl_char));
 
     {
         cl::args build;

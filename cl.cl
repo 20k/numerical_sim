@@ -1142,7 +1142,7 @@ __kernel
 void calculate_hydro_evolved(__global ushort4* points, int point_count,
                              STANDARD_ARGS(),
                              float scale, int4 dim, __global ushort* order_ptr,
-                             __global ushort* should_evolve)
+                             __global char* restrict should_evolve)
 {
     int local_idx = get_global_id(0);
 
@@ -1157,7 +1157,10 @@ void calculate_hydro_evolved(__global ushort4* points, int point_count,
     int order = order_ptr[index];
 
     if((order & D_FULL) == 0 && (order & D_LOW) == 0)
+    {
+        should_evolve[index] = false;
         return;
+    }
 
     bool any_valid = false;
 
@@ -1208,7 +1211,7 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
                                    __global float* e_star_vi0, __global float* e_star_vi1, __global float* e_star_vi2,
                                    __global float* skvi0, __global float* skvi1, __global float* skvi2, __global float* skvi3, __global float* skvi4, __global float* skvi5,
                                    __global float* pressure,
-                                   float scale, int4 dim, __global ushort* order_ptr, __global ushort* should_evolve)
+                                   float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve)
 {
     int local_idx = get_global_id(0);
 
@@ -1351,7 +1354,7 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
                       __global float* e_star_vi0, __global float* e_star_vi1, __global float* e_star_vi2,
                       __global float* skvi0, __global float* skvi1, __global float* skvi2, __global float* skvi3, __global float* skvi4, __global float* skvi5,
                       __global float* pressure,
-                      float scale, int4 dim, __global ushort* order_ptr, __global ushort* should_evolve, float timestep)
+                      float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve, float timestep)
 {
     int local_idx = get_global_id(0);
 
