@@ -2635,15 +2635,14 @@ namespace compact_object
         NEUTRON_STAR,
     };
 
-    template<typename T>
     struct data
     {
         ///in coordinate space
-        tensor<T, 3> position;
+        tensor<float, 3> position;
         ///for black holes this is bare mass. For neutron stars its a solid 'something'
-        T bare_mass = 0;
-        tensor<T, 3> momentum;
-        tensor<T, 3> angular_momentum;
+        float bare_mass = 0;
+        tensor<float, 3> momentum;
+        tensor<float, 3> angular_momentum;
 
         type t = BLACK_HOLE;
     };
@@ -2666,9 +2665,8 @@ struct adm_black_hole
 namespace black_hole
 {
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf initial conditions, see (7)
-    template<typename T>
     inline
-    tensor<value, 3, 3> calculate_single_bcAij(const tensor<value, 3>& pos, const compact_object::data<T>& hole)
+    tensor<value, 3, 3> calculate_single_bcAij(const tensor<value, 3>& pos, const compact_object::data& hole)
     {
         assert(hole.t == compact_object::BLACK_HOLE);
 
@@ -2727,13 +2725,13 @@ namespace black_hole
     }
 }
 
-template<typename T, typename U>
+template<typename T>
 inline
-tensor<value, 3, 3> calculate_bcAij_generic(equation_context& ctx, const tensor<value, 3>& pos, const std::vector<compact_object::data<T>>& objs, U&& tov_phi_at_coordinate)
+tensor<value, 3, 3> calculate_bcAij_generic(equation_context& ctx, const tensor<value, 3>& pos, const std::vector<compact_object::data>& objs, T&& tov_phi_at_coordinate)
 {
     tensor<value, 3, 3> bcAij;
 
-    for(const compact_object::data<T>& obj : objs)
+    for(const compact_object::data& obj : objs)
     {
         if(obj.t == compact_object::BLACK_HOLE)
         {
@@ -2821,7 +2819,7 @@ struct initial_conditions
 {
     bool use_matter = false;
 
-    std::vector<compact_object::data<float>> objs;
+    std::vector<compact_object::data> objs;
 };
 
 inline
@@ -2842,14 +2840,13 @@ value calculate_aij_aIJ(const metric<value, 3, 3>& flat_metric, const tensor<val
     return aij_aIJ;
 }
 
-template<typename T>
 inline
-value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<compact_object::data<T>>& holes)
+value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<compact_object::data>& holes)
 {
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     value BL_s = 0;
 
-    for(const compact_object::data<T>& hole : holes)
+    for(const compact_object::data& hole : holes)
     {
         if(hole.t == compact_object::NEUTRON_STAR)
             continue;
@@ -2886,7 +2883,7 @@ value tov_phi_at_coordinate_general(const tensor<value, 3>& world_position)
     //return dual_types::apply("tov_phi", as_float3(vx, vy, vz), "dim");
 }
 
-laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_object::data<float>>& cpu_holes, cl::buffer& aij_aIJ_buf, cl::buffer& ppw2p_buf)
+laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_object::data>& cpu_holes, cl::buffer& aij_aIJ_buf, cl::buffer& ppw2p_buf)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
@@ -2985,7 +2982,7 @@ tov_input setup_tov_solver(cl::context& clctx, const std::vector<compact_object:
 }
 #endif // 0
 
-std::tuple<cl::buffer, cl::buffer, std::array<cl::buffer, 6>, cl::buffer> tov_solve_for_cached_variables(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data<float>>& objs, float scale, vec3i dim)
+std::tuple<cl::buffer, cl::buffer, std::array<cl::buffer, 6>, cl::buffer> tov_solve_for_cached_variables(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, float scale, vec3i dim)
 {
     cl::buffer aij_aIJ(clctx);
     aij_aIJ.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
@@ -3024,7 +3021,7 @@ std::tuple<cl::buffer, cl::buffer, std::array<cl::buffer, 6>, cl::buffer> tov_so
     }
 
     ///todo: Need to solve aij_aIJ for black holes in here too!
-    for(const compact_object::data<float>& obj : objs)
+    for(const compact_object::data& obj : objs)
     {
         cl::buffer current_phi = superimposed_tov_phi;
 
@@ -3140,7 +3137,7 @@ std::tuple<cl::buffer, cl::buffer, std::array<cl::buffer, 6>, cl::buffer> tov_so
     return {aij_aIJ, ppw2p, bcAij, superimposed_tov_phi};
 }
 
-void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<compact_object::data<float>>& cpu_holes)
+void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<compact_object::data>& cpu_holes)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
@@ -3192,7 +3189,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
     value rhoH_conformal = 0;
     tensor<value, 3> Si_conformal;
 
-    for(const compact_object::data<float>& obj : cpu_holes)
+    for(const compact_object::data& obj : cpu_holes)
     {
         if(obj.t == compact_object::NEUTRON_STAR)
         {
@@ -3523,7 +3520,7 @@ std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& hole
 #endif // 0
 
 inline
-initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, float scale, std::vector<compact_object::data<float>> objs)
+initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, float scale, std::vector<compact_object::data> objs)
 {
     initial_conditions ret;
 
@@ -3536,12 +3533,12 @@ initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_q
         return scaled * scale / bulge;
     };
 
-    for(compact_object::data<float>& obj : objs)
+    for(compact_object::data& obj : objs)
     {
         obj.position = san_pos(obj.position);
     }
 
-    for(const compact_object::data<float>& obj : objs)
+    for(const compact_object::data& obj : objs)
     {
         if(obj.t == compact_object::NEUTRON_STAR)
         {
@@ -3686,19 +3683,19 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     #define BARE_BLACK_HOLES
     #ifdef BARE_BLACK_HOLES
-    std::vector<compact_object::data<float>> objects;
+    std::vector<compact_object::data> objects;
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
     #define PAPER_0610128
     #ifdef PAPER_0610128
-    compact_object::data<float> h1;
+    compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
     h1.bare_mass = 0.483;
     h1.momentum = {0, 0.133 * 0.9, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
-    compact_object::data<float> h2;
+    compact_object::data h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.483;
     h2.momentum = {0, -0.133 * 0.9, 0};
@@ -3709,13 +3706,13 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     //#define JET_CASE
     #ifdef JET_CASE
-    compact_object::data<float> h1;
+    compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.15;
     h1.momentum = {0, 0.133 * 0.8 * 0.6, 0};
     h1.position = {-5.257, 0.f, 0.f};
 
-    compact_object::data<float> h2;
+    compact_object::data h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.4;
     h2.momentum = {0, -0.133 * 0.8 * 0.1, 0};
@@ -3726,13 +3723,13 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     //#define REALLYBIG
     #ifdef REALLYBIG
-    compact_object::data<float> h1;
+    compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.15;
     h1.momentum = {0, 0.133 * 0.8 * 0.6, 0};
     h1.position = {-5.257, 0.f, 0.f};
 
-    compact_object::data<float> h2;
+    compact_object::data h2;
     h2.t = compact_object::NEUTRON_STAR;
     h2.bare_mass = 0.15;
     h2.momentum = {0, 00.133 * 0.8 * 0.6, 0};
@@ -3834,7 +3831,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 ///todo: even schwarzschild explodes after t=7
 ///todo: this paper suggests having a very short timestep initially while the gauge conditions settle down: https://arxiv.org/pdf/1404.6523.pdf, then increasing it
 inline
-void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact_object::data<float>>& holes)
+void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact_object::data>& holes)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
