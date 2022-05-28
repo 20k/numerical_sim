@@ -63,6 +63,13 @@ struct evolution_points
     evolution_points(cl::context& ctx) : border_points(ctx), all_points(ctx), order(ctx){}
 };
 
+struct hydro_state
+{
+    cl::buffer should_evolve;
+
+    hydro_state(cl::context& ctx) : should_evolve(ctx){}
+};
+
 evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size);
 
 struct thin_intermediates_pool
@@ -93,6 +100,8 @@ struct cpu_mesh
 
     std::array<buffer_set, 2> data;
     buffer_set scratch;
+
+    hydro_state hydro_st;
 
     evolution_points points_set;
 
