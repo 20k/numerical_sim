@@ -684,6 +684,8 @@ value diff1(equation_context& ctx, const value& in, int idx)
 {
     //ctx.use_precise_differentiation = false;
 
+    assert(!ctx.is_derivative_free);
+
     if(!ctx.use_precise_differentiation)
     {
         assert(!ctx.always_directional_derivatives);
@@ -4012,12 +4014,12 @@ value get_cacheable_W(equation_context& ctx, standard_arguments& args, matter& m
 
 namespace hydrodynamics
 {
-    void build_intermediate_variables_derivatives(equation_context& ctx, bool precise)
+    void build_intermediate_variables_derivatives(equation_context& ctx)
     {
-        ctx.always_directional_derivatives = precise;
-
         standard_arguments args(ctx);
         matter& matt = args.matt;
+
+        ctx.is_derivative_free = true;
 
         inverse_metric<value, 3, 3> icY = args.cY.invert();
 
@@ -4039,22 +4041,20 @@ namespace hydrodynamics
 
         vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
-        std::string ext = precise ? "precise" : "raw";
-
         for(int i=0; i < 3; i++)
         {
-            ctx.add("init_p_star_vi" + std::to_string(i) + ext, p_star_vi.idx(i));
-            ctx.add("init_e_star_vi" + std::to_string(i) + ext, e_star_vi.idx(i));
+            ctx.add("init_p_star_vi" + std::to_string(i), p_star_vi.idx(i));
+            ctx.add("init_e_star_vi" + std::to_string(i), e_star_vi.idx(i));
         }
 
         for(int i=0; i < 6; i++)
         {
             vec2i index = linear_indices[i];
 
-            ctx.add("init_skvi" + std::to_string(i) + ext, cSk_vi.idx(index.x(), index.y()));
+            ctx.add("init_skvi" + std::to_string(i), cSk_vi.idx(index.x(), index.y()));
         }
 
-        ctx.add("init_pressure" + ext, pressure);
+        ctx.add("init_pressure", pressure);
     }
 
     void build_equations(equation_context& ctx)
@@ -6834,11 +6834,8 @@ int main()
 
     printf("Begin hydro\n");
 
-    equation_context hydro_intermediates_full;
-    hydrodynamics::build_intermediate_variables_derivatives(hydro_intermediates_full, false);
-
-    equation_context hydro_intermediates_reduced;
-    hydrodynamics::build_intermediate_variables_derivatives(hydro_intermediates_reduced, true);
+    equation_context hydro_intermediates;
+    hydrodynamics::build_intermediate_variables_derivatives(hydro_intermediates);
 
     printf("Post interm\n");
 
@@ -6874,8 +6871,7 @@ int main()
     dtgA.build(argument_string, "tga");
     dtgB.build(argument_string, "tgb");
 
-    hydro_intermediates_full.build(argument_string, "hydrointermediatesfull");
-    hydro_intermediates_reduced.build(argument_string, "hydrointermediatesreduced");
+    hydro_intermediates.build(argument_string, "hydrointermediates");
     hydro_final.build(argument_string, "hydrofinal");
     build_hydro_quantities.build(argument_string, "hydroconvert");
 

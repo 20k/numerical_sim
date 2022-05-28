@@ -16,6 +16,7 @@ struct equation_context
     bool debug = false;
     bool use_precise_differentiation = true;
     bool always_directional_derivatives = false;
+    bool is_derivative_free = false;
 
     int order = 2;
 
