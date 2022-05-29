@@ -804,12 +804,12 @@ void evolve_cY(__global ushort4* points, int point_count,
 
     if(X[index] < DISSB)
     {
-        ocY0[index] += (1 - ocY0[index]) * timestep;
-        ocY1[index] += (0 - ocY1[index]) * timestep;
-        ocY2[index] += (0 - ocY2[index]) * timestep;
-        ocY3[index] += (1 - ocY3[index]) * timestep;
-        ocY4[index] += (0 - ocY4[index]) * timestep;
-        ocY5[index] += (1 - ocY5[index]) * timestep;
+        ocY0[index] += (1 - ocY0[index]) * timestep * 0.1f;
+        ocY1[index] += (0 - ocY1[index]) * timestep * 0.1f;
+        ocY2[index] += (0 - ocY2[index]) * timestep * 0.1f;
+        ocY3[index] += (1 - ocY3[index]) * timestep * 0.1f;
+        ocY4[index] += (0 - ocY4[index]) * timestep * 0.1f;
+        ocY5[index] += (1 - ocY5[index]) * timestep * 0.1f;
     }
 
     NANCHECK(ocY0);
