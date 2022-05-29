@@ -742,7 +742,7 @@ void clean_data(__global ushort4* points, int point_count,
     #endif // 0
 }
 
-#define DISSB 0.1f
+#define DISSB 0.05f
 
 __kernel
 void evolve_cY(__global ushort4* points, int point_count,
