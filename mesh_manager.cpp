@@ -219,7 +219,7 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::manage
     for(ref_counted_buffer& desc : pool)
     {
         int my_size = size.x() * size.y() * size.x() * element_size;
-        int desc_size = desc.alloc_size;
+        int desc_size = desc.buf.alloc_size;
 
         int rc = desc.ref_count();
 
@@ -230,15 +230,15 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::manage
     }
 
     ref_counted_buffer next(ctx);
-    next.alloc(size.x() * size.y() * size.z() * element_size);
+    next.buf.alloc(size.x() * size.y() * size.z() * element_size);
 
     #ifdef NANFILL
     cl_float nan = std::nanf("");
-    cl::event evt = next.fill(cqueue, nan);
-    cqueue.getting_value_depends_on(next, evt);
+    cl::event evt = next.buf.fill(cqueue, nan);
+    cqueue.getting_value_depends_on(next.buf, evt);
     #else
-    cl::event evt = next.set_to_zero(cqueue.mqueue.next());
-    cqueue.getting_value_depends_on(next, evt);
+    cl::event evt = next.buf.set_to_zero(cqueue.mqueue.next());
+    cqueue.getting_value_depends_on(next.buf, evt);
     #endif // NANFILL
 
     pool.push_back(next);
@@ -393,7 +393,7 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
 
         for(auto& i : intermediates)
         {
-            calc_intermediates.push_back(i);
+            calc_intermediates.push_back(i.buf);
         }
 
         calc_intermediates.push_back(scale);
@@ -426,7 +426,7 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
 
         for(auto& buf : intermediates)
         {
-            evolve.push_back(buf.as_device_read_only());
+            evolve.push_back(buf.buf.as_device_read_only());
         }
 
         evolve.push_back(scale);
@@ -489,7 +489,7 @@ std::vector<ref_counted_buffer> cpu_mesh::get_derivatives_of(cl::context& ctx, b
 
         cl::buffer found = generic_in.lookup(buffers[idx]).buf;
 
-        differentiate(mqueue, found, b1, b2, b3);
+        differentiate(mqueue, found, b1.buf, b2.buf, b3.buf);
 
         intermediates.push_back(b1);
         intermediates.push_back(b2);
@@ -669,9 +669,9 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
             for(auto& i : intermediates)
             {
                 if(depends_on(name, i.name))
-                    a1.push_back(i.as_device_read_only());
+                    a1.push_back(i.buf.as_device_read_only());
                 else
-                    a1.push_back(i.as_device_inaccessible());
+                    a1.push_back(i.buf.as_device_inaccessible());
             }
 
             a1.push_back(scale);

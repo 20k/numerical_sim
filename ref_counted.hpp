@@ -66,10 +66,13 @@ struct ref_counted
     }
 };
 
-struct ref_counted_buffer : cl::buffer, ref_counted
+struct ref_counted_buffer : ref_counted
 {
+    cl::buffer buf;
     ///yes this is a disaster
     std::string name;
+
+    ref_counted_buffer(cl::context& ctx) : buf(ctx){}
 };
 
 #endif // REF_COUNTED_HPP_INCLUDED

@@ -195,7 +195,7 @@ void gravitational_wave_manager::issue_extraction(cl::command_queue& cqueue, std
 
     for(auto& i : thin_intermediates)
     {
-        waveform_args.push_back(i);
+        waveform_args.push_back(i.buf);
     }
 
     cl::buffer& next = wave_buffers[(next_buffer % 3)];

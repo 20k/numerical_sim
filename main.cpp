@@ -7293,7 +7293,7 @@ int main()
 
             for(auto& i : last_valid_thin)
             {
-                render.push_back(i.as_device_read_only());
+                render.push_back(i.buf.as_device_read_only());
             }
 
             //render.push_back(bssnok_datas[which_data]);
