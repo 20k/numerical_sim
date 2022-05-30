@@ -1068,6 +1068,19 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
 void cpu_mesh::add_dependency_info(const std::string& kernel_name, const std::vector<std::string>& variables)
 {
+    for(dependency_info& existing : depends)
+    {
+        if(existing.kernel == kernel_name)
+        {
+            for(const auto& i : variables)
+            {
+                existing.variables.insert(i);
+            }
+
+            return;
+        }
+    }
+
     dependency_info inf;
     inf.kernel = kernel_name;
     inf.variables = std::set<std::string>(variables.begin(), variables.end());

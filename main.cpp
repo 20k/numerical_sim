@@ -6980,6 +6980,7 @@ int main()
     cpu_mesh base_mesh(clctx.ctx, clctx.cqueue, {0,0,0}, size, base_settings, evolve_points);
 
     base_mesh.add_dependency_info("evolve_cY", dtcY.get_all_variables());
+    base_mesh.add_dependency_info("evolve_cY", {"X"});
     base_mesh.add_dependency_info("evolve_cA", dtcA.get_all_variables());
     base_mesh.add_dependency_info("evolve_cGi", dtcGi.get_all_variables());
     base_mesh.add_dependency_info("evolve_K", dtK.get_all_variables());
