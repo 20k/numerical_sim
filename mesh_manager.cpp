@@ -1071,10 +1071,17 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
     enforce_constraints(get_output());
 
+    for(ref_counted_buffer& buf : intermediates)
+    {
+        if(!depends_on("extract_waveform", buf.name))
+        {
+            buf = pool.request(ctx, mqueue, {1,1,1}, 1);
+        }
+    }
+
     mqueue.end_splice(main_queue);
 
     flip();
-
     return {last_valid_thin_buffer, intermediates};
 }
 
