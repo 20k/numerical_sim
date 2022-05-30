@@ -668,7 +668,10 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
             for(auto& i : intermediates)
             {
-                a1.push_back(i.as_device_read_only());
+                if(depends_on(name, i.name))
+                    a1.push_back(i.as_device_read_only());
+                else
+                    a1.push_back(i.as_device_inaccessible());
             }
 
             a1.push_back(scale);
