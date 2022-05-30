@@ -275,6 +275,29 @@ struct equation_context
     {
         build(argument_string, std::to_string(idx));
     }
+
+    std::vector<std::string> get_all_variables()
+    {
+        std::set<std::string> variables;
+
+        for(auto& [name, var] : values)
+        {
+            var.get_all_variables_impl(variables);
+        }
+
+        for(auto& [name, var] : temporaries)
+        {
+            var.get_all_variables_impl(variables);
+        }
+
+        for(auto& [name, _] : temporaries)
+        {
+            if(auto it = variables.find(name); it != variables.end())
+                variables.erase(it);
+        }
+
+        return std::vector<std::string>(variables.begin(), variables.end());
+    }
 };
 
 

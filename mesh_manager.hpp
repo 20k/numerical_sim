@@ -19,6 +19,12 @@ float get_c_at_max()
     return 95.f * (251.f/300.f);
 }
 
+struct dependency_info
+{
+    std::string kernel;
+    std::vector<std::string> variables;
+};
+
 ///todo: do this inherity
 struct named_buffer
 {
@@ -105,10 +111,9 @@ struct cpu_mesh
 
     evolution_points points_set;
 
-    cl::buffer sponge_positions;
-    cl_int sponge_positions_count = 0;
-
     std::array<cl::buffer, 3> momentum_constraint;
+
+    std::vector<dependency_info> depends;
 
     static constexpr float dissipate_low = 0.25;
     static constexpr float dissipate_high = 0.25;
