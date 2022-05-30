@@ -610,11 +610,6 @@ void clean_data(__global ushort4* points, int point_count,
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
-    float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim);
-
-    if(sponge_factor <= 0)
-        return;
-
     float3 offset = transform_position(ix, iy, iz, dim, scale);
 
     float ox = offset.x;
