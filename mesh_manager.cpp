@@ -517,7 +517,6 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
             cleaner.push_back(i.buf);
         }
 
-        //cleaner.push_back(bssnok_datas[which_data]);
         cleaner.push_back(points_set.order);
         cleaner.push_back(scale);
         cleaner.push_back(clsize);
@@ -529,6 +528,25 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
         {
             check_for_nans(i.name + "_clean", i.buf);
         }
+    };
+
+    auto clean_thin = [&](auto& in_buf, auto& out_buf, auto& base_buf)
+    {
+        cl::args cleaner;
+        cleaner.push_back(points_set.border_points);
+        cleaner.push_back(points_set.border_count);
+
+        cleaner.push_back(in_buf.buf.as_device_read_only());
+        cleaner.push_back(base_buf.buf.as_device_read_only());
+        cleaner.push_back(out_buf.buf);
+
+        cleaner.push_back(points_set.order);
+        cleaner.push_back(scale);
+        cleaner.push_back(clsize);
+        cleaner.push_back(timestep);
+        cleaner.push_back(in_buf.asymptotic_value);
+
+        mqueue.exec("clean_data_thin", cleaner, {points_set.border_count}, {256});
     };
 
     auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
@@ -622,6 +640,20 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
                 check_for_nans(i.name + "_step", i.buf);
             }
+
+
+            ///clean
+            for(int i=0; i < (int)generic_in.buffers.size(); i++)
+            {
+                named_buffer& buf_in = generic_in.buffers[i];
+                named_buffer& buf_base = base_yn.buffers[i];
+                named_buffer& buf_out = generic_out.buffers[i];
+
+                if(buf_in.modified_by != name)
+                    continue;
+
+                clean_thin(buf_in, buf_out, buf_base);
+            }
         };
 
         step_kernel("evolve_cY");
@@ -632,7 +664,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
         step_kernel("evolve_gA");
         step_kernel("evolve_gB");
 
-        clean(generic_in, generic_out);
+        //clean(generic_in, generic_out);
 
         //copy_border(generic_in, generic_out);
     };
