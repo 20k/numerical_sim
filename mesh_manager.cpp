@@ -5,39 +5,39 @@
 
 buffer_set::buffer_set(cl::context& ctx, vec3i size, bool use_matter)
 {
-    std::vector<std::tuple<std::string, std::string, float, bool>> values =
+    std::vector<std::tuple<std::string, std::string, float, float, bool>> values =
     {
-        {"cY0", "evolve_cY", cpu_mesh::dissipate_low, false},
-        {"cY1", "evolve_cY", cpu_mesh::dissipate_low, false},
-        {"cY2", "evolve_cY", cpu_mesh::dissipate_low, false},
-        {"cY3", "evolve_cY", cpu_mesh::dissipate_low, false},
-        {"cY4", "evolve_cY", cpu_mesh::dissipate_low, false},
-        {"cY5", "evolve_cY", cpu_mesh::dissipate_low, false},
+        {"cY0", "evolve_cY", cpu_mesh::dissipate_low, 1, false},
+        {"cY1", "evolve_cY", cpu_mesh::dissipate_low, 0, false},
+        {"cY2", "evolve_cY", cpu_mesh::dissipate_low, 0, false},
+        {"cY3", "evolve_cY", cpu_mesh::dissipate_low, 1, false},
+        {"cY4", "evolve_cY", cpu_mesh::dissipate_low, 0, false},
+        {"cY5", "evolve_cY", cpu_mesh::dissipate_low, 1, false},
 
-        {"cA0", "evolve_cA", cpu_mesh::dissipate_high, false},
-        {"cA1", "evolve_cA", cpu_mesh::dissipate_high, false},
-        {"cA2", "evolve_cA", cpu_mesh::dissipate_high, false},
-        {"cA3", "evolve_cA", cpu_mesh::dissipate_high, false},
-        {"cA4", "evolve_cA", cpu_mesh::dissipate_high, false},
-        {"cA5", "evolve_cA", cpu_mesh::dissipate_high, false},
+        {"cA0", "evolve_cA", cpu_mesh::dissipate_high, 0, false},
+        {"cA1", "evolve_cA", cpu_mesh::dissipate_high, 0, false},
+        {"cA2", "evolve_cA", cpu_mesh::dissipate_high, 0, false},
+        {"cA3", "evolve_cA", cpu_mesh::dissipate_high, 0, false},
+        {"cA4", "evolve_cA", cpu_mesh::dissipate_high, 0, false},
+        {"cA5", "evolve_cA", cpu_mesh::dissipate_high, 0, false},
 
-        {"cGi0", "evolve_cGi", cpu_mesh::dissipate_low, false},
-        {"cGi1", "evolve_cGi", cpu_mesh::dissipate_low, false},
-        {"cGi2", "evolve_cGi", cpu_mesh::dissipate_low, false},
+        {"cGi0", "evolve_cGi", cpu_mesh::dissipate_low, 0, false},
+        {"cGi1", "evolve_cGi", cpu_mesh::dissipate_low, 0, false},
+        {"cGi2", "evolve_cGi", cpu_mesh::dissipate_low, 0, false},
 
-        {"K", "evolve_K", cpu_mesh::dissipate_high, false},
-        {"X", "evolve_X", cpu_mesh::dissipate_low, false},
+        {"K", "evolve_K", cpu_mesh::dissipate_high, 0, false},
+        {"X", "evolve_X", cpu_mesh::dissipate_low, 1, false},
 
-        {"gA", "evolve_gA", cpu_mesh::dissipate_gauge, false},
-        {"gB0", "evolve_gB", cpu_mesh::dissipate_gauge, false},
-        {"gB1", "evolve_gB", cpu_mesh::dissipate_gauge, false},
-        {"gB2", "evolve_gB", cpu_mesh::dissipate_gauge, false},
+        {"gA", "evolve_gA", cpu_mesh::dissipate_gauge, 1, false},
+        {"gB0", "evolve_gB", cpu_mesh::dissipate_gauge, 0, false},
+        {"gB1", "evolve_gB", cpu_mesh::dissipate_gauge, 0, false},
+        {"gB2", "evolve_gB", cpu_mesh::dissipate_gauge, 0, false},
 
-        {"Dp_star", "evolve_hydro_all", 0.05f, true},
-        {"De_star", "evolve_hydro_all", 0.05f, true},
-        {"DcS0", "evolve_hydro_all", 0.25f, true},
-        {"DcS1", "evolve_hydro_all", 0.25f, true},
-        {"DcS2", "evolve_hydro_all", 0.25f, true},
+        {"Dp_star", "evolve_hydro_all", 0.05f, 0, true},
+        {"De_star", "evolve_hydro_all", 0.05f, 0, true},
+        {"DcS0", "evolve_hydro_all", 0.25f, 0, true},
+        {"DcS1", "evolve_hydro_all", 0.25f, 0, true},
+        {"DcS2", "evolve_hydro_all", 0.25f, 0, true},
     };
 
     for(int kk=0; kk < (int)values.size(); kk++)
@@ -59,7 +59,8 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size, bool use_matter)
         buf.name = std::get<0>(values[kk]);
         buf.modified_by = std::get<1>(values[kk]);
         buf.dissipation_coeff = std::get<2>(values[kk]);
-        buf.matter_term = std::get<3>(values[kk]);
+        buf.asymptotic_value = std::get<3>(values[kk]);
+        buf.matter_term = std::get<4>(values[kk]);
     }
 }
 
