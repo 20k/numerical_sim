@@ -4208,7 +4208,7 @@ void build_sommerfeld_thin(equation_context& ctx)
 
     value in = bidx("input", false, false);
     value asym = "asym";
-    value v = 1;
+    value v = "speed";
 
     value out = sommerfeld(in, asym, v);
 

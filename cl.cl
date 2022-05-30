@@ -594,7 +594,7 @@ void clean_data_thin(__global ushort4* points, int point_count,
                 __global ushort* order_ptr,
                 float scale, int4 dim,
                 float timestep,
-                float asym)
+                float asym, float speed)
 {
     int idx = get_global_id(0);
 

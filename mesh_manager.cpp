@@ -5,46 +5,49 @@
 
 buffer_set::buffer_set(cl::context& ctx, vec3i size, bool use_matter)
 {
-    std::vector<std::tuple<std::string, std::string, float, float, bool>> values =
+    ///often 1 is used here as well. Seems to make a noticable difference to reflections
+    float gauge_wave_speed = sqrt(2);
+
+    std::vector<std::tuple<std::string, std::string, float, float, float, bool>> values =
     {
-        {"cY0", "evolve_cY", cpu_mesh::dissipate_low, 1, false},
-        {"cY1", "evolve_cY", cpu_mesh::dissipate_low, 0, false},
-        {"cY2", "evolve_cY", cpu_mesh::dissipate_low, 0, false},
-        {"cY3", "evolve_cY", cpu_mesh::dissipate_low, 1, false},
-        {"cY4", "evolve_cY", cpu_mesh::dissipate_low, 0, false},
-        {"cY5", "evolve_cY", cpu_mesh::dissipate_low, 1, false},
+        {"cY0", "evolve_cY", cpu_mesh::dissipate_low, 1, 1, false},
+        {"cY1", "evolve_cY", cpu_mesh::dissipate_low, 0, 1, false},
+        {"cY2", "evolve_cY", cpu_mesh::dissipate_low, 0, 1, false},
+        {"cY3", "evolve_cY", cpu_mesh::dissipate_low, 1, 1, false},
+        {"cY4", "evolve_cY", cpu_mesh::dissipate_low, 0, 1, false},
+        {"cY5", "evolve_cY", cpu_mesh::dissipate_low, 1, 1, false},
 
-        {"cA0", "evolve_cA", cpu_mesh::dissipate_high, 0, false},
-        {"cA1", "evolve_cA", cpu_mesh::dissipate_high, 0, false},
-        {"cA2", "evolve_cA", cpu_mesh::dissipate_high, 0, false},
-        {"cA3", "evolve_cA", cpu_mesh::dissipate_high, 0, false},
-        {"cA4", "evolve_cA", cpu_mesh::dissipate_high, 0, false},
-        {"cA5", "evolve_cA", cpu_mesh::dissipate_high, 0, false},
+        {"cA0", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, false},
+        {"cA1", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, false},
+        {"cA2", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, false},
+        {"cA3", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, false},
+        {"cA4", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, false},
+        {"cA5", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, false},
 
-        {"cGi0", "evolve_cGi", cpu_mesh::dissipate_low, 0, false},
-        {"cGi1", "evolve_cGi", cpu_mesh::dissipate_low, 0, false},
-        {"cGi2", "evolve_cGi", cpu_mesh::dissipate_low, 0, false},
+        {"cGi0", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1, false},
+        {"cGi1", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1, false},
+        {"cGi2", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1, false},
 
-        {"K", "evolve_K", cpu_mesh::dissipate_high, 0, false},
-        {"X", "evolve_X", cpu_mesh::dissipate_low, 1, false},
+        {"K", "evolve_K", cpu_mesh::dissipate_high, 0, 1, false},
+        {"X", "evolve_X", cpu_mesh::dissipate_low, 1, 1, false},
 
-        {"gA", "evolve_gA", cpu_mesh::dissipate_gauge, 1, false},
-        {"gB0", "evolve_gB", cpu_mesh::dissipate_gauge, 0, false},
-        {"gB1", "evolve_gB", cpu_mesh::dissipate_gauge, 0, false},
-        {"gB2", "evolve_gB", cpu_mesh::dissipate_gauge, 0, false},
+        {"gA", "evolve_gA", cpu_mesh::dissipate_gauge, 1, gauge_wave_speed, false},
+        {"gB0", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, false},
+        {"gB1", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, false},
+        {"gB2", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, false},
 
-        {"Dp_star", "evolve_hydro_all", 0.05f, 0, true},
-        {"De_star", "evolve_hydro_all", 0.05f, 0, true},
-        {"DcS0", "evolve_hydro_all", 0.25f, 0, true},
-        {"DcS1", "evolve_hydro_all", 0.25f, 0, true},
-        {"DcS2", "evolve_hydro_all", 0.25f, 0, true},
+        {"Dp_star", "evolve_hydro_all", 0.05f, 0, 1, true},
+        {"De_star", "evolve_hydro_all", 0.05f, 0, 1, true},
+        {"DcS0", "evolve_hydro_all", 0.25f, 0, 1, true},
+        {"DcS1", "evolve_hydro_all", 0.25f, 0, 1, true},
+        {"DcS2", "evolve_hydro_all", 0.25f, 0, 1, true},
     };
 
     for(int kk=0; kk < (int)values.size(); kk++)
     {
         named_buffer& buf = buffers.emplace_back(ctx);
 
-        if(std::get<4>(values[kk]))
+        if(std::get<5>(values[kk]))
         {
             if(use_matter)
                 buf.buf.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
@@ -60,7 +63,8 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size, bool use_matter)
         buf.modified_by = std::get<1>(values[kk]);
         buf.dissipation_coeff = std::get<2>(values[kk]);
         buf.asymptotic_value = std::get<3>(values[kk]);
-        buf.matter_term = std::get<4>(values[kk]);
+        buf.wave_speed = std::get<4>(values[kk]);
+        buf.matter_term = std::get<5>(values[kk]);
     }
 }
 
@@ -391,7 +395,7 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
 
     auto clean_by_name = [&](const std::string& name)
     {
-        clean_buffer(cqueue, in.lookup(name).buf, out.lookup(name).buf, base.lookup(name).buf, in.lookup(name).asymptotic_value, timestep);
+        clean_buffer(cqueue, in.lookup(name).buf, out.lookup(name).buf, base.lookup(name).buf, in.lookup(name).asymptotic_value, in.lookup(name).wave_speed, timestep);
     };
 
     clean_by_name("Dp_star");
@@ -452,7 +456,7 @@ std::vector<ref_counted_buffer> cpu_mesh::get_derivatives_of(cl::context& ctx, b
     return intermediates;
 }
 
-void cpu_mesh::clean_buffer(cl::managed_command_queue& mqueue, cl::buffer& in, cl::buffer& out, cl::buffer& base, float asym, float timestep)
+void cpu_mesh::clean_buffer(cl::managed_command_queue& mqueue, cl::buffer& in, cl::buffer& out, cl::buffer& base, float asym, float speed, float timestep)
 {
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
@@ -469,6 +473,7 @@ void cpu_mesh::clean_buffer(cl::managed_command_queue& mqueue, cl::buffer& in, c
     cleaner.push_back(clsize);
     cleaner.push_back(timestep);
     cleaner.push_back(asym);
+    cleaner.push_back(speed);
 
     mqueue.exec("clean_data_thin", cleaner, {points_set.border_count}, {256});
 }
@@ -530,7 +535,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
     auto clean_thin = [&](auto& in_buf, auto& out_buf, auto& base_buf, float current_timestep)
     {
-        clean_buffer(mqueue, in_buf.buf, out_buf.buf, base_buf.buf, in_buf.asymptotic_value, current_timestep);
+        clean_buffer(mqueue, in_buf.buf, out_buf.buf, base_buf.buf, in_buf.asymptotic_value, in_buf.wave_speed, current_timestep);
     };
 
     auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
