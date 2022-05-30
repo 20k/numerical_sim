@@ -630,7 +630,10 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
             for(auto& i : generic_in.buffers)
             {
-                a1.push_back(i.buf.as_device_read_only());
+                if(i.modified_by == name || depends_on(name, i.name))
+                    a1.push_back(i.buf.as_device_read_only());
+                else
+                    a1.push_back(i.buf.as_device_inaccessible());
             }
 
             for(named_buffer& i : generic_out.buffers)
@@ -643,7 +646,10 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
             for(auto& i : base_yn.buffers)
             {
-                a1.push_back(i.buf.as_device_read_only());
+                if(i.modified_by == name || depends_on(name, i.name))
+                    a1.push_back(i.buf.as_device_read_only());
+                else
+                    a1.push_back(i.buf.as_device_inaccessible());
             }
 
             for(auto& i : momentum_constraint)
@@ -1064,7 +1070,21 @@ void cpu_mesh::add_dependency_info(const std::string& kernel_name, const std::ve
 {
     dependency_info inf;
     inf.kernel = kernel_name;
-    inf.variables = variables;
+    inf.variables = std::set<std::string>(variables.begin(), variables.end());
 
     depends.push_back(inf);
+}
+
+bool cpu_mesh::depends_on(const std::string& kernel_name, const std::string& variable)
+{
+    for(dependency_info& inf : depends)
+    {
+        if(kernel_name != inf.kernel)
+            continue;
+
+        return inf.variables.find(variable) != inf.variables.end();
+    }
+
+    ///not found, assume it does depend
+    return true;
 }

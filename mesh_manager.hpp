@@ -5,6 +5,7 @@
 #include <vec/vec.hpp>
 #include <toolkit/opencl.hpp>
 #include "ref_counted.hpp"
+#include <set>
 
 template<typename T>
 inline
@@ -22,7 +23,7 @@ float get_c_at_max()
 struct dependency_info
 {
     std::string kernel;
-    std::vector<std::string> variables;
+    std::set<std::string> variables;
 };
 
 ///todo: do this inherity
@@ -139,6 +140,7 @@ struct cpu_mesh
     std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool);
 
     void add_dependency_info(const std::string& kernel_name, const std::vector<std::string>& variables);
+    bool depends_on(const std::string& kernel_name, const std::string& name);
 };
 
 #endif // MESH_MANAGER_HPP_INCLUDED
