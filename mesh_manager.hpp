@@ -117,7 +117,6 @@ struct cpu_mesh
 
     buffer_set& get_input();
     buffer_set& get_output();
-    buffer_set& get_scratch(int which);
 
     void init(cl::command_queue& cqueue, cl::buffer& u_arg, std::array<cl::buffer, 6>& bcAij, cl::buffer& superimposed_tov_phi);
 

@@ -243,12 +243,6 @@ buffer_set& cpu_mesh::get_output()
     return data[(which_data + 1) % 2];
 }
 
-buffer_set& cpu_mesh::get_scratch(int which)
-{
-    assert(which == 0);
-    return scratch;
-}
-
 void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, std::array<cl::buffer, 6>& bcAij, cl::buffer& superimposed_tov_phi)
 {
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
