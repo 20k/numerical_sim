@@ -7352,11 +7352,6 @@ int main()
                         init_args.push_back(i.as_device_read_only());
                     }
 
-                    for(auto& i : last_valid_thin)
-                    {
-                        init_args.push_back(i.as_device_read_only());
-                    }
-
                     init_args.push_back(scale);
                     init_args.push_back(ccamera_pos);
                     init_args.push_back(ccamera_quat);
@@ -7374,11 +7369,6 @@ int main()
                     render_args.push_back(rays_terminated);
 
                     for(auto& i : last_valid_buffer)
-                    {
-                        render_args.push_back(i.as_device_read_only());
-                    }
-
-                    for(auto& i : last_valid_thin)
                     {
                         render_args.push_back(i.as_device_read_only());
                     }
@@ -7406,11 +7396,6 @@ int main()
                         texture_args.push_back(i.as_device_read_only());
                     }
 
-                    for(auto& i : last_valid_thin)
-                    {
-                        texture_args.push_back(i.as_device_read_only());
-                    }
-
                     texture_args.push_back(scale);
                     texture_args.push_back(clsize);
 
@@ -7424,11 +7409,6 @@ int main()
                     render_args.push_back(rtex[which_texture]);
 
                     for(auto& i : last_valid_buffer)
-                    {
-                        render_args.push_back(i.as_device_read_only());
-                    }
-
-                    for(auto& i : last_valid_thin)
                     {
                         render_args.push_back(i.as_device_read_only());
                     }
