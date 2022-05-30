@@ -691,13 +691,13 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
             }
         };
 
-        step_kernel("evolve_cY");
-        step_kernel("evolve_cA");
-        step_kernel("evolve_cGi");
-        step_kernel("evolve_K");
-        step_kernel("evolve_X");
-        step_kernel("evolve_gA");
-        step_kernel("evolve_gB");
+        step_kernel("evolve_cY"); ///no derivatives
+        step_kernel("evolve_X"); ///no derivatives
+        step_kernel("evolve_gA"); ///no derivatives
+        step_kernel("evolve_gB"); ///no derivatives
+        step_kernel("evolve_cGi"); ///dgB
+        step_kernel("evolve_K"); ///dgA
+        step_kernel("evolve_cA"); ///dX, dcY, dgA
 
         clean(generic_in, generic_out);
 
@@ -1098,6 +1098,13 @@ void cpu_mesh::add_dependency_info(const std::string& kernel_name, const std::ve
 
             return;
         }
+    }
+
+    std::cout << "DEPS " << kernel_name << std::endl;
+
+    for(auto& i : variables)
+    {
+        std::cout << "OUT " << i << std::endl;
     }
 
     dependency_info inf;
