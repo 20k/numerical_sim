@@ -4212,7 +4212,7 @@ void build_sommerfeld_thin(equation_context& ctx)
 
     value out = sommerfeld(in, asym, v);
 
-    ctx.add("sommer_out", out);
+    ctx.add("sommer_thin_out", out);
 }
 
 void build_sommerfeld(equation_context& ctx, bool use_matter)
@@ -6874,6 +6874,9 @@ int main()
     equation_context ctx14;
     //build_hamiltonian_constraint(ctx14);
 
+    equation_context ctxsommerthin;
+    build_sommerfeld_thin(ctxsommerthin);
+
     equation_context ctxsommer;
     build_sommerfeld(ctxsommer, holes.use_matter);
 
@@ -6906,6 +6909,7 @@ int main()
     ctx13.build(argument_string, 12);
     //ctx14.build(argument_string, "unused1");
     ctxdirectional.build(argument_string, "directional");
+    ctxsommerthin.build(argument_string, "sommerthin");
     ctxsommer.build(argument_string, "sommerfeld");
 
     dtcY.build(argument_string, "tcy");

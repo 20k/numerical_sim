@@ -586,6 +586,44 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
     points[idx].xyz = (ushort3)(ix, iy, iz);
 }
 
+__kernel
+void clean_data_thin(__global ushort4* points, int point_count,
+                __global float* input,
+                __global float* base,
+                __global float* out,
+                __global ushort* order_ptr,
+                float scale, int4 dim,
+                float timestep,
+                float asym)
+{
+    int idx = get_global_id(0);
+
+    if(idx >= point_count)
+        return;
+
+    int ix = points[idx].x;
+    int iy = points[idx].y;
+    int iz = points[idx].z;
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
+
+    float ox = offset.x;
+    float oy = offset.y;
+    float oz = offset.z;
+
+    int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
+
+    float TEMPORARIESsommerthin;
+
+    float sommer_dtc = sommer_thin_out;
+
+    out[index] = sommer_dtc * timestep + base[index];
+}
+
 ///https://cds.cern.ch/record/517706/files/0106072.pdf
 ///boundary conditions
 ///todo: damp to schwarzschild, not initial conditions?
