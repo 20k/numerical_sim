@@ -75,50 +75,6 @@ named_buffer& buffer_set::lookup(const std::string& name)
 }
 
 inline
-std::pair<cl::buffer, int> generate_sponge_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
-{
-    cl::buffer points(ctx);
-    cl::buffer real_count(ctx);
-
-    points.alloc(size.x() * size.y() * size.z() * sizeof(cl_ushort4));
-    real_count.alloc(sizeof(cl_int));
-    real_count.set_to_zero(cqueue);
-
-    vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
-
-    cl::args args;
-    args.push_back(points);
-    args.push_back(real_count);
-    args.push_back(scale);
-    args.push_back(clsize);
-
-    cqueue.exec("generate_sponge_points", args, {size.x(),  size.y(),  size.z()}, {8, 8, 1});
-
-    std::vector<cl_ushort4> cpu_points = points.read<cl_ushort4>(cqueue);
-
-    printf("Original sponge points %i\n", cpu_points.size());
-
-    cl_int count = real_count.read<cl_int>(cqueue).at(0);
-
-    assert(count > 0);
-
-    cpu_points.resize(count);
-
-    std::sort(std::execution::par_unseq, cpu_points.begin(), cpu_points.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
-    {
-        return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
-    });
-
-    cl::buffer real(ctx);
-    real.alloc(cpu_points.size() * sizeof(cl_ushort4));
-    real.write(cqueue, cpu_points);
-
-    printf("Sponge point reduction %i\n", count);
-
-    return {real.as_device_read_only(), count};
-}
-
-inline
 std::pair<cl::buffer, int> extract_buffer(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& buf, cl::buffer& count)
 {
     std::vector<cl_ushort4> cpu_buf = buf.read<cl_ushort4>(cqueue);
@@ -247,7 +203,7 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::manage
 }
 
 cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points) :
-        data{buffer_set(ctx, _dim, _sett.use_matter), buffer_set(ctx, _dim, _sett.use_matter)}, scratch{ctx, _dim, _sett.use_matter}, points_set{ctx}, sponge_positions{ctx},
+        data{buffer_set(ctx, _dim, _sett.use_matter), buffer_set(ctx, _dim, _sett.use_matter)}, scratch{ctx, _dim, _sett.use_matter}, points_set{ctx},
         momentum_constraint{ctx, ctx, ctx}, hydro_st(ctx)
 {
     centre = _centre;
@@ -257,7 +213,6 @@ cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, v
     scale = calculate_scale(get_c_at_max(), dim);
 
     points_set = points;
-    std::tie(sponge_positions, sponge_positions_count) = generate_sponge_points(ctx, cqueue, scale, dim);
 
     for(auto& i : momentum_constraint)
     {

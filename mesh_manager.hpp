@@ -105,9 +105,6 @@ struct cpu_mesh
 
     evolution_points points_set;
 
-    cl::buffer sponge_positions;
-    cl_int sponge_positions_count = 0;
-
     std::array<cl::buffer, 3> momentum_constraint;
 
     static constexpr float dissipate_low = 0.25;
