@@ -68,7 +68,8 @@ struct ref_counted
 
 struct ref_counted_buffer : cl::buffer, ref_counted
 {
-
+    ///yes this is a disaster
+    std::string name;
 };
 
 #endif // REF_COUNTED_HPP_INCLUDED

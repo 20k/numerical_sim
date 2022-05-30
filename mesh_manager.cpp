@@ -472,11 +472,20 @@ std::vector<ref_counted_buffer> cpu_mesh::get_derivatives_of(cl::context& ctx, b
     std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
                           "gA", "gB0", "gB1", "gB2", "X"};
 
+    std::array names = {"dcYij0", "dcYij1", "dcYij2", "dcYij3", "dcYij4", "dcYij5", "dcYij6", "dcYij7", "dcYij8", "dcYij9", "dcYij10", "dcYij11", "dcYij12", "dcYij13", "dcYij14", "dcYij15", "dcYij16", "dcYij17",
+                        "digA0", "digA1", "digA2",
+                        "digB0", "digB1", "digB2", "digB3", "digB4", "digB5", "digB6", "digB7", "digB8",
+                        "dX0", "dX1", "dX2"};
+
     for(int idx = 0; idx < (int)buffers.size(); idx++)
     {
         ref_counted_buffer b1 = get_thin_buffer(ctx, mqueue, pool);
         ref_counted_buffer b2 = get_thin_buffer(ctx, mqueue, pool);
         ref_counted_buffer b3 = get_thin_buffer(ctx, mqueue, pool);
+
+        b1.name = names[idx * 3 + 0];
+        b2.name = names[idx * 3 + 1];
+        b3.name = names[idx * 3 + 2];
 
         cl::buffer found = generic_in.lookup(buffers[idx]).buf;
 
