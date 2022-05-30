@@ -495,7 +495,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     };
     #endif // 0
 
-    auto clean = [&](auto& in, auto& inout)
+    auto clean = [&](auto& in, auto& out)
     {
         cl::args cleaner;
         cleaner.push_back(points_set.border_points);
@@ -511,7 +511,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
             cleaner.push_back(i.buf.as_device_read_only());
         }
 
-        for(auto& i : inout.buffers)
+        for(auto& i : out.buffers)
         {
             cleaner.push_back(i.buf);
         }
@@ -524,7 +524,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
         mqueue.exec("clean_data", cleaner, {points_set.border_count}, {256});
 
-        for(auto& i : inout.buffers)
+        for(auto& i : out.buffers)
         {
             check_for_nans(i.name + "_clean", i.buf);
         }
