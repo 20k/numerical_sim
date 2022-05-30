@@ -204,8 +204,8 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::manage
 }
 
 cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points) :
-        data{buffer_set(ctx, _dim, _sett.use_matter), buffer_set(ctx, _dim, _sett.use_matter)}, scratch{ctx, _dim, _sett.use_matter}, points_set{ctx},
-        momentum_constraint{ctx, ctx, ctx}, hydro_st(ctx)
+        data{buffer_set(ctx, _dim, _sett.use_matter), buffer_set(ctx, _dim, _sett.use_matter)}, points_set{ctx},
+        momentum_constraint{ctx, ctx, ctx}, hydro_st(ctx), low_scratch{ctx, ctx, ctx, ctx, ctx, ctx}
 {
     centre = _centre;
     dim = _dim;
@@ -226,6 +226,11 @@ cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, v
         {
             i.alloc(sizeof(cl_int));
         }
+    }
+
+    for(int i=0; i < low_scratch.size(); i++)
+    {
+        low_scratch[i].alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
     }
 }
 
@@ -292,7 +297,7 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, std::array<cl:
     for(int i=0; i < (int)data[0].buffers.size(); i++)
     {
         cl::copy(cqueue, data[0].buffers[i].buf, data[1].buffers[i].buf);
-        cl::copy(cqueue, data[0].buffers[i].buf, scratch.buffers[i].buf);
+        //cl::copy(cqueue, data[0].buffers[i].buf, scratch.buffers[i].buf);
     }
 }
 
@@ -528,18 +533,13 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     };
     #endif // 0
 
-    auto clean_thin = [&](auto& in_buf, auto& out_buf, auto& base_buf, float current_timestep)
-    {
-        clean_buffer(mqueue, in_buf.buf, out_buf.buf, base_buf.buf, in_buf.asymptotic_value, current_timestep);
-    };
-
     auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
     {
         intermediates.clear();
 
         last_valid_thin_buffer.clear();
 
-        step_hydro(ctx, mqueue, pool, generic_in, generic_out, base_yn, current_timestep);
+        //step_hydro(ctx, mqueue, pool, generic_in, generic_out, base_yn, current_timestep);
 
         for(auto& i : generic_in.buffers)
         {
@@ -629,13 +629,13 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
             for(int i=0; i < (int)generic_in.buffers.size(); i++)
             {
                 named_buffer& buf_in = generic_in.buffers[i];
-                named_buffer& buf_base = base_yn.buffers[i];
                 named_buffer& buf_out = generic_out.buffers[i];
+                named_buffer& buf_base = base_yn.buffers[i];
 
                 if(buf_in.modified_by != name)
                     continue;
 
-                clean_thin(buf_in, buf_out, buf_base, current_timestep);
+                clean_buffer(mqueue, buf_in.buf, buf_out.buf, buf_base.buf, buf_in.asymptotic_value, current_timestep);
             }
         };
 

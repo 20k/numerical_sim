@@ -100,7 +100,8 @@ struct cpu_mesh
     int which_data = 0;
 
     std::array<buffer_set, 2> data;
-    buffer_set scratch;
+    //buffer_set scratch;
+    std::array<cl::buffer, 6> low_scratch;
 
     hydro_state hydro_st;
 
