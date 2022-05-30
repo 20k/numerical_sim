@@ -388,6 +388,17 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
 
         cqueue.exec("evolve_hydro_all", evolve, {points_set.all_count}, {128});
     }
+
+    auto clean_by_name = [&](const std::string& name)
+    {
+        clean_buffer(cqueue, in.lookup(name).buf, out.lookup(name).buf, base.lookup(name).buf, in.lookup(name).asymptotic_value, timestep);
+    };
+
+    clean_by_name("Dp_star");
+    clean_by_name("De_star");
+    clean_by_name("DcS0");
+    clean_by_name("DcS1");
+    clean_by_name("DcS2");
 }
 
 ref_counted_buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool)
@@ -439,6 +450,27 @@ std::vector<ref_counted_buffer> cpu_mesh::get_derivatives_of(cl::context& ctx, b
     }
 
     return intermediates;
+}
+
+void cpu_mesh::clean_buffer(cl::managed_command_queue& mqueue, cl::buffer& in, cl::buffer& out, cl::buffer& base, float asym, float timestep)
+{
+    cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
+
+    cl::args cleaner;
+    cleaner.push_back(points_set.border_points);
+    cleaner.push_back(points_set.border_count);
+
+    cleaner.push_back(in.as_device_read_only());
+    cleaner.push_back(base.as_device_read_only());
+    cleaner.push_back(out);
+
+    cleaner.push_back(points_set.order);
+    cleaner.push_back(scale);
+    cleaner.push_back(clsize);
+    cleaner.push_back(timestep);
+    cleaner.push_back(asym);
+
+    mqueue.exec("clean_data_thin", cleaner, {points_set.border_count}, {256});
 }
 
 ///returns buffers and intermediates
@@ -496,57 +528,9 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     };
     #endif // 0
 
-    auto clean = [&](auto& in, auto& out)
+    auto clean_thin = [&](auto& in_buf, auto& out_buf, auto& base_buf, float current_timestep)
     {
-        cl::args cleaner;
-        cleaner.push_back(points_set.border_points);
-        cleaner.push_back(points_set.border_count);
-
-        for(auto& i : in.buffers)
-        {
-            cleaner.push_back(i.buf.as_device_read_only());
-        }
-
-        for(auto& i : base_yn.buffers)
-        {
-            cleaner.push_back(i.buf.as_device_read_only());
-        }
-
-        for(auto& i : out.buffers)
-        {
-            cleaner.push_back(i.buf);
-        }
-
-        cleaner.push_back(points_set.order);
-        cleaner.push_back(scale);
-        cleaner.push_back(clsize);
-        cleaner.push_back(timestep);
-
-        mqueue.exec("clean_data", cleaner, {points_set.border_count}, {256});
-
-        for(auto& i : out.buffers)
-        {
-            check_for_nans(i.name + "_clean", i.buf);
-        }
-    };
-
-    auto clean_thin = [&](auto& in_buf, auto& out_buf, auto& base_buf)
-    {
-        cl::args cleaner;
-        cleaner.push_back(points_set.border_points);
-        cleaner.push_back(points_set.border_count);
-
-        cleaner.push_back(in_buf.buf.as_device_read_only());
-        cleaner.push_back(base_buf.buf.as_device_read_only());
-        cleaner.push_back(out_buf.buf);
-
-        cleaner.push_back(points_set.order);
-        cleaner.push_back(scale);
-        cleaner.push_back(clsize);
-        cleaner.push_back(timestep);
-        cleaner.push_back(in_buf.asymptotic_value);
-
-        mqueue.exec("clean_data_thin", cleaner, {points_set.border_count}, {256});
+        clean_buffer(mqueue, in_buf.buf, out_buf.buf, base_buf.buf, in_buf.asymptotic_value, current_timestep);
     };
 
     auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
@@ -641,7 +625,6 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
                 check_for_nans(i.name + "_step", i.buf);
             }
 
-
             ///clean
             for(int i=0; i < (int)generic_in.buffers.size(); i++)
             {
@@ -652,7 +635,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
                 if(buf_in.modified_by != name)
                     continue;
 
-                clean_thin(buf_in, buf_out, buf_base);
+                clean_thin(buf_in, buf_out, buf_base, current_timestep);
             }
         };
 
@@ -663,8 +646,6 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
         step_kernel("evolve_X");
         step_kernel("evolve_gA");
         step_kernel("evolve_gB");
-
-        //clean(generic_in, generic_out);
 
         //copy_border(generic_in, generic_out);
     };
