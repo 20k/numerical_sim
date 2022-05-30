@@ -1557,12 +1557,12 @@ void dissipate_single(__global ushort4* points, int point_count,
     float damp = 1;
     #endif
 
-    float3 offset = transform_position(ix, iy, iz, dim, scale);
+    /*float3 offset = transform_position(ix, iy, iz, dim, scale);
 
     float radius = length(offset);
 
     if(radius > 20)
-        damp = 2.f;
+        damp = 2.f;*/
 
     float TEMPORARIES9;
 
