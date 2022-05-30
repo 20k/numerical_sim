@@ -16,7 +16,7 @@ float calculate_scale(float c_at_max, const T& size)
 inline
 float get_c_at_max()
 {
-    return 55.f * (251.f/300.f);
+    return 95.f * (251.f/300.f);
 }
 
 ///todo: do this inherity
@@ -131,7 +131,7 @@ struct cpu_mesh
     std::vector<ref_counted_buffer> get_derivatives_of(cl::context& ctx, buffer_set& bufs, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool);
 
     ///returns buffers and intermediates
-    std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, cl::buffer& u_arg);
+    std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool);
 };
 
 #endif // MESH_MANAGER_HPP_INCLUDED

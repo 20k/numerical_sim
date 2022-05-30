@@ -594,7 +594,6 @@ void clean_data(__global ushort4* points, int point_count,
                 STANDARD_ARGS(),
                 STANDARD_ARGS(base_),
                 STANDARD_ARGS(o),
-                __global float* u_value,
                 __global ushort* order_ptr,
                 float scale, int4 dim,
                 float timestep)
@@ -742,7 +741,7 @@ void clean_data(__global ushort4* points, int point_count,
     #endif // 0
 }
 
-#define DISSB 0.05f
+#define DISSB 0.1f
 
 __kernel
 void evolve_cY(__global ushort4* points, int point_count,
@@ -804,12 +803,12 @@ void evolve_cY(__global ushort4* points, int point_count,
 
     if(X[index] < DISSB)
     {
-        ocY0[index] += (1 - ocY0[index]) * timestep * 0.1f;
-        ocY1[index] += (0 - ocY1[index]) * timestep * 0.1f;
-        ocY2[index] += (0 - ocY2[index]) * timestep * 0.1f;
-        ocY3[index] += (1 - ocY3[index]) * timestep * 0.1f;
-        ocY4[index] += (0 - ocY4[index]) * timestep * 0.1f;
-        ocY5[index] += (1 - ocY5[index]) * timestep * 0.1f;
+        ocY0[index] += (1 - ocY0[index]) * timestep;
+        ocY1[index] += (0 - ocY1[index]) * timestep;
+        ocY2[index] += (0 - ocY2[index]) * timestep;
+        ocY3[index] += (1 - ocY3[index]) * timestep;
+        ocY4[index] += (0 - ocY4[index]) * timestep;
+        ocY5[index] += (1 - ocY5[index]) * timestep;
     }
 
     NANCHECK(ocY0);
@@ -1557,6 +1556,13 @@ void dissipate_single(__global ushort4* points, int point_count,
     #else
     float damp = 1;
     #endif
+
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
+
+    float radius = length(offset);
+
+    if(radius > 20)
+        damp = 2.f;
 
     float TEMPORARIES9;
 

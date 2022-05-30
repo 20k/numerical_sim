@@ -3692,13 +3692,13 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.875, 0};
+    h1.momentum = {0, 0.133 * 0.825, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     compact_object::data h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.875, 0};
+    h2.momentum = {0, -0.133 * 0.825, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     objects = {h1, h2};
@@ -6720,7 +6720,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {251, 251, 251};
+    vec3i size = {321, 321, 321};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -6901,7 +6901,7 @@ int main()
     #endif // USE_GBB
 
     ///seems to make 0 difference to instability time
-    //#define USE_HALF_INTERMEDIATE
+    #define USE_HALF_INTERMEDIATE
     #ifdef USE_HALF_INTERMEDIATE
     int intermediate_data_size = sizeof(cl_half);
     argument_string += "-DDERIV_PRECISION=half ";
@@ -6986,6 +6986,14 @@ int main()
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
 
     base_mesh.init(clctx.cqueue, u_arg, bcAij, superimposed_tov_phi);
+
+    u_arg = cl::buffer(clctx.ctx);
+    superimposed_tov_phi = cl::buffer(clctx.ctx);
+
+    for(auto& i : bcAij)
+    {
+        i = cl::buffer(clctx.ctx);
+    }
 
     std::vector<float> real_graph;
     std::vector<float> real_decomp;
@@ -7244,7 +7252,7 @@ int main()
             last_valid_thin.clear();
             last_valid_buffer.clear();
 
-            std::tie(last_valid_buffer, last_valid_thin) = base_mesh.full_step(clctx.ctx, clctx.cqueue, mqueue, timestep, thin_pool, u_arg);
+            std::tie(last_valid_buffer, last_valid_thin) = base_mesh.full_step(clctx.ctx, clctx.cqueue, mqueue, timestep, thin_pool);
 
             {
                 wave_manager.issue_extraction(clctx.cqueue, last_valid_buffer, last_valid_thin, scale, clsize, rtex[which_texture]);
