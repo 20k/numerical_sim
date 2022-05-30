@@ -44,7 +44,7 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size, bool use_matter)
     {
         named_buffer& buf = buffers.emplace_back(ctx);
 
-        if(std::get<3>(values[kk]))
+        if(std::get<4>(values[kk]))
         {
             if(use_matter)
                 buf.buf.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
