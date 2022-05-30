@@ -6987,6 +6987,7 @@ int main()
     base_mesh.add_dependency_info("evolve_X", dtX.get_all_variables());
     base_mesh.add_dependency_info("evolve_gA", dtgA.get_all_variables());
     base_mesh.add_dependency_info("evolve_gB", dtgB.get_all_variables());
+    base_mesh.add_dependency_info("extract_waveform", ctx5.get_all_variables());
 
     cl_float time_elapsed_s = 0;
 
