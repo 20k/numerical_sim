@@ -137,6 +137,8 @@ struct cpu_mesh
 
     ///returns buffers and intermediates
     std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool);
+
+    void add_dependency_info(const std::string& kernel_name, const std::vector<std::string>& variables);
 };
 
 #endif // MESH_MANAGER_HPP_INCLUDED

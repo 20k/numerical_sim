@@ -6979,6 +6979,14 @@ int main()
 
     cpu_mesh base_mesh(clctx.ctx, clctx.cqueue, {0,0,0}, size, base_settings, evolve_points);
 
+    base_mesh.add_dependency_info("evolve_cY", dtcY.get_all_variables());
+    base_mesh.add_dependency_info("evolve_cA", dtcA.get_all_variables());
+    base_mesh.add_dependency_info("evolve_cGi", dtcGi.get_all_variables());
+    base_mesh.add_dependency_info("evolve_K", dtK.get_all_variables());
+    base_mesh.add_dependency_info("evolve_X", dtX.get_all_variables());
+    base_mesh.add_dependency_info("evolve_gA", dtgA.get_all_variables());
+    base_mesh.add_dependency_info("evolve_gB", dtgB.get_all_variables());
+
     cl_float time_elapsed_s = 0;
 
     thin_intermediates_pool thin_pool;

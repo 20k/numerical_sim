@@ -1059,3 +1059,12 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
     return {last_valid_thin_buffer, intermediates};
 }
+
+void cpu_mesh::add_dependency_info(const std::string& kernel_name, const std::vector<std::string>& variables)
+{
+    dependency_info inf;
+    inf.kernel = kernel_name;
+    inf.variables = variables;
+
+    depends.push_back(inf);
+}
