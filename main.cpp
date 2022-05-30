@@ -4183,6 +4183,38 @@ namespace hydrodynamics
     }
 }
 
+void build_sommerfeld_thin(equation_context& ctx)
+{
+    ctx.order = 1;
+    ctx.always_directional_derivatives = true;
+    ctx.use_precise_differentiation = true;
+    standard_arguments args(ctx);
+
+    tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+    value r = pos.length();
+
+    auto sommerfeld = [&](const value& f, const value& f0, const value& v)
+    {
+        value sum = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            sum += (v * pos.idx(i) / r) * diff1(ctx, f, i);
+        }
+
+        return -sum - v * (f - f0) / r;
+    };
+
+    value in = bidx("input", false, false);
+    value asym = "asym";
+    value v = 1;
+
+    value out = sommerfeld(in, asym, v);
+
+    ctx.add("sommer_out", out);
+}
+
 void build_sommerfeld(equation_context& ctx, bool use_matter)
 {
     ctx.order = 1;
