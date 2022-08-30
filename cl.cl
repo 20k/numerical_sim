@@ -2206,7 +2206,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
     float density = 0;
 
-    #pragma unroll(16)
+    //#pragma unroll(16)
     for(int iteration=0; iteration < 512; iteration++)
     {
         #ifdef VERLET_2
