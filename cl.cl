@@ -1935,7 +1935,7 @@ void velocity_to_XDiff(float3* out, float3 Xpos, float3 vel, float scale, int4 d
     float V1 = vel.y;
     float V2 = vel.z;
 
-    float TEMPORARIES6;
+    float TEMPORARIEStxdiff;
 
     float d0 = X0Diff;
     float d1 = X1Diff;

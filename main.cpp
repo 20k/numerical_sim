@@ -6311,8 +6311,35 @@ value dot_metric(const tensor<value, N>& v1_upper, const tensor<value, N>& v2_up
     return dot(v1_upper, lower_index(v2_upper, met));
 }
 
+void calculate_X_diff(equation_context& ctx, vec3f dim)
+{
+    ctx.order = 1;
+    ctx.use_precise_differentiation = false;
+
+    standard_arguments args(ctx);
+
+    ctx.pin(args.Yij);
+
+    tensor<value, 3> V_upper = {"V0", "V1", "V2"};
+
+    value length_sq = dot_metric(V_upper, V_upper, args.Yij);
+
+    value length = sqrt(fabs(length_sq));
+
+    V_upper = (V_upper * 1 / length);
+
+    #define PAPER_1
+    #ifdef PAPER_1
+    tensor<value, 3> dx = args.gA * V_upper - args.gB;
+    #endif // PAPER_1
+
+    ctx.add("X0Diff", dx.idx(0));
+    ctx.add("X1Diff", dx.idx(1));
+    ctx.add("X2Diff", dx.idx(2));
+}
+
 ///https://arxiv.org/pdf/1208.3927.pdf (28a)
-void loop_geodesics(equation_context& ctx, vec3f dim)
+void calculate_v_diff(equation_context& ctx, vec3f dim)
 {
     ctx.order = 1;
     ctx.use_precise_differentiation = false;
@@ -6321,76 +6348,6 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     ctx.pin(args.Kij);
     ctx.pin(args.Yij);
-
-    /*ctx.pin(args.gA);
-    ctx.pin(args.gB);
-    ctx.pin(args.cY);
-    ctx.pin(args.X);
-    ctx.pin(args.Yij);*/
-
-    //ctx.pin(args.Yij);
-
-    ///upper index, aka contravariant
-    vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
-    vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
-
-    /*for(int i=0; i < 3; i++)
-    {
-        value v = diff1(ctx, args.gA, i);
-
-        ctx.alias(v, args.digA.idx(i));
-    }
-
-    ///dcgB alias
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            value v = diff1(ctx, args.gB.idx(j), i);
-
-            ctx.alias(v, args.digB.idx(i, j));
-        }
-    }
-
-    ///dcYij alias
-    for(int k=0; k < 3; k++)
-    {
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                value v = diff1(ctx, args.cY.idx(i, j), k);
-
-                ctx.alias(v, args.dcYij.idx(k, i, j));
-            }
-        }
-    }
-
-    for(int i=0; i < 3; i++)
-    {
-        value v = diff1(ctx, args.X, i);
-
-        ctx.alias(v, args.dX.idx(i));
-    }*/
-
-    tensor<value, 3, 3> digB;
-
-    ///derivative
-    for(int i=0; i < 3; i++)
-    {
-        ///index
-        for(int j=0; j < 3; j++)
-        {
-            digB.idx(i, j) = diff1(ctx, args.gB.idx(j), i);
-        }
-    }
-
-    tensor<value, 3> digA;
-
-    for(int i=0; i < 3; i++)
-    {
-        digA.idx(i) = diff1(ctx, args.gA, i);
-    }
 
     float universe_length = (dim/2.f).max_elem();
 
@@ -6444,7 +6401,6 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     V_upper = (V_upper * 1 / length);
 
     ///https://arxiv.org/pdf/1208.3927.pdf (28a)
-    #define PAPER_1
     #ifdef PAPER_1
     tensor<value, 3> dx = args.gA * V_upper - args.gB;
 
@@ -6547,10 +6503,6 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     ctx.add("V0Diff", V_upper_diff.idx(0));
     ctx.add("V1Diff", V_upper_diff.idx(1));
     ctx.add("V2Diff", V_upper_diff.idx(2));
-
-    ctx.add("X0Diff", dx.idx(0));
-    ctx.add("X1Diff", dx.idx(1));
-    ctx.add("X2Diff", dx.idx(2));
 
     /**
     [tt, tx, ty, tz,
@@ -6852,9 +6804,13 @@ int main()
     ctx6.uses_linear = true;
     process_geodesics(ctx6);
 
+    equation_context ctx_X_diff;
+    ctx_X_diff.uses_linear = true;
+    calculate_X_diff(ctx_X_diff, {size.x(), size.y(), size.z()});
+
     equation_context ctx7;
     ctx7.uses_linear = true;
-    loop_geodesics(ctx7, {size.x(), size.y(), size.z()});
+    calculate_v_diff(ctx7, {size.x(), size.y(), size.z()});
 
     equation_context ctx10;
     build_kreiss_oliger_dissipate_singular(ctx10);
@@ -6901,6 +6857,7 @@ int main()
     ctx4.build(argument_string, 3);
     ctx5.build(argument_string, 4);
     ctx6.build(argument_string, 5);
+    ctx_X_diff.build(argument_string, "txdiff");
     ctx7.build(argument_string, 6);
     setup_static.build(argument_string, 8);
     ctx10.build(argument_string, 9);
