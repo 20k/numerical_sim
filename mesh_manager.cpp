@@ -248,7 +248,7 @@ buffer_set& cpu_mesh::get_output()
     return data[(which_data + 1) % 2];
 }
 
-void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, std::array<cl::buffer, 6>& bcAij, cl::buffer& superimposed_tov_phi)
+void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, std::array<cl::buffer, 6>& bcAij, cl::buffer& superimposed_tov_phi, cl::buffer& gA, cl::buffer& gB0, cl::buffer& gB1, cl::buffer& gB2)
 {
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
@@ -292,6 +292,11 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, std::array<cl:
 
         cqueue.exec("calculate_hydrodynamic_initial_conditions", hydro_init, {dim.x(), dim.y(), dim.z()}, {8, 8, 1});
     }
+
+    data[0].lookup("gA").buf = gA;
+    data[0].lookup("gB0").buf = gB0;
+    data[0].lookup("gB1").buf = gB1;
+    data[0].lookup("gB2").buf = gB2;
 
     for(int i=0; i < (int)data[0].buffers.size(); i++)
     {

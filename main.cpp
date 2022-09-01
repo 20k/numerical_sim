@@ -3387,17 +3387,8 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
     }
 }
 
-#if 0
-sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data<float>>& cpu_holes, float scale, vec3i dim)
+sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& cpu_holes, float scale, vec3i dim, cl::buffer& u_arg)
 {
-    cl::buffer u_arg(clctx);
-
-    {
-        laplace_data solve = setup_u_laplace(clctx, cpu_holes);
-
-        u_arg = laplace_solver(clctx, cqueue, solve, calculate_scale(get_c_at_max(), dim), dim, 0.0001f);
-    }
-
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
     metric<value, 3, 3> flat_metric;
@@ -3451,11 +3442,11 @@ sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cq
 
     value gA = gA_phi / phi;
 
-    tensor<value, 3, 3> bcAij = calculate_bcAij(pos, cpu_holes);
+    tensor<value, 3, 3> bcAij = calculate_bcAij_generic(pos, cpu_holes);
     ///raised
     tensor<value, 3, 3> ibcAij = raise_both(bcAij, flat_metric, flat_metric.invert());
 
-    value aij_aIJ = calculate_aij_aIJ(flat_metric, bcAij, cpu_holes);
+    value aij_aIJ = calculate_aij_aIJ(flat_metric, bcAij);
 
     tensor<value, 3> djaphi;
 
@@ -3497,7 +3488,6 @@ sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cq
 
     return result;
 }
-#endif // 0
 
 #if 0
 std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& holes, cl::context& ctx, cl::command_queue& cqueue, float err = 0.0001f)
@@ -6781,9 +6771,9 @@ int main()
 
     evolution_points evolve_points = generate_evolution_points(clctx.ctx, clctx.cqueue, scale, size);
 
-    //sandwich_result sandwich(clctx.ctx);
+    sandwich_result sandwich(clctx.ctx);
 
-    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes, &superimposed_tov_phi, &bcAij]()
+    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes, &superimposed_tov_phi, &bcAij, &sandwich]()
     {
         steady_timer u_time;
 
@@ -6796,6 +6786,8 @@ int main()
 
         laplace_data solve = setup_u_laplace(clctx.ctx, holes.objs, cached_aij_aIJ, cached_ppw2p);
         u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.000001f);
+
+        sandwich = setup_sandwich_laplace(clctx.ctx, cqueue, holes.holes, scale, size, u_arg);
 
         cqueue.block();
 
@@ -7021,7 +7013,7 @@ int main()
 
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
 
-    base_mesh.init(clctx.cqueue, u_arg, bcAij, superimposed_tov_phi);
+    base_mesh.init(clctx.cqueue, u_arg, bcAij, superimposed_tov_phi, sandwich.gA, sandwich.gB0, sandwich.gB1, sandwich.gB2);
 
     u_arg = cl::buffer(clctx.ctx);
     superimposed_tov_phi = cl::buffer(clctx.ctx);
