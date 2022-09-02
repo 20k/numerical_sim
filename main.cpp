@@ -3098,6 +3098,8 @@ private:
 
     void calculate_bcAij(cl::context& clctx, cl::command_queue& cqueue, const compact_object::data& obj, float scale, vec3i dim)
     {
+        vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
+
         equation_context ctx;
 
         tensor<value, 3> pos = {"ox", "oy", "oz"};
@@ -3110,6 +3112,41 @@ private:
         };
 
         tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(ctx, pos, std::vector{obj}, pinning_tov_phi);
+
+        vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
+
+        for(int i=0; i < 6; i++)
+        {
+            vec2i index = linear_indices[i];
+
+            ctx.add("B_BCAIJ_" + std::to_string(i), bcAij_dyn.idx(index.x(), index.y()));
+        }
+
+        ctx.add("INITIAL_BCAIJ", 1);
+
+        std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
+
+        ctx.build(local_build_str, "bcaij");
+
+        cl::program t_program(clctx, "initial_conditions.cl");
+        t_program.build(clctx, local_build_str);
+
+        cl::kernel calculate_bcAij_k(t_program, "calculate_bcAij");
+
+        cl::args args;
+        args.push_back(tov_phi);
+
+        for(int i=0; i < 6; i++)
+        {
+            args.push_back(bcAij[i]);
+        }
+
+        args.push_back(scale);
+        args.push_back(clsize);
+
+        calculate_bcAij_k.set_args(args);
+
+        cqueue.exec(calculate_bcAij_k, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
     }
 
     void calculate_ppw2p()
