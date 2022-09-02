@@ -3125,7 +3125,6 @@ private:
 
         equation_context ctx;
         ctx.add("B_PHI_RHS", phi_rhs);
-        ctx.add("B_U_TO_PHI", 1); ///temporary
 
         float radius = neutron_star::mass_to_radius(obj.bare_mass);
 

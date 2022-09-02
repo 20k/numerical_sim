@@ -45,24 +45,3 @@ void simple_tov_solver_phi(__global float* u_offset_in,
         printf("Tovs %i %f %f rho %f\n", ix, u_offset_in[IDX(ix,iy,iz)], u_offset_out[IDX(ix,iy,iz)], rho);
     }*/
 }
-
-__kernel
-void tov_u_to_phi(__global float* u_offset_in, __global float* phi_out, float scale, int4 dim)
-{
-    int ix = get_global_id(0);
-    int iy = get_global_id(1);
-    int iz = get_global_id(2);
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    float3 offset = transform_position(ix, iy, iz, dim, scale);
-
-    float ox = offset.x;
-    float oy = offset.y;
-    float oz = offset.z;
-
-    float phi = B_U_TO_PHI;
-
-    phi_out[IDX(ix,iy,iz)] = phi;
-}
