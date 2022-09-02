@@ -3318,7 +3318,86 @@ struct superimposed_gpu_data
         ppw2p.fill(cqueue, cl_float{0});
     }
 
-    //void pull()
+    void pull(cl::context& clctx, cl::command_queue& cqueue, neutron_star_gpu_data& dat, const compact_object::data& obj, float scale, vec3i dim)
+    {
+        equation_context ctx;
+
+        metric<float, 3, 3> flat_metricf;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                flat_metricf.idx(i, j) = (i == j) ? 1 : 0;
+            }
+        }
+
+        auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
+        {
+            value v = tov_phi_at_coordinate_general(world_position);
+            ctx.pin(v);
+            return v;
+        };
+
+        tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+        tensor<value, 3> vposition = {obj.position.x(), obj.position.y(), obj.position.z()};
+        tensor<value, 3> from_object = pos - vposition;
+
+        value coordinate_radius = from_object.length();
+
+        float radius = neutron_star::mass_to_radius(obj.bare_mass);
+
+        ///todo: remove the duplication?
+        neutron_star::params p;
+        p.position = obj.position;
+        p.mass = obj.bare_mass;
+        p.linear_momentum = obj.momentum;
+        p.angular_momentum = obj.angular_momentum;
+
+        value ppw2p_equation = neutron_star::calculate_ppw2_p(pos, flat_metricf, p, pinning_tov_phi);
+        value superimposed_tov_phi_eq = dual_types::if_v(coordinate_radius <= radius, pinning_tov_phi(pos), 0.f);
+
+        vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
+
+        ctx.add("ACCUM_MATTER_VARIABLES", 1);
+
+        ctx.add("B_TOV_PHI", superimposed_tov_phi_eq);
+
+        std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
+
+        ctx.build(local_build_str, "accum");
+
+        cl::program t_program(clctx, "initial_conditions.cl");
+        t_program.build(clctx, local_build_str);
+
+        cl::kernel accum_matter_variables_k(t_program, "accum_matter_variables");
+
+        cl::args args;
+        args.push_back(dat.tov_phi);
+
+        for(int i=0; i < 6; i++)
+        {
+            args.push_back(dat.bcAij[i]);
+        }
+
+        args.push_back(dat.ppw2p);
+
+        args.push_back(tov_phi);
+
+        for(int i=0; i < 6; i++)
+        {
+            args.push_back(bcAij[i]);
+        }
+
+        args.push_back(ppw2p);
+        args.push_back(scale);
+        args.push_back(clsize);
+
+        accum_matter_variables_k.set_args(args);
+
+        cqueue.exec(accum_matter_variables_k, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
+    }
 };
 
 std::tuple<cl::buffer, cl::buffer, std::array<cl::buffer, 6>, cl::buffer> tov_solve_for_cached_variables(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, float scale, vec3i dim)
