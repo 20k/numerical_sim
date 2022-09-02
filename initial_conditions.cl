@@ -59,4 +59,5 @@ void calculate_ppw2p(__global float* tov_phi,
     float oz = offset.z;
 
     ppw2p[IDX(ix,iy,iz)] = B_PPW2P;
+}
 #endif // INITIAL_PPW2P

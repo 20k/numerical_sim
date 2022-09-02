@@ -3287,6 +3287,40 @@ private:
     }
 };
 
+struct superimposed_gpu_data
+{
+    ///this isn't added to, its forcibly imposed
+    cl::buffer tov_phi;
+
+    std::array<cl::buffer, 6> bcAij;
+    ///derived from bcAij
+    cl::buffer aij_aIJ;
+    cl::buffer ppw2p;
+
+    superimposed_gpu_data(cl::context& ctx, cl::command_queue& cqueue, vec3i dim) : tov_phi{ctx}, bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, aij_aIJ{ctx}, ppw2p{ctx}
+    {
+        int cells = dim.x() * dim.y() * dim.z();
+
+        ///unsure why I previously filled this with a 1
+        tov_phi.alloc(cells * sizeof(cl_float));
+        tov_phi.fill(cqueue, cl_float{1});
+
+        for(int i=0; i < 6; i++)
+        {
+            bcAij[i].alloc(cells * sizeof(cl_float));
+            bcAij[i].fill(cqueue, cl_float{0});
+        }
+
+        aij_aIJ.alloc(cells * sizeof(cl_float));
+        aij_aIJ.fill(cqueue, cl_float{0});
+
+        ppw2p.alloc(cells * sizeof(cl_float));
+        ppw2p.fill(cqueue, cl_float{0});
+    }
+
+    //void pull()
+};
+
 std::tuple<cl::buffer, cl::buffer, std::array<cl::buffer, 6>, cl::buffer> tov_solve_for_cached_variables(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, float scale, vec3i dim)
 {
     cl::buffer aij_aIJ(clctx);
