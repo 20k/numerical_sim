@@ -2994,7 +2994,7 @@ struct neutron_star_data
 
     }
 
-    void create(cl::context& ctx, cl::command_queue& cqueue, const compact_object::data& dat, float scale, vec3i dim)
+    void create(cl::context& ctx, cl::command_queue& cqueue, const compact_object::data& obj, float scale, vec3i dim)
     {
         int64_t cells = dim.x() * dim.y() * dim.z();
 
@@ -3010,7 +3010,9 @@ struct neutron_star_data
         ppw2p.alloc(cells * sizeof(cl_float));
         ppw2p.fill(cqueue, cl_float{0.f});
 
-        calculate_tov_phi(ctx, cqueue, dat, scale, dim);
+        calculate_tov_phi(ctx, cqueue, obj, scale, dim);
+        calculate_bcAij(ctx, cqueue, obj, scale, dim);
+        calculate_ppw2p(ctx, cqueue, obj, scale, dim);
     }
 
 private:
@@ -3149,15 +3151,63 @@ private:
         cqueue.exec(calculate_bcAij_k, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
     }
 
-    void calculate_ppw2p()
+    void calculate_ppw2p(cl::context& clctx, cl::command_queue& cqueue, const compact_object::data& obj, float scale, vec3i dim)
     {
-        /*neutron_star::params p;
+        vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
+
+        equation_context ctx;
+
+        ctx.add("INITIAL_PPW2P", 1);
+
+        tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+        auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
+        {
+            value v = tov_phi_at_coordinate_general(world_position);
+            ctx.pin(v);
+            return v;
+        };
+
+        metric<value, 3, 3> flat_metric;
+        metric<float, 3, 3> flat_metricf;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                flat_metric.idx(i, j) = (i == j) ? 1 : 0;
+                flat_metricf.idx(i, j) = (i == j) ? 1 : 0;
+            }
+        }
+
+        neutron_star::params p;
         p.position = obj.position;
         p.mass = obj.bare_mass;
         p.linear_momentum = obj.momentum;
         p.angular_momentum = obj.angular_momentum;
 
-        ppw2p_equation = neutron_star::calculate_ppw2_p(pos, flat_metricf, p, pinning_tov_phi);*/
+        value ppw2p_equation = neutron_star::calculate_ppw2_p(pos, flat_metricf, p, pinning_tov_phi);
+
+        ctx.add("B_PPW2P", ppw2p_equation);
+
+        std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
+
+        ctx.build(local_build_str, "ppw2p");
+
+        cl::program t_program(clctx, "initial_conditions.cl");
+        t_program.build(clctx, local_build_str);
+
+        cl::kernel calculate_ppw2p_k(t_program, "calculate_ppw2p");
+
+        cl::args args;
+        args.push_back(tov_phi);
+        args.push_back(ppw2p);
+        args.push_back(scale);
+        args.push_back(clsize);
+
+        calculate_ppw2p_k.set_args(args);
+
+        cqueue.exec(calculate_ppw2p_k, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
     }
 };
 
