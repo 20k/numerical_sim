@@ -3490,14 +3490,10 @@ struct superimposed_gpu_data
             for(int j=0; j < 3; j++)
             {
                 bcAija.idx(i, j) = bidx("bcAij" + std::to_string(index_table[i][j]), false, false);
-
-                std::cout << "VAR " << type_to_string(bcAija.idx(i, j)) << std::endl;
             }
         }
 
         value aij_aIJ_eq = calculate_aij_aIJ(flat_metric, bcAija);
-
-        std::cout << "MY EQ " << type_to_string(aij_aIJ_eq) << std::endl;
 
         ctx.add("B_AIJ_AIJ", aij_aIJ_eq);
 
