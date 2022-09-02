@@ -2982,14 +2982,90 @@ tov_input setup_tov_solver(cl::context& clctx, const std::vector<compact_object:
 }
 #endif // 0
 
+struct black_hole_gpu_data
+{
+    std::array<cl::buffer, 6> bcAij;
+
+    black_hole_gpu_data(cl::context& ctx) :bcAij{ctx, ctx, ctx, ctx, ctx, ctx}
+    {
+
+    }
+
+    void create(cl::context& ctx, cl::command_queue& cqueue, const compact_object::data& obj, float scale, vec3i dim)
+    {
+        int64_t cells = dim.x() * dim.y() * dim.z();
+
+        for(int i=0; i < 6; i++)
+        {
+            bcAij[i].alloc(cells * sizeof(cl_float));
+            bcAij[i].fill(cqueue, cl_float{0.f});
+        }
+
+        calculate_bcAij(ctx, cqueue, obj, scale, dim);
+    }
+
+    void calculate_bcAij(cl::context& clctx, cl::command_queue& cqueue, const compact_object::data& obj, float scale, vec3i dim)
+    {
+        vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
+
+        equation_context ctx;
+
+        tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+        auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
+        {
+            assert(false);
+
+            return value{0.f};
+        };
+
+        tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(ctx, pos, std::vector{obj}, pinning_tov_phi);
+
+        vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
+
+        for(int i=0; i < 6; i++)
+        {
+            vec2i index = linear_indices[i];
+
+            ctx.add("B_BCAIJ_" + std::to_string(i), bcAij_dyn.idx(index.x(), index.y()));
+        }
+
+        ctx.add("INITIAL_BCAIJ", 1);
+
+        std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
+
+        ctx.build(local_build_str, "bcaij");
+
+        cl::program t_program(clctx, "initial_conditions.cl");
+        t_program.build(clctx, local_build_str);
+
+        cl::kernel calculate_bcAij_k(t_program, "calculate_bcAij");
+
+        cl::args args;
+        args.push_back(nullptr);
+
+        for(int i=0; i < 6; i++)
+        {
+            args.push_back(bcAij[i]);
+        }
+
+        args.push_back(scale);
+        args.push_back(clsize);
+
+        calculate_bcAij_k.set_args(args);
+
+        cqueue.exec(calculate_bcAij_k, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
+    }
+};
+
 ///no longer convinced its correct to sum aij_aIJ, instead of aIJ and then calculate
-struct neutron_star_data
+struct neutron_star_gpu_data
 {
     cl::buffer tov_phi;
     std::array<cl::buffer, 6> bcAij;
     cl::buffer ppw2p;
 
-    neutron_star_data(cl::context& ctx) : tov_phi(ctx), bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, ppw2p(ctx)
+    neutron_star_gpu_data(cl::context& ctx) : tov_phi(ctx), bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, ppw2p(ctx)
     {
 
     }
