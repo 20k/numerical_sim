@@ -2982,6 +2982,11 @@ tov_input setup_tov_solver(cl::context& clctx, const std::vector<compact_object:
 }
 #endif // 0
 
+/*cl::buffer generate_order(cl::context& ctx, vec3i dim)
+{
+
+}*/
+
 ///no longer convinced its correct to sum aij_aIJ, instead of aIJ and then calculate
 struct neutron_star_data
 {
@@ -3009,6 +3014,54 @@ struct neutron_star_data
 
         ppw2p.alloc(cells * sizeof(cl_float));
         ppw2p.fill(cqueue, cl_float{0.f});
+
+        solve(cqueue, dat, scale, dim);
+    }
+
+private:
+    void solve(cl::command_queue& cqueue, const compact_object::data& obj, float scale, vec3i dim)
+    {
+        tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+        tensor<value, 3> vposition = {obj.position.x(), obj.position.y(), obj.position.z()};
+        tensor<value, 3> from_object = pos - vposition;
+
+        value coordinate_radius = from_object.length();
+
+        neutron_star::data<value> dat = neutron_star::sample_interior(coordinate_radius, value{obj.bare_mass});
+
+        value rho = dat.mass_energy_density;
+
+        value u_value = dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim");
+        value phi = u_value;
+        value phi_rhs = -2 * M_PI * pow(phi, 5) * rho;
+
+        equation_context ctx;
+        ctx.add("B_PHI_RHS", phi_rhs);
+
+        float radius = neutron_star::mass_to_radius(obj.bare_mass);
+
+        value cst = 1 + obj.bare_mass / (2 * max(coordinate_radius, 1e-3f));
+
+        value integration_constant = if_v(coordinate_radius > radius, cst, 0);
+        value within_star = if_v(coordinate_radius <= radius, value{1.f}, value{0.f});
+
+        ctx.add("SHOULD_NOT_USE_INTEGRATION_CONSTANT", within_star);
+        ctx.add("INTEGRATION_CONSTANT", integration_constant);
+
+        {
+            vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
+
+            std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
+
+            ctx.build(local_build_str, "UNUSEDTOVSOLVE");
+
+            /*cl::program t_program(clctx, "tov_solver.cl");
+            t_program.build(clctx, local_build_str);
+
+            cl::kernel iterate_phi(t_program, "simple_tov_solver_phi");
+            cl::kernel generate_order(t_program, "generate_order");*/
+        }
     }
 };
 

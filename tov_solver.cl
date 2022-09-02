@@ -6,8 +6,7 @@
 __kernel
 void simple_tov_solver_phi(__global float* u_offset_in,
                            __global float* u_offset_out,
-                           float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol,
-                           __global ushort* order_ptr)
+                           float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol)
 {
     if(*last_still_going == 0)
         return;
@@ -27,8 +26,6 @@ void simple_tov_solver_phi(__global float* u_offset_in,
     float ox = offset.x;
     float oy = offset.y;
     float oz = offset.z;
-
-    int order = order_ptr[IDX(ix,iy,iz)];
 
     if(SHOULD_NOT_USE_INTEGRATION_CONSTANT == 0)
     {

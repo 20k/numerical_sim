@@ -444,24 +444,7 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
     t_program.build(clctx, local_build_str);
 
     cl::kernel iterate_phi(t_program, "simple_tov_solver_phi");
-    cl::kernel generate_order(t_program, "generate_order");
     cl::kernel u_to_phi(t_program, "tov_u_to_phi");
-
-    cl::buffer order_ptr(clctx);
-
-    {
-        order_ptr.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_ushort));
-
-        order_ptr.set_to_zero(cqueue);
-
-        cl::args order_arg;
-        order_arg.push_back(order_ptr);
-        order_arg.push_back(clsize);
-
-        generate_order.set_args(order_arg);
-
-        cqueue.exec(generate_order, {dim.x(), dim.y(), dim.z()}, {8, 8, 1}, {});
-    }
 
     std::array<cl::buffer, 2> u_offset{clctx, clctx};
     int which_data = 0;
@@ -500,7 +483,6 @@ tov_solver tov_solve(cl::context& clctx, cl::command_queue& cqueue, const tov_in
         iterate_u_args.push_back(still_going[which_data]);
         iterate_u_args.push_back(still_going[(which_data + 1) % 2]);
         iterate_u_args.push_back(err);
-        iterate_u_args.push_back(order_ptr);
 
         iterate_phi.set_args(iterate_u_args);
 
