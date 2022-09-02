@@ -3004,6 +3004,7 @@ struct black_hole_gpu_data
         calculate_bcAij(ctx, cqueue, obj, scale, dim);
     }
 
+private:
     void calculate_bcAij(cl::context& clctx, cl::command_queue& cqueue, const compact_object::data& obj, float scale, vec3i dim)
     {
         vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
@@ -3316,6 +3317,27 @@ struct superimposed_gpu_data
 
         ppw2p.alloc(cells * sizeof(cl_float));
         ppw2p.fill(cqueue, cl_float{0});
+    }
+
+    void pull_all(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, float scale, vec3i dim)
+    {
+        for(const compact_object::data& obj : objs)
+        {
+            if(obj.t == compact_object::NEUTRON_STAR)
+            {
+                neutron_star_gpu_data dat(clctx);
+                dat.create(clctx, cqueue, obj, scale, dim);
+
+                pull(clctx, cqueue, dat, obj, scale, dim);
+            }
+            else
+            {
+                black_hole_gpu_data dat(clctx);
+                dat.create(clctx, cqueue, obj, scale, dim);
+
+                pull(clctx, cqueue, dat, scale, dim);
+            }
+        }
     }
 
     void pull(cl::context& clctx, cl::command_queue& cqueue, neutron_star_gpu_data& dat, const compact_object::data& obj, float scale, vec3i dim)
