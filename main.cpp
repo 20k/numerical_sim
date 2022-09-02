@@ -1449,7 +1449,7 @@ namespace neutron_star
     inline
     float compactness()
     {
-        return 0.08f;
+        return 0.06f;
     }
 
     template<typename T>
@@ -4947,7 +4947,7 @@ void build_cY(equation_context& ctx)
     {
         for(int j=0; j < 3; j++)
         {
-            value sigma = 4/5.f;
+            value sigma = 0/5.f;
 
             dtcYij.idx(i, j) += sigma * 0.5f * (gB_lower.idx(i) * bigGi_lower.idx(j) + gB_lower.idx(j) * bigGi_lower.idx(i));
 
@@ -5419,7 +5419,7 @@ void build_cGi(equation_context& ctx, bool use_matter)
 
     tensor<value, 3> Yij_Kj;
 
-    #define PAPER_1205_5111
+    //#define PAPER_1205_5111
     #ifdef PAPER_1205_5111
     for(int i=0; i < 3; i++)
     {
@@ -5524,7 +5524,7 @@ void build_cGi(equation_context& ctx, bool use_matter)
 
         ///https://arxiv.org/pdf/1205.5111v1.pdf 50
         ///made it to 70+ and then i got bored, but the simulation was meaningfully different
-        #define EQ_50
+        //#define EQ_50
         #ifdef EQ_50
         auto step = [](const value& in)
         {
@@ -5549,7 +5549,7 @@ void build_cGi(equation_context& ctx, bool use_matter)
         dtcGi.idx(i) += -(1 + E) * step(lambdai) * lambdai * args.bigGi.idx(i);
         #endif // EQ_50
 
-        //#define YBS
+        #define YBS
         #ifdef YBS
         value E = 1;
 
@@ -6056,7 +6056,7 @@ tensor<T, 4> tensor_project_upper(const tensor<T, 4>& in, const value& gA, const
 inline
 void extract_waveforms(equation_context& ctx)
 {
-    ctx.order = 4;
+    ctx.order = 2;
     ctx.use_precise_differentiation = false;
     printf("Extracting waveforms\n");
 
@@ -7029,7 +7029,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {251, 251, 251};
+    vec3i size = {229, 229, 229};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -7215,7 +7215,7 @@ int main()
     #endif // USE_GBB
 
     ///seems to make 0 difference to instability time
-    #define USE_HALF_INTERMEDIATE
+    //#define USE_HALF_INTERMEDIATE
     #ifdef USE_HALF_INTERMEDIATE
     int intermediate_data_size = sizeof(cl_half);
     argument_string += "-DDERIV_PRECISION=half ";
@@ -7515,6 +7515,12 @@ int main()
 
             ImGui::Checkbox("pao", &pao);
 
+            if(ImGui::Button("Clear Waves"))
+            {
+                real_decomp.clear();
+                imaginary_decomp.clear();
+            }
+
             if(real_decomp.size() > 0)
             {
                 ImGui::PushItemWidth(400);
@@ -7545,7 +7551,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.035;
+        float timestep = 0.03;
 
         //timestep = 0.04;
 

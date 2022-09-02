@@ -16,7 +16,7 @@ float calculate_scale(float c_at_max, const T& size)
 inline
 float get_c_at_max()
 {
-    return 55.f * (251.f/300.f);
+    return 100.f * (251.f/300.f);
 }
 
 ///todo: do this inherity
@@ -109,9 +109,9 @@ struct cpu_mesh
 
     std::array<cl::buffer, 3> momentum_constraint;
 
-    static constexpr float dissipate_low = 0.25;
-    static constexpr float dissipate_high = 0.25;
-    static constexpr float dissipate_gauge = 0.25;
+    static constexpr float dissipate_low = 0.45;
+    static constexpr float dissipate_high = 0.45;
+    static constexpr float dissipate_gauge = 0.45;
 
     cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points);
 
