@@ -2982,11 +2982,6 @@ tov_input setup_tov_solver(cl::context& clctx, const std::vector<compact_object:
 }
 #endif // 0
 
-/*cl::buffer generate_order(cl::context& ctx, vec3i dim)
-{
-
-}*/
-
 ///no longer convinced its correct to sum aij_aIJ, instead of aIJ and then calculate
 struct neutron_star_data
 {
@@ -2999,7 +2994,7 @@ struct neutron_star_data
 
     }
 
-    void create(cl::command_queue& cqueue, const compact_object::data& dat, float scale, vec3i dim)
+    void create(cl::context& ctx, cl::command_queue& cqueue, const compact_object::data& dat, float scale, vec3i dim)
     {
         int64_t cells = dim.x() * dim.y() * dim.z();
 
@@ -3015,12 +3010,15 @@ struct neutron_star_data
         ppw2p.alloc(cells * sizeof(cl_float));
         ppw2p.fill(cqueue, cl_float{0.f});
 
-        solve(cqueue, dat, scale, dim);
+        calculate_tov_phi(ctx, cqueue, dat, scale, dim);
     }
 
 private:
-    void solve(cl::command_queue& cqueue, const compact_object::data& obj, float scale, vec3i dim)
+    void calculate_tov_phi(cl::context& clctx, cl::command_queue& cqueue, const compact_object::data& obj, float scale, vec3i dim)
     {
+        cl::buffer scratch(clctx);
+        scratch.alloc(tov_phi.alloc_size);
+
         tensor<value, 3> pos = {"ox", "oy", "oz"};
 
         tensor<value, 3> vposition = {obj.position.x(), obj.position.y(), obj.position.z()};
@@ -3038,6 +3036,7 @@ private:
 
         equation_context ctx;
         ctx.add("B_PHI_RHS", phi_rhs);
+        ctx.add("B_U_TO_PHI", 1); ///temporary
 
         float radius = neutron_star::mass_to_radius(obj.bare_mass);
 
@@ -3049,6 +3048,8 @@ private:
         ctx.add("SHOULD_NOT_USE_INTEGRATION_CONSTANT", within_star);
         ctx.add("INTEGRATION_CONSTANT", integration_constant);
 
+        cl_float err = 0.000001f;
+
         {
             vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
 
@@ -3056,11 +3057,42 @@ private:
 
             ctx.build(local_build_str, "UNUSEDTOVSOLVE");
 
-            /*cl::program t_program(clctx, "tov_solver.cl");
+            cl::program t_program(clctx, "tov_solver.cl");
             t_program.build(clctx, local_build_str);
 
             cl::kernel iterate_phi(t_program, "simple_tov_solver_phi");
-            cl::kernel generate_order(t_program, "generate_order");*/
+
+            std::array<cl::buffer, 2> still_going{clctx, clctx};
+
+            for(int i=0; i < 2; i++)
+            {
+                still_going[i].alloc(sizeof(cl_int));
+                still_going[i].fill(cqueue, cl_int{1});
+            }
+
+            for(int i=0; i < 10000; i++)
+            {
+                cl::args iterate_u_args;
+                iterate_u_args.push_back(tov_phi);
+                iterate_u_args.push_back(scratch);
+                iterate_u_args.push_back(scale);
+                iterate_u_args.push_back(clsize);
+                iterate_u_args.push_back(still_going[0]);
+                iterate_u_args.push_back(still_going[1]);
+                iterate_u_args.push_back(err);
+
+                iterate_phi.set_args(iterate_u_args);
+
+                cqueue.exec(iterate_phi, {clsize.x(), clsize.y(), clsize.z()}, {8, 8, 1}, {});
+
+                if(((i % 50) == 0) && still_going[1].read<cl_int>(cqueue)[0] == 0)
+                    break;
+
+                still_going[0].set_to_zero(cqueue);
+
+                std::swap(still_going[0], still_going[1]);
+                std::swap(tov_phi, scratch);
+            }
         }
     }
 };
