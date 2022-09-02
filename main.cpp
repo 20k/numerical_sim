@@ -3397,6 +3397,107 @@ struct superimposed_gpu_data
         accum_matter_variables_k.set_args(args);
 
         cqueue.exec(accum_matter_variables_k, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
+
+        recalculate_aij_aIJ(clctx, cqueue, scale, dim);
+    }
+
+    void pull(cl::context& clctx, cl::command_queue& cqueue, black_hole_gpu_data& dat, float scale, vec3i dim)
+    {
+        equation_context ctx;
+
+        vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
+
+        ctx.add("ACCUM_BLACK_HOLE_VARIABLES", 1);
+
+        std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
+
+        ctx.build(local_build_str, "accummatter");
+
+        cl::program t_program(clctx, "initial_conditions.cl");
+        t_program.build(clctx, local_build_str);
+
+        cl::kernel accum_black_hole_variables_k(t_program, "accum_black_hole_variables");
+
+        cl::args args;
+
+        for(int i=0; i < 6; i++)
+        {
+            args.push_back(dat.bcAij[i]);
+        }
+
+        for(int i=0; i < 6; i++)
+        {
+            args.push_back(bcAij[i]);
+        }
+
+        args.push_back(scale);
+        args.push_back(clsize);
+
+        accum_black_hole_variables_k.set_args(args);
+
+        cqueue.exec(accum_black_hole_variables_k, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
+
+        recalculate_aij_aIJ(clctx, cqueue, scale, dim);
+    }
+
+    void recalculate_aij_aIJ(cl::context& clctx, cl::command_queue& cqueue, float scale, vec3i dim)
+    {
+        equation_context ctx;
+        ctx.add("CALCULATE_AIJ_AIJ", 1);
+
+        vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
+
+        metric<value, 3, 3> flat_metric;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                flat_metric.idx(i, j) = (i == j) ? 1 : 0;
+            }
+        }
+
+        int index_table[3][3] = {{0, 1, 2},
+                                 {1, 3, 4},
+                                 {2, 4, 5}};
+
+        tensor<value, 3, 3> bcAija;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                bcAija.idx(i, j) = bidx("bcAij" + index_table[i][j], false, false);
+            }
+        }
+
+        value aij_aIJ_eq = calculate_aij_aIJ(flat_metric, bcAija);
+
+        ctx.add("B_AIJ_AIJ", aij_aIJ_eq);
+
+        std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
+
+        ctx.build(local_build_str, "calcaijaij");
+
+        cl::program t_program(clctx, "initial_conditions.cl");
+        t_program.build(clctx, local_build_str);
+
+        cl::kernel calculate_aij_aIJ_k(t_program, "calculate_aij_aIJ");
+
+        cl::args args;
+
+        for(int i=0; i < 6; i++)
+        {
+            args.push_back(bcAij[i]);
+        }
+
+        args.push_back(aij_aIJ);
+        args.push_back(scale);
+        args.push_back(clsize);
+
+        calculate_aij_aIJ_k.set_args(args);
+
+        cqueue.exec(calculate_aij_aIJ_k, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
     }
 };
 
