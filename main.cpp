@@ -7330,13 +7330,19 @@ int main()
 
         cl::command_queue cqueue(clctx.ctx);
 
-        cl::buffer cached_aij_aIJ(clctx.ctx);
+        /*cl::buffer cached_aij_aIJ(clctx.ctx);
         cl::buffer cached_ppw2p(clctx.ctx);
 
-        std::tie(cached_aij_aIJ, cached_ppw2p, bcAij, superimposed_tov_phi) = tov_solve_for_cached_variables(clctx.ctx, cqueue, holes.objs, scale, size);
+        std::tie(cached_aij_aIJ, cached_ppw2p, bcAij, superimposed_tov_phi) = tov_solve_for_cached_variables(clctx.ctx, cqueue, holes.objs, scale, size);*/
 
-        laplace_data solve = setup_u_laplace(clctx.ctx, holes.objs, cached_aij_aIJ, cached_ppw2p);
+        superimposed_gpu_data super(clctx.ctx, cqueue, size);
+        super.pull_all(clctx.ctx, cqueue, holes.objs, scale, size);
+
+        laplace_data solve = setup_u_laplace(clctx.ctx, holes.objs, super.aij_aIJ, super.aij_aIJ);
         u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.000001f);
+
+        bcAij = super.bcAij;
+        superimposed_tov_phi = super.tov_phi;
 
         cqueue.block();
 

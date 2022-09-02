@@ -7,8 +7,6 @@ void calculate_bcAij(__global float* tov_phi,
                      __global float* bcAij0,  __global float* bcAij1,  __global float* bcAij2,  __global float* bcAij3,  __global float* bcAij4,  __global float* bcAij5,
                      float scale, int4 dim)
 {
-    float TEMPORARIESbcaij;
-
     int ix = get_global_id(0);
     int iy = get_global_id(1);
     int iz = get_global_id(2);
@@ -24,6 +22,8 @@ void calculate_bcAij(__global float* tov_phi,
     float ox = offset.x;
     float oy = offset.y;
     float oz = offset.z;
+
+    float TEMPORARIESbcaij;
 
     bcAij0[IDX(ix,iy,iz)] = B_BCAIJ_0;
     bcAij1[IDX(ix,iy,iz)] = B_BCAIJ_1;
@@ -40,8 +40,6 @@ void calculate_ppw2p(__global float* tov_phi,
                      __global float* ppw2p,
                      float scale, int4 dim)
 {
-    float TEMPORARIESppw2p;
-
     int ix = get_global_id(0);
     int iy = get_global_id(1);
     int iz = get_global_id(2);
@@ -58,11 +56,14 @@ void calculate_ppw2p(__global float* tov_phi,
     float oy = offset.y;
     float oz = offset.z;
 
+    float TEMPORARIESppw2p;
+
     ppw2p[IDX(ix,iy,iz)] = B_PPW2P;
 }
 #endif // INITIAL_PPW2P
 
 #ifdef ACCUM_MATTER_VARIABLES
+__kernel
 void accum_matter_variables(__global float* tov_phi, ///named so because of convention for code gen
                             __global float* bcAij0_in,  __global float* bcAij1_in,  __global float* bcAij2_in,  __global float* bcAij3_in,  __global float* bcAij4_in,  __global float* bcAij5_in,
                             __global float* ppw2p_in,
@@ -72,8 +73,6 @@ void accum_matter_variables(__global float* tov_phi, ///named so because of conv
                             __global float* ppw2p,
                             float scale, int4 dim)
 {
-    float TEMPORARIESaccum;
-
     int ix = get_global_id(0);
     int iy = get_global_id(1);
     int iz = get_global_id(2);
@@ -89,6 +88,8 @@ void accum_matter_variables(__global float* tov_phi, ///named so because of conv
     float ox = offset.x;
     float oy = offset.y;
     float oz = offset.z;
+
+    float TEMPORARIESaccum;
 
     bcAij0[IDX(ix,iy,iz)] += bcAij0_in[IDX(ix,iy,iz)];
     bcAij1[IDX(ix,iy,iz)] += bcAij1_in[IDX(ix,iy,iz)];
@@ -106,13 +107,12 @@ void accum_matter_variables(__global float* tov_phi, ///named so because of conv
 #endif
 
 #ifdef ACCUM_BLACK_HOLE_VARIABLES
+__kernel
 void accum_black_hole_variables(
                             __global float* bcAij0_in,  __global float* bcAij1_in,  __global float* bcAij2_in,  __global float* bcAij3_in,  __global float* bcAij4_in,  __global float* bcAij5_in,
                             __global float* bcAij0,  __global float* bcAij1,  __global float* bcAij2,  __global float* bcAij3,  __global float* bcAij4,  __global float* bcAij5,
                             float scale, int4 dim)
 {
-    float TEMPORARIESaccum;
-
     int ix = get_global_id(0);
     int iy = get_global_id(1);
     int iz = get_global_id(2);
@@ -122,6 +122,8 @@ void accum_black_hole_variables(
 
     if(ix < 1 || iy < 1 || iz < 1 || ix >= dim.x - 1 || iy >= dim.y - 1 || iz >= dim.z - 1)
         return;
+
+    float TEMPORARIESaccum;
 
     bcAij0[IDX(ix,iy,iz)] += bcAij0_in[IDX(ix,iy,iz)];
     bcAij1[IDX(ix,iy,iz)] += bcAij1_in[IDX(ix,iy,iz)];
@@ -133,6 +135,7 @@ void accum_black_hole_variables(
 #endif
 
 #ifdef CALCULATE_AIJ_AIJ
+__kernel
 void calculate_aij_aIJ(__global float* bcAij0, __global float* bcAij1, __global float* bcAij2, __global float* bcAij3, __global float* bcAij4, __global float* bcAij5,
                        __global float* aij_aIJ,
                        float scale, int4 dim)
