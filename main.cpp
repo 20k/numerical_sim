@@ -2985,6 +2985,20 @@ tov_input setup_tov_solver(cl::context& clctx, const std::vector<compact_object:
 }
 #endif // 0
 
+std::pair<cl::program, cl::kernel> build_and_fetch_kernel(cl::context& clctx, equation_context& ctx, const std::string& filename, const std::string& kernel_name, const std::string& temporaries_name)
+{
+    std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
+
+    ctx.build(local_build_str, temporaries_name);
+
+    cl::program t_program(clctx, filename);
+    t_program.build(clctx, local_build_str);
+
+    cl::kernel kern(t_program, kernel_name);
+
+    return {t_program, kern};
+}
+
 struct black_hole_gpu_data
 {
     std::array<cl::buffer, 6> bcAij;
@@ -3036,14 +3050,7 @@ private:
 
         ctx.add("INITIAL_BCAIJ", 1);
 
-        std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
-
-        ctx.build(local_build_str, "bcaij");
-
-        cl::program t_program(clctx, "initial_conditions.cl");
-        t_program.build(clctx, local_build_str);
-
-        cl::kernel calculate_bcAij_k(t_program, "calculate_bcAij");
+        auto [prog, calculate_bcAij_k] = build_and_fetch_kernel(clctx, ctx, "initial_conditions.cl", "calculate_bcAij", "bcaij");
 
         cl::args args;
         args.push_back(nullptr);
@@ -3135,14 +3142,7 @@ private:
         {
             vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
 
-            std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
-
-            ctx.build(local_build_str, "UNUSEDTOVSOLVE");
-
-            cl::program t_program(clctx, "tov_solver.cl");
-            t_program.build(clctx, local_build_str);
-
-            cl::kernel iterate_phi(t_program, "simple_tov_solver_phi");
+            auto [prog, iterate_phi] = build_and_fetch_kernel(clctx, ctx, "tov_solver.cl", "simple_tov_solver_phi", "UNUSEDTOVSOLVE");
 
             std::array<cl::buffer, 2> still_going{clctx, clctx};
 
@@ -3206,14 +3206,7 @@ private:
 
         ctx.add("INITIAL_BCAIJ", 1);
 
-        std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
-
-        ctx.build(local_build_str, "bcaij");
-
-        cl::program t_program(clctx, "initial_conditions.cl");
-        t_program.build(clctx, local_build_str);
-
-        cl::kernel calculate_bcAij_k(t_program, "calculate_bcAij");
+        auto [prog, calculate_bcAij_k] = build_and_fetch_kernel(clctx, ctx, "initial_conditions.cl", "calculate_bcAij", "bcaij");
 
         cl::args args;
         args.push_back(tov_phi);
@@ -3260,14 +3253,7 @@ private:
 
         ctx.add("B_PPW2P", ppw2p_equation);
 
-        std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
-
-        ctx.build(local_build_str, "ppw2p");
-
-        cl::program t_program(clctx, "initial_conditions.cl");
-        t_program.build(clctx, local_build_str);
-
-        cl::kernel calculate_ppw2p_k(t_program, "calculate_ppw2p");
+        auto [prog, calculate_ppw2p_k] = build_and_fetch_kernel(clctx, ctx, "initial_conditions.cl", "calculate_ppw2p", "ppw2p");
 
         cl::args args;
         args.push_back(tov_phi);
@@ -3371,14 +3357,7 @@ struct superimposed_gpu_data
 
         ctx.add("B_TOV_PHI", superimposed_tov_phi_eq);
 
-        std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
-
-        ctx.build(local_build_str, "accum");
-
-        cl::program t_program(clctx, "initial_conditions.cl");
-        t_program.build(clctx, local_build_str);
-
-        cl::kernel accum_matter_variables_k(t_program, "accum_matter_variables");
+        auto [prog, accum_matter_variables_k] = build_and_fetch_kernel(clctx, ctx, "initial_conditions.cl", "accum_matter_variables", "accum");
 
         cl::args args;
         args.push_back(dat.tov_phi);
@@ -3416,14 +3395,7 @@ struct superimposed_gpu_data
 
         ctx.add("ACCUM_BLACK_HOLE_VARIABLES", 1);
 
-        std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
-
-        ctx.build(local_build_str, "accummatter");
-
-        cl::program t_program(clctx, "initial_conditions.cl");
-        t_program.build(clctx, local_build_str);
-
-        cl::kernel accum_black_hole_variables_k(t_program, "accum_black_hole_variables");
+        auto [prog, accum_black_hole_variables_k] = build_and_fetch_kernel(clctx, ctx, "initial_conditions.cl", "accum_black_hole_variables", "accummatter");
 
         cl::args args;
 
@@ -3474,14 +3446,7 @@ struct superimposed_gpu_data
 
         ctx.add("B_AIJ_AIJ", aij_aIJ_eq);
 
-        std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
-
-        ctx.build(local_build_str, "calcaijaij");
-
-        cl::program t_program(clctx, "initial_conditions.cl");
-        t_program.build(clctx, local_build_str);
-
-        cl::kernel calculate_aij_aIJ_k(t_program, "calculate_aij_aIJ");
+        auto [prog, calculate_aij_aIJ_k] = build_and_fetch_kernel(clctx, ctx, "initial_conditions.cl", "calculate_aij_aIJ", "calcaijaij");
 
         cl::args args;
 
@@ -7118,7 +7083,7 @@ int main()
 
     std::cout << "EXT " << cl::get_extensions(clctx.ctx) << std::endl;
 
-    std::string argument_string = "-I ./ -O3 -cl-std=CL2.0 -cl-mad-enable ";
+    std::string argument_string = "-I ./ -cl-std=CL2.0 -cl-mad-enable ";
 
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
