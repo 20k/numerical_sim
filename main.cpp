@@ -239,6 +239,22 @@ tensor<T, N...> raise_index_generic(const tensor<T, N...>& mT, const inverse_met
     return raise_index_impl(mT, met, index);
 }
 
+template<typename T, int N>
+unit_metric<T, N, N> get_flat_metric()
+{
+    unit_metric<T, N, N> ret;
+
+    for(int i=0; i < N; i++)
+    {
+        for(int j=0; j < N; j++)
+        {
+            ret.idx(i, j) = i == j ? 1 : 0;
+        }
+    }
+
+    return ret;
+}
+
 //#define SYMMETRY_BOUNDARY
 #define BORDER_WIDTH 4
 
@@ -2887,19 +2903,6 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
-    ///TODO: FIXME
-    metric<value, 3, 3> flat_metric;
-    metric<float, 3, 3> flat_metricf;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            flat_metric.idx(i, j) = (i == j) ? 1 : 0;
-            flat_metricf.idx(i, j) = (i == j) ? 1 : 0;
-        }
-    }
-
     value u_value = dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim");
 
     equation_context eqs;
@@ -3245,17 +3248,7 @@ private:
             return v;
         };
 
-        metric<value, 3, 3> flat_metric;
-        metric<float, 3, 3> flat_metricf;
-
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                flat_metric.idx(i, j) = (i == j) ? 1 : 0;
-                flat_metricf.idx(i, j) = (i == j) ? 1 : 0;
-            }
-        }
+        auto flat = get_flat_metric<float, 3>();
 
         neutron_star::params p;
         p.position = obj.position;
@@ -3263,7 +3256,7 @@ private:
         p.linear_momentum = obj.momentum;
         p.angular_momentum = obj.angular_momentum;
 
-        value ppw2p_equation = neutron_star::calculate_ppw2_p(pos, flat_metricf, p, pinning_tov_phi);
+        value ppw2p_equation = neutron_star::calculate_ppw2_p(pos, flat, p, pinning_tov_phi);
 
         ctx.add("B_PPW2P", ppw2p_equation);
 
@@ -3342,17 +3335,9 @@ struct superimposed_gpu_data
 
     void pull(cl::context& clctx, cl::command_queue& cqueue, neutron_star_gpu_data& dat, const compact_object::data& obj, float scale, vec3i dim)
     {
+        auto flat = get_flat_metric<float, 3>();
+
         equation_context ctx;
-
-        metric<float, 3, 3> flat_metricf;
-
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                flat_metricf.idx(i, j) = (i == j) ? 1 : 0;
-            }
-        }
 
         auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
         {
@@ -3377,7 +3362,7 @@ struct superimposed_gpu_data
         p.linear_momentum = obj.momentum;
         p.angular_momentum = obj.angular_momentum;
 
-        value ppw2p_equation = neutron_star::calculate_ppw2_p(pos, flat_metricf, p, pinning_tov_phi);
+        value ppw2p_equation = neutron_star::calculate_ppw2_p(pos, flat, p, pinning_tov_phi);
         value superimposed_tov_phi_eq = dual_types::if_v(coordinate_radius <= radius, pinning_tov_phi(pos), 0.f);
 
         vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
@@ -3469,15 +3454,7 @@ struct superimposed_gpu_data
 
         vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
 
-        metric<value, 3, 3> flat_metric;
-
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                flat_metric.idx(i, j) = (i == j) ? 1 : 0;
-            }
-        }
+        auto flat = get_flat_metric<value, 3>();
 
         int index_table[3][3] = {{0, 1, 2},
                                  {1, 3, 4},
@@ -3493,7 +3470,7 @@ struct superimposed_gpu_data
             }
         }
 
-        value aij_aIJ_eq = calculate_aij_aIJ(flat_metric, bcAija);
+        value aij_aIJ_eq = calculate_aij_aIJ(flat, bcAija);
 
         ctx.add("B_AIJ_AIJ", aij_aIJ_eq);
 
@@ -3526,19 +3503,6 @@ struct superimposed_gpu_data
 void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<compact_object::data>& cpu_holes)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
-
-    ///TODO: FIXME
-    metric<float, 3, 3> flat_metricf;
-    metric<value, 3, 3> flat_metricv;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            flat_metricf.idx(i, j) = (i == j) ? 1 : 0;
-            flat_metricv.idx(i, j) = (i == j) ? 1 : 0;
-        }
-    }
 
     value u_value = dual_types::apply("buffer_index", "u_value", "ix", "iy", "iz", "dim");
 
@@ -3598,7 +3562,9 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
             tensor<value, 3> vmomentum = {obj.momentum.x(), obj.momentum.y(), obj.momentum.z()};
 
-            value W2_factor = neutron_star::calculate_W2_linear_momentum(flat_metricf, obj.momentum, M_factor);
+            auto flat = get_flat_metric<float, 3>();
+
+            value W2_factor = neutron_star::calculate_W2_linear_momentum(flat, obj.momentum, M_factor);
 
             //neutron_star::data<value> sampled = neutron_star::sample_interior<value>(rad, value{p.mass});
 
@@ -3650,12 +3616,14 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
     ///conformal hydrodynamical quantities
     {
+        auto flat = get_flat_metric<value, 3>();
+
         float Gamma = 2;
 
         /// https://arxiv.org/pdf/1606.04881.pdf (8), Yij = phi^4 * cYij
         ///in bssn, the conformal decomposition is chi * Yij = cYij
         ///or see initial conditions, its 1/12th Yij.det()
-        metric<value, 3, 3> Yij = pow(phi, 4) * flat_metricv;
+        metric<value, 3, 3> Yij = pow(phi, 4) * flat;
 
         value X = pow(Yij.det(), -1.f/3.f);
 
@@ -4090,7 +4058,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // PAPER_0610128
 
-    #define JET_CASE
+    //#define JET_CASE
     #ifdef JET_CASE
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
@@ -4140,6 +4108,23 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     objects = {h1, h2};
     #endif
+
+    #define REGULAR_MERGE
+    #ifdef REGULAR_MERGE
+    compact_object::data h1;
+    h1.t = compact_object::NEUTRON_STAR;
+    h1.bare_mass = 0.075;
+    h1.momentum = {0, 0.133 * 0.8 * 0.1, 0};
+    h1.position = {-4.257, 0.f, 0.f};
+
+    compact_object::data h2;
+    h2.t = compact_object::NEUTRON_STAR;
+    h2.bare_mass = 0.075;
+    h2.momentum = {0, -0.133 * 0.8 * 0.1, 0};
+    h2.position = {4.257, 0.f, 0.f};
+
+    objects = {h1, h2};
+    #endif // REGULAR_MERGE
 
     return get_bare_initial_conditions(clctx, cqueue, scale, objects);
     #endif // BARE_BLACK_HOLES
