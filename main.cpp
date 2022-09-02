@@ -2982,6 +2982,36 @@ tov_input setup_tov_solver(cl::context& clctx, const std::vector<compact_object:
 }
 #endif // 0
 
+///no longer convinced its correct to sum aij_aIJ, instead of aIJ and then calculate
+struct neutron_star_data
+{
+    cl::buffer tov_phi;
+    std::array<cl::buffer, 6> bcAij;
+    cl::buffer ppw2p;
+
+    neutron_star_data(cl::context& ctx) : tov_phi(ctx), bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, ppw2p(ctx)
+    {
+
+    }
+
+    void create(cl::command_queue& cqueue, const compact_object::data& dat, float scale, vec3i dim)
+    {
+        int64_t cells = dim.x() * dim.y() * dim.z();
+
+        tov_phi.alloc(cells * sizeof(cl_float));
+        tov_phi.fill(cqueue, cl_float{1.f});
+
+        for(int i=0; i < 6; i++)
+        {
+            bcAij[i].alloc(cells * sizeof(cl_float));
+            bcAij[i].fill(cqueue, cl_float{0.f});
+        }
+
+        ppw2p.alloc(cells * sizeof(cl_float));
+        ppw2p.fill(cqueue, cl_float{0.f});
+    }
+};
+
 std::tuple<cl::buffer, cl::buffer, std::array<cl::buffer, 6>, cl::buffer> tov_solve_for_cached_variables(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, float scale, vec3i dim)
 {
     cl::buffer aij_aIJ(clctx);
