@@ -2931,60 +2931,6 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     return solve;
 }
 
-#if 0
-tov_input setup_tov_solver(cl::context& clctx, const std::vector<compact_object::data<float>>& objs)
-{
-    tov_input ret;
-
-    tensor<value, 3> pos = {"ox", "oy", "oz"};
-
-    value rho = 0;
-    value u_value = dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim");
-
-    ///https://arxiv.org/pdf/1606.04881.pdf 74
-    value phi = u_value;
-
-    value integration_constant = 0;
-
-    value within_star = 0;
-
-    for(const compact_object::data<float>& obj : objs)
-    {
-        if(obj.t != compact_object::NEUTRON_STAR)
-            continue;
-
-        tensor<value, 3> vposition = {obj.position.x(), obj.position.y(), obj.position.z()};
-
-        tensor<value, 3> from_object = pos - vposition;
-
-        value coordinate_radius = from_object.length();
-
-        float radius = neutron_star::mass_to_radius(obj.bare_mass);
-
-        neutron_star::data<value> dat = neutron_star::sample_interior(coordinate_radius, value{obj.bare_mass});
-
-        rho += dat.mass_energy_density;
-
-        value cst =  1 + obj.bare_mass / (2 * max(coordinate_radius, 1e-3f));
-
-        integration_constant += if_v(coordinate_radius > radius, cst, 0);
-        within_star += if_v(coordinate_radius <= radius, value{1.f}, value{0.f});
-    }
-
-    ret.extras.push_back({"SHOULD_NOT_USE_INTEGRATION_CONSTANT", within_star});
-    ret.extras.push_back({"INTEGRATION_CONSTANT", integration_constant});
-
-    value rhs_phi = -2 * M_PI * pow(phi, 5) * rho;
-
-    ret.phi_rhs = rhs_phi;
-    ret.u_to_phi = phi;
-
-    ret.extras.push_back({"DBG_RHO", rho});
-
-    return ret;
-}
-#endif // 0
-
 std::pair<cl::program, cl::kernel> build_and_fetch_kernel(cl::context& clctx, equation_context& ctx, const std::string& filename, const std::string& kernel_name, const std::string& temporaries_name)
 {
     std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
@@ -3109,9 +3055,7 @@ private:
         scratch.alloc(tov_phi.alloc_size);
 
         tensor<value, 3> pos = {"ox", "oy", "oz"};
-
-        tensor<value, 3> vposition = {obj.position.x(), obj.position.y(), obj.position.z()};
-        tensor<value, 3> from_object = pos - vposition;
+        tensor<value, 3> from_object = pos - obj.position.as<value>();
 
         value coordinate_radius = from_object.length();
 
@@ -3332,9 +3276,7 @@ struct superimposed_gpu_data
         };
 
         tensor<value, 3> pos = {"ox", "oy", "oz"};
-
-        tensor<value, 3> vposition = {obj.position.x(), obj.position.y(), obj.position.z()};
-        tensor<value, 3> from_object = pos - vposition;
+        tensor<value, 3> from_object = pos - obj.position.as<value>();
 
         value coordinate_radius = from_object.length();
 
