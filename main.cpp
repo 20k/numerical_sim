@@ -3095,6 +3095,33 @@ private:
             }
         }
     }
+
+    void calculate_bcAij(cl::context& clctx, cl::command_queue& cqueue, const compact_object::data& obj, float scale, vec3i dim)
+    {
+        equation_context ctx;
+
+        tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+        auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
+        {
+            value v = tov_phi_at_coordinate_general(world_position);
+            ctx.pin(v);
+            return v;
+        };
+
+        tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(ctx, pos, std::vector{obj}, pinning_tov_phi);
+    }
+
+    void calculate_ppw2p()
+    {
+        /*neutron_star::params p;
+        p.position = obj.position;
+        p.mass = obj.bare_mass;
+        p.linear_momentum = obj.momentum;
+        p.angular_momentum = obj.angular_momentum;
+
+        ppw2p_equation = neutron_star::calculate_ppw2_p(pos, flat_metricf, p, pinning_tov_phi);*/
+    }
 };
 
 std::tuple<cl::buffer, cl::buffer, std::array<cl::buffer, 6>, cl::buffer> tov_solve_for_cached_variables(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, float scale, vec3i dim)

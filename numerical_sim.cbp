@@ -155,6 +155,7 @@
 		<Unit filename="generic_laplace.cl" />
 		<Unit filename="gravitational_waves.cpp" />
 		<Unit filename="gravitational_waves.hpp" />
+		<Unit filename="initial_conditions.cl" />
 		<Unit filename="laplace_order.cl" />
 		<Unit filename="laplace_solver.cpp" />
 		<Unit filename="laplace_solver.hpp" />
