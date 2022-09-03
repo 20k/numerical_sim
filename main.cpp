@@ -7515,6 +7515,12 @@ int main()
 
             ImGui::Checkbox("pao", &pao);
 
+            if(ImGui::Button("Clear Waves"))
+            {
+                real_decomp.clear();
+                imaginary_decomp.clear();
+            }
+
             if(real_decomp.size() > 0)
             {
                 ImGui::PushItemWidth(400);
