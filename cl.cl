@@ -1698,6 +1698,7 @@ void render(STANDARD_ARGS(),
 
         int index = IDX(ix, iy, iz);
 
+        #define RENDER_METRIC
         #ifdef RENDER_METRIC
         float Yxx = cY0[index];
         float Yxy = cY1[index];
@@ -1776,7 +1777,7 @@ void render(STANDARD_ARGS(),
         float ascalar = fabs(gA[index] / 50);
         #endif // RENDER_GA
 
-        #define RENDER_GB
+        //#define RENDER_GB
         #ifdef RENDER_GB
         float3 avec = (float3)(gB0[index], gB1[index], gB2[index]) * 4;
 
@@ -1797,6 +1798,7 @@ void render(STANDARD_ARGS(),
 
     float real = 0;
 
+    #define RENDER_WAVES
     #ifdef RENDER_WAVES
     {
         float TEMPORARIES4;
