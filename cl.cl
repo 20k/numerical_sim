@@ -1719,7 +1719,7 @@ void render(STANDARD_ARGS(),
         #endif // RENDER_METRIC
 
 
-        #define RENDER_AIJ
+        //#define RENDER_AIJ
         #ifdef RENDER_AIJ
         float Axx = cA0[index];
         float Axy = cA1[index];
@@ -1737,6 +1737,11 @@ void render(STANDARD_ARGS(),
 
         float ascalar = fabs(curvature / 1.f);
         #endif // RENDER_AIJ
+
+        #define RENDER_K
+        #ifdef RENDER_K
+        float ascalar = fabs(K[index] * 40);
+        #endif // RENDER_K
 
         /*if(cX < 0.7)
             ascalar = 1;
