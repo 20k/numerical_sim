@@ -1789,6 +1789,30 @@ void render(STANDARD_ARGS(),
         else
             ascalar = 0;*/
 
+        //#define RENDER_DCY
+        #ifdef RENDER_DCY
+        float ascalar = fabs(dcYij0[index]) +
+                        fabs(dcYij1[index]) +
+                        fabs(dcYij2[index]) +
+                        fabs(dcYij3[index]) +
+                        fabs(dcYij4[index]) +
+                        fabs(dcYij5[index]) +
+                        fabs(dcYij6[index]) +
+                        fabs(dcYij7[index]) +
+                        fabs(dcYij8[index]) +
+                        fabs(dcYij9[index]) +
+                        fabs(dcYij10[index]) +
+                        fabs(dcYij11[index]) +
+                        fabs(dcYij12[index]) +
+                        fabs(dcYij13[index]) +
+                        fabs(dcYij14[index]) +
+                        fabs(dcYij15[index]) +
+                        fabs(dcYij16[index]) +
+                        fabs(dcYij17[index]);
+
+        ascalar *= 0.2f;
+        #endif // RENDER_DCY
+
         #ifndef RENDER_GB
         max_scalar = max(ascalar, max_scalar);
         #else
