@@ -1698,6 +1698,7 @@ void render(STANDARD_ARGS(),
 
         int index = IDX(ix, iy, iz);
 
+        #ifdef RENDER_METRIC
         float Yxx = cY0[index];
         float Yxy = cY1[index];
         float Yxz = cY2[index];
@@ -1715,6 +1716,27 @@ void render(STANDARD_ARGS(),
                           fabs(Yzz / cX);
 
         float ascalar = fabs(curvature / 1000.f);
+        #endif // RENDER_METRIC
+
+
+        #define RENDER_AIJ
+        #ifdef RENDER_AIJ
+        float Axx = cA0[index];
+        float Axy = cA1[index];
+        float Axz = cA2[index];
+        float Ayy = cA3[index];
+        float Ayz = cA4[index];
+        float Azz = cA5[index];
+
+        float curvature = fabs(Axx) +
+                          fabs(Axy) +
+                          fabs(Axz) +
+                          fabs(Ayy) +
+                          fabs(Ayz) +
+                          fabs(Azz);
+
+        float ascalar = fabs(curvature / 1.f);
+        #endif // RENDER_AIJ
 
         /*if(cX < 0.7)
             ascalar = 1;
@@ -1726,6 +1748,7 @@ void render(STANDARD_ARGS(),
 
     float real = 0;
 
+    #ifdef RENDER_WAVES
     {
         float TEMPORARIES4;
 
@@ -1735,6 +1758,7 @@ void render(STANDARD_ARGS(),
 
         real = clamp(real, 0.f, 1.f);
     }
+    #endif // RENDER_WAVES
 
     /*if(ix == 125 && iy == 125)
     {
