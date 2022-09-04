@@ -1020,7 +1020,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
     //clean(scratch.buffers, b2.buffers);
 
-    enforce_constraints(get_output());
+    enforce_constraints(b2);
 
     mqueue.end_splice(main_queue);
 
