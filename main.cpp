@@ -6269,7 +6269,7 @@ void extract_waveforms(equation_context& ctx)
 
     for(int i=1; i < 4; i++)
     {
-        mu.idx(i) = dual_types::complex<value>(1.f/sqrt(2.f)) * (v1a[i - 1] + unit_i * v3a[i - 1]);
+        mu.idx(i) = (1.f/sqrt(2.f)) * (v1a[i - 1] + unit_i * v3a[i - 1]);
 
         //mu.idx(i) = dual_types::complex<value>(1.f/sqrt(2.f)) * (thetau[i] + unit_i * phiu[i]);
         ctx.pin(mu.idx(i).real);
