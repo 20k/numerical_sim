@@ -6214,6 +6214,7 @@ void extract_waveforms(equation_context& ctx)
     pos.y() += 0.005f;
     pos.z() += 0.005f;
 
+    #if 0
     vec<3, value> v1ai = {-pos.y(), pos.x(), 0};
     vec<3, value> v2ai = {pos.x(), pos.y(), pos.z()};
     //vec<3, value> v1ai = {pos.x(), pos.y(), pos.z()};
@@ -6274,6 +6275,75 @@ void extract_waveforms(equation_context& ctx)
         //mu.idx(i) = dual_types::complex<value>(1.f/sqrt(2.f)) * (thetau[i] + unit_i * phiu[i]);
         ctx.pin(mu.idx(i).real);
         ctx.pin(mu.idx(i).imaginary);
+    }
+    #endif // 0
+
+    value s = pos.length();
+
+    tensor<value, 3> s_j = {s.differentiate("offset.x"), s.differentiate("offset.y"), s.differentiate("offset.z")};
+
+    value s_j_len = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            s_j_len += iYij.idx(i, j) * s_j.idx(i) * s_j.idx(j);
+        }
+    }
+
+    s_j_len = sqrt(s_j_len);
+
+    tensor<value, 3> e_s;
+
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            sum += iYij.idx(i, j) * s_j.idx(j) / s_j_len;
+        }
+
+        e_s.idx(i) = sum;
+    }
+
+    vec<3, value> v1ai = {e_s.idx(0), e_s.idx(1), e_s.idx(2)};
+    vec<3, value> v2ai = {-pos.y(), pos.x(), 0};
+
+    vec<3, value> v3ai;
+
+    for(int a=0; a < 3; a++)
+    {
+        value sum = 0;
+
+        for(int d=0; d < 3; d++)
+        {
+            for(int c=0; c < 3; c++)
+            {
+                for(int b=0; b < 3; b++)
+                {
+                    sum += iYij.idx(a, d) * eijk_tensor.idx(d, b, c) * v1ai[b] * v2ai[c];
+                }
+            }
+        }
+
+        v3ai[a] = sum;
+    }
+
+    auto [v1a, v2a, v3a] = orthonormalise(ctx, v1ai, v2ai, v3ai, Yij);
+
+    ctx.pin(v1a);
+    ctx.pin(v2a);
+    ctx.pin(v3a);
+
+    dual_types::complex<value> unit_i = dual_types::unit_i();
+
+    tensor<dual_types::complex<value>, 4> mu;
+
+    for(int i=1; i < 4; i++)
+    {
+        mu.idx(i) = (1.f/sqrt(2.f)) * (v2a[i - 1] + unit_i * v3a[i - 1]);
     }
 
     ///https://en.wikipedia.org/wiki/Newman%E2%80%93Penrose_formalism
