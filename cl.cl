@@ -1743,10 +1743,25 @@ void render(STANDARD_ARGS(),
         float ascalar = fabs(K[index] * 40);
         #endif // RENDER_K
 
-        #define RENDER_X
+        //#define RENDER_X
         #ifdef RENDER_X
         float ascalar = fabs(X[index] / 50);
         #endif // RENDER_X
+
+        //#define RENDER_CGI
+        #ifdef RENDER_CGI
+        float ascalar = fabs(cGi0[index]) + fabs(cGi1[index]) + fabs(cGi2[index]);
+        #endif // RENDER_CGI
+
+        //#define RENDER_GA
+        #ifdef RENDER_GA
+        float ascalar = fabs(gA[index] / 50);
+        #endif // RENDER_GA
+
+        #define RENDER_GB
+        #ifdef RENDER_GB
+        float ascalar = (fabs(gB0[index]) + fabs(gB1[index]) + fabs(gB2[index])) / 1;
+        #endif // RENDER_GB
 
         /*if(cX < 0.7)
             ascalar = 1;
