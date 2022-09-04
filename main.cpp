@@ -6307,6 +6307,7 @@ void extract_waveforms(equation_context& ctx)
                 {
                     for(int l=0; l < 3; l++)
                     {
+                        ///this appears to be the specific term which is bad and full of reflections (!!!!)
                         k_sum_2 += unit_i * raised_eijk.idx(i, k, l) * cdKij.idx(l, j, k);
                     }
 
