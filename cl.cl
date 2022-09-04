@@ -1669,7 +1669,7 @@ void render(STANDARD_ARGS(),
                              {1, 3, 4},
                              {2, 4, 5}};
 
-    float max_scalar = 0;
+    float3 max_scalar = 0;
 
     #ifdef RENDER_MATTER
     float matter = Dp_star[IDX(ix,iy,iz)];
@@ -1718,6 +1718,24 @@ void render(STANDARD_ARGS(),
         float ascalar = fabs(curvature / 1000.f);
         #endif // RENDER_METRIC
 
+        //#define RENDER_CY
+        #ifdef RENDER_CY
+        float Yxx = cA0[index];
+        float Yxy = cA1[index];
+        float Yxz = cA2[index];
+        float Yyy = cA3[index];
+        float Yyz = cA4[index];
+        float Yzz = cA5[index];
+
+        float curvature = fabs(Yxx) +
+                          fabs(Yxy) +
+                          fabs(Yxz) +
+                          fabs(Yyy) +
+                          fabs(Yyz) +
+                          fabs(Yzz);
+
+        float ascalar = fabs(curvature / 1.f);
+        #endif // RENDER_CY
 
         //#define RENDER_AIJ
         #ifdef RENDER_AIJ
@@ -1760,7 +1778,9 @@ void render(STANDARD_ARGS(),
 
         #define RENDER_GB
         #ifdef RENDER_GB
-        float ascalar = (fabs(gB0[index]) + fabs(gB1[index]) + fabs(gB2[index])) / 1;
+        float3 avec = (float3)(gB0[index], gB1[index], gB2[index]) * 4;
+
+        avec = fabs(avec);
         #endif // RENDER_GB
 
         /*if(cX < 0.7)
@@ -1768,7 +1788,11 @@ void render(STANDARD_ARGS(),
         else
             ascalar = 0;*/
 
+        #ifndef RENDER_GB
         max_scalar = max(ascalar, max_scalar);
+        #else
+        max_scalar = max(avec, max_scalar);
+        #endif
     }
 
     float real = 0;
@@ -1792,11 +1816,11 @@ void render(STANDARD_ARGS(),
 
     matter = clamp(matter * 10, 0.f, 1.f);
 
-    max_scalar = max_scalar * 40;
+    max_scalar = clamp(max_scalar * 40, 0.f, 1.f);
 
-    max_scalar = clamp(max_scalar, 0.f, 1.f);
+    float3 col = {matter + real, matter, matter};
 
-    float3 col = {matter + real + max_scalar, matter + max_scalar, matter + max_scalar};
+    col += max_scalar;
 
     col = clamp(col, 0.f, 1.f);
 
