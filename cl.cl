@@ -1738,10 +1738,15 @@ void render(STANDARD_ARGS(),
         float ascalar = fabs(curvature / 1.f);
         #endif // RENDER_AIJ
 
-        #define RENDER_K
+        //#define RENDER_K
         #ifdef RENDER_K
         float ascalar = fabs(K[index] * 40);
         #endif // RENDER_K
+
+        #define RENDER_X
+        #ifdef RENDER_X
+        float ascalar = fabs(X[index] / 50);
+        #endif // RENDER_X
 
         /*if(cX < 0.7)
             ascalar = 1;
