@@ -6280,6 +6280,8 @@ void extract_waveforms(equation_context& ctx)
 
     value s = pos.length();
 
+    ///todo: proper covariant derivative tomorrow
+    ///s is a scalar, so I think this is the covariant derivative?
     tensor<value, 3> s_j = {s.differentiate("offset.x"), s.differentiate("offset.y"), s.differentiate("offset.z")};
 
     value s_j_len = 0;
