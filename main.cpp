@@ -6214,73 +6214,9 @@ void extract_waveforms(equation_context& ctx)
     pos.y() += 0.005f;
     pos.z() += 0.005f;
 
-    #if 0
-    vec<3, value> v1ai = {-pos.y(), pos.x(), 0};
-    vec<3, value> v2ai = {pos.x(), pos.y(), pos.z()};
-    //vec<3, value> v1ai = {pos.x(), pos.y(), pos.z()};
-    //vec<3, value> v2ai = {pos.x() * pos.z(), pos.y() * pos.z(), -pos.x() * pos.x() - pos.y() * pos.y()};
-    vec<3, value> v3ai;
-
-    for(int a=0; a < 3; a++)
-    {
-        value sum = 0;
-
-        for(int d=0; d < 3; d++)
-        {
-            for(int c=0; c < 3; c++)
-            {
-                for(int b=0; b < 3; b++)
-                {
-                    sum += iYij.idx(a, d) * eijk_tensor.idx(d, b, c) * v1ai[b] * v2ai[c];
-                }
-            }
-        }
-
-        v3ai[a] = sum;
-    }
-
-    ///https://arxiv.org/pdf/gr-qc/0610128.pdf
-    ///https://arxiv.org/pdf/gr-qc/0104063.pdf 5.7. I already have code for doing this but lets stay exact
-
-    auto [v1a, v2a, v3a] = orthonormalise(ctx, v1ai, v2ai, v3ai, Yij);
-
-    ctx.pin(v1a);
-    ctx.pin(v2a);
-    ctx.pin(v3a);
-
-    /*{
-        value r = pos.length();
-
-        value theta = atan2(sqrt(pos.x() * pos.x() + pos.y() * pos.y()), pos.z());
-
-        value phi = dual_types::dual_if(pos.x() >= 0,
-                                        [&](){return atan2(pos.y(), pos.x());},
-                                        [&](){return atan2(pos.y(), pos.x()) + M_PI;}
-                                        );
-    }*/
-
-    //ctx.add("dbgw", v1a[0]);
-
-    //vec<4, value> thetau = {0, v3a[0], v3a[1], v3a[2]};
-    //vec<4, value> phiu = {0, v1a[0], v1a[1], v1a[2]};
-
-    dual_types::complex<value> unit_i = dual_types::unit_i();
-
-    tensor<dual_types::complex<value>, 4> mu;
-
-    for(int i=1; i < 4; i++)
-    {
-        mu.idx(i) = (1.f/sqrt(2.f)) * (v1a[i - 1] + unit_i * v3a[i - 1]);
-
-        //mu.idx(i) = dual_types::complex<value>(1.f/sqrt(2.f)) * (thetau[i] + unit_i * phiu[i]);
-        ctx.pin(mu.idx(i).real);
-        ctx.pin(mu.idx(i).imaginary);
-    }
-    #endif // 0
-
     value s = pos.length();
 
-    ///todo: proper covariant derivative tomorrow
+    ///https://arxiv.org/pdf/1606.02532.pdf (94)
     ///s is a scalar, so I think this is the covariant derivative?
     tensor<value, 3> s_j = {s.differentiate("offset.x"), s.differentiate("offset.y"), s.differentiate("offset.z")};
 
@@ -6309,6 +6245,10 @@ void extract_waveforms(equation_context& ctx)
 
         e_s.idx(i) = sum;
     }
+
+
+    ///https://arxiv.org/pdf/gr-qc/0610128.pdf
+    ///https://arxiv.org/pdf/gr-qc/0104063.pdf 5.7. I already have code for doing this but lets stay exact
 
     vec<3, value> v1ai = {e_s.idx(0), e_s.idx(1), e_s.idx(2)};
     vec<3, value> v2ai = {-pos.y(), pos.x(), 0};
