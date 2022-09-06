@@ -1449,7 +1449,7 @@ namespace neutron_star
     inline
     float compactness()
     {
-        return 0.08f;
+        return 0.06f;
     }
 
     template<typename T>
@@ -1462,6 +1462,7 @@ namespace neutron_star
     }
 
     ///https://www.aanda.org/articles/aa/pdf/2010/06/aa12738-09.pdf
+    ///notes on equations of state https://arxiv.org/pdf/gr-qc/9911047.pdf
     ///this is only valid for coordinate radius < radius
     ///todo: make a general sampler
     template<typename T>
@@ -3947,7 +3948,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    #define PAPER_0610128
+    //#define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -4015,7 +4016,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif
 
-    //#define REGULAR_MERGE
+    #define REGULAR_MERGE
     #ifdef REGULAR_MERGE
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
