@@ -1436,17 +1436,6 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
 
     float TEMPORARIEShydrofinal;
 
-    if(fin_p_star <= MIN_P_STAR)
-    {
-        oDp_star[index] = 0;
-        oDe_star[index] = 0;
-        oDcS0[index] = 0;
-        oDcS1[index] = 0;
-        oDcS2[index] = 0;
-
-        return;
-    }
-
     float m_p_star = 0;
     float m_e_star = 0;
     float m_cS0 = 0;
@@ -1473,6 +1462,18 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     f_dtp_star += m_p_star;
 
     fin_p_star = f_dtp_star * timestep + base_p_star;
+
+    ///need to move this check below the other one
+    if(fin_p_star <= MIN_P_STAR)
+    {
+        oDp_star[index] = 0;
+        oDe_star[index] = 0;
+        oDcS0[index] = 0;
+        oDcS1[index] = 0;
+        oDcS2[index] = 0;
+
+        return;
+    }
 
     float f_dte_star = init_dte_star;
     float f_dtSk0 = init_dtSk0;
