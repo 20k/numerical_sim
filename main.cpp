@@ -2190,8 +2190,9 @@ struct matter
         return sum;
     }
 
-    value get_PQvis(equation_context& ctx, const value& gA, const tensor<value, 3>& gB, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
+    value calculate_PQvis(equation_context& ctx, const value& gA, const tensor<value, 3>& gB, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
     {
+        #define QUADRATIC_VISCOSITY
         #ifndef QUADRATIC_VISCOSITY
         return 0;
         #endif // QUADRATIC_VISCOSITY
@@ -2218,7 +2219,7 @@ struct matter
         //ctx.add("DBG_A", A);
 
         ///[0.1, 1.0}
-        value CQvis = 0.1f;
+        value CQvis = 10.f;
 
         value PQvis = if_v(littledv < 0, CQvis * A * pow(littledv, 2), 0.f);
 
@@ -2230,7 +2231,7 @@ struct matter
     {
         value e_m6phi = chi_to_e_m6phi_unclamped(chi);
 
-        value PQvis = get_PQvis(ctx, gA, gB, icY, chi, W);
+        value PQvis = calculate_PQvis(ctx, gA, gB, icY, chi, W);
 
         tensor<value, 3> vk = get_v_upper(icY, gA, gB, chi, W);
 
@@ -2269,13 +2270,17 @@ struct matter
             dX.idx(i) = diff1(ctx, chi, i);
         }
 
+        value PQvis = calculate_PQvis(ctx, gA, gB, icY, chi, W);
+
+        ctx.pin(PQvis);
+
         value h = calculate_h_with_gamma_eos(chi, W);
 
         tensor<value, 3> ret;
 
         for(int k=0; k < 3; k++)
         {
-            ret.idx(k) += -gA * divide_with_limit(value{1}, chi_to_e_m6phi(chi), 0.f, DIVISION_TOL) * diff1(ctx, P, k);
+            ret.idx(k) += -gA * divide_with_limit(value{1}, chi_to_e_m6phi(chi), 0.f, DIVISION_TOL) * diff1(ctx, P + PQvis, k);
 
             ret.idx(k) += -W * h * diff1(ctx, gA, k);
 
@@ -7049,7 +7054,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {251, 251, 251};
+    vec3i size = {213, 213, 213};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
