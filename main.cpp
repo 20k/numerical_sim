@@ -2190,10 +2190,8 @@ struct matter
         return sum;
     }
 
-    ///I suspect we shouldn't quadratic viscosity near the event horizon, there's an infinite term to_diff
-    value estar_vi_rhs(equation_context& ctx, const value& gA, const tensor<value, 3>& gB, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
+    value get_PQvis(equation_context& ctx, const value& gA, const tensor<value, 3>& gB, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
     {
-        //#define QUADRATIC_VISCOSITY
         #ifndef QUADRATIC_VISCOSITY
         return 0;
         #endif // QUADRATIC_VISCOSITY
@@ -2224,10 +2222,17 @@ struct matter
 
         value PQvis = if_v(littledv < 0, CQvis * A * pow(littledv, 2), 0.f);
 
-        //ctx.add("DBG_PQVIS", PQvis);
+        return PQvis;
+    }
 
-        //value p0 = calculate_p0(chi, W);
-        //value eps = calculate_eps(chi, W);
+    ///I suspect we shouldn't quadratic viscosity near the event horizon, there's an infinite term to_diff
+    value estar_vi_rhs(equation_context& ctx, const value& gA, const tensor<value, 3>& gB, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
+    {
+        value e_m6phi = chi_to_e_m6phi_unclamped(chi);
+
+        value PQvis = get_PQvis(ctx, gA, gB, icY, chi, W);
+
+        tensor<value, 3> vk = get_v_upper(icY, gA, gB, chi, W);
 
         value sum_interior_rhs = 0;
 
@@ -2253,7 +2258,6 @@ struct matter
         ctx.add("DP1", degenerate);*/
 
         return -degenerate * (PQvis / Gamma) * sum_interior_rhs;
-        //return -pow(p0 * eps, -1 + 1/Gamma) * (PQvis / Gamma) * sum_interior_rhs;
     }
 
     tensor<value, 3> cSkvi_rhs(equation_context& ctx, const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const value& P, const value& W)
