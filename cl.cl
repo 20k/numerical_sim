@@ -1227,6 +1227,9 @@ void calculate_hydro_evolved(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
+    should_evolve[index] = true;
+    return;
+
     if((order & D_FULL) == 0 && (order & D_LOW) == 0)
     {
         should_evolve[index] = false;
@@ -1313,7 +1316,7 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
     if(any_valid == 0)
         return;
 
-    if(Dp_star[index] < MIN_P_STAR)
+    /*if(Dp_star[index] < MIN_P_STAR)
     {
         p_star_vi0[index] = 0;
         p_star_vi1[index] = 0;
@@ -1332,7 +1335,7 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
 
         pressure[index] = 0;
         return;
-    }
+    }*/
 
     float TEMPORARIEShydrointermediates;
 
@@ -1444,10 +1447,42 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
         return;
     }
 
+    float m_p_star = 0;
+    float m_e_star = 0;
+    float m_cS0 = 0;
+    float m_cS1 = 0;
+    float m_cS2 = 0;
+
+    if(fin_p_star <= MIN_P_STAR * 8)
+    {
+        m_p_star = (0 - Dp_star[index]) * timestep;
+        m_e_star = (0 - De_star[index]) * timestep;
+        m_cS0 = (0 - DcS0[index]) * timestep;
+        m_cS1 = (0 - DcS1[index]) * timestep;
+        m_cS2 = (0 - DcS2[index]) * timestep;
+
+        /*oDp_star[index] = 0;
+        oDe_star[index] = 0;
+        oDcS0[index] = 0;
+        oDcS1[index] = 0;
+        oDcS2[index] = 0;*/
+
+        //return;
+    }
+
+    f_dtp_star += m_p_star;
+
+    fin_p_star = f_dtp_star * timestep + base_p_star;
+
     float f_dte_star = init_dte_star;
     float f_dtSk0 = init_dtSk0;
     float f_dtSk1 = init_dtSk1;
     float f_dtSk2 = init_dtSk2;
+
+    f_dte_star += m_e_star;
+    f_dtSk0 += m_cS0;
+    f_dtSk1 += m_cS1;
+    f_dtSk2 += m_cS2;
 
     float base_e_star = base_De_star[index];
     float base_cS0 = base_DcS0[index];
