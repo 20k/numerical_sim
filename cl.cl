@@ -1334,6 +1334,7 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
         skvi5[index] = 0;
 
         pressure[index] = 0;
+        hW[index] = 0;
         return;
     }
 

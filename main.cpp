@@ -2275,7 +2275,7 @@ struct matter
 
         value sum_interior_rhs = 0;
 
-        ctx.add("DBG_W", W);
+        ctx.add("DBG_W", differentiable_W);
         ctx.add("DBG_E_M6PHI", e_m6phi);
 
         for(int k=0; k < 3; k++)
