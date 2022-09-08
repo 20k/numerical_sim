@@ -1933,6 +1933,8 @@ struct matter
     value e_star;
     tensor<value, 3> cS;
 
+    value precalculated_w;
+
     float Gamma = 2;
 
     matter(equation_context& ctx)
@@ -1947,6 +1949,8 @@ struct matter
 
         p_star = max(p_star, 0.f);
         e_star = max(e_star, 0.f);
+
+        precalculated_w = bidx("hW", ctx.uses_linear, false);
     }
 
     /*value calculate_W(const inverse_metric<value, 3, 3>& icY, const value& chi)
@@ -2332,7 +2336,7 @@ struct matter
 
         for(int k=0; k < 3; k++)
         {
-            ret.idx(k) += -gA * divide_with_limit(value{1}, chi_to_e_m6phi(chi), 0.f, DIVISION_TOL) * diff1(ctx, P + PQvis, k);
+            ret.idx(k) += -gA * divide_with_limit(value{1}, chi_to_e_m6phi(chi), 0.f, DIVISION_TOL) * diff1(ctx, P, k);
 
             ret.idx(k) += -W * h * diff1(ctx, gA, k);
 
@@ -4364,22 +4368,6 @@ value get_cacheable_W(equation_context& ctx, standard_arguments& args, matter& m
     return W;
 }
 
-inline
-value get_differentiable_W(standard_arguments& args, matter& matt)
-{
-    inverse_metric<value, 3, 3> icY = args.cY.invert();
-
-    value W = 0.5f;
-    int iterations = 5;
-
-    for(int i=0; i < iterations; i++)
-    {
-        W = w_next(W, matt.p_star, matter_X_2(args.X), icY, matt.cS, matt.Gamma, matt.e_star);
-    }
-
-    return W;
-}
-
 namespace hydrodynamics
 {
     void build_intermediate_variables_derivatives(equation_context& ctx)
@@ -4423,6 +4411,8 @@ namespace hydrodynamics
         }
 
         ctx.add("init_pressure", pressure);
+
+        ctx.add("init_w", sW);
     }
 
     void build_equations(equation_context& ctx)
@@ -4492,7 +4482,7 @@ namespace hydrodynamics
         #endif
 
         value sW = get_cacheable_W(ctx, args, matt2);
-        value dW = sW;
+        value dW = matt2.precalculated_w;
         ///this is too slow
         //value dW = get_differentiable_W(args, matt2);
 
