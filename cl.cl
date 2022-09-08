@@ -1270,6 +1270,7 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
                                    __global float* e_star_vi0, __global float* e_star_vi1, __global float* e_star_vi2,
                                    __global float* skvi0, __global float* skvi1, __global float* skvi2, __global float* skvi3, __global float* skvi4, __global float* skvi5,
                                    __global float* pressure,
+                                   __global float* hW,
                                    float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve)
 {
     int local_idx = get_global_id(0);
@@ -1331,6 +1332,7 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
         skvi5[index] = 0;
 
         pressure[index] = 0;
+        hW[index] = 0;
         return;
     }
 
@@ -1352,6 +1354,7 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
     float lskvi5 = init_skvi5;
 
     float cpress = init_pressure;
+    float W_var = init_W;
 
     p_star_vi0[index] = pstarvi0;
     p_star_vi1[index] = pstarvi1;
@@ -1369,6 +1372,7 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
     skvi5[index] = lskvi5;
 
     pressure[index] = cpress;
+    hW[index] = W_var;
 
     NANCHECK(p_star_vi0);
     NANCHECK(p_star_vi1);
@@ -1386,6 +1390,7 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
     NANCHECK(skvi5);
 
     NANCHECK(pressure);
+    NANCHECK(hW);
 }
 
 ///does use derivatives
@@ -1398,6 +1403,7 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
                       __global float* e_star_vi0, __global float* e_star_vi1, __global float* e_star_vi2,
                       __global float* skvi0, __global float* skvi1, __global float* skvi2, __global float* skvi3, __global float* skvi4, __global float* skvi5,
                       __global float* pressure,
+                      __global float* hW,
                       float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve, float timestep)
 {
     int local_idx = get_global_id(0);

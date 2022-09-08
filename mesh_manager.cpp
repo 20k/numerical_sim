@@ -318,6 +318,9 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
         //intermediates.back().fill(cqueue, std::numeric_limits<float>::quiet_NaN());
     }
 
+    ///only need this in the case of quadratic viscosity
+    ref_counted_buffer w_buf = pool.request(ctx, cqueue, dim, sizeof(cl_float));
+
     {
         cl::args build;
         build.push_back(points_set.all_points);
@@ -351,6 +354,8 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
             calc_intermediates.push_back(i);
         }
 
+        calc_intermediates.push_back(w_buf);
+
         calc_intermediates.push_back(scale);
         calc_intermediates.push_back(clsize);
         calc_intermediates.push_back(points_set.order);
@@ -383,6 +388,8 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
         {
             evolve.push_back(buf.as_device_read_only());
         }
+
+        evolve.push_back(w_buf.as_device_read_only());
 
         evolve.push_back(scale);
         evolve.push_back(clsize);

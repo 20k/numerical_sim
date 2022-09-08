@@ -4388,6 +4388,7 @@ namespace hydrodynamics
         }
 
         ctx.add("init_pressure", pressure);
+        ctx.add("init_W", sW);
     }
 
     void build_equations(equation_context& ctx)
@@ -4454,7 +4455,9 @@ namespace hydrodynamics
         matter& matt2 = matt;
         #endif
 
-        value sW = get_cacheable_W(ctx, args, matt2);
+        //value sW = get_cacheable_W(ctx, args, matt2);
+
+        value sW = bidx("hW", ctx.uses_linear, false);
 
         value rhs_dte_star = matt2.estar_vi_rhs(ctx, args.gA, args.gB, icY, matter_X_1(args.X), sW);
 
