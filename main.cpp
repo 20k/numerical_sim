@@ -2221,7 +2221,7 @@ struct matter
 
     value calculate_PQvis(equation_context& ctx, const value& gA, const tensor<value, 3>& gB, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
     {
-        //#define QUADRATIC_VISCOSITY
+        #define QUADRATIC_VISCOSITY
         #ifndef QUADRATIC_VISCOSITY
         return 0;
         #endif // QUADRATIC_VISCOSITY
@@ -2303,7 +2303,7 @@ struct matter
             dX.idx(i) = diff1(ctx, chi, i);
         }
 
-        value PQvis = calculate_PQvis(ctx, gA, gB, icY, chi, W);
+        //value PQvis = calculate_PQvis(ctx, gA, gB, icY, chi, W);
 
         //ctx.pin(PQvis);
 
@@ -2313,7 +2313,7 @@ struct matter
 
         for(int k=0; k < 3; k++)
         {
-            ret.idx(k) += -gA * divide_with_limit(value{1}, chi_to_e_m6phi(chi), 0.f, DIVISION_TOL) * diff1(ctx, P + PQvis, k);
+            ret.idx(k) += -gA * divide_with_limit(value{1}, chi_to_e_m6phi(chi), 0.f, DIVISION_TOL) * diff1(ctx, P, k);
 
             ret.idx(k) += -W * h * diff1(ctx, gA, k);
 
