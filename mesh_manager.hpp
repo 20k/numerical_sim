@@ -16,7 +16,7 @@ float calculate_scale(float c_at_max, const T& size)
 inline
 float get_c_at_max()
 {
-    return 55.f * (251.f/300.f);
+    return 35.f * (251.f/300.f);
 }
 
 ///todo: do this inherity

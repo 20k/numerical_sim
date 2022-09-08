@@ -1390,7 +1390,7 @@ T w_next_interior(const T& w_in, const T& p_star, const T& chi, const T& constan
     ///I'm not sure this equation tends to 0, but constant_1 tends to 0 because Si = p* h uk
     T non_regular_interior = dual_types::divide_with_limit(divisor, divisor + em6_phi_G * geg * pow(p_star, gamma - 2), T{0.f}, DIVISION_TOL);
 
-    return sqrt(p_star * p_star + constant_1 * pow(non_regular_interior, 2));
+    return sqrt(max(p_star * p_star + constant_1 * pow(non_regular_interior, T{2}), T{0.f}));
     //return sqrt(p_star * p_star + constant_1 * pow(1 + em6_phi_G * geg * pow(p_star, gamma - 2) / divisor, -2));
 }
 
@@ -4063,13 +4063,13 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.075;
-    h1.momentum = {0, 0.133 * 0.8 * 0.1, 0};
+    h1.momentum = {0, 0.133 * 0.8 * 0.025, 0};
     h1.position = {-4.257, 0.f, 0.f};
 
     compact_object::data h2;
     h2.t = compact_object::NEUTRON_STAR;
-    h2.bare_mass = 0.075;
-    h2.momentum = {0, -0.133 * 0.8 * 0.1, 0};
+    h2.bare_mass = 0.025;
+    h2.momentum = {0, -0.133 * 0.8 * 0.025, 0};
     h2.position = {4.257, 0.f, 0.f};
 
     objects = {h1, h2};
@@ -7090,7 +7090,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {251, 251, 251};
+    vec3i size = {213, 213, 213};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
