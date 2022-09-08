@@ -349,6 +349,35 @@ struct differentiation_context
             indexed_variables.push_back(v);
         });
 
+        #define DETECT_INCORRECT_DIFFERENTIATION
+        #ifdef DETECT_INCORRECT_DIFFERENTIATION
+        std::vector<std::string> variables = in.get_all_variables();
+
+        for(auto& v : variables)
+        {
+            if(v == "dim" || v == "scale" || v == "ix" || v == "iy" || v == "iz" || v == "fx" || v == "fy" || v == "fz")
+                continue;
+
+            bool found = false;
+
+            for(auto& o : indexed_variables)
+            {
+                if(v == type_to_string(o.args[1]))
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            if(!found)
+            {
+                std::cout << "Could not find " << v << std::endl;
+
+                assert(false);
+            }
+        }
+        #endif // DETECT_INCORRECT_DIFFERENTIATION
+
         if(indexed_variables.size() == 0)
         {
             std::cout << "WHAT? " << type_to_string(in) << std::endl;
