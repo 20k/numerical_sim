@@ -114,7 +114,7 @@
 			<Add option="-l:libOpenCL.dll.a" />
 			<Add option="-lImm32" />
 			<Add option="-ldwrite" />
-			<Add option="-l:libtbb.dll.a" />
+			<Add option="-l:libtbb12.dll.a" />
 		</Linker>
 		<Unit filename="accum_cached_variables.cl" />
 		<Unit filename="cl.cl" />
