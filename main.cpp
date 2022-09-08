@@ -4389,6 +4389,34 @@ namespace hydrodynamics
 
         ctx.add("init_pressure", pressure);
         ctx.add("init_W", sW);
+
+        {
+            value W = 0.5f;
+
+            for(int kk=0; kk < 5; kk++)
+            {
+                ctx.pin(W);
+
+                value matter_X_c = matter_X_2(args.X);
+
+                value constant_1 = 0;
+
+                for(int i=0; i < 3; i++)
+                {
+                    for(int j=0; j < 3; j++)
+                    {
+                        constant_1 += matter_X_c * icY.idx(i, j) * matt.cS.idx(i) * matt.cS.idx(j);
+                    }
+                }
+
+                ctx.pin(constant_1);
+
+                ctx.add("DBG_cst" + std::to_string(kk), constant_1);
+                ctx.add("last_W" + std::to_string(kk), W);
+
+                W = w_next(W, matt.p_star, matter_X_2(args.X), icY, matt.cS, matt.Gamma, matt.e_star);
+            }
+        }
     }
 
     void build_equations(equation_context& ctx)
