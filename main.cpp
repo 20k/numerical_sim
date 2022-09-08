@@ -302,6 +302,8 @@ struct differentiation_context
                 zs[i] += offset;
         }
 
+        std::vector<std::string> variables = in.get_all_variables();
+
         std::vector<value> indexed_variables;
 
         in.recurse_arguments([&indexed_variables, linear_interpolation](const value& v)
@@ -352,6 +354,30 @@ struct differentiation_context
         if(indexed_variables.size() == 0)
         {
             std::cout << "WHAT? " << type_to_string(in) << std::endl;
+        }
+
+        for(auto& v : variables)
+        {
+            if(v == "dim" || v == "scale" || v == "ix" || v == "iy" || v == "iz" || v == "fx" || v == "fy" || v == "fz")
+                continue;
+
+            bool found = false;
+
+            for(auto& o : indexed_variables)
+            {
+                if(v == type_to_string(o.args[1]))
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            if(!found)
+            {
+                std::cout << "Could not find " << v << std::endl;
+
+                assert(false);
+            }
         }
 
         assert(indexed_variables.size() > 0);
@@ -2190,7 +2216,7 @@ struct matter
         return sum;
     }
 
-    value calculate_PQvis(equation_context& ctx, const value& gA, const tensor<value, 3>& gB, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
+    value calculate_PQvis(equation_context& ctx, const value& gA, const tensor<value, 3>& gB, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W, const value& differentiable_W)
     {
         #define QUADRATIC_VISCOSITY
         #ifndef QUADRATIC_VISCOSITY
@@ -2200,7 +2226,7 @@ struct matter
         value e_m6phi = chi_to_e_m6phi_unclamped(chi);
         value e_6phi = chi_to_e_6phi(chi);
 
-        tensor<value, 3> vk = get_v_upper(icY, gA, gB, chi, W);
+        tensor<value, 3> vk = get_v_upper(icY, gA, gB, chi, differentiable_W);
 
         ctx.add("DBG_VK0", vk.idx(0));
         ctx.add("DBG_VK1", vk.idx(1));
@@ -2235,13 +2261,13 @@ struct matter
     }
 
     ///I suspect we shouldn't quadratic viscosity near the event horizon, there's an infinite term to_diff
-    value estar_vi_rhs(equation_context& ctx, const value& gA, const tensor<value, 3>& gB, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
+    value estar_vi_rhs(equation_context& ctx, const value& gA, const tensor<value, 3>& gB, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W, const value& differentiable_W)
     {
         value e_m6phi = chi_to_e_m6phi_unclamped(chi);
 
-        value PQvis = calculate_PQvis(ctx, gA, gB, icY, chi, W);
+        value PQvis = calculate_PQvis(ctx, gA, gB, icY, chi, W, differentiable_W);
 
-        tensor<value, 3> vk = get_v_upper(icY, gA, gB, chi, W);
+        tensor<value, 3> vk = get_v_upper(icY, gA, gB, chi, differentiable_W);
 
         value sum_interior_rhs = 0;
 
@@ -2250,7 +2276,8 @@ struct matter
 
         for(int k=0; k < 3; k++)
         {
-            value to_diff = divide_with_limit(W * vk.idx(k), p_star * e_m6phi, 0.f);
+            ///can calculate W * vk more efficiently than this
+            value to_diff = divide_with_limit(differentiable_W * vk.idx(k), p_star * e_m6phi, 0.f);
 
             ctx.add("DBG_TO_DIFF" + std::to_string(k), to_diff);
 
@@ -2293,7 +2320,9 @@ struct matter
             dX.idx(i) = diff1(ctx, chi, i);
         }
 
-        value PQvis = calculate_PQvis(ctx, gA, gB, icY, chi, W);
+        //value PQvis = calculate_PQvis(ctx, gA, gB, icY, chi, W);
+
+        value PQvis = 0;
 
         ctx.pin(PQvis);
 
@@ -4335,6 +4364,22 @@ value get_cacheable_W(equation_context& ctx, standard_arguments& args, matter& m
     return W;
 }
 
+inline
+value get_differentiable_W(standard_arguments& args, matter& matt)
+{
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+    value W = 0.5f;
+    int iterations = 5;
+
+    for(int i=0; i < iterations; i++)
+    {
+        W = w_next(W, matt.p_star, matter_X_2(args.X), icY, matt.cS, matt.Gamma, matt.e_star);
+    }
+
+    return W;
+}
+
 namespace hydrodynamics
 {
     void build_intermediate_variables_derivatives(equation_context& ctx)
@@ -4447,8 +4492,11 @@ namespace hydrodynamics
         #endif
 
         value sW = get_cacheable_W(ctx, args, matt2);
+        value dW = sW;
+        ///this is too slow
+        //value dW = get_differentiable_W(args, matt2);
 
-        value rhs_dte_star = matt2.estar_vi_rhs(ctx, args.gA, args.gB, icY, matter_X_1(args.X), sW);
+        value rhs_dte_star = matt2.estar_vi_rhs(ctx, args.gA, args.gB, icY, matter_X_1(args.X), sW, dW);
 
         /*ctx.add("DBG_RHS_DTESTAR", rhs_dte_star);
 
