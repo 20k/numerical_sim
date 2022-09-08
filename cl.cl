@@ -1390,6 +1390,20 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
     NANCHECK(pressure);
 }
 
+float calculate_W(int ix, int iy, int iz,
+                  STANDARD_ARGS(),
+                  STANDARD_ARGS(o),
+                  STANDARD_ARGS(base_),
+                  __global float* p_star_vi0, __global float* p_star_vi1, __global float* p_star_vi2,
+                  __global float* e_star_vi0, __global float* e_star_vi1, __global float* e_star_vi2,
+                  __global float* skvi0, __global float* skvi1, __global float* skvi2, __global float* skvi3, __global float* skvi4, __global float* skvi5,
+                  __global float* pressure)
+{
+    float TEMPORARIEScalculatew;
+
+    return INIT_CALCULATE_W;
+}
+
 ///does use derivatives
 __kernel
 void evolve_hydro_all(__global ushort4* points, int point_count,

@@ -314,13 +314,14 @@ struct differentiation_context
             std::string function_name = type_to_string(v.args[0]);
 
             if(function_name != "buffer_index" && function_name != "buffer_indexh" &&
-               function_name != "buffer_read_linear" && function_name != "buffer_read_linearh")
+               function_name != "buffer_read_linear" && function_name != "buffer_read_linearh" &&
+               function_name != "calculate_W") ///hacky
                 return;
 
             if(linear_interpolation)
                 assert(function_name == "buffer_read_linear" || function_name == "buffer_read_linearh");
             else
-                assert(function_name == "buffer_index" || function_name == "buffer_indexh");
+                assert(function_name == "buffer_index" || function_name == "buffer_indexh" || function_name == "calculate_W");
 
             #ifdef CHECK_HALF_PRECISION
             std::string vname = type_to_string(v.args[1]);
@@ -399,6 +400,10 @@ struct differentiation_context
                 else if(function_name == "buffer_read_linear" || function_name == "buffer_read_linearh")
                 {
                     to_sub = apply(function_name, variables.args[1], as_float3(xs[kk], ys[kk], zs[kk]), "dim");
+                }
+                else if(function_name == "calculate_W")
+                {
+
                 }
                 else
                 {
@@ -4382,6 +4387,16 @@ value get_differentiable_W(standard_arguments& args, matter& matt)
 
 namespace hydrodynamics
 {
+    void build_calculate_w(equation_context& ctx)
+    {
+        standard_arguments args(ctx);
+        matter& matt = args.matt;
+
+        value W = get_cacheable_W(ctx, args, matt);
+
+        ctx.add("INIT_CALCULATE_W", W);
+    }
+
     void build_intermediate_variables_derivatives(equation_context& ctx)
     {
         standard_arguments args(ctx);
@@ -7258,6 +7273,11 @@ int main()
 
     printf("Begin hydro\n");
 
+    equation_context hydro_calculate_w;
+    hydrodynamics::build_calculate_w(hydro_calculate_w);
+
+    printf("Post calculate W");
+
     equation_context hydro_intermediates;
     hydrodynamics::build_intermediate_variables_derivatives(hydro_intermediates);
 
@@ -7296,6 +7316,7 @@ int main()
     dtgA.build(argument_string, "tga");
     dtgB.build(argument_string, "tgb");
 
+    hydro_calculate_w.build(argument_string, "calculatew");
     hydro_intermediates.build(argument_string, "hydrointermediates");
     hydro_final.build(argument_string, "hydrofinal");
     build_hydro_quantities.build(argument_string, "hydroconvert");
