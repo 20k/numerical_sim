@@ -292,15 +292,17 @@ void calculate_initial_conditions(STANDARD_ARGS(),
 
 #define NANCHECK_IMPL(w) if(IS_DEGENERATE(w[index])){printf("NAN " #w " %i %i %i %f\n", ix, iy, iz, w[index]);}
 #define LNANCHECK_IMPL(w)  if(IS_DEGENERATE(w)){printf("NAN " #w " %i %i %i %f\n", ix, iy, iz, w);}
+#define NNANCHECK_IMPL(w, name)  if(IS_DEGENERATE(w)){printf("NAN " name " %i %i %i %f\n", ix, iy, iz, w);}
 
-
-//#define DEBUGGING
+#define DEBUGGING
 #ifdef DEBUGGING
 #define NANCHECK(w) NANCHECK_IMPL(w)
 #define LNANCHECK(w) LNANCHECK_IMPL(w)
+#define NNANCHECK(w, name) NNANCHECK_IMPL(w, name)
 #else
 #define NANCHECK(w)
 #define LNANCHECK(w)
+#define NNANCHECK(w, name)
 #endif
 
 __kernel
@@ -1503,6 +1505,29 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     float my_radius = fast_length(offset);
 
     float diss = 1;
+
+    NNANCHECK(DBG_W, "dbg_w");
+    NNANCHECK(DBG_E_M6PHI, "dbg_e_m6phi");
+
+    NNANCHECK(DBG_TO_DIFF0, "dbg_to_diff0");
+    NNANCHECK(DBG_DIFFY0, "dbg_diffy0");
+    NNANCHECK(DBG_TO_DIFF1, "dbg_to_diff1");
+    NNANCHECK(DBG_DIFFY1, "dbg_diffy1");
+    NNANCHECK(DBG_TO_DIFF2, "dbg_to_diff2");
+    NNANCHECK(DBG_DIFFY2, "dbg_diffy2");
+
+    NNANCHECK(DBG_SUM_RHS, "dbg_sum_rhs");
+
+    NNANCHECK(DBG_VK0, "dbg_vk0");
+    NNANCHECK(DBG_VK1, "dbg_vk1");
+    NNANCHECK(DBG_VK2, "dbg_vk2");
+
+    NNANCHECK(DBG_DKVK, "dbg_dkvk");
+    NNANCHECK(DBG_A, "dbg_a");
+    NNANCHECK(DBG_PQVIS, "dbg_pqvis");
+    NNANCHECK(DBG_P0E, "dbg_p0e");
+    NNANCHECK(DBG_DEGEN, "dbg_degen");
+    NNANCHECK(DBG_LHS_DTE_STAR, "dbg_lhs_dte_star");
 
     ///either interior to the black hole, or near the border. The latter is kind of hacky
     if(X[index] < 0.2 || my_radius >= area_half_width * 0.85f)

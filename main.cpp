@@ -2202,6 +2202,10 @@ struct matter
 
         tensor<value, 3> vk = get_v_upper(icY, gA, gB, chi, W);
 
+        ctx.add("DBG_VK0", vk.idx(0));
+        ctx.add("DBG_VK1", vk.idx(1));
+        ctx.add("DBG_VK2", vk.idx(2));
+
         value scale = "scale";
 
         value dkvk = 0;
@@ -2211,17 +2215,21 @@ struct matter
             dkvk += 2 * diff1(ctx, vk.idx(k), k);
         }
 
+        ctx.add("DBG_DKVK", dkvk);
+
         value littledv = dkvk * scale;
 
         value A = divide_with_limit(pow(e_star, Gamma) * pow(p_star, Gamma - 1) * pow(e_m6phi, Gamma - 1), pow(W, Gamma - 1), 0.f);
         //value A = divide_with_limit(pow(e_star, Gamma) * pow(p_star, Gamma - 1), pow(W * e_6phi, Gamma - 1), 0.f);
 
-        //ctx.add("DBG_A", A);
+        ctx.add("DBG_A", A);
 
         ///[0.1, 1.0}
         value CQvis = 10.f;
 
         value PQvis = if_v(littledv < 0, CQvis * A * pow(littledv, 2), 0.f);
+
+        ctx.add("DBG_PQVIS", PQvis);
 
         return PQvis;
     }
@@ -2237,16 +2245,31 @@ struct matter
 
         value sum_interior_rhs = 0;
 
+        ctx.add("DBG_W", W);
+        ctx.add("DBG_E_M6PHI", e_m6phi);
+
         for(int k=0; k < 3; k++)
         {
             value to_diff = divide_with_limit(W * vk.idx(k), p_star * e_m6phi, 0.f);
 
-            sum_interior_rhs += diff1(ctx, to_diff, k);
+            ctx.add("DBG_TO_DIFF" + std::to_string(k), to_diff);
+
+            value diffy = diff1(ctx, to_diff, k);
+
+            ctx.add("DBG_DIFFY" + std::to_string(k), diffy);
+
+            sum_interior_rhs += diffy;
         }
+
+        ctx.add("DBG_SUM_RHS", sum_interior_rhs);
 
         value p0e = calculate_p0e(chi, W);
 
+        ctx.add("DBG_P0E", p0e);
+
         value degenerate = divide_with_limit(value{1}, pow(p0e, 1 - 1/Gamma), 0.f);
+
+        ctx.add("DBG_DEGEN", degenerate);
 
         /*ctx.add("DBG_IRHS", sum_interior_rhs);
 
@@ -4412,6 +4435,8 @@ namespace hydrodynamics
         {
             lhs_dte_star += diff1(ctx, e_star_vi.idx(i), i);
         }
+
+        ctx.add("DBG_LHS_DTE_STAR", lhs_dte_star);
 
         //#define IMMEDIATE_UPDATE
         #ifdef IMMEDIATE_UPDATE
