@@ -1387,7 +1387,7 @@ T w_next_interior(const T& w_in, const T& p_star, const T& chi, const T& constan
     ///I'm not sure this equation tends to 0, but constant_1 tends to 0 because Si = p* h uk
     T non_regular_interior = dual_types::divide_with_limit(divisor, divisor + em6_phi_G * geg * pow(p_star, gamma - 2), T{0.f}, DIVISION_TOL);
 
-    return sqrt(p_star * p_star + constant_1 * pow(non_regular_interior, 2));
+    return sqrt(max(p_star * p_star + constant_1 * pow(non_regular_interior, T{2}), T{0.0}));
     //return sqrt(p_star * p_star + constant_1 * pow(1 + em6_phi_G * geg * pow(p_star, gamma - 2) / divisor, -2));
 }
 
@@ -4413,6 +4413,90 @@ namespace hydrodynamics
         ctx.add("init_pressure", pressure);
 
         ctx.add("init_w", sW);
+
+        /*template<typename T>
+        inline
+        T w_next_interior(const T& w_in, const T& p_star, const T& chi, const T& constant_1, float gamma, const T& e_star)
+        {
+            ///p*^(2-G) * (w e6phi)^G-1 is equivalent to the divisor
+
+            T em6_phi_G = pow(chi_to_e_m6phi_unclamped(chi), gamma - 1);
+
+            T geg = gamma * pow(e_star, gamma);
+
+            T divisor = pow(w_in, gamma - 1);
+
+            ///so: Limits
+            ///when w -> 0, w = 0
+            ///when p_star -> 0, w = 0
+            ///when e_star -> 0.... I think pstar and w have to tend to 0?
+
+            ///So! I think this equation has a regular fomulation. The non finite quantities are em6_phi_G which tends to 0, geg which can be zero
+            ///pstar doesn't actually matter here, though theoretically it might
+            //T non_regular_interior = divisor / (divisor + em6_phi_G * geg * pow(p_star, gamma - 2));
+
+            ///I'm not sure this equation tends to 0, but constant_1 tends to 0 because Si = p* h uk
+            T non_regular_interior = dual_types::divide_with_limit(divisor, divisor + em6_phi_G * geg * pow(p_star, gamma - 2), T{0.f}, DIVISION_TOL);
+
+            return sqrt(max(p_star * p_star + constant_1 * pow(non_regular_interior, T{2}), T{0.0}));
+            //return sqrt(p_star * p_star + constant_1 * pow(1 + em6_phi_G * geg * pow(p_star, gamma - 2) / divisor, -2));
+        }
+
+        template<typename T>
+        inline
+        T w_next(const T& w_in, const T& p_star, const T& chi, const inverse_metric<T, 3, 3>& icY, const tensor<T, 3>& cS, float gamma, const T& e_star)
+        {
+            T constant_1 = 0;
+
+            for(int i=0; i < 3; i++)
+            {
+                for(int j=0; j < 3; j++)
+                {
+                    constant_1 += chi * icY.idx(i, j) * cS.idx(i) * cS.idx(j);
+                }
+            }
+
+            return w_next_interior(w_in, p_star, chi, constant_1, gamma, e_star);
+        }
+        */
+
+        {
+            /*value W = 0.5f;
+            int iterations = 5;
+
+            for(int i=0; i < iterations; i++)
+            {
+                ctx.pin(W);
+
+                W = w_next(W, matt.p_star, matter_X_2(args.X), icY, matt.cS, matt.Gamma, matt.e_star);
+            }*/
+
+            value W = 0.5f;
+
+            for(int kk=0; kk < 5; kk++)
+            {
+                ctx.pin(W);
+
+                value matter_X_c = matter_X_2(args.X);
+
+                value constant_1 = 0;
+
+                for(int i=0; i < 3; i++)
+                {
+                    for(int j=0; j < 3; j++)
+                    {
+                        constant_1 += matter_X_c * icY.idx(i, j) * matt.cS.idx(i) * matt.cS.idx(j);
+                    }
+                }
+
+                ctx.pin(constant_1);
+
+                ctx.add("DBG_cst" + std::to_string(kk), constant_1);
+                ctx.add("last_W" + std::to_string(kk), W);
+
+                W = w_next(W, matt.p_star, matter_X_2(args.X), icY, matt.cS, matt.Gamma, matt.e_star);
+            }
+        }
     }
 
     void build_equations(equation_context& ctx)
