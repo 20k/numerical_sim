@@ -2258,6 +2258,10 @@ struct matter
     ///I suspect we shouldn't quadratic viscosity near the event horizon, there's an infinite term to_diff
     value estar_vi_rhs(equation_context& ctx, const value& gA, const tensor<value, 3>& gB, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
     {
+        #ifndef QUADRATIC_VISCOSITY
+        return 0;
+        #endif // QUADRATIC_VISCOSITY
+
         value e_m6phi = chi_to_e_m6phi_unclamped(chi);
 
         value PQvis = calculate_PQvis(ctx, gA, gB, icY, chi, W);
@@ -2301,7 +2305,7 @@ struct matter
 
         value PQvis = calculate_PQvis(ctx, gA, gB, icY, chi, W);
 
-        ctx.pin(PQvis);
+        //ctx.pin(PQvis);
 
         value h = calculate_h_with_gamma_eos(chi, W);
 
