@@ -4029,14 +4029,14 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #ifdef REGULAR_MERGE
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
-    h1.bare_mass = 0.075;
-    h1.momentum = {0, 0.133 * 0.8 * 0.1, 0};
+    h1.bare_mass = 0.095;
+    h1.momentum = {0, 0.133 * 0.8 * 0.05, 0};
     h1.position = {-4.257, 0.f, 0.f};
 
     compact_object::data h2;
     h2.t = compact_object::NEUTRON_STAR;
-    h2.bare_mass = 0.075;
-    h2.momentum = {0, -0.133 * 0.8 * 0.1, 0};
+    h2.bare_mass = 0.03;
+    h2.momentum = {0, -0.133 * 0.8 * 0.01, 0};
     h2.position = {4.257, 0.f, 0.f};
 
     objects = {h1, h2};
