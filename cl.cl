@@ -1390,6 +1390,24 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
 
     NANCHECK(pressure);
     NANCHECK(hW);
+
+    if(IS_DEGENERATE(hW[index]))
+    {
+        printf("Degen constant? %f %i", DBG_cst0, 0);
+        printf("Degen last W? %f %i", last_W0, 0);
+
+        printf("Degen constant? %f %i", DBG_cst1, 1);
+        printf("Degen last W? %f %i", last_W1, 1);
+
+        printf("Degen constant? %f %i", DBG_cst2, 2);
+        printf("Degen last W? %f %i", last_W2, 2);
+
+        printf("Degen constant? %f %i", DBG_cst3, 3);
+        printf("Degen last W? %f %i", last_W3, 3);
+
+        printf("Degen constant? %f %i", DBG_cst4, 4);
+        printf("Degen last W? %f %i", last_W4, 4);
+    }
 }
 
 ///does use derivatives
