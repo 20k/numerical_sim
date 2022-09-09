@@ -292,14 +292,17 @@ void calculate_initial_conditions(STANDARD_ARGS(),
 
 #define NANCHECK_IMPL(w) if(IS_DEGENERATE(w[index])){printf("NAN " #w " %i %i %i %f\n", ix, iy, iz, w[index]);}
 #define LNANCHECK_IMPL(w)  if(IS_DEGENERATE(w)){printf("NAN " #w " %i %i %i %f\n", ix, iy, iz, w);}
+#define NNANCHECK_IMPL(w, name) if(IS_DEGENERATE(w)){printf("NAN " name " %i %i %i %f\n", ix, iy, iz, w);}
 
 #define DEBUGGING
 #ifdef DEBUGGING
 #define NANCHECK(w) NANCHECK_IMPL(w)
 #define LNANCHECK(w) LNANCHECK_IMPL(w)
+#define NNANCHECK(w, name) NNANCHECK_IMPL(w, name)
 #else
 #define NANCHECK(w)
 #define LNANCHECK(w)
+#define NNANCHECK(w, name)
 #endif
 
 __kernel
@@ -437,6 +440,22 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
     if(found_det <= 1 + tol && found_det >= 1 - tol)
         return;
 
+    LNANCHECK(CY_DET);
+
+    NNANCHECK(cY0[index], "cY0eac");
+    NNANCHECK(cY1[index], "cY1eac");
+    NNANCHECK(cY2[index], "cY2eac");
+    NNANCHECK(cY3[index], "cY3eac");
+    NNANCHECK(cY4[index], "cY4eac");
+    NNANCHECK(cY5[index], "cY5eac");
+
+    NNANCHECK(cA0[index], "cA0eac");
+    NNANCHECK(cA1[index], "cA1eac");
+    NNANCHECK(cA2[index], "cA2eac");
+    NNANCHECK(cA3[index], "cA3eac");
+    NNANCHECK(cA4[index], "cA4eac");
+    NNANCHECK(cA5[index], "cA5eac");
+
     float fixed_cY0 = fix_cY0;
     float fixed_cY1 = fix_cY1;
     float fixed_cY2 = fix_cY2;
@@ -450,6 +469,20 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
     float fixed_cA3 = fix_cA3;
     float fixed_cA4 = fix_cA4;
     float fixed_cA5 = fix_cA5;
+
+    NNANCHECK(fixed_cY0, "fixed_cY0");
+    NNANCHECK(fixed_cY1, "fixed_cY1");
+    NNANCHECK(fixed_cY2, "fixed_cY2");
+    NNANCHECK(fixed_cY3, "fixed_cY3");
+    NNANCHECK(fixed_cY4, "fixed_cY4");
+    NNANCHECK(fixed_cY5, "fixed_cY5");
+
+    NNANCHECK(fixed_cA0, "fixed_cA0");
+    NNANCHECK(fixed_cA1, "fixed_cA1");
+    NNANCHECK(fixed_cA2, "fixed_cA2");
+    NNANCHECK(fixed_cA3, "fixed_cA3");
+    NNANCHECK(fixed_cA4, "fixed_cA4");
+    NNANCHECK(fixed_cA5, "fixed_cA5");
 
     cY0[index] = fixed_cY0;
     cY1[index] = fixed_cY1;

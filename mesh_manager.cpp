@@ -505,7 +505,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
     auto check_for_nans = [&](const std::string& name, cl::buffer& buf)
     {
-        //return;
+        return;
 
         mqueue.block();
 
