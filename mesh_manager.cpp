@@ -519,6 +519,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
         nan_buf.push_back(buf);
         nan_buf.push_back(scale);
         nan_buf.push_back(clsize);
+        nan_buf.push_back(was_nan);
 
         mqueue.exec("nan_checker", nan_buf, {points_set.border_count}, {128});
 
