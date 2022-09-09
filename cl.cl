@@ -292,15 +292,18 @@ void calculate_initial_conditions(STANDARD_ARGS(),
 
 #define NANCHECK_IMPL(w) if(IS_DEGENERATE(w[index])){printf("NAN " #w " %i %i %i %f\n", ix, iy, iz, w[index]);}
 #define LNANCHECK_IMPL(w)  if(IS_DEGENERATE(w)){printf("NAN " #w " %i %i %i %f\n", ix, iy, iz, w);}
+#define NNANCHECK_IMPL(w, name) if(IS_DEGENERATE(w)){printf("NAN " name " %i %i %i %f\n", ix, iy, iz, w);}
 
 
 //#define DEBUGGING
 #ifdef DEBUGGING
 #define NANCHECK(w) NANCHECK_IMPL(w)
 #define LNANCHECK(w) LNANCHECK_IMPL(w)
+#define NNANCHECK(w, name) NNANCHECK_IMPL(w, name)
 #else
 #define NANCHECK(w)
 #define LNANCHECK(w)
+#define NNANCHECK(w, name)
 #endif
 
 __kernel
@@ -432,6 +435,9 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
 
     if(found_det <= 1 + tol && found_det >= 1 - tol)
         return;
+
+    ///if this fires, its probably matter falling into a black hole
+    NNANCHECK(CY_DET, "CY_DET");
 
     float fixed_cY0 = fix_cY0;
     float fixed_cY1 = fix_cY1;
