@@ -4428,6 +4428,13 @@ namespace hydrodynamics
 
                 ctx.pin(constant_1);
 
+
+                for(int i=0; i < 3; i++)
+                {
+                    ctx.add("DBG_CS_" + std::to_string(kk) + "_" + std::to_string(i), matt.cS.idx(i));
+                }
+
+                ctx.add("DBG_matter_X" + std::to_string(kk), matter_X_c);
                 ctx.add("DBG_cst" + std::to_string(kk), constant_1);
                 ctx.add("last_W" + std::to_string(kk), W);
 

@@ -1393,6 +1393,12 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
 
     if(IS_DEGENERATE(hW[index]))
     {
+        printf("Degen cS0 %f\n", DBG_CS_0_0);
+        printf("Degen cS1 %f\n", DBG_CS_0_1);
+        printf("Degen cS2 %f\n", DBG_CS_0_2);
+
+        printf("Degen X %f\n", DBG_matter_X0);
+
         printf("Degen constant? %f %i", DBG_cst0, 0);
         printf("Degen last W? %f %i", last_W0, 0);
 
