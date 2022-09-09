@@ -4428,6 +4428,12 @@ namespace hydrodynamics
 
                 ctx.pin(constant_1);
 
+                ctx.add("DBG_ICY_" + std::to_string(kk) + "_0", icY.idx(0, 0));
+                ctx.add("DBG_ICY_" + std::to_string(kk) + "_1", icY.idx(1, 0));
+                ctx.add("DBG_ICY_" + std::to_string(kk) + "_2", icY.idx(2, 0));
+                ctx.add("DBG_ICY_" + std::to_string(kk) + "_3", icY.idx(1, 1));
+                ctx.add("DBG_ICY_" + std::to_string(kk) + "_4", icY.idx(1, 2));
+                ctx.add("DBG_ICY_" + std::to_string(kk) + "_5", icY.idx(2, 2));
 
                 for(int i=0; i < 3; i++)
                 {

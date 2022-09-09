@@ -303,7 +303,7 @@ void calculate_initial_conditions(STANDARD_ARGS(),
 #endif
 
 __kernel
-void nan_checker(__global ushort4* points, int point_count, __global float* arg, float scale, int4 dim)
+void nan_checker(__global ushort4* points, int point_count, __global float* arg, float scale, int4 dim, __global int* was_nan)
 {
     int idx = get_global_id(0);
 
@@ -317,6 +317,11 @@ void nan_checker(__global ushort4* points, int point_count, __global float* arg,
     int index = IDX(ix,iy,iz);
 
     NANCHECK_IMPL(arg);
+
+    if(IS_DEGENERATE(arg[index]))
+    {
+        *was_nan = 1;
+    }
 }
 
 __kernel
@@ -1396,6 +1401,20 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
         printf("Degen cS0 %f\n", DBG_CS_0_0);
         printf("Degen cS1 %f\n", DBG_CS_0_1);
         printf("Degen cS2 %f\n", DBG_CS_0_2);
+
+        printf("Degen cY0 %f\n", cY0[IDX(ix,iy,iz)]);
+        printf("Degen cY1 %f\n", cY1[IDX(ix,iy,iz)]);
+        printf("Degen cY2 %f\n", cY2[IDX(ix,iy,iz)]);
+        printf("Degen cY3 %f\n", cY3[IDX(ix,iy,iz)]);
+        printf("Degen cY4 %f\n", cY4[IDX(ix,iy,iz)]);
+        printf("Degen cY5 %f\n", cY5[IDX(ix,iy,iz)]);
+
+        printf("Degen icY0 %f\n", DBG_ICY_0_0);
+        printf("Degen icY1 %f\n", DBG_ICY_0_1);
+        printf("Degen icY2 %f\n", DBG_ICY_0_2);
+        printf("Degen icY3 %f\n", DBG_ICY_0_3);
+        printf("Degen icY4 %f\n", DBG_ICY_0_4);
+        printf("Degen icY5 %f\n", DBG_ICY_0_5);
 
         printf("Degen X %f\n", DBG_matter_X0);
 

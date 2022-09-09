@@ -505,11 +505,13 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
     auto check_for_nans = [&](const std::string& name, cl::buffer& buf)
     {
-        return;
+        //return;
 
         mqueue.block();
 
-        std::cout << "checking " << name << std::endl;
+        cl::buffer was_nan(ctx);
+        was_nan.alloc(sizeof(cl_int));
+        was_nan.set_to_zero(mqueue);
 
         cl::args nan_buf;
         nan_buf.push_back(points_set.border_points);
@@ -521,6 +523,14 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
         mqueue.exec("nan_checker", nan_buf, {points_set.border_count}, {128});
 
         mqueue.block();
+
+        cl_int val = was_nan.read<cl_int>(main_queue)[0];
+
+        if(val)
+        {
+            std::cout << "checking " << name << std::endl;
+            throw std::runtime_error("Nan Term\n");
+        }
     };
 
     #if 0
