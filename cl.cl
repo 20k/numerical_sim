@@ -1583,7 +1583,7 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
 
     float my_radius = fast_length(offset);
 
-    float diss = 1;
+    float diss = 5;
 
     ///either interior to the black hole, or near the border. The latter is kind of hacky
     if(X[index] < 0.2 || my_radius >= area_half_width * 0.85f)
@@ -1595,6 +1595,9 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
         fin_cS1 += (0 - fin_cS1) * timestep * diss;
         fin_cS2 += (0 - fin_cS2) * timestep * diss;
     }
+
+    fin_p_star = max(fin_p_star, 0.f);
+    fin_e_star = max(fin_e_star, 0.f);
 
     oDp_star[index] = fin_p_star;
     oDe_star[index] = fin_e_star;
