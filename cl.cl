@@ -840,7 +840,7 @@ void evolve_cY(__global ushort4* points, int point_count,
     ocY4[index] = f_dtcYij4 * timestep + b4;
     ocY5[index] = f_dtcYij5 * timestep + b5;
 
-    if(X[index] < DISSB)
+    /*if(X[index] < DISSB)
     {
         ocY0[index] += (1 - ocY0[index]) * timestep;
         ocY1[index] += (0 - ocY1[index]) * timestep;
@@ -848,7 +848,7 @@ void evolve_cY(__global ushort4* points, int point_count,
         ocY3[index] += (1 - ocY3[index]) * timestep;
         ocY4[index] += (0 - ocY4[index]) * timestep;
         ocY5[index] += (1 - ocY5[index]) * timestep;
-    }
+    }*/
 
     NANCHECK(ocY0);
     NANCHECK(ocY1);
@@ -1514,10 +1514,10 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
 
     float my_radius = fast_length(offset);
 
-    float diss = 1;
+    float diss = 5;
 
     ///either interior to the black hole, or near the border. The latter is kind of hacky
-    if(X[index] < 0.2 || my_radius >= area_half_width * 0.85f)
+    if(gA[index] < 0.3f || my_radius >= area_half_width * 0.85f)
     {
         fin_p_star += (0 - fin_p_star) * timestep * diss;
         fin_e_star += (0 - fin_e_star) * timestep * diss;
@@ -1526,6 +1526,9 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
         fin_cS1 += (0 - fin_cS1) * timestep * diss;
         fin_cS2 += (0 - fin_cS2) * timestep * diss;
     }
+
+    fin_p_star = max(fin_p_star, 0.f);
+    fin_e_star = max(fin_e_star, 0.f);
 
     oDp_star[index] = fin_p_star;
     oDe_star[index] = fin_e_star;
