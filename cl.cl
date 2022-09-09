@@ -440,7 +440,7 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
     if(found_det <= 1 + tol && found_det >= 1 - tol)
         return;
 
-    LNANCHECK(CY_DET);
+    NNANCHECK(CY_DET, "CY_DET");
 
     NNANCHECK(cY0[index], "cY0eac");
     NNANCHECK(cY1[index], "cY1eac");
