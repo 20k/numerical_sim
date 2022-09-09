@@ -293,8 +293,7 @@ void calculate_initial_conditions(STANDARD_ARGS(),
 #define NANCHECK_IMPL(w) if(IS_DEGENERATE(w[index])){printf("NAN " #w " %i %i %i %f\n", ix, iy, iz, w[index]);}
 #define LNANCHECK_IMPL(w)  if(IS_DEGENERATE(w)){printf("NAN " #w " %i %i %i %f\n", ix, iy, iz, w);}
 
-
-//#define DEBUGGING
+#define DEBUGGING
 #ifdef DEBUGGING
 #define NANCHECK(w) NANCHECK_IMPL(w)
 #define LNANCHECK(w) LNANCHECK_IMPL(w)

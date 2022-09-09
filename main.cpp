@@ -2248,7 +2248,7 @@ struct matter
         //ctx.add("DBG_A", A);
 
         ///[0.1, 1.0}
-        value CQvis = 10.f;
+        value CQvis = 1.f;
 
         value PQvis = if_v(littledv < 0, CQvis * A * pow(littledv, 2), 0.f);
 
@@ -4058,7 +4058,24 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif
 
-    #define REGULAR_MERGE
+    #define NEUTRON_BLACK_HOLE_MERGE
+    #ifdef NEUTRON_BLACK_HOLE_MERGE
+    compact_object::data h1;
+    h1.t = compact_object::BLACK_HOLE;
+    h1.bare_mass = 0.4;
+    h1.momentum = {0, 0.133 * 0.8 * 0.01, 0};
+    h1.position = {-3.257, 0.f, 0.f};
+
+    compact_object::data h2;
+    h2.t = compact_object::NEUTRON_STAR;
+    h2.bare_mass = 0.03;
+    h2.momentum = {0, -0.133 * 0.8 * 0.15, 0};
+    h2.position = {4.257, 0.f, 0.f};
+
+    objects = {h1, h2};
+    #endif // NEUTRON_BLACK_HOLE_MERGE
+
+    //#define REGULAR_MERGE
     #ifdef REGULAR_MERGE
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
@@ -7090,7 +7107,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {251, 251, 251};
+    vec3i size = {213, 213, 213};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
