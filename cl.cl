@@ -871,7 +871,7 @@ void evolve_cY(__global ushort4* points, int point_count,
     ocY4[index] = f_dtcYij4 * timestep + b4;
     ocY5[index] = f_dtcYij5 * timestep + b5;
 
-    if(X[index] < DISSB)
+    /*if(X[index] < DISSB)
     {
         ocY0[index] += (1 - ocY0[index]) * timestep;
         ocY1[index] += (0 - ocY1[index]) * timestep;
@@ -879,7 +879,7 @@ void evolve_cY(__global ushort4* points, int point_count,
         ocY3[index] += (1 - ocY3[index]) * timestep;
         ocY4[index] += (0 - ocY4[index]) * timestep;
         ocY5[index] += (1 - ocY5[index]) * timestep;
-    }
+    }*/
 
     NANCHECK(ocY0);
     NANCHECK(ocY1);
