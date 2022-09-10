@@ -1272,9 +1272,6 @@ void calculate_hydro_evolved(__global ushort4* points, int point_count,
 __kernel
 void calculate_hydro_intermediates(__global ushort4* points, int point_count,
                                    STANDARD_ARGS(),
-                                   __global float* p_star_vi0, __global float* p_star_vi1, __global float* p_star_vi2,
-                                   __global float* e_star_vi0, __global float* e_star_vi1, __global float* e_star_vi2,
-                                   __global float* skvi0, __global float* skvi1, __global float* skvi2, __global float* skvi3, __global float* skvi4, __global float* skvi5,
                                    __global float* pressure,
                                    __global float* hW,
                                    float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve)
@@ -1322,21 +1319,6 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
 
     if(Dp_star[index] < MIN_P_STAR)
     {
-        p_star_vi0[index] = 0;
-        p_star_vi1[index] = 0;
-        p_star_vi2[index] = 0;
-
-        e_star_vi0[index] = 0;
-        e_star_vi1[index] = 0;
-        e_star_vi2[index] = 0;
-
-        skvi0[index] = 0;
-        skvi1[index] = 0;
-        skvi2[index] = 0;
-        skvi3[index] = 0;
-        skvi4[index] = 0;
-        skvi5[index] = 0;
-
         pressure[index] = 0;
         hW[index] = 0;
         return;
@@ -1344,56 +1326,11 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
 
     float TEMPORARIEShydrointermediates;
 
-    float pstarvi0 = init_p_star_vi0;
-    float pstarvi1 = init_p_star_vi1;
-    float pstarvi2 = init_p_star_vi2;
-
-    float estarvi0 = init_e_star_vi0;
-    float estarvi1 = init_e_star_vi1;
-    float estarvi2 = init_e_star_vi2;
-
-    float lskvi0 = init_skvi0;
-    float lskvi1 = init_skvi1;
-    float lskvi2 = init_skvi2;
-    float lskvi3 = init_skvi3;
-    float lskvi4 = init_skvi4;
-    float lskvi5 = init_skvi5;
-
     float cpress = init_pressure;
     float W_var = init_W;
 
-    p_star_vi0[index] = pstarvi0;
-    p_star_vi1[index] = pstarvi1;
-    p_star_vi2[index] = pstarvi2;
-
-    e_star_vi0[index] = estarvi0;
-    e_star_vi1[index] = estarvi1;
-    e_star_vi2[index] = estarvi2;
-
-    skvi0[index] = lskvi0;
-    skvi1[index] = lskvi1;
-    skvi2[index] = lskvi2;
-    skvi3[index] = lskvi3;
-    skvi4[index] = lskvi4;
-    skvi5[index] = lskvi5;
-
     pressure[index] = cpress;
     hW[index] = W_var;
-
-    NANCHECK(p_star_vi0);
-    NANCHECK(p_star_vi1);
-    NANCHECK(p_star_vi2);
-
-    NANCHECK(e_star_vi0);
-    NANCHECK(e_star_vi1);
-    NANCHECK(e_star_vi2);
-
-    NANCHECK(skvi0);
-    NANCHECK(skvi1);
-    NANCHECK(skvi2);
-    NANCHECK(skvi3);
-    NANCHECK(skvi4);
-    NANCHECK(skvi5);
 
     NANCHECK(pressure);
     NANCHECK(hW);
@@ -1401,13 +1338,10 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
 
 __kernel
 void add_hydro_artificial_viscosity(__global ushort4* points, int point_count,
-                                   STANDARD_ARGS(),
-                                   __global float* p_star_vi0, __global float* p_star_vi1, __global float* p_star_vi2,
-                                   __global float* e_star_vi0, __global float* e_star_vi1, __global float* e_star_vi2,
-                                   __global float* skvi0, __global float* skvi1, __global float* skvi2, __global float* skvi3, __global float* skvi4, __global float* skvi5,
-                                   __global float* pressure,
-                                   __global float* hW,
-                                  float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve)
+                                    STANDARD_ARGS(),
+                                    __global float* pressure,
+                                    __global float* hW,
+                                    float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve)
 {
 
     int local_idx = get_global_id(0);
@@ -1441,9 +1375,6 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
                       STANDARD_ARGS(),
                       STANDARD_ARGS(o),
                       STANDARD_ARGS(base_),
-                      __global float* p_star_vi0, __global float* p_star_vi1, __global float* p_star_vi2,
-                      __global float* e_star_vi0, __global float* e_star_vi1, __global float* e_star_vi2,
-                      __global float* skvi0, __global float* skvi1, __global float* skvi2, __global float* skvi3, __global float* skvi4, __global float* skvi5,
                       __global float* pressure,
                       __global float* hW,
                       float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve, float timestep)

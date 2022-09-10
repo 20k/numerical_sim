@@ -4371,38 +4371,11 @@ namespace hydrodynamics
 
         ctx.is_derivative_free = true;
 
-        inverse_metric<value, 3, 3> icY = args.cY.invert();
-
         value sW = get_cacheable_W(ctx, args, args.matt);
 
         ctx.pin(sW);
 
-        tensor<value, 3> p_star_vi = matt.p_star_vi(icY, args.gA, args.gB, matter_X_2(args.X), sW);
-        tensor<value, 3> e_star_vi = matt.e_star_vi(icY, args.gA, args.gB, matter_X_2(args.X), sW);
-
-        tensor<value, 3, 3> cSk_vi = matt.cSk_vi(icY, args.gA, args.gB, matter_X_2(args.X), sW);
-
-        /*value p0 = matt.calculate_p0(matter_X_1(args.X), matt.stashed_W);
-        value eps = matt.calculate_eps(matter_X_1(args.X), matt.stashed_W);
-
-        value pressure = matt.gamma_eos(p0, eps);*/
-
         value pressure = matt.gamma_eos_from_e_star(matter_X_2(args.X), sW);
-
-        vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
-
-        for(int i=0; i < 3; i++)
-        {
-            ctx.add("init_p_star_vi" + std::to_string(i), p_star_vi.idx(i));
-            ctx.add("init_e_star_vi" + std::to_string(i), e_star_vi.idx(i));
-        }
-
-        for(int i=0; i < 6; i++)
-        {
-            vec2i index = linear_indices[i];
-
-            ctx.add("init_skvi" + std::to_string(i), cSk_vi.idx(index.x(), index.y()));
-        }
 
         ctx.add("init_pressure", pressure);
         ctx.add("init_W", sW);
@@ -4429,40 +4402,14 @@ namespace hydrodynamics
 
         inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-        tensor<value, 3> p_star_vi;
-        tensor<value, 3> e_star_vi;
+        value sW = bidx("hW", ctx.uses_linear, false);
 
-        std::array<int, 9> arg_table
-        {
-            0, 1, 2,
-            1, 3, 4,
-            2, 4, 5,
-        };
+        tensor<value, 3, 3> cSk_vi = matt.cSk_vi(icY, args.gA, args.gB, matter_X_2(args.X), sW);
 
-        tensor<value, 3, 3> cskvi;
-
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                int index = arg_table[i * 3 + j];
-
-                cskvi.idx(i, j) = bidx("skvi" + std::to_string(index), ctx.uses_linear, false);
-            }
-        }
-
-
-        for(int i=0; i < 3; i++)
-        {
-            p_star_vi.idx(i) = bidx("p_star_vi" + std::to_string(i), ctx.uses_linear, false);
-            e_star_vi.idx(i) = bidx("e_star_vi" + std::to_string(i), ctx.uses_linear, false);
-        }
+        tensor<value, 3> p_star_vi = matt.p_star_vi(icY, args.gA, args.gB, matter_X_2(args.X), sW);
+        tensor<value, 3> e_star_vi = matt.e_star_vi(icY, args.gA, args.gB, matter_X_2(args.X), sW);
 
         value P = bidx("pressure", ctx.uses_linear, false);
-
-        /*value sW = get_cacheable_W(ctx, args, args.matt);
-
-        ctx.pin(sW);*/
 
         value lhs_dtp_star = 0;
 
@@ -4488,8 +4435,6 @@ namespace hydrodynamics
 
         //value sW = get_cacheable_W(ctx, args, matt2);
 
-        value sW = bidx("hW", ctx.uses_linear, false);
-
         value rhs_dte_star = matt2.estar_vi_rhs(ctx, args.gA, args.gB, icY, matter_X_1(args.X), sW);
 
         /*ctx.add("DBG_RHS_DTESTAR", rhs_dte_star);
@@ -4507,7 +4452,7 @@ namespace hydrodynamics
 
             for(int i=0; i < 3; i++)
             {
-                sum += diff1(ctx, cskvi.idx(k, i), i);
+                sum += diff1(ctx, cSk_vi.idx(k, i), i);
             }
 
             lhs_dtSk.idx(k) = sum;
