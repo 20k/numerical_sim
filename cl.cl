@@ -1482,7 +1482,7 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
 
     float my_radius = fast_length(offset);
 
-    float diss = 5;
+    float diss = 4;
 
     ///either interior to the black hole, or near the border. The latter is kind of hacky
     if(gA[index] < 0.45f || my_radius >= area_half_width * 0.85f)
