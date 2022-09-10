@@ -4387,7 +4387,7 @@ namespace hydrodynamics
 
         value pressure = matt.gamma_eos(p0, eps);*/
 
-        value pressure = matt.gamma_eos_from_e_star(matter_X_2(args.X), sW);
+        //value pressure = matt.gamma_eos_from_e_star(matter_X_2(args.X), sW);
 
         vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
@@ -4404,7 +4404,6 @@ namespace hydrodynamics
             ctx.add("init_skvi" + std::to_string(i), cSk_vi.idx(index.x(), index.y()));
         }
 
-        ctx.add("init_pressure", pressure);
         ctx.add("init_W", sW);
     }
 
@@ -4444,7 +4443,7 @@ namespace hydrodynamics
             e_star_vi.idx(i) = bidx("e_star_vi" + std::to_string(i), ctx.uses_linear, false);
         }
 
-        value P = bidx("pressure", ctx.uses_linear, false);
+        //value P = bidx("pressure", ctx.uses_linear, false);
 
         /*value sW = get_cacheable_W(ctx, args, args.matt);
 
@@ -4498,6 +4497,8 @@ namespace hydrodynamics
 
             lhs_dtSk.idx(k) = sum;
         }
+
+        value P = matt.gamma_eos_from_e_star(matter_X_2(args.X), sW);
 
         tensor<value, 3> rhs_dtSk = matt2.cSkvi_rhs(ctx, icY, args.gA, args.gB, matter_X_2(args.X), P, sW);
 

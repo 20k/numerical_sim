@@ -307,7 +307,7 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
 
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
-    int intermediate_count = 13;
+    int intermediate_count = 12;
 
     std::vector<ref_counted_buffer> intermediates;
 
