@@ -4058,7 +4058,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif
 
-    #define NEUTRON_BLACK_HOLE_MERGE
+    //#define NEUTRON_BLACK_HOLE_MERGE
     #ifdef NEUTRON_BLACK_HOLE_MERGE
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -4074,6 +4074,23 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     objects = {h1, h2};
     #endif // NEUTRON_BLACK_HOLE_MERGE
+
+    #define HEAD_ON_NEUTRON
+    #ifdef HEAD_ON_NEUTRON
+    compact_object::data h1;
+    h1.t = compact_object::NEUTRON_STAR;
+    h1.bare_mass = 0.03;
+    h1.momentum = {0, 0, 0};
+    h1.position = {-4.257, 0.f, 0.f};
+
+    compact_object::data h2;
+    h2.t = compact_object::NEUTRON_STAR;
+    h2.bare_mass = 0.03;
+    h2.momentum = {0, 0, 0};
+    h2.position = {4.257, 0.f, 0.f};
+
+    objects = {h1, h2};
+    #endif
 
     //#define REGULAR_MERGE
     #ifdef REGULAR_MERGE
