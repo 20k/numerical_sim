@@ -1268,6 +1268,65 @@ void calculate_hydro_evolved(__global ushort4* points, int point_count,
     should_evolve[index] = P_count > 0;
 }
 
+__kernel
+void calculate_hydro_W(__global ushort4* points, int point_count,
+                                   STANDARD_ARGS(),
+                                   __global float* hW,
+                                   float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
+
+    int any_valid = 0;
+
+    #pragma unroll
+    for(int i=-HYDRO_ORDER; i <= HYDRO_ORDER; i++)
+    {
+        any_valid += should_evolve[IDX(ix + i, iy, iz)];
+    }
+
+    #pragma unroll
+    for(int i=-HYDRO_ORDER; i <= HYDRO_ORDER; i++)
+    {
+        if(i == 0)
+            continue;
+
+        any_valid += should_evolve[IDX(ix, iy + i, iz)];
+    }
+
+    #pragma unroll
+    for(int i=-HYDRO_ORDER; i <= HYDRO_ORDER; i++)
+    {
+        if(i == 0)
+            continue;
+
+        any_valid += should_evolve[IDX(ix, iy, iz + i)];
+    }
+
+    if(any_valid == 0)
+        return;
+
+    if(Dp_star[index] < MIN_P_STAR)
+    {
+        hW[index] = 0;
+        return;
+    }
+
+    float TEMPORARIEShydrow;
+
+    hW[index] = init_W;
+    NANCHECK(hW);
+}
+
 ///does not use any derivatives
 __kernel
 void calculate_hydro_intermediates(__global ushort4* points, int point_count,
@@ -1276,7 +1335,6 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
                                    __global float* e_star_vi0, __global float* e_star_vi1, __global float* e_star_vi2,
                                    __global float* skvi0, __global float* skvi1, __global float* skvi2, __global float* skvi3, __global float* skvi4, __global float* skvi5,
                                    __global float* pressure,
-                                   __global float* hW,
                                    float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve)
 {
     int local_idx = get_global_id(0);
@@ -1338,7 +1396,6 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
         skvi5[index] = 0;
 
         pressure[index] = 0;
-        hW[index] = 0;
         return;
     }
 
@@ -1378,7 +1435,6 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
     skvi5[index] = lskvi5;
 
     pressure[index] = cpress;
-    hW[index] = W_var;
 
     NANCHECK(p_star_vi0);
     NANCHECK(p_star_vi1);
@@ -1396,7 +1452,6 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
     NANCHECK(skvi5);
 
     NANCHECK(pressure);
-    NANCHECK(hW);
 }
 
 ///does use derivatives

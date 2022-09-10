@@ -4366,6 +4366,16 @@ value get_cacheable_W(equation_context& ctx, standard_arguments& args, matter& m
 
 namespace hydrodynamics
 {
+    void build_W(equation_context& ctx)
+    {
+        standard_arguments args(ctx);
+        matter& matt = args.matt;
+
+        value sW = get_cacheable_W(ctx, args, args.matt);
+
+        ctx.add("init_W", sW);
+    }
+
     void build_intermediate_variables_derivatives(equation_context& ctx)
     {
         standard_arguments args(ctx);
@@ -4406,8 +4416,13 @@ namespace hydrodynamics
             ctx.add("init_skvi" + std::to_string(i), cSk_vi.idx(index.x(), index.y()));
         }
 
+        ///this is a derivative. Therefore we aren't derivative free
+        //#define QUADRATIC_VISCOSITY_MODIFIES_PRESSURE
+        #ifdef QUADRATIC_VISCOSITY_MODIFIES_PRESSURE
+        pressure += matt.calculate_PQvis(ctx, args.gA, args.gB, icY, matter_X_2(args.X), sW);
+        #endif // QUADRATIC_VISCOSITY_MODIFIES_PRESSURE
+
         ctx.add("init_pressure", pressure);
-        ctx.add("init_W", sW);
     }
 
     void build_equations(equation_context& ctx)
