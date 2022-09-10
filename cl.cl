@@ -1275,6 +1275,7 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
                                    __global float* p_star_vi0, __global float* p_star_vi1, __global float* p_star_vi2,
                                    __global float* e_star_vi0, __global float* e_star_vi1, __global float* e_star_vi2,
                                    __global float* skvi0, __global float* skvi1, __global float* skvi2, __global float* skvi3, __global float* skvi4, __global float* skvi5,
+                                   __global float* pressure,
                                    __global float* hW,
                                    float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve)
 {
@@ -1336,6 +1337,7 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
         skvi4[index] = 0;
         skvi5[index] = 0;
 
+        pressure[index] = 0;
         hW[index] = 0;
         return;
     }
@@ -1357,6 +1359,7 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
     float lskvi4 = init_skvi4;
     float lskvi5 = init_skvi5;
 
+    float cpress = init_pressure;
     float W_var = init_W;
 
     p_star_vi0[index] = pstarvi0;
@@ -1374,6 +1377,7 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
     skvi4[index] = lskvi4;
     skvi5[index] = lskvi5;
 
+    pressure[index] = cpress;
     hW[index] = W_var;
 
     NANCHECK(p_star_vi0);
@@ -1391,6 +1395,7 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
     NANCHECK(skvi4);
     NANCHECK(skvi5);
 
+    NANCHECK(pressure);
     NANCHECK(hW);
 }
 
@@ -1403,6 +1408,7 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
                       __global float* p_star_vi0, __global float* p_star_vi1, __global float* p_star_vi2,
                       __global float* e_star_vi0, __global float* e_star_vi1, __global float* e_star_vi2,
                       __global float* skvi0, __global float* skvi1, __global float* skvi2, __global float* skvi3, __global float* skvi4, __global float* skvi5,
+                      __global float* pressure,
                       __global float* hW,
                       float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve, float timestep)
 {
