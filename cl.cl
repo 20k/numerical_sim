@@ -1399,6 +1399,42 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
     NANCHECK(hW);
 }
 
+__kernel
+void add_hydro_artificial_viscosity(__global ushort4* points, int point_count,
+                                   STANDARD_ARGS(),
+                                   __global float* p_star_vi0, __global float* p_star_vi1, __global float* p_star_vi2,
+                                   __global float* e_star_vi0, __global float* e_star_vi1, __global float* e_star_vi2,
+                                   __global float* skvi0, __global float* skvi1, __global float* skvi2, __global float* skvi3, __global float* skvi4, __global float* skvi5,
+                                   __global float* pressure,
+                                   __global float* hW,
+                                  float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve)
+{
+
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
+
+    if(((order & D_FULL) == 0 && ((order & D_LOW) == 0)) || should_evolve[index] == 0)
+        return;
+
+    float TEMPORARIEShydroviscosity;
+
+    float added = init_artificial_viscosity;
+
+    if(added == 0)
+        return;
+
+    pressure[IDX(ix,iy,iz)] += added;
+}
+
 ///does use derivatives
 __kernel
 void evolve_hydro_all(__global ushort4* points, int point_count,

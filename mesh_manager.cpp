@@ -365,6 +365,31 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
     }
 
     {
+        cl::args visco;
+        visco.push_back(points_set.all_points);
+        visco.push_back(points_set.all_count);
+
+        for(auto& buf : in.buffers)
+        {
+            visco.push_back(buf.buf.as_device_read_only());
+        }
+
+        for(auto& i : intermediates)
+        {
+            visco.push_back(i);
+        }
+
+        visco.push_back(w_buf);
+
+        visco.push_back(scale);
+        visco.push_back(clsize);
+        visco.push_back(points_set.order);
+        visco.push_back(hydro_st.should_evolve);
+
+        cqueue.exec("add_hydro_artificial_viscosity", visco, {points_set.all_count}, {128});
+    }
+
+    {
         cl::args evolve;
         evolve.push_back(points_set.all_points);
         evolve.push_back(points_set.all_count);

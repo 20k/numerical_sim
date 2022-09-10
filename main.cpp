@@ -4408,6 +4408,20 @@ namespace hydrodynamics
         ctx.add("init_W", sW);
     }
 
+    void build_artificial_viscosity(equation_context& ctx)
+    {
+        standard_arguments args(ctx);
+        matter& matt = args.matt;
+
+        value sW = bidx("hW", ctx.uses_linear, false);
+
+        inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+        value PQvis = matt.calculate_PQvis(ctx, args.gA, args.gB, icY, matter_X_2(args.X), sW);
+
+        ctx.add("init_artificial_viscosity", PQvis);
+    }
+
     void build_equations(equation_context& ctx)
     {
         standard_arguments args(ctx);
@@ -7243,6 +7257,11 @@ int main()
 
     printf("Post interm\n");
 
+    equation_context hydro_viscosity;
+    hydrodynamics::build_artificial_viscosity(hydro_viscosity);
+
+    printf("Post viscosity\n");
+
     equation_context hydro_final;
     hydrodynamics::build_equations(hydro_final);
 
@@ -7277,6 +7296,7 @@ int main()
     dtgB.build(argument_string, "tgb");
 
     hydro_intermediates.build(argument_string, "hydrointermediates");
+    hydro_viscosity.build(argument_string, "hydroviscosity");
     hydro_final.build(argument_string, "hydrofinal");
     build_hydro_quantities.build(argument_string, "hydroconvert");
 
