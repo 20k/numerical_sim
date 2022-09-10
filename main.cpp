@@ -2313,7 +2313,9 @@ struct matter
 
         for(int k=0; k < 3; k++)
         {
-            ret.idx(k) += -gA * divide_with_limit(value{1}, chi_to_e_m6phi(chi), 0.f, DIVISION_TOL) * diff1(ctx, P, k);
+            //ret.idx(k) += -gA * divide_with_limit(value{1}, chi_to_e_m6phi(chi), 0.f, DIVISION_TOL) * diff1(ctx, P, k);
+
+            ret.idx(k) += -gA * chi_to_e_6phi(chi) * diff1(ctx, P, k);
 
             ret.idx(k) += -W * h * diff1(ctx, gA, k);
 
@@ -5482,7 +5484,7 @@ void build_cGi(equation_context& ctx, bool use_matter)
 
     tensor<value, 3> Yij_Kj;
 
-    #define PAPER_1205_5111
+    //#define PAPER_1205_5111
     #ifdef PAPER_1205_5111
     for(int i=0; i < 3; i++)
     {
@@ -5587,7 +5589,7 @@ void build_cGi(equation_context& ctx, bool use_matter)
 
         ///https://arxiv.org/pdf/1205.5111v1.pdf 50
         ///made it to 70+ and then i got bored, but the simulation was meaningfully different
-        #define EQ_50
+        //#define EQ_50
         #ifdef EQ_50
         auto step = [](const value& in)
         {
@@ -5614,7 +5616,7 @@ void build_cGi(equation_context& ctx, bool use_matter)
 
         //#define YBS
         #ifdef YBS
-        value E = 1;
+        value E = 0.5;
 
         {
             value sum = 0;
