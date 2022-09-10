@@ -1472,9 +1472,9 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
 
     ///clamping to 0.05 this fixes some issues
     ///this makes a big difference to stability around collisions
-    fin_cS0 = clamp(fin_cS0, -0.15f, 0.15f);
-    fin_cS1 = clamp(fin_cS1, -0.15f, 0.15f);
-    fin_cS2 = clamp(fin_cS2, -0.15f, 0.15f);
+    fin_cS0 = clamp(fin_cS0, -0.05f, 0.05f);
+    fin_cS1 = clamp(fin_cS1, -0.05f, 0.05f);
+    fin_cS2 = clamp(fin_cS2, -0.05f, 0.05f);
 
     /*fin_cS0 = clamp(fin_cS0, -1.f, 1.f);
     fin_cS1 = clamp(fin_cS1, -1.f, 1.f);

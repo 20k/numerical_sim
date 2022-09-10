@@ -2106,6 +2106,7 @@ struct matter
 
         #define V_UPPER_ALT
         #ifdef V_UPPER_ALT
+        ///https://arxiv.org/pdf/gr-qc/9908027.pdf (2.12)
         value h = calculate_h_with_gamma_eos(chi, W);
 
         tensor<value, 3> ret = -gB;
@@ -2164,9 +2165,6 @@ struct matter
         value h = calculate_h_with_gamma_eos(chi, W);
         value em6phi = chi_to_e_m6phi_unclamped(chi);
 
-        value p0 = calculate_p0(chi, W);
-        value eps = calculate_eps(chi, W);
-
         return h * W * em6phi - gamma_eos_from_e_star(chi, W);
     }
 
@@ -2178,7 +2176,7 @@ struct matter
     }
 
     ///the reason to calculate X_Sij is that its regular in terms of chi
-    tensor<value, 3, 3> calculate_adm_X_Sij(const value& chi, const value& W, const unit_metric<value, 3, 3>& cY)
+    /*tensor<value, 3, 3> calculate_adm_X_Sij(const value& chi, const value& W, const unit_metric<value, 3, 3>& cY)
     {
         value em6phi = chi_to_e_m6phi_unclamped(chi);
         value h = calculate_h_with_gamma_eos(chi, W);
@@ -2208,6 +2206,40 @@ struct matter
         tensor<value, 3, 3> XSij = calculate_adm_X_Sij(chi, W, cY);
 
         tensor<value, 3, 3> raised = raise_index_generic(XSij, icY, 0);
+
+        value sum = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            sum += raised.idx(i, i);
+        }
+
+        return sum;
+    }*/
+
+    tensor<value, 3, 3> calculate_adm_Sij(const value& chi, const value& W, const unit_metric<value, 3, 3>& cY)
+    {
+        value em6phi = chi_to_e_m6phi_unclamped(chi);
+        value h = calculate_h_with_gamma_eos(chi, W);
+
+        tensor<value, 3, 3> Sij;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                Sij.idx(i, j) = divide_with_limit(em6phi, W * h, 0.f, DIVISION_TOL) * cS.idx(i) * cS.idx(j);
+            }
+        }
+
+        return Sij + gamma_eos_from_e_star(chi, W) * (cY.to_tensor() / max(chi, 0.001f));
+    }
+
+    value calculate_adm_S(const unit_metric<value, 3, 3>& cY, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
+    {
+        tensor<value, 3, 3> Sij = calculate_adm_Sij(chi, W, cY);
+
+        tensor<value, 3, 3> raised = raise_index_generic(Sij, chi * icY, 0);
 
         value sum = 0;
 
@@ -5413,7 +5445,9 @@ void build_cA(equation_context& ctx, bool use_matter)
 
                 ctx.pin(W);
 
-                tensor<value, 3, 3> xSij = args.matt.calculate_adm_X_Sij(X, W, cY);
+                //tensor<value, 3, 3> xSij = args.matt.calculate_adm_X_Sij(X, W, cY);
+
+                tensor<value, 3, 3> xSij = X * args.matt.calculate_adm_Sij(X, W, cY);
 
                 tensor<value, 3, 3> xgASij = gpu_trace_free(-8 * M_PI * gA * xSij, cY, icY);
 
