@@ -1812,7 +1812,7 @@ void render(STANDARD_ARGS(),
 
         real = w4_real;
 
-        real = fabs(real) * 10.f;
+        real = fabs(real) * 30.f;
 
         real = clamp(real, 0.f, 1.f);
     }
