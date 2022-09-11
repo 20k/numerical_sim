@@ -3065,9 +3065,7 @@ void trace_waves(STANDARD_ARGS(),
 
                 real = w4_real;
 
-                real = fabs(real) * 1.f;
-
-                real = clamp(real, 0.f, 1.f);
+                real = fabs(real);
             }
 
             max_scalar = max(max_scalar, real);
@@ -3076,9 +3074,10 @@ void trace_waves(STANDARD_ARGS(),
         p0 += pixel_direction.x;
         p1 += pixel_direction.y;
         p2 += pixel_direction.z;
-    }
 
-    max_scalar = max_scalar * 4;
+        if(max_scalar >= 1.f)
+            break;
+    }
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 

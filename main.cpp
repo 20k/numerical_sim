@@ -3990,7 +3990,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    //#define PAPER_0610128
+    #define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -4058,7 +4058,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif
 
-    #define NEUTRON_BLACK_HOLE_MERGE
+    //#define NEUTRON_BLACK_HOLE_MERGE
     #ifdef NEUTRON_BLACK_HOLE_MERGE
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -6078,7 +6078,7 @@ tensor<T, 4> tensor_project_upper(const tensor<T, 4>& in, const value& gA, const
 inline
 void extract_waveforms(equation_context& ctx)
 {
-    ctx.order = 1;
+    ctx.order = 2;
     ctx.use_precise_differentiation = false;
     printf("Extracting waveforms\n");
 
@@ -7659,7 +7659,13 @@ int main()
 
         if(should_render || snap)
         {
-            if(rendering_method == 0)
+            bool not_skipped = render_skipping ? ((current_skip_frame % skip_frames) == 0) : true;
+
+            not_skipped = not_skipped || snap;
+
+            current_skip_frame = (current_skip_frame + 1) % skip_frames;
+
+            if(rendering_method == 0 && not_skipped)
             {
                 cl::args render_args;
 
@@ -7682,7 +7688,7 @@ int main()
                 clctx.cqueue.exec("trace_metric", render_args, {width, height}, {16, 16});
             }
 
-            if(rendering_method == -1)
+            if(rendering_method == -1 && not_skipped)
             {
                 cl::args render_args;
 
@@ -7709,12 +7715,6 @@ int main()
 
                 clctx.cqueue.exec("trace_waves", render_args, {width, height}, {16, 16});
             }
-
-            bool not_skipped = render_skipping ? ((current_skip_frame % skip_frames) == 0) : true;
-
-            not_skipped = not_skipped || snap;
-
-            current_skip_frame = (current_skip_frame + 1) % skip_frames;
 
             if(rendering_method == 1 && not_skipped)
             {
@@ -7829,7 +7829,7 @@ int main()
             }
         }
 
-        if(rendering_method == 2 && snap)
+        /*if(rendering_method == 2 && snap)
         {
             cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
             cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
@@ -7880,7 +7880,7 @@ int main()
             step_args.push_back(timestep);
 
             clctx.cqueue.exec("step_accurate_rays", step_args, {width * height}, {128});
-        }
+        }*/
 
         cl::event next_event = rtex[which_texture].unacquire(clctx.cqueue);
 
