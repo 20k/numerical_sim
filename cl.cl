@@ -1812,7 +1812,7 @@ void render(STANDARD_ARGS(),
 
         real = w4_real;
 
-        real = fabs(real) * 1000.f;
+        real = fabs(real) * 100.f;
 
         real = clamp(real, 0.f, 1.f);
     }
@@ -3079,7 +3079,7 @@ void trace_waves(STANDARD_ARGS(),
             break;
     }
 
-    max_scalar = (max_scalar - 0.2f) * 2.f;
+    max_scalar = (max_scalar) * 3.f;
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 
