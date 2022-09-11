@@ -2996,3 +2996,91 @@ void trace_metric(STANDARD_ARGS(),
 
     write_imagef(screen, (int2)(x, y), (float4)(max_scalar, max_scalar, max_scalar, 1));
 }
+
+__kernel
+void trace_waves(STANDARD_ARGS(),
+                 STANDARD_DERIVS(),
+                 float scale, float3 camera_pos, float4 camera_quat,
+                 int4 dim, __write_only image2d_t screen)
+{
+    int x = get_global_id(0);
+    int y = get_global_id(1);
+
+    if(x >= get_image_width(screen))
+        return;
+
+    if(y >= get_image_height(screen))
+        return;
+
+    float world_half = ((dim.x - 1) / 2.f);
+    float3 centre = (float3)(world_half, world_half, world_half);
+
+    float check_radius = world_half - 10;
+
+    float width = get_image_width(screen);
+    float height = get_image_height(screen);
+
+    ///ray location
+    float3 pos = world_to_voxel(camera_pos, dim, scale);
+
+    pos = clamp(pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    ///temporary while i don't do interpolation
+    float p0 = pos.x;
+    float p1 = pos.y;
+    float p2 = pos.z;
+
+    float FOV = 90;
+
+    float fov_rad = (FOV / 360.f) * 2 * M_PI;
+
+    float nonphysical_plane_half_width = width/2;
+    float nonphysical_f_stop = nonphysical_plane_half_width / tan(fov_rad/2);
+
+    float3 pixel_direction = {x - width/2, y - height/2, nonphysical_f_stop};
+
+    pixel_direction = rot_quat(normalize(pixel_direction), camera_quat);
+
+    float max_scalar = 0;
+
+    for(int iteration=0; iteration < 8000; iteration++)
+    {
+        if(p0 < BORDER_WIDTH || p0 >= dim.x - BORDER_WIDTH - 1 || p1 < BORDER_WIDTH || p1 >= dim.y - BORDER_WIDTH - 1 || p2 < BORDER_WIDTH || p2 >= dim.z - BORDER_WIDTH - 1)
+            break;
+
+        if(fast_length((float3)(p0, p1, p2) - centre) >= check_radius)
+            break;
+
+        {
+            int ix = p0;
+            int iy = p1;
+            int iz = p2;
+
+            float3 offset = transform_position(ix, iy, iz, dim, scale);
+
+            float real = 0;
+
+            {
+                float TEMPORARIES4;
+
+                real = w4_real;
+
+                real = fabs(real) * 1.f;
+
+                real = clamp(real, 0.f, 1.f);
+            }
+
+            max_scalar = max(max_scalar, real);
+        }
+
+        p0 += pixel_direction.x;
+        p1 += pixel_direction.y;
+        p2 += pixel_direction.z;
+    }
+
+    max_scalar = max_scalar * 4;
+
+    max_scalar = clamp(max_scalar, 0.f, 1.f);
+
+    write_imagef(screen, (int2)(x, y), (float4)(max_scalar, max_scalar, max_scalar, 1));
+}

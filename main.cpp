@@ -6078,7 +6078,7 @@ tensor<T, 4> tensor_project_upper(const tensor<T, 4>& in, const value& gA, const
 inline
 void extract_waveforms(equation_context& ctx)
 {
-    ctx.order = 4;
+    ctx.order = 1;
     ctx.use_precise_differentiation = false;
     printf("Extracting waveforms\n");
 
@@ -7680,6 +7680,34 @@ int main()
                 render_args.push_back(rtex[which_texture]);
 
                 clctx.cqueue.exec("trace_metric", render_args, {width, height}, {16, 16});
+            }
+
+            if(rendering_method == -1)
+            {
+                cl::args render_args;
+
+                auto buffers = last_valid_buffer;
+
+                for(auto& i : buffers)
+                {
+                    render_args.push_back(i.as_device_read_only());
+                }
+
+                for(auto& i : last_valid_thin)
+                {
+                    render_args.push_back(i.as_device_read_only());
+                }
+
+                cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
+                cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
+
+                render_args.push_back(scale);
+                render_args.push_back(ccamera_pos);
+                render_args.push_back(ccamera_quat);
+                render_args.push_back(clsize);
+                render_args.push_back(rtex[which_texture]);
+
+                clctx.cqueue.exec("trace_waves", render_args, {width, height}, {16, 16});
             }
 
             bool not_skipped = render_skipping ? ((current_skip_frame % skip_frames) == 0) : true;
