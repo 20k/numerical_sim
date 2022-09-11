@@ -3015,7 +3015,7 @@ void trace_waves(STANDARD_ARGS(),
     float world_half = ((dim.x - 1) / 2.f);
     float3 centre = (float3)(world_half, world_half, world_half);
 
-    float check_radius = world_half - 10;
+    float check_radius = world_half - 20;
 
     float width = get_image_width(screen);
     float height = get_image_height(screen);
@@ -3065,10 +3065,10 @@ void trace_waves(STANDARD_ARGS(),
 
                 real = w4_real;
 
-                real = fabs(real);
+                real = fabs(real) * 0.1f;
             }
 
-            max_scalar = max(max_scalar, real);
+            max_scalar += real;
         }
 
         p0 += pixel_direction.x;
@@ -3078,6 +3078,8 @@ void trace_waves(STANDARD_ARGS(),
         if(max_scalar >= 1.f)
             break;
     }
+
+    max_scalar = (max_scalar - 0.2f) * 2.f;
 
     max_scalar = clamp(max_scalar, 0.f, 1.f);
 
