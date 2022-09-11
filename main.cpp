@@ -6238,42 +6238,57 @@ void extract_waveforms(equation_context& ctx)
 
     value s = pos.length();
 
+    value theta = acos(pos.z() / s);
+
     ///https://arxiv.org/pdf/1606.02532.pdf (94)
     ///s is a scalar, so I think this is the covariant derivative?
     tensor<value, 3> s_j = {s.differentiate("offset.x"), s.differentiate("offset.y"), s.differentiate("offset.z")};
 
+    tensor<value, 3> d_theta = {theta.differentiate("offset.x"), theta.differentiate("offset.y"), theta.differentiate("offset.z")};
+
     value s_j_len = 0;
+    value d_theta_len = 0;
 
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
             s_j_len += iYij.idx(i, j) * s_j.idx(i) * s_j.idx(j);
+            d_theta_len = iYij.idx(i, j) * d_theta.idx(i) * d_theta.idx(j);
         }
     }
 
     s_j_len = sqrt(s_j_len);
+    d_theta_len = sqrt(d_theta_len);
 
     tensor<value, 3> e_s;
+    tensor<value, 3> d_s;
 
     for(int i=0; i < 3; i++)
     {
         value sum = 0;
+        value sum2 = 0;
 
         for(int j=0; j < 3; j++)
         {
             sum += iYij.idx(i, j) * s_j.idx(j) / s_j_len;
+            sum2 += iYij.idx(i, j) * d_theta.idx(j) / d_theta_len;
         }
 
         e_s.idx(i) = sum;
+        d_s.idx(i) = sum2;
     }
 
+
+    //tensor<value, 3> s2 = {s.}
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///https://arxiv.org/pdf/gr-qc/0104063.pdf 5.7. I already have code for doing this but lets stay exact
 
     vec<3, value> v1ai = {e_s.idx(0), e_s.idx(1), e_s.idx(2)};
-    vec<3, value> v2ai = {-pos.y(), pos.x(), 0};
+    //vec<3, value> v2ai = {-pos.y(), pos.x(), 0};
+
+    vec<3, value> v2ai = {d_s.idx(0), d_s.idx(1), d_s.idx(2)};
 
     vec<3, value> v3ai;
 
