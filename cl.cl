@@ -427,6 +427,12 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
 
+    if(gA[index] < 0)
+        gA[index] = 0;
+
+    if(X[index] < 0)
+        X[index] = 0;
+
     #ifndef NO_CAIJYY
 
     float found_det = CY_DET;
