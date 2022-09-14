@@ -1444,9 +1444,17 @@ namespace neutron_star
     struct params
     {
         float mass = 0; ///... bare mass? adm mass? rest mass?
+        float compactness = 0;
         tensor<float, 3> position;
         tensor<float, 3> linear_momentum;
         tensor<float, 3> angular_momentum;
+
+        float get_radius() const
+        {
+            assert(compactness != 0);
+
+            return mass / compactness;
+        }
     };
 
     template<typename T>
@@ -1475,17 +1483,17 @@ namespace neutron_star
         value mass_energy_density;
     };
 
-    inline
+    /*inline
     float compactness()
     {
         return 0.06f;
-    }
+    }*/
 
     template<typename T>
     inline
-    T mass_to_radius(const T& mass)
+    T mass_to_radius(const T& mass, const T& compactness)
     {
-        T radius = mass / compactness();
+        T radius = mass / compactness;
 
         return radius;
     }
@@ -1496,9 +1504,12 @@ namespace neutron_star
     ///todo: make a general sampler
     template<typename T>
     inline
-    data<T> sample_interior(const T& coordinate_radius, const T& mass)
+    data<T> sample_interior(const T& coordinate_radius, const T& mass, const T& compactness)
     {
-        T radius = mass_to_radius(mass);
+        if constexpr(std::is_same_v<T, float>)
+            assert(compactness != 0);
+
+        T radius = mass_to_radius(mass, compactness);
 
         T xi = M_PI * coordinate_radius / radius;
 
@@ -1532,7 +1543,7 @@ namespace neutron_star
         ret.rest_mass_density = p_xi;
         ret.k = k;
 
-        ret.compactness = compactness();
+        ret.compactness = compactness;
         ret.radius = radius;
         ret.mass = mass;
 
@@ -1573,7 +1584,7 @@ namespace neutron_star
         tensor<value, 3> vposition = {p.position.x(), p.position.y(), p.position.z()};
         tensor<value, 3> phi_position = direction * coordinate_radius + vposition;
 
-        data<value> non_conformal = sample_interior(coordinate_radius, value{p.mass});
+        data<value> non_conformal = sample_interior(coordinate_radius, value{p.mass}, value{p.compactness});
 
         value phi = tov_phi_at_coordinate(phi_position);
 
@@ -1590,7 +1601,7 @@ namespace neutron_star
     inline
     value calculate_M_factor(const params& p, T&& tov_phi_at_coordinate)
     {
-        float radius = mass_to_radius(p.mass);
+        float radius = p.get_radius();
 
         auto integration_func = [&](float coordinate_radius)
         {
@@ -1618,7 +1629,7 @@ namespace neutron_star
     value calculate_integral_Q(equation_context& ctx, const value& coordinate_radius, const params& p, const value& M_factor, T&& tov_phi_at_coordinate)
     {
         ///currently impossible, but might as well
-        if(mass_to_radius(p.mass) == 0)
+        if(p.get_radius() == 0)
             return 1;
 
         auto integral_func = [&ctx, p, &M_factor, tov_phi_at_coordinate](const value& rp)
@@ -1628,7 +1639,7 @@ namespace neutron_star
 
         value integrated = integrate_1d(integral_func, 16, coordinate_radius, value{0.f});
 
-        return dual_types::if_v(coordinate_radius > value{mass_to_radius(p.mass)},
+        return dual_types::if_v(coordinate_radius > value{p.get_radius()},
                                 1.f,
                                 integrated);
     }
@@ -1638,7 +1649,7 @@ namespace neutron_star
     inline
     value calculate_integral_C(equation_context& ctx, const value& coordinate_radius, const params& p, const value& M_factor, T&& tov_phi_at_coordinate)
     {
-        if(mass_to_radius(p.mass) == 0)
+        if(p.get_radius() == 0)
             return 0;
 
         auto integral_func = [p, &M_factor, tov_phi_at_coordinate](const value& rp)
@@ -1648,7 +1659,7 @@ namespace neutron_star
 
         value integrated = integrate_1d(integral_func, 16, coordinate_radius, value{0.f});
 
-        return dual_types::if_v(coordinate_radius > mass_to_radius(p.mass),
+        return dual_types::if_v(coordinate_radius > p.get_radius(),
                                 0.f,
                                 integrated);
     }
@@ -1754,7 +1765,7 @@ namespace neutron_star
 
         value ppw2p = (cdata.mass_energy_density + cdata.pressure) * W2 - cdata.pressure;
 
-        return if_v(r > mass_to_radius(param.mass),
+        return if_v(r > param.get_radius(),
                     value{0},
                     ppw2p);
     }
@@ -2703,6 +2714,9 @@ namespace compact_object
         tensor<float, 3> momentum;
         tensor<float, 3> angular_momentum;
 
+        ///only for neutron stars, 0.06 for compat reasons
+        float matter_compactness = 0.06;
+
         type t = BLACK_HOLE;
     };
 
@@ -2804,6 +2818,7 @@ tensor<value, 3, 3> calculate_bcAij_generic(equation_context& ctx, const tensor<
             neutron_star::params p;
             p.position = obj.position;
             p.mass = obj.bare_mass;
+            p.compactness = obj.matter_compactness;
             p.linear_momentum = obj.momentum;
             p.angular_momentum = obj.angular_momentum;
 
@@ -3102,7 +3117,7 @@ private:
 
         value coordinate_radius = from_object.length();
 
-        neutron_star::data<value> dat = neutron_star::sample_interior(coordinate_radius, value{obj.bare_mass});
+        neutron_star::data<value> dat = neutron_star::sample_interior(coordinate_radius, value{obj.bare_mass}, value{obj.matter_compactness});
 
         value rho = dat.mass_energy_density;
 
@@ -3113,7 +3128,7 @@ private:
         equation_context ctx;
         ctx.add("B_PHI_RHS", phi_rhs);
 
-        float radius = neutron_star::mass_to_radius(obj.bare_mass);
+        float radius = neutron_star::mass_to_radius(obj.bare_mass, obj.matter_compactness);
 
         value cst = 1 + obj.bare_mass / (2 * max(coordinate_radius, 1e-3f));
 
@@ -3232,6 +3247,7 @@ private:
         neutron_star::params p;
         p.position = obj.position;
         p.mass = obj.bare_mass;
+        p.compactness = obj.matter_compactness;
         p.linear_momentum = obj.momentum;
         p.angular_momentum = obj.angular_momentum;
 
@@ -3323,12 +3339,13 @@ struct superimposed_gpu_data
 
         value coordinate_radius = from_object.length();
 
-        float radius = neutron_star::mass_to_radius(obj.bare_mass);
+        float radius = neutron_star::mass_to_radius(obj.bare_mass, obj.matter_compactness);
 
         ///todo: remove the duplication?
         neutron_star::params p;
         p.position = obj.position;
         p.mass = obj.bare_mass;
+        p.compactness = obj.matter_compactness;
         p.linear_momentum = obj.momentum;
         p.angular_momentum = obj.angular_momentum;
 
@@ -3502,6 +3519,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
             neutron_star::params p;
             p.position = obj.position;
             p.mass = obj.bare_mass;
+            p.compactness = obj.matter_compactness;
             p.linear_momentum = obj.momentum;
             p.angular_momentum = obj.angular_momentum;
 
@@ -3990,7 +4008,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    #define PAPER_0610128
+    //#define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -4076,7 +4094,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #endif // NEUTRON_BLACK_HOLE_MERGE
 
     ///defined for a compactness of 0.02 sigh
-    //#define GAS_CLOUD_BLACK_HOLE
+    #define GAS_CLOUD_BLACK_HOLE
     #ifdef GAS_CLOUD_BLACK_HOLE
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -4086,9 +4104,12 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     compact_object::data h2;
     h2.t = compact_object::NEUTRON_STAR;
+    h2.matter_compactness = 0.02f;
     h2.bare_mass = 0.09;
     h2.momentum = {0, -0.133 * 0.8 * 0.20, 0};
     h2.position = {4.257, 3.f, 0.f};
+
+    objects = {h1, h2};
     #endif // GAS_CLOUD_BLACK_HOLE
 
     //#define REGULAR_MERGE
