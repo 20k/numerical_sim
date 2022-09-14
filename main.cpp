@@ -1362,7 +1362,7 @@ T chi_to_e_m6phi_unclamped(const T& chi)
     return pow(max(chi, T{0.f}), (3.f/2.f));
 }
 
-#define DIVISION_TOL 0.0001f
+#define DIVISION_TOL 0.00001f
 
 ///https://arxiv.org/pdf/gr-qc/0209102.pdf (29)
 ///constant_1 is chi * icYij * cSi cSj
@@ -4094,7 +4094,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #endif // NEUTRON_BLACK_HOLE_MERGE
 
     ///defined for a compactness of 0.02 sigh
-    #define GAS_CLOUD_BLACK_HOLE
+    //#define GAS_CLOUD_BLACK_HOLE
     #ifdef GAS_CLOUD_BLACK_HOLE
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -4111,6 +4111,26 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     objects = {h1, h2};
     #endif // GAS_CLOUD_BLACK_HOLE
+
+    ///this is an extremely cool matter case
+    #define NEUTRON_ACCRETION
+    #ifdef NEUTRON_ACCRETION
+    compact_object::data h1;
+    h1.t = compact_object::NEUTRON_STAR;
+    h1.bare_mass = 0.2;
+    h1.matter_compactness = 0.08;
+    h1.momentum = {0, 0.133 * 0.8 * 0.2, 0};
+    h1.position = {-6.257, 0.f, 0.f};
+
+    compact_object::data h2;
+    h2.t = compact_object::NEUTRON_STAR;
+    h2.matter_compactness = 0.025f;
+    h2.bare_mass = 0.2;
+    h2.momentum = {0, -0.133 * 0.8 * 0.20, 0};
+    h2.position = {5.257, 0.f, 0.f};
+
+    objects = {h1, h2};
+    #endif // NEUTRON_ACCRETION
 
     //#define REGULAR_MERGE
     #ifdef REGULAR_MERGE

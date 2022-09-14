@@ -1216,7 +1216,7 @@ void evolve_gB(__global ushort4* points, int point_count,
     NANCHECK(ogB2);
 }
 
-#define MIN_P_STAR 1e-5f
+#define MIN_P_STAR 1e-6f
 
 #define HYDRO_ORDER 2
 
