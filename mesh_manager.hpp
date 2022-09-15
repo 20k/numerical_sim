@@ -34,11 +34,17 @@ struct named_buffer
     named_buffer(cl::context& ctx) : buf(ctx){}
 };
 
+struct buffer_set_cfg
+{
+    bool use_matter = false;
+    bool use_matter_colour = false;
+};
+
 struct buffer_set
 {
     std::vector<named_buffer> buffers;
 
-    buffer_set(cl::context& ctx, vec3i size, bool use_matter);
+    buffer_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg);
 
     named_buffer& lookup(const std::string& name);
 };
@@ -86,6 +92,7 @@ struct cpu_mesh_settings
     bool use_half_intermediates = false;
     bool calculate_momentum_constraint = false;
     bool use_matter = false;
+    bool use_matter_colour = false;
 };
 
 struct cpu_mesh

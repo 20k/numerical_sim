@@ -3,56 +3,70 @@
 #include <execution>
 #include <iostream>
 
-buffer_set::buffer_set(cl::context& ctx, vec3i size, bool use_matter)
+buffer_set::buffer_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
 {
     ///often 1 is used here as well. Seems to make a noticable difference to reflections
     float gauge_wave_speed = sqrt(2);
 
-    std::vector<std::tuple<std::string, std::string, float, float, float, bool>> values =
+    std::vector<std::tuple<std::string, std::string, float, float, float, int>> values =
     {
-        {"cY0", "evolve_cY", cpu_mesh::dissipate_low, 1, 1, false},
-        {"cY1", "evolve_cY", cpu_mesh::dissipate_low, 0, 1, false},
-        {"cY2", "evolve_cY", cpu_mesh::dissipate_low, 0, 1, false},
-        {"cY3", "evolve_cY", cpu_mesh::dissipate_low, 1, 1, false},
-        {"cY4", "evolve_cY", cpu_mesh::dissipate_low, 0, 1, false},
-        {"cY5", "evolve_cY", cpu_mesh::dissipate_low, 1, 1, false},
+        {"cY0", "evolve_cY", cpu_mesh::dissipate_low, 1, 1, 0},
+        {"cY1", "evolve_cY", cpu_mesh::dissipate_low, 0, 1, 0},
+        {"cY2", "evolve_cY", cpu_mesh::dissipate_low, 0, 1, 0},
+        {"cY3", "evolve_cY", cpu_mesh::dissipate_low, 1, 1, 0},
+        {"cY4", "evolve_cY", cpu_mesh::dissipate_low, 0, 1, 0},
+        {"cY5", "evolve_cY", cpu_mesh::dissipate_low, 1, 1, 0},
 
-        {"cA0", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, false},
-        {"cA1", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, false},
-        {"cA2", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, false},
-        {"cA3", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, false},
-        {"cA4", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, false},
-        {"cA5", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, false},
+        {"cA0", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, 0},
+        {"cA1", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, 0},
+        {"cA2", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, 0},
+        {"cA3", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, 0},
+        {"cA4", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, 0},
+        {"cA5", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, 0},
 
-        {"cGi0", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1, false},
-        {"cGi1", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1, false},
-        {"cGi2", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1, false},
+        {"cGi0", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1, 0},
+        {"cGi1", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1, 0},
+        {"cGi2", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1, 0},
 
-        {"K", "evolve_K", cpu_mesh::dissipate_high, 0, 1, false},
-        {"X", "evolve_X", cpu_mesh::dissipate_low, 1, 1, false},
+        {"K", "evolve_K", cpu_mesh::dissipate_high, 0, 1, 0},
+        {"X", "evolve_X", cpu_mesh::dissipate_low, 1, 1, 0},
 
-        {"gA", "evolve_gA", cpu_mesh::dissipate_gauge, 1, gauge_wave_speed, false},
-        {"gB0", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, false},
-        {"gB1", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, false},
-        {"gB2", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, false},
+        {"gA", "evolve_gA", cpu_mesh::dissipate_gauge, 1, gauge_wave_speed, 0},
+        {"gB0", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 0},
+        {"gB1", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 0},
+        {"gB2", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 0},
 
-        {"Dp_star", "evolve_hydro_all", 0.25f, 0, 1, true},
-        {"De_star", "evolve_hydro_all", 0.25f, 0, 1, true},
-        {"DcS0", "evolve_hydro_all", 0.25f, 0, 1, true},
-        {"DcS1", "evolve_hydro_all", 0.25f, 0, 1, true},
-        {"DcS2", "evolve_hydro_all", 0.25f, 0, 1, true},
+        {"Dp_star", "evolve_hydro_all", 0.25f, 0, 1, 1},
+        {"De_star", "evolve_hydro_all", 0.25f, 0, 1, 1},
+        {"DcS0", "evolve_hydro_all", 0.25f, 0, 1, 1},
+        {"DcS1", "evolve_hydro_all", 0.25f, 0, 1, 1},
+        {"DcS2", "evolve_hydro_all", 0.25f, 0, 1, 1},
+
+        /*{"dRed", "evolve_advect", 0.25f, 0, 1, 2},
+        {"dGreen", "evolve_advect", 0.25f, 0, 1, 2},
+        {"dBlue", "evolve_advect", 0.25f, 0, 1, 2},*/
     };
 
     for(int kk=0; kk < (int)values.size(); kk++)
     {
         named_buffer& buf = buffers.emplace_back(ctx);
 
-        if(std::get<5>(values[kk]))
+        int type = std::get<5>(values[kk]);
+
+        if(type != 0)
         {
-            if(use_matter)
+            if(type == 1 && cfg.use_matter)
+            {
                 buf.buf.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+            }
+            else if(type == 2 && cfg.use_matter_colour)
+            {
+                buf.buf.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+            }
             else
+            {
                 buf.buf.alloc(sizeof(cl_int));
+            }
         }
         else
         {
@@ -207,8 +221,17 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::manage
     return next;
 }
 
+buffer_set_cfg get_buffer_cfg(cpu_mesh_settings sett)
+{
+    buffer_set_cfg cfg;
+    cfg.use_matter = sett.use_matter;
+    cfg.use_matter_colour = sett.use_matter_colour;
+
+    return cfg;
+}
+
 cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points) :
-        data{buffer_set(ctx, _dim, _sett.use_matter), buffer_set(ctx, _dim, _sett.use_matter)}, scratch{ctx, _dim, _sett.use_matter}, points_set{ctx},
+        data{buffer_set(ctx, _dim, get_buffer_cfg(_sett)), buffer_set(ctx, _dim, get_buffer_cfg(_sett))}, scratch{ctx, _dim, get_buffer_cfg(_sett)}, points_set{ctx},
         momentum_constraint{ctx, ctx, ctx}, hydro_st(ctx)
 {
     centre = _centre;
