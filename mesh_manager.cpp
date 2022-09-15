@@ -561,6 +561,9 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
         }
 
         dissipate_set(cqueue, colours[idx_base], colours[idx_out], points_set, timestep, dim, scale);
+
+        if(iteration != 1)
+            std::swap(colours[idx_in], colours[idx_out]);
     }
 }
 
