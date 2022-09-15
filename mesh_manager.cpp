@@ -120,6 +120,42 @@ colour_set::colour_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
     }
 }
 
+template<typename T>
+void dissipate_set(cl::managed_command_queue& mqueue, T& base_reference, T& inout, evolution_points& points_set, float timestep, vec3i dim, float scale)
+{
+    cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
+
+    for(int i=0; i < base_reference.buffers.size(); i++)
+    {
+        if(base_reference.buffers[i].buf.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z())
+            continue;
+
+        cl::args diss;
+
+        diss.push_back(points_set.all_points);
+        diss.push_back(points_set.all_count);
+
+        diss.push_back(base_reference.buffers[i].buf.as_device_read_only());
+        diss.push_back(inout.buffers[i].buf);
+
+        float coeff = inout.buffers[i].dissipation_coeff;
+
+        diss.push_back(coeff);
+        diss.push_back(scale);
+        diss.push_back(clsize);
+        diss.push_back(timestep);
+        diss.push_back(points_set.order);
+
+        if(coeff == 0)
+            continue;
+
+        mqueue.exec("dissipate_single", diss, {points_set.all_count}, {128});
+
+        //check_for_nans(inout.buffers[i].name + "_diss_single", inout.buffers[i].buf);
+    }
+}
+
+
 inline
 std::pair<cl::buffer, int> extract_buffer(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& buf, cl::buffer& count)
 {
@@ -492,12 +528,13 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
     clean_by_name("DcS1");
     clean_by_name("DcS2");
 
-    if(iteration == 0 && sett.use_matter_colour)
+    if(sett.use_matter_colour)
     {
         for(int buf_idx=0; buf_idx < colours[0].buffers.size(); buf_idx++)
         {
-            cl::buffer buf_in = colours[0].buffers[buf_idx].buf;
-            cl::buffer buf_out = colours[1].buffers[buf_idx].buf;
+            cl::buffer buf_in = colours[idx_in].buffers[buf_idx].buf;
+            cl::buffer buf_out = colours[idx_out].buffers[buf_idx].buf;
+            cl::buffer buf_base = colours[idx_base].buffers[buf_idx].buf;
 
             cl::args advect;
             advect.push_back(points_set.all_points);
@@ -510,6 +547,7 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
 
             advect.push_back(w_buf.as_device_read_only());
 
+            advect.push_back(buf_base.as_device_read_only());
             advect.push_back(buf_in.as_device_read_only());
             advect.push_back(buf_out.as_device_write_only());
 
@@ -521,6 +559,8 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
 
             cqueue.exec("hydro_advect", advect, {points_set.all_count}, {128});
         }
+
+        dissipate_set(cqueue, colours[idx_base], colours[idx_out], points_set, timestep, dim, scale);
     }
 }
 
@@ -864,39 +904,6 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     };
     #endif // 0
 
-    ///currently dissipating matter everywhere, but that's extremely unnecessary
-    auto dissipate = [&](auto& base_reference, auto& inout)
-    {
-        for(int i=0; i < base_reference.buffers.size(); i++)
-        {
-            if(base_reference.buffers[i].buf.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z())
-                continue;
-
-            cl::args diss;
-
-            diss.push_back(points_set.all_points);
-            diss.push_back(points_set.all_count);
-
-            diss.push_back(base_reference.buffers[i].buf.as_device_read_only());
-            diss.push_back(inout.buffers[i].buf);
-
-            float coeff = inout.buffers[i].dissipation_coeff;
-
-            diss.push_back(coeff);
-            diss.push_back(scale);
-            diss.push_back(clsize);
-            diss.push_back(timestep);
-            diss.push_back(points_set.order);
-
-            if(coeff == 0)
-                continue;
-
-            mqueue.exec("dissipate_single", diss, {points_set.all_count}, {128});
-
-            check_for_nans(inout.buffers[i].name + "_diss_single", inout.buffers[i].buf);
-        }
-    };
-
     auto dissipate_unidir = [&](auto& in, auto& out)
     {
         assert(in.buffers.size() == out.buffers.size());
@@ -1060,7 +1067,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
             dissipate_unidir(b2, scratch);
             enforce_constraints(scratch);
             #else
-            dissipate(data[0], data[1]);
+            dissipate_set(mqueue, data[0], data[1], points_set, timestep, dim, scale);
             enforce_constraints(data[1]);
 
             std::swap(data[1], data[2]);
@@ -1133,7 +1140,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
     std::swap(b2, scratch);
     #else
-    dissipate(data[0], data[1]);
+    dissipate_set(mqueue, data[0], data[1], points_set, timestep, dim, scale);
     #endif
 
     //dissipate(get_input().buffers, get_output().buffers);
@@ -1144,7 +1151,6 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
     if(sett.use_matter_colour)
     {
-        dissipate(colours[0], colours[1]);
         std::swap(colours[0], colours[1]);
     }
 

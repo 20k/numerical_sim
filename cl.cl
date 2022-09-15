@@ -1550,6 +1550,7 @@ __kernel
 void hydro_advect(__global ushort4* points, int point_count,
                   STANDARD_ARGS(),
                   __global float* hW,
+                  __global float* quantity_base,
                   __global float* quantity_in,
                   __global float* quantity_out,
                   float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve, float timestep)
@@ -1576,7 +1577,7 @@ void hydro_advect(__global ushort4* points, int point_count,
 
     float f_quantity = HYDRO_ADVECT;
 
-    quantity_out[IDX(ix,iy,iz)] = f_quantity * timestep + quantity_in[IDX(ix,iy,iz)];
+    quantity_out[IDX(ix,iy,iz)] = f_quantity * timestep + quantity_base[IDX(ix,iy,iz)];
 }
 
 __kernel
