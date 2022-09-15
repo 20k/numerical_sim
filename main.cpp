@@ -2705,6 +2705,12 @@ namespace compact_object
         NEUTRON_STAR,
     };
 
+    struct matter_data
+    {
+        float compactness = 0.06;
+        vec3f colour;
+    };
+
     struct data
     {
         ///in coordinate space
@@ -2714,8 +2720,7 @@ namespace compact_object
         tensor<float, 3> momentum;
         tensor<float, 3> angular_momentum;
 
-        ///only for neutron stars, 0.06 for compat reasons
-        float matter_compactness = 0.06;
+        matter_data matter;
 
         type t = BLACK_HOLE;
     };
@@ -2818,7 +2823,7 @@ tensor<value, 3, 3> calculate_bcAij_generic(equation_context& ctx, const tensor<
             neutron_star::params p;
             p.position = obj.position;
             p.mass = obj.bare_mass;
-            p.compactness = obj.matter_compactness;
+            p.compactness = obj.matter.compactness;
             p.linear_momentum = obj.momentum;
             p.angular_momentum = obj.angular_momentum;
 
@@ -3117,7 +3122,7 @@ private:
 
         value coordinate_radius = from_object.length();
 
-        neutron_star::data<value> dat = neutron_star::sample_interior(coordinate_radius, value{obj.bare_mass}, value{obj.matter_compactness});
+        neutron_star::data<value> dat = neutron_star::sample_interior(coordinate_radius, value{obj.bare_mass}, value{obj.matter.compactness});
 
         value rho = dat.mass_energy_density;
 
@@ -3128,7 +3133,7 @@ private:
         equation_context ctx;
         ctx.add("B_PHI_RHS", phi_rhs);
 
-        float radius = neutron_star::mass_to_radius(obj.bare_mass, obj.matter_compactness);
+        float radius = neutron_star::mass_to_radius(obj.bare_mass, obj.matter.compactness);
 
         value cst = 1 + obj.bare_mass / (2 * max(coordinate_radius, 1e-3f));
 
@@ -3247,7 +3252,7 @@ private:
         neutron_star::params p;
         p.position = obj.position;
         p.mass = obj.bare_mass;
-        p.compactness = obj.matter_compactness;
+        p.compactness = obj.matter.compactness;
         p.linear_momentum = obj.momentum;
         p.angular_momentum = obj.angular_momentum;
 
@@ -3339,13 +3344,13 @@ struct superimposed_gpu_data
 
         value coordinate_radius = from_object.length();
 
-        float radius = neutron_star::mass_to_radius(obj.bare_mass, obj.matter_compactness);
+        float radius = neutron_star::mass_to_radius(obj.bare_mass, obj.matter.compactness);
 
         ///todo: remove the duplication?
         neutron_star::params p;
         p.position = obj.position;
         p.mass = obj.bare_mass;
-        p.compactness = obj.matter_compactness;
+        p.compactness = obj.matter.compactness;
         p.linear_momentum = obj.momentum;
         p.angular_momentum = obj.angular_momentum;
 
@@ -3519,7 +3524,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
             neutron_star::params p;
             p.position = obj.position;
             p.mass = obj.bare_mass;
-            p.compactness = obj.matter_compactness;
+            p.compactness = obj.matter.compactness;
             p.linear_momentum = obj.momentum;
             p.angular_momentum = obj.angular_momentum;
 
@@ -4118,13 +4123,13 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.2;
-    h1.matter_compactness = 0.08;
+    h1.matter.compactness = 0.08;
     h1.momentum = {0, 0.133 * 0.8 * 0.2, 0};
     h1.position = {-6.257, 0.f, 0.f};
 
     compact_object::data h2;
     h2.t = compact_object::NEUTRON_STAR;
-    h2.matter_compactness = 0.025f;
+    h2.matter.compactness = 0.025f;
     h2.bare_mass = 0.2;
     h2.momentum = {0, -0.133 * 0.8 * 0.20, 0};
     h2.position = {5.257, 0.f, 0.f};
