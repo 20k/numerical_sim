@@ -1577,7 +1577,12 @@ void hydro_advect(__global ushort4* points, int point_count,
 
     float f_quantity = HYDRO_ADVECT;
 
-    quantity_out[IDX(ix,iy,iz)] = f_quantity * timestep + quantity_base[IDX(ix,iy,iz)];
+    float fin = f_quantity * timestep + quantity_base[IDX(ix,iy,iz)];
+
+    if(fin < 0)
+        fin = 0;
+
+    quantity_out[IDX(ix,iy,iz)] = fin;
 }
 
 __kernel

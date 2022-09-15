@@ -4505,7 +4505,7 @@ namespace hydrodynamics
 
         tensor<value, 3> vi_upper = matt.get_v_upper(icY, args.gA, args.gB, matter_X_2(args.X), sW);
 
-        value quantity = bidx("quantity_in", ctx.uses_linear, false);
+        value quantity = max(bidx("quantity_in", ctx.uses_linear, false), 0.f);
 
         value fin = 0;
 
