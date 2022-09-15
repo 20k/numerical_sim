@@ -325,9 +325,13 @@ void nan_checker(__global ushort4* points, int point_count, __global float* arg,
 
 __kernel
 void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
+                                               __global float* dRed,
+                                               __global float* dGreen,
+                                               __global float* dBlue,
                                                __global float* u_value,
                                                __global float* tov_phi,
-                                               float scale, int4 dim)
+                                               float scale, int4 dim,
+                                               int use_colour)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -400,6 +404,13 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
     NANCHECK(DcS0);
     NANCHECK(DcS1);
     NANCHECK(DcS2);
+
+    if(use_colour)
+    {
+        dRed[index] = build_cR;
+        dGreen[index] = build_cG;
+        dBlue[index] = build_cB;
+    }
 
     /*Dp_star[index] = 0;
     De_star[index] = 0;

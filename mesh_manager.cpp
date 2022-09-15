@@ -337,10 +337,19 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, std::array<cl:
             hydro_init.push_back(i.buf);
         }
 
+        for(auto& i : colours[0].buffers)
+        {
+            hydro_init.push_back(i.buf);
+        }
+
         hydro_init.push_back(u_arg);
         hydro_init.push_back(superimposed_tov_phi);
         hydro_init.push_back(scale);
         hydro_init.push_back(clsize);
+
+        cl_int use_colour = sett.use_matter_colour;
+
+        hydro_init.push_back(use_colour);
 
         cqueue.exec("calculate_hydrodynamic_initial_conditions", hydro_init, {dim.x(), dim.y(), dim.z()}, {8, 8, 1});
     }
@@ -349,6 +358,11 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, std::array<cl:
     {
         cl::copy(cqueue, data[0].buffers[i].buf, data[1].buffers[i].buf);
         cl::copy(cqueue, data[0].buffers[i].buf, scratch.buffers[i].buf);
+    }
+
+    for(int i=0; i < (int)colours[0].buffers.size(); i++)
+    {
+        cl::copy(cqueue, colours[0].buffers[i].buf, colours[1].buffers[i].buf);
     }
 }
 

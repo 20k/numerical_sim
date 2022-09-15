@@ -3504,6 +3504,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
     value rho_conformal = 0;
     value rhoH_conformal = 0;
     tensor<value, 3> Si_conformal;
+    tensor<value, 3> colour;
 
     for(const compact_object::data& obj : cpu_holes)
     {
@@ -3554,6 +3555,10 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
             ///https://arxiv.org/pdf/1606.04881.pdf (56)
             Si_conformal += vmomentum * neutron_star::calculate_sigma(rad, p, M_factor, pinning_tov_phi);
+
+            colour.x() += if_v(rad <= p.get_radius(), value{obj.matter.colour.x()}, value{0.f});
+            colour.y() += if_v(rad <= p.get_radius(), value{obj.matter.colour.y()}, value{0.f});
+            colour.z() += if_v(rad <= p.get_radius(), value{obj.matter.colour.z()}, value{0.f});
         }
     }
 
@@ -3650,6 +3655,10 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
         {
             ctx.add("build_sk" + std::to_string(k), Si_lower.idx(k));
         }
+
+        ctx.add("build_cR", colour.x());
+        ctx.add("build_cG", colour.y());
+        ctx.add("build_cB", colour.z());
     }
 }
 
