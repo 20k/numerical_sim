@@ -49,6 +49,13 @@ struct buffer_set
     named_buffer& lookup(const std::string& name);
 };
 
+struct colour_set
+{
+    std::vector<named_buffer> buffers;
+
+    colour_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg);
+};
+
 struct gpu_mesh
 {
     cl_int4 centre;

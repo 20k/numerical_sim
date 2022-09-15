@@ -59,10 +59,6 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
             {
                 buf.buf.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
             }
-            else if(type == 2 && cfg.use_matter_colour)
-            {
-                buf.buf.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
-            }
             else
             {
                 buf.buf.alloc(sizeof(cl_int));
@@ -91,6 +87,37 @@ named_buffer& buffer_set::lookup(const std::string& name)
     }
 
     assert(false);
+}
+
+colour_set::colour_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
+{
+    std::vector<std::tuple<std::string, std::string, float, float, float>> values =
+    {
+        {"dRed", "evolve_advect", 0.25f, 0, 0},
+        {"dGreen", "evolve_advect", 0.25f, 0, 0},
+        {"dBlue", "evolve_advect", 0.25f, 0, 0}
+    };
+
+    for(int kk=0; kk < (int)values.size(); kk++)
+    {
+        named_buffer& buf = buffers.emplace_back(ctx);
+
+        if(cfg.use_matter_colour)
+        {
+            buf.buf.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+        }
+        else
+        {
+            buf.buf.alloc(sizeof(cl_int));
+        }
+
+        buf.name = std::get<0>(values[kk]);
+        buf.modified_by = std::get<1>(values[kk]);
+        buf.dissipation_coeff = std::get<2>(values[kk]);
+        buf.asymptotic_value = std::get<3>(values[kk]);
+        buf.wave_speed = std::get<4>(values[kk]);
+        buf.matter_term = true;
+    }
 }
 
 inline
