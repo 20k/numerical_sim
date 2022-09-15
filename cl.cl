@@ -2500,6 +2500,11 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
 
     float3 density_col = {ray_in.R, ray_in.G, ray_in.B};
 
+    if(any(density_col > 1))
+    {
+        density_col /= max(density_col.x, max(density_col.y, density_col.z));
+    }
+
     float uni_size = universe_size;
 
     if(ray_in.hit_type == 0)
