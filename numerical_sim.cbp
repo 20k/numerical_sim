@@ -116,7 +116,6 @@
 			<Add option="-ldwrite" />
 			<Add option="-l:libtbb12.dll.a" />
 		</Linker>
-		<Unit filename="accum_cached_variables.cl" />
 		<Unit filename="cl.cl" />
 		<Unit filename="common.cl" />
 		<Unit filename="deps/geodesic/dual_value.hpp" />
