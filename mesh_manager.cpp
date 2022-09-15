@@ -352,10 +352,14 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, std::array<cl:
     }
 }
 
-void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep, int iteration)
+void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, int idx_in, int idx_out, int idx_base, float timestep, int iteration)
 {
     if(!sett.use_matter)
         return;
+
+    buffer_set& in = data[idx_in];
+    buffer_set& out = data[idx_out];
+    buffer_set& base = data[idx_base];
 
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
@@ -653,13 +657,18 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
         clean_buffer(mqueue, in_buf.buf, out_buf.buf, base_buf.buf, in_buf.asymptotic_value, in_buf.wave_speed, current_timestep);
     };
 
-    auto step = [&](auto& generic_in, auto& generic_out, float current_timestep, int iteration)
+    //auto step = [&](auto& generic_in, auto& generic_out, float current_timestep, int iteration)
+
+    auto step = [&](int idx_in, int idx_out, float current_timestep, int iteration)
     {
+        auto& generic_in = data[idx_in];
+        auto& generic_out = data[idx_out];
+
         intermediates.clear();
 
         last_valid_thin_buffer.clear();
 
-        step_hydro(ctx, mqueue, pool, generic_in, generic_out, base_yn, current_timestep, iteration);
+        step_hydro(ctx, mqueue, pool, idx_in, idx_out, 0, current_timestep, iteration);
 
         for(auto& i : generic_in.buffers)
         {
@@ -1035,9 +1044,9 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     for(int i=0; i < iterations; i++)
     {
         if(i != 0)
-            step(data[2], data[1], timestep, i);
+            step(2, 1, timestep, i);
         else
-            step(data[0], data[1], timestep, i);
+            step(0, 1, timestep, i);
 
         if(i != iterations - 1)
         {
