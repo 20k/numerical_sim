@@ -258,8 +258,8 @@ buffer_set_cfg get_buffer_cfg(cpu_mesh_settings sett)
 }
 
 cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points) :
-        data{buffer_set(ctx, _dim, get_buffer_cfg(_sett)), buffer_set(ctx, _dim, get_buffer_cfg(_sett))}, scratch{ctx, _dim, get_buffer_cfg(_sett)},
-        colours{colour_set(ctx, _dim, get_buffer_cfg(_sett)), colour_set(ctx, _dim, get_buffer_cfg(_sett))},
+        data{buffer_set(ctx, _dim, get_buffer_cfg(_sett)), buffer_set(ctx, _dim, get_buffer_cfg(_sett)), buffer_set(ctx, _dim, get_buffer_cfg(_sett))},
+        colours{colour_set(ctx, _dim, get_buffer_cfg(_sett)), colour_set(ctx, _dim, get_buffer_cfg(_sett)), colour_set(ctx, _dim, get_buffer_cfg(_sett))},
         points_set{ctx},
         momentum_constraint{ctx, ctx, ctx}, hydro_st(ctx)
 {
@@ -283,21 +283,6 @@ cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, v
             i.alloc(sizeof(cl_int));
         }
     }
-}
-
-void cpu_mesh::flip()
-{
-    which_data = (which_data + 1) % 2;
-}
-
-buffer_set& cpu_mesh::get_input()
-{
-    return data[which_data];
-}
-
-buffer_set& cpu_mesh::get_output()
-{
-    return data[(which_data + 1) % 2];
 }
 
 void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, std::array<cl::buffer, 6>& bcAij, cl::buffer& superimposed_tov_phi)
@@ -357,12 +342,13 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, std::array<cl:
     for(int i=0; i < (int)data[0].buffers.size(); i++)
     {
         cl::copy(cqueue, data[0].buffers[i].buf, data[1].buffers[i].buf);
-        cl::copy(cqueue, data[0].buffers[i].buf, scratch.buffers[i].buf);
+        cl::copy(cqueue, data[0].buffers[i].buf, data[2].buffers[i].buf);
     }
 
     for(int i=0; i < (int)colours[0].buffers.size(); i++)
     {
         cl::copy(cqueue, colours[0].buffers[i].buf, colours[1].buffers[i].buf);
+        cl::copy(cqueue, colours[0].buffers[i].buf, colours[2].buffers[i].buf);
     }
 }
 
@@ -614,12 +600,12 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
     std::vector<cl::buffer> last_valid_thin_buffer;
 
-    for(auto& i : get_input().buffers)
+    for(auto& i : data[0].buffers)
     {
         last_valid_thin_buffer.push_back(i.buf);
     }
 
-    auto& base_yn = get_input();
+    auto& base_yn = data[0];
 
     std::vector<ref_counted_buffer> intermediates;
 
@@ -1039,9 +1025,6 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
     #define BACKWARD_EULER
     #ifdef BACKWARD_EULER
-    auto& b1 = get_input();
-    auto& b2 = get_output();
-
     int iterations = 2;
 
     if(iterations == 1)
@@ -1052,9 +1035,9 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     for(int i=0; i < iterations; i++)
     {
         if(i != 0)
-            step(scratch, b2, timestep, i);
+            step(data[2], data[1], timestep, i);
         else
-            step(b1, b2, timestep, i);
+            step(data[0], data[1], timestep, i);
 
         if(i != iterations - 1)
         {
@@ -1068,12 +1051,10 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
             dissipate_unidir(b2, scratch);
             enforce_constraints(scratch);
             #else
-            ///b2 contains buffer
-            ///want to make scratch contain buffer
-            dissipate(base_yn, b2);
-            enforce_constraints(b2);
+            dissipate(data[0], data[1]);
+            enforce_constraints(data[1]);
 
-            std::swap(b2, scratch);
+            std::swap(data[1], data[2]);
             #endif // DISS_UNIDIR
         }
     }
@@ -1143,14 +1124,14 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
     std::swap(b2, scratch);
     #else
-    dissipate(base_yn, b2);
+    dissipate(data[0], data[1]);
     #endif
 
     //dissipate(get_input().buffers, get_output().buffers);
 
     //clean(scratch.buffers, b2.buffers);
 
-    enforce_constraints(b2);
+    enforce_constraints(data[1]);
 
     if(sett.use_matter_colour)
     {
@@ -1160,7 +1141,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
     mqueue.end_splice(main_queue);
 
-    flip();
+    std::swap(data[1], data[0]);
 
     return {last_valid_thin_buffer, intermediates};
 }

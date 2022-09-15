@@ -112,12 +112,8 @@ struct cpu_mesh
     int resolution_scale = 1;
     float scale = 1;
 
-    int which_data = 0;
-
-    std::array<buffer_set, 2> data;
-    buffer_set scratch;
-
-    std::array<colour_set, 2> colours;
+    std::array<buffer_set, 3> data;
+    std::array<colour_set, 3> colours;
 
     hydro_state hydro_st;
 
@@ -130,11 +126,6 @@ struct cpu_mesh
     static constexpr float dissipate_gauge = 0.25;
 
     cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points);
-
-    void flip();
-
-    buffer_set& get_input();
-    buffer_set& get_output();
 
     void init(cl::command_queue& cqueue, cl::buffer& u_arg, std::array<cl::buffer, 6>& bcAij, cl::buffer& superimposed_tov_phi);
 

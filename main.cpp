@@ -7430,7 +7430,7 @@ int main()
     std::vector<cl::buffer> last_valid_buffer;
 
     {
-        buffer_set& base_buf = base_mesh.get_input();
+        buffer_set& base_buf = base_mesh.data[0];
 
         for(named_buffer& b : base_buf.buffers)
         {
@@ -7438,7 +7438,7 @@ int main()
         }
     }
 
-    std::vector<ref_counted_buffer> last_valid_thin = base_mesh.get_derivatives_of(clctx.ctx, base_mesh.get_input(), mqueue, thin_pool);
+    std::vector<ref_counted_buffer> last_valid_thin = base_mesh.get_derivatives_of(clctx.ctx, base_mesh.data[0], mqueue, thin_pool);
 
     mqueue.block();
 
@@ -7862,7 +7862,7 @@ int main()
 
             cl::args init_args;
 
-            auto buffers = base_mesh.get_input().buffers;
+            auto buffers = base_mesh.data[0].buffers;
 
             for(auto& i : buffers)
             {
@@ -7890,7 +7890,7 @@ int main()
 
             cl::args step_args;
 
-            auto buffers = base_mesh.get_input().buffers;
+            auto buffers = base_mesh.data[0].buffers;
 
             for(auto& i : buffers)
             {
