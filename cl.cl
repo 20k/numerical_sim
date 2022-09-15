@@ -407,9 +407,9 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
 
     if(use_colour)
     {
-        dRed[index] = build_cR;
-        dGreen[index] = build_cG;
-        dBlue[index] = build_cB;
+        dRed[index] = (build_cR) * dp_val;
+        dGreen[index] = (build_cG) * dp_val;
+        dBlue[index] = (build_cB) * dp_val;
     }
 
     /*Dp_star[index] = 0;
@@ -2380,9 +2380,9 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         }
         else
         {
-            accum_R += buffer_read_linear(dRed, voxel_pos, dim) * pstar_val;
-            accum_G += buffer_read_linear(dGreen, voxel_pos, dim) * pstar_val;
-            accum_B += buffer_read_linear(dBlue, voxel_pos, dim) * pstar_val;
+            accum_R += buffer_read_linear(dRed, voxel_pos, dim) * 1;
+            accum_G += buffer_read_linear(dGreen, voxel_pos, dim) * 1;
+            accum_B += buffer_read_linear(dBlue, voxel_pos, dim) * 1;
         }
 
         /*if(density > SOLID_DENSITY)
@@ -2510,6 +2510,8 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
     float3 density_col = (float3)(1,1,1) * density_frac;*/
 
     float3 density_col = {ray_in.R, ray_in.G, ray_in.B};
+
+    density_col *= 10.f;
 
     if(any(density_col > 1))
     {

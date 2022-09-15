@@ -517,17 +517,6 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
         cqueue.exec("evolve_hydro_all", evolve, {points_set.all_count}, {128});
     }
 
-    auto clean_by_name = [&](const std::string& name)
-    {
-        clean_buffer(cqueue, in.lookup(name).buf, out.lookup(name).buf, base.lookup(name).buf, in.lookup(name).asymptotic_value, in.lookup(name).wave_speed, timestep);
-    };
-
-    clean_by_name("Dp_star");
-    clean_by_name("De_star");
-    clean_by_name("DcS0");
-    clean_by_name("DcS1");
-    clean_by_name("DcS2");
-
     if(sett.use_matter_colour)
     {
         for(int buf_idx=0; buf_idx < colours[0].buffers.size(); buf_idx++)
@@ -563,8 +552,19 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
         dissipate_set(cqueue, colours[idx_base], colours[idx_out], points_set, timestep, dim, scale);
 
         if(iteration != 1)
-            std::swap(colours[idx_in], colours[idx_out]);
+            std::swap(colours[1], colours[2]);
     }
+
+    auto clean_by_name = [&](const std::string& name)
+    {
+        clean_buffer(cqueue, in.lookup(name).buf, out.lookup(name).buf, base.lookup(name).buf, in.lookup(name).asymptotic_value, in.lookup(name).wave_speed, timestep);
+    };
+
+    clean_by_name("Dp_star");
+    clean_by_name("De_star");
+    clean_by_name("DcS0");
+    clean_by_name("DcS1");
+    clean_by_name("DcS2");
 }
 
 ref_counted_buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool)

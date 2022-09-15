@@ -4516,6 +4516,13 @@ namespace hydrodynamics
             fin += diff1(ctx, to_diff, i);
         }
 
+        /*value fin = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            fin += vi_upper.idx(i) * diff1(ctx, quantity, i);
+        }*/
+
         ctx.add("HYDRO_ADVECT", -fin);
     }
 }
