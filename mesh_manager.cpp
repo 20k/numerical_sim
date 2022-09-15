@@ -1141,5 +1141,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
     flip();
 
+    std::swap(colours[0], colours[1]);
+
     return {last_valid_thin_buffer, intermediates};
 }
