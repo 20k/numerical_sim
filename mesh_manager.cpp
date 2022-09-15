@@ -93,9 +93,9 @@ colour_set::colour_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
 {
     std::vector<std::tuple<std::string, std::string, float, float, float>> values =
     {
-        {"dRed", "advect_hydro", 0.25f, 0, 0},
-        {"dGreen", "advect_hydro", 0.25f, 0, 0},
-        {"dBlue", "advect_hydro", 0.25f, 0, 0}
+        {"dRed", "hydro_advect", 0.25f, 0, 0},
+        {"dGreen", "hydro_advect", 0.25f, 0, 0},
+        {"dBlue", "hydro_advect", 0.25f, 0, 0}
     };
 
     for(int kk=0; kk < (int)values.size(); kk++)
@@ -515,7 +515,7 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
             advect.push_back(hydro_st.should_evolve);
             advect.push_back(timestep);
 
-            cqueue.exec("advect_hydro", advect, {points_set.all_count}, {128});
+            cqueue.exec("hydro_advect", advect, {points_set.all_count}, {128});
         }
     }
 }

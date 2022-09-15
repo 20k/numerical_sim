@@ -4542,6 +4542,31 @@ namespace hydrodynamics
         //ctx.add("e_star_p_value", matt.e_star_clamped());
         ctx.add("p_star_max", matt.p_star_max());
     }
+
+    void build_advection(equation_context& ctx)
+    {
+        standard_arguments args(ctx);
+        matter& matt = args.matt;
+
+        inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+        value sW = bidx("hW", ctx.uses_linear, false);
+
+        tensor<value, 3> vi_upper = matt.get_v_upper(icY, args.gA, args.gB, matter_X_2(args.X), sW);
+
+        value quantity = bidx("quantity_in", ctx.uses_linear, false);
+
+        value fin = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            value to_diff = quantity * vi_upper.idx(i);
+
+            fin += diff1(ctx, to_diff, i);
+        }
+
+        ctx.add("HYDRO_ADVECT", fin);
+    }
 }
 
 void build_sommerfeld_thin(equation_context& ctx)
@@ -7272,7 +7297,12 @@ int main()
     equation_context hydro_final;
     hydrodynamics::build_equations(hydro_final);
 
-    printf("Post build\n");
+    printf("Post main hydro equations\n");
+
+    equation_context hydro_advect;
+    hydrodynamics::build_advection(hydro_advect);
+
+    printf("Post advect\n");
 
     equation_context build_hydro_quantities;
     construct_hydrodynamic_quantities(build_hydro_quantities, holes.objs);
@@ -7305,6 +7335,7 @@ int main()
     hydro_intermediates.build(argument_string, "hydrointermediates");
     hydro_viscosity.build(argument_string, "hydroviscosity");
     hydro_final.build(argument_string, "hydrofinal");
+    hydro_advect.build(argument_string, "hydroadvect");
     build_hydro_quantities.build(argument_string, "hydroconvert");
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";

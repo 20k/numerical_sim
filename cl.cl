@@ -1398,6 +1398,7 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     int order = order_ptr[index];
 
     ///we're copying over base. Is that correct? Because sommerfeld
+    ///for hydro this is likely a significant overhead
     if(((order & D_FULL) == 0 && ((order & D_LOW) == 0)) || should_evolve[index] == 0)
     {
         oDp_star[index] = Dp_star[index];
@@ -1535,14 +1536,36 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
 }
 
 __kernel
-void advect_hydro(__global ushort4* points, int point_count,
+void hydro_advect(__global ushort4* points, int point_count,
                   STANDARD_ARGS(),
                   __global float* hW,
                   __global float* quantity_in,
                   __global float* quantity_out,
                   float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve, float timestep)
 {
+    int local_idx = get_global_id(0);
 
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
+
+    if(((order & D_FULL) == 0 && ((order & D_LOW) == 0)) || should_evolve[index] == 0)
+    {
+        quantity_out[IDX(ix,iy,iz)] = quantity_in[IDX(ix,iy,iz)];
+        return;
+    }
+
+    float TEMPORARIEShydroadvect;
+
+    float f_quantity = HYDRO_ADVECT;
+
+    quantity_out[IDX(ix,iy,iz)] = f_quantity * timestep + quantity_in[IDX(ix,iy,iz)];
 }
 
 __kernel
