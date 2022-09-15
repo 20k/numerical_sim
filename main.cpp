@@ -7782,6 +7782,15 @@ int main()
                         render_args.push_back(i.as_device_read_only());
                     }
 
+                    for(auto& i : base_mesh.colours[0].buffers)
+                    {
+                        render_args.push_back(i.buf.as_device_read_only());
+                    }
+
+                    cl_int use_colour = base_mesh.sett.use_matter_colour;
+
+                    render_args.push_back(use_colour);
+
                     render_args.push_back(scale);
                     render_args.push_back(clsize);
                     render_args.push_back(width);

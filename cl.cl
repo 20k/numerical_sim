@@ -1988,7 +1988,9 @@ struct lightray_simple
 
     float iter_frac;
     int hit_type;
-    float density;
+    //float density;
+
+    float R, G, B;
 };
 
 enum ds_result
@@ -2250,6 +2252,10 @@ __kernel
 void trace_rays(__global struct lightray_simple* rays_in, __global struct lightray_simple* rays_terminated,
                 STANDARD_ARGS(),
                 STANDARD_DERIVS(),
+                __global float* dRed,
+                __global float* dGreen,
+                __global float* dBlue,
+                int use_colour,
                 float scale, int4 dim, int width, int height, float err_in)
 {
     int x = get_global_id(0);
@@ -2297,7 +2303,9 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     }
     #endif // VERLET_2
 
-    float density = 0;
+    float accum_R = 0;
+    float accum_G = 0;
+    float accum_B = 0;
 
     //#pragma unroll(16)
     for(int iteration=0; iteration < 512; iteration++)
@@ -2353,14 +2361,25 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
             break;
         }*/
 
-        density += pstar_val;
+        if(!use_colour)
+        {
+            accum_R += pstar_val;
+            accum_G += pstar_val;
+            accum_B += pstar_val;
+        }
+        else
+        {
+            accum_R += buffer_read_linear(dRed, voxel_pos, dim) * pstar_val;
+            accum_G += buffer_read_linear(dGreen, voxel_pos, dim) * pstar_val;
+            accum_B += buffer_read_linear(dBlue, voxel_pos, dim) * pstar_val;
+        }
 
-        if(density > SOLID_DENSITY)
+        /*if(density > SOLID_DENSITY)
         {
             Xpos_last = Xpos;
             hit_type = 2;
             break;
-        }
+        }*/
 
         #endif // RENDER_MATTER
 
@@ -2413,7 +2432,10 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
     ray_out.iter_frac = 0;
     ray_out.hit_type = hit_type;
-    ray_out.density = density;
+    //ray_out.density = density;
+    ray_out.R = accum_R;
+    ray_out.G = accum_G;
+    ray_out.B = accum_B;
 
     rays_terminated[y * width + x] = ray_out;
 }
@@ -2472,9 +2494,11 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
     float3 XDiff;
     velocity_to_XDiff(&XDiff, cpos, cvel, scale, dim, ALL_ARGS());
 
-    float density_frac = clamp(ray_in.density / SOLID_DENSITY, 0.f, 1.f);
+    /*float density_frac = clamp(ray_in.density / SOLID_DENSITY, 0.f, 1.f);
 
-    float3 density_col = (float3)(1,1,1) * density_frac;
+    float3 density_col = (float3)(1,1,1) * density_frac;*/
+
+    float3 density_col = {ray_in.R, ray_in.G, ray_in.B};
 
     float uni_size = universe_size;
 
