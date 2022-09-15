@@ -117,6 +117,8 @@ struct cpu_mesh
     std::array<buffer_set, 2> data;
     buffer_set scratch;
 
+    std::array<colour_set, 2> colours;
+
     hydro_state hydro_st;
 
     evolution_points points_set;
@@ -136,7 +138,7 @@ struct cpu_mesh
 
     void init(cl::command_queue& cqueue, cl::buffer& u_arg, std::array<cl::buffer, 6>& bcAij, cl::buffer& superimposed_tov_phi);
 
-    void step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep);
+    void step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep, int iteration);
 
     ref_counted_buffer get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool);
 

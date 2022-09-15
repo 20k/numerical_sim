@@ -258,7 +258,9 @@ buffer_set_cfg get_buffer_cfg(cpu_mesh_settings sett)
 }
 
 cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points) :
-        data{buffer_set(ctx, _dim, get_buffer_cfg(_sett)), buffer_set(ctx, _dim, get_buffer_cfg(_sett))}, scratch{ctx, _dim, get_buffer_cfg(_sett)}, points_set{ctx},
+        data{buffer_set(ctx, _dim, get_buffer_cfg(_sett)), buffer_set(ctx, _dim, get_buffer_cfg(_sett))}, scratch{ctx, _dim, get_buffer_cfg(_sett)},
+        colours{colour_set(ctx, _dim, get_buffer_cfg(_sett)), colour_set(ctx, _dim, get_buffer_cfg(_sett))},
+        points_set{ctx},
         momentum_constraint{ctx, ctx, ctx}, hydro_st(ctx)
 {
     centre = _centre;
@@ -350,7 +352,7 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, std::array<cl:
     }
 }
 
-void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep)
+void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep, int iteration)
 {
     if(!sett.use_matter)
         return;
@@ -485,6 +487,18 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
     clean_by_name("DcS0");
     clean_by_name("DcS1");
     clean_by_name("DcS2");
+
+    if(iteration == 0 && sett.use_matter_colour)
+    {
+        cl::args advect;
+        advect.push_back(points_set.all_points);
+        advect.push_back(points_set.all_count);
+
+        for(auto& buf : in.buffers)
+        {
+            advect.push_back(buf.buf.as_device_read_only());
+        }
+    }
 }
 
 ref_counted_buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool)
@@ -620,13 +634,13 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
         clean_buffer(mqueue, in_buf.buf, out_buf.buf, base_buf.buf, in_buf.asymptotic_value, in_buf.wave_speed, current_timestep);
     };
 
-    auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
+    auto step = [&](auto& generic_in, auto& generic_out, float current_timestep, int iteration)
     {
         intermediates.clear();
 
         last_valid_thin_buffer.clear();
 
-        step_hydro(ctx, mqueue, pool, generic_in, generic_out, base_yn, current_timestep);
+        step_hydro(ctx, mqueue, pool, generic_in, generic_out, base_yn, current_timestep, iteration);
 
         for(auto& i : generic_in.buffers)
         {
@@ -1004,9 +1018,9 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     for(int i=0; i < iterations; i++)
     {
         if(i != 0)
-            step(scratch, b2, timestep);
+            step(scratch, b2, timestep, i);
         else
-            step(b1, b2, timestep);
+            step(b1, b2, timestep, i);
 
         if(i != iterations - 1)
         {
