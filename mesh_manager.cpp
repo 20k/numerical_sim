@@ -93,9 +93,9 @@ colour_set::colour_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
 {
     std::vector<std::tuple<std::string, std::string, float, float, float>> values =
     {
-        {"dRed", "evolve_advect", 0.25f, 0, 0},
-        {"dGreen", "evolve_advect", 0.25f, 0, 0},
-        {"dBlue", "evolve_advect", 0.25f, 0, 0}
+        {"dRed", "advect_hydro", 0.25f, 0, 0},
+        {"dGreen", "advect_hydro", 0.25f, 0, 0},
+        {"dBlue", "advect_hydro", 0.25f, 0, 0}
     };
 
     for(int kk=0; kk < (int)values.size(); kk++)
@@ -490,13 +490,32 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
 
     if(iteration == 0 && sett.use_matter_colour)
     {
-        cl::args advect;
-        advect.push_back(points_set.all_points);
-        advect.push_back(points_set.all_count);
-
-        for(auto& buf : in.buffers)
+        for(int buf_idx=0; buf_idx < colours[0].buffers.size(); buf_idx++)
         {
-            advect.push_back(buf.buf.as_device_read_only());
+            cl::buffer buf_in = colours[0].buffers[buf_idx].buf;
+            cl::buffer buf_out = colours[1].buffers[buf_idx].buf;
+
+            cl::args advect;
+            advect.push_back(points_set.all_points);
+            advect.push_back(points_set.all_count);
+
+            for(auto& buf : in.buffers)
+            {
+                advect.push_back(buf.buf.as_device_read_only());
+            }
+
+            advect.push_back(w_buf.as_device_read_only());
+
+            advect.push_back(buf_in.as_device_read_only());
+            advect.push_back(buf_out.as_device_write_only());
+
+            advect.push_back(scale);
+            advect.push_back(clsize);
+            advect.push_back(points_set.order);
+            advect.push_back(hydro_st.should_evolve);
+            advect.push_back(timestep);
+
+            cqueue.exec("advect_hydro", advect, {points_set.all_count}, {128});
         }
     }
 }

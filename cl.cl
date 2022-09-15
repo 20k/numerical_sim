@@ -1535,6 +1535,17 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
 }
 
 __kernel
+void advect_hydro(__global ushort4* points, int point_count,
+                  STANDARD_ARGS(),
+                  __global float* hW,
+                  __global float* quantity_in,
+                  __global float* quantity_out,
+                  float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve, float timestep)
+{
+
+}
+
+__kernel
 void dissipate_single(__global ushort4* points, int point_count,
                       __global float* buffer, __global float* obuffer,
                       float coefficient,

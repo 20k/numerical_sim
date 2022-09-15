@@ -7391,6 +7391,7 @@ int main()
     #endif // USE_HALF_INTERMEDIATE
 
     base_settings.use_matter = holes.use_matter;
+    base_settings.use_matter_colour = true;
 
     #ifdef CALCULATE_MOMENTUM_CONSTRAINT
     base_settings.calculate_momentum_constraint = true;
