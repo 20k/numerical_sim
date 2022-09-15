@@ -4075,6 +4075,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     h1.matter.compactness = 0.08;
     h1.momentum = {0, 0.133 * 0.8 * 0.2, 0};
     h1.position = {-6.257, 0.f, 0.f};
+    h1.matter.colour = {1, 0, 0};
 
     compact_object::data h2;
     h2.t = compact_object::NEUTRON_STAR;
@@ -4082,6 +4083,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     h2.bare_mass = 0.2;
     h2.momentum = {0, -0.133 * 0.8 * 0.20, 0};
     h2.position = {5.257, 0.f, 0.f};
+    h2.matter.colour = {0, 1, 0};
 
     objects = {h1, h2};
     #endif // NEUTRON_ACCRETION
