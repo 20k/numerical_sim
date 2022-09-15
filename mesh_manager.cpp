@@ -855,6 +855,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     };
     #endif // 0
 
+    ///currently dissipating matter everywhere, but that's extremely unnecessary
     auto dissipate = [&](auto& base_reference, auto& inout)
     {
         for(int i=0; i < base_reference.buffers.size(); i++)
@@ -1137,11 +1138,15 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
     enforce_constraints(b2);
 
+    if(sett.use_matter_colour)
+    {
+        dissipate(colours[0], colours[1]);
+        std::swap(colours[0], colours[1]);
+    }
+
     mqueue.end_splice(main_queue);
 
     flip();
-
-    std::swap(colours[0], colours[1]);
 
     return {last_valid_thin_buffer, intermediates};
 }
