@@ -3498,11 +3498,6 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
     ///(rhoH, Si, Sij), all lower indices
 
     ///pH is the adm variable, NOT P
-
-    //value rest_mass = 0;
-    //value eps = 0;
-
-    //value enthalpy = 0;
     value p0_conformal = 0;
 
     value pressure_conformal = 0;
@@ -3633,59 +3628,6 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
         value e_star = pow(p0e, 1/Gamma) * gA * u0 * chi_to_e_6phi(X);
 
-        #if 0
-        ctx.add("D_enthalpy", enthalpy);
-        ctx.add("D_gA_u0", gA_u0);
-
-        value littleW = chi_to_e_6phi(X) * (rhoH + pressure) / enthalpy;
-
-        value p_star = littleW / (gA_u0 + 0.0001f);
-
-        value p0 = chi_to_e_m6phi(X) * p_star / (gA_u0 + 0.0001f);
-
-        value eps = (enthalpy - pressure/p0) - 1;
-
-        value eps_p0 = enthalpy * p0 - pressure - p0;
-        #endif // 0
-
-        //value p_star = sqrt(p0 * littleW * chi_to_e_6phi(X));
-
-        #if 0
-        ///Ok! Their w is not my W. FINALLY
-        //value h = if_v(is_degenerate, 0.f, chi_to_e_6phi(X) * (rhoH + pressure) / sqrt(W2));
-
-        ///rho + pressure = p0h
-
-        //value p0 = if_v(is_degenerate, 0.f, (rho + pressure) / h);
-
-        //value eps = (h - 1) / Gamma;
-
-        //value p0 = -pressure / (1 + eps - h);
-
-        /*value p_star = 0;
-
-        for(int k=0; k < 3; k++)
-        {
-            value p_star_elem = cSi_lower.idx(k) / (h * u_lower.idx(k));
-
-            p_star += if_v(fabs(u_lower.idx(k) * h) > 0.0001f, p_star_elem, 0.f);
-        }*/
-
-        value p_star = sqrt(p0 * sqrt(W2) * chi_to_e_6phi(X));
-
-        ///so: Si_lower and p_star are both enforced to be regular
-        ///anything from this point onwards is not enforced *here*, but the values are set to 0
-        value gA_u0 = sqrt(W2) / p_star;
-
-        gA_u0 = if_v(is_degenerate, 0.f, gA_u0);
-
-        //value p0 = p_star * chi_to_e_m6phi(X) / (gA_u0);
-
-        value eps = (h - pressure/p0) - 1;
-
-        value eps_p0 = h * p0 - pressure - p0;
-        #endif // 0
-
         /*ctx.add("D_rho", rho);
         ctx.add("D_rhoH", rhoH);
         ctx.add("D_conformal_rest_mass", unused_conformal_rest_mass);
@@ -3700,8 +3642,6 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
         ctx.add("D_W2", W2);
         ctx.add("D_littlee", unused_littlee);
         ctx.add("D_eps", eps);*/
-
-        //value e_star = pow(eps_p0, 1/Gamma) * gA_u0 * chi_to_e_6phi(X);
 
         ctx.add("build_p_star", p_star);
         ctx.add("build_e_star", e_star);
