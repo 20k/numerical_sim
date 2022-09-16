@@ -360,7 +360,7 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
     //printf("w2 %f %i %i %i\n", debug_w2, ix, iy,iz);
 
     ///dp_val and cS are both regular
-    if(dp_val < 0.00001f)
+    if(dp_val < MIN_P_STAR)
     {
         de_val = 0;
     }
