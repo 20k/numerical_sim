@@ -4110,6 +4110,26 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     return get_bare_initial_conditions(clctx, cqueue, scale, objects);
     #endif // BARE_BLACK_HOLES
 
+    #ifdef MERGE_THEN_COLLAPSE
+    compact_object::data h1;
+    h1.t = compact_object::NEUTRON_STAR;
+    h1.bare_mass = 0.2;
+    h1.momentum = {0, 0.133 * 0.8 * 0.01, 0};
+    h1.position = {-4.257, 0.f, 0.f};
+    h1.matter.colour = {1, 0, 0};
+    h1.matter.compactness = 0.08;
+
+    compact_object::data h2;
+    h2.t = compact_object::NEUTRON_STAR;
+    h2.bare_mass = 0.2;
+    h2.momentum = {0, -0.133 * 0.8 * 0.01, 0};
+    h2.position = {4.257, 0.f, 0.f};
+    h2.matter.colour = {0, 1, 0};
+    h2.matter.compactness = 0.08;
+
+    objects = {h1, h2};
+    #endif // MERGE_THEN_COLLAPSE
+
     //#define USE_ADM_HOLE
     #ifdef USE_ADM_HOLE
     std::vector<adm_black_hole> adm_holes;
