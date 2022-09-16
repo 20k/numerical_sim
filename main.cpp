@@ -4067,7 +4067,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #endif // GAS_CLOUD_BLACK_HOLE
 
     ///this is an extremely cool matter case
-    //#define NEUTRON_ACCRETION
+    #define NEUTRON_ACCRETION
     #ifdef NEUTRON_ACCRETION
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
@@ -4088,7 +4088,43 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // NEUTRON_ACCRETION
 
-    #define REGULAR_MERGE
+    //#define N_BODY
+    #ifdef N_BODY
+    compact_object::data base;
+    base.t = compact_object::NEUTRON_STAR;
+    base.bare_mass = 0.045f;
+    base.matter.compactness = 0.02f;
+    base.matter.colour = {1,1,1};
+
+    vec3f colours[9] = {{1,1,1}, {1,0,0}, {0,1,0}, {0, 0, 1}, {1, 0.4f, 0.f}, {1, 0, 1}, {0, 1, 1}, {1, 1, 0}, {0.4f, 1.f, 1.f}};
+
+    std::minstd_rand rng(1234);
+
+    for(int i=0; i < 8; i++)
+    {
+        for(int kk=0; kk < 1024; kk++)
+        {
+            rng();
+        }
+
+        vec3f pos = {rand_det_s(rng, 0.f, 1.f), rand_det_s(rng, 0.f, 1.f), rand_det_s(rng, 0.f, 1.f)};
+        vec3f momentum = {rand_det_s(rng, 0.f, 1.f), rand_det_s(rng, 0.f, 1.f), rand_det_s(rng, 0.f, 1.f)};
+
+        pos = (pos - 0.5f) * ((get_c_at_max()/2.3));
+
+        momentum = (momentum - 0.5f) * 0.01f;
+
+        compact_object::data h = base;
+        h.position = {pos.x(), pos.y(), pos.z()};
+        h.momentum = {momentum.x(), momentum.y(), momentum.z()};
+        h.matter.colour = colours[i % 9];
+
+        objects.push_back(h);
+    }
+
+    #endif // N_BODY
+
+    //#define REGULAR_MERGE
     #ifdef REGULAR_MERGE
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
@@ -4106,9 +4142,6 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     objects = {h1, h2};
     #endif // REGULAR_MERGE
-
-    return get_bare_initial_conditions(clctx, cqueue, scale, objects);
-    #endif // BARE_BLACK_HOLES
 
     #ifdef MERGE_THEN_COLLAPSE
     compact_object::data h1;
@@ -4129,6 +4162,9 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     objects = {h1, h2};
     #endif // MERGE_THEN_COLLAPSE
+
+    return get_bare_initial_conditions(clctx, cqueue, scale, objects);
+    #endif // BARE_BLACK_HOLES
 
     //#define USE_ADM_HOLE
     #ifdef USE_ADM_HOLE
@@ -7668,7 +7704,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.055;
+        float timestep = 0.075;
 
         //timestep = 0.04;
 
