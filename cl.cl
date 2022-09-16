@@ -362,7 +362,11 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
     ///dp_val and cS are both regular
     if(dp_val < MIN_P_STAR)
     {
+        dp_val = 0;
         de_val = 0;
+        cS0 = 0;
+        cS1 = 0;
+        cS2 = 0;
     }
 
     dp_val = max(dp_val, 0.f);
