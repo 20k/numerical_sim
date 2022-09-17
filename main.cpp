@@ -3285,11 +3285,12 @@ struct superimposed_gpu_data
     cl::buffer ppw2p;
 
     ///not conformal variables
-    cl::buffer pressure;
-    cl::buffer rho;
-    cl::buffer rhoH;
-    cl::buffer p0;
-    std::array<cl::buffer, 3> Si;
+    cl::buffer pressure_buf;
+    cl::buffer rho_buf;
+    cl::buffer rhoH_buf;
+    cl::buffer p0_buf;
+    std::array<cl::buffer, 3> Si_buf;
+    std::array<cl::buffer, 3> colour_buf;
 
     cl::buffer u_arg;
 
@@ -3301,8 +3302,9 @@ struct superimposed_gpu_data
     tensor<value, 3> Si = pow(phi, -10.f) * Si_conformal; // upper
     */
 
-    superimposed_gpu_data(cl::context& ctx, cl::command_queue& cqueue, vec3i dim) : tov_phi{ctx}, bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, aij_aIJ{ctx}, ppw2p{ctx},
-                                                                                    pressure{ctx}, rho{ctx}, rhoH{ctx}, p0{ctx}, Si{ctx, ctx, ctx}, u_arg{ctx}
+    superimposed_gpu_data(cl::context& ctx, cl::command_queue& cqueue, vec3i dim, bool use_colour) : tov_phi{ctx}, bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, aij_aIJ{ctx}, ppw2p{ctx},
+                                                                                                     pressure_buf{ctx}, rho_buf{ctx}, rhoH_buf{ctx}, p0_buf{ctx}, Si_buf{ctx, ctx, ctx}, u_arg{ctx},
+                                                                                                     colour_buf{ctx, ctx, ctx}
     {
         int cells = dim.x() * dim.y() * dim.z();
 
@@ -3322,22 +3324,31 @@ struct superimposed_gpu_data
         ppw2p.alloc(cells * sizeof(cl_float));
         ppw2p.fill(cqueue, cl_float{0});
 
-        pressure.alloc(cells * sizeof(cl_float));
-        pressure.fill(cqueue,cl_float{0});
+        pressure_buf.alloc(cells * sizeof(cl_float));
+        pressure_buf.fill(cqueue,cl_float{0});
 
-        rho.alloc(cells * sizeof(cl_float));
-        rho.fill(cqueue,cl_float{0});
+        rho_buf.alloc(cells * sizeof(cl_float));
+        rho_buf.fill(cqueue,cl_float{0});
 
-        rhoH.alloc(cells * sizeof(cl_float));
-        rhoH.fill(cqueue,cl_float{0});
+        rhoH_buf.alloc(cells * sizeof(cl_float));
+        rhoH_buf.fill(cqueue,cl_float{0});
 
-        p0.alloc(cells * sizeof(cl_float));
-        p0.fill(cqueue, cl_float{0});
+        p0_buf.alloc(cells * sizeof(cl_float));
+        p0_buf.fill(cqueue, cl_float{0});
 
-        for(int i=0; i < 3; i++)
+        for(cl::buffer& i : Si_buf)
         {
-            Si[i].alloc(cells * sizeof(cl_float));
-            Si[i].fill(cqueue,cl_float{0});
+            i.alloc(cells * sizeof(cl_float));
+            i.fill(cqueue, cl_float{0});
+        }
+
+        if(use_colour)
+        {
+            for(cl::buffer& i : colour_buf)
+            {
+                i.alloc(cells * sizeof(cl_float));
+                i.fill(cqueue, cl_float{0});
+            }
         }
     }
 
@@ -3363,6 +3374,110 @@ struct superimposed_gpu_data
 
         laplace_data solve = setup_u_laplace(clctx, objs, aij_aIJ, ppw2p);
         u_arg = laplace_solver(clctx, cqueue, solve, scale, dim, 0.000001f);
+
+        tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+        //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
+        value conformal_guess = calculate_conformal_guess(pos, objs);;
+
+        for(const compact_object::data& obj : objs)
+        {
+            if(obj.t == compact_object::NEUTRON_STAR)
+            {
+                accumulate_matter_variables(obj, conformal_guess);
+            }
+        }
+    }
+
+    void accumulate_matter_variables(const compact_object::data& obj, const value& conformal_guess)
+    {
+        tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+        equation_context ctx;
+
+        auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
+        {
+            value v = tov_phi_at_coordinate_general(world_position);
+
+            ctx.pin(v);
+
+            return v;
+        };
+
+        value u_value = dual_types::apply("buffer_index", "u_value", "ix", "iy", "iz", "dim");
+
+        ///https://arxiv.org/pdf/1606.04881.pdf 74
+        value phi = conformal_guess + u_value;
+
+        ///we need respectively
+        ///(rhoH, Si, Sij), all lower indices
+
+        ///pH is the adm variable, NOT P
+        value p0_conformal = 0;
+
+        value pressure_conformal = 0;
+        value rho_conformal = 0;
+        value rhoH_conformal = 0;
+        tensor<value, 3> Si_conformal;
+        tensor<value, 3> colour;
+
+        {
+            tensor<value, 3> vloc = {obj.position.x(), obj.position.y(), obj.position.z()};
+
+            value rad = (pos - vloc).length();
+
+            ctx.pin(rad);
+
+            ///todo: remove the duplication?
+            neutron_star::params p;
+            p.position = obj.position;
+            p.mass = obj.bare_mass;
+            p.compactness = obj.matter.compactness;
+            p.linear_momentum = obj.momentum;
+            p.angular_momentum = obj.angular_momentum;
+
+            value M_factor = neutron_star::calculate_M_factor(p, pinning_tov_phi);
+
+            ctx.pin(M_factor);
+
+            tensor<value, 3> vmomentum = {obj.momentum.x(), obj.momentum.y(), obj.momentum.z()};
+
+            auto flat = get_flat_metric<float, 3>();
+
+            value W2_factor = neutron_star::calculate_W2_linear_momentum(flat, obj.momentum, M_factor);
+
+            //neutron_star::data<value> sampled = neutron_star::sample_interior<value>(rad, value{p.mass});
+
+            neutron_star::conformal_data cdata = neutron_star::sample_conformal(rad, p, pinning_tov_phi);
+
+            ctx.pin(cdata.mass_energy_density);
+            ctx.pin(cdata.pressure);
+            ctx.pin(cdata.rest_mass_density);
+
+            pressure_conformal += cdata.pressure;
+            //unused_conformal_rest_mass += sampled.mass_energy_density;
+
+            rho_conformal += cdata.mass_energy_density;
+            rhoH_conformal += (cdata.mass_energy_density + cdata.pressure) * W2_factor - cdata.pressure;
+            //eps += sampled.specific_energy_density;
+
+            //enthalpy += 1 + sampled.specific_energy_density + pressure_conformal / sampled.mass_energy_density;
+
+            p0_conformal += cdata.mass_energy_density;
+
+            ///https://arxiv.org/pdf/1606.04881.pdf (56)
+            Si_conformal += vmomentum * neutron_star::calculate_sigma(rad, p, M_factor, pinning_tov_phi);
+
+            colour.x() += if_v(rad <= p.get_radius(), value{obj.matter.colour.x()}, value{0.f});
+            colour.y() += if_v(rad <= p.get_radius(), value{obj.matter.colour.y()}, value{0.f});
+            colour.z() += if_v(rad <= p.get_radius(), value{obj.matter.colour.z()}, value{0.f});
+        }
+
+        value pressure = pow(phi, -8.f) * pressure_conformal;
+        value rho = pow(phi, -8.f) * rho_conformal;
+        value rhoH = pow(phi, -8.f) * rhoH_conformal;
+        value p0 = pow(phi, -8.f) * p0_conformal;
+        tensor<value, 3> Si = pow(phi, -10.f) * Si_conformal; // upper
     }
 
     void pull(cl::context& clctx, cl::command_queue& cqueue, neutron_star_gpu_data& dat, const compact_object::data& obj, float scale, vec3i dim)
@@ -7240,13 +7355,15 @@ int main()
 
     //sandwich_result sandwich(clctx.ctx);
 
-    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes, &superimposed_tov_phi, &bcAij]()
+    bool should_use_matter_colour = true;
+
+    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes, &superimposed_tov_phi, &bcAij, should_use_matter_colour]()
     {
         steady_timer u_time;
 
         cl::command_queue cqueue(clctx.ctx);
 
-        superimposed_gpu_data super(clctx.ctx, cqueue, size);
+        superimposed_gpu_data super(clctx.ctx, cqueue, size, should_use_matter_colour);
         super.pull_all(clctx.ctx, cqueue, holes.objs, scale, size);
 
         u_arg = super.u_arg;
@@ -7476,7 +7593,7 @@ int main()
     #endif // USE_HALF_INTERMEDIATE
 
     base_settings.use_matter = holes.use_matter;
-    base_settings.use_matter_colour = true;
+    base_settings.use_matter_colour = should_use_matter_colour;
 
     #ifdef CALCULATE_MOMENTUM_CONSTRAINT
     base_settings.calculate_momentum_constraint = true;
