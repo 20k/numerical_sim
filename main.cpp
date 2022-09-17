@@ -3294,6 +3294,8 @@ struct superimposed_gpu_data
 
     cl::buffer u_arg;
 
+    bool use_colour = false;
+
     /*
     value pressure = pow(phi, -8.f) * pressure_conformal;
     value rho = pow(phi, -8.f) * rho_conformal;
@@ -3302,10 +3304,12 @@ struct superimposed_gpu_data
     tensor<value, 3> Si = pow(phi, -10.f) * Si_conformal; // upper
     */
 
-    superimposed_gpu_data(cl::context& ctx, cl::command_queue& cqueue, vec3i dim, bool use_colour) : tov_phi{ctx}, bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, aij_aIJ{ctx}, ppw2p{ctx},
+    superimposed_gpu_data(cl::context& ctx, cl::command_queue& cqueue, vec3i dim, bool _use_colour) : tov_phi{ctx}, bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, aij_aIJ{ctx}, ppw2p{ctx},
                                                                                                      pressure_buf{ctx}, rho_buf{ctx}, rhoH_buf{ctx}, p0_buf{ctx}, Si_buf{ctx, ctx, ctx}, u_arg{ctx},
                                                                                                      colour_buf{ctx, ctx, ctx}
     {
+        use_colour = _use_colour;
+
         int cells = dim.x() * dim.y() * dim.z();
 
         ///unsure why I previously filled this with a 1
@@ -3384,13 +3388,15 @@ struct superimposed_gpu_data
         {
             if(obj.t == compact_object::NEUTRON_STAR)
             {
-                accumulate_matter_variables(obj, conformal_guess);
+                accumulate_matter_variables(clctx, cqueue, scale, dim, obj, conformal_guess);
             }
         }
     }
 
-    void accumulate_matter_variables(const compact_object::data& obj, const value& conformal_guess)
+    void accumulate_matter_variables(cl::context& clctx, cl::command_queue& cqueue, float scale, vec3i dim, const compact_object::data& obj, const value& conformal_guess)
     {
+        vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
+
         tensor<value, 3> pos = {"ox", "oy", "oz"};
 
         equation_context ctx;
@@ -3466,6 +3472,7 @@ struct superimposed_gpu_data
             p0_conformal += cdata.mass_energy_density;
 
             ///https://arxiv.org/pdf/1606.04881.pdf (56)
+            ///we could avoid the triple calculation of sigma here
             Si_conformal += vmomentum * neutron_star::calculate_sigma(rad, p, M_factor, pinning_tov_phi);
 
             colour.x() += if_v(rad <= p.get_radius(), value{obj.matter.colour.x()}, value{0.f});
@@ -3478,6 +3485,41 @@ struct superimposed_gpu_data
         value rhoH = pow(phi, -8.f) * rhoH_conformal;
         value p0 = pow(phi, -8.f) * p0_conformal;
         tensor<value, 3> Si = pow(phi, -10.f) * Si_conformal; // upper
+
+        ctx.add("HAS_MATTER_VARIABLE", 1);
+
+        auto accumulate_buffer = [&](cl::buffer& buf, const value& v)
+        {
+            ctx.add("SINGLE_ACCUMULATE", v);
+
+            auto [prog, accum_single_k] = build_and_fetch_kernel(clctx, ctx, "initial_conditions.cl", "single_accumulate", "singleaccumulate");
+
+            cl::args args;
+            args.push_back(buf);
+            args.push_back(u_arg);
+            args.push_back(tov_phi);
+            args.push_back(scale);
+            args.push_back(clsize);
+
+            accum_single_k.set_args(args);
+
+            cqueue.exec(accum_single_k, {dim.x(), dim.y(), dim.z()}, {8, 8, 1}, {});
+        };
+
+        accumulate_buffer(pressure_buf, pressure);
+        accumulate_buffer(rho_buf, rho);
+        accumulate_buffer(rhoH_buf, rhoH);
+        accumulate_buffer(p0_buf, p0);
+        accumulate_buffer(Si_buf[0], Si.idx(0));
+        accumulate_buffer(Si_buf[1], Si.idx(1));
+        accumulate_buffer(Si_buf[2], Si.idx(2));
+
+        if(use_colour)
+        {
+            accumulate_buffer(colour_buf[0], colour.idx(0));
+            accumulate_buffer(colour_buf[1], colour.idx(1));
+            accumulate_buffer(colour_buf[2], colour.idx(2));
+        }
     }
 
     void pull(cl::context& clctx, cl::command_queue& cqueue, neutron_star_gpu_data& dat, const compact_object::data& obj, float scale, vec3i dim)

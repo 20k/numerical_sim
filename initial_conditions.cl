@@ -153,3 +153,26 @@ void calculate_aij_aIJ(__global float* bcAij0, __global float* bcAij1, __global 
     aij_aIJ[IDX(ix,iy,iz)] = B_AIJ_AIJ;
 }
 #endif // CALCULATE_AIJ_AIJ
+
+#ifdef HAS_MATTER_VARIABLE
+__kernel
+void single_accumulate(__global float* inout, __global float* u_arg, __global float* tov_phi, float scale, int4 dim)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
+
+    float ox = offset.x;
+    float oy = offset.y;
+    float oz = offset.z;
+
+    float TEMPORARIESsingleaccumulate;
+
+    inout[IDX(ix,iy,iz)] += SINGLE_ACCUMULATE
+}
+#endif
