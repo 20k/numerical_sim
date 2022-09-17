@@ -358,6 +358,17 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, matter_initial
             hydro_init.push_back(i.buf);
         }
 
+        hydro_init.push_back(vars.pressure_buf);
+        hydro_init.push_back(vars.rho_buf);
+        hydro_init.push_back(vars.rhoH_buf);
+        hydro_init.push_back(vars.p0_buf);
+        hydro_init.push_back(vars.Si_buf[0]);
+        hydro_init.push_back(vars.Si_buf[1]);
+        hydro_init.push_back(vars.Si_buf[2]);
+        hydro_init.push_back(vars.colour_buf[0]);
+        hydro_init.push_back(vars.colour_buf[1]);
+        hydro_init.push_back(vars.colour_buf[2]);
+
         for(auto& i : colours[0].buffers)
         {
             hydro_init.push_back(i.buf);
