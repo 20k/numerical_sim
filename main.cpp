@@ -3291,6 +3291,8 @@ struct superimposed_gpu_data
     cl::buffer p0;
     std::array<cl::buffer, 3> Si;
 
+    cl::buffer u_arg;
+
     /*
     value pressure = pow(phi, -8.f) * pressure_conformal;
     value rho = pow(phi, -8.f) * rho_conformal;
@@ -3300,7 +3302,7 @@ struct superimposed_gpu_data
     */
 
     superimposed_gpu_data(cl::context& ctx, cl::command_queue& cqueue, vec3i dim) : tov_phi{ctx}, bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, aij_aIJ{ctx}, ppw2p{ctx},
-                                                                                    pressure{ctx}, rho{ctx}, rhoH{ctx}, p0{ctx}, Si{ctx, ctx, ctx}
+                                                                                    pressure{ctx}, rho{ctx}, rhoH{ctx}, p0{ctx}, Si{ctx, ctx, ctx}, u_arg{ctx}
     {
         int cells = dim.x() * dim.y() * dim.z();
 
@@ -3337,6 +3339,9 @@ struct superimposed_gpu_data
             Si[i].alloc(cells * sizeof(cl_float));
             Si[i].fill(cqueue,cl_float{0});
         }
+
+        u_arg.alloc(cells * sizeof(cl_float));
+        u_arg.fill(cqueue, cl_float{0});
     }
 
     void pull_all(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, float scale, vec3i dim)
@@ -3358,6 +3363,9 @@ struct superimposed_gpu_data
                 pull(clctx, cqueue, dat, scale, dim);
             }
         }
+
+        laplace_data solve = setup_u_laplace(clctx, objs, aij_aIJ, ppw2p);
+        u_arg = laplace_solver(clctx, cqueue, solve, scale, dim, 0.000001f);
     }
 
     void pull(cl::context& clctx, cl::command_queue& cqueue, neutron_star_gpu_data& dat, const compact_object::data& obj, float scale, vec3i dim)
@@ -7244,9 +7252,7 @@ int main()
         superimposed_gpu_data super(clctx.ctx, cqueue, size);
         super.pull_all(clctx.ctx, cqueue, holes.objs, scale, size);
 
-        laplace_data solve = setup_u_laplace(clctx.ctx, holes.objs, super.aij_aIJ, super.ppw2p);
-        u_arg = laplace_solver(clctx.ctx, cqueue, solve, scale, size, 0.000001f);
-
+        u_arg = super.u_arg;
         bcAij = super.bcAij;
         superimposed_tov_phi = super.tov_phi;
 
