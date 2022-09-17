@@ -2829,17 +2829,8 @@ tensor<value, 3, 3> calculate_bcAij_generic(equation_context& ctx, const tensor<
             p.linear_momentum = obj.momentum;
             p.angular_momentum = obj.angular_momentum;
 
-            metric<float, 3, 3> flat;
-            metric<value, 3, 3> flatv; ///ugh, todo: FIXME
-
-            for(int i=0; i < 3; i++)
-            {
-                for(int j=0; j < 3; j++)
-                {
-                    flat.idx(i, j) = (i == j) ? 1 : 0;
-                    flatv.idx(i, j) = (i == j) ? 1 : 0;
-                }
-            }
+            auto flat = get_flat_metric<float, 3>();
+            auto flatv = get_flat_metric<value, 3>();
 
             tensor<value, 3, 3> bcAIJ_single = neutron_star::calculate_aij_single(ctx, pos, flat, p, tov_phi_at_coordinate);
 
