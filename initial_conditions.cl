@@ -173,6 +173,6 @@ void single_accumulate(__global float* inout, __global float* u_value, __global 
 
     float TEMPORARIESsingleaccumulate;
 
-    inout[IDX(ix,iy,iz)] += SINGLE_ACCUMULATE
+    inout[IDX(ix,iy,iz)] += SINGLE_ACCUMULATE;
 }
 #endif

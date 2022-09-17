@@ -3490,9 +3490,11 @@ struct superimposed_gpu_data
 
         auto accumulate_buffer = [&](cl::buffer& buf, const value& v)
         {
-            ctx.add("SINGLE_ACCUMULATE", v);
+            equation_context next = ctx;
 
-            auto [prog, accum_single_k] = build_and_fetch_kernel(clctx, ctx, "initial_conditions.cl", "single_accumulate", "singleaccumulate");
+            next.add("SINGLE_ACCUMULATE", v);
+
+            auto [prog, accum_single_k] = build_and_fetch_kernel(clctx, next, "initial_conditions.cl", "single_accumulate", "singleaccumulate");
 
             cl::args args;
             args.push_back(buf);
