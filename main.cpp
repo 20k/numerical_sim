@@ -3284,7 +3284,23 @@ struct superimposed_gpu_data
     cl::buffer aij_aIJ;
     cl::buffer ppw2p;
 
-    superimposed_gpu_data(cl::context& ctx, cl::command_queue& cqueue, vec3i dim) : tov_phi{ctx}, bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, aij_aIJ{ctx}, ppw2p{ctx}
+    ///not conformal variables
+    cl::buffer pressure;
+    cl::buffer rho;
+    cl::buffer rhoH;
+    cl::buffer p0;
+    std::array<cl::buffer, 3> Si;
+
+    /*
+    value pressure = pow(phi, -8.f) * pressure_conformal;
+    value rho = pow(phi, -8.f) * rho_conformal;
+    value rhoH = pow(phi, -8.f) * rhoH_conformal;
+    value p0 = pow(phi, -8.f) * p0_conformal;
+    tensor<value, 3> Si = pow(phi, -10.f) * Si_conformal; // upper
+    */
+
+    superimposed_gpu_data(cl::context& ctx, cl::command_queue& cqueue, vec3i dim) : tov_phi{ctx}, bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, aij_aIJ{ctx}, ppw2p{ctx},
+                                                                                    pressure{ctx}, rho{ctx}, rhoH{ctx}, p0{ctx}, Si{ctx, ctx, ctx}
     {
         int cells = dim.x() * dim.y() * dim.z();
 
@@ -3303,6 +3319,24 @@ struct superimposed_gpu_data
 
         ppw2p.alloc(cells * sizeof(cl_float));
         ppw2p.fill(cqueue, cl_float{0});
+
+        pressure.alloc(cells * sizeof(cl_float));
+        pressure.fill(cqueue,cl_float{0});
+
+        rho.alloc(cells * sizeof(cl_float));
+        rho.fill(cqueue,cl_float{0});
+
+        rhoH.alloc(cells * sizeof(cl_float));
+        rhoH.fill(cqueue,cl_float{0});
+
+        p0.alloc(cells * sizeof(cl_float));
+        p0.fill(cqueue, cl_float{0});
+
+        for(int i=0; i < 3; i++)
+        {
+            Si[i].alloc(cells * sizeof(cl_float));
+            Si[i].fill(cqueue,cl_float{0});
+        }
     }
 
     void pull_all(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, float scale, vec3i dim)
@@ -3471,6 +3505,7 @@ struct superimposed_gpu_data
     }
 };
 
+///this I suspect is very slow
 void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<compact_object::data>& cpu_holes)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
