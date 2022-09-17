@@ -3097,43 +3097,12 @@ struct neutron_star_gpu_data
     std::array<cl::buffer, 6> bcAij;
     cl::buffer ppw2p;
 
-    cl::program ppw2p_program;
-    cl::kernel calculate_ppw2p_kernel;
-
-    neutron_star_gpu_data(cl::context& clctx) : tov_phi(clctx), bcAij{clctx, clctx, clctx, clctx, clctx, clctx}, ppw2p(clctx), ppw2p_program(clctx)
+    neutron_star_gpu_data(cl::context& clctx) : tov_phi(clctx), bcAij{clctx, clctx, clctx, clctx, clctx, clctx}, ppw2p(clctx)
     {
-        {
-            equation_context ctx;
 
-            ctx.add("INITIAL_PPW2P_2", 1);
-
-            tensor<value, 3> pos = {"ox", "oy", "oz"};
-
-            auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
-            {
-                value v = tov_phi_at_coordinate_general(world_position);
-                ctx.pin(v);
-                return v;
-            };
-
-            auto flat = get_flat_metric<value, 3>();
-
-            neutron_star::params<value> p;
-            p.position = {"data->position.x", "data->position.y", "data->position.z"};
-            p.mass = "data->mass";
-            p.compactness = "data->compactness";
-            p.linear_momentum = {"data->linear_momentum.x", "data->linear_momentum.y", "data->linear_momentum.z"};
-            p.angular_momentum = {"data->angular_momentum.x", "data->angular_momentum.y", "data->angular_momentum.z"};
-
-            value ppw2p_equation = neutron_star::calculate_ppw2_p(pos, flat, p, pinning_tov_phi);
-
-            ctx.add("B_PPW2P", ppw2p_equation);
-
-            std::tie(ppw2p_program, calculate_ppw2p_kernel) = build_and_fetch_kernel(clctx, ctx, "initial_conditions.cl", "calculate_ppw2p", "ppw2p");
-        }
     }
 
-    void create(cl::context& ctx, cl::command_queue& cqueue, const compact_object::data& obj, float scale, vec3i dim)
+    void create(cl::context& ctx, cl::command_queue& cqueue, cl::kernel calculate_ppw2p_kernel, const compact_object::data& obj, float scale, vec3i dim)
     {
         int64_t cells = dim.x() * dim.y() * dim.z();
 
@@ -3151,7 +3120,7 @@ struct neutron_star_gpu_data
 
         calculate_tov_phi(ctx, cqueue, obj, scale, dim);
         calculate_bcAij(ctx, cqueue, obj, scale, dim);
-        calculate_ppw2p(ctx, cqueue, obj, scale, dim);
+        calculate_ppw2p(ctx, cqueue, calculate_ppw2p_kernel, obj, scale, dim);
     }
 
 private:
@@ -3273,7 +3242,7 @@ private:
         cqueue.exec(calculate_bcAij_k, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
     }
 
-    void calculate_ppw2p(cl::context& clctx, cl::command_queue& cqueue, const compact_object::data& obj, float scale, vec3i dim)
+    void calculate_ppw2p(cl::context& clctx, cl::command_queue& cqueue, cl::kernel calculate_ppw2p_kernel, const compact_object::data& obj, float scale, vec3i dim)
     {
         vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
 
@@ -3323,17 +3292,13 @@ struct superimposed_gpu_data
 
     bool use_colour = false;
 
-    /*
-    value pressure = pow(phi, -8.f) * pressure_conformal;
-    value rho = pow(phi, -8.f) * rho_conformal;
-    value rhoH = pow(phi, -8.f) * rhoH_conformal;
-    value p0 = pow(phi, -8.f) * p0_conformal;
-    tensor<value, 3> Si = pow(phi, -10.f) * Si_conformal; // upper
-    */
+    cl::program ppw2p_program;
+    cl::kernel calculate_ppw2p_kernel;
 
     superimposed_gpu_data(cl::context& ctx, cl::command_queue& cqueue, vec3i dim, bool _use_colour) : tov_phi{ctx}, bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, aij_aIJ{ctx}, ppw2p{ctx},
                                                                                                       pressure_buf{ctx}, rho_buf{ctx}, rhoH_buf{ctx}, p0_buf{ctx}, Si_buf{ctx, ctx, ctx}, u_arg{ctx},
-                                                                                                      colour_buf{ctx, ctx, ctx}
+                                                                                                      colour_buf{ctx, ctx, ctx},
+                                                                                                      ppw2p_program(ctx)
     {
         use_colour = _use_colour;
 
@@ -3381,6 +3346,37 @@ struct superimposed_gpu_data
                 i.fill(cqueue, cl_float{0});
             }
         }
+
+        ///ppw2p generic kernel
+        {
+            equation_context ectx;
+
+            ectx.add("INITIAL_PPW2P_2", 1);
+
+            tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+            auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
+            {
+                value v = tov_phi_at_coordinate_general(world_position);
+                ectx.pin(v);
+                return v;
+            };
+
+            auto flat = get_flat_metric<value, 3>();
+
+            neutron_star::params<value> p;
+            p.position = {"data->position.x", "data->position.y", "data->position.z"};
+            p.mass = "data->mass";
+            p.compactness = "data->compactness";
+            p.linear_momentum = {"data->linear_momentum.x", "data->linear_momentum.y", "data->linear_momentum.z"};
+            p.angular_momentum = {"data->angular_momentum.x", "data->angular_momentum.y", "data->angular_momentum.z"};
+
+            value ppw2p_equation = neutron_star::calculate_ppw2_p(pos, flat, p, pinning_tov_phi);
+
+            ectx.add("B_PPW2P", ppw2p_equation);
+
+            std::tie(ppw2p_program, calculate_ppw2p_kernel) = build_and_fetch_kernel(ctx, ectx, "initial_conditions.cl", "calculate_ppw2p", "ppw2p");
+        }
     }
 
     void pull_all(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, float scale, vec3i dim)
@@ -3390,7 +3386,7 @@ struct superimposed_gpu_data
             if(obj.t == compact_object::NEUTRON_STAR)
             {
                 neutron_star_gpu_data dat(clctx);
-                dat.create(clctx, cqueue, obj, scale, dim);
+                dat.create(clctx, cqueue, calculate_ppw2p_kernel, obj, scale, dim);
 
                 pull(clctx, cqueue, dat, obj, scale, dim);
             }
