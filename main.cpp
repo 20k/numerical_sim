@@ -1612,7 +1612,7 @@ namespace neutron_star
             return (ndata.mass_energy_density + ndata.pressure) * pow(coordinate_radius, 2);
         };
 
-        return 4 * M_PI * integrate_1d(integration_func, 32, radius, 0.f);
+        return 4 * M_PI * integrate_1d(integration_func, 32, radius, T{0.f});
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (57)
@@ -3081,6 +3081,15 @@ private:
     }
 };
 
+struct gpu_matter_data
+{
+    cl_float4 position = {};
+    cl_float4 linear_momentum = {};
+    cl_float4 angular_momentum = {};
+    cl_float mass = 0;
+    cl_float compactness = 0;
+};
+
 ///no longer convinced its correct to sum aij_aIJ, instead of aIJ and then calculate
 struct neutron_star_gpu_data
 {
@@ -3088,9 +3097,40 @@ struct neutron_star_gpu_data
     std::array<cl::buffer, 6> bcAij;
     cl::buffer ppw2p;
 
-    neutron_star_gpu_data(cl::context& ctx) : tov_phi(ctx), bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, ppw2p(ctx)
-    {
+    cl::program ppw2p_program;
+    cl::kernel calculate_ppw2p_kernel;
 
+    neutron_star_gpu_data(cl::context& clctx) : tov_phi(clctx), bcAij{clctx, clctx, clctx, clctx, clctx, clctx}, ppw2p(clctx), ppw2p_program(clctx)
+    {
+        {
+            equation_context ctx;
+
+            ctx.add("INITIAL_PPW2P_2", 1);
+
+            tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+            auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
+            {
+                value v = tov_phi_at_coordinate_general(world_position);
+                ctx.pin(v);
+                return v;
+            };
+
+            auto flat = get_flat_metric<value, 3>();
+
+            neutron_star::params<value> p;
+            p.position = {"data->position.x", "data->position.y", "data->position.z"};
+            p.mass = "data->mass";
+            p.compactness = "data->compactness";
+            p.linear_momentum = {"data->linear_momentum.x", "data->linear_momentum.y", "data->linear_momentum.z"};
+            p.angular_momentum = {"data->angular_momentum.x", "data->angular_momentum.y", "data->angular_momentum.z"};
+
+            value ppw2p_equation = neutron_star::calculate_ppw2_p(pos, flat, p, pinning_tov_phi);
+
+            ctx.add("B_PPW2P", ppw2p_equation);
+
+            std::tie(ppw2p_program, calculate_ppw2p_kernel) = build_and_fetch_kernel(clctx, ctx, "initial_conditions.cl", "calculate_ppw2p", "ppw2p");
+        }
     }
 
     void create(cl::context& ctx, cl::command_queue& cqueue, const compact_object::data& obj, float scale, vec3i dim)
@@ -3237,43 +3277,27 @@ private:
     {
         vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
 
-        equation_context ctx;
+        gpu_matter_data gmd;
+        gmd.position = {obj.position.x(), obj.position.y(), obj.position.z()};
+        gmd.mass = obj.bare_mass;
+        gmd.compactness = obj.matter.compactness;
+        gmd.linear_momentum = {obj.momentum.x(), obj.momentum.y(), obj.momentum.z()};
+        gmd.angular_momentum = {obj.angular_momentum.x(), obj.angular_momentum.y(), obj.angular_momentum.z()};
 
-        ctx.add("INITIAL_PPW2P", 1);
-
-        tensor<value, 3> pos = {"ox", "oy", "oz"};
-
-        auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
-        {
-            value v = tov_phi_at_coordinate_general(world_position);
-            ctx.pin(v);
-            return v;
-        };
-
-        auto flat = get_flat_metric<float, 3>();
-
-        neutron_star::params<float> p;
-        p.position = obj.position;
-        p.mass = obj.bare_mass;
-        p.compactness = obj.matter.compactness;
-        p.linear_momentum = obj.momentum;
-        p.angular_momentum = obj.angular_momentum;
-
-        value ppw2p_equation = neutron_star::calculate_ppw2_p(pos, flat, p, pinning_tov_phi);
-
-        ctx.add("B_PPW2P", ppw2p_equation);
-
-        auto [prog, calculate_ppw2p_k] = build_and_fetch_kernel(clctx, ctx, "initial_conditions.cl", "calculate_ppw2p", "ppw2p");
+        cl::buffer buf(clctx);
+        buf.alloc(sizeof(gpu_matter_data));
+        buf.write(cqueue, std::vector<gpu_matter_data>{gmd});
 
         cl::args args;
+        args.push_back(buf);
         args.push_back(tov_phi);
         args.push_back(ppw2p);
         args.push_back(scale);
         args.push_back(clsize);
 
-        calculate_ppw2p_k.set_args(args);
+        calculate_ppw2p_kernel.set_args(args);
 
-        cqueue.exec(calculate_ppw2p_k, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
+        cqueue.exec(calculate_ppw2p_kernel, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
     }
 };
 

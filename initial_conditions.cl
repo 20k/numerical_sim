@@ -34,9 +34,19 @@ void calculate_bcAij(__global float* tov_phi,
 }
 #endif // INITIAL_BCAIJ
 
-#ifdef INITIAL_PPW2P
+#ifdef INITIAL_PPW2P_2
+struct matter_data
+{
+    float4 position;
+    float4 linear_momentum;
+    float4 angular_momentum;
+    float mass;
+    float compactness;
+};
+
 __kernel
-void calculate_ppw2p(__global float* tov_phi,
+void calculate_ppw2p(__global struct matter_data* data,
+                     __global float* tov_phi,
                      __global float* ppw2p,
                      float scale, int4 dim)
 {
@@ -60,7 +70,7 @@ void calculate_ppw2p(__global float* tov_phi,
 
     ppw2p[IDX(ix,iy,iz)] = B_PPW2P;
 }
-#endif // INITIAL_PPW2P
+#endif // INITIAL_PPW2P_2
 
 #ifdef ACCUM_MATTER_VARIABLES
 __kernel
