@@ -2826,9 +2826,9 @@ namespace black_hole
     }
 }
 
-template<typename T>
+template<typename T, typename U>
 inline
-tensor<value, 3, 3> calculate_bcAij_generic(equation_context& ctx, const tensor<value, 3>& pos, const std::vector<compact_object::data>& objs, T&& tov_phi_at_coordinate)
+tensor<value, 3, 3> calculate_bcAij_generic(equation_context& ctx, const tensor<value, 3>& pos, const std::vector<compact_object::base_data<T>>& objs, U&& tov_phi_at_coordinate)
 {
     tensor<value, 3, 3> bcAij;
 
@@ -2843,14 +2843,14 @@ tensor<value, 3, 3> calculate_bcAij_generic(equation_context& ctx, const tensor<
 
         if(obj.t == compact_object::NEUTRON_STAR)
         {
-            neutron_star::params<float> p;
+            neutron_star::params<T> p;
             p.position = obj.position;
             p.mass = obj.bare_mass;
             p.compactness = obj.matter.compactness;
             p.linear_momentum = obj.momentum;
             p.angular_momentum = obj.angular_momentum;
 
-            auto flat = get_flat_metric<float, 3>();
+            auto flat = get_flat_metric<T, 3>();
             auto flatv = get_flat_metric<value, 3>();
 
             tensor<value, 3, 3> bcAIJ_single = neutron_star::calculate_aij_single(ctx, pos, flat, p, tov_phi_at_coordinate);
@@ -2863,44 +2863,6 @@ tensor<value, 3, 3> calculate_bcAij_generic(equation_context& ctx, const tensor<
 
     return bcAij;
 }
-
-/*template
-inline
-tensor<value, 3, 3> calculate_bcAij_generic_value(equation_context& ctx, const tensor<value, 3>& pos, const std::vector<compact_object::data>& objs, T&& tov_phi_at_coordinate)
-{
-    tensor<value, 3, 3> bcAij;
-
-    for(const compact_object::data& obj : objs)
-    {
-        if(obj.t == compact_object::BLACK_HOLE)
-        {
-            tensor<value, 3, 3> bcAij_single = black_hole::calculate_single_bcAij(pos, obj.position, obj.momentum, obj.angular_momentum);
-
-            bcAij += bcAij_single;
-        }
-
-        if(obj.t == compact_object::NEUTRON_STAR)
-        {
-            neutron_star::params<float> p;
-            p.position = obj.position;
-            p.mass = obj.bare_mass;
-            p.compactness = obj.matter.compactness;
-            p.linear_momentum = obj.momentum;
-            p.angular_momentum = obj.angular_momentum;
-
-            auto flat = get_flat_metric<float, 3>();
-            auto flatv = get_flat_metric<value, 3>();
-
-            tensor<value, 3, 3> bcAIJ_single = neutron_star::calculate_aij_single(ctx, pos, flat, p, tov_phi_at_coordinate);
-
-            tensor<value, 3, 3> bcAij_single = lower_both(bcAIJ_single, flatv);
-
-            bcAij += bcAij_single;
-        }
-    }
-
-    return bcAij;
-}*/
 
 tensor<float, 3> world_to_voxel(const tensor<float, 3>& world_pos, vec3i dim, float scale)
 {
