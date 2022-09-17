@@ -1441,17 +1441,19 @@ T eos_polytropic(const T& rest_mass_density) ///aka p0
 
 namespace neutron_star
 {
+    template<typename T>
     struct params
     {
-        float mass = 0; ///... bare mass? adm mass? rest mass?
-        float compactness = 0;
-        tensor<float, 3> position;
-        tensor<float, 3> linear_momentum;
-        tensor<float, 3> angular_momentum;
+        T mass = 0; ///... bare mass? adm mass? rest mass?
+        T compactness = 0;
+        tensor<T, 3> position;
+        tensor<T, 3> linear_momentum;
+        tensor<T, 3> angular_momentum;
 
-        float get_radius() const
+        T get_radius() const
         {
-            assert(compactness != 0);
+            if constexpr(std::is_same_v<T, float>)
+                assert(compactness != 0);
 
             return mass / compactness;
         }
@@ -1575,9 +1577,9 @@ namespace neutron_star
     }
 
     ///remember tov_phi_at_coordinate samples in WORLD coordinates
-    template<typename T>
+    template<typename T, typename U>
     inline
-    conformal_data sample_conformal(const value& coordinate_radius, const params& p, T&& tov_phi_at_coordinate)
+    conformal_data sample_conformal(const value& coordinate_radius, const params<T>& p, U&& tov_phi_at_coordinate)
     {
         ///samples phi at pos + z * radius. Assumes that phi is symmetric
         tensor<value, 3> direction = {0, 0, 1};
@@ -1597,13 +1599,13 @@ namespace neutron_star
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (59)
-    template<typename T>
+    template<typename T, typename U>
     inline
-    value calculate_M_factor(const params& p, T&& tov_phi_at_coordinate)
+    value calculate_M_factor(const params<T>& p, U&& tov_phi_at_coordinate)
     {
-        float radius = p.get_radius();
+        T radius = p.get_radius();
 
-        auto integration_func = [&](float coordinate_radius)
+        auto integration_func = [&](const T& coordinate_radius)
         {
             conformal_data ndata = sample_conformal(coordinate_radius, p, tov_phi_at_coordinate);
 
@@ -1614,9 +1616,9 @@ namespace neutron_star
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (57)
-    template<typename T>
+    template<typename T, typename U>
     inline
-    value calculate_sigma(const value& coordinate_radius, const params& p, const value& M_factor, T&& tov_phi_at_coordinate)
+    value calculate_sigma(const value& coordinate_radius, const params<T>& p, const value& M_factor, U&& tov_phi_at_coordinate)
     {
         conformal_data cdata = sample_conformal(coordinate_radius, p, tov_phi_at_coordinate);
 
@@ -1624,13 +1626,13 @@ namespace neutron_star
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (43)
-    template<typename T>
+    template<typename T, typename U>
     inline
-    value calculate_integral_Q(equation_context& ctx, const value& coordinate_radius, const params& p, const value& M_factor, T&& tov_phi_at_coordinate)
+    value calculate_integral_Q(equation_context& ctx, const value& coordinate_radius, const params<T>& p, const value& M_factor, U&& tov_phi_at_coordinate)
     {
         ///currently impossible, but might as well
-        if(p.get_radius() == 0)
-            return 1;
+        //if(p.get_radius() == 0)
+        //    return 1;
 
         auto integral_func = [&ctx, p, &M_factor, tov_phi_at_coordinate](const value& rp)
         {
@@ -1645,12 +1647,12 @@ namespace neutron_star
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (45)
-    template<typename T>
+    template<typename T, typename U>
     inline
-    value calculate_integral_C(equation_context& ctx, const value& coordinate_radius, const params& p, const value& M_factor, T&& tov_phi_at_coordinate)
+    value calculate_integral_C(equation_context& ctx, const value& coordinate_radius, const params<T>& p, const value& M_factor, U&& tov_phi_at_coordinate)
     {
-        if(p.get_radius() == 0)
-            return 0;
+        //if(p.get_radius() == 0)
+        //    return 0;
 
         auto integral_func = [p, &M_factor, tov_phi_at_coordinate](const value& rp)
         {
@@ -1665,9 +1667,10 @@ namespace neutron_star
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (60)
-    value calculate_W2_linear_momentum(const metric<float, 3, 3>& flat, const tensor<float, 3>& linear_momentum, const value& M_factor)
+    template<typename T>
+    value calculate_W2_linear_momentum(const metric<T, 3, 3>& flat, const tensor<T, 3>& linear_momentum, const value& M_factor)
     {
-        float p2 = 0;
+        T p2 = 0;
 
         for(int i=0; i < 3; i++)
         {
@@ -1684,9 +1687,9 @@ namespace neutron_star
 
     ///only handles linear momentum currently
     ///https://arxiv.org/pdf/2101.10252.pdf (20)
-    template<typename T>
+    template<typename T, typename U>
     inline
-    tensor<value, 3, 3> calculate_aij_single(equation_context& ctx, const tensor<value, 3>& coordinate, const metric<float, 3, 3>& flat, const params& param, T&& tov_phi_at_coordinate)
+    tensor<value, 3, 3> calculate_aij_single(equation_context& ctx, const tensor<value, 3>& coordinate, const metric<T, 3, 3>& flat, const params<T>& param, U&& tov_phi_at_coordinate)
     {
         tensor<value, 3> vposition = {param.position.x(), param.position.y(), param.position.z()};
 
@@ -1700,7 +1703,7 @@ namespace neutron_star
 
         tensor<value, 3> li = relative_pos / r;
 
-        tensor<float, 3> linear_momentum_lower = lower_index(param.linear_momentum, flat);
+        tensor<T, 3> linear_momentum_lower = lower_index(param.linear_momentum, flat);
 
         value M_factor = calculate_M_factor(param, tov_phi_at_coordinate);
 
@@ -1717,7 +1720,7 @@ namespace neutron_star
 
         tensor<value, 3, 3> aIJ;
 
-        tensor<float, 3> P = param.linear_momentum;
+        tensor<T, 3> P = param.linear_momentum;
 
         for(int i=0; i < 3; i++)
         {
@@ -1747,9 +1750,9 @@ namespace neutron_star
         return aIJ;
     }
 
-    template<typename T>
+    template<typename T, typename U>
     inline
-    value calculate_ppw2_p(const tensor<value, 3>& coordinate, const metric<float, 3, 3>& flat, const params& param, T&& tov_phi_at_coordinate)
+    value calculate_ppw2_p(const tensor<value, 3>& coordinate, const metric<T, 3, 3>& flat, const params<T>& param, U&& tov_phi_at_coordinate)
     {
         tensor<value, 3> vposition = {param.position.x(), param.position.y(), param.position.z()};
 
@@ -2820,7 +2823,7 @@ tensor<value, 3, 3> calculate_bcAij_generic(equation_context& ctx, const tensor<
 
         if(obj.t == compact_object::NEUTRON_STAR)
         {
-            neutron_star::params p;
+            neutron_star::params<float> p;
             p.position = obj.position;
             p.mass = obj.bare_mass;
             p.compactness = obj.matter.compactness;
@@ -3249,7 +3252,7 @@ private:
 
         auto flat = get_flat_metric<float, 3>();
 
-        neutron_star::params p;
+        neutron_star::params<float> p;
         p.position = obj.position;
         p.mass = obj.bare_mass;
         p.compactness = obj.matter.compactness;
@@ -3435,7 +3438,7 @@ struct superimposed_gpu_data
             ctx.pin(rad);
 
             ///todo: remove the duplication?
-            neutron_star::params p;
+            neutron_star::params<float> p;
             p.position = obj.position;
             p.mass = obj.bare_mass;
             p.compactness = obj.matter.compactness;
@@ -3545,7 +3548,7 @@ struct superimposed_gpu_data
         float radius = neutron_star::mass_to_radius(obj.bare_mass, obj.matter.compactness);
 
         ///todo: remove the duplication?
-        neutron_star::params p;
+        neutron_star::params<float> p;
         p.position = obj.position;
         p.mass = obj.bare_mass;
         p.compactness = obj.matter.compactness;
