@@ -3096,6 +3096,7 @@ struct gpu_matter_data
     cl_float4 position = {};
     cl_float4 linear_momentum = {};
     cl_float4 angular_momentum = {};
+    cl_float4 colour = {};
     cl_float mass = 0;
     cl_float compactness = 0;
 };
@@ -3216,6 +3217,7 @@ private:
         gmd.compactness = obj.matter.compactness;
         gmd.linear_momentum = {obj.momentum.x(), obj.momentum.y(), obj.momentum.z()};
         gmd.angular_momentum = {obj.angular_momentum.x(), obj.angular_momentum.y(), obj.angular_momentum.z()};
+        gmd.colour = {obj.matter.colour.x(), obj.matter.colour.y(), obj.matter.colour.z()};
 
         cl::buffer buf(clctx);
         buf.alloc(sizeof(gpu_matter_data));
@@ -3248,6 +3250,7 @@ private:
         gmd.compactness = obj.matter.compactness;
         gmd.linear_momentum = {obj.momentum.x(), obj.momentum.y(), obj.momentum.z()};
         gmd.angular_momentum = {obj.angular_momentum.x(), obj.angular_momentum.y(), obj.angular_momentum.z()};
+        gmd.colour = {obj.matter.colour.x(), obj.matter.colour.y(), obj.matter.colour.z()};
 
         cl::buffer buf(clctx);
         buf.alloc(sizeof(gpu_matter_data));
@@ -3286,21 +3289,20 @@ struct superimposed_gpu_data
 
     cl::buffer u_arg;
 
-    bool use_colour = false;
-
     cl::program ppw2p_program;
     cl::kernel calculate_ppw2p_kernel;
 
     cl::program bcAij_matter_program;
     cl::kernel calculate_bcAij_matter_kernel;
 
-    superimposed_gpu_data(cl::context& ctx, cl::command_queue& cqueue, vec3i dim, bool _use_colour) : tov_phi{ctx}, bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, aij_aIJ{ctx}, ppw2p{ctx},
+    cl::program multi_matter_program;
+    cl::kernel multi_matter_kernel;
+
+    superimposed_gpu_data(cl::context& ctx, cl::command_queue& cqueue, vec3i dim) : tov_phi{ctx}, bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, aij_aIJ{ctx}, ppw2p{ctx},
                                                                                                       pressure_buf{ctx}, rho_buf{ctx}, rhoH_buf{ctx}, p0_buf{ctx}, Si_buf{ctx, ctx, ctx}, u_arg{ctx},
                                                                                                       colour_buf{ctx, ctx, ctx},
-                                                                                                      ppw2p_program(ctx), bcAij_matter_program(ctx)
+                                                                                                      ppw2p_program(ctx), bcAij_matter_program(ctx), multi_matter_program(ctx)
     {
-        use_colour = _use_colour;
-
         int cells = dim.x() * dim.y() * dim.z();
 
         ///unsure why I previously filled this with a 1
@@ -3337,13 +3339,10 @@ struct superimposed_gpu_data
             i.fill(cqueue, cl_float{0});
         }
 
-        if(use_colour)
+        for(cl::buffer& i : colour_buf)
         {
-            for(cl::buffer& i : colour_buf)
-            {
-                i.alloc(cells * sizeof(cl_float));
-                i.fill(cqueue, cl_float{0});
-            }
+            i.alloc(cells * sizeof(cl_float));
+            i.fill(cqueue, cl_float{0});
         }
 
         ///ppw2p generic kernel
@@ -3415,6 +3414,110 @@ struct superimposed_gpu_data
         }
     }
 
+    void build_matter_program(cl::context& ctx, const value& conformal_guess)
+    {
+        tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+        equation_context ectx;
+
+        auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
+        {
+            value v = tov_phi_at_coordinate_general(world_position);
+
+            ectx.pin(v);
+
+            return v;
+        };
+
+        value u_value = dual_types::apply("buffer_index", "u_value", "ix", "iy", "iz", "dim");
+
+        ///https://arxiv.org/pdf/1606.04881.pdf 74
+        value phi = conformal_guess + u_value;
+
+        ///we need respectively
+        ///(rhoH, Si, Sij), all lower indices
+
+        ///pH is the adm variable, NOT P
+        value p0_conformal = 0;
+
+        value pressure_conformal = 0;
+        value rho_conformal = 0;
+        value rhoH_conformal = 0;
+        tensor<value, 3> Si_conformal;
+        tensor<value, 3> colour;
+
+        {
+            ///todo: remove the duplication?
+            neutron_star::params<value> p;
+            p.position = {"data->position.x", "data->position.y", "data->position.z"};
+            p.mass = "data->mass";
+            p.compactness = "data->compactness";
+            p.linear_momentum = {"data->linear_momentum.x", "data->linear_momentum.y", "data->linear_momentum.z"};
+            p.angular_momentum = {"data->angular_momentum.x", "data->angular_momentum.y", "data->angular_momentum.z"};
+
+            tensor<value, 3> in_colour = {"data->colour.x", "data->colour.y", "data->colour.z"};
+
+            value rad = (pos - p.position).length();
+
+            ectx.pin(rad);
+
+            value M_factor = neutron_star::calculate_M_factor(p, pinning_tov_phi);
+
+            ectx.pin(M_factor);
+
+            auto flat = get_flat_metric<value, 3>();
+
+            value W2_factor = neutron_star::calculate_W2_linear_momentum(flat, p.linear_momentum, M_factor);
+
+            //neutron_star::data<value> sampled = neutron_star::sample_interior<value>(rad, value{p.mass});
+
+            neutron_star::conformal_data cdata = neutron_star::sample_conformal(rad, p, pinning_tov_phi);
+
+            ectx.pin(cdata.mass_energy_density);
+            ectx.pin(cdata.pressure);
+            ectx.pin(cdata.rest_mass_density);
+
+            pressure_conformal += cdata.pressure;
+            //unused_conformal_rest_mass += sampled.mass_energy_density;
+
+            rho_conformal += cdata.mass_energy_density;
+            rhoH_conformal += (cdata.mass_energy_density + cdata.pressure) * W2_factor - cdata.pressure;
+            //eps += sampled.specific_energy_density;
+
+            //enthalpy += 1 + sampled.specific_energy_density + pressure_conformal / sampled.mass_energy_density;
+
+            p0_conformal += cdata.mass_energy_density;
+
+            ///https://arxiv.org/pdf/1606.04881.pdf (56)
+            ///we could avoid the triple calculation of sigma here
+            Si_conformal += p.linear_momentum * neutron_star::calculate_sigma(rad, p, M_factor, pinning_tov_phi);
+
+            colour.x() += if_v(rad <= p.get_radius(), value{in_colour.x()}, value{0.f});
+            colour.y() += if_v(rad <= p.get_radius(), value{in_colour.y()}, value{0.f});
+            colour.z() += if_v(rad <= p.get_radius(), value{in_colour.z()}, value{0.f});
+        }
+
+        value pressure = pow(phi, -8.f) * pressure_conformal;
+        value rho = pow(phi, -8.f) * rho_conformal;
+        value rhoH = pow(phi, -8.f) * rhoH_conformal;
+        value p0 = pow(phi, -8.f) * p0_conformal;
+        tensor<value, 3> Si = pow(phi, -10.f) * Si_conformal; // upper
+
+        ectx.add("ALL_MATTER_VARIABLES", 1);
+        ectx.add("ACCUM_PRESSURE", pressure);
+        ectx.add("ACCUM_RHO", rho);
+        ectx.add("ACCUM_RHOH", rhoH);
+        ectx.add("ACCUM_P0", p0);
+
+        for(int i=0; i < 3; i++)
+        {
+            ectx.add("ACCUM_SI" + std::to_string(i), Si.idx(i));
+            ectx.add("ACCUM_COLOUR" + std::to_string(i), colour.idx(i));
+        }
+
+        std::tie(multi_matter_program, multi_matter_kernel) = build_and_fetch_kernel(ctx, ectx, "initial_conditions.cl", "multi_accumulate", "multiaccumulate");
+    }
+
     void pull_all(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, float scale, vec3i dim)
     {
         for(const compact_object::data& obj : objs)
@@ -3442,6 +3545,8 @@ struct superimposed_gpu_data
 
         //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
         value conformal_guess = calculate_conformal_guess(pos, objs);;
+
+        build_matter_program(clctx, conformal_guess);
 
         for(const compact_object::data& obj : objs)
         {
@@ -3575,12 +3680,9 @@ struct superimposed_gpu_data
         accumulate_buffer(Si_buf[1], Si.idx(1));
         accumulate_buffer(Si_buf[2], Si.idx(2));
 
-        if(use_colour)
-        {
-            accumulate_buffer(colour_buf[0], colour.idx(0));
-            accumulate_buffer(colour_buf[1], colour.idx(1));
-            accumulate_buffer(colour_buf[2], colour.idx(2));
-        }
+        accumulate_buffer(colour_buf[0], colour.idx(0));
+        accumulate_buffer(colour_buf[1], colour.idx(1));
+        accumulate_buffer(colour_buf[2], colour.idx(2));
     }
 
     void pull(cl::context& clctx, cl::command_queue& cqueue, neutron_star_gpu_data& dat, const compact_object::data& obj, float scale, vec3i dim)
@@ -7385,17 +7487,15 @@ int main()
 
     //sandwich_result sandwich(clctx.ctx);
 
-    bool should_use_matter_colour = true;
-
     matter_initial_vars matter_vars(clctx.ctx);
 
-    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes, &matter_vars, should_use_matter_colour]()
+    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes, &matter_vars]()
     {
         steady_timer u_time;
 
         cl::command_queue cqueue(clctx.ctx);
 
-        superimposed_gpu_data super(clctx.ctx, cqueue, size, should_use_matter_colour);
+        superimposed_gpu_data super(clctx.ctx, cqueue, size);
         super.pull_all(clctx.ctx, cqueue, holes.objs, scale, size);
 
         u_arg = super.u_arg;
@@ -7632,7 +7732,7 @@ int main()
     #endif // USE_HALF_INTERMEDIATE
 
     base_settings.use_matter = holes.use_matter;
-    base_settings.use_matter_colour = should_use_matter_colour;
+    base_settings.use_matter_colour = true;
 
     #ifdef CALCULATE_MOMENTUM_CONSTRAINT
     base_settings.calculate_momentum_constraint = true;

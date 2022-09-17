@@ -6,6 +6,7 @@ struct matter_data
     float4 position;
     float4 linear_momentum;
     float4 angular_momentum;
+    float4 colour;
     float mass;
     float compactness;
 };
@@ -220,3 +221,39 @@ void single_accumulate(__global float* inout, __global float* u_value, __global 
     inout[IDX(ix,iy,iz)] += SINGLE_ACCUMULATE;
 }
 #endif
+
+#ifdef ALL_MATTER_VARIABLES
+__kernel
+void multi_accumulate(__global float* pressure, __global float* rho, __global float* rhoH, __global float* p0,
+                      __glboal float* Si0, __global float* Si1, __global float* Si2, __global float* colour0, __global float* colour1, __global float* colour2,
+                      __global float* u_value, __global float* tov_phi, float scale, int4 dim)
+{
+     int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
+
+    float ox = offset.x;
+    float oy = offset.y;
+    float oz = offset.z;
+
+    float TEMPORARIESmultiaccumulate;
+
+    int index = IDX(ix,iy.iz);
+
+    pressure[index] += ACCUM_PRESSURE;
+    rho[index] += ACCUM_RHO;
+    rhoH[index] += ACCUM_RHOH;
+    p0[index] += ACCUM_P0;
+    Si0[index] += ACCUM_SI0;
+    Si1[index] += ACCUM_SI1;
+    Si2[index] += ACCUM_SI2;
+    colour0[index] += ACCUM_COLOUR0;
+    colour1[index] += ACCUM_COLOUR1;
+    colour2[index] += ACCUM_COLOUR2;
+}
+#endif // ALL_MATTER_VARIABLES
