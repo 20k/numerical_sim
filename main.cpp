@@ -3674,104 +3674,34 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
-    value u_value = dual_types::apply("buffer_index", "u_value", "ix", "iy", "iz", "dim");
-
-    value gA = bidx("gA", false, false);
-
-    auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
-    {
-        value v = tov_phi_at_coordinate_general(world_position);
-
-        ctx.pin(v);
-
-        return v;
-    };
+    value gA = bidx("gA", ctx.uses_linear, false);
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
 
+    value u_value = dual_types::apply("buffer_index", "u_value", "ix", "iy", "iz", "dim");
+
     ///https://arxiv.org/pdf/1606.04881.pdf 74
     value phi = BL_s_dyn + u_value;
 
-    ///we need respectively
-    ///(rhoH, Si, Sij), all lower indices
+    value pressure = bidx("pressure_in", ctx.uses_linear, false);
+    value rho = bidx("rho_in", ctx.uses_linear, false);
+    value rhoH = bidx("rhoH_in", ctx.uses_linear, false);
+    value p0 = bidx("p0_in", ctx.uses_linear, false);
 
-    ///pH is the adm variable, NOT P
-    value p0_conformal = 0;
+    tensor<value, 3> Si;
 
-    value pressure_conformal = 0;
-    value rho_conformal = 0;
-    value rhoH_conformal = 0;
-    tensor<value, 3> Si_conformal;
-    tensor<value, 3> colour;
-
-    for(const compact_object::data& obj : cpu_holes)
+    for(int i=0; i < 3; i++)
     {
-        if(obj.t == compact_object::NEUTRON_STAR)
-        {
-            tensor<value, 3> vloc = {obj.position.x(), obj.position.y(), obj.position.z()};
-
-            value rad = (pos - vloc).length();
-
-            ctx.pin(rad);
-
-            ///todo: remove the duplication?
-            neutron_star::params p;
-            p.position = obj.position;
-            p.mass = obj.bare_mass;
-            p.compactness = obj.matter.compactness;
-            p.linear_momentum = obj.momentum;
-            p.angular_momentum = obj.angular_momentum;
-
-            value M_factor = neutron_star::calculate_M_factor(p, pinning_tov_phi);
-
-            ctx.pin(M_factor);
-
-            tensor<value, 3> vmomentum = {obj.momentum.x(), obj.momentum.y(), obj.momentum.z()};
-
-            auto flat = get_flat_metric<float, 3>();
-
-            value W2_factor = neutron_star::calculate_W2_linear_momentum(flat, obj.momentum, M_factor);
-
-            //neutron_star::data<value> sampled = neutron_star::sample_interior<value>(rad, value{p.mass});
-
-            neutron_star::conformal_data cdata = neutron_star::sample_conformal(rad, p, pinning_tov_phi);
-
-            ctx.pin(cdata.mass_energy_density);
-            ctx.pin(cdata.pressure);
-            ctx.pin(cdata.rest_mass_density);
-
-            pressure_conformal += cdata.pressure;
-            //unused_conformal_rest_mass += sampled.mass_energy_density;
-
-            rho_conformal += cdata.mass_energy_density;
-            rhoH_conformal += (cdata.mass_energy_density + cdata.pressure) * W2_factor - cdata.pressure;
-            //eps += sampled.specific_energy_density;
-
-            //enthalpy += 1 + sampled.specific_energy_density + pressure_conformal / sampled.mass_energy_density;
-
-            p0_conformal += cdata.mass_energy_density;
-
-            ///https://arxiv.org/pdf/1606.04881.pdf (56)
-            Si_conformal += vmomentum * neutron_star::calculate_sigma(rad, p, M_factor, pinning_tov_phi);
-
-            colour.x() += if_v(rad <= p.get_radius(), value{obj.matter.colour.x()}, value{0.f});
-            colour.y() += if_v(rad <= p.get_radius(), value{obj.matter.colour.y()}, value{0.f});
-            colour.z() += if_v(rad <= p.get_radius(), value{obj.matter.colour.z()}, value{0.f});
-        }
+        Si.idx(i) = bidx("Si" + std::to_string(i) + "_in", ctx.uses_linear, false);;
     }
 
-    value pressure = pow(phi, -8.f) * pressure_conformal;
-    value rho = pow(phi, -8.f) * rho_conformal;
-    value rhoH = pow(phi, -8.f) * rhoH_conformal;
-    value p0 = pow(phi, -8.f) * p0_conformal;
-    tensor<value, 3> Si = pow(phi, -10.f) * Si_conformal; // upper
+    tensor<value, 3> colour;
 
-    ctx.pin(pressure);
-    ctx.pin(rho);
-    ctx.pin(rhoH);
-    ctx.pin(p0);
-    ctx.pin(Si);
+    for(int i=0; i < 3; i++)
+    {
+        colour.idx(i) = bidx("colour" + std::to_string(i) + "_in", ctx.uses_linear, false);;
+    }
 
     value is_degenerate = rho < 0.0001f;
 
