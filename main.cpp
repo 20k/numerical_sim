@@ -3561,128 +3561,38 @@ struct superimposed_gpu_data
     {
         vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
 
-        tensor<value, 3> pos = {"ox", "oy", "oz"};
+        gpu_matter_data gmd;
+        gmd.position = {obj.position.x(), obj.position.y(), obj.position.z()};
+        gmd.mass = obj.bare_mass;
+        gmd.compactness = obj.matter.compactness;
+        gmd.linear_momentum = {obj.momentum.x(), obj.momentum.y(), obj.momentum.z()};
+        gmd.angular_momentum = {obj.angular_momentum.x(), obj.angular_momentum.y(), obj.angular_momentum.z()};
+        gmd.colour = {obj.matter.colour.x(), obj.matter.colour.y(), obj.matter.colour.z()};
 
-        equation_context ctx;
+        cl::buffer buf(clctx);
+        buf.alloc(sizeof(gpu_matter_data));
+        buf.write(cqueue, std::vector<gpu_matter_data>{gmd});
 
-        auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
-        {
-            value v = tov_phi_at_coordinate_general(world_position);
+        cl::args args;
+        args.push_back(buf);
+        args.push_back(pressure_buf);
+        args.push_back(rho_buf);
+        args.push_back(rhoH_buf);
+        args.push_back(p0_buf);
+        args.push_back(Si_buf[0]);
+        args.push_back(Si_buf[1]);
+        args.push_back(Si_buf[2]);
+        args.push_back(colour_buf[0]);
+        args.push_back(colour_buf[1]);
+        args.push_back(colour_buf[2]);
+        args.push_back(u_arg);
+        args.push_back(tov_phi);
+        args.push_back(scale);
+        args.push_back(clsize);
 
-            ctx.pin(v);
+        multi_matter_kernel.set_args(args);
 
-            return v;
-        };
-
-        value u_value = dual_types::apply("buffer_index", "u_value", "ix", "iy", "iz", "dim");
-
-        ///https://arxiv.org/pdf/1606.04881.pdf 74
-        value phi = conformal_guess + u_value;
-
-        ///we need respectively
-        ///(rhoH, Si, Sij), all lower indices
-
-        ///pH is the adm variable, NOT P
-        value p0_conformal = 0;
-
-        value pressure_conformal = 0;
-        value rho_conformal = 0;
-        value rhoH_conformal = 0;
-        tensor<value, 3> Si_conformal;
-        tensor<value, 3> colour;
-
-        {
-            tensor<value, 3> vloc = {obj.position.x(), obj.position.y(), obj.position.z()};
-
-            value rad = (pos - vloc).length();
-
-            ctx.pin(rad);
-
-            ///todo: remove the duplication?
-            neutron_star::params<float> p;
-            p.position = obj.position;
-            p.mass = obj.bare_mass;
-            p.compactness = obj.matter.compactness;
-            p.linear_momentum = obj.momentum;
-            p.angular_momentum = obj.angular_momentum;
-
-            value M_factor = neutron_star::calculate_M_factor(p, pinning_tov_phi);
-
-            ctx.pin(M_factor);
-
-            tensor<value, 3> vmomentum = {obj.momentum.x(), obj.momentum.y(), obj.momentum.z()};
-
-            auto flat = get_flat_metric<float, 3>();
-
-            value W2_factor = neutron_star::calculate_W2_linear_momentum(flat, obj.momentum, M_factor);
-
-            //neutron_star::data<value> sampled = neutron_star::sample_interior<value>(rad, value{p.mass});
-
-            neutron_star::conformal_data cdata = neutron_star::sample_conformal(rad, p, pinning_tov_phi);
-
-            ctx.pin(cdata.mass_energy_density);
-            ctx.pin(cdata.pressure);
-            ctx.pin(cdata.rest_mass_density);
-
-            pressure_conformal += cdata.pressure;
-            //unused_conformal_rest_mass += sampled.mass_energy_density;
-
-            rho_conformal += cdata.mass_energy_density;
-            rhoH_conformal += (cdata.mass_energy_density + cdata.pressure) * W2_factor - cdata.pressure;
-            //eps += sampled.specific_energy_density;
-
-            //enthalpy += 1 + sampled.specific_energy_density + pressure_conformal / sampled.mass_energy_density;
-
-            p0_conformal += cdata.mass_energy_density;
-
-            ///https://arxiv.org/pdf/1606.04881.pdf (56)
-            ///we could avoid the triple calculation of sigma here
-            Si_conformal += vmomentum * neutron_star::calculate_sigma(rad, p, M_factor, pinning_tov_phi);
-
-            colour.x() += if_v(rad <= p.get_radius(), value{obj.matter.colour.x()}, value{0.f});
-            colour.y() += if_v(rad <= p.get_radius(), value{obj.matter.colour.y()}, value{0.f});
-            colour.z() += if_v(rad <= p.get_radius(), value{obj.matter.colour.z()}, value{0.f});
-        }
-
-        value pressure = pow(phi, -8.f) * pressure_conformal;
-        value rho = pow(phi, -8.f) * rho_conformal;
-        value rhoH = pow(phi, -8.f) * rhoH_conformal;
-        value p0 = pow(phi, -8.f) * p0_conformal;
-        tensor<value, 3> Si = pow(phi, -10.f) * Si_conformal; // upper
-
-        ctx.add("HAS_MATTER_VARIABLE", 1);
-
-        auto accumulate_buffer = [&](cl::buffer& buf, const value& v)
-        {
-            equation_context next = ctx;
-
-            next.add("SINGLE_ACCUMULATE", v);
-
-            auto [prog, accum_single_k] = build_and_fetch_kernel(clctx, next, "initial_conditions.cl", "single_accumulate", "singleaccumulate");
-
-            cl::args args;
-            args.push_back(buf);
-            args.push_back(u_arg);
-            args.push_back(tov_phi);
-            args.push_back(scale);
-            args.push_back(clsize);
-
-            accum_single_k.set_args(args);
-
-            cqueue.exec(accum_single_k, {dim.x(), dim.y(), dim.z()}, {8, 8, 1}, {});
-        };
-
-        accumulate_buffer(pressure_buf, pressure);
-        accumulate_buffer(rho_buf, rho);
-        accumulate_buffer(rhoH_buf, rhoH);
-        accumulate_buffer(p0_buf, p0);
-        accumulate_buffer(Si_buf[0], Si.idx(0));
-        accumulate_buffer(Si_buf[1], Si.idx(1));
-        accumulate_buffer(Si_buf[2], Si.idx(2));
-
-        accumulate_buffer(colour_buf[0], colour.idx(0));
-        accumulate_buffer(colour_buf[1], colour.idx(1));
-        accumulate_buffer(colour_buf[2], colour.idx(2));
+        cqueue.exec(multi_matter_kernel, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
     }
 
     void pull(cl::context& clctx, cl::command_queue& cqueue, neutron_star_gpu_data& dat, const compact_object::data& obj, float scale, vec3i dim)

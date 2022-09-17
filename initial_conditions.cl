@@ -199,9 +199,12 @@ void calculate_aij_aIJ(__global float* bcAij0, __global float* bcAij1, __global 
 }
 #endif // CALCULATE_AIJ_AIJ
 
-#ifdef HAS_MATTER_VARIABLE
+#ifdef ALL_MATTER_VARIABLES
 __kernel
-void single_accumulate(__global float* inout, __global float* u_value, __global float* tov_phi, float scale, int4 dim)
+void multi_accumulate(__global struct matter_data* data,
+                      __global float* pressure, __global float* rho, __global float* rhoH, __global float* p0,
+                      __global float* Si0, __global float* Si1, __global float* Si2, __global float* colour0, __global float* colour1, __global float* colour2,
+                      __global float* u_value, __global float* tov_phi, float scale, int4 dim)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -216,34 +219,9 @@ void single_accumulate(__global float* inout, __global float* u_value, __global 
     float oy = offset.y;
     float oz = offset.z;
 
-    float TEMPORARIESsingleaccumulate;
-
-    inout[IDX(ix,iy,iz)] += SINGLE_ACCUMULATE;
-}
-#endif
-
-#ifdef ALL_MATTER_VARIABLES
-__kernel
-void multi_accumulate(__global float* pressure, __global float* rho, __global float* rhoH, __global float* p0,
-                      __glboal float* Si0, __global float* Si1, __global float* Si2, __global float* colour0, __global float* colour1, __global float* colour2,
-                      __global float* u_value, __global float* tov_phi, float scale, int4 dim)
-{
-     int ix = get_global_id(0);
-    int iy = get_global_id(1);
-    int iz = get_global_id(2);
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    float3 offset = transform_position(ix, iy, iz, dim, scale);
-
-    float ox = offset.x;
-    float oy = offset.y;
-    float oz = offset.z;
-
     float TEMPORARIESmultiaccumulate;
 
-    int index = IDX(ix,iy.iz);
+    int index = IDX(ix,iy,iz);
 
     pressure[index] += ACCUM_PRESSURE;
     rho[index] += ACCUM_RHO;
