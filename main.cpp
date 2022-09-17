@@ -4196,7 +4196,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #endif // GAS_CLOUD_BLACK_HOLE
 
     ///this is an extremely cool matter case
-    #define NEUTRON_ACCRETION
+    //#define NEUTRON_ACCRETION
     #ifdef NEUTRON_ACCRETION
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
@@ -4217,7 +4217,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // NEUTRON_ACCRETION
 
-    //#define N_BODY
+    #define N_BODY
     #ifdef N_BODY
     compact_object::data base;
     base.t = compact_object::NEUTRON_STAR;
@@ -4229,7 +4229,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     std::minstd_rand rng(1234);
 
-    for(int i=0; i < 8; i++)
+    for(int i=0; i < 20; i++)
     {
         for(int kk=0; kk < 1024; kk++)
         {
