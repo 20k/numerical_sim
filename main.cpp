@@ -3339,9 +3339,6 @@ struct superimposed_gpu_data
             Si[i].alloc(cells * sizeof(cl_float));
             Si[i].fill(cqueue,cl_float{0});
         }
-
-        u_arg.alloc(cells * sizeof(cl_float));
-        u_arg.fill(cqueue, cl_float{0});
     }
 
     void pull_all(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, float scale, vec3i dim)
