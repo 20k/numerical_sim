@@ -2733,7 +2733,7 @@ namespace compact_object
 
         base_data(){}
 
-        template<typename U>
+        /*template<typename U>
         base_data(const base_data<U>& other)
         {
             position = other.position.template as<T>();
@@ -2745,7 +2745,7 @@ namespace compact_object
             matter.colour = other.matter.colour.template as<T>();
 
             t = other.t;
-        }
+        }*/
     };
 
     using data = base_data<float>;
@@ -2832,7 +2832,7 @@ tensor<value, 3, 3> calculate_bcAij_generic(equation_context& ctx, const tensor<
 {
     tensor<value, 3, 3> bcAij;
 
-    for(const compact_object::data& obj : objs)
+    for(const compact_object::base_data<T>& obj : objs)
     {
         if(obj.t == compact_object::BLACK_HOLE)
         {
@@ -3210,6 +3210,25 @@ private:
     {
         vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
 
+        gpu_matter_data gmd;
+        gmd.position = {obj.position.x(), obj.position.y(), obj.position.z()};
+        gmd.mass = obj.bare_mass;
+        gmd.compactness = obj.matter.compactness;
+        gmd.linear_momentum = {obj.momentum.x(), obj.momentum.y(), obj.momentum.z()};
+        gmd.angular_momentum = {obj.angular_momentum.x(), obj.angular_momentum.y(), obj.angular_momentum.z()};
+
+        cl::buffer buf(clctx);
+        buf.alloc(sizeof(gpu_matter_data));
+        buf.write(cqueue, std::vector<gpu_matter_data>{gmd});
+
+        compact_object::base_data<value> base_data;
+        base_data.position = {"data->position.x", "data->position.y", "data->position.z"};
+        base_data.bare_mass = "data->mass";
+        base_data.momentum = {"data->linear_momentum.x", "data->linear_momentum.y", "data->linear_momentum.z"};
+        base_data.angular_momentum = {"data->angular_momentum.x", "data->angular_momentum.y", "data->angular_momentum.z"};
+        base_data.matter.compactness = "data->compactness";
+        base_data.t = compact_object::NEUTRON_STAR;
+
         equation_context ctx;
 
         tensor<value, 3> pos = {"ox", "oy", "oz"};
@@ -3221,7 +3240,7 @@ private:
             return v;
         };
 
-        tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(ctx, pos, std::vector{obj}, pinning_tov_phi);
+        tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(ctx, pos, std::vector{base_data}, pinning_tov_phi);
 
         vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
@@ -3232,11 +3251,12 @@ private:
             ctx.add("B_BCAIJ_" + std::to_string(i), bcAij_dyn.idx(index.x(), index.y()));
         }
 
-        ctx.add("INITIAL_BCAIJ", 1);
+        ctx.add("INITIAL_BCAIJ_2", 1);
 
         auto [prog, calculate_bcAij_k] = build_and_fetch_kernel(clctx, ctx, "initial_conditions.cl", "calculate_bcAij", "bcaij");
 
         cl::args args;
+        args.push_back(buf);
         args.push_back(tov_phi);
 
         for(int i=0; i < 6; i++)
