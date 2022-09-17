@@ -4291,8 +4291,8 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #ifdef N_BODY
     compact_object::data base;
     base.t = compact_object::NEUTRON_STAR;
-    base.bare_mass = 0.045f;
-    base.matter.compactness = 0.02f;
+    base.bare_mass = 0.0225f;
+    base.matter.compactness = 0.01f;
     base.matter.colour = {1,1,1};
 
     tensor<float, 3> colours[9] = {{1,1,1}, {1,0,0}, {0,1,0}, {0, 0, 1}, {1, 0.4f, 0.f}, {1, 0, 1}, {0, 1, 1}, {1, 1, 0}, {0.4f, 1.f, 1.f}};
@@ -4311,7 +4311,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
         pos = (pos - 0.5f) * ((get_c_at_max()/2.3));
 
-        momentum = (momentum - 0.5f) * 0.01f;
+        momentum = (momentum - 0.5f) * 0.01f * 0.25f;
 
         compact_object::data h = base;
         h.position = {pos.x(), pos.y(), pos.z()};
