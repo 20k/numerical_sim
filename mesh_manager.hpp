@@ -102,6 +102,50 @@ struct cpu_mesh_settings
     bool use_matter_colour = false;
 };
 
+struct matter_initial_vars
+{
+    std::array<cl::buffer, 6> bcAij;
+    cl::buffer superimposed_tov_phi;
+
+    cl::buffer pressure_buf;
+    cl::buffer rho_buf;
+    cl::buffer rhoH_buf;
+    cl::buffer p0_buf;
+    std::array<cl::buffer, 3> Si_buf;
+    std::array<cl::buffer, 3> colour_buf;
+
+    ///there must be a better way of doing this, c++ pls
+    matter_initial_vars(cl::context& ctx) : bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, superimposed_tov_phi{ctx},
+                                            pressure_buf{ctx}, rho_buf{ctx}, rhoH_buf{ctx}, p0_buf{ctx}, Si_buf{ctx, ctx, ctx}, colour_buf{ctx, ctx, ctx}
+    {
+
+    }
+
+    void clear(cl::context& ctx)
+    {
+        auto clr = [&](cl::buffer& b)
+        {
+            b = cl::buffer(ctx);
+        };
+
+        for(auto& i : bcAij)
+            clr(i);
+
+        clr(superimposed_tov_phi);
+
+        clr(pressure_buf);
+        clr(rho_buf);
+        clr(rhoH_buf);
+        clr(p0_buf);
+
+        for(auto& i : Si_buf)
+            clr(i);
+
+        for(auto& i : colour_buf)
+            clr(i);
+    }
+};
+
 struct cpu_mesh
 {
     cpu_mesh_settings sett;
@@ -127,7 +171,7 @@ struct cpu_mesh
 
     cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points);
 
-    void init(cl::command_queue& cqueue, cl::buffer& u_arg, std::array<cl::buffer, 6>& bcAij, cl::buffer& superimposed_tov_phi);
+    void init(cl::command_queue& cqueue, cl::buffer& u_arg, matter_initial_vars& vars);
 
     void step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, int idx_in, int idx_out, int idx_base, float timestep, int iteration);
 

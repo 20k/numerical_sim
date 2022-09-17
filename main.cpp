@@ -7385,8 +7385,6 @@ int main()
     equation_context setup_static;
 
     cl::buffer u_arg(clctx.ctx);
-    std::array<cl::buffer, 6> bcAij{clctx.ctx, clctx.ctx, clctx.ctx, clctx.ctx, clctx.ctx, clctx.ctx};
-    cl::buffer superimposed_tov_phi(clctx.ctx);
 
     cl::program evolve_prog(clctx.ctx, "evolve_points.cl");
     evolve_prog.build(clctx.ctx, argument_string + "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ");
@@ -7399,7 +7397,9 @@ int main()
 
     bool should_use_matter_colour = true;
 
-    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes, &superimposed_tov_phi, &bcAij, should_use_matter_colour]()
+    matter_initial_vars matter_vars(clctx.ctx);
+
+    auto u_thread = [c_at_max, scale, size, &clctx, &u_arg, &holes, &matter_vars, should_use_matter_colour]()
     {
         steady_timer u_time;
 
@@ -7409,8 +7409,15 @@ int main()
         super.pull_all(clctx.ctx, cqueue, holes.objs, scale, size);
 
         u_arg = super.u_arg;
-        bcAij = super.bcAij;
-        superimposed_tov_phi = super.tov_phi;
+
+        matter_vars.bcAij = super.bcAij;
+        matter_vars.superimposed_tov_phi = super.tov_phi;
+        matter_vars.pressure_buf = super.pressure_buf;
+        matter_vars.rho_buf = super.rho_buf;
+        matter_vars.rhoH_buf = super.rhoH_buf;
+        matter_vars.p0_buf = super.p0_buf;
+        matter_vars.Si_buf = super.Si_buf;
+        matter_vars.colour_buf = super.colour_buf;
 
         cqueue.block();
 
@@ -7649,15 +7656,11 @@ int main()
 
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
 
-    base_mesh.init(clctx.cqueue, u_arg, bcAij, superimposed_tov_phi);
+    base_mesh.init(clctx.cqueue, u_arg, matter_vars);
+
+    matter_vars.clear(clctx.ctx);
 
     u_arg = cl::buffer(clctx.ctx);
-    superimposed_tov_phi = cl::buffer(clctx.ctx);
-
-    for(auto& i : bcAij)
-    {
-        i = cl::buffer(clctx.ctx);
-    }
 
     std::vector<float> real_graph;
     std::vector<float> real_decomp;
