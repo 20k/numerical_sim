@@ -3552,7 +3552,6 @@ struct superimposed_gpu_data
         p.linear_momentum = obj.momentum;
         p.angular_momentum = obj.angular_momentum;
 
-        value ppw2p_equation = neutron_star::calculate_ppw2_p(pos, flat, p, pinning_tov_phi);
         value superimposed_tov_phi_eq = dual_types::if_v(coordinate_radius <= radius, pinning_tov_phi(pos), 0.f);
 
         vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
