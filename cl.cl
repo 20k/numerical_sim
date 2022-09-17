@@ -323,6 +323,8 @@ void nan_checker(__global ushort4* points, int point_count, __global float* arg,
     NANCHECK_IMPL(arg);
 }
 
+#define MIN_P_STAR 1e-6f
+
 __kernel
 void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
                                                __global float* dRed,
@@ -1230,8 +1232,6 @@ void evolve_gB(__global ushort4* points, int point_count,
     NANCHECK(ogB1);
     NANCHECK(ogB2);
 }
-
-#define MIN_P_STAR 1e-6f
 
 #define HYDRO_ORDER 2
 
