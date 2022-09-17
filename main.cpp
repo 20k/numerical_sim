@@ -2730,6 +2730,22 @@ namespace compact_object
         base_matter_data<T> matter;
 
         type t = BLACK_HOLE;
+
+        base_data(){}
+
+        template<typename U>
+        base_data(const base_data<U>& other)
+        {
+            position = other.position.template as<T>();
+            bare_mass = T{other.bare_mass};
+            momentum = other.momentum.template as<T>();
+            angular_momentum = other.angular_momentum.template as<T>();
+
+            matter.compactness = T{other.matter.compactness};
+            matter.colour = other.matter.colour.template as<T>();
+
+            t = other.t;
+        }
     };
 
     using data = base_data<float>;
