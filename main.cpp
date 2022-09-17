@@ -2746,11 +2746,10 @@ struct adm_black_hole
 namespace black_hole
 {
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf initial conditions, see (7)
+    template<typename T>
     inline
-    tensor<value, 3, 3> calculate_single_bcAij(const tensor<value, 3>& pos, const compact_object::data& hole)
+    tensor<value, 3, 3> calculate_single_bcAij(const tensor<value, 3>& pos, const tensor<T, 3>& bh_position, const tensor<T, 3>& bh_momentum, const tensor<T, 3>& bh_angular_momentum)
     {
-        assert(hole.t == compact_object::BLACK_HOLE);
-
         tensor<value, 3, 3, 3> eijk = get_eijk();
 
         tensor<value, 3, 3> bcAij;
@@ -2770,9 +2769,9 @@ namespace black_hole
         {
             for(int j=0; j < 3; j++)
             {
-                tensor<value, 3> momentum_tensor = {hole.momentum.x(), hole.momentum.y(), hole.momentum.z()};
+                tensor<value, 3> momentum_tensor = {bh_momentum.x(), bh_momentum.y(), bh_momentum.z()};
 
-                tensor<value, 3> vri = {hole.position.x(), hole.position.y(), hole.position.z()};
+                tensor<value, 3> vri = {bh_position.x(), bh_position.y(), bh_position.z()};
 
                 value ra = (pos - vri).length();
 
@@ -2793,8 +2792,8 @@ namespace black_hole
                 {
                     for(int l=0; l < 3; l++)
                     {
-                        s1 += eijk.idx(k, i, l) * hole.angular_momentum[l] * nia[k] * nia_lower.idx(j);
-                        s2 += eijk.idx(k, j, l) * hole.angular_momentum[l] * nia[k] * nia_lower.idx(i);
+                        s1 += eijk.idx(k, i, l) * bh_angular_momentum.idx(l) * nia[k] * nia_lower.idx(j);
+                        s2 += eijk.idx(k, j, l) * bh_angular_momentum.idx(l) * nia[k] * nia_lower.idx(i);
                     }
                 }
 
@@ -2816,7 +2815,7 @@ tensor<value, 3, 3> calculate_bcAij_generic(equation_context& ctx, const tensor<
     {
         if(obj.t == compact_object::BLACK_HOLE)
         {
-            tensor<value, 3, 3> bcAij_single = black_hole::calculate_single_bcAij(pos, obj);
+            tensor<value, 3, 3> bcAij_single = black_hole::calculate_single_bcAij(pos, obj.position, obj.momentum, obj.angular_momentum);
 
             bcAij += bcAij_single;
         }
