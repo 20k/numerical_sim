@@ -156,7 +156,7 @@ void calculate_aij_aIJ(__global float* bcAij0, __global float* bcAij1, __global 
 
 #ifdef HAS_MATTER_VARIABLE
 __kernel
-void single_accumulate(__global float* inout, __global float* u_arg, __global float* tov_phi, float scale, int4 dim)
+void single_accumulate(__global float* inout, __global float* u_value, __global float* tov_phi, float scale, int4 dim)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
