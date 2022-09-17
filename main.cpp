@@ -3305,8 +3305,8 @@ struct superimposed_gpu_data
     */
 
     superimposed_gpu_data(cl::context& ctx, cl::command_queue& cqueue, vec3i dim, bool _use_colour) : tov_phi{ctx}, bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, aij_aIJ{ctx}, ppw2p{ctx},
-                                                                                                     pressure_buf{ctx}, rho_buf{ctx}, rhoH_buf{ctx}, p0_buf{ctx}, Si_buf{ctx, ctx, ctx}, u_arg{ctx},
-                                                                                                     colour_buf{ctx, ctx, ctx}
+                                                                                                      pressure_buf{ctx}, rho_buf{ctx}, rhoH_buf{ctx}, p0_buf{ctx}, Si_buf{ctx, ctx, ctx}, u_arg{ctx},
+                                                                                                      colour_buf{ctx, ctx, ctx}
     {
         use_colour = _use_colour;
 
