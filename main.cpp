@@ -2262,7 +2262,7 @@ struct matter
         //ctx.add("DBG_A", A);
 
         ///[0.1, 1.0}
-        value CQvis = 10.f;
+        value CQvis = 0.1f;
 
         value PQvis = if_v(littledv < 0, CQvis * A * pow(littledv, 2), 0.f);
 
@@ -4266,28 +4266,28 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #endif // GAS_CLOUD_BLACK_HOLE
 
     ///this is an extremely cool matter case
-    //#define NEUTRON_ACCRETION
+    #define NEUTRON_ACCRETION
     #ifdef NEUTRON_ACCRETION
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
-    h1.bare_mass = 0.2;
+    h1.bare_mass = 0.1;
     h1.matter.compactness = 0.08;
-    h1.momentum = {0, 0.133 * 0.8 * 0.2, 0};
-    h1.position = {-6.257, 0.f, 0.f};
+    h1.momentum = {0.025, 0.133 * 0.8 * 0.1, 0};
+    h1.position = {-8.257, 0.f, 0.f};
     h1.matter.colour = {1, 1, 1};
 
     compact_object::data h2;
     h2.t = compact_object::NEUTRON_STAR;
-    h2.matter.compactness = 0.025f;
-    h2.bare_mass = 0.2;
-    h2.momentum = {0, -0.133 * 0.8 * 0.20, 0};
-    h2.position = {5.257, 0.f, 0.f};
+    h2.matter.compactness = 0.005f;
+    h2.bare_mass = 0.05;
+    h2.momentum = {0, -0.133 * 0.8 * 0.0020, 0};
+    h2.position = {7.257, 0.f, 0.f};
     h2.matter.colour = {1, 0.4f, 0};
 
     objects = {h1, h2};
     #endif // NEUTRON_ACCRETION
 
-    #define N_BODY
+    //#define N_BODY
     #ifdef N_BODY
     compact_object::data base;
     base.t = compact_object::NEUTRON_STAR;
@@ -7368,7 +7368,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {213, 213, 213};
+    vec3i size = {275, 275, 275};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -7904,7 +7904,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.045;
+        float timestep = 0.035;
 
         //timestep = 0.04;
 

@@ -36,11 +36,11 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
         {"gB1", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 0},
         {"gB2", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 0},
 
-        {"Dp_star", "evolve_hydro_all", 0.25f, 0, 1, 1},
-        {"De_star", "evolve_hydro_all", 0.25f, 0, 1, 1},
-        {"DcS0", "evolve_hydro_all", 0.25f, 0, 1, 1},
-        {"DcS1", "evolve_hydro_all", 0.25f, 0, 1, 1},
-        {"DcS2", "evolve_hydro_all", 0.25f, 0, 1, 1},
+        {"Dp_star", "evolve_hydro_all", 0.05f, 0, 1, 1},
+        {"De_star", "evolve_hydro_all", 0.05f, 0, 1, 1},
+        {"DcS0", "evolve_hydro_all", 0.05f, 0, 1, 1},
+        {"DcS1", "evolve_hydro_all", 0.05f, 0, 1, 1},
+        {"DcS2", "evolve_hydro_all", 0.05f, 0, 1, 1},
 
         /*{"dRed", "evolve_advect", 0.25f, 0, 1, 2},
         {"dGreen", "evolve_advect", 0.25f, 0, 1, 2},
