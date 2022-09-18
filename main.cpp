@@ -561,16 +561,16 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
     ///https://en.wikipedia.org/wiki/Finite_difference_coefficient according to wikipedia, this is the 6th derivative with 2nd order accuracy. I am confused, but at least I know where it came from
     value scale = "scale";
 
-    //#define FOURTH
+    #define FOURTH
     #ifdef FOURTH
     differentiation_context<5> dctx(in, idx);
-    //value stencil = -(1 / (16.f * effective_scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
+    value stencil = -(1 / (16.f * effective_scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
 
-    value stencil = (-1 / 16.f) * pow(effective_scale, 3.f) * fourth_derivative(ctx, in, idx);
+    //value stencil = (-1 / 16.f) * pow(effective_scale, 3.f) * fourth_derivative(ctx, in, idx);
 
     #endif // FOURTH
 
-    #define SIXTH
+    //#define SIXTH
     #ifdef SIXTH
     differentiation_context<7> dctx(in, idx);
     value stencil = (1 / (64.f * scale)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
@@ -2267,7 +2267,7 @@ struct matter
         //ctx.add("DBG_A", A);
 
         ///[0.1, 1.0}
-        value CQvis = 1.f;
+        value CQvis = 100.f;
 
         value PQvis = if_v(littledv < 0, CQvis * A * pow(littledv, 2), 0.f);
 
@@ -7373,7 +7373,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {275, 275, 275};
+    vec3i size = {255, 255, 255};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -7647,7 +7647,7 @@ int main()
     #endif // USE_HALF_INTERMEDIATE
 
     base_settings.use_matter = holes.use_matter;
-    base_settings.use_matter_colour = true;
+    base_settings.use_matter_colour = false;
 
     #ifdef CALCULATE_MOMENTUM_CONSTRAINT
     base_settings.calculate_momentum_constraint = true;

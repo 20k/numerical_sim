@@ -1488,7 +1488,7 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
     ///?
     if(fin_p_star < 1e-5 * p_star_max)
     {
-        //fin_e_star = min(fin_e_star, 10 * fin_p_star);
+        fin_e_star = min(fin_e_star, 10 * fin_p_star);
     }
 
     /*if(fin_p_star > 1)
