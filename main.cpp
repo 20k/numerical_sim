@@ -2136,6 +2136,11 @@ struct matter
             ret.idx(i) += sum;
         }
 
+        for(int i=0; i < 3; i++)
+        {
+            ret.idx(i) = dual_types::clamp(ret.idx(i), value{-0.2f}, value{0.2f});
+        }
+
         return ret;
         #endif // V_UPPER_ALT
     }
@@ -2262,7 +2267,7 @@ struct matter
         //ctx.add("DBG_A", A);
 
         ///[0.1, 1.0}
-        value CQvis = 0.1f;
+        value CQvis = 1.f;
 
         value PQvis = if_v(littledv < 0, CQvis * A * pow(littledv, 2), 0.f);
 
