@@ -3441,6 +3441,8 @@ struct superimposed_gpu_data
                 accumulate_matter_variables(clctx, cqueue, scale, dim, obj, conformal_guess);
             }
         }
+
+        calculate_ctx_gA(clctx, cqueue, objs, scale, dim);
     }
 
     void calculate_ctx_gA(cl::context& ctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, float scale, vec3i dim)
@@ -3486,6 +3488,7 @@ struct superimposed_gpu_data
             args.push_back(u_arg);
             args.push_back(phi_buf);
             args.push_back(clsize);
+            args.push_back(scale);
 
             u_to_phi_k.set_args(args);
 

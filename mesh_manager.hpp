@@ -113,10 +113,11 @@ struct matter_initial_vars
     cl::buffer p0_buf;
     std::array<cl::buffer, 3> Si_buf;
     std::array<cl::buffer, 3> colour_buf;
+    cl::buffer gA_buf;
 
     ///there must be a better way of doing this, c++ pls
     matter_initial_vars(cl::context& ctx) : bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, superimposed_tov_phi{ctx},
-                                            pressure_buf{ctx}, rho_buf{ctx}, rhoH_buf{ctx}, p0_buf{ctx}, Si_buf{ctx, ctx, ctx}, colour_buf{ctx, ctx, ctx}
+                                            pressure_buf{ctx}, rho_buf{ctx}, rhoH_buf{ctx}, p0_buf{ctx}, Si_buf{ctx, ctx, ctx}, colour_buf{ctx, ctx, ctx}, gA_buf{ctx}
     {
 
     }
@@ -143,6 +144,8 @@ struct matter_initial_vars
 
         for(auto& i : colour_buf)
             clr(i);
+
+        clr(gA_buf);
     }
 };
 

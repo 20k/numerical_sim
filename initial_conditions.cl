@@ -299,7 +299,7 @@ void calculate_gA_phi(__global float* gA_phi_in, __global float* gA_phi_out, __g
 
 #ifdef GA_PHI_TO_GA
 __kernel
-void gA_phi_to_gA(__global float* gA_phi_in, __global float* phi, __global float* gA_out, int4 dim)
+void gA_phi_to_gA(__global float* gA_phi, __global float* phi, __global float* gA_out, int4 dim)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
