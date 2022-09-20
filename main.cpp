@@ -3519,7 +3519,7 @@ struct superimposed_gpu_data
 
         auto [prog, calculate_gA_phi_k] = build_and_fetch_kernel(ctx, ectx, "initial_conditions.cl", "calculate_gA_phi", "calculategaphi");
 
-        for(int i=0; i < 1000; i++)
+        for(int i=0; i < 100000; i++)
         {
             cl::args args;
             args.push_back(gA_phi_buf[0]);
@@ -3536,13 +3536,10 @@ struct superimposed_gpu_data
 
             cqueue.exec(calculate_gA_phi_k, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
 
-            if((i % 50) == 0)
-            {
-                cl_int val = still_going[1].read<cl_int>(cqueue)[0];
+            if(((i % 50) == 0) && still_going[1].read<cl_int>(cqueue)[0] == 0)
+                break;
 
-                if(val == 0)
-                    break;
-            }
+            still_going[0].set_to_zero(cqueue);
 
             std::swap(gA_phi_buf[0], gA_phi_buf[1]);
             std::swap(still_going[0], still_going[1]);
@@ -4014,6 +4011,8 @@ initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_q
 
     auto san_pos = [&](const tensor<float, 3>& in)
     {
+        return in;
+
         tensor<float, 3> scaled = round((in / scale) * bulge);
 
         return scaled * scale / bulge;
@@ -4178,13 +4177,13 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.95, 0};
+    h1.momentum = {0, 0.133 * 0.925, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     compact_object::data h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.95, 0};
+    h2.momentum = {0, -0.133 * 0.925, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     objects = {h1, h2};
