@@ -7761,16 +7761,12 @@ int main()
 
             if(real_decomp.size() > 0)
             {
-                ImGui::PushItemWidth(400);
-                ImGui::PlotLines("w4_l2_m2_re", real_decomp.data(), real_decomp.size());
-                ImGui::PopItemWidth();
+                ImGui::PlotLines("w4_l2_m2_re", real_decomp.data(), real_decomp.size(), 0, nullptr, FLT_MAX, FLT_MAX, ImVec2(400, 100));
             }
 
             if(imaginary_decomp.size() > 0)
             {
-                ImGui::PushItemWidth(400);
-                ImGui::PlotLines("w4_l2_m2_im", imaginary_decomp.data(), real_decomp.size());
-                ImGui::PopItemWidth();
+                ImGui::PlotLines("w4_l2_m2_im", real_decomp.data(), real_decomp.size(), 0, nullptr, FLT_MAX, FLT_MAX, ImVec2(400, 100));
             }
 
             ImGui::End();
