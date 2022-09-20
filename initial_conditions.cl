@@ -235,3 +235,81 @@ void multi_accumulate(__global struct matter_data* data,
     colour2[index] += ACCUM_COLOUR2;
 }
 #endif // ALL_MATTER_VARIABLES
+
+#ifdef U_TO_PHI
+__kernel
+void u_to_phi(__global float* u_offset_in, __global float* phi, int4 dim, float scale)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
+
+    float ox = offset.x;
+    float oy = offset.y;
+    float oz = offset.z;
+
+    float TEMPORARIESutophi;
+
+    phi[IDX(ix,iy,iz)] = U_TO_PHI_VAR;
+}
+#endif // U_TO_PHI
+
+#ifdef CALCULATE_GA_PHI
+#include "generic_laplace.cl"
+
+__kernel
+void calculate_gA_phi(__global float* gA_phi_in, __global float* gA_phi_out, __global int* still_going_in, __global int* still_going_out, __global float* phi, __global float* aij_aIJ, int4 dim, float scale, float etol)
+{
+    if(*still_going_in == 0)
+        return;
+
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    if(ix < 1 || iy < 1 || iz < 1 || ix >= dim.x - 1 || iy >= dim.y - 1 || iz >= dim.z - 1)
+        return;
+
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
+
+    float ox = offset.x;
+    float oy = offset.y;
+    float oz = offset.z;
+
+    float TEMPORARIEScalculategaphi;
+
+    float RHS = scale * scale * gA_phi_RHS;
+
+    laplace_interior(gA_phi_in, gA_phi_out, scale * scale * RHS, ix, iy, iz, scale, dim, still_going_out, etol);
+
+    int index = IDX(ix,iy,iz);
+
+    ///clamp lapse to 1
+    gA_phi_out[index] = clamp(gA_phi_out[index], 0.f, phi[index]);
+}
+#endif // CALCULATE_GA_PHI
+
+#ifdef GA_PHI_TO_GA
+__kernel
+void gA_phi_to_gA(__global float* gA_phi_in, __global float* phi, __global float* gA_out, int4 dim)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    int index = IDX(ix,iy,iz);
+
+    gA_out[index] = gA_phi[index] / phi[index];
+}
+#endif // GA_PHI_TO_GA

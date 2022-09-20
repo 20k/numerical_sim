@@ -3152,6 +3152,8 @@ private:
     }
 };
 
+//cl::buffer solve_for_gA(cl::context& ctx, cl::command_queue& cqueue, )
+
 struct superimposed_gpu_data
 {
     ///this isn't added to, its forcibly imposed
@@ -3171,6 +3173,7 @@ struct superimposed_gpu_data
     std::array<cl::buffer, 3> colour_buf;
 
     cl::buffer u_arg;
+    cl::buffer gA_buf;
 
     cl::program ppw2p_program;
     cl::kernel calculate_ppw2p_kernel;
@@ -3182,7 +3185,7 @@ struct superimposed_gpu_data
     cl::kernel multi_matter_kernel;
 
     superimposed_gpu_data(cl::context& ctx, cl::command_queue& cqueue, vec3i dim) : tov_phi{ctx}, bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, aij_aIJ{ctx}, ppw2p{ctx},
-                                                                                                      pressure_buf{ctx}, rho_buf{ctx}, rhoH_buf{ctx}, p0_buf{ctx}, Si_buf{ctx, ctx, ctx}, u_arg{ctx},
+                                                                                                      pressure_buf{ctx}, rho_buf{ctx}, rhoH_buf{ctx}, p0_buf{ctx}, Si_buf{ctx, ctx, ctx}, u_arg{ctx}, gA_buf{ctx},
                                                                                                       colour_buf{ctx, ctx, ctx},
                                                                                                       ppw2p_program(ctx), bcAij_matter_program(ctx), multi_matter_program(ctx)
     {
@@ -3437,6 +3440,129 @@ struct superimposed_gpu_data
             {
                 accumulate_matter_variables(clctx, cqueue, scale, dim, obj, conformal_guess);
             }
+        }
+    }
+
+    void calculate_ctx_gA(cl::context& ctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, float scale, vec3i dim)
+    {
+        float etol = 0.000001f;
+
+        tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+        vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
+
+        ///https://arxiv.org/pdf/1606.04881.pdf (76)
+
+        cl::buffer phi_buf(ctx);
+        phi_buf.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+        phi_buf.set_to_zero(cqueue);
+
+        std::array<cl::buffer, 2> gA_phi_buf{ctx, ctx};
+
+        for(int i=0; i < 2; i++)
+        {
+            gA_phi_buf[i].alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+            gA_phi_buf[i].set_to_zero(cqueue);
+        }
+
+        {
+            equation_context ectx;
+
+            value u_value = dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim");
+
+            //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
+            ///todo when I forget: I'm using the conformal guess here for neutron stars which probably isn't right
+            value BL_s_dyn = calculate_conformal_guess(pos, objs);
+
+            ///https://arxiv.org/pdf/1606.04881.pdf 74
+            value phi = BL_s_dyn + u_value;
+
+            ectx.add("U_TO_PHI", 1);
+            ectx.add("U_TO_PHI_VAR", phi);
+
+            auto [prog, u_to_phi_k] = build_and_fetch_kernel(ctx, ectx, "initial_conditions.cl", "u_to_phi", "utophi");
+
+            cl::args args;
+            args.push_back(u_arg);
+            args.push_back(phi_buf);
+            args.push_back(clsize);
+
+            u_to_phi_k.set_args(args);
+
+            cqueue.exec(u_to_phi_k, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
+        }
+
+        ///initialise gA to 1
+        cl::copy(cqueue, phi_buf, gA_phi_buf[0]);
+        cl::copy(cqueue, phi_buf, gA_phi_buf[1]);
+
+        std::array<cl::buffer, 2> still_going{ctx, ctx};
+
+        for(int i=0; i < 2; i++)
+        {
+            still_going[i].alloc(sizeof(cl_int));
+            still_going[i].fill(cqueue, cl_int{1});
+        }
+
+        value cached_aij_aIJ = bidx("aij_aIJ", false, false);
+        value gA_phi = bidx("gA_phi_in", false, false);
+        value phi = bidx("phi", false, false);
+
+        value rhs = gA_phi * ((7.f/8.f) * pow(phi, -8.f) * cached_aij_aIJ); //todo: matter
+
+        equation_context ectx;
+        ectx.add("CALCULATE_GA_PHI", 1);
+        ectx.add("gA_phi_RHS", rhs);
+
+        auto [prog, calculate_gA_phi_k] = build_and_fetch_kernel(ctx, ectx, "initial_conditions.cl", "calculate_gA_phi", "calculategaphi");
+
+        for(int i=0; i < 1000; i++)
+        {
+            cl::args args;
+            args.push_back(gA_phi_buf[0]);
+            args.push_back(gA_phi_buf[1]);
+            args.push_back(still_going[0]);
+            args.push_back(still_going[1]);
+            args.push_back(phi_buf);
+            args.push_back(aij_aIJ);
+            args.push_back(clsize);
+            args.push_back(scale);
+            args.push_back(etol);
+
+            calculate_gA_phi_k.set_args(args);
+
+            cqueue.exec(calculate_gA_phi_k, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
+
+            if((i % 50) == 0)
+            {
+                cl_int val = still_going[1].read<cl_int>(cqueue)[0];
+
+                if(val == 0)
+                    break;
+            }
+
+            std::swap(gA_phi_buf[0], gA_phi_buf[1]);
+            std::swap(still_going[0], still_going[1]);
+        }
+
+        {
+            gA_buf.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+            gA_buf.fill(cqueue, cl_float{1});
+
+            equation_context ectx;
+            ectx.add("GA_PHI_TO_GA", 1);
+
+            auto [prog, gA_phi_to_gA_k] = build_and_fetch_kernel(ctx, ectx, "initial_conditions.cl", "gA_phi_to_gA", "unusedgaphitoga");
+
+            cl::args args;
+            args.push_back(gA_phi_buf[1]);
+            args.push_back(phi_buf);
+            args.push_back(gA_buf);
+            args.push_back(clsize);
+
+            gA_phi_to_gA_k.set_args(args);
+
+            cqueue.exec(gA_phi_to_gA_k, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
         }
     }
 
@@ -4044,18 +4170,18 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    //#define PAPER_0610128
+    #define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.825, 0};
+    h1.momentum = {0, 0.133 * 0.95, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     compact_object::data h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.825, 0};
+    h2.momentum = {0, -0.133 * 0.95, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     objects = {h1, h2};
@@ -4170,7 +4296,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // NEUTRON_ACCRETION
 
-    #define N_BODY
+    //#define N_BODY
     #ifdef N_BODY
     compact_object::data base;
     base.t = compact_object::NEUTRON_STAR;
@@ -4385,8 +4511,8 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf (95)
     //value gA = 1/(pow(bl_conformal + 1, 2));
 
-    value gA = 1;
-    //value gA = 1/(pow(bl_conformal + u, 2));
+    //value gA = 1;
+    value gA = 1/(pow(bl_conformal + u, 2));
     value gB0 = 0;
     value gB1 = 0;
     value gB2 = 0;
