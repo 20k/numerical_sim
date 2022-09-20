@@ -561,16 +561,16 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
     ///https://en.wikipedia.org/wiki/Finite_difference_coefficient according to wikipedia, this is the 6th derivative with 2nd order accuracy. I am confused, but at least I know where it came from
     value scale = "scale";
 
-    //#define FOURTH
+    #define FOURTH
     #ifdef FOURTH
     differentiation_context<5> dctx(in, idx);
-    //value stencil = -(1 / (16.f * effective_scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
+    value stencil = -(1 / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
 
-    value stencil = (-1 / 16.f) * pow(effective_scale, 3.f) * fourth_derivative(ctx, in, idx);
+    //value stencil = (-1 / 16.f) * pow(effective_scale, 3.f) * fourth_derivative(ctx, in, idx);
 
     #endif // FOURTH
 
-    #define SIXTH
+    //#define SIXTH
     #ifdef SIXTH
     differentiation_context<7> dctx(in, idx);
     value stencil = (1 / (64.f * scale)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
@@ -4161,18 +4161,18 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    //#define PAPER_0610128
+    #define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.825, 0};
+    h1.momentum = {0, 0.133 * 1.f, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     compact_object::data h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.825, 0};
+    h2.momentum = {0, -0.133 * 1.f, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     objects = {h1, h2};
@@ -4287,7 +4287,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // NEUTRON_ACCRETION
 
-    #define N_BODY
+    //#define N_BODY
     #ifdef N_BODY
     compact_object::data base;
     base.t = compact_object::NEUTRON_STAR;
@@ -7368,7 +7368,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {213, 213, 213};
+    vec3i size = {301, 301, 301};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -7876,16 +7876,12 @@ int main()
 
             if(real_decomp.size() > 0)
             {
-                ImGui::PushItemWidth(400);
-                ImGui::PlotLines("w4_l2_m2_re", real_decomp.data(), real_decomp.size());
-                ImGui::PopItemWidth();
+                ImGui::PlotLines("w4_l2_m2_re", real_decomp.data(), real_decomp.size(), 0, nullptr, FLT_MAX, FLT_MAX, ImVec2(400, 100));
             }
 
             if(imaginary_decomp.size() > 0)
             {
-                ImGui::PushItemWidth(400);
-                ImGui::PlotLines("w4_l2_m2_im", imaginary_decomp.data(), real_decomp.size());
-                ImGui::PopItemWidth();
+                ImGui::PlotLines("w4_l2_m2_im", imaginary_decomp.data(), real_decomp.size(), 0, nullptr, FLT_MAX, FLT_MAX, ImVec2(400, 100));
             }
 
             ImGui::End();
@@ -7904,7 +7900,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.045;
+        float timestep = 0.025;
 
         //timestep = 0.04;
 

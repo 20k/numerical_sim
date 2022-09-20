@@ -165,9 +165,9 @@ struct cpu_mesh
 
     std::array<cl::buffer, 3> momentum_constraint;
 
-    static constexpr float dissipate_low = 0.25;
-    static constexpr float dissipate_high = 0.25;
-    static constexpr float dissipate_gauge = 0.25;
+    static constexpr float dissipate_low = 0.2;
+    static constexpr float dissipate_high = 0.2;
+    static constexpr float dissipate_gauge = 0.2;
 
     cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points);
 
