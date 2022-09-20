@@ -7430,6 +7430,7 @@ int main()
         matter_vars.p0_buf = super.p0_buf;
         matter_vars.Si_buf = super.Si_buf;
         matter_vars.colour_buf = super.colour_buf;
+        matter_vars.gA_buf = super.gA_buf;
 
         cqueue.block();
 

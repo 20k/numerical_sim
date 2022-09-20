@@ -346,6 +346,15 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, matter_initial
         cqueue.exec("calculate_initial_conditions", init, {dim.x(), dim.y(), dim.z()}, {8, 8, 1});
     }
 
+    if(!sett.use_matter)
+    {
+        named_buffer& buf = data[0].lookup("gA");
+
+        assert(vars.gA_buf.alloc_size == buf.buf.alloc_size);
+
+        std::swap(buf.buf, vars.gA_buf);
+    }
+
     if(sett.use_matter)
     {
         hydro_st.should_evolve.alloc(dim.x() * dim.y() * dim.z() * sizeof(cl_char));
