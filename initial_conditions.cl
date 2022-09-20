@@ -288,9 +288,14 @@ void calculate_gA_phi(__global float* gA_phi_in, __global float* gA_phi_out, __g
 
     float RHS = scale * scale * gA_phi_RHS;
 
-    laplace_interior(gA_phi_in, gA_phi_out, scale * scale * RHS, ix, iy, iz, scale, dim, still_going_out, etol);
+    laplace_interior(gA_phi_in, gA_phi_out, RHS, ix, iy, iz, scale, dim, still_going_out, etol);
 
     int index = IDX(ix,iy,iz);
+
+    /*if(ix == 30 && iy == 127 && iz == 127)
+    {
+        printf("Ga %f\n", gA_phi_in[index] / phi[index]);
+    }*/
 
     ///clamp lapse to 1
     gA_phi_out[index] = clamp(gA_phi_out[index], 0.f, phi[index]);
