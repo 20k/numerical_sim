@@ -1544,8 +1544,11 @@ namespace neutron_star
 
         value integrated = integrate_1d(integral_func, 16, coordinate_radius, value{0.f});
 
-        return dual_types::if_v(coordinate_radius > p.get_radius(),
-                                0.f,
+        value full_integrated = integrate_1d(integral_func, 16, p.get_radius(), T{0.f});
+
+        ///for precision reasons. I don't think integrates to a known constant, but sigma  is 0 > radius
+        return dual_types::if_v(coordinate_radius > value{p.get_radius()},
+                                full_integrated,
                                 integrated);
     }
 
