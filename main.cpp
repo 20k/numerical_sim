@@ -4149,10 +4149,17 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.1;
-    h1.angular_momentum = {0, 0, 0.5};
-    h1.position = {0,0,0};
+    h1.angular_momentum = {0, 0, 0.05};
+    h1.position = {-3,0,0};
 
-    objects = {h1};
+    compact_object::data h2;
+    h2.t = compact_object::NEUTRON_STAR;
+    h2.matter.compactness = 0.005;
+    h2.bare_mass = 0.01;
+    h2.position = {7, 0, 0};
+    h2.matter.colour = {1, 0.4, 0};
+
+    objects = {h1, h2};
     #endif // SPINNING_SINGLE_NEUTRON
 
     //#define JET_CASE
