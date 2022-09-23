@@ -1498,6 +1498,22 @@ namespace neutron_star
         return 4 * M_PI * integrate_1d(integration_func, 32, radius, T{0.f});
     }
 
+    template<typename T, typename U>
+    inline
+    value calculate_N_factor(const params<T>& p, U&& tov_phi_at_coordinate)
+    {
+        T radius = p.get_radius();
+
+        auto integration_func = [&](const T& coordinate_radius)
+        {
+            conformal_data ndata = sample_conformal(coordinate_radius, p, tov_phi_at_coordinate);
+
+            return (ndata.mass_energy_density + ndata.pressure) * pow(coordinate_radius, 4.f);
+        };
+
+        return (8 * M_PI/3) * integrate_1d(integration_func, 32, radius, T{0.f});
+    }
+
     ///https://arxiv.org/pdf/1606.04881.pdf (57)
     template<typename T, typename U>
     inline
@@ -1569,6 +1585,38 @@ namespace neutron_star
         value M2 = M_factor * M_factor;
 
         return 0.5f * (1 + sqrt(1 + (4 * p2 / M2)));
+    }
+
+    template<typename T>
+    value calculate_W2_angular_momentum(const tensor<value, 3>& coordinate, const tensor<T, 3>& ns_pos, const metric<T, 3, 3>& flat, const tensor<T, 3>& angular_momentum, const value& N_factor)
+    {
+        tensor<value, 3> relative_pos = coordinate - ns_pos.template as<value>();
+
+        value r = relative_pos.length();
+
+        r = max(r, value{1e-3});
+
+        ///angular momentum is J, with upper index. Also called S in other papers
+        ///https://arxiv.org/pdf/1606.04881.pdf (65)
+        tensor<value, 3> li = relative_pos / r;
+
+        value J2 = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                J2 += flat.idx(i, j) * angular_momentum.idx(i) * angular_momentum.idx(j);
+            }
+        }
+
+        tensor<value, 3> lowered = lower_index(li, flat);
+
+        value cos_angle = dot(angular_momentum / max(angular_momentum.length(), value{1e-6}), lowered / max(lowered.length(), value{1e-5}));
+
+        value sin2 = 1 - cos_angle * cos_angle;
+
+        return 0.5f * (1 + sqrt(1 + 4 * J2 * r*r + sin2 / N_factor));
     }
 
     ///only handles linear momentum currently
@@ -1647,12 +1695,14 @@ namespace neutron_star
         value r = relative_pos.length();
 
         value M_factor = calculate_M_factor(param, tov_phi_at_coordinate);
+        value N_factor = calculate_N_factor(param, tov_phi_at_coordinate);
 
-        value W2 = calculate_W2_linear_momentum(flat, param.linear_momentum, M_factor);
+        value W2_linear = calculate_W2_linear_momentum(flat, param.linear_momentum, M_factor);
+        value W2_angular = calculate_W2_angular_momentum(vposition, param.position, flat, param.angular_momentum, N_factor);
 
         conformal_data cdata = sample_conformal(r, param, tov_phi_at_coordinate);
 
-        value ppw2p = (cdata.mass_energy_density + cdata.pressure) * W2 - cdata.pressure;
+        value ppw2p = (cdata.mass_energy_density + cdata.pressure) * (W2_linear + W2_angular) - cdata.pressure;
 
         return if_v(r > param.get_radius(),
                     value{0},
@@ -3353,7 +3403,7 @@ struct superimposed_gpu_data
 
             auto flat = get_flat_metric<value, 3>();
 
-            value W2_factor = neutron_star::calculate_W2_linear_momentum(flat, p.linear_momentum, M_factor);
+            //value W2_factor = neutron_star::calculate_W2_linear_momentum(flat, p.linear_momentum, M_factor);
 
             //neutron_star::data<value> sampled = neutron_star::sample_interior<value>(rad, value{p.mass});
 
@@ -3367,7 +3417,8 @@ struct superimposed_gpu_data
             //unused_conformal_rest_mass += sampled.mass_energy_density;
 
             rho_conformal += cdata.mass_energy_density;
-            rhoH_conformal += (cdata.mass_energy_density + cdata.pressure) * W2_factor - cdata.pressure;
+            //rhoH_conformal += (cdata.mass_energy_density + cdata.pressure) * W2_factor - cdata.pressure;
+            rhoH_conformal += neutron_star::calculate_ppw2_p(pos, flat, p, pinning_tov_phi);
             //eps += sampled.specific_energy_density;
 
             //enthalpy += 1 + sampled.specific_energy_density + pressure_conformal / sampled.mass_energy_density;
