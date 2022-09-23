@@ -1616,7 +1616,7 @@ namespace neutron_star
 
         value sin2 = 1 - cos_angle * cos_angle;
 
-        return 0.5f * (1 + sqrt(1 + 4 * J2 * r*r + sin2 / N_factor));
+        return 0.5f * (1 + sqrt(1 + 4 * J2 * r*r + sin2 / (N_factor * N_factor)));
     }
 
     ///only handles linear momentum currently
@@ -4149,7 +4149,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.1;
-    h1.angular_momentum = {0, 0, 0.01};
+    h1.angular_momentum = {0, 0, 0.5};
     h1.position = {0,0,0};
 
     objects = {h1};
