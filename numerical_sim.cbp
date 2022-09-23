@@ -70,6 +70,7 @@
 			<Add option="-DGRAPHITE2_STATIC" />
 			<Add option="-DCL_TARGET_OPENCL_VERSION=220" />
 			<Add option="-DIMGUI_ENABLE_FREETYPE" />
+			<Add option="-D_GLIBCXX_ASSERTIONS" />
 			<Add directory="deps" />
 			<Add directory="deps/imgui" />
 		</Compiler>

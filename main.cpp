@@ -1731,6 +1731,7 @@ namespace neutron_star
 
         ///so. The paper specifically says superimpose ppw2p terms
         ///which presumably means add. Which would translate to adding the W2 terms
+        ///this superposing is incorrect. I do not know how to combine linear and angular boost
         value ppw2p = (cdata.mass_energy_density + cdata.pressure) * (W2_linear + W2_angular) - cdata.pressure;
 
         return if_v(r > param.get_radius(),
@@ -4149,7 +4150,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.1;
-    h1.angular_momentum = {0, 0, 0.05};
+    h1.angular_momentum = {0, 0, 0.05 * 0};
     h1.position = {-3,0,0};
 
     compact_object::data h2;
