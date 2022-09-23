@@ -1681,6 +1681,33 @@ namespace neutron_star
 
         ctx.pin(aIJ);
 
+        tensor<value, 3, 3, 3> eijk = get_eijk();
+
+        value N_factor = calculate_N_factor(param, tov_phi_at_coordinate);
+
+        ctx.pin(N_factor);
+
+        tensor<T, 3> angular_momentum_lower = lower_index(param.angular_momentum, flat);
+        tensor<value, 3> li_lower = lower_index(li, get_flat_metric<value, 3>());
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                value sum = 0;
+
+                for(int k=0; k < 3; k++)
+                {
+                    for(int l=0; l < 3; l++)
+                    {
+                        sum += (3 / (r*r*r)) * (li.idx(i) * eijk.idx(j, k, l) + li.idx(j) * eijk.idx(i, k, l)) * angular_momentum_lower.idx(k) * li_lower.idx(l) * N_factor;
+                    }
+                }
+
+                aIJ.idx(i, j) += sum;
+            }
+        }
+
         return aIJ;
     }
 
@@ -2650,7 +2677,7 @@ namespace compact_object
     struct base_matter_data
     {
         T compactness = 0.06;
-        tensor<T, 3> colour;
+        tensor<T, 3> colour = {1,1,1};
     };
 
     using matter_data = base_matter_data<float>;
@@ -3941,8 +3968,6 @@ initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_q
 
     auto san_pos = [&](const tensor<float, 3>& in)
     {
-        return in;
-
         tensor<float, 3> scaled = round((in / scale) * bulge);
 
         return scaled * scale / bulge;
@@ -4102,7 +4127,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    #define PAPER_0610128
+    //#define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -4118,6 +4143,17 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     objects = {h1, h2};
     #endif // PAPER_0610128
+
+    #define SPINNING_SINGLE_NEUTRON
+    #ifdef SPINNING_SINGLE_NEUTRON
+    compact_object::data h1;
+    h1.t = compact_object::NEUTRON_STAR;
+    h1.bare_mass = 0.1;
+    h1.angular_momentum = {0, 0, 0.01};
+    h1.position = {0,0,0};
+
+    objects = {h1};
+    #endif // SPINNING_SINGLE_NEUTRON
 
     //#define JET_CASE
     #ifdef JET_CASE
@@ -4443,8 +4479,8 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf (95)
     //value gA = 1/(pow(bl_conformal + 1, 2));
 
-    //value gA = 1;
-    value gA = 1/(pow(bl_conformal + u, 2));
+    value gA = 1;
+    //value gA = 1/(pow(bl_conformal + u, 2));
     value gB0 = 0;
     value gB1 = 0;
     value gB2 = 0;
