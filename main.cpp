@@ -1702,6 +1702,8 @@ namespace neutron_star
 
         conformal_data cdata = sample_conformal(r, param, tov_phi_at_coordinate);
 
+        ///so. The paper specifically says superimpose ppw2p terms
+        ///which presumably means add. Which would translate to adding the W2 terms
         value ppw2p = (cdata.mass_energy_density + cdata.pressure) * (W2_linear + W2_angular) - cdata.pressure;
 
         return if_v(r > param.get_radius(),
