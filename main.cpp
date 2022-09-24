@@ -1595,7 +1595,7 @@ namespace neutron_star
 
         ///N tends to 1 exterior to the source
         return dual_types::if_v(coordinate_radius > value{p.get_radius()},
-                                value{1},
+                                full_integrated,
                                 integrated);
     }
 
@@ -1760,7 +1760,7 @@ namespace neutron_star
         value squiggly_N_factor = calculate_squiggly_N_factor(param, tov_phi_at_coordinate);
 
         value W2_linear = calculate_W2_linear_momentum(flat, param.linear_momentum, M_factor);
-        value W2_angular = calculate_W2_angular_momentum(vposition, param.position, flat, param.angular_momentum, squiggly_N_factor);
+        value W2_angular = calculate_W2_angular_momentum(coordinate, param.position, flat, param.angular_momentum, squiggly_N_factor);
 
         value linear_rapidity = acosh(sqrt(W2_linear));
         value angular_rapidity = acosh(sqrt(W2_angular));
@@ -4190,7 +4190,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.1;
-    h1.angular_momentum = {0, 0, 0.025};
+    h1.angular_momentum = {0, 0, 0.1};
     h1.position = {-3,0,0};
 
     compact_object::data h2;
@@ -4200,7 +4200,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     h2.position = {7, 0, 0};
     h2.matter.colour = {1, 0.4, 0};
 
-    objects = {h1};
+    objects = {h1, h2};
     #endif // SPINNING_SINGLE_NEUTRON
 
     //#define JET_CASE
