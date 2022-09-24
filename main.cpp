@@ -7,7 +7,6 @@
 #include <CL/cl_ext.h>
 #include <geodesic/dual.hpp>
 #include <geodesic/dual_value.hpp>
-#include <geodesic/numerical.hpp>
 #include <fstream>
 #include <imgui/misc/freetype/imgui_freetype.h>
 #include <vec/tensor.hpp>
@@ -4155,7 +4154,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.1;
-    h1.angular_momentum = {0, 0, 0.05 * 0};
+    h1.angular_momentum = {0, 0, 0.05};
     h1.position = {-3,0,0};
 
     compact_object::data h2;
