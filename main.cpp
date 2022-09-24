@@ -3495,9 +3495,11 @@ struct superimposed_gpu_data
 
             p0_conformal += cdata.mass_energy_density;
 
+            value squiggly_N_factor = neutron_star::calculate_squiggly_N_factor(p, pinning_tov_phi);
+
             ///https://arxiv.org/pdf/1606.04881.pdf (56)
             ///we could avoid the triple calculation of sigma here
-            Si_conformal += p.linear_momentum * neutron_star::calculate_sigma(rad, p, M_factor, pinning_tov_phi);
+            Si_conformal += p.linear_momentum * neutron_star::calculate_sigma(rad, p, M_factor, pinning_tov_phi) + p.angular_momentum * neutron_star::calculate_kappa(rad, p, squiggly_N_factor, pinning_tov_phi);
 
             colour.x() += if_v(rad <= p.get_radius(), value{in_colour.x()}, value{0.f});
             colour.y() += if_v(rad <= p.get_radius(), value{in_colour.y()}, value{0.f});
@@ -4190,8 +4192,9 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.1;
-    h1.angular_momentum = {0, 0, 0.1};
+    h1.angular_momentum = {0, 0, 0.025};
     h1.position = {-3,0,0};
+    h1.matter.compactness = 0.08;
 
     compact_object::data h2;
     h2.t = compact_object::NEUTRON_STAR;

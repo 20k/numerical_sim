@@ -428,6 +428,12 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
         dBlue[index] = (build_cB) * dp_val;
     }
 
+    ///89.000000 106.000000 106.000000
+    /*if(ix == 87 && iy == 106 && iz == 106)
+    {
+        printf("Si %f %f %f p* %f\n", cS0, cS1, cS2, dp_val);
+    }*/
+
     /*Dp_star[index] = 0;
     De_star[index] = 0;
     DcS0[index] = 0;
