@@ -3177,7 +3177,7 @@ private:
         }
     }
 
-    void calculate_bcAij(cl::context& clctx, cl::command_queue& cqueue, cl::kernel& calcualte_bcAij_matter_kernel, const compact_object::data& obj, float scale, vec3i dim)
+    void calculate_bcAij(cl::context& clctx, cl::command_queue& cqueue, cl::kernel& calculate_bcAij_matter_kernel, const compact_object::data& obj, float scale, vec3i dim)
     {
         vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
 
@@ -3205,9 +3205,9 @@ private:
         args.push_back(scale);
         args.push_back(clsize);
 
-        calcualte_bcAij_matter_kernel.set_args(args);
+        calculate_bcAij_matter_kernel.set_args(args);
 
-        cqueue.exec(calcualte_bcAij_matter_kernel, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
+        cqueue.exec(calculate_bcAij_matter_kernel, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
     }
 
     void calculate_ppw2p(cl::context& clctx, cl::command_queue& cqueue, cl::kernel calculate_ppw2p_kernel, const compact_object::data& obj, float scale, vec3i dim)
