@@ -3495,11 +3495,41 @@ struct superimposed_gpu_data
 
             p0_conformal += cdata.mass_energy_density;
 
-            value squiggly_N_factor = neutron_star::calculate_squiggly_N_factor(p, pinning_tov_phi);
+            ///https://arxiv.org/pdf/1606.04881.pdf (61)
+            {
+                value squiggly_N_factor = neutron_star::calculate_squiggly_N_factor(p, pinning_tov_phi);
+
+                value kappa = neutron_star::calculate_kappa(rad, p, squiggly_N_factor, pinning_tov_phi);
+
+                ectx.pin(kappa);
+
+                /// p.angular_momentum *
+                tensor<value, 3> Si_conformal_angular_lower;
+
+                auto eijk = get_eijk();
+
+                ///X
+                tensor<value, 3> relative_pos = pos - p.position;
+
+                for(int i=0; i < 3; i++)
+                {
+                    for(int j=0; j < 3; j++)
+                    {
+                        for(int k=0; k < 3; k++)
+                        {
+                            Si_conformal_angular_lower.idx(i) += eijk.idx(i, j, k) * p.angular_momentum.idx(j) * relative_pos.idx(k) * kappa;
+                        }
+                    }
+                }
+
+                tensor<value, 3> Si_cai = raise_index(Si_conformal_angular_lower, flat, flat.invert());
+
+                Si_conformal += Si_cai;
+            }
 
             ///https://arxiv.org/pdf/1606.04881.pdf (56)
             ///we could avoid the triple calculation of sigma here
-            Si_conformal += p.linear_momentum * neutron_star::calculate_sigma(rad, p, M_factor, pinning_tov_phi) + p.angular_momentum * neutron_star::calculate_kappa(rad, p, squiggly_N_factor, pinning_tov_phi);
+            Si_conformal += p.linear_momentum * neutron_star::calculate_sigma(rad, p, M_factor, pinning_tov_phi);
 
             colour.x() += if_v(rad <= p.get_radius(), value{in_colour.x()}, value{0.f});
             colour.y() += if_v(rad <= p.get_radius(), value{in_colour.y()}, value{0.f});
