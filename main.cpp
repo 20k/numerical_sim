@@ -1616,7 +1616,7 @@ namespace neutron_star
 
         value sin2 = 1 - cos_angle * cos_angle;
 
-        return 0.5f * (1 + sqrt(1 + 4 * J2 * r*r + sin2 / (N_factor * N_factor)));
+        return 0.5f * (1 + sqrt(1 + 4 * J2 * r*r * sin2 / (N_factor * N_factor)));
     }
 
     ///only handles linear momentum currently
@@ -1727,12 +1727,17 @@ namespace neutron_star
         value W2_linear = calculate_W2_linear_momentum(flat, param.linear_momentum, M_factor);
         value W2_angular = calculate_W2_angular_momentum(vposition, param.position, flat, param.angular_momentum, N_factor);
 
+        value linear_rapidity = acosh(sqrt(W2_linear));
+        value angular_rapidity = acosh(sqrt(W2_angular));
+
+        value final_W = cosh(linear_rapidity + angular_rapidity);
+
         conformal_data cdata = sample_conformal(r, param, tov_phi_at_coordinate);
 
         ///so. The paper specifically says superimpose ppw2p terms
         ///which presumably means add. Which would translate to adding the W2 terms
         ///this superposing is incorrect. I do not know how to combine linear and angular boost
-        value ppw2p = (cdata.mass_energy_density + cdata.pressure) * (W2_linear + W2_angular) - cdata.pressure;
+        value ppw2p = (cdata.mass_energy_density + cdata.pressure) * (final_W*final_W) - cdata.pressure;
 
         return if_v(r > param.get_radius(),
                     value{0},
