@@ -1497,9 +1497,11 @@ namespace neutron_star
         return 4 * M_PI * integrate_1d(integration_func, 32, radius, T{0.f});
     }
 
+    ///squiggly N
+    ///https://arxiv.org/pdf/1606.04881.pdf (64)
     template<typename T, typename U>
     inline
-    value calculate_N_factor(const params<T>& p, U&& tov_phi_at_coordinate)
+    value calculate_squiggly_N_factor(const params<T>& p, U&& tov_phi_at_coordinate)
     {
         T radius = p.get_radius();
 
@@ -1521,6 +1523,15 @@ namespace neutron_star
         conformal_data cdata = sample_conformal(coordinate_radius, p, tov_phi_at_coordinate);
 
         return (cdata.mass_energy_density + cdata.pressure) / M_factor;
+    }
+
+    template<typename T, typename U>
+    inline
+    value calculate_kappa(const value& coordinate_radius, const params<T>& p, const value& squiggly_N_factor, U&& tov_phi_at_coordinate)
+    {
+        conformal_data cdata = sample_conformal(coordinate_radius, p, tov_phi_at_coordinate);
+
+        return (cdata.mass_energy_density + cdata.pressure) / squiggly_N_factor;
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (43)
@@ -1567,6 +1578,27 @@ namespace neutron_star
                                 integrated);
     }
 
+    template<typename T, typename U>
+    inline
+    value calculate_integral_unsquiggly_N(equation_context& ctx, const value& coordinate_radius, const params<T>& p, const value& squiggly_N_factor, U&& tov_phi_at_coordinate)
+    {
+        ///if radius == 0, return 1
+
+        auto integral_func = [p, &squiggly_N_factor, tov_phi_at_coordinate](const value& rp)
+        {
+            return (8.f/3.f) * M_PI * calculate_kappa(rp, p, squiggly_N_factor, tov_phi_at_coordinate) * pow(rp, 4.f);
+        };
+
+        value integrated = integrate_1d(integral_func, 16, coordinate_radius, value{0.f});
+
+        value full_integrated = integrate_1d(integral_func, 16, p.get_radius(), T{0.f});
+
+        ///N tends to 1 exterior to the source
+        return dual_types::if_v(coordinate_radius > value{p.get_radius()},
+                                value{1},
+                                integrated);
+    }
+
     ///https://arxiv.org/pdf/1606.04881.pdf (60)
     template<typename T>
     value calculate_W2_linear_momentum(const metric<T, 3, 3>& flat, const tensor<T, 3>& linear_momentum, const value& M_factor)
@@ -1587,7 +1619,7 @@ namespace neutron_star
     }
 
     template<typename T>
-    value calculate_W2_angular_momentum(const tensor<value, 3>& coordinate, const tensor<T, 3>& ns_pos, const metric<T, 3, 3>& flat, const tensor<T, 3>& angular_momentum, const value& N_factor)
+    value calculate_W2_angular_momentum(const tensor<value, 3>& coordinate, const tensor<T, 3>& ns_pos, const metric<T, 3, 3>& flat, const tensor<T, 3>& angular_momentum, const value& squiggly_N_factor)
     {
         tensor<value, 3> relative_pos = coordinate - ns_pos.template as<value>();
 
@@ -1615,7 +1647,7 @@ namespace neutron_star
 
         value sin2 = 1 - cos_angle * cos_angle;
 
-        return 0.5f * (1 + sqrt(1 + 4 * J2 * r*r * sin2 / (N_factor * N_factor)));
+        return 0.5f * (1 + sqrt(1 + 4 * J2 * r*r * sin2 / (squiggly_N_factor * squiggly_N_factor)));
     }
 
     ///only handles linear momentum currently
@@ -1682,9 +1714,13 @@ namespace neutron_star
 
         tensor<value, 3, 3, 3> eijk = get_eijk();
 
-        value N_factor = calculate_N_factor(param, tov_phi_at_coordinate);
+        value squiggly_N_factor = calculate_squiggly_N_factor(param, tov_phi_at_coordinate);
 
-        ctx.pin(N_factor);
+        ctx.pin(squiggly_N_factor);
+
+        value unsquiggly_N_factor = calculate_integral_unsquiggly_N(ctx, r, param, squiggly_N_factor, tov_phi_at_coordinate);
+
+        ctx.pin(unsquiggly_N_factor);
 
         tensor<T, 3> angular_momentum_lower = lower_index(param.angular_momentum, flat);
         tensor<value, 3> li_lower = lower_index(li, get_flat_metric<value, 3>());
@@ -1699,7 +1735,7 @@ namespace neutron_star
                 {
                     for(int l=0; l < 3; l++)
                     {
-                        sum += (3 / (r*r*r)) * (li.idx(i) * eijk.idx(j, k, l) + li.idx(j) * eijk.idx(i, k, l)) * angular_momentum_lower.idx(k) * li_lower.idx(l) * N_factor;
+                        sum += (3 / (r*r*r)) * (li.idx(i) * eijk.idx(j, k, l) + li.idx(j) * eijk.idx(i, k, l)) * angular_momentum_lower.idx(k) * li_lower.idx(l) * unsquiggly_N_factor;
                     }
                 }
 
@@ -1721,10 +1757,10 @@ namespace neutron_star
         value r = relative_pos.length();
 
         value M_factor = calculate_M_factor(param, tov_phi_at_coordinate);
-        value N_factor = calculate_N_factor(param, tov_phi_at_coordinate);
+        value squiggly_N_factor = calculate_squiggly_N_factor(param, tov_phi_at_coordinate);
 
         value W2_linear = calculate_W2_linear_momentum(flat, param.linear_momentum, M_factor);
-        value W2_angular = calculate_W2_angular_momentum(vposition, param.position, flat, param.angular_momentum, N_factor);
+        value W2_angular = calculate_W2_angular_momentum(vposition, param.position, flat, param.angular_momentum, squiggly_N_factor);
 
         value linear_rapidity = acosh(sqrt(W2_linear));
         value angular_rapidity = acosh(sqrt(W2_angular));
