@@ -2205,7 +2205,7 @@ struct matter
 
     value calculate_PQvis(equation_context& ctx, const value& gA, const tensor<value, 3>& gB, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
     {
-        #define QUADRATIC_VISCOSITY
+        //#define QUADRATIC_VISCOSITY
         #ifndef QUADRATIC_VISCOSITY
         return 0;
         #endif // QUADRATIC_VISCOSITY
@@ -2232,7 +2232,7 @@ struct matter
         //ctx.add("DBG_A", A);
 
         ///[0.1, 1.0}
-        value CQvis = 10.f;
+        value CQvis = 0.1f;
 
         value PQvis = if_v(littledv < 0, CQvis * A * pow(littledv, 2), 0.f);
 
@@ -4154,17 +4154,17 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.1;
-    h1.angular_momentum = {0, 0, 0.05};
+    h1.angular_momentum = {0, 0, 0.025};
     h1.position = {-3,0,0};
 
     compact_object::data h2;
     h2.t = compact_object::NEUTRON_STAR;
-    h2.matter.compactness = 0.005;
-    h2.bare_mass = 0.01;
+    h2.matter.compactness = 0.01;
+    h2.bare_mass = 0.02;
     h2.position = {7, 0, 0};
     h2.matter.colour = {1, 0.4, 0};
 
-    objects = {h1, h2};
+    objects = {h1};
     #endif // SPINNING_SINGLE_NEUTRON
 
     //#define JET_CASE
