@@ -4217,12 +4217,12 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // PAPER_0610128
 
-    #define SPINNING_SINGLE_NEUTRON
+    //#define SPINNING_SINGLE_NEUTRON
     #ifdef SPINNING_SINGLE_NEUTRON
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.1;
-    h1.angular_momentum = {0, 0, 0.025};
+    h1.angular_momentum = {0, 0, 0.01};
     h1.position = {-3,0,0};
     h1.matter.compactness = 0.08;
 
@@ -4233,8 +4233,27 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     h2.position = {7, 0, 0};
     h2.matter.colour = {1, 0.4, 0};
 
-    objects = {h1, h2};
+    objects = {h1};
     #endif // SPINNING_SINGLE_NEUTRON
+
+    #define DOUBLE_SPINNING_NEUTRON
+    #ifdef DOUBLE_SPINNING_NEUTRON
+    compact_object::data h1;
+    h1.t = compact_object::NEUTRON_STAR;
+    h1.bare_mass = 0.075;
+    h1.angular_momentum = {0, 0, 0.0075};
+    h1.position = {-5,0,0};
+    h1.matter.compactness = 0.06;
+
+    compact_object::data h2;
+    h2.t = compact_object::NEUTRON_STAR;
+    h2.bare_mass = 0.075;
+    h2.angular_momentum = {0, 0, 0.0075};
+    h2.position = {5,0,0};
+    h2.matter.compactness = 0.06;
+
+    objects = {h1, h2};
+    #endif // DOUBLE_SPINNING_NEUTRON
 
     //#define JET_CASE
     #ifdef JET_CASE
@@ -7426,7 +7445,7 @@ int main()
     ///the simulation domain is this * 2
     int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {213, 213, 213};
+    vec3i size = {255, 255, 255};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -7700,7 +7719,7 @@ int main()
     #endif // USE_HALF_INTERMEDIATE
 
     base_settings.use_matter = holes.use_matter;
-    base_settings.use_matter_colour = true;
+    base_settings.use_matter_colour = false;
 
     #ifdef CALCULATE_MOMENTUM_CONSTRAINT
     base_settings.calculate_momentum_constraint = true;
