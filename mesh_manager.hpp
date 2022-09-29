@@ -101,6 +101,7 @@ struct cpu_mesh_settings
     bool calculate_momentum_constraint = false;
     bool use_matter = false;
     bool use_matter_colour = false;
+    bool use_gBB = false;
 };
 
 struct matter_initial_vars

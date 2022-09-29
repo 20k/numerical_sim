@@ -4248,7 +4248,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h2;
     h2.t = compact_object::NEUTRON_STAR;
     h2.bare_mass = 0.075;
-    h2.angular_momentum = {0, 0, 0.0075};
+    h2.angular_momentum = {0, 0, -0.0075};
     h2.position = {5,0,0};
     h2.matter.compactness = 0.06;
 
@@ -4640,7 +4640,7 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     ctx.add("init_gB1", gB1);
     ctx.add("init_gB2", gB2);
 
-    //#define USE_GBB
+    #define USE_GBB
     #ifdef USE_GBB
     value gBB0 = 0;
     value gBB1 = 0;
