@@ -36,6 +36,10 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
         {"gB1", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 0},
         {"gB2", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 0},
 
+        {"gBB0", "evolve_cGi", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 2},
+        {"gBB1", "evolve_cGi", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 2},
+        {"gBB2", "evolve_cGi", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 2},
+
         {"Dp_star", "evolve_hydro_all", 0.25f, 0, 1, 1},
         {"De_star", "evolve_hydro_all", 0.25f, 0, 1, 1},
         {"DcS0", "evolve_hydro_all", 0.25f, 0, 1, 1},
@@ -49,24 +53,27 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
 
     for(int kk=0; kk < (int)values.size(); kk++)
     {
+        uint64_t buf_size = size.x() * size.y() * size.z() * sizeof(cl_float);
+
         named_buffer& buf = buffers.emplace_back(ctx);
 
         int type = std::get<5>(values[kk]);
 
-        if(type != 0)
+        if(type == 0)
         {
-            if(type == 1 && cfg.use_matter)
-            {
-                buf.buf.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
-            }
-            else
-            {
-                buf.buf.alloc(sizeof(cl_int));
-            }
+            buf.buf.alloc(buf_size);
+        }
+        else if(type == 1 && cfg.use_matter)
+        {
+            buf.buf.alloc(buf_size);
+        }
+        else if(type == 2 && cfg.use_gBB)
+        {
+            buf.buf.alloc(buf_size);
         }
         else
         {
-            buf.buf.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
+            buf.buf.alloc(sizeof(cl_int));
         }
 
         buf.name = std::get<0>(values[kk]);
@@ -74,7 +81,7 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
         buf.dissipation_coeff = std::get<2>(values[kk]);
         buf.asymptotic_value = std::get<3>(values[kk]);
         buf.wave_speed = std::get<4>(values[kk]);
-        buf.matter_term = std::get<5>(values[kk]);
+        buf.matter_term = std::get<5>(values[kk]) == 1;
     }
 }
 
@@ -631,6 +638,9 @@ std::vector<ref_counted_buffer> cpu_mesh::get_derivatives_of(cl::context& ctx, b
 
 void cpu_mesh::clean_buffer(cl::managed_command_queue& mqueue, cl::buffer& in, cl::buffer& out, cl::buffer& base, float asym, float speed, float timestep)
 {
+    if(in.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z())
+        return;
+
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
     cl::args cleaner;

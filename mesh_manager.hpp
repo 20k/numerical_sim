@@ -38,6 +38,7 @@ struct buffer_set_cfg
 {
     bool use_matter = false;
     bool use_matter_colour = false;
+    bool use_gBB = false;
 };
 
 struct buffer_set

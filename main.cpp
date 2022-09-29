@@ -7721,6 +7721,10 @@ int main()
     base_settings.use_matter = holes.use_matter;
     base_settings.use_matter_colour = false;
 
+    #ifdef USE_GBB
+    base_settings.use_gBB = true;
+    #endif // USE_GBB
+
     #ifdef CALCULATE_MOMENTUM_CONSTRAINT
     base_settings.calculate_momentum_constraint = true;
     #endif // CALCULATE_MOMENTUM_CONSTRAINT
@@ -8274,6 +8278,9 @@ int main()
         }
 
         win.display();
+
+        if(frametime.get_elapsed_time_s() > 10)
+            return 0;
 
         printf("Time: %f\n", frametime.restart() * 1000.);
     }
