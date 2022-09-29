@@ -133,26 +133,27 @@ float get_distance(int x1, int y1, int z1, int x2, int y2, int z2, int4 dim, flo
 }
 
 #ifndef USE_GBB
-
     #define GET_ARGLIST(a, p) a p##cY0, a p##cY1, a p##cY2, a p##cY3, a p##cY4, a p##cY5, \
                 a p##cA0, a p##cA1, a p##cA2, a p##cA3, a p##cA4, a p##cA5, \
                 a p##cGi0, a p##cGi1, a p##cGi2, a p##K, a p##X, a p##gA, a p##gB0, a p##gB1, a p##gB2, \
                 a p##Dp_star, a p##De_star, a p##DcS0, a p##DcS1, a p##DcS2
 
-    #define GET_DERIVLIST(a, p) a p##dcYij0, a p##dcYij1, a p##dcYij2, a p##dcYij3, a p##dcYij4, a p##dcYij5, a p##dcYij6, a p##dcYij7, a p##dcYij8, a p##dcYij9, a p##dcYij10, a p##dcYij11, a p##dcYij12, a p##dcYij13, a p##dcYij14, a p##dcYij15, a p##dcYij16, a p##dcYij17, \
-                        a p##digA0, a p##digA1, a p##digA2, \
-                        a p##digB0, a p##digB1, a p##digB2, a p##digB3, a p##digB4, a p##digB5, a p##digB6, a p##digB7, a p##digB8, \
-                        a p##dX0, a p##dX1, a p##dX2
-
-    #define STANDARD_ARGS(p) GET_ARGLIST(__global float*, p)
-    #define STANDARD_DERIVS(p) GET_DERIVLIST(__global DERIV_PRECISION*, p)
-
 #else
-    #define STANDARD_ARGS(p) __global float* p##cY0, __global float* p##cY1, __global float* p##cY2, __global float* p##cY3, __global float* p##cY4, __global float* p##cY5, \
-                __global float* p##cA0, __global float* p##cA1, __global float* p##cA2, __global float* p##cA3, __global float* p##cA4, __global float* p##cA5, \
-                __global float* p##cGi0, __global float* p##cGi1, __global float* p##cGi2, __global float* p##K, __global float* p##X, __global float* p##gA, __global float* p##gB0, __global float* p##gB1, __global float* p##gB2, \
-                __global float* p##gBB0, __global float* p##gBB1, __global float* p##gBB2
+    #define GET_ARGLIST(a, p) a p##cY0, a p##cY1, a p##cY2, a p##cY3, a p##cY4, a p##cY5, \
+                a p##cA0, a p##cA1, a p##cA2, a p##cA3, a p##cA4, a p##cA5, \
+                a p##cGi0, a p##cGi1, a p##cGi2, a p##K, a p##X, a p##gA, a p##gB0, a p##gB1, a p##gB2, \
+                a p##gBB0, a p##gBB1, a p##gBB2, \
+                a p##Dp_star, a p##De_star, a p##DcS0, a p##DcS1, a p##DcS2
 #endif
+
+#define GET_DERIVLIST(a, p) a p##dcYij0, a p##dcYij1, a p##dcYij2, a p##dcYij3, a p##dcYij4, a p##dcYij5, a p##dcYij6, a p##dcYij7, a p##dcYij8, a p##dcYij9, a p##dcYij10, a p##dcYij11, a p##dcYij12, a p##dcYij13, a p##dcYij14, a p##dcYij15, a p##dcYij16, a p##dcYij17, \
+                    a p##digA0, a p##digA1, a p##digA2, \
+                    a p##digB0, a p##digB1, a p##digB2, a p##digB3, a p##digB4, a p##digB5, a p##digB6, a p##digB7, a p##digB8, \
+                    a p##dX0, a p##dX1, a p##dX2
+
+#define STANDARD_ARGS(p) GET_ARGLIST(__global float*, p)
+#define STANDARD_DERIVS(p) GET_DERIVLIST(__global DERIV_PRECISION*, p)
+
 
 #define ALL_ARGS(p) GET_ARGLIST(, p), GET_DERIVLIST(, p)
 
