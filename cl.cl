@@ -456,6 +456,9 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
     if(gA[index] < 0)
         gA[index] = 0;
 
+    if(gA[index] > 1)
+        gA[index] = 1;
+
     if(X[index] < 0)
         X[index] = 0;
 
