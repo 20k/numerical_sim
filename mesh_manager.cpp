@@ -130,6 +130,8 @@ colour_set::colour_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
 template<typename T>
 void dissipate_set(cl::managed_command_queue& mqueue, T& base_reference, T& inout, evolution_points& points_set, float timestep, vec3i dim, float scale)
 {
+    return;
+
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
     for(int i=0; i < base_reference.buffers.size(); i++)
@@ -928,7 +930,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     };
     #endif // 0
 
-    auto dissipate_unidir = [&](auto& in, auto& out)
+    /*auto dissipate_unidir = [&](auto& in, auto& out)
     {
         assert(in.buffers.size() == out.buffers.size());
 
@@ -966,7 +968,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
             check_for_nans(in.buffers[i].name + "_diss", out.buffers[i].buf);
         }
-    };
+    };*/
     ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
     //#define RK4
     #ifdef RK4

@@ -460,8 +460,13 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
     return stencil;
 }
 
-value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
+value kreiss_oliger_dissipate(equation_context& ctx, const value& in, const value& coefficient)
 {
+    value order = "order";
+    value d_full = "D_FULL";
+
+    value not_full = (order & d_full) == 0;
+
     //#define NO_KREISS
     #ifndef NO_KREISS
     value fin = 0;
@@ -471,7 +476,7 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
         fin = fin + kreiss_oliger_dissipate_dir(ctx, in, i);
     }
 
-    return fin;
+    return coefficient * fin;
     #else
     return 0;
     #endif
@@ -483,7 +488,7 @@ void build_kreiss_oliger_dissipate_singular(equation_context& ctx)
 
     value coeff = "coefficient";
 
-    ctx.add("KREISS_DISSIPATE_SINGULAR", coeff * kreiss_oliger_dissipate(ctx, buf));
+    ctx.add("KREISS_DISSIPATE_SINGULAR", kreiss_oliger_dissipate(ctx, buf, coeff));
 }
 
 #if 0
@@ -5362,6 +5367,14 @@ void build_cY(equation_context& ctx)
     }
     #endif // USE_DTCYIJ_MODIFICATION
 
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            dtcYij.idx(i, j) += kreiss_oliger_dissipate(ctx, unpinned_cY.idx(i, j), 0.25f);
+        }
+    }
+
     for(int i=0; i < 6; i++)
     {
         std::string name = "dtcYij" + std::to_string(i);
@@ -5767,6 +5780,14 @@ void build_cA(equation_context& ctx, bool use_matter)
         }
     }
 
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            dtcAij.idx(i, j) += kreiss_oliger_dissipate(ctx, args.cA.idx(i, j), 0.25f);
+        }
+    }
+
     for(int i=0; i < 6; i++)
     {
         std::string name = "dtcAij" + std::to_string(i);
@@ -5989,6 +6010,11 @@ void build_cGi(equation_context& ctx, bool use_matter)
 
     for(int i=0; i < 3; i++)
     {
+        dtcGi.idx(i) += kreiss_oliger_dissipate(ctx, args.cGi.idx(i), 0.25f);
+    }
+
+    for(int i=0; i < 3; i++)
+    {
         std::string name = "dtcGi" + std::to_string(i);
 
         ctx.add(name, dtcGi.idx(i));
@@ -6082,6 +6108,8 @@ void build_K(equation_context& ctx, bool use_matter)
         ctx.add("Dbg_X", X);*/
     }
 
+    dtK += kreiss_oliger_dissipate(ctx, args.K, 0.25f);
+
     ctx.add("dtK", dtK);
 }
 
@@ -6098,6 +6126,8 @@ void build_X(equation_context& ctx)
     }
 
     value dtX = (2.f/3.f) * args.X * (args.gA * args.K - sum(linear_dB)) + sum(tensor_upwind(ctx, args.gB, args.X));
+
+    dtX += kreiss_oliger_dissipate(ctx, args.X, 0.25f);
 
     ctx.add("dtX", dtX);
 }
@@ -6130,6 +6160,8 @@ void build_gA(equation_context& ctx)
     ///-a * (8/3) * A / (3 - a)
 
     //value dtgA = lie_derivative(ctx, args.gB, args.gA) + dibi * 0 - args.gA * (8.f/3.f) * args.K / (3 - args.gA);
+
+    dtgA += kreiss_oliger_dissipate(ctx, args.gA, 0.25f);
 
     ctx.add("dtgA", dtgA);
 }
@@ -6224,6 +6256,11 @@ void build_gB(equation_context& ctx)
     dtgBB = dtcGi - N * args.gBB + bjdjBi - christoffd;
     //#endif // PAPER_0610128
     #endif // USE_GBB
+
+    for(int i=0; i < 3; i++)
+    {
+        dtgB.idx(i) += kreiss_oliger_dissipate(ctx, args.gB.idx(i), 0.25f);
+    }
 
     for(int i=0; i < 3; i++)
     {
