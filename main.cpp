@@ -4200,7 +4200,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    //#define PAPER_0610128
+    #define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -4236,7 +4236,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1};
     #endif // SPINNING_SINGLE_NEUTRON
 
-    #define DOUBLE_SPINNING_NEUTRON
+    //#define DOUBLE_SPINNING_NEUTRON
     #ifdef DOUBLE_SPINNING_NEUTRON
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
@@ -5163,7 +5163,7 @@ tensor<value, 3, 3, 3> gpu_covariant_derivative_low_tensor(equation_context& ctx
     return ret;
 }
 
-void build_momentum_constraint(equation_context& ctx)
+void build_momentum_constraint(equation_context& ctx, bool use_matter)
 {
     standard_arguments args(ctx);
 
@@ -5232,8 +5232,6 @@ void build_momentum_constraint(equation_context& ctx)
             s3 += -(3.f/2.f) * mixed_cAij.idx(m, i) * diff1(ctx, args.X, m) / X_clamped;
         }
 
-        value s4 = -8 * M_PI * ji_lower.idx(i);
-
         /*Mi.idx(i) = dual_if(args.X <= 0.001f,
         []()
         {
@@ -5244,7 +5242,12 @@ void build_momentum_constraint(equation_context& ctx)
             return s1 + s2 + s3;
         });*/
 
-        Mi.idx(i) = s1 + s2 + s3 + s4;
+        Mi.idx(i) = s1 + s2 + s3;
+
+        if(use_matter)
+        {
+            Mi.idx(i) += -8 * M_PI * ji_lower.idx(i);
+        }
     }
     #endif // 0
 
@@ -7586,7 +7589,7 @@ int main()
     build_intermediate_thin_cY5(ctx12);
 
     equation_context ctx13;
-    build_momentum_constraint(ctx13);
+    build_momentum_constraint(ctx13, holes.use_matter);
 
     equation_context ctx14;
     //build_hamiltonian_constraint(ctx14);
