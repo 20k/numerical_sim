@@ -582,7 +582,8 @@ __kernel
 void calculate_momentum_constraint(__global ushort4* points, int point_count,
                                    STANDARD_ARGS(),
                                    __global float* momentum0, __global float* momentum1, __global float* momentum2,
-                                   float scale, int4 dim)
+                                   float scale, int4 dim,
+                                   __global ushort* order_ptr)
 {
     int local_idx = get_global_id(0);
 
@@ -593,15 +594,26 @@ void calculate_momentum_constraint(__global ushort4* points, int point_count,
     int iy = points[local_idx].y;
     int iz = points[local_idx].z;
 
+    int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
+
+    if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
+    {
+        momentum0[index] = 0;
+        momentum1[index] = 0;
+        momentum2[index] = 0;
+        return;
+    }
+
     float TEMPORARIES12;
 
     float m1 = init_momentum0;
     float m2 = init_momentum1;
     float m3 = init_momentum2;
 
-    momentum0[IDX(ix,iy,iz)] = m1;
-    momentum1[IDX(ix,iy,iz)] = m2;
-    momentum2[IDX(ix,iy,iz)] = m3;
+    momentum0[index] = m1;
+    momentum1[index] = m2;
+    momentum2[index] = m3;
 }
 
 __kernel

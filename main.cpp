@@ -5197,17 +5197,19 @@ void build_momentum_constraint(equation_context& ctx)
     }
 
     //#define BETTERDAMP_DTCAIJ
-    //#define DAMP_DTCAIJ
+    #define DAMP_DTCAIJ
     //#define AIJ_SIGMA
     #if defined(DAMP_DTCAIJ) || defined(BETTERDAMP_DTCAIJ) || defined(AIJ_SIGMA)
     #define CALCULATE_MOMENTUM_CONSTRAINT
     #endif // defined
 
     #ifdef CALCULATE_MOMENTUM_CONSTRAINT
-    #if 0
+    #if 1
     tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
 
     tensor<value, 3, 3> mixed_cAij = raise_index(args.cA, args.cY, icY);
+
+    tensor<value, 3> ji_lower = args.matt.calculate_adm_Si(args.X);
 
     for(int i=0; i < 3; i++)
     {
@@ -5230,6 +5232,8 @@ void build_momentum_constraint(equation_context& ctx)
             s3 += -(3.f/2.f) * mixed_cAij.idx(m, i) * diff1(ctx, args.X, m) / X_clamped;
         }
 
+        value s4 = -8 * M_PI * ji_lower.idx(i);
+
         /*Mi.idx(i) = dual_if(args.X <= 0.001f,
         []()
         {
@@ -5240,11 +5244,11 @@ void build_momentum_constraint(equation_context& ctx)
             return s1 + s2 + s3;
         });*/
 
-        Mi.idx(i) = s1 + s2 + s3;
+        Mi.idx(i) = s1 + s2 + s3 + s4;
     }
     #endif // 0
 
-    tensor<value, 3, 3> second_cAij = raise_second_index(args.cA, args.cY, unpinned_icY);
+    /*tensor<value, 3, 3> second_cAij = raise_second_index(args.cA, args.cY, unpinned_icY);
 
     for(int i=0; i < 3; i++)
     {
@@ -5275,7 +5279,7 @@ void build_momentum_constraint(equation_context& ctx)
         value s4 = -(2.f/3.f) * diff1(ctx, args.K, i);
 
         Mi.idx(i) = s1 + s2 + s3 + s4;
-    }
+    }*/
     #endif // 0
 
     /*tensor<value, 3> Mi;

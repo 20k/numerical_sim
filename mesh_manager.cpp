@@ -745,16 +745,14 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
         ///end all the differentiation work before we move on
         if(sett.calculate_momentum_constraint)
         {
-            assert(false);
+            cl::args momentum_args;
 
-            /*cl::args momentum_args;
+            momentum_args.push_back(points_set.all_points);
+            momentum_args.push_back(points_set.all_count);
 
-            momentum_args.push_back(points_set.first_derivative_points);
-            momentum_args.push_back(points_set.first_count);
-
-            for(auto& i : generic_in)
+            for(auto& i : generic_in.buffers)
             {
-                momentum_args.push_back(i.as_device_read_only());
+                momentum_args.push_back(i.buf.as_device_read_only());
             }
 
             for(auto& i : momentum_constraint)
@@ -764,8 +762,9 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
             momentum_args.push_back(scale);
             momentum_args.push_back(clsize);
+            momentum_args.push_back(points_set.order);
 
-            mqueue.exec("calculate_momentum_constraint", momentum_args, {points_set.first_count}, {128});*/
+            mqueue.exec("calculate_momentum_constraint", momentum_args, {points_set.all_count}, {128});
         }
 
         auto step_kernel = [&](const std::string& name)
