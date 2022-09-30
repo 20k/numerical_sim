@@ -5197,7 +5197,7 @@ void build_momentum_constraint(equation_context& ctx)
     }
 
     //#define BETTERDAMP_DTCAIJ
-    #define DAMP_DTCAIJ
+    //#define DAMP_DTCAIJ
     //#define AIJ_SIGMA
     #if defined(DAMP_DTCAIJ) || defined(BETTERDAMP_DTCAIJ) || defined(AIJ_SIGMA)
     #define CALCULATE_MOMENTUM_CONSTRAINT
