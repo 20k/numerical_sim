@@ -437,8 +437,6 @@ struct differentiation_context
     }
 };
 
-#define DIFFERENTIATION_WIDTH 3
-
 ///https://hal.archives-ouvertes.fr/hal-00569776/document this paper implies you simply sum the directions
 ///dissipation is fixing some stuff, todo: investigate why so much dissipation is required
 value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int idx)
@@ -7463,8 +7461,6 @@ int main()
 
     std::string argument_string = "-I ./ -cl-std=CL2.0 -cl-mad-enable ";
 
-    ///the simulation domain is this * 2
-    int current_simulation_boundary = 1024;
     ///must be a multiple of DIFFERENTIATION_WIDTH
     vec3i size = {213, 213, 213};
     //vec3i size = {250, 250, 250};
@@ -8038,9 +8034,6 @@ int main()
             }
 
             time_elapsed_s += timestep;
-            current_simulation_boundary += DIFFERENTIATION_WIDTH;
-
-            current_simulation_boundary = clamp(current_simulation_boundary, 0, size.x()/2);
         }
 
         if(!should_render)
