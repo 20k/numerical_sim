@@ -476,7 +476,7 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in, const valu
         fin = fin + kreiss_oliger_dissipate_dir(ctx, in, i);
     }
 
-    return coefficient * fin;
+    return dual_if(not_full, [&](){return value{0};}, [&](){return coefficient * fin;});
     #else
     return 0;
     #endif
