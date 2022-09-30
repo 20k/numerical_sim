@@ -912,7 +912,7 @@ void evolve_cGi(__global ushort4* points, int point_count,
 
 
 __kernel
-void evolve_K(__global ushort4* points, int point_count,
+void evolve_K_X(__global ushort4* points, int point_count,
             STANDARD_ARGS(),
             STANDARD_ARGS(o),
             STANDARD_ARGS(base_),
@@ -938,20 +938,34 @@ void evolve_K(__global ushort4* points, int point_count,
         return;
     }
 
-    float TEMPORARIEStk;
-
-    float f_dtK = dtK;
-
-    float b0 = base_K[index];
-
-    oK[index] = f_dtK * timestep + b0;
-
-    /*if(X[index] < DISSB)
     {
-        oK[index] += (0 - oK[index]) * timestep;
-    }*/
+        float TEMPORARIEStk;
 
-    NANCHECK(oK);
+        float f_dtK = dtK;
+
+        float b0 = base_K[index];
+
+        oK[index] = f_dtK * timestep + b0;
+
+        /*if(X[index] < DISSB)
+        {
+            oK[index] += (0 - oK[index]) * timestep;
+        }*/
+
+        NANCHECK(oK);
+    }
+
+    {
+        float TEMPORARIEStx;
+
+        float f_dtX = dtX;
+
+        float b0 = base_X[index];
+
+        oX[index] = max(f_dtX * timestep + b0, 0.f);
+
+        NANCHECK(oX);
+    }
 
     /*if(ix == 109 && iy == 125 && iz == 125)
     {
@@ -960,7 +974,7 @@ void evolve_K(__global ushort4* points, int point_count,
 }
 
 
-__kernel
+/*__kernel
 void evolve_X(__global ushort4* points, int point_count,
             STANDARD_ARGS(),
             STANDARD_ARGS(o),
@@ -995,10 +1009,8 @@ void evolve_X(__global ushort4* points, int point_count,
 
     oX[index] = max(f_dtX * timestep + b0, 0.f);
 
-    /**/
-
     NANCHECK(oX);
-}
+}*/
 
 __kernel
 void evolve_gA(__global ushort4* points, int point_count,

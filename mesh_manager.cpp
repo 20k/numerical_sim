@@ -28,8 +28,8 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
         {"cGi1", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1, 0},
         {"cGi2", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1, 0},
 
-        {"K", "evolve_K", cpu_mesh::dissipate_high, 0, 1, 0},
-        {"X", "evolve_X", cpu_mesh::dissipate_low, 1, 1, 0},
+        {"K", "evolve_K_X", cpu_mesh::dissipate_high, 0, 1, 0},
+        {"X", "evolve_K_X", cpu_mesh::dissipate_low, 1, 1, 0},
 
         {"gA", "evolve_gA", cpu_mesh::dissipate_gauge, 1, gauge_wave_speed, 0},
         {"gB0", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 0},
@@ -835,8 +835,8 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
         step_kernel("evolve_cY");
         step_kernel("evolve_cA");
         step_kernel("evolve_cGi");
-        step_kernel("evolve_K");
-        step_kernel("evolve_X");
+        step_kernel("evolve_K_X");
+        //step_kernel("evolve_X");
         step_kernel("evolve_gA");
         step_kernel("evolve_gB");
 
