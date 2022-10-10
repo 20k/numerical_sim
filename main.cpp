@@ -18,6 +18,7 @@
 #include "spherical_integration.hpp"
 #include "equation_context.hpp"
 #include "laplace_solver.hpp"
+#include "tensor_algebra.hpp"
 
 /**
 current paper set
@@ -118,23 +119,6 @@ https://arxiv.org/pdf/gr-qc/9908027.pdf - hydrodynamic paper off which the one I
 ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses
 ///38.2
 
-///https://arxiv.org/pdf/gr-qc/9810065.pdf
-template<typename T, int N>
-inline
-T gpu_trace(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
-{
-    T ret = 0;
-
-    for(int i=0; i < N; i++)
-    {
-        for(int j=0; j < N; j++)
-        {
-            ret = ret + inverse.idx(i, j) * mT.idx(i, j);
-        }
-    }
-
-    return ret;
-}
 
 template<typename T, int N>
 unit_metric<T, N, N> get_flat_metric()
@@ -869,24 +853,6 @@ tensor<T, N, N> gpu_high_covariant_derivative_vec(equation_context& ctx, const t
 
     return ret;
 }*/
-
-template<typename T, int N>
-inline
-tensor<T, N, N> gpu_trace_free(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
-{
-    tensor<T, N, N> TF;
-    T t = gpu_trace(mT, met, inverse);
-
-    for(int i=0; i < N; i++)
-    {
-        for(int j=0; j < N; j++)
-        {
-            TF.idx(i, j) = mT.idx(i, j) - (1/3.f) * met.idx(i, j) * t;
-        }
-    }
-
-    return TF;
-}
 
 template<typename T, int N>
 inline
@@ -4873,7 +4839,7 @@ void build_constraints(equation_context& ctx)
     ctx.add("NO_CAIJYY", 1);
     #else
     ///https://arxiv.org/pdf/0709.3559.pdf b.48?? note: this defines a seemingly alternate method to do the below, but it doesn't work amazingly well
-    tensor<value, 3, 3> fixed_cA = gpu_trace_free(cA, fixed_cY, fixed_cY.invert());
+    tensor<value, 3, 3> fixed_cA = trace_free(cA, fixed_cY, fixed_cY.invert());
 
     ///this seems to work well (https://arxiv.org/pdf/0709.3559.pdf) (b.49), but needs testing with bbh which is why its disabled
     //tensor<value, 3, 3> fixed_cA = cA / det_cY_pow;
@@ -5283,7 +5249,7 @@ tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& 
 
 value calculate_hamiltonian(const metric<value, 3, 3>& cY, const inverse_metric<value, 3, 3>& icY, const metric<value, 3, 3>& Yij, const inverse_metric<value, 3, 3>& iYij, const tensor<value, 3, 3>& Rij, const value& K, const tensor<value, 3, 3>& cA)
 {
-    value R = gpu_trace(Rij, Yij, iYij);
+    value R = trace(Rij, iYij);
 
     tensor<value, 3, 3> aIJ = raise_both(cA, cY, icY);
 
@@ -5447,7 +5413,7 @@ void build_cA(equation_context& ctx, bool use_matter)
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf replaced with definition under bssn aux
     tensor<value, 3, 3> with_trace = -Xdidja + xgARij;
 
-    tensor<value, 3, 3> without_trace = gpu_trace_free(with_trace, cY, icY);
+    tensor<value, 3, 3> without_trace = trace_free(with_trace, cY, icY);
 
     #ifdef BETTERDAMP_DTCAIJ
     tensor<value, 3, 3> momentum_deriv;
@@ -5489,7 +5455,7 @@ void build_cA(equation_context& ctx, bool use_matter)
         }
     }
 
-    tensor<value, 3, 3> BiMj_TF = gpu_trace_free(BiMj, cY, icY);
+    tensor<value, 3, 3> BiMj_TF = trace_free(BiMj, cY, icY);
     #endif // AIJ_SIGMA
 
     for(int i=0; i < 3; i++)
@@ -5546,7 +5512,7 @@ void build_cA(equation_context& ctx, bool use_matter)
             value F_a = scale * gA;
 
             ///https://arxiv.org/pdf/1205.5111v1.pdf (56)
-            dtcAij.idx(i, j) += scale * F_a * gpu_trace_free(symmetric_momentum_deriv, cY, icY).idx(i, j);
+            dtcAij.idx(i, j) += scale * F_a * trace_free(symmetric_momentum_deriv, cY, icY).idx(i, j);
             #endif // BETTERDAMP_DTCAIJ
 
             #ifdef AIJ_SIGMA
@@ -5564,7 +5530,7 @@ void build_cA(equation_context& ctx, bool use_matter)
 
                 tensor<value, 3, 3> xSij = args.matt.calculate_adm_X_Sij(X, W, cY);
 
-                tensor<value, 3, 3> xgASij = gpu_trace_free(-8 * M_PI * gA * xSij, cY, icY);
+                tensor<value, 3, 3> xgASij = trace_free(-8 * M_PI * gA * xSij, cY, icY);
 
                 //ctx.add("DBGXGA", xgASij.idx(0, 0));
                 //ctx.add("Debug_cS0", args.matt.cS.idx(0));
