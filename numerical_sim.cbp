@@ -117,6 +117,7 @@
 			<Add option="-ldwrite" />
 			<Add option="-l:libtbb12.dll.a" />
 		</Linker>
+		<Unit filename="bssn.cpp" />
 		<Unit filename="bssn.hpp" />
 		<Unit filename="cl.cl" />
 		<Unit filename="common.cl" />

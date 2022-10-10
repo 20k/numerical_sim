@@ -4,6 +4,7 @@
 #include <geodesic/dual_value.hpp>
 #include <vec/tensor.hpp>
 #include "tensor_algebra.hpp"
+#include "equation_context.hpp"
 
 inline
 value as_float3(const value& x, const value& y, const value& z)
@@ -37,7 +38,6 @@ value bidx(const std::string& buf, bool interpolate, bool is_derivative)
         }
     }
 }
-
 
 struct standard_arguments
 {
@@ -373,5 +373,26 @@ struct standard_arguments
         }*/
     }
 };
+
+struct matter_interop
+{
+    virtual value               calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args){assert(false); return value();};
+    virtual value               calculate_adm_p(equation_context& ctx, standard_arguments& bssn_args){assert(false); return value();};
+    virtual tensor<value, 3, 3> calculate_adm_X_Sij(equation_context& ctx, standard_arguments& bssn_args){assert(false); return tensor<value, 3, 3>();};
+    virtual tensor<value, 3>    calculate_adm_Si(equation_context& ctx, standard_arguments& bssn_args){assert(false); return tensor<value, 3>();};
+};
+
+namespace bssn
+{
+    tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& args, const inverse_metric<value, 3, 3>& icY, const tensor<value, 3, 3, 3>& christoff1, const tensor<value, 3, 3, 3>& christoff2);
+
+    void build_cY(equation_context& ctx);
+    void build_cA(matter_interop& interop, equation_context& ctx, bool use_matter);
+    void build_cGi(matter_interop& interop, equation_context& ctx, bool use_matter);
+    void build_K(matter_interop& interop, equation_context& ctx, bool use_matter);
+    void build_X(equation_context& ctx);
+    void build_gA(equation_context& ctx);
+    void build_gB(equation_context& ctx);
+}
 
 #endif // BSSN_HPP_INCLUDED
