@@ -117,6 +117,7 @@
 			<Add option="-ldwrite" />
 			<Add option="-l:libtbb12.dll.a" />
 		</Linker>
+		<Unit filename="bssn.hpp" />
 		<Unit filename="cl.cl" />
 		<Unit filename="common.cl" />
 		<Unit filename="deps/geodesic/dual_value.hpp" />
@@ -168,6 +169,7 @@
 		<Unit filename="spherical_decomposition.hpp" />
 		<Unit filename="spherical_harmonics.hpp" />
 		<Unit filename="spherical_integration.hpp" />
+		<Unit filename="tensor_algebra.hpp" />
 		<Unit filename="thin_sandwich.cl" />
 		<Unit filename="tov_solver.cl" />
 		<Unit filename="transform_position.cl" />
