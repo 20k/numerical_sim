@@ -635,69 +635,6 @@ tensor<value, 3, 3> tensor_derivative(equation_context& ctx, const tensor<value,
     return ret;
 }*/
 
-///B^i * Di whatever
-value upwind_differentiate(equation_context& ctx, const value& prefix, const value& in, int idx, bool pin = true)
-{
-    /*differentiation_context dctx(in, idx);
-
-    value scale = "scale";
-
-    ///https://en.wikipedia.org/wiki/Upwind_scheme
-    value a_p = max(prefix, 0);
-    value a_n = min(prefix, 0);
-
-    //value u_n = (dctx.vars[2] - dctx.vars[1]) / (2 * scale);
-    //value u_p = (dctx.vars[3] - dctx.vars[2]) / (2 * scale);
-
-    value u_n = (3 * dctx.vars[2] - 4 * dctx.vars[1] + dctx.vars[0]) / (6 * scale);
-    value u_p = (-dctx.vars[4] + 4 * dctx.vars[3] - 3 * dctx.vars[2]) / (6 * scale);
-
-    ///- here probably isn't right
-    ///neither is correct, this is fundamentally wrong somewhere
-    value final_command = (a_p * u_n + a_n * u_p);
-
-    return final_command;*/
-
-    return prefix * diff1(ctx, in, idx);
-
-    /*differentiation_context<7> dctx(in, idx);
-
-    value scale = "scale";
-
-    auto vars = dctx.vars;
-
-    ///https://arxiv.org/pdf/gr-qc/0505055.pdf 2.5
-    value stencil_negative = (-vars[0] + 6 * vars[1] - 18 * vars[2] + 10 * vars[3] + 3 * vars[4]) / (12.f * scale);
-    value stencil_positive = (vars[6] - 6 * vars[5] + 18 * vars[4] - 10 * vars[3] - 3 * vars[2]) / (12.f * scale);
-
-    return dual_if(prefix >= 0, [&]()
-    {
-        return prefix * stencil_positive;
-    },
-    [&](){
-        return prefix * stencil_negative;
-    });*/
-}
-
-tensor<value, 3> tensor_upwind(equation_context& ctx, const tensor<value, 3>& prefix, const value& in)
-{
-    tensor<value, 3> ret;
-
-    for(int i=0; i < 3; i++)
-    {
-        ret.idx(i) = upwind_differentiate(ctx, prefix.idx(i), in, i);
-    }
-
-    return ret;
-}
-
-template<typename T, int N>
-inline
-T lie_derivative(equation_context& ctx, const tensor<T, N>& gB, const T& variable)
-{
-    ///https://en.wikipedia.org/wiki/Lie_derivative#Coordinate_expressions
-    return sum(tensor_upwind(ctx, gB, variable));
-}
 
 /*tensor<value, 3, 3> tensor_upwind(equation_context& ctx, const tensor<value, 3>& prefix, const tensor<value, 3>& in)
 {
@@ -714,115 +651,6 @@ T lie_derivative(equation_context& ctx, const tensor<T, N>& gB, const T& variabl
     return ret;
 }*/
 
-template<typename T, int N, SizedTensor<T, N, N> S>
-inline
-tensor<T, N, N> gpu_lie_derivative_weight(equation_context& ctx, const tensor<T, N>& B, const S& mT)
-{
-    tensor<T, N, N> lie;
-
-    for(int i=0; i < N; i++)
-    {
-        for(int j=0; j < N; j++)
-        {
-            T sum = 0;
-
-            for(int k=0; k < N; k++)
-            {
-                sum = sum + upwind_differentiate(ctx, B.idx(k), mT.idx(i, j), k);
-                sum = sum + mT.idx(i, k) * diff1(ctx, B.idx(k), j);
-                sum = sum + mT.idx(j, k) * diff1(ctx, B.idx(k), i);
-                sum = sum - (2.f/3.f) * mT.idx(i, j) * diff1(ctx, B.idx(k), k);
-            }
-
-            lie.idx(i, j) = sum;
-        }
-    }
-
-    return lie;
-}
-
-tensor<value, 3, 3, 3> get_eijk()
-{
-    auto eijk_func = [](int i, int j, int k)
-    {
-        if((i == 0 && j == 1 && k == 2) || (i == 1 && j == 2 && k == 0) || (i == 2 && j == 0 && k == 1))
-            return 1;
-
-        if(i == j || j == k || k == i)
-            return 0;
-
-        return -1;
-    };
-
-    tensor<value, 3, 3, 3> eijk;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            for(int k=0; k < 3; k++)
-            {
-                eijk.idx(i, j, k) = eijk_func(i, j, k);
-            }
-        }
-    }
-
-    return eijk;
-}
-
-///https://en.wikipedia.org/wiki/Covariant_derivative#Covariant_derivative_by_field_type
-///for the tensor DcDa, this returns idx(a, c)
-template<typename T, int N>
-inline
-tensor<T, N, N> gpu_covariant_derivative_low_vec(equation_context& ctx, const tensor<T, N>& v_in, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
-{
-    auto christoff = gpu_christoffel_symbols_2(ctx, met, inverse);
-
-    tensor<T, N, N> lac;
-
-    for(int a=0; a < N; a++)
-    {
-        for(int c=0; c < N; c++)
-        {
-            T sum = 0;
-
-            for(int b=0; b < N; b++)
-            {
-                sum = sum + christoff.idx(b, c, a) * v_in.idx(b);
-            }
-
-            lac.idx(a, c) = diff1(ctx, v_in.idx(a), c) - sum;
-        }
-    }
-
-    return lac;
-}
-
-template<typename T, int N>
-inline
-tensor<T, N, N> gpu_double_covariant_derivative(equation_context& ctx, const T& in, const tensor<T, N>& first_derivatives,
-                                                const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse,
-                                                const tensor<T, N, N, N>& christoff2)
-{
-    tensor<T, N, N> lac;
-
-    for(int a=0; a < N; a++)
-    {
-        for(int c=0; c < N; c++)
-        {
-            T sum = 0;
-
-            for(int b=0; b < N; b++)
-            {
-                sum += christoff2.idx(b, c, a) * diff1(ctx, in, b);
-            }
-
-            lac.idx(a, c) = diff2(ctx, in, a, c, first_derivatives.idx(a), first_derivatives.idx(c)) - sum;
-        }
-    }
-
-    return lac;
-}
 
 /*template<typename T, int N>
 inline
@@ -849,113 +677,6 @@ tensor<T, N, N> gpu_high_covariant_derivative_vec(equation_context& ctx, const t
 
     return ret;
 }*/
-
-template<typename T, int N>
-inline
-tensor<T, N, N, N> gpu_christoffel_symbols_2(equation_context& ctx, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
-{
-    tensor<T, N, N, N> christoff;
-
-    for(int i=0; i < N; i++)
-    {
-        for(int k=0; k < N; k++)
-        {
-            for(int l=0; l < N; l++)
-            {
-                T sum = 0;
-
-                for(int m=0; m < N; m++)
-                {
-                    value local = 0;
-
-                    local = local + diff1(ctx, met.idx(m, k), l);
-                    local = local + diff1(ctx, met.idx(m, l), k);
-                    local = local - diff1(ctx, met.idx(k, l), m);
-
-                    sum = sum + local * inverse.idx(i, m);
-                }
-
-                christoff.idx(i, k, l) = 0.5 * sum;
-            }
-        }
-    }
-
-    return christoff;
-}
-
-template<typename T, int N>
-inline
-tensor<T, N, N, N> gpu_christoffel_symbols_1(equation_context& ctx, const metric<T, N, N>& met)
-{
-    tensor<T, N, N, N> christoff;
-
-    for(int c=0; c < N; c++)
-    {
-        for(int a=0; a < N; a++)
-        {
-            for(int b=0; b < N; b++)
-            {
-                christoff.idx(c, a, b) = 0.5f * (diff1(ctx, met.idx(c, a), b) + diff1(ctx, met.idx(c, b), a) - diff1(ctx, met.idx(a, b), c));
-            }
-        }
-    }
-
-    return christoff;
-}
-
-template<typename T, int N>
-inline
-tensor<T, N, N> raise_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
-{
-    tensor<T, N, N> ret;
-
-    for(int a=0; a < N; a++)
-    {
-        for(int b=0; b < N; b++)
-        {
-            T sum = 0;
-
-            for(int g = 0; g < N; g++)
-            {
-                for(int d = 0; d < N; d++)
-                {
-                    sum = sum + inverse.idx(a, g) * inverse.idx(b, d) * mT.idx(g, d);
-                }
-            }
-
-            ret.idx(a, b) = sum;
-        }
-    }
-
-    return ret;
-}
-
-template<typename T, int N>
-inline
-tensor<T, N, N> lower_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met)
-{
-    tensor<T, N, N> ret;
-
-    for(int a=0; a < N; a++)
-    {
-        for(int b=0; b < N; b++)
-        {
-            T sum = 0;
-
-            for(int g = 0; g < N; g++)
-            {
-                for(int d = 0; d < N; d++)
-                {
-                    sum = sum + met.idx(a, g) * met.idx(b, d) * mT.idx(g, d);
-                }
-            }
-
-            ret.idx(a, b) = sum;
-        }
-    }
-
-    return ret;
-}
 
 value bidx(const std::string& buf, bool interpolate, bool is_derivative)
 {
@@ -2292,7 +2013,7 @@ struct standard_arguments
             }
         }
 
-        /*tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, cY, icY);
+        /*tensor<value, 3, 3, 3> christoff2 = christoffel_symbols_2(ctx, cY, icY);
 
         auto pinned_christoff2 = christoff2;
         ctx.pin(pinned_christoff2);
@@ -2351,7 +2072,7 @@ struct standard_arguments
         #ifdef MODIFIED_CHRISTOFFEL
         tensor<value, 3> bigGi_lower = lower_index(bigGi, cY, 0);
 
-        tensor<value, 3, 3, 3> raw_christoff2 = gpu_christoffel_symbols_2(ctx, cY, icY);
+        tensor<value, 3, 3, 3> raw_christoff2 = christoffel_symbols_2(ctx, cY, icY);
 
         tensor<value, 3> Tk;
 
@@ -2429,7 +2150,7 @@ struct standard_arguments
         }
 
         #else
-        christoff2 = gpu_christoffel_symbols_2(ctx, cY, icY);
+        christoff2 = christoffel_symbols_2(ctx, cY, icY);
         #endif
 
         /*
@@ -2692,7 +2413,7 @@ value calculate_aij_aIJ(const metric<value, 3, 3>& flat_metric, const tensor<val
 {
     value aij_aIJ = 0;
 
-    tensor<value, 3, 3> ibcAij = raise_both(bcAij, flat_metric, flat_metric.invert());
+    tensor<value, 3, 3> ibcAij = raise_both(bcAij, flat_metric.invert());
 
     for(int i=0; i < 3; i++)
     {
@@ -4905,7 +4626,7 @@ void build_intermediate_thin_cY5(equation_context& ctx)
 
 tensor<value, 3, 3, 3> gpu_covariant_derivative_low_tensor(equation_context& ctx, const tensor<value, 3, 3>& mT, const metric<value, 3, 3>& met, const inverse_metric<value, 3, 3>& inverse)
 {
-    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, met, inverse);
+    tensor<value, 3, 3, 3> christoff2 = christoffel_symbols_2(ctx, met, inverse);
 
     tensor<value, 3, 3, 3> ret;
 
@@ -5108,7 +4829,7 @@ void build_cY(equation_context& ctx)
     ctx.pin(bigGi_lower);
     ctx.pin(gB_lower);
 
-    tensor<value, 3, 3> lie_cYij = gpu_lie_derivative_weight(ctx, args.gB, unpinned_cY);
+    tensor<value, 3, 3> lie_cYij = lie_derivative_weight(ctx, args.gB, unpinned_cY);
 
     ///https://arxiv.org/pdf/gr-qc/0511048.pdf (1)
     ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.66
@@ -5205,7 +4926,7 @@ tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& 
         }
     }
 
-    tensor<value, 3, 3> cov_div_X = gpu_double_covariant_derivative(ctx, args.X, args.dX, args.cY, icY, christoff2);
+    tensor<value, 3, 3> cov_div_X = double_covariant_derivative(ctx, args.X, args.dX, args.cY, icY, christoff2);
     ctx.pin(cov_div_X);
 
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf
@@ -5247,7 +4968,7 @@ value calculate_hamiltonian(const metric<value, 3, 3>& cY, const inverse_metric<
 {
     value R = trace(Rij, iYij);
 
-    tensor<value, 3, 3> aIJ = raise_both(cA, cY, icY);
+    tensor<value, 3, 3> aIJ = raise_both(cA, icY);
 
     value aij_aIJ;
 
@@ -5265,9 +4986,9 @@ value calculate_hamiltonian(const metric<value, 3, 3>& cY, const inverse_metric<
     return R + ((D - 2) / (D - 1)) * K*K - aij_aIJ;
 }
 
-value calculate_R_from_hamiltonian(const value& K, const tensor<value, 3, 3>& cA, const unit_metric<value, 3, 3>& cY, const inverse_metric<value, 3, 3>& icY)
+value calculate_R_from_hamiltonian(const value& K, const tensor<value, 3, 3>& cA, const inverse_metric<value, 3, 3>& icY)
 {
-    tensor<value, 3, 3> aIJ = raise_both(cA, cY, icY);
+    tensor<value, 3, 3> aIJ = raise_both(cA, icY);
 
     value aij_aIJ;
 
@@ -5286,7 +5007,7 @@ value calculate_hamiltonian(equation_context& ctx, standard_arguments& args)
 {
     auto icY = args.cY.invert();
 
-    tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, args.cY);
+    tensor<value, 3, 3, 3> christoff1 = christoffel_symbols_1(ctx, args.cY);
 
     tensor<value, 3, 3> xgARij = calculate_xgARij(ctx, args, icY, christoff1, args.christoff2);
 
@@ -5367,7 +5088,7 @@ void build_cA(equation_context& ctx, bool use_matter)
     {
         for(int j=0; j < 3; j++)
         {
-            value Xderiv = X * gpu_double_covariant_derivative(ctx, args.gA, args.digA, cY, icY, args.christoff2).idx(j, i);
+            value Xderiv = X * double_covariant_derivative(ctx, args.gA, args.digA, cY, icY, args.christoff2).idx(j, i);
             //value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, args.digA, cY, icY).idx(j, i);
 
             value s2 = 0.5f * (diff1(ctx, X, i) * diff1(ctx, gA, j) + diff1(ctx, X, j) * diff1(ctx, gA, i));
@@ -5485,7 +5206,7 @@ void build_cA(equation_context& ctx, bool use_matter)
 
             value p2 = gA * (K * cA.idx(i, j) - 2 * sum);
 
-            value p3 = gpu_lie_derivative_weight(ctx, gB, unpinned_cA).idx(i, j);
+            value p3 = lie_derivative_weight(ctx, gB, unpinned_cA).idx(i, j);
 
             if(i == 0 && j == 0)
             {
@@ -5573,7 +5294,7 @@ void build_cGi(equation_context& ctx, bool use_matter)
     value X = args.X;
     value K = args.K;
 
-    tensor<value, 3, 3> icAij = raise_both(cA, cY, icY);
+    tensor<value, 3, 3> icAij = raise_both(cA, icY);
 
     value gA_X = args.gA_X;
 
@@ -5793,7 +5514,7 @@ void build_K(equation_context& ctx, bool use_matter)
     {
         for(int j=0; j < 3; j++)
         {
-            value Xderiv = X * gpu_double_covariant_derivative(ctx, args.gA, args.digA, cY, icY, args.christoff2).idx(j, i);
+            value Xderiv = X * double_covariant_derivative(ctx, args.gA, args.digA, cY, icY, args.christoff2).idx(j, i);
             //value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, args.digA, cY, icY).idx(j, i);
 
             value s2 = 0.5f * (diff1(ctx, X, i) * diff1(ctx, gA, j) + diff1(ctx, X, j) * diff1(ctx, gA, i));
@@ -5814,7 +5535,7 @@ void build_K(equation_context& ctx, bool use_matter)
         }
     }
 
-    tensor<value, 3, 3> icAij = raise_both(cA, cY, icY);
+    tensor<value, 3, 3> icAij = raise_both(cA, icY);
 
     value dtK = sum(tensor_upwind(ctx, gB, K)) - sum_multiply(icY.to_tensor(), Xdidja) + gA * (sum_multiply(icAij, cA) + (1/3.f) * K * K);
 
@@ -6267,8 +5988,8 @@ void extract_waveforms(equation_context& ctx)
     inverse_metric<value, 3, 3> icY = args.cY.invert();
     ctx.pin(icY);
 
-    tensor<value, 3, 3, 3> christoff1 = gpu_christoffel_symbols_1(ctx, args.cY);
-    tensor<value, 3, 3, 3> christoff2 = gpu_christoffel_symbols_2(ctx, args.cY, icY);
+    tensor<value, 3, 3, 3> christoff1 = christoffel_symbols_1(ctx, args.cY);
+    tensor<value, 3, 3, 3> christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
 
     ctx.pin(christoff1);
     ctx.pin(christoff2);
@@ -6301,7 +6022,7 @@ void extract_waveforms(equation_context& ctx)
 
     //ctx.pin(iYij);
 
-    //auto christoff_Y = gpu_christoffel_symbols_2(Yij, iYij);
+    //auto christoff_Y = christoffel_symbols_2(Yij, iYij);
 
     ///lecture slides
     tensor<value, 3, 3, 3> christoff_Y;
@@ -6890,7 +6611,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-    tensor<value, 3, 3, 3> conformal_christoff2 = gpu_christoffel_symbols_2(ctx, args.cY, icY);
+    tensor<value, 3, 3, 3> conformal_christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
 
     tensor<value, 3, 3, 3> full_christoffel2;
 
@@ -6916,7 +6637,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
         }
     }
 
-    //tensor<value, 3, 3, 3> full_christoffel2 = gpu_christoffel_symbols_2(ctx, args.Yij, iYij);
+    //tensor<value, 3, 3, 3> full_christoffel2 = christoffel_symbols_2(ctx, args.Yij, iYij);
 
     value length_sq = dot_metric(V_upper, V_upper, args.Yij);
 
