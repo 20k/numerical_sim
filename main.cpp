@@ -137,108 +137,6 @@ T gpu_trace(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse
 }
 
 template<typename T, int N>
-inline
-tensor<T, N> raise_index_impl(const tensor<T, N>& mT, const inverse_metric<T, N, N>& met, int index)
-{
-    assert(index == 0);
-
-    tensor<T, N> ret;
-
-    for(int i=0; i < N; i++)
-    {
-        T sum = 0;
-
-        for(int s=0; s < N; s++)
-        {
-            sum = sum + met.idx(i, s) * mT.idx(s);
-        }
-
-        ret.idx(i) = sum;
-    }
-
-    return ret;
-}
-
-template<typename T, int N>
-inline
-tensor<T, N, N> raise_index_impl(const tensor<T, N, N>& mT, const inverse_metric<T, N, N>& met, int index)
-{
-    tensor<T, N, N> ret;
-
-    for(int i=0; i < N; i++)
-    {
-        for(int j=0; j < N; j++)
-        {
-            T sum = 0;
-
-            for(int s=0; s < N; s++)
-            {
-                if(index == 0)
-                {
-                    sum = sum + met.idx(i, s) * mT.idx(s, j);
-                }
-
-                if(index == 1)
-                {
-                    sum = sum + met.idx(j, s) * mT.idx(i, s);
-                }
-            }
-
-            ret.idx(i, j) = sum;
-        }
-    }
-
-    return ret;
-}
-
-template<typename T, int N>
-inline
-tensor<T, N, N, N> raise_index_impl(const tensor<T, N, N, N>& mT, const inverse_metric<T, N, N>& met, int index)
-{
-    tensor<T, N, N, N> ret;
-
-    for(int i=0; i < N; i++)
-    {
-        for(int j=0; j < N; j++)
-        {
-            for(int k=0; k < N; k++)
-            {
-                T sum = 0;
-
-                for(int s=0; s < N; s++)
-                {
-                    if(index == 0)
-                    {
-                        sum = sum + met.idx(i, s) * mT.idx(s, j, k);
-                    }
-
-                    if(index == 1)
-                    {
-                        sum = sum + met.idx(j, s) * mT.idx(i, s, k);
-                    }
-
-                    if(index == 2)
-                    {
-                        sum = sum + met.idx(k, s) * mT.idx(i, j, s);
-                    }
-                }
-
-                ret.idx(i, j, k) = sum;
-            }
-        }
-    }
-
-    return ret;
-}
-
-template<typename T, int U, int... N>
-inline
-tensor<T, N...> raise_index_generic(const tensor<T, N...>& mT, const inverse_metric<T, U, U>& met, int index)
-{
-    return raise_index_impl(mT, met, index);
-}
-
-template<typename T, int N>
 unit_metric<T, N, N> get_flat_metric()
 {
     unit_metric<T, N, N> ret;
@@ -890,76 +788,6 @@ tensor<value, 3, 3, 3> get_eijk()
     }
 
     return eijk;
-}
-
-///mT symmetric?
-template<typename T, int N>
-tensor<T, N, N> raise_index(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
-{
-    tensor<T, N, N> ret;
-
-    for(int i=0; i < N; i++)
-    {
-        for(int j=0; j < N; j++)
-        {
-            T sum = 0;
-
-            for(int k=0; k < N; k++)
-            {
-                sum = sum + inverse.idx(i, k) * mT.idx(k, j);
-                //sum = sum + mT.idx(i, k) * inverse.idx(k, j);
-            }
-
-            ret.idx(i, j) = sum;
-        }
-    }
-
-    return ret;
-}
-
-template<typename T, int N>
-tensor<T, N, N> raise_second_index(const tensor<T, N, N>& mT, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
-{
-    tensor<T, N, N> ret;
-
-    for(int i=0; i < N; i++)
-    {
-        for(int j=0; j < N; j++)
-        {
-            T sum = 0;
-
-            for(int k=0; k < N; k++)
-            {
-                sum = sum + inverse.idx(k, j) * mT.idx(i, k);
-                //sum = sum + mT.idx(i, k) * inverse.idx(k, j);
-            }
-
-            ret.idx(i, j) = sum;
-        }
-    }
-
-    return ret;
-}
-
-template<typename T, int N>
-inline
-tensor<T, N> raise_index(const tensor<T, N>& mT, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
-{
-    tensor<T, N> ret;
-
-    for(int i=0; i < N; i++)
-    {
-        T sum = 0;
-
-        for(int j=0; j < N; j++)
-        {
-            sum = sum + inverse.idx(i, j) * mT.idx(j);
-        }
-
-        ret.idx(i) = sum;
-    }
-
-    return ret;
 }
 
 template<typename T, int N>
@@ -2074,7 +1902,7 @@ struct matter
     {
         tensor<value, 3> ui_lower = get_u_lower(chi, W);
 
-        return raise_index_generic(ui_lower, chi * icY, 0);
+        return raise_index(ui_lower, chi * icY, 0);
     }
 
     #if 0
@@ -2225,7 +2053,7 @@ struct matter
         ///because iYij * Sjk = X * icYij * Sjk, and icYij * X * Sjk = X * icYij * Sjk
         tensor<value, 3, 3> XSij = calculate_adm_X_Sij(chi, W, cY);
 
-        tensor<value, 3, 3> raised = raise_index_generic(XSij, icY, 0);
+        tensor<value, 3, 3> raised = raise_index(XSij, icY, 0);
 
         value sum = 0;
 
@@ -3520,7 +3348,7 @@ struct superimposed_gpu_data
                     }
                 }
 
-                tensor<value, 3> Si_cai = raise_index(Si_conformal_angular_lower, flat, flat.invert());
+                tensor<value, 3> Si_cai = raise_index(Si_conformal_angular_lower, flat.invert(), 0);
 
                 Si_conformal += Si_cai;
             }
@@ -5630,7 +5458,7 @@ void build_cA(equation_context& ctx, bool use_matter)
     ///near the puncture
 
     ///Aki G^kj
-    tensor<value, 3, 3> mixed_cAij = raise_index(cA, cY, icY);
+    tensor<value, 3, 3> mixed_cAij = raise_index(cA, icY, 0);
 
     ctx.pin(mixed_cAij);
 
@@ -5950,7 +5778,7 @@ void build_cGi(equation_context& ctx, bool use_matter)
 
         value lambdai = (2.f/3.f) * (bkk - 2 * gA * K)
                         - args.digB.idx(i, i)
-                        - (2.f/5.f) * gA * raise_second_index(cA, cY, icY).idx(i, i);
+                        - (2.f/5.f) * gA * raise_index(cA, icY, 1).idx(i, i);
 
         dtcGi.idx(i) += -(1 + E) * step(lambdai) * lambdai * args.bigGi.idx(i);
         #endif // EQ_50
@@ -6718,7 +6546,7 @@ void extract_waveforms(equation_context& ctx)
 
     tensor<dual_types::complex<value>, 4> mu_dash_p = tensor_project_upper(mu_dash, args.gA, args.gB);
 
-    tensor<value, 3, 3, 3> raised_eijk = raise_index_generic(raise_index_generic(eijk_tensor, iYij, 1), iYij, 2);
+    tensor<value, 3, 3, 3> raised_eijk = raise_index(raise_index(eijk_tensor, iYij, 1), iYij, 2);
 
     ctx.pin(raised_eijk);
 
@@ -6745,7 +6573,7 @@ void extract_waveforms(equation_context& ctx)
                         k_sum_2 += unit_i * raised_eijk.idx(i, k, l) * cdKij.idx(l, j, k);
                     }
 
-                    k_sum_1 += Kij.idx(i, k) * raise_index_generic(Kij, iYij, 0).idx(k, j);
+                    k_sum_1 += Kij.idx(i, k) * raise_index(Kij, iYij, 0).idx(k, j);
                 }
 
                 dual_types::complex<value> inner_sum = -Rij.idx(i, j) - args.K * Kij.idx(i, j) + k_sum_1 + k_sum_2;
@@ -6798,10 +6626,10 @@ frame_basis calculate_frame_basis(equation_context& ctx, const metric<value, 4, 
 
     ctx.pin(metric_inverse);
 
-    ti1 = raise_index(ti1, met, metric_inverse);
-    ti2 = raise_index(ti2, met, metric_inverse);
-    ti3 = raise_index(ti3, met, metric_inverse);
-    ti4 = raise_index(ti4, met, metric_inverse);
+    ti1 = raise_index(ti1, metric_inverse, 0);
+    ti2 = raise_index(ti2, metric_inverse, 0);
+    ti3 = raise_index(ti3, metric_inverse, 0);
+    ti4 = raise_index(ti4, metric_inverse, 0);
 
     ctx.pin(ti1);
     ctx.pin(ti2);
@@ -6986,7 +6814,7 @@ void process_geodesics(equation_context& ctx)
 
     tensor<value, 3> adm_V_lower = {velocity_lower.idx(1), velocity_lower.idx(2), velocity_lower.idx(3)};
 
-    tensor<value, 3> adm_V_higher = raise_index(adm_V_lower, args.Yij, args.Yij.invert());
+    tensor<value, 3> adm_V_higher = raise_index(adm_V_lower, args.Yij.invert(), 0);
 
     ctx.add("V0_d", adm_V_higher.idx(0));
     ctx.add("V1_d", adm_V_higher.idx(1));
@@ -7184,7 +7012,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
             value dlog_gA = diff1(ctx, args.gA, j) / args.gA;
 
-            V_upper_diff.idx(i) += args.gA * V_upper.idx(j) * (V_upper.idx(i) * (dlog_gA - kjvk) + 2 * raise_index(args.Kij, args.Yij, iYij).idx(i, j) - christoffel_sum)
+            V_upper_diff.idx(i) += args.gA * V_upper.idx(j) * (V_upper.idx(i) * (dlog_gA - kjvk) + 2 * raise_index(args.Kij, iYij, 0).idx(i, j) - christoffel_sum)
                                    - iYij.idx(i, j) * diff1(ctx, args.gA, j) - V_upper.idx(j) * diff1(ctx, args.gB.idx(i), j);
 
         }
