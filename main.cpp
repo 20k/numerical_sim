@@ -790,27 +790,6 @@ tensor<value, 3, 3, 3> get_eijk()
     return eijk;
 }
 
-template<typename T, int N>
-inline
-tensor<T, N> lower_index(const tensor<T, N>& mT, const metric<T, N, N>& met)
-{
-    tensor<T, N> ret;
-
-    for(int i=0; i < N; i++)
-    {
-        T sum = 0;
-
-        for(int j=0; j < N; j++)
-        {
-            sum = sum + met.idx(i, j) * mT.idx(j);
-        }
-
-        ret.idx(i) = sum;
-    }
-
-    return ret;
-}
-
 ///https://en.wikipedia.org/wiki/Covariant_derivative#Covariant_derivative_by_field_type
 ///for the tensor DcDa, this returns idx(a, c)
 template<typename T, int N>
@@ -1467,7 +1446,7 @@ namespace neutron_star
             }
         }
 
-        tensor<value, 3> lowered = lower_index(li, flat);
+        tensor<value, 3> lowered = lower_index(li, flat, 0);
 
         value cos_angle = dot(angular_momentum / max(angular_momentum.length(), value{1e-6}), lowered / max(lowered.length(), value{1e-5}));
 
@@ -1494,7 +1473,7 @@ namespace neutron_star
 
         tensor<value, 3> li = relative_pos / r;
 
-        tensor<T, 3> linear_momentum_lower = lower_index(param.linear_momentum, flat);
+        tensor<T, 3> linear_momentum_lower = lower_index(param.linear_momentum, flat, 0);
 
         value M_factor = calculate_M_factor(param, tov_phi_at_coordinate);
 
@@ -1548,8 +1527,8 @@ namespace neutron_star
 
         ctx.pin(unsquiggly_N_factor);
 
-        tensor<T, 3> angular_momentum_lower = lower_index(param.angular_momentum, flat);
-        tensor<value, 3> li_lower = lower_index(li, get_flat_metric<value, 3>());
+        tensor<T, 3> angular_momentum_lower = lower_index(param.angular_momentum, flat, 0);
+        tensor<value, 3> li_lower = lower_index(li, get_flat_metric<value, 3>(), 0);
 
         for(int i=0; i < 3; i++)
         {
@@ -1669,7 +1648,7 @@ namespace neutron_star
 
         tensor<value, 3> li = relative_pos / r;
 
-        tensor<float, 3> linear_momentum_lower = lower_index(param.linear_momentum, flat);
+        tensor<float, 3> linear_momentum_lower = lower_index(param.linear_momentum, flat, 0);
 
         float M_factor = calculate_M_factor(param.mass);
 
@@ -2408,7 +2387,7 @@ struct standard_arguments
         /// https://arxiv.org/pdf/1507.00570.pdf (1)
         //#define MODIFIED_CHRISTOFFEL
         #ifdef MODIFIED_CHRISTOFFEL
-        tensor<value, 3> bigGi_lower = lower_index(bigGi, cY);
+        tensor<value, 3> bigGi_lower = lower_index(bigGi, cY, 0);
 
         tensor<value, 3, 3, 3> raw_christoff2 = gpu_christoffel_symbols_2(ctx, cY, icY);
 
@@ -2632,8 +2611,8 @@ namespace black_hole
 
                 tensor<value, 3> nia = (pos - vri) / ra;
 
-                tensor<value, 3> momentum_lower = lower_index(momentum_tensor, flat);
-                tensor<value, 3> nia_lower = lower_index(tensor<value, 3>{nia.x(), nia.y(), nia.z()}, flat);
+                tensor<value, 3> momentum_lower = lower_index(momentum_tensor, flat, 0);
+                tensor<value, 3> nia_lower = lower_index(tensor<value, 3>{nia.x(), nia.y(), nia.z()}, flat, 0);
 
                 bcAij.idx(i, j) += (3 / (2.f * ra * ra)) * (momentum_lower.idx(i) * nia_lower.idx(j) + momentum_lower.idx(j) * nia_lower.idx(i) - (flat.idx(i, j) - nia_lower.idx(i) * nia_lower.idx(j)) * sum_multiply(momentum_tensor, nia_lower));
 
@@ -3665,11 +3644,11 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
         metric<value, 3, 3> cY = X * Yij;
 
-        tensor<value, 3> Si_lower = lower_index(Si, Yij);
+        tensor<value, 3> Si_lower = lower_index(Si, Yij, 0);
 
         tensor<value, 3> cSi_lower = Si_lower * chi_to_e_6phi(X);
 
-        tensor<value, 3> u_lower = lower_index(u_upper, Yij);
+        tensor<value, 3> u_lower = lower_index(u_upper, Yij, 0);
 
         ///https://arxiv.org/pdf/2012.13954.pdf (7)
 
@@ -5161,8 +5140,8 @@ void build_cY(equation_context& ctx)
 
     ctx.pin(args.cY);
 
-    tensor<value, 3> bigGi_lower = lower_index(args.bigGi, args.cY);
-    tensor<value, 3> gB_lower = lower_index(args.gB, args.cY);
+    tensor<value, 3> bigGi_lower = lower_index(args.bigGi, args.cY, 0);
+    tensor<value, 3> gB_lower = lower_index(args.gB, args.cY, 0);
 
     ctx.pin(bigGi_lower);
     ctx.pin(gB_lower);
@@ -5498,7 +5477,7 @@ void build_cA(equation_context& ctx, bool use_matter)
     #ifdef AIJ_SIGMA
     tensor<value, 3> Mi = args.momentum_constraint;
 
-    tensor<value, 3> gB_lower = lower_index(gB, cY);
+    tensor<value, 3> gB_lower = lower_index(gB, cY, 0);
 
     tensor<value, 3, 3> BiMj;
 
@@ -6078,7 +6057,7 @@ value dot_product(const vec<N, value>& u, const vec<N, value>& v, const metric<v
         as_tensor.idx(i) = u[i];
     }
 
-    auto lowered_as_tensor = lower_index(as_tensor, met);
+    auto lowered_as_tensor = lower_index(as_tensor, met, 0);
 
     vec<N, value> lowered;
 
@@ -6166,7 +6145,7 @@ std::array<vec<3, value>, 3> orthonormalise(equation_context& ctx, const vec<3, 
 ///https://arxiv.org/pdf/1503.08455.pdf (8)
 metric<value, 4, 4> calculate_real_metric(const metric<value, 3, 3>& adm, const value& gA, const tensor<value, 3>& gB)
 {
-    tensor<value, 3> lower_gB = lower_index(gB, adm);
+    tensor<value, 3> lower_gB = lower_index(gB, adm, 0);
 
     metric<value, 4, 4> ret;
 
@@ -6810,7 +6789,7 @@ void process_geodesics(equation_context& ctx)
 
     tensor<value, 4> lightray_velocity_t = {lightray_velocity.x(), lightray_velocity.y(), lightray_velocity.z(), lightray_velocity.w()};
 
-    tensor<value, 4> velocity_lower = lower_index(lightray_velocity_t, real_metric);
+    tensor<value, 4> velocity_lower = lower_index(lightray_velocity_t, real_metric, 0);
 
     tensor<value, 3> adm_V_lower = {velocity_lower.idx(1), velocity_lower.idx(2), velocity_lower.idx(3)};
 
@@ -6848,7 +6827,7 @@ T dot(const tensor<T, N>& v1, const tensor<T, N>& v2)
 template<int N>
 value dot_metric(const tensor<value, N>& v1_upper, const tensor<value, N>& v2_upper, const metric<value, N, N>& met)
 {
-    return dot(v1_upper, lower_index(v2_upper, met));
+    return dot(v1_upper, lower_index(v2_upper, met, 0));
 }
 
 ///https://arxiv.org/pdf/1208.3927.pdf (28a)
@@ -7028,7 +7007,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     ///https://authors.library.caltech.edu/88020/1/PhysRevD.49.4004.pdf
     //#define PAPER_2
     #ifdef PAPER_2
-    tensor<value, 3> p_lower = lower_index(V_upper, args.Yij);
+    tensor<value, 3> p_lower = lower_index(V_upper, args.Yij, 0);
 
     value p0 = 0;
 
