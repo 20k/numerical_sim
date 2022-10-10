@@ -6,8 +6,14 @@
 #include <string>
 #include <geodesic/dual_value.hpp>
 #include <vec/tensor.hpp>
+#include "tensor_algebra.hpp"
 
-struct equation_context
+struct equation_context;
+
+value diff1(equation_context& ctx, const value& in, int idx);
+value diff2(equation_context& ctx, const value& in, int idx, int idy, const value& first_x, const value& first_y);
+
+struct equation_context : differentiator
 {
     std::vector<std::pair<std::string, value>> values;
     std::vector<std::pair<std::string, value>> temporaries;
@@ -19,6 +25,9 @@ struct equation_context
     bool is_derivative_free = false;
 
     int order = 2;
+
+    virtual value diff1(const value& in, int idx){return ::diff1(*this, in, idx);};
+    virtual value diff2(const value& in, int idx, int idy, const value& dx, const value& dy){return ::diff2(*this, in, idx, idy, dx, dy);};
 
     void pin(value& v)
     {

@@ -2,6 +2,14 @@
 #define TENSOR_ALGEBRA_HPP_INCLUDED
 
 #include <vec/tensor.hpp>
+#include <geodesic/dual_value.hpp>
+#include <assert.h>
+
+struct differentiator
+{
+    virtual value diff1(const value& in, int idx){assert(false); return value{0};};
+    virtual value diff2(const value& in, int idx, int idy, const value& dx, const value& dy){assert(false); return value{0};};
+};
 
 ///https://arxiv.org/pdf/gr-qc/9810065.pdf
 template<typename T, int N>
