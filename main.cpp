@@ -6025,8 +6025,6 @@ int main()
     quat camera_quat;
     camera_quat.load_from_axis_angle({1, 0, 0, 0});
 
-    std::optional<cl::event> last_event;
-
     int rendering_method = 1;
 
     bool trapezoidal_init = false;
@@ -6512,12 +6510,7 @@ int main()
             clctx.cqueue.exec("step_accurate_rays", step_args, {width * height}, {128});
         }
 
-        cl::event next_event = rtex.unacquire(clctx.cqueue);
-
-        if(last_event.has_value())
-            last_event.value().block();
-
-        last_event = next_event;
+        rtex.unacquire(clctx.cqueue);
 
         {
             ImDrawList* lst = ImGui::GetBackgroundDrawList();
