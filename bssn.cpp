@@ -836,6 +836,7 @@ void bssn::build_gB(equation_context& ctx)
     //value psi = pow(X, -1.f/4.f);
     //value ipsi = pow(psi, -2.f);
 
+    ///https://arxiv.org/pdf/0912.3125.pdf
     value ipsi2 = sqrt(X);
 
     float hat_r0 = 1;
