@@ -796,6 +796,10 @@ void bssn::build_gB(equation_context& ctx)
 {
     standard_arguments args(ctx);
 
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+    value X = args.X;
+
     tensor<value, 3> bjdjbi;
 
     for(int i=0; i < 3; i++)
@@ -814,7 +818,48 @@ void bssn::build_gB(equation_context& ctx)
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
     ///todo: remove this
 
-    float N = 2;
+    ///so
+    ///X = (1/12) * log(det)
+    //value det = exp(12 * X);
+
+    ///(bl^4 * kron) = Yij
+    ///
+    //value conformal_factor = pow(det, 1.f/16.f);
+
+    //value
+
+    /*value phi = log(X) / -4.f;
+
+    ///https://arxiv.org/pdf/gr-qc/0206072.pdf (10)
+    value psi = exp(phi);*/
+
+    //value psi = pow(X, -1.f/4.f);
+    //value ipsi = pow(psi, -2.f);
+
+    value ipsi2 = sqrt(X);
+
+    float hat_r0 = 1;
+
+    ///https://arxiv.org/pdf/0912.3125.pdf(4)
+    value Ns_r = 0;
+
+    {
+        value sum = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                sum += icY.idx(i, j) * diff1(ctx, ipsi2, i) * diff1(ctx, ipsi2, j);
+            }
+        }
+
+        Ns_r = hat_r0 * sqrt(sum) / pow(1 - ipsi2, 2);
+    }
+
+    //float N = 2;
+
+    value N = Ns_r;
 
     tensor<value, 3> dtgB = (3.f/4.f) * args.derived_cGi + bjdjbi - N * args.gB;
 
