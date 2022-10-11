@@ -5960,24 +5960,20 @@ int main()
     tsett.is_srgb = false;
     tsett.generate_mipmaps = false;
 
-    std::array<texture, 2> tex;
-    tex[0].load_from_memory(tsett, nullptr);
-    tex[1].load_from_memory(tsett, nullptr);
+    texture tex;
+    tex.load_from_memory(tsett, nullptr);
 
-    std::array<cl::gl_rendertexture, 2> rtex{clctx.ctx, clctx.ctx};
-    rtex[0].create_from_texture(tex[0].handle);
-    rtex[1].create_from_texture(tex[1].handle);
+    cl::gl_rendertexture rtex{clctx.ctx};
+    rtex.create_from_texture(tex.handle);
 
-    std::array<cl::buffer, 2> ray_buffer{clctx.ctx, clctx.ctx};
-    ray_buffer[0].alloc(sizeof(cl_float) * 20 * width * height);
-    ray_buffer[1].alloc(sizeof(cl_float) * 20 * width * height);
+    cl::buffer ray_buffer{clctx.ctx};
+    ray_buffer.alloc(sizeof(cl_float) * 20 * width * height);
 
     cl::buffer rays_terminated(clctx.ctx);
     rays_terminated.alloc(sizeof(cl_float) * 20 * width * height);
 
-    std::array<cl::buffer, 2> ray_count{clctx.ctx, clctx.ctx};
-    ray_count[0].alloc(sizeof(cl_int));
-    ray_count[1].alloc(sizeof(cl_int));
+    cl::buffer ray_count{clctx.ctx};
+    ray_count.alloc(sizeof(cl_int));
 
     cl::buffer ray_count_terminated(clctx.ctx);
     ray_count_terminated.alloc(sizeof(cl_int));
@@ -6022,7 +6018,6 @@ int main()
     std::vector<float> real_decomp;
     std::vector<float> imaginary_decomp;
 
-    int which_texture = 0;
     int steps = 0;
 
     bool run = false;
@@ -6156,7 +6151,7 @@ int main()
         //std::cout << camera_quat.q << std::endl;
         //std::cout << "POS " << camera_pos << std::endl;
 
-        auto buffer_size = rtex[which_texture].size<2>();
+        auto buffer_size = rtex.size<2>();
 
         if((vec2i){buffer_size.x(), buffer_size.y()} != win.get_window_size())
         {
@@ -6177,20 +6172,17 @@ int main()
 
             std::cout << "DIMS " << width << " " << height << std::endl;
 
-            tex[0].load_from_memory(new_sett, nullptr);
-            tex[1].load_from_memory(new_sett, nullptr);
+            tex.load_from_memory(new_sett, nullptr);
 
-            rtex[0].create_from_texture(tex[0].handle);
-            rtex[1].create_from_texture(tex[1].handle);
+            rtex.create_from_texture(tex.handle);
 
-            ray_buffer[0].alloc(sizeof(cl_float) * 20 * width * height);
-            ray_buffer[1].alloc(sizeof(cl_float) * 20 * width * height);
+            ray_buffer.alloc(sizeof(cl_float) * 20 * width * height);
             rays_terminated.alloc(sizeof(cl_float) * 20 * width * height);
 
             texture_coordinates.alloc(sizeof(cl_float2) * width * height);
         }
 
-        rtex[which_texture].acquire(clctx.cqueue);
+        rtex.acquire(clctx.cqueue);
 
         bool step = false;
 
@@ -6280,7 +6272,7 @@ int main()
             std::tie(last_valid_buffer, last_valid_thin) = base_mesh.full_step(clctx.ctx, clctx.cqueue, mqueue, timestep, thin_pool);
 
             {
-                wave_manager.issue_extraction(clctx.cqueue, last_valid_buffer, last_valid_thin, scale, clsize, rtex[which_texture]);
+                wave_manager.issue_extraction(clctx.cqueue, last_valid_buffer, last_valid_thin, scale, clsize, rtex);
 
                 std::vector<dual_types::complex<float>> values = wave_manager.process();
 
@@ -6311,7 +6303,7 @@ int main()
             //render.push_back(bssnok_datas[which_data]);
             render.push_back(scale);
             render.push_back(clsize);
-            render.push_back(rtex[which_texture]);
+            render.push_back(rtex);
 
             clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
         }
@@ -6336,7 +6328,7 @@ int main()
                 render_args.push_back(ccamera_pos);
                 render_args.push_back(ccamera_quat);
                 render_args.push_back(clsize);
-                render_args.push_back(rtex[which_texture]);
+                render_args.push_back(rtex);
 
                 clctx.cqueue.exec("trace_metric", render_args, {width, height}, {16, 16});
             }
@@ -6357,8 +6349,8 @@ int main()
                 {
                     cl::args init_args;
 
-                    init_args.push_back(ray_buffer[0]);
-                    init_args.push_back(ray_count[0]);
+                    init_args.push_back(ray_buffer);
+                    init_args.push_back(ray_count);
 
                     for(auto& i : last_valid_buffer)
                     {
@@ -6383,7 +6375,7 @@ int main()
                 {
                     cl::args render_args;
 
-                    render_args.push_back(ray_buffer[0]);
+                    render_args.push_back(ray_buffer);
                     render_args.push_back(rays_terminated);
 
                     for(auto& i : last_valid_buffer)
@@ -6443,7 +6435,7 @@ int main()
                     cl::args render_args;
                     render_args.push_back(rays_terminated.as_device_read_only());
                     render_args.push_back(ray_count_terminated.as_device_read_only());
-                    render_args.push_back(rtex[which_texture]);
+                    render_args.push_back(rtex);
 
                     for(auto& i : last_valid_buffer)
                     {
@@ -6487,8 +6479,8 @@ int main()
             init_args.push_back(ccamera_pos);
             init_args.push_back(ccamera_quat);
             init_args.push_back(clsize);
-            init_args.push_back(rtex[which_texture]);
-            init_args.push_back(ray_buffer[0]);
+            init_args.push_back(rtex);
+            init_args.push_back(ray_buffer);
 
             clctx.cqueue.exec("init_accurate_rays", init_args, {width, height}, {8, 8});
 
@@ -6515,14 +6507,14 @@ int main()
             step_args.push_back(ccamera_pos);
             step_args.push_back(ccamera_quat);
             step_args.push_back(clsize);
-            step_args.push_back(rtex[which_texture]);
-            step_args.push_back(ray_buffer[0]);
+            step_args.push_back(rtex);
+            step_args.push_back(ray_buffer);
             step_args.push_back(timestep);
 
             clctx.cqueue.exec("step_accurate_rays", step_args, {width * height}, {128});
         }
 
-        cl::event next_event = rtex[which_texture].unacquire(clctx.cqueue);
+        cl::event next_event = rtex.unacquire(clctx.cqueue);
 
         if(last_event.has_value())
             last_event.value().block();
@@ -6535,7 +6527,7 @@ int main()
             ImVec2 screen_pos = ImGui::GetMainViewport()->Pos;
 
             ImVec2 tl = {0,0};
-            ImVec2 br = {rtex[which_texture].size<2>().x(), rtex[which_texture].size<2>().y()};
+            ImVec2 br = {rtex.size<2>().x(), rtex.size<2>().y()};
 
             if(win.get_render_settings().viewports)
             {
@@ -6546,7 +6538,7 @@ int main()
                 br.y += screen_pos.y;
             }
 
-            lst->AddImage((void*)rtex[which_texture].texture_id, tl, br, ImVec2(0, 0), ImVec2(1.f, 1.f));
+            lst->AddImage((void*)rtex.texture_id, tl, br, ImVec2(0, 0), ImVec2(1.f, 1.f));
         }
 
         win.display();
