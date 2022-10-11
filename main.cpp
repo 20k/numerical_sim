@@ -3162,6 +3162,8 @@ initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_q
 
     auto san_pos = [&](const tensor<float, 3>& in)
     {
+        return in;
+
         tensor<float, 3> scaled = round((in / scale) * bulge);
 
         return scaled * scale / bulge;

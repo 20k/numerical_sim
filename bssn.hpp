@@ -135,7 +135,11 @@ struct standard_arguments
 
         //X = max(X, 0.0001f);
 
-        gA_X = gA / max(X, 0.001f);
+        //gA_X = gA / max(X, 0.001f);
+
+        value ip_X = gA * X / 0.01f;
+
+        gA_X = if_v(X < 0.01f, ip_X, gA / max(X, 0.001f));
 
         cGi.idx(0) = bidx("cGi0", interpolate, false);
         cGi.idx(1) = bidx("cGi1", interpolate, false);
