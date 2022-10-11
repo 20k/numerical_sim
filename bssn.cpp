@@ -837,6 +837,7 @@ void bssn::build_gB(equation_context& ctx)
     //value ipsi = pow(psi, -2.f);
 
     ///https://arxiv.org/pdf/0912.3125.pdf
+    ///https://www.wolframalpha.com/input?i=%28e%5E%28log%28x%29%2F-4%29%29%5E-2
     value ipsi2 = sqrt(X);
 
     float hat_r0 = 1;
@@ -860,7 +861,7 @@ void bssn::build_gB(equation_context& ctx)
 
     //float N = 2;
 
-    value N = Ns_r;
+    value N = max(Ns_r, 0.5f);
 
     tensor<value, 3> dtgB = (3.f/4.f) * args.derived_cGi + bjdjbi - N * args.gB;
 
