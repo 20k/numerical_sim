@@ -818,6 +818,7 @@ void bssn::build_gB(equation_context& ctx)
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
     ///todo: remove this
 
+    #ifdef VDAMP_1
     ///so
     ///X = (1/12) * log(det)
     //value det = exp(12 * X);
@@ -825,8 +826,6 @@ void bssn::build_gB(equation_context& ctx)
     ///(bl^4 * kron) = Yij
     ///
     //value conformal_factor = pow(det, 1.f/16.f);
-
-    //value
 
     /*value phi = log(X) / -4.f;
 
@@ -858,6 +857,38 @@ void bssn::build_gB(equation_context& ctx)
 
         Ns_r = hat_r0 * sqrt(sum) / pow(1 - ipsi2, 2);
     }
+    #endif
+
+    #define VDAMP_2
+    #ifdef VDAMP_2
+    value Ns_r = 0;
+
+    {
+        float R0 = 1.31f;
+
+        value W = sqrt(X);
+
+        float a = 2;
+        float b = 2;
+
+        value sum = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                sum += icY.idx(i, j) * diff1(ctx, W, i) * diff1(ctx, W, j);
+            }
+        }
+
+        Ns_r = R0 * sqrt(sum) / pow(1 - pow(W, a), b);
+    }
+
+    #endif
+
+    #ifdef STATIC_DAMP
+    value Ns_r = 2;
+    #endif
 
     //float N = 2;
 
