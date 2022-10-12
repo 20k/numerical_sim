@@ -3708,6 +3708,8 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
 
     value gA = 1;
     //value gA = 1/(pow(bl_conformal + u, 2));
+    ///https://arxiv.org/pdf/1304.3937.pdf
+    //value gA = 2/(1 + pow(bl_conformal + 1, 4));
     value gB0 = 0;
     value gB1 = 0;
     value gB2 = 0;
