@@ -840,7 +840,7 @@ void bssn::build_gB(equation_context& ctx)
     ///https://www.wolframalpha.com/input?i=%28e%5E%28log%28x%29%2F-4%29%29%5E-2
     value ipsi2 = sqrt(X);
 
-    float hat_r0 = 1;
+    float hat_r0 = 1.31;
 
     ///https://arxiv.org/pdf/0912.3125.pdf(4)
     value Ns_r = 0;
