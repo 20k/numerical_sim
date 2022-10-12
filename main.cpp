@@ -2706,12 +2706,18 @@ struct superimposed_gpu_data
         //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
         value conformal_guess = calculate_conformal_guess(pos, objs);;
 
-        build_matter_program(clctx, conformal_guess);
+        bool built_matter_program = false;;
 
         for(const compact_object::data& obj : objs)
         {
             if(obj.t == compact_object::NEUTRON_STAR)
             {
+                if(!built_matter_program)
+                {
+                    build_matter_program(clctx, conformal_guess);
+                    built_matter_program = true;
+                }
+
                 accumulate_matter_variables(clctx, cqueue, scale, dim, obj, conformal_guess);
             }
         }
