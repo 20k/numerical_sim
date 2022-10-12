@@ -861,6 +861,7 @@ void bssn::build_gB(equation_context& ctx)
 
     #define VDAMP_2
     #ifdef VDAMP_2
+    ///https://arxiv.org/pdf/1009.0292.pdf
     value Ns_r = 0;
 
     {
