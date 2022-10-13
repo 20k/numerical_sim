@@ -701,6 +701,8 @@ void evolve_cY(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
+
     if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
     {
         ocY0[index] = cY0[index];
@@ -773,6 +775,8 @@ void evolve_cA(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
+
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
 
     if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
     {
@@ -856,6 +860,8 @@ void evolve_cGi(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
+
     if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
     {
         ocGi0[index] = cGi0[index];
@@ -932,6 +938,8 @@ void evolve_K(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
+
     if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
     {
         oK[index] = K[index];
@@ -981,6 +989,8 @@ void evolve_X(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
+
     if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
     {
         oX[index] = X[index];
@@ -1021,6 +1031,8 @@ void evolve_gA(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
+
     if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
     {
         ogA[index] = gA[index];
@@ -1059,6 +1071,8 @@ void evolve_gB(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
+
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
 
     if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
     {

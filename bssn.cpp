@@ -569,7 +569,7 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
             }
         }
 
-        value s8 = 0;
+        /*value s8 = 0;
 
         for(int j=0; j < 3; j++)
         {
@@ -577,6 +577,22 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
             {
                 //s8 += (1.f/3.f) * icY.idx(i, j) * hacky_differentiate(args.digB.idx(k, k), j);
                 s8 += (1.f/3.f) * icY.idx(i, j) * diff2(ctx, args.gB.idx(k), k, j, args.digB.idx(k, k), args.digB.idx(j, k));
+            }
+        }*/
+
+        value s8 = 0;
+
+        {
+            value sum = 0;
+
+            for(int n=0; n < 3; n++)
+            {
+                sum += args.digB.idx(n, n);
+            }
+
+            for(int m=0; m < 3; m++)
+            {
+                s8 += (1.f/3.f) * icY.idx(i, m) * diff1(ctx, sum, m);
             }
         }
 

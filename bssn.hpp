@@ -242,7 +242,14 @@ struct standard_arguments
 
         //#define USE_DERIVED_CGI
         #ifdef USE_DERIVED_CGI
-        derived_cGi = cGi_G;
+        value ox = "offset.x";
+        value oy = "offset.y";
+        value oz = "offset.z";
+
+        value len = sqrt(ox * ox + oy * oy + oz * oz);
+
+        for(int i=0; i < 3; i++)
+        derived_cGi.idx(i) = if_v(len < 10, cGi_G.idx(i), cGi.idx(i));
         #else
         derived_cGi = cGi;
         #endif
