@@ -856,7 +856,7 @@ void bssn::build_gB(equation_context& ctx)
     }
     #endif
 
-    #define VDAMP_2
+    //#define VDAMP_2
     #ifdef VDAMP_2
     ///https://arxiv.org/pdf/1009.0292.pdf
     value Ns_r = 0;
@@ -884,6 +884,7 @@ void bssn::build_gB(equation_context& ctx)
 
     #endif
 
+    #define STATIC_DAMP
     #ifdef STATIC_DAMP
     value Ns_r = 2;
     #endif
@@ -952,14 +953,14 @@ void bssn::build_gB(equation_context& ctx)
     dtgBB = dtcGi - N * args.gBB;
     #else*/
 
-
+    #define USE_GBB1
     #ifdef USE_GBB1
     dtgB = (3.f/4.f) * args.gBB + bjdjbi;
 
     dtgBB = dtcGi - N * args.gBB + bjdjBi - christoffd;
     #endif
 
-    #define USE_GBB2
+    //#define USE_GBB2
     #ifdef USE_GBB2
     dtgB = args.gBB;
 
