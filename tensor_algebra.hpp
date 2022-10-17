@@ -126,7 +126,7 @@ T lie_derivative(differentiator& ctx, const tensor<T, N>& gB, const T& variable)
     return sum(tensor_upwind(ctx, gB, variable));
 }
 
-template<typename T, int N, SizedTensor<T, N, N> S>
+template<typename T, int N, typename S>
 inline
 tensor<T, N, N> lie_derivative_weight(differentiator& ctx, const tensor<T, N>& B, const S& mT)
 {

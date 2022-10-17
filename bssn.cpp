@@ -814,9 +814,6 @@ void bssn::build_gB(equation_context& ctx)
         bjdjbi.idx(i) = v;
     }
 
-    #ifndef USE_GBB
-    ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
-    ///todo: remove this
 
     #ifdef VDAMP_1
     ///so
@@ -891,10 +888,11 @@ void bssn::build_gB(equation_context& ctx)
     value Ns_r = 2;
     #endif
 
-    //float N = 2;
-
     value N = max(Ns_r, 0.5f);
 
+    #ifndef USE_GBB
+    ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
+    ///todo: remove this
     tensor<value, 3> dtgB = (3.f/4.f) * args.derived_cGi + bjdjbi - N * args.gB;
 
     tensor<value, 3> dtgBB;
@@ -958,16 +956,12 @@ void bssn::build_gB(equation_context& ctx)
     #ifdef USE_GBB1
     dtgB = (3.f/4.f) * args.gBB + bjdjbi;
 
-    float N = 1;
-
     dtgBB = dtcGi - N * args.gBB + bjdjBi - christoffd;
     #endif
 
     #define USE_GBB2
     #ifdef USE_GBB2
     dtgB = args.gBB;
-
-    float N = 2;
 
     dtgBB = (3.f/4.f) * dtcGi - N * args.gBB;
     #endif
