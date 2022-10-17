@@ -953,11 +953,25 @@ void bssn::build_gB(equation_context& ctx)
 
     dtgBB = dtcGi - N * args.gBB;
     #else*/
+
+
+    #ifdef USE_GBB1
     dtgB = (3.f/4.f) * args.gBB + bjdjbi;
 
     float N = 1;
 
     dtgBB = dtcGi - N * args.gBB + bjdjBi - christoffd;
+    #endif
+
+    #define USE_GBB2
+    #ifdef USE_GBB2
+    dtgB = args.gBB;
+
+    float N = 2;
+
+    dtgBB = (3.f/4.f) * dtcGi - N * args.gBB;
+    #endif
+
     //#endif // PAPER_0610128
     #endif // USE_GBB
 

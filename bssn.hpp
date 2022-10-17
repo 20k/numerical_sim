@@ -74,7 +74,8 @@ struct standard_arguments
     tensor<value, 3> dX;
 
     tensor<value, 3> bigGi;
-    tensor<value, 3> derived_cGi;
+    tensor<value, 3> derived_cGi; ///undifferentiated cGi. Poor naming
+    tensor<value, 3> always_derived_cGi; ///always calculated from metric
 
     tensor<value, 3, 3, 3> christoff2;
 
@@ -231,6 +232,8 @@ struct standard_arguments
 
             cGi_G.idx(i) = sum;
         }
+
+        always_derived_cGi = cGi_G;
 
         //ctx.pin(cGi_G);
 
