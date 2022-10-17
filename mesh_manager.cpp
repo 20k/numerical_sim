@@ -1065,7 +1065,7 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
 
     #define BACKWARD_EULER
     #ifdef BACKWARD_EULER
-    int iterations = 2;
+    int iterations = 3;
 
     if(iterations == 1)
     {

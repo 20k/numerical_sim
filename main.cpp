@@ -3168,6 +3168,8 @@ initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_q
 
     auto san_pos = [&](const tensor<float, 3>& in)
     {
+        return in;
+
         tensor<float, 3> scaled = round((in / scale) * bulge);
 
         return scaled * scale / bulge;
@@ -3332,13 +3334,13 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.96, 0};
+    h1.momentum = {0, 0.133, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     compact_object::data h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.96, 0};
+    h2.momentum = {0, -0.133, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     objects = {h1, h2};
@@ -3706,8 +3708,8 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf (95)
     //value gA = 1/(pow(bl_conformal + 1, 2));
 
-    value gA = 1;
-    //value gA = 1/(pow(bl_conformal + u, 2));
+    //value gA = 1;
+    value gA = 1/(pow(bl_conformal + u, 2));
     ///https://arxiv.org/pdf/1304.3937.pdf
     //value gA = 2/(1 + pow(bl_conformal + 1, 4));
     value gB0 = 0;
@@ -5724,7 +5726,7 @@ int main()
     std::string argument_string = "-I ./ -cl-std=CL2.0 -cl-mad-enable ";
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {213, 213, 213};
+    vec3i size = {255, 255, 255};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
