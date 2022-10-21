@@ -6,6 +6,11 @@
 #include "tensor_algebra.hpp"
 #include "equation_context.hpp"
 
+#define USE_GBB
+
+//#define BETTERDAMP_DTCAIJ
+//#define AIJ_SIGMA
+
 inline
 value as_float3(const value& x, const value& y, const value& z)
 {

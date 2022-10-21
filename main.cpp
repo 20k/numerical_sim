@@ -3168,6 +3168,8 @@ initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_q
 
     auto san_pos = [&](const tensor<float, 3>& in)
     {
+        return in;
+
         tensor<float, 3> scaled = round((in / scale) * bulge);
 
         return scaled * scale / bulge;
@@ -3332,13 +3334,13 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.96, 0};
+    h1.momentum = {0, 0.133 * 0.95, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     compact_object::data h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.96, 0};
+    h2.momentum = {0, -0.133 * 0.95, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     objects = {h1, h2};
@@ -3706,8 +3708,8 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf (95)
     //value gA = 1/(pow(bl_conformal + 1, 2));
 
-    value gA = 1;
-    //value gA = 1/(pow(bl_conformal + u, 2));
+    //value gA = 1;
+    value gA = 1/(pow(bl_conformal + u, 2));
     ///https://arxiv.org/pdf/1304.3937.pdf
     //value gA = 2/(1 + pow(bl_conformal + 1, 4));
     value gB0 = 0;
@@ -4342,6 +4344,7 @@ tensor<value, 3, 3, 3> gpu_covariant_derivative_low_tensor(equation_context& ctx
 void build_momentum_constraint(equation_context& ctx, bool use_matter)
 {
     standard_arguments args(ctx);
+    matter matt(ctx);
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
     auto unpinned_icY = icY;
@@ -4363,7 +4366,7 @@ void build_momentum_constraint(equation_context& ctx, bool use_matter)
         });
     }*/
 
-    value X_clamped = max(args.X, 0.001f);
+    value X_clamped = max(args.X, 0.01f);
 
     tensor<value, 3> Mi;
 
@@ -4383,9 +4386,12 @@ void build_momentum_constraint(equation_context& ctx, bool use_matter)
     #if 1
     tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
 
-    tensor<value, 3, 3> mixed_cAij = raise_index(args.cA, args.cY, icY);
+    tensor<value, 3, 3> mixed_cAij = raise_index(args.cA, icY, 0);
 
-    tensor<value, 3> ji_lower = args.matt.calculate_adm_Si(args.X);
+    tensor<value, 3> ji_lower;
+
+    if(use_matter)
+        ji_lower = matt.calculate_adm_Si(args.X);
 
     for(int i=0; i < 3; i++)
     {
@@ -4408,7 +4414,7 @@ void build_momentum_constraint(equation_context& ctx, bool use_matter)
             s3 += -(3.f/2.f) * mixed_cAij.idx(m, i) * diff1(ctx, args.X, m) / X_clamped;
         }
 
-        /*Mi.idx(i) = dual_if(args.X <= 0.001f,
+        Mi.idx(i) = dual_if(args.X <= 0.001f,
         []()
         {
             return 0.f;
@@ -4416,9 +4422,9 @@ void build_momentum_constraint(equation_context& ctx, bool use_matter)
         [&]()
         {
             return s1 + s2 + s3;
-        });*/
+        });
 
-        Mi.idx(i) = s1 + s2 + s3;
+        //Mi.idx(i) = s1 + s2 + s3;
 
         if(use_matter)
         {
@@ -5724,7 +5730,7 @@ int main()
     std::string argument_string = "-I ./ -cl-std=CL2.0 -cl-mad-enable ";
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {213, 213, 213};
+    vec3i size = {255, 255, 255};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -6252,7 +6258,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.045;
+        float timestep = 0.035;
 
         //timestep = 0.04;
 

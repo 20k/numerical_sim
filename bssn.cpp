@@ -814,6 +814,18 @@ void bssn::build_gB(equation_context& ctx)
         bjdjbi.idx(i) = v;
     }
 
+    /*for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            sum += args.gB.idx(j) * diff1(ctx, args.gB.idx(i), j);
+        }
+
+        bjdjbi.idx(i) = sum;
+    }*/
+
 
     #ifdef VDAMP_1
     ///so
@@ -886,7 +898,7 @@ void bssn::build_gB(equation_context& ctx)
 
     #define STATIC_DAMP
     #ifdef STATIC_DAMP
-    value Ns_r = 2;
+    value Ns_r = 1.5f;
     #endif
 
     value N = max(Ns_r, 0.5f);
@@ -894,7 +906,7 @@ void bssn::build_gB(equation_context& ctx)
     #ifndef USE_GBB
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
     ///todo: remove this
-    tensor<value, 3> dtgB = (3.f/4.f) * args.derived_cGi + bjdjbi - N * args.gB;
+    tensor<value, 3> dtgB = (3.f/4.f) * args.derived_cGi + bjdjbi * 1 - N * args.gB;
 
     tensor<value, 3> dtgBB;
     dtgBB.idx(0) = 0;
@@ -962,9 +974,9 @@ void bssn::build_gB(equation_context& ctx)
 
     //#define USE_GBB2
     #ifdef USE_GBB2
-    dtgB = args.gBB;
+    dtgB = args.gBB + bjdjbi * 0;
 
-    dtgBB = (3.f/4.f) * dtcGi - N * args.gBB;
+    dtgBB = (3.f/4.f) * dtcGi + bjdjBi * 0 - N * args.gBB;
     #endif
 
     //#endif // PAPER_0610128
