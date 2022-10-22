@@ -3344,6 +3344,26 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // PAPER_0610128
 
+    ///https://arxiv.org/pdf/1507.00570.pdf
+    //#define PAPER_1507
+    #ifdef PAPER_1507
+    compact_object::data h1;
+    h1.t = compact_object::BLACK_HOLE;
+    h1.bare_mass = 0.1764;
+    h1.momentum = {0, 0.12616, 0};
+    h1.position = {-2.966, 0.f, 0.f};
+    h1.angular_momentum = {0, 0, 0.225};
+
+    compact_object::data h2;
+    h2.t = compact_object::BLACK_HOLE;
+    h2.bare_mass = 0.1764;
+    h2.momentum = {0, -0.12616, 0};
+    h2.position = {2.966, 0.f, 0.f};
+    h2.angular_momentum = {0, 0, 0.225};
+
+    objects = {h1, h2};
+    #endif
+
     //#define SPINNING_SINGLE_NEUTRON
     #ifdef SPINNING_SINGLE_NEUTRON
     compact_object::data h1;
