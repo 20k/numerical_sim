@@ -194,17 +194,11 @@ struct standard_arguments
             }
         }
 
-        /*tensor<value, 3, 3, 3> christoff2 = christoffel_symbols_2(ctx, cY, icY);
+        /*tensor<value, 3, 3, 3> lchristoff2 = christoffel_symbols_2(ctx, cY, icY);
 
-        auto pinned_christoff2 = christoff2;
-        ctx.pin(pinned_christoff2);
+        tensor<value, 3> cGi_G;
 
-        auto pinned_icY = icY;
-        //ctx.pin(pinned_icY);
-
-        tensor<value, 3> cGi_G;*/
-
-        /*for(int i=0; i < 3; i++)
+        for(int i=0; i < 3; i++)
         {
             value sum = 0;
 
@@ -212,7 +206,7 @@ struct standard_arguments
             {
                 for(int k=0; k < 3; k++)
                 {
-                    sum += pinned_icY.idx(j, k) * pinned_christoff2.idx(i, j, k);
+                    sum += pinned_icY.idx(j, k) * lchristoff2.idx(i, j, k);
                 }
             }
 
