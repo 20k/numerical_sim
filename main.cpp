@@ -3709,7 +3709,7 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     ///https://arxiv.org/pdf/1304.3937.pdf
     //value gA = 2/(1 + pow(bl_conformal + 1, 4));
 
-    bssn::init(ctx, Yij, Aij, gA);
+    ccz4::init(ctx, Yij, Aij, gA);
 }
 
 inline
@@ -5604,25 +5604,28 @@ int main()
     eularian_matter interop;
 
     equation_context dtcY;
-    bssn::build_cY(dtcY);
+    ccz4::build_cY(dtcY);
 
     equation_context dtcA;
-    bssn::build_cA(interop, dtcA, holes.use_matter);
+    ccz4::build_cA(interop, dtcA, holes.use_matter);
 
     equation_context dtcGi;
-    bssn::build_cGi(interop, dtcGi, holes.use_matter);
+    ccz4::build_cGi_hat(interop, dtcGi, holes.use_matter);
 
     equation_context dtK;
-    bssn::build_K(interop, dtK, holes.use_matter);
+    ccz4::build_K(interop, dtK, holes.use_matter);
 
-    equation_context dtX;
-    bssn::build_X(dtX);
+    equation_context dtW;
+    ccz4::build_W(dtW);
 
     equation_context dtgA;
-    bssn::build_gA(dtgA);
+    ccz4::build_gA(dtgA);
 
     equation_context dtgB;
-    bssn::build_gB(dtgB);
+    ccz4::build_gB(dtgB);
+
+    equation_context dttheta;
+    ccz4::build_theta(dttheta);
 
     equation_context ctx4;
     build_constraints(ctx4);
@@ -5704,9 +5707,10 @@ int main()
     dtcA.build(argument_string, "tca");
     dtcGi.build(argument_string, "tcgi");
     dtK.build(argument_string, "tk");
-    dtX.build(argument_string, "tx");
+    dtW.build(argument_string, "tx");
     dtgA.build(argument_string, "tga");
     dtgB.build(argument_string, "tgb");
+    dttheta.build(argument_string, "constrainttheta");
 
     hydro_intermediates.build(argument_string, "hydrointermediates");
     hydro_viscosity.build(argument_string, "hydroviscosity");

@@ -1916,3 +1916,227 @@ void ccz4::build_cGi_hat(matter_interop& interop, equation_context& ctx, bool us
     ctx.add("dtcGi1", dtcG_hat.idx(1));
     ctx.add("dtcGi2", dtcG_hat.idx(2));
 }
+
+
+void ccz4::build_gA(equation_context& ctx)
+{
+    ccz4_args args(ctx);
+
+    //value bl_s = "(init_BL_val)";
+    //value bl = bl_s + 1;
+
+    ///https://arxiv.org/pdf/gr-qc/0206072.pdf (94)
+    ///this breaks immediately
+    //int m = 4;
+    //value dtgA = lie_derivative(ctx, args.gB, args.gA) - 2 * args.gA * args.K * pow(bl, m);
+
+    value dtgA = lie_derivative(ctx, args.gB, args.gA) - 2 * args.gA * (args.K - 2 * args.theta);
+
+    /*value dibi = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        dibi += diff1(ctx, args.gB.idx(i), i);
+    }*/
+
+    ///shock
+    ///-a^2 f(a) A
+    ///f(a) = (8/3)/(a(3 - a))
+    ///-a * (8/3) * A / (3 - a)
+
+    //value dtgA = lie_derivative(ctx, args.gB, args.gA) + dibi * 0 - args.gA * (8.f/3.f) * args.K / (3 - args.gA);
+
+    ctx.add("dtgA", dtgA);
+}
+
+void ccz4::build_gB(equation_context& ctx)
+{
+    ccz4_args args(ctx);
+
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+    tensor<value, 3> bjdjbi;
+
+    for(int i=0; i < 3; i++)
+    {
+        value v = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+           v += upwind_differentiate(ctx, args.gB.idx(j), args.gB.idx(i), j);
+        }
+
+        bjdjbi.idx(i) = v;
+    }
+
+
+    #ifdef VDAMP_1
+    ///so
+    ///X = (1/12) * log(det)
+    //value det = exp(12 * X);
+
+    ///(bl^4 * kron) = Yij
+    ///
+    //value conformal_factor = pow(det, 1.f/16.f);
+
+    /*value phi = log(X) / -4.f;
+
+    ///https://arxiv.org/pdf/gr-qc/0206072.pdf (10)
+    value psi = exp(phi);*/
+
+    //value psi = pow(X, -1.f/4.f);
+    //value ipsi = pow(psi, -2.f);
+
+    ///https://arxiv.org/pdf/0912.3125.pdf
+    ///https://www.wolframalpha.com/input?i=%28e%5E%28log%28x%29%2F-4%29%29%5E-2
+    value ipsi2 = sqrt(X);
+
+    float hat_r0 = 1.31;
+
+    ///https://arxiv.org/pdf/0912.3125.pdf(4)
+    value Ns_r = 0;
+
+    {
+        value sum = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                sum += icY.idx(i, j) * diff1(ctx, ipsi2, i) * diff1(ctx, ipsi2, j);
+            }
+        }
+
+        Ns_r = hat_r0 * sqrt(sum) / pow(1 - ipsi2, 2);
+    }
+    #endif
+
+    //#define VDAMP_2
+    #ifdef VDAMP_2
+    ///https://arxiv.org/pdf/1009.0292.pdf
+    value Ns_r = 0;
+
+    {
+        float R0 = 1.31f;
+
+        value W = sqrt(X);
+
+        float a = 2;
+        float b = 2;
+
+        value sum = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                sum += icY.idx(i, j) * diff1(ctx, W, i) * diff1(ctx, W, j);
+            }
+        }
+
+        Ns_r = R0 * sqrt(sum) / pow(1 - pow(W, a), b);
+    }
+
+    #endif
+
+    #define STATIC_DAMP
+    #ifdef STATIC_DAMP
+    value Ns_r = 2;
+    #endif
+
+    value N = max(Ns_r, 0.5f);
+
+    #ifndef USE_GBB
+    ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
+    ///todo: remove this
+    tensor<value, 3> dtgB = (3.f/4.f) * args.cGi_hat + bjdjbi - N * args.gB;
+
+    tensor<value, 3> dtgBB;
+    dtgBB.idx(0) = 0;
+    dtgBB.idx(1) = 0;
+    dtgBB.idx(2) = 0;
+
+    #else
+
+    tensor<value, 3> bjdjBi;
+
+    for(int i=0; i < 3; i++)
+    {
+        value v = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+           v += upwind_differentiate(ctx, args.gB.idx(j), args.gBB.idx(i), j);
+        }
+
+        bjdjBi.idx(i) = v;
+    }
+
+    tensor<value, 3> christoffd;
+
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            sum += args.gB.idx(j) * diff1(ctx, args.cGi.idx(i), j);
+        }
+
+        christoffd.idx(i) = sum;
+    }
+
+    tensor<value, 3> dtcGi;
+    dtcGi.idx(0).make_value("f_dtcGi0");
+    dtcGi.idx(1).make_value("f_dtcGi1");
+    dtcGi.idx(2).make_value("f_dtcGi2");
+
+    tensor<value, 3> dtgB;
+    tensor<value, 3> dtgBB;
+
+    ///https://arxiv.org/pdf/gr-qc/0511048.pdf (11)
+    /*for(int i=0; i < 3; i++)
+    {
+        dtgB.idx(i) = (3.f/4.f) * args.gBB.idx(i) + bjdjbi.idx(i);
+    }*/
+
+    /*#ifdef PAPER_0610128
+    float N = 1;
+
+    dtgB = (3.f/4.f) * args.gBB;
+
+    dtgBB = dtcGi - N * args.gBB;
+    #else*/
+
+    #define USE_GBB1
+    #ifdef USE_GBB1
+    dtgB = (3.f/4.f) * args.gBB + bjdjbi;
+
+    dtgBB = dtcGi - N * args.gBB + bjdjBi - christoffd;
+    #endif
+
+    //#define USE_GBB2
+    #ifdef USE_GBB2
+    dtgB = args.gBB;
+
+    dtgBB = (3.f/4.f) * dtcGi - N * args.gBB;
+    #endif
+
+    //#endif // PAPER_0610128
+    #endif // USE_GBB
+
+    for(int i=0; i < 3; i++)
+    {
+        std::string name = "dtgB" + std::to_string(i);
+
+        ctx.add(name, dtgB.idx(i));
+    }
+
+    for(int i=0; i < 3; i++)
+    {
+        std::string name = "dtgBB" + std::to_string(i);
+
+        ctx.add(name, dtgBB.idx(i));
+    }
+}
+
