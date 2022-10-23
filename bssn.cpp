@@ -1077,12 +1077,14 @@ struct ccz4_args
 
     inverse_metric<value, 3, 3> iYij;
 
+    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
+
+    int index_table[3][3] = {{0, 1, 2},
+                             {1, 3, 4},
+                             {2, 4, 5}};
+
     ccz4_args(equation_context& ctx)
     {
-        int index_table[3][3] = {{0, 1, 2},
-                                 {1, 3, 4},
-                                 {2, 4, 5}};
-
         bool interpolate = ctx.uses_linear;
 
         gA = bidx("gA", interpolate, false);
@@ -1303,5 +1305,20 @@ void ccz4::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
 
 void ccz4::build_cY(equation_context& ctx)
 {
+    ccz4_args args(ctx);
 
+    tensor<value, 3, 3> lie_cYij = lie_derivative_weight(ctx, args.gB, args.cY);
+
+    ///https://arxiv.org/pdf/gr-qc/0511048.pdf (1)
+    ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.66
+    tensor<value, 3, 3> dtcYij = -2 * args.gA * trace_free(args.cA, args.cY, args.cY.invert()) + lie_cYij;
+
+    for(int i=0; i < 6; i++)
+    {
+        std::string name = "dtcYij" + std::to_string(i);
+
+        vec2i idx = args.linear_indices[i];
+
+        ctx.add(name, dtcYij.idx(idx.x(), idx.y()));
+    }
 }
