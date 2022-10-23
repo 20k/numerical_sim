@@ -1056,6 +1056,114 @@ void bssn::build_gB(equation_context& ctx)
     }
 }
 
+struct ccz4_args
+{
+    value gA;
+    tensor<value, 3> gB;
+    tensor<value, 3> gBB;
+
+    unit_metric<value, 3, 3> cY;
+    tensor<value, 3, 3> cA;
+
+    value W;
+    value K;
+
+    tensor<value, 3> cGi;
+
+    tensor<value, 3, 3, 3> dcYij;
+    tensor<value, 3, 3> digB;
+    tensor<value, 3> digA;
+    tensor<value, 3> dW;
+
+    ccz4_args(equation_context& ctx)
+    {
+        int index_table[3][3] = {{0, 1, 2},
+                                 {1, 3, 4},
+                                 {2, 4, 5}};
+
+        bool interpolate = ctx.uses_linear;
+
+        gA = bidx("gA", interpolate, false);
+
+        gA = max(gA, 0.f);
+
+        gB.idx(0) = bidx("gB0", interpolate, false);
+        gB.idx(1) = bidx("gB1", interpolate, false);
+        gB.idx(2) = bidx("gB2", interpolate, false);
+
+        gBB.idx(0) = bidx("gBB0", interpolate, false);
+        gBB.idx(1) = bidx("gBB1", interpolate, false);
+        gBB.idx(2) = bidx("gBB2", interpolate, false);
+
+        std::array<int, 9> arg_table
+        {
+            0, 1, 2,
+            1, 3, 4,
+            2, 4, 5,
+        };
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                int index = arg_table[i * 3 + j];
+
+                cY.idx(i, j) = bidx("cY" + std::to_string(index), interpolate, false);
+            }
+        }
+
+        //cY.idx(2, 2) = (1 + cY.idx(1, 1) * cY.idx(0, 2) * cY.idx(0, 2) - 2 * cY.idx(0, 1) * cY.idx(1, 2) * cY.idx(0, 2) + cY.idx(0, 0) * cY.idx(1, 2) * cY.idx(1, 2)) / (cY.idx(0, 0) * cY.idx(1, 1) - cY.idx(0, 1) * cY.idx(0, 1));
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                int index = arg_table[i * 3 + j];
+
+                cA.idx(i, j) = bidx("cA" + std::to_string(index), interpolate, false);
+            }
+        }
+
+        W = bidx("X", interpolate, false);
+        K = bidx("K", interpolate, false);
+
+        for(int k=0; k < 3; k++)
+        {
+            for(int i=0; i < 3; i++)
+            {
+                for(int j=0; j < 3; j++)
+                {
+                    int symmetric_index = index_table[i][j];
+
+                    int final_index = k + symmetric_index * 3;
+
+                    dcYij.idx(k, i, j) = bidx("dcYij" + std::to_string(final_index), interpolate, true);
+                }
+            }
+        }
+
+        digA.idx(0) = bidx("digA0", interpolate, true);
+        digA.idx(1) = bidx("digA1", interpolate, true);
+        digA.idx(2) = bidx("digA2", interpolate, true);
+
+        dW.idx(0) = bidx("dX0", interpolate, true);
+        dW.idx(1) = bidx("dX1", interpolate, true);
+        dW.idx(2) = bidx("dX2", interpolate, true);
+
+        ///derivative
+        for(int i=0; i < 3; i++)
+        {
+            ///value
+            for(int j=0; j < 3; j++)
+            {
+                int idx = i + j * 3;
+
+                digB.idx(i, j)  = bidx("digB" + std::to_string(idx), interpolate, true);
+            }
+        }
+
+    }
+};
 
 void ccz4::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const tensor<value, 3, 3>& Aij, const value& gA)
 {
@@ -1116,4 +1224,9 @@ void ccz4::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
 
     ctx.add("USE_THETA", 1);
     ctx.add("init_constraint_theta", 0);
+}
+
+void ccz4::build_cY(equation_context& ctx)
+{
+
 }
