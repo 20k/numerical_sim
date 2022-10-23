@@ -1056,3 +1056,73 @@ void bssn::build_gB(equation_context& ctx)
     }
 }
 
+
+void ccz4::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const tensor<value, 3, 3>& Aij, const value& gA)
+{
+    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
+
+    value Y = Yij.det();
+
+    value gB0 = 0;
+    value gB1 = 0;
+    value gB2 = 0;
+
+    tensor<value, 3> cGi;
+    value K = 0;
+
+    ///https://arxiv.org/pdf/gr-qc/0206072.pdf (58)
+
+    value W = pow(Y, -1.f/6.f);
+
+    tensor<value, 3, 3> cAij = W * W * Aij;
+
+    tensor<value, 3, 3> cYij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            cYij.idx(i, j) = (i == j) ? 1 : 0;
+        }
+    }
+
+    for(int i=0; i < 6; i++)
+    {
+        vec2i index = linear_indices[i];
+
+        std::string y_name = "init_cY" + std::to_string(i);
+
+        ctx.add(y_name, cYij.idx(index.x(), index.y()));
+    }
+
+    for(int i=0; i < 6; i++)
+    {
+        ctx.add("init_cA" + std::to_string(i), cAij.idx(linear_indices[i].x(), linear_indices[i].y()));
+    }
+
+    ctx.add("init_cGi0", cGi.idx(0));
+    ctx.add("init_cGi1", cGi.idx(1));
+    ctx.add("init_cGi2", cGi.idx(2));
+
+    ctx.add("init_K", K);
+    ctx.add("init_X", W);
+
+    ctx.add("init_gA", gA);
+    ctx.add("init_gB0", gB0);
+    ctx.add("init_gB1", gB1);
+    ctx.add("init_gB2", gB2);
+
+    //#define USE_GBB
+    #ifdef USE_GBB
+    value gBB0 = 0;
+    value gBB1 = 0;
+    value gBB2 = 0;
+
+    ctx.add("init_gBB0", gBB0);
+    ctx.add("init_gBB1", gBB1);
+    ctx.add("init_gBB2", gBB2);
+    #endif // USE_GBB
+
+    ctx.add("USE_THETA", 1);
+    ctx.add("init_constraint_theta", 0);
+}
