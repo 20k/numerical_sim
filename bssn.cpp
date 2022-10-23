@@ -1612,11 +1612,19 @@ void ccz4::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
+    ctx.pin(icY);
+
     tensor<value, 3, 3> Rij = calculate_Rij(ctx, args);
 
     tensor<value, 3> Zi_lower = args.get_Zi_lowered(ctx);
 
     tensor<value, 3, 3> ZiDj = covariant_derivative_low_vec(ctx, Zi_lower, args.cY, icY);
+
+    ctx.pin(ZiDj);
+
+    tensor<value, 3, 3> raised_cA = raise_index(args.cA, icY, 1);
+
+    ctx.pin(raised_cA);
 
     /*///for the tensor DcDa, this returns idx(a, c)
     template<typename T, int N>
@@ -1640,6 +1648,8 @@ void ccz4::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
         }
     }
 
+    ctx.pin(with_trace);
+
     tensor<value, 3, 3> TF = args.W * args.W * trace_free(with_trace, args.cY, icY);
 
     tensor<value, 3, 3> part_2 = args.gA * args.cA * (args.K - 2 * args.theta);
@@ -1654,7 +1664,7 @@ void ccz4::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
 
             for(int l=0; l < 3; l++)
             {
-                sum += -2 * args.gA * args.cA.idx(i, l) * raise_index(args.cA, icY, 1).idx(j, l);
+                sum += -2 * args.gA * args.cA.idx(i, l) * raised_cA.idx(j, l);
             }
 
             part_3.idx(i, j) = sum;
