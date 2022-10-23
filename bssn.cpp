@@ -1175,7 +1175,7 @@ struct ccz4_args
 
     tensor<value, 3> get_cGi(equation_context& ctx)
     {
-        inverse_metric<value, 3, 3> icY = cY.invert();
+        /*inverse_metric<value, 3, 3> icY = cY.invert();
 
         tensor<value, 3, 3, 3> lchristoff2 = christoffel_symbols_2(ctx, cY, icY);
 
@@ -1190,6 +1190,30 @@ struct ccz4_args
                 for(int k=0; k < 3; k++)
                 {
                     sum += icY.idx(j, k) * lchristoff2.idx(i, j, k);
+                }
+            }
+
+            cGi.idx(i) = sum;
+        }
+
+        return cGi;*/
+
+        inverse_metric<value, 3, 3> icY = cY.invert();
+
+        tensor<value, 3> cGi;
+
+        for(int i=0; i < 3; i++)
+        {
+            value sum = 0;
+
+            for(int j=0; j < 3; j++)
+            {
+                for(int k=0; k < 3; k++)
+                {
+                    for(int l = 0; l < 3; l++)
+                    {
+                        sum += icY.idx(i, j) * icY.idx(k, l) * dcYij.idx(l, j, k);
+                    }
                 }
             }
 
@@ -1301,6 +1325,119 @@ void ccz4::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
 
     ctx.add("USE_THETA", 1);
     ctx.add("init_constraint_theta", 0);
+}
+
+tensor<value, 3, 3> calculate_Rij(equation_context& ctx, ccz4_args& args)
+{
+    tensor<value, 3, 3> cRij;
+
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+    tensor<value, 3> cGi = args.get_cGi(ctx);
+
+    tensor<value, 3, 3, 3> christoff1 = christoffel_symbols_1(ctx, args.cY);
+    tensor<value, 3, 3, 3> christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value s1 = 0;
+
+            for(int l=0; l < 3; l++)
+            {
+                for(int m=0; m < 3; m++)
+                {
+                    s1 = s1 + -0.5f * icY.idx(l, m) * diff2(ctx, args.cY.idx(i, j), m, l, args.dcYij.idx(m, i, j), args.dcYij.idx(l, i, j));
+                }
+            }
+
+            value s2 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                s2 = s2 + 0.5f * (args.cY.idx(k, i) * diff1(ctx, cGi.idx(k), j) + args.cY.idx(k, j) * diff1(ctx, cGi.idx(k), i));
+            }
+
+            value s3 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                s3 = s3 + 0.5f * cGi.idx(k) * (christoff1.idx(i, j, k) + christoff1.idx(j, i, k));
+            }
+
+            value s4 = 0;
+
+            for(int m=0; m < 3; m++)
+            {
+                for(int l=0; l < 3; l++)
+                {
+                    value inner1 = 0;
+                    value inner2 = 0;
+
+                    for(int k=0; k < 3; k++)
+                    {
+                        inner1 = inner1 + 0.5f * (2 * christoff2.idx(k, l, i) * christoff1.idx(j, k, m) + 2 * christoff2.idx(k, l, j) * christoff1.idx(i, k, m));
+                    }
+
+                    for(int k=0; k < 3; k++)
+                    {
+                        inner2 = inner2 + christoff2.idx(k, i, m) * christoff1.idx(k, l, j);
+                    }
+
+                    s4 = s4 + icY.idx(l, m) * (inner1 + inner2);
+                }
+            }
+
+            cRij.idx(i, j) = s1 + s2 + s3 + s4;
+        }
+    }
+
+    value i_W_sq = 1/max(args.W * args.W, 0.0001f);
+
+    tensor<value, 3, 3> didjW;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            ///dcd uses the notation i;j
+            didjW.idx(i, j) = double_covariant_derivative(ctx, args.W, args.dW, args.cY, icY, christoff2).idx(j, i);
+        }
+    }
+
+    tensor<value, 3> dW = args.dW;
+
+    tensor<value, 3, 3> rphiij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value i1 = didjW.idx(i, j);
+
+            value s2 = 0;
+
+            for(int l=0; l < 3; l++)
+            {
+                s2 += raise_index(didjW, icY, 0).idx(l, l);
+            }
+
+            value i2 = args.cY.idx(i, j) * s2;
+
+            value left = args.W * (i1 + i2);
+
+            value right_sum = sum_multiply(raise_index(dW, icY, 0), dW);
+
+            value right = -2 * args.cY.idx(i, j) * right_sum;
+
+            value full = i_W_sq * (left + right);
+
+            rphiij.idx(i, j) = full;
+        }
+    }
+
+    return cRij + rphiij;
 }
 
 void ccz4::build_cY(equation_context& ctx)
