@@ -1473,6 +1473,41 @@ void ccz4::build_cY(equation_context& ctx)
     }
 }
 
+tensor<value, 3, 3, 3> get_full_christoffel2(const value& W, const tensor<value, 3>& dW, const unit_metric<value, 3, 3>& cY, const tensor<value, 3, 3, 3>& christoff2)
+{
+    value X = W_to_X(W);
+    tensor<value, 3> dX = dW_to_dX(W, dW);
+
+    value clamped_X = max(X, 0.0001f);
+
+    inverse_metric<value, 3, 3> icY = cY.invert();
+
+    tensor<value, 3, 3, 3> result = christoff2;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                value rhs_sum = 0;
+
+                for(int m=0; m < 3; m++)
+                {
+                    rhs_sum += -cY.idx(j, k) * icY.idx(i, m) * dX.idx(m);
+                }
+
+                value kron_ik = (i == k) ? 1 : 0;
+                value kron_ij = (i == j) ? 1 : 0;
+
+                result.idx(i, j, k) += -(1.f/(2 * clamped_X)) * (kron_ik * dX.idx(j) + kron_ij * dX.idx(k) + rhs_sum);
+            }
+        }
+    }
+
+    return result;
+}
+
 tensor<value, 3, 3> calculate_didja(equation_context& ctx)
 {
     /*tensor<value, 3, 3> Xdidja;
