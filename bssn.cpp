@@ -1741,3 +1741,48 @@ void ccz4::build_K(matter_interop& interop, equation_context& ctx, bool use_matt
 
     ctx.add("dtK", dtK);
 }
+
+void ccz4::build_theta(equation_context& ctx)
+{
+    ccz4_args args(ctx);
+
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+    tensor<value, 3> Zi_upper = args.get_Zi_raised(ctx);
+
+    tensor<value, 3, 3> ZiDj = covariant_derivative_low_vec(ctx, Zi_upper, args.cY, icY);
+
+    value ZiDj_sum = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        ZiDj_sum += ZiDj.idx(i, i);
+    }
+
+    value R = get_R(ctx, args);
+
+    value aij_aIJ = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            aij_aIJ += args.cA.idx(i, j) * raise_both(args.cA, icY).idx(i, j);
+        }
+    }
+
+    value bkdktheta = 0;
+
+    for(int k=0; k < 3; k++)
+    {
+        bkdktheta += args.gB.idx(k) * diff1(ctx, args.theta, k);
+    }
+
+    ///dtconstraint_theta
+    value dtconstraint_theta = 0.5f * args.gA * (R + 2 * ZiDj_sum - aij_aIJ + (2.f/3.f) * args.K * args.K - 2 * args.theta * args.K)
+                               - sum_multiply(Zi_upper, args.digA)
+                               + bkdktheta
+                               - args.gA * get_k1(ctx) * (2 + get_k2(ctx)) * args.theta;
+
+    ctx.add("dtconstraint_theta", dtconstraint_theta);
+}
