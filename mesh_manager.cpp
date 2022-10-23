@@ -303,6 +303,7 @@ buffer_set_cfg get_buffer_cfg(cpu_mesh_settings sett)
     cfg.use_matter = sett.use_matter;
     cfg.use_matter_colour = sett.use_matter_colour;
     cfg.use_gBB = sett.use_gBB;
+    cfg.use_theta = sett.use_theta;
 
     return cfg;
 }

@@ -210,6 +210,10 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     gBB2[index] = init_gBB2;
     #endif // USE_GBB
 
+    #ifdef USE_THETA
+    constraint_theta[index] = init_constraint_theta;
+    #endif // USE_THETA
+
     ///nanananananananana
     //#define NANIFY
     #ifdef NANIFY
@@ -1087,6 +1091,47 @@ void evolve_gB(__global ushort4* points, int point_count,
     NANCHECK(ogB1);
     NANCHECK(ogB2);
 }
+
+#ifdef USE_THETA
+__kernel
+void evolve_theta(__global ushort4* points, int point_count,
+            STANDARD_ARGS(),
+            STANDARD_ARGS(o),
+            STANDARD_ARGS(base_),
+            __global float* momentum0, __global float* momentum1, __global float* momentum2,
+            STANDARD_DERIVS(),
+            float scale, int4 dim, float timestep, __global ushort* order_ptr)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
+
+    if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
+    {
+        oconstraint_theta[index] = constraint_theta[index];
+        return;
+    }
+
+    float TEMPORARIESconstrainttheta;
+
+    float f_dtconstraint_theta = dtconstraint_theta;
+
+    float b0 = base_constraint_theta[index];
+
+    oconstraint_theta[index] = f_dtconstraint_theta * timestep + b0;
+
+    NANCHECK(oconstraint_theta);
+}
+#endif
+
 
 #define HYDRO_ORDER 2
 
