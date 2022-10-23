@@ -1068,7 +1068,7 @@ struct ccz4_args
     value W;
     value K;
 
-    tensor<value, 3> cGi;
+    tensor<value, 3> cGi_hat;
 
     tensor<value, 3, 3, 3> dcYij;
     tensor<value, 3, 3> digB;
@@ -1094,6 +1094,10 @@ struct ccz4_args
         gBB.idx(0) = bidx("gBB0", interpolate, false);
         gBB.idx(1) = bidx("gBB1", interpolate, false);
         gBB.idx(2) = bidx("gBB2", interpolate, false);
+
+        cGi_hat.idx(0) = bidx("cGi0", interpolate, false);
+        cGi_hat.idx(1) = bidx("cGi1", interpolate, false);
+        cGi_hat.idx(2) = bidx("cGi2", interpolate, false);
 
         std::array<int, 9> arg_table
         {
@@ -1161,7 +1165,32 @@ struct ccz4_args
                 digB.idx(i, j)  = bidx("digB" + std::to_string(idx), interpolate, true);
             }
         }
+    }
 
+    tensor<value, 3> get_cGi(equation_context& ctx)
+    {
+        inverse_metric<value, 3, 3> icY = cY.invert();
+
+        tensor<value, 3, 3, 3> lchristoff2 = christoffel_symbols_2(ctx, cY, icY);
+
+        tensor<value, 3> cGi;
+
+        for(int i=0; i < 3; i++)
+        {
+            value sum = 0;
+
+            for(int j=0; j < 3; j++)
+            {
+                for(int k=0; k < 3; k++)
+                {
+                    sum += icY.idx(j, k) * lchristoff2.idx(i, j, k);
+                }
+            }
+
+            cGi.idx(i) = sum;
+        }
+
+        return cGi;
     }
 };
 
