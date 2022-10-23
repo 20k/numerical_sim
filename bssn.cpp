@@ -1837,7 +1837,9 @@ value get_R(equation_context& ctx, ccz4_args& args)
 
 value get_k1(equation_context& ctx)
 {
-    return 0.05;
+    ccz4_args args(ctx);
+
+    return 0.05 / max(args.gA, 0.0001f);
     //return 0;
 }
 

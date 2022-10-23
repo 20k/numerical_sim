@@ -3704,8 +3704,8 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf the york-lichnerowicz split
     tensor<value, 3, 3> Aij = pow(bl_conformal + u, -2) * bcAij;
 
-    value gA = 1;
-    //value gA = 1/(pow(bl_conformal + u, 2));
+    //value gA = 1;
+    value gA = 1/(pow(bl_conformal + u, 2));
     ///https://arxiv.org/pdf/1304.3937.pdf
     //value gA = 2/(1 + pow(bl_conformal + 1, 4));
 
@@ -6056,7 +6056,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.045;
+        float timestep = 0.025;
 
         //timestep = 0.04;
 
