@@ -1067,6 +1067,7 @@ struct ccz4_args
 
     value W;
     value K;
+    value theta;
 
     tensor<value, 3> cGi_hat;
 
@@ -1134,6 +1135,8 @@ struct ccz4_args
 
         W = bidx("X", interpolate, false);
         K = bidx("K", interpolate, false);
+
+        theta = bidx("constraint_theta", interpolate, false);
 
         for(int k=0; k < 3; k++)
         {
@@ -1583,5 +1586,90 @@ tensor<value, 3, 3> calculate_didja(equation_context& ctx)
 
 void ccz4::build_cA(matter_interop& interop, equation_context& ctx, bool use_matter)
 {
+    ccz4_args args(ctx);
 
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+    tensor<value, 3, 3> Rij = calculate_Rij(ctx, args);
+
+    tensor<value, 3> Zi_lower = args.get_Zi_lowered(ctx);
+
+    tensor<value, 3, 3> ZiDj = covariant_derivative_low_vec(ctx, Zi_lower, args.cY, icY);
+
+    /*///for the tensor DcDa, this returns idx(a, c)
+    template<typename T, int N>
+    inline
+    tensor<T, N, N> covariant_derivative_low_vec(differentiator& ctx, const tensor<T, N>& v_in, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
+    */
+
+    tensor<value, 3, 3> DiDja = calculate_didja(ctx);
+
+    tensor<value, 3, 3> with_trace;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value s1 = -DiDja.idx(i, j);
+
+            value s2 = args.gA * (Rij.idx(i, j) + ZiDj.idx(j, i) + ZiDj.idx(i, j));
+
+            with_trace.idx(i, j) = s1 + s2;
+        }
+    }
+
+    tensor<value, 3, 3> TF = args.W * args.W * trace_free(with_trace, args.cY, icY);
+
+    tensor<value, 3, 3> part_2 = args.gA * args.cA * (args.K - 2 * args.theta);
+
+    tensor<value, 3, 3> part_3;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value sum = 0;
+
+            for(int l=0; l < 3; l++)
+            {
+                sum += -2 * args.gA * args.cA.idx(i, l) * raise_index(args.cA, icY, 1).idx(j, l);
+            }
+
+            part_3.idx(i, j) = sum;
+        }
+    }
+
+    tensor<value, 3, 3> dtcAij = TF + part_2 + part_3 + lie_derivative_weight(ctx, args.gB, args.cA);
+
+    for(int i=0; i < 6; i++)
+    {
+        std::string name = "dtcAij" + std::to_string(i);
+
+        vec2i idx = args.linear_indices[i];
+
+        ctx.add(name, dtcAij.idx(idx.x(), idx.y()));
+    }
+}
+
+void ccz4::build_W(equation_context& ctx)
+{
+    ccz4_args args(ctx);
+
+    value dkbk = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        dkbk += diff1(ctx, args.gB.idx(i), i);
+    }
+
+    value bkdw = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        bkdw += args.gB.idx(i) * diff1(ctx, args.W, i);
+    }
+
+    value dtW = (1.f/3.f) * args.gA * args.W * args.K - (1.f/3.f) * args.W * dkbk + bkdw;
+
+    ctx.add("dtW", dtW);
 }

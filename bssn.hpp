@@ -400,9 +400,9 @@ namespace ccz4
 
     void build_cY(equation_context& ctx);
     void build_cA(matter_interop& interop, equation_context& ctx, bool use_matter);
+    void build_W(equation_context& ctx);
     void build_cGi(matter_interop& interop, equation_context& ctx, bool use_matter);
     void build_K(matter_interop& interop, equation_context& ctx, bool use_matter);
-    void build_X(equation_context& ctx);
     void build_gA(equation_context& ctx);
     void build_gB(equation_context& ctx);
     void build_theta(equation_context& ctx);
