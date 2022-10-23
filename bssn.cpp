@@ -1801,6 +1801,13 @@ void ccz4::build_cGi_hat(matter_interop& interop, equation_context& ctx, bool us
 
     tensor<value, 3> cGi = args.get_cGi(ctx);
 
+    value dkbk = 0;
+
+    for(int k=0; k < 3; k++)
+    {
+        dkbk += args.digB.idx(k, k);
+    }
+
     tensor<value, 3> dtcG_hat;
 
     for(int i=0; i < 3; i++)
@@ -1871,5 +1878,41 @@ void ccz4::build_cGi_hat(matter_interop& interop, equation_context& ctx, bool us
                 p5 += (1.f/3.f) * icY.idx(i, k) * diff2(ctx, args.gB.idx(l), l, k, args.digB.idx(l, l), args.digB.idx(k, l));
             }
         }
+
+        value p6 = (2.f/3.f) * cGi.idx(i) * dkbk;
+
+        value p7 = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            p7 += -cGi.idx(k) * args.digB.idx(k, i);
+        }
+
+        value p8_1 = 0;
+        value p8_2 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                p8_1 += 2 * get_k3(ctx) * (2.f/3.f) * icY.idx(i, j) * Zi_lower.idx(j) * args.digB.idx(k, k);
+                p8_2 += 2 * get_k3(ctx) * -icY.idx(j, k) * Zi_lower.idx(j) * args.digB.idx(k, i);
+            }
+        }
+
+        value p9 = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            p9 += args.gB.idx(k) * diff1(ctx, args.cGi_hat.idx(i), k);
+        }
+
+        value p10 = -2 * args.gA * get_k1(ctx) * args.get_cYij_Zj(ctx);
+
+        dtcG_hat.idx(i) = p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9 + p10;
     }
+
+    ctx.add("dtcGi0", dtcG_hat.idx(0));
+    ctx.add("dtcGi1", dtcG_hat.idx(1));
+    ctx.add("dtcGi2", dtcG_hat.idx(2));
 }
