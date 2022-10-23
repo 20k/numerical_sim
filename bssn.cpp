@@ -1075,6 +1075,8 @@ struct ccz4_args
     tensor<value, 3> digA;
     tensor<value, 3> dW;
 
+    inverse_metric<value, 3, 3> iYij;
+
     ccz4_args(equation_context& ctx)
     {
         int index_table[3][3] = {{0, 1, 2},
@@ -1165,6 +1167,8 @@ struct ccz4_args
                 digB.idx(i, j)  = bidx("digB" + std::to_string(idx), interpolate, true);
             }
         }
+
+        iYij = W * W * cY.invert();
     }
 
     tensor<value, 3> get_cGi(equation_context& ctx)
@@ -1191,6 +1195,48 @@ struct ccz4_args
         }
 
         return cGi;
+    }
+
+    ///https://arxiv.org/pdf/1307.7391.pdf (11)
+    tensor<value, 3> get_cYij_Zj(equation_context& ctx)
+    {
+        tensor<value, 3> cGi = get_cGi(ctx);
+
+        return (cGi_hat - cGi) / 2.f;
+    }
+
+    ///https://inspirehep.net/files/6d0b069dcb3f4d485539aa0cba4f67e2
+    tensor<value, 3> get_Zi_raised(equation_context& ctx)
+    {
+        ///so, we're 'raising' Zj by the conformal metric
+        ///to actually raise it, we need to multiply by w^2
+        tensor<value, 3> cYij_Zj = get_cYij_Zj(ctx);
+
+        return W * W * cYij_Zj;
+    }
+
+    tensor<value, 3> get_Zi_lowered(equation_context& ctx)
+    {
+        ///well, we could lower get_Zi_raised
+        ///which would involve summing by (cY / W^2)
+        ///which would cancel the W^2 above
+        tensor<value, 3> cYij_Zj = get_cYij_Zj(ctx);
+
+        tensor<value, 3> result;
+
+        for(int i=0; i < 3; i++)
+        {
+            value sum = 0;
+
+            for(int j=0; j < 3; j++)
+            {
+                sum += cY.idx(i, j) * cYij_Zj.idx(j);
+            }
+
+            result.idx(i) = sum;
+        }
+
+        return result;
     }
 };
 
