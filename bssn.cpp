@@ -1075,16 +1075,7 @@ void ccz4::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
     value W = pow(Y, -1.f/6.f);
 
     tensor<value, 3, 3> cAij = W * W * Aij;
-
-    tensor<value, 3, 3> cYij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            cYij.idx(i, j) = (i == j) ? 1 : 0;
-        }
-    }
+    metric<value, 3, 3> cYij = W * W * Yij;
 
     for(int i=0; i < 6; i++)
     {
