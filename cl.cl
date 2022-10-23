@@ -146,8 +146,8 @@ float get_distance(int x1, int y1, int z1, int x2, int y2, int z2, int4 dim, flo
 #define STANDARD_ARGS(p) GET_ARGLIST(__global float*, p)
 #define STANDARD_DERIVS(p) GET_DERIVLIST(__global DERIV_PRECISION*, p)
 
-
 #define ALL_ARGS(p) GET_ARGLIST(, p), GET_DERIVLIST(, p)
+#define GET_STANDARD_ARGS(p) GET_ARGLIST(, p)
 
 __kernel
 void calculate_initial_conditions(STANDARD_ARGS(),
@@ -1924,7 +1924,7 @@ float3 fix_ray_position(float3 cartesian_pos, float3 cartesian_velocity, float s
 ///this returns the change in X, which is not velocity
 ///its unfortunate that position, aka X, and the conformal factor are called the same thing here
 ///the reason why these functions use out parameters is to work around a significant optimisation failure in AMD's opencl compiler
-void velocity_to_XDiff(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS(), STANDARD_DERIVS())
+void velocity_to_XDiff(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS())
 {
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
 
@@ -1948,7 +1948,7 @@ void velocity_to_XDiff(float3* out, float3 Xpos, float3 vel, float scale, int4 d
     *out = (float3){d0, d1, d2};
 }
 
-void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS(), STANDARD_DERIVS())
+void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS())
 {
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
 
@@ -1975,7 +1975,7 @@ void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, 
 __kernel
 void calculate_adm_texture_coordinates(__global struct lightray_simple* finished_rays, __global float2* texture_coordinates, int width, int height,
                                        float3 camera_pos, float4 camera_quat,
-                                       STANDARD_ARGS(), STANDARD_DERIVS(), float scale, int4 dim)
+                                       STANDARD_ARGS(), float scale, int4 dim)
 {
     int x = get_global_id(0);
     int y = get_global_id(1);
@@ -1989,7 +1989,7 @@ void calculate_adm_texture_coordinates(__global struct lightray_simple* finished
     float3 cvel = {ray->V0, ray->V1, ray->V2};
 
     float3 XDiff;
-    velocity_to_XDiff(&XDiff, cpos, cvel, scale, dim, ALL_ARGS());
+    velocity_to_XDiff(&XDiff, cpos, cvel, scale, dim, GET_STANDARD_ARGS());
 
     float uni_size = universe_size;
 
@@ -2023,10 +2023,6 @@ void calculate_adm_texture_coordinates(__global struct lightray_simple* finished
 __kernel
 void init_rays(__global struct lightray_simple* rays, __global int* ray_count0,
                 STANDARD_ARGS(),
-                __global DERIV_PRECISION* dcYij0, __global DERIV_PRECISION* dcYij1, __global DERIV_PRECISION* dcYij2, __global DERIV_PRECISION* dcYij3, __global DERIV_PRECISION* dcYij4, __global DERIV_PRECISION* dcYij5, __global DERIV_PRECISION* dcYij6, __global DERIV_PRECISION* dcYij7, __global DERIV_PRECISION* dcYij8, __global DERIV_PRECISION* dcYij9, __global DERIV_PRECISION* dcYij10, __global DERIV_PRECISION* dcYij11, __global DERIV_PRECISION* dcYij12, __global DERIV_PRECISION* dcYij13, __global DERIV_PRECISION* dcYij14, __global DERIV_PRECISION* dcYij15, __global DERIV_PRECISION* dcYij16, __global DERIV_PRECISION* dcYij17,
-                __global DERIV_PRECISION* digA0, __global DERIV_PRECISION* digA1, __global DERIV_PRECISION* digA2,
-                __global DERIV_PRECISION* digB0, __global DERIV_PRECISION* digB1, __global DERIV_PRECISION* digB2, __global DERIV_PRECISION* digB3, __global DERIV_PRECISION* digB4, __global DERIV_PRECISION* digB5, __global DERIV_PRECISION* digB6, __global DERIV_PRECISION* digB7, __global DERIV_PRECISION* digB8,
-                __global DERIV_PRECISION* dX0, __global DERIV_PRECISION* dX1, __global DERIV_PRECISION* dX2,
                 float scale, float3 camera_pos, float4 camera_quat,
                 int4 dim, int width, int height)
 {
@@ -2120,7 +2116,6 @@ float get_static_verlet_ds(float3 Xpos, __global float* X, float scale, int4 dim
 __kernel
 void trace_rays(__global struct lightray_simple* rays_in, __global struct lightray_simple* rays_terminated,
                 STANDARD_ARGS(),
-                STANDARD_DERIVS(),
                 __global float* dRed,
                 __global float* dGreen,
                 __global float* dBlue,
@@ -2157,14 +2152,14 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         ds = get_static_verlet_ds(Xpos, X, scale, dim);
 
         float3 ABase;
-        calculate_V_derivatives(&ABase, Xpos, vel, scale, dim, ALL_ARGS());
+        calculate_V_derivatives(&ABase, Xpos, vel, scale, dim, GET_STANDARD_ARGS());
 
         VHalf = vel + 0.5f * ABase * ds;
 
         VFull_approx = vel + ABase * ds;
 
         float3 XDiff;
-        velocity_to_XDiff(&XDiff, Xpos, VHalf, scale, dim, ALL_ARGS());
+        velocity_to_XDiff(&XDiff, Xpos, VHalf, scale, dim, GET_STANDARD_ARGS());
 
         float3 XFull = Xpos + XDiff * ds;
 
@@ -2183,7 +2178,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         ///finish previous iteration
         {
             float3 AFull_approx;
-            calculate_V_derivatives(&AFull_approx, Xpos, VFull_approx, scale, dim, ALL_ARGS());
+            calculate_V_derivatives(&AFull_approx, Xpos, VFull_approx, scale, dim, GET_STANDARD_ARGS());
 
             float3 VFull = VHalf + 0.5f * AFull_approx * ds;
 
@@ -2197,13 +2192,13 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         {
             float3 ABase;
-            calculate_V_derivatives(&ABase, Xpos, vel, scale, dim, ALL_ARGS());
+            calculate_V_derivatives(&ABase, Xpos, vel, scale, dim, GET_STANDARD_ARGS());
 
             VHalf = vel + 0.5f * ABase * ds;
 
             VFull_approx = vel + ABase * ds;
 
-            velocity_to_XDiff(&XDiff, Xpos, VHalf, scale, dim, ALL_ARGS());
+            velocity_to_XDiff(&XDiff, Xpos, VHalf, scale, dim, GET_STANDARD_ARGS());
 
             float3 XFull = Xpos + XDiff * ds;
 
@@ -2259,11 +2254,11 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         float ds = mix(0.1f, 2.f, my_fraction);
 
         float3 accel;
-        calculate_V_derivatives(&accel, Xpos, vel, scale, dim, ALL_ARGS());
+        calculate_V_derivatives(&accel, Xpos, vel, scale, dim, GET_STANDARD_ARGS());
 
         ///uncomment the accel*ds to get symplectic euler
         float3 XDiff;
-        velocity_to_XDiff(&XDiff, Xpos, vel /*+ accel * ds*/, scale, dim, ALL_ARGS());
+        velocity_to_XDiff(&XDiff, Xpos, vel /*+ accel * ds*/, scale, dim, GET_STANDARD_ARGS());
 
         Xpos += XDiff * ds;
 
@@ -2334,7 +2329,6 @@ float2 circular_diff2(float2 f1, float2 f2)
 
 __kernel void render_rays(__global struct lightray_simple* rays_in, __global int* ray_count, __write_only image2d_t screen,
                           STANDARD_ARGS(),
-                          STANDARD_DERIVS(),
                           float scale, int4 dim, int width, int height,
                           __read_only image2d_t mip_background,
                           __global float2* texture_coordinates, sampler_t sam, float3 camera_pos)
@@ -2361,7 +2355,7 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
     float3 cvel = {V0, V1, V2};
 
     float3 XDiff;
-    velocity_to_XDiff(&XDiff, cpos, cvel, scale, dim, ALL_ARGS());
+    velocity_to_XDiff(&XDiff, cpos, cvel, scale, dim, GET_STANDARD_ARGS());
 
     /*float density_frac = clamp(ray_in.density / SOLID_DENSITY, 0.f, 1.f);
 
