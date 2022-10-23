@@ -756,6 +756,26 @@ void evolve_cY(__global ushort4* points, int point_count,
     NANCHECK(ocY3);
     NANCHECK(ocY4);
     NANCHECK(ocY5);
+
+    /*88 106 104*/
+
+    if(ix == 88 && iy == 106 && iz == 104)
+    {
+        printf("Vals cY: %f %f %f %f %f %f cA: %f %f %f %f %f %f K: %f W: %f cGih %f %f %f theta %f gauge %f %f %f %f R: %f", cY0[index], cY1[index], cY2[index], cY3[index], cY4[index], cY5[index],
+               cA0[index], cA1[index], cA2[index], cA3[index], cA4[index], cA5[index],
+               K[index],
+               X[index],
+               cGi0[index],
+               cGi1[index],
+               cGi2[index],
+               //constraint_theta[index],
+               0.f,
+               gA[index],
+               gB0[index],
+               gB1[index],
+               gB2[index],
+               DT_R);
+    }
 }
 
 __kernel

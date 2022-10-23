@@ -846,7 +846,9 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
         step_kernel("evolve_X");
         step_kernel("evolve_gA");
         step_kernel("evolve_gB");
-        step_kernel("evolve_theta");
+
+        if(sett.use_theta)
+            step_kernel("evolve_theta");
 
         //copy_border(generic_in, generic_out);
     };

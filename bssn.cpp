@@ -75,6 +75,14 @@ void bssn::build_cY(equation_context& ctx)
 {
     standard_arguments args(ctx);
 
+    /*auto icY = args.cY.invert();
+    tensor<value, 3, 3, 3> christoff1 = christoffel_symbols_1(ctx, args.cY);
+
+    tensor<value, 3, 3> xgARij = bssn::calculate_xgARij(ctx, args, icY, christoff1, args.christoff2);
+
+    value R = trace(xgARij / (args.X * args.gA), icY);*/
+
+
     metric<value, 3, 3> unpinned_cY = args.cY;
 
     ctx.pin(args.cY);
@@ -116,6 +124,10 @@ void bssn::build_cY(equation_context& ctx)
 
         ctx.add(name, dtcYij.idx(idx.x(), idx.y()));
     }
+
+
+
+    //ctx.add("DT_R", R);
 }
 
 tensor<value, 3, 3> bssn::calculate_xgARij(equation_context& ctx, standard_arguments& args, const inverse_metric<value, 3, 3>& icY, const tensor<value, 3, 3, 3>& christoff1, const tensor<value, 3, 3, 3>& christoff2)
@@ -1478,6 +1490,8 @@ namespace
     }
 }
 
+value get_R(equation_context& ctx, ccz4_args& args);
+
 void ccz4::build_cY(equation_context& ctx)
 {
     ccz4_args args(ctx);
@@ -1496,6 +1510,8 @@ void ccz4::build_cY(equation_context& ctx)
 
         ctx.add(name, dtcYij.idx(idx.x(), idx.y()));
     }
+
+    ctx.add("DT_R", get_R(ctx, args));
 }
 
 tensor<value, 3, 3, 3> get_full_christoffel2(const value& W, const tensor<value, 3>& dW, const unit_metric<value, 3, 3>& cY, const tensor<value, 3, 3, 3>& christoff2)
