@@ -1786,3 +1786,90 @@ void ccz4::build_theta(equation_context& ctx)
 
     ctx.add("dtconstraint_theta", dtconstraint_theta);
 }
+
+void ccz4::build_cGi_hat(matter_interop& interop, equation_context& ctx, bool use_matter)
+{
+    ccz4_args args(ctx);
+
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+    tensor<value, 3, 3> aIJ = raise_both(args.cA, icY);
+
+    tensor<value, 3, 3, 3> christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
+
+    tensor<value, 3> Zi_lower = args.get_Zi_lowered(ctx);
+
+    tensor<value, 3> cGi = args.get_cGi(ctx);
+
+    tensor<value, 3> dtcG_hat;
+
+    for(int i=0; i < 3; i++)
+    {
+        value p1 = 0;
+
+        {
+            value s1 = 0;
+
+            for(int j=0; j < 3; j++)
+            {
+                for(int k=0; k < 3; k++)
+                {
+                    s1 += christoff2.idx(i, j, k) * aIJ.idx(j, k);
+                }
+            }
+
+            value s2 = 0;
+
+            for(int j=0; j < 3; j++)
+            {
+                s2 += -3.f * aIJ.idx(i, j) * diff1(ctx, args.W, j) / max(args.W, 0.0001f);
+            }
+
+            value s3 = 0;
+
+            for(int j=0; j < 3; j++)
+            {
+                s3 += -(2.f/3.f) * icY.idx(i, j) * diff1(ctx, args.K, j);
+            }
+
+            p1 = 2 * args.gA * (s1 + s2 + s3);
+        }
+
+        value p2 = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            p2 += 2 * icY.idx(k, i) * (
+                                       args.gA * diff1(ctx, args.theta, k)
+                                       - args.theta * diff1(ctx, args.gA, k)
+                                       - (2.f/3.f) * args.gA * args.K * Zi_lower.idx(k));
+        }
+
+        value p3 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            p3 += -2 * aIJ.idx(i, j) * diff1(ctx, args.gA, j);
+        }
+
+        value p4 = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            for(int l=0; l < 3; l++)
+            {
+                p4 += icY.idx(k, l) * diff2(ctx, args.gB.idx(i), l, k, args.digB.idx(l, i), args.digB.idx(k, i));
+            }
+        }
+
+        value p5 = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            for(int l=0; l < 3; l++)
+            {
+                p5 += (1.f/3.f) * icY.idx(i, k) * diff2(ctx, args.gB.idx(l), l, k, args.digB.idx(l, l), args.digB.idx(k, l));
+            }
+        }
+    }
+}
