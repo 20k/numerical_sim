@@ -5800,6 +5800,8 @@ int main()
     base_settings.use_matter = holes.use_matter;
     base_settings.use_matter_colour = false;
 
+    base_settings.use_theta = true;
+
     #ifdef USE_GBB
     base_settings.use_gBB = true;
     #endif // USE_GBB

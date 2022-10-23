@@ -1616,6 +1616,8 @@ void ccz4::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
 
     tensor<value, 3, 3> Rij = calculate_Rij(ctx, args);
 
+    ctx.pin(Rij);
+
     tensor<value, 3> Zi_lower = args.get_Zi_lowered(ctx);
 
     tensor<value, 3, 3> ZiDj = covariant_derivative_low_vec(ctx, Zi_lower, args.cY, icY);
@@ -1715,7 +1717,8 @@ value get_R(equation_context& ctx, ccz4_args& args)
 
 value get_k1(equation_context& ctx)
 {
-    return 0;
+    return 0.05;
+    //return 0;
 }
 
 value get_k2(equation_context& ctx)
@@ -1725,7 +1728,8 @@ value get_k2(equation_context& ctx)
 
 value get_k3(equation_context& ctx)
 {
-    return 0;
+    return 0.5f;
+    //return 0;
 }
 
 void ccz4::build_K(matter_interop& interop, equation_context& ctx, bool use_matter)
