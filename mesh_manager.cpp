@@ -40,6 +40,8 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
         {"gBB1", "evolve_cGi", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 2},
         {"gBB2", "evolve_cGi", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 2},
 
+        {"theta", "evolve_theta", cpu_mesh::dissipate_gauge, 0, 1, 3},
+
         {"Dp_star", "evolve_hydro_all", 0.25f, 0, 1, 1},
         {"De_star", "evolve_hydro_all", 0.25f, 0, 1, 1},
         {"DcS0", "evolve_hydro_all", 0.25f, 0, 1, 1},
@@ -68,6 +70,10 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
             buf.buf.alloc(buf_size);
         }
         else if(type == 2 && cfg.use_gBB)
+        {
+            buf.buf.alloc(buf_size);
+        }
+        else if(type == 3 && cfg.use_theta)
         {
             buf.buf.alloc(buf_size);
         }

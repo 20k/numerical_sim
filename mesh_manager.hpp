@@ -39,6 +39,7 @@ struct buffer_set_cfg
     bool use_matter = false;
     bool use_matter_colour = false;
     bool use_gBB = false;
+    bool use_theta = false;
 };
 
 struct buffer_set
@@ -102,6 +103,7 @@ struct cpu_mesh_settings
     bool use_matter = false;
     bool use_matter_colour = false;
     bool use_gBB = false;
+    bool use_theta = false;
 };
 
 struct matter_initial_vars
