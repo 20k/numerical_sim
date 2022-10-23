@@ -1907,9 +1907,9 @@ void ccz4::build_cGi_hat(matter_interop& interop, equation_context& ctx, bool us
             p9 += args.gB.idx(k) * diff1(ctx, args.cGi_hat.idx(i), k);
         }
 
-        value p10 = -2 * args.gA * get_k1(ctx) * args.get_cYij_Zj(ctx);
+        value p10 = -2 * args.gA * get_k1(ctx) * args.get_cYij_Zj(ctx).idx(i);
 
-        dtcG_hat.idx(i) = p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9 + p10;
+        dtcG_hat.idx(i) = p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8_1 + p8_2 + p9 + p10;
     }
 
     ctx.add("dtcGi0", dtcG_hat.idx(0));
