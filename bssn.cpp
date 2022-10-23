@@ -1440,6 +1440,19 @@ tensor<value, 3, 3> calculate_Rij(equation_context& ctx, ccz4_args& args)
     return cRij + rphiij;
 }
 
+namespace
+{
+    value W_to_X(const value& W)
+    {
+        return W*W;
+    }
+
+    tensor<value, 3> dW_to_dX(const value& W, const tensor<value, 3>& dW)
+    {
+        return 2 * W * dW;
+    }
+}
+
 void ccz4::build_cY(equation_context& ctx)
 {
     ccz4_args args(ctx);
@@ -1458,4 +1471,82 @@ void ccz4::build_cY(equation_context& ctx)
 
         ctx.add(name, dtcYij.idx(idx.x(), idx.y()));
     }
+}
+
+tensor<value, 3, 3> calculate_didja(equation_context& ctx)
+{
+    /*tensor<value, 3, 3> Xdidja;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value Xderiv = X * double_covariant_derivative(ctx, args.gA, args.digA, cY, icY, args.christoff2).idx(j, i);
+            //value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, args.digA, cY, icY).idx(j, i);
+
+            value s2 = 0.5f * (diff1(ctx, X, i) * diff1(ctx, gA, j) + diff1(ctx, X, j) * diff1(ctx, gA, i));
+
+            value s3 = 0;
+
+            for(int m=0; m < 3; m++)
+            {
+                for(int n=0; n < 3; n++)
+                {
+                    value v = icY.idx(m, n) * diff1(ctx, X, m) * diff1(ctx, gA, n);
+
+                    s3 += v;
+                }
+            }
+
+            Xdidja.idx(i, j) = Xderiv + s2 + -0.5f * cY.idx(i, j) * s3;
+        }
+    }
+
+    ctx.pin(Xdidja);*/
+
+    ccz4_args args(ctx);
+
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+    tensor<value, 3, 3, 3> christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
+
+    tensor<value, 3, 3> didja;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value s1 = double_covariant_derivative(ctx, args.gA, args.digA, args.cY, icY, christoff2).idx(j, i);
+
+            value X = W_to_X(args.W);
+            tensor<value, 3> dX = dW_to_dX(args.W, args.dW);
+
+            value clamped_X = 1/max(X, 0.0001f);
+
+            value s2 = (1/clamped_X) * 0.5f * (dX.idx(i) * args.digA.idx(j) + dX.idx(j) * args.digA.idx(i));
+
+            value i3 = 0;
+
+            for(int m=0; m < 3; m++)
+            {
+                for(int n=0; n < 3; n++)
+                {
+                    value v = icY.idx(m, n) * dX.idx(m) * diff1(ctx, args.gA, n);
+
+                    i3 += v;
+                }
+            }
+
+            value s3 = -(1 / (2 * clamped_X)) * args.cY.idx(i, j) * i3;
+
+            didja.idx(i, j) = s1 + s2 + s3;
+        }
+    }
+
+    return didja;
+}
+
+void ccz4::build_cA(matter_interop& interop, equation_context& ctx, bool use_matter)
+{
+
 }
