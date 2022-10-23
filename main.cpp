@@ -3690,17 +3690,7 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
         }
     }
 
-    metric<value, 3, 3> Yij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            float kronecker = (i == j) ? 1 : 0;
-
-            Yij.idx(i, j) = pow(bl_conformal + u, 4) * kronecker;
-        }
-    }
+    metric<value, 3, 3> Yij = pow(bl_conformal + u, 4) * get_flat_metric<value, 3>();
 
     value Y = Yij.det();
 
@@ -3712,93 +3702,14 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     ctx.pin(conformal_factor);
 
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf the york-lichnerowicz split
-    tensor<value, 3, 3> Aij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            Aij.idx(i, j) = pow(bl_conformal + u, -2) * bcAij.idx(i, j);
-        }
-    }
-
-    //value gA = 1;
-    ///https://arxiv.org/pdf/gr-qc/0206072.pdf (95)
-    //value gA = 1/(pow(bl_conformal + 1, 2));
+    tensor<value, 3, 3> Aij = pow(bl_conformal + u, -2) * bcAij;
 
     value gA = 1;
     //value gA = 1/(pow(bl_conformal + u, 2));
     ///https://arxiv.org/pdf/1304.3937.pdf
     //value gA = 2/(1 + pow(bl_conformal + 1, 4));
-    value gB0 = 0;
-    value gB1 = 0;
-    value gB2 = 0;
 
-    tensor<value, 3> cGi;
-    value K = 0;
-
-    ///https://arxiv.org/pdf/gr-qc/0206072.pdf (58)
-
-    value X = exp(-4 * conformal_factor);
-
-    tensor<value, 3, 3> cAij = X * Aij;
-
-    #define OLDFLAT
-    #ifdef OLDFLAT
-    for(int i=0; i < 3; i++)
-    {
-        cGi.idx(i) = 0;
-    }
-
-    K = 0;
-    #endif // OLDFLAT
-
-    tensor<value, 3, 3> cYij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            cYij.idx(i, j) = (i == j) ? 1 : 0;
-        }
-    }
-
-    for(int i=0; i < 6; i++)
-    {
-        vec2i index = linear_indices[i];
-
-        std::string y_name = "init_cY" + std::to_string(i);
-
-        ctx.add(y_name, cYij.idx(index.x(), index.y()));
-    }
-
-    for(int i=0; i < 6; i++)
-    {
-        ctx.add("init_cA" + std::to_string(i), cAij.idx(linear_indices[i].x(), linear_indices[i].y()));
-    }
-
-    ctx.add("init_cGi0", cGi.idx(0));
-    ctx.add("init_cGi1", cGi.idx(1));
-    ctx.add("init_cGi2", cGi.idx(2));
-
-    ctx.add("init_K", K);
-    ctx.add("init_X", X);
-
-    ctx.add("init_gA", gA);
-    ctx.add("init_gB0", gB0);
-    ctx.add("init_gB1", gB1);
-    ctx.add("init_gB2", gB2);
-
-    //#define USE_GBB
-    #ifdef USE_GBB
-    value gBB0 = 0;
-    value gBB1 = 0;
-    value gBB2 = 0;
-
-    ctx.add("init_gBB0", gBB0);
-    ctx.add("init_gBB1", gBB1);
-    ctx.add("init_gBB2", gBB2);
-    #endif // USE_GBB
+    bssn::init(ctx, Yij, Aij, gA);
 }
 
 inline

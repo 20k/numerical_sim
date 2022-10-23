@@ -383,6 +383,8 @@ namespace bssn
 {
     tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& args, const inverse_metric<value, 3, 3>& icY, const tensor<value, 3, 3, 3>& christoff1, const tensor<value, 3, 3, 3>& christoff2);
 
+    void init(equation_context& ctx, const metric<value, 3, 3>& Yij, const tensor<value, 3, 3>& Aij, const value& gA);
+
     void build_cY(equation_context& ctx);
     void build_cA(matter_interop& interop, equation_context& ctx, bool use_matter);
     void build_cGi(matter_interop& interop, equation_context& ctx, bool use_matter);
