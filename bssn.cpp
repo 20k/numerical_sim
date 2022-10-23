@@ -1335,11 +1335,28 @@ tensor<value, 3, 3> calculate_Rij(equation_context& ctx, ccz4_args& args)
     tensor<value, 3, 3> cRij;
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
+    ctx.pin(icY);
 
     tensor<value, 3> cGi = args.get_cGi(ctx);
 
     tensor<value, 3, 3, 3> christoff1 = christoffel_symbols_1(ctx, args.cY);
     tensor<value, 3, 3, 3> christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
+
+    ctx.pin(christoff1);
+    ctx.pin(christoff2);
+
+    tensor<value, 3, 3> DcGi;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            DcGi.idx(i, j) = diff1(ctx, cGi.idx(i), j);
+        }
+    }
+
+    ctx.pin(DcGi);
+    ctx.pin(cGi);
 
     for(int i=0; i < 3; i++)
     {
@@ -1359,7 +1376,8 @@ tensor<value, 3, 3> calculate_Rij(equation_context& ctx, ccz4_args& args)
 
             for(int k=0; k < 3; k++)
             {
-                s2 = s2 + 0.5f * (args.cY.idx(k, i) * diff1(ctx, cGi.idx(k), j) + args.cY.idx(k, j) * diff1(ctx, cGi.idx(k), i));
+                s2 = s2 + 0.5f * (args.cY.idx(k, i) * DcGi.idx(k, j) + args.cY.idx(k, j) * DcGi.idx(k, i));
+                //s2 = s2 + 0.5f * (args.cY.idx(k, i) * diff1(ctx, cGi.idx(k), j) + args.cY.idx(k, j) * diff1(ctx, cGi.idx(k), i));
             }
 
             value s3 = 0;
@@ -1395,6 +1413,8 @@ tensor<value, 3, 3> calculate_Rij(equation_context& ctx, ccz4_args& args)
             cRij.idx(i, j) = s1 + s2 + s3 + s4;
         }
     }
+
+    std::cout << "FARBLEBLARGLELEN " << type_to_string(cRij.idx(0, 0)).size() << std::endl;
 
     value i_W_sq = 1/max(args.W * args.W, 0.0001f);
 
@@ -1439,6 +1459,8 @@ tensor<value, 3, 3> calculate_Rij(equation_context& ctx, ccz4_args& args)
             rphiij.idx(i, j) = full;
         }
     }
+
+    std::cout << "ARBLEBLARGLELEN " << type_to_string(rphiij.idx(0, 0)).size() << std::endl;
 
     return cRij + rphiij;
 }
@@ -1671,7 +1693,7 @@ void ccz4::build_W(equation_context& ctx)
 
     value dtW = (1.f/3.f) * args.gA * args.W * args.K - (1.f/3.f) * args.W * dkbk + bkdw;
 
-    ctx.add("dtW", dtW);
+    ctx.add("dtX", dtW);
 }
 
 value get_R(equation_context& ctx, ccz4_args& args)
