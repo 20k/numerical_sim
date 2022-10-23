@@ -125,8 +125,6 @@ void bssn::build_cY(equation_context& ctx)
         ctx.add(name, dtcYij.idx(idx.x(), idx.y()));
     }
 
-
-
     //ctx.add("DT_R", R);
 }
 
@@ -225,6 +223,105 @@ tensor<value, 3, 3> bssn::calculate_xgARij(equation_context& ctx, standard_argum
     }
 
     tensor<value, 3, 3> xgARij = xgARphiij + args.X * args.gA * cRij;
+
+    ctx.pin(xgARij);
+
+    return xgARij;
+}
+
+tensor<value, 3, 3> calculate_xgARij_e(equation_context& ctx, const value& gA, const value& X, const tensor<value, 3>& dX, const unit_metric<value, 3, 3>& cY, const inverse_metric<value, 3, 3>& icY, const tensor<value, 3, 3, 3>& dcYij, const tensor<value, 3>& cGi, const tensor<value, 3, 3, 3>& christoff1, const tensor<value, 3, 3, 3>& christoff2)
+{
+    value gA_X = gA / max(X, 0.0001f);
+
+    tensor<value, 3, 3> cRij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value s1 = 0;
+
+            for(int l=0; l < 3; l++)
+            {
+                for(int m=0; m < 3; m++)
+                {
+                    s1 = s1 + -0.5f * icY.idx(l, m) * diff2(ctx, cY.idx(i, j), m, l, dcYij.idx(m, i, j), dcYij.idx(l, i, j));
+                }
+            }
+
+            value s2 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                s2 = s2 + 0.5f * (cY.idx(k, i) * diff1(ctx, cGi.idx(k), j) + cY.idx(k, j) * diff1(ctx, cGi.idx(k), i));
+            }
+
+            value s3 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                s3 = s3 + 0.5f * cGi.idx(k) * (christoff1.idx(i, j, k) + christoff1.idx(j, i, k));
+            }
+
+            value s4 = 0;
+
+            for(int m=0; m < 3; m++)
+            {
+                for(int l=0; l < 3; l++)
+                {
+                    value inner1 = 0;
+                    value inner2 = 0;
+
+                    for(int k=0; k < 3; k++)
+                    {
+                        inner1 = inner1 + 0.5f * (2 * christoff2.idx(k, l, i) * christoff1.idx(j, k, m) + 2 * christoff2.idx(k, l, j) * christoff1.idx(i, k, m));
+                    }
+
+                    for(int k=0; k < 3; k++)
+                    {
+                        inner2 = inner2 + christoff2.idx(k, i, m) * christoff1.idx(k, l, j);
+                    }
+
+                    s4 = s4 + icY.idx(l, m) * (inner1 + inner2);
+                }
+            }
+
+            cRij.idx(i, j) = s1 + s2 + s3 + s4;
+        }
+    }
+
+    tensor<value, 3, 3> cov_div_X = double_covariant_derivative(ctx, X, dX, cY, icY, christoff2);
+    ctx.pin(cov_div_X);
+
+    ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf
+    tensor<value, 3, 3> xgARphiij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value s1 = 0;
+            value s2 = 0;
+
+            for(int m=0; m < 3; m++)
+            {
+                for(int n=0; n < 3; n++)
+                {
+                    s1 += icY.idx(m, n) * cov_div_X.idx(n, m);
+                    s2 += icY.idx(m, n) * dX.idx(m) * dX.idx(n);
+                }
+            }
+
+            value s3 = (1/2.f) * (gA * cov_div_X.idx(j, i) - gA_X * (1/2.f) * dX.idx(i) * dX.idx(j));
+
+            s1 = gA * (cY.idx(i, j) / 2.f) * s1;
+            s2 = gA_X * (cY.idx(i, j) / 2.f) * -(3.f/2.f) * s2;
+
+            xgARphiij.idx(i, j) = s1 + s2 + s3;
+        }
+    }
+
+    tensor<value, 3, 3> xgARij = xgARphiij + X * gA * cRij;
 
     ctx.pin(xgARij);
 
@@ -1511,7 +1608,14 @@ void ccz4::build_cY(equation_context& ctx)
         ctx.add(name, dtcYij.idx(idx.x(), idx.y()));
     }
 
-    ctx.add("DT_R", get_R(ctx, args));
+    /*auto c1 = christoffel_symbols_1(ctx, args.cY);
+    auto c2 = christoffel_symbols_2(ctx, args.cY, args.cY.invert());
+
+    auto test = calculate_xgARij_e(ctx, args.gA, W_to_X(args.W), dW_to_dX(args.W, args.dW), args.cY, args.cY.invert(), args.dcYij, args.get_cGi(ctx), c1, c2);
+
+    value tr = trace(test / (W_to_X(args.W) * args.gA), args.iYij);
+
+    ctx.add("DT_R", tr);*/
 }
 
 tensor<value, 3, 3, 3> get_full_christoffel2(const value& W, const tensor<value, 3>& dW, const unit_metric<value, 3, 3>& cY, const tensor<value, 3, 3, 3>& christoff2)
@@ -1728,7 +1832,7 @@ value get_R(equation_context& ctx, ccz4_args& args)
 {
     tensor<value, 3, 3> Rij = calculate_Rij(ctx, args);
 
-    return trace(Rij, args.cY.invert());
+    return trace(Rij, args.iYij);
 }
 
 value get_k1(equation_context& ctx)

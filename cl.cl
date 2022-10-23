@@ -774,7 +774,9 @@ void evolve_cY(__global ushort4* points, int point_count,
                gB0[index],
                gB1[index],
                gB2[index],
-               DT_R);
+               //DT_R
+               0.f
+               );
     }
 }
 
