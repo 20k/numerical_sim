@@ -1673,3 +1673,71 @@ void ccz4::build_W(equation_context& ctx)
 
     ctx.add("dtW", dtW);
 }
+
+value get_R(equation_context& ctx, ccz4_args& args)
+{
+    tensor<value, 3, 3> Rij = calculate_Rij(ctx, args);
+
+    return trace(Rij, args.cY.invert());
+}
+
+value get_k1(equation_context& ctx)
+{
+    return 0;
+}
+
+value get_k2(equation_context& ctx)
+{
+    return 0;
+}
+
+value get_k3(equation_context& ctx)
+{
+    return 0;
+}
+
+void ccz4::build_K(matter_interop& interop, equation_context& ctx, bool use_matter)
+{
+    ccz4_args args(ctx);
+
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+    tensor<value, 3, 3> DiDja = calculate_didja(ctx);
+
+    tensor<value, 3, 3> raised_didja = -raise_index(DiDja, icY, 0);
+
+    value p1 = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        p1 += raised_didja.idx(i, i);
+    }
+
+    tensor<value, 3> Zi_upper = args.get_Zi_raised(ctx);
+
+    tensor<value, 3, 3> ZiDj = covariant_derivative_low_vec(ctx, Zi_upper, args.cY, icY);
+
+    value ZiDj_sum = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        ZiDj_sum += ZiDj.idx(i, i);
+    }
+
+    value R = get_R(ctx, args);
+
+    value p2 = args.gA * (R + 2 * ZiDj_sum + args.K * args.K - 2 * args.theta * args.K);
+
+    value p3 = 0;
+
+    for(int j=0; j < 3; j++)
+    {
+        p3 += args.gB.idx(j) * diff1(ctx, args.K, j);
+    }
+
+    value p4 = -3 * args.gA * get_k1(ctx) * (1 + get_k2(ctx)) * args.theta;
+
+    value dtK = p1 + p2 + p3 + p4;
+
+    ctx.add("dtK", dtK);
+}
