@@ -19,7 +19,12 @@ void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
 
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf (58)
     //value X = exp(-4 * conformal_factor);
+
+    #ifndef USE_W
     value X = pow(Y, -1.f/3.f);
+    #else
+    value X = pow(Y, -1.f/6.f);
+    #endif
 
     tensor<value, 3, 3> cAij = X * Aij;
 
@@ -308,6 +313,7 @@ tensor<value, 3, 3> bssn::calculate_xgARij(equation_context& ctx, standard_argum
         }
     }
 
+    #ifndef USE_W
     tensor<value, 3> dX = args.get_dX();
 
     ///this needs to be fixed if we're using W
@@ -341,6 +347,50 @@ tensor<value, 3, 3> bssn::calculate_xgARij(equation_context& ctx, standard_argum
             xgARphiij.idx(i, j) = s1 + s2 + s3;
         }
     }
+    #else
+    ///https://arxiv.org/pdf/1307.7391.pdf (9)
+    tensor<value, 3, 3> xgARphiij;
+
+    tensor<value, 3, 3> didjW;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            ///dcd uses the notation i;j
+            didjW.idx(i, j) = double_covariant_derivative(ctx, args.W_impl, args.dW_impl, args.cY, icY, christoff2).idx(j, i);
+        }
+    }
+
+    tensor<value, 3> dW = args.dW_calc;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value i1 = didjW.idx(i, j);
+
+            value s2 = 0;
+
+            for(int l=0; l < 3; l++)
+            {
+                s2 += raise_index(didjW, icY, 0).idx(l, l);
+            }
+
+            value i2 = args.cY.idx(i, j) * s2;
+
+            value left = args.W_impl * (i1 + i2);
+
+            value right_sum = sum_multiply(raise_index(dW, icY, 0), dW);
+
+            value right = -2 * args.cY.idx(i, j) * right_sum;
+
+            value full = (left + right);
+
+            xgARphiij.idx(i, j) = args.gA * full;
+        }
+    }
+    #endif
 
     tensor<value, 3, 3> xgARij = xgARphiij + args.get_X() * args.gA * cRij;
 
@@ -951,7 +1001,7 @@ void bssn::build_K(matter_interop& interop, equation_context& ctx, bool use_matt
 
 void bssn::build_X(equation_context& ctx)
 {
-    ///obviously needs to be different if we're using W
+    #ifndef USE_W
     standard_arguments args(ctx);
 
     tensor<value, 3> linear_dB;
@@ -964,6 +1014,21 @@ void bssn::build_X(equation_context& ctx)
     value dtX = (2.f/3.f) * args.get_X() * (args.gA * args.K - sum(linear_dB)) + sum(tensor_upwind(ctx, args.gB, args.get_X()));
 
     ctx.add("dtX", dtX);
+    #else
+    ///https://arxiv.org/pdf/0709.2160.pdf
+    standard_arguments args(ctx);
+
+    tensor<value, 3> linear_dB;
+
+    for(int i=0; i < 3; i++)
+    {
+        linear_dB.idx(i) = diff1(ctx, args.gB.idx(i), i);
+    }
+
+    value dtW = (1.f/3.f) * args.W_impl * (args.gA * args.K - sum(linear_dB)) + sum(tensor_upwind(ctx, args.gB, args.W_impl));
+
+    ctx.add("dtX", dtW);
+    #endif
 }
 
 void bssn::build_gA(equation_context& ctx)

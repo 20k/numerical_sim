@@ -39,7 +39,7 @@ value bidx(const std::string& buf, bool interpolate, bool is_derivative)
     }
 }
 
-//#define USE_W
+#define USE_W
 
 struct standard_arguments
 {
@@ -162,7 +162,7 @@ struct standard_arguments
         #ifndef USE_W
         X_impl = max(bidx("X", interpolate, false), 0);
         #else
-        W_impl = max(bidx("X", interpolate, false), 0);
+        W_impl = bidx("X", interpolate, false);
         #endif
 
         K = bidx("K", interpolate, false);
