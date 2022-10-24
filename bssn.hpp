@@ -72,6 +72,7 @@ struct standard_arguments
     tensor<value, 3, 3> digB;
     tensor<value, 3> digA;
     tensor<value, 3> dX_impl;
+    tensor<value, 3> dX_calc;
 
     tensor<value, 3> bigGi;
     tensor<value, 3> derived_cGi; ///undifferentiated cGi. Poor naming
@@ -86,7 +87,7 @@ struct standard_arguments
 
     tensor<value, 3> get_dX()
     {
-        return dX_impl;
+        return dX_calc;
     }
 
     standard_arguments(equation_context& ctx)
@@ -185,6 +186,11 @@ struct standard_arguments
         dX_impl.idx(0) = bidx("dX0", interpolate, true);
         dX_impl.idx(1) = bidx("dX1", interpolate, true);
         dX_impl.idx(2) = bidx("dX2", interpolate, true);
+
+        for(int i=0; i < 3; i++)
+        {
+            dX_calc.idx(i) = diff1(ctx, X_impl, i);
+        }
 
         ///derivative
         for(int i=0; i < 3; i++)
