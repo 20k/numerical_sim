@@ -385,6 +385,9 @@ namespace bssn
 
     void init(equation_context& ctx, const metric<value, 3, 3>& Yij, const tensor<value, 3, 3>& Aij, const value& gA);
 
+    tensor<value, 3> calculate_momentum_constraint(matter_interop& interop, equation_context& ctx, bool use_matter);
+    value calculate_hamiltonian_constraint(matter_interop& interop, equation_context& ctx, bool use_matter);
+
     void build_cY(equation_context& ctx);
     void build_cA(matter_interop& interop, equation_context& ctx, bool use_matter);
     void build_cGi(matter_interop& interop, equation_context& ctx, bool use_matter);

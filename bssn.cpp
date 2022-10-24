@@ -71,6 +71,131 @@ void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
     #endif // USE_GBB
 }
 
+///returns DcTab
+///my covariant derivative functions are an absolute mess
+tensor<value, 3, 3, 3> covariant_derivative_low_tensor(equation_context& ctx, const tensor<value, 3, 3>& mT, const metric<value, 3, 3>& met, const inverse_metric<value, 3, 3>& inverse)
+{
+    tensor<value, 3, 3, 3> christoff2 = christoffel_symbols_2(ctx, met, inverse);
+
+    tensor<value, 3, 3, 3> ret;
+
+    for(int a=0; a < 3; a++)
+    {
+        for(int b=0; b < 3; b++)
+        {
+            for(int c=0; c < 3; c++)
+            {
+                value sum = 0;
+
+                for(int d=0; d < 3; d++)
+                {
+                    sum += -christoff2.idx(d, c, a) * mT.idx(d, b) - christoff2.idx(d, c, b) * mT.idx(a, d);
+                }
+
+                ret.idx(c, a, b) = diff1(ctx, mT.idx(a, b), c) + sum;
+            }
+        }
+    }
+
+    return ret;
+}
+
+tensor<value, 3> bssn::calculate_momentum_constraint(matter_interop& interop, equation_context& ctx, bool use_matter)
+{
+    standard_arguments args(ctx);
+
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
+    auto unpinned_icY = icY;
+    ctx.pin(icY);
+
+    value X_clamped = max(args.X, 0.001f);
+
+    tensor<value, 3> Mi;
+
+    tensor<value, 3, 3, 3> dmni = covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
+
+    tensor<value, 3, 3> mixed_cAij = raise_index(args.cA, icY, 0);
+
+    tensor<value, 3> ji_lower = interop.calculate_adm_Si(ctx, args);
+
+    for(int i=0; i < 3; i++)
+    {
+        value s1 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            for(int n=0; n < 3; n++)
+            {
+                s1 += icY.idx(m, n) * dmni.idx(m, n, i);
+            }
+        }
+
+        value s2 = -(2.f/3.f) * diff1(ctx, args.K, i);
+
+        value s3 = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            s3 += -(3.f/2.f) * mixed_cAij.idx(m, i) * diff1(ctx, args.X, m) / X_clamped;
+        }
+
+        /*Mi.idx(i) = dual_if(args.X <= 0.001f,
+        []()
+        {
+            return 0.f;
+        },
+        [&]()
+        {
+            return s1 + s2 + s3;
+        });*/
+
+        Mi.idx(i) = s1 + s2 + s3;
+
+        if(use_matter)
+        {
+            Mi.idx(i) += -8 * M_PI * ji_lower.idx(i);
+        }
+    }
+
+    return Mi;
+}
+
+value bssn::calculate_hamiltonian_constraint(matter_interop& interop, equation_context& ctx, bool use_matter)
+{
+    standard_arguments args(ctx);
+
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+    tensor<value, 3, 3, 3> christoff1 = christoffel_symbols_1(ctx, args.cY);
+
+    tensor<value, 3, 3> xgARij = calculate_xgARij(ctx, args, icY, christoff1, args.christoff2);
+
+    tensor<value, 3, 3> Rij = xgARij / max(args.X * args.gA, 0.0001f);
+
+    value R = trace(Rij, args.iYij);
+
+    tensor<value, 3, 3> aIJ = raise_both(args.cA, icY);
+
+    value aij_aIJ;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            aij_aIJ += args.cA.idx(i, j) * aIJ.idx(i, j);
+        }
+    }
+
+    value ret = R + (2.f/3.f) * args.K * args.K - aij_aIJ;
+
+    if(use_matter)
+    {
+        ret += -16.f * M_PI * interop.calculate_adm_p(ctx, args);
+    }
+
+    return ret;
+}
+
 void bssn::build_cY(equation_context& ctx)
 {
     standard_arguments args(ctx);
