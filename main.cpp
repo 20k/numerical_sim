@@ -5160,6 +5160,8 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     ctx.add("X1Diff", dx.idx(1));
     ctx.add("X2Diff", dx.idx(2));
 
+    ctx.add("GET_X_DS", args.get_X());
+
     /**
     [tt, tx, ty, tz,
     xt, xx, xy, xz,

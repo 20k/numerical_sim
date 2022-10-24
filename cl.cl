@@ -2098,7 +2098,11 @@ float get_static_verlet_ds(float3 Xpos, __global float* X, float scale, int4 dim
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
     voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
-    float BH_X = buffer_read_linear(X, voxel_pos, dim);
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float BH_X = GET_X_DS;
 
     float my_fraction = (clamp(BH_X, X_near, X_far) - X_near) / (X_far - X_near);
 
