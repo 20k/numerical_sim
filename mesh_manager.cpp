@@ -40,7 +40,7 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
         {"gBB1", "evolve_cGi", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 2},
         {"gBB2", "evolve_cGi", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 2},
 
-        {"constraint_theta", "evolve_theta", 0, 0, 1, 3},
+        {"constraint_theta", "evolve_theta", 0.25f, 0, 1, 3},
 
         {"Dp_star", "evolve_hydro_all", 0.25f, 0, 1, 1},
         {"De_star", "evolve_hydro_all", 0.25f, 0, 1, 1},
