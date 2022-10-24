@@ -22,14 +22,12 @@ void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
 
     #ifndef USE_W
     value X = pow(Y, -1.f/3.f);
-    #else
-    value X = pow(Y, -1.f/6.f);
-    #endif
 
-    #ifndef USE_W
     tensor<value, 3, 3> cAij = X * Aij;
     metric<value, 3, 3> cYij = X * Yij;
     #else
+    value X = pow(Y, -1.f/6.f);
+
     tensor<value, 3, 3> cAij = X * X * Aij;
     metric<value, 3, 3> cYij = X * X * Yij;
     #endif
@@ -533,7 +531,7 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
             {
                 for(int n=0; n < 3; n++)
                 {
-                    value v = icY.idx(m, n) * diff1(ctx, X, m) * diff1(ctx, gA, n);
+                    value v = icY.idx(m, n) * dX.idx(m) * diff1(ctx, gA, n);
 
                     s3 += v;
                 }
@@ -721,6 +719,7 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
     tensor<value, 3> gB = args.gB;
 
     value X = args.get_X();
+    tensor<value, 3> dX = args.get_dX();
     value K = args.K;
 
     tensor<value, 3, 3> icAij = raise_both(cA, icY);
@@ -789,7 +788,7 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
 
         for(int j=0; j < 3; j++)
         {
-            s3 += 2 * (-1.f/4.f) * gA_X * 6 * icAij.idx(i, j) * diff1(ctx, X, j);
+            s3 += 2 * (-1.f/4.f) * gA_X * 6 * icAij.idx(i, j) * dX.idx(j);
         }
 
         value s4 = 0;
