@@ -477,8 +477,6 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
 
     unit_metric<value, 3, 3> cY = args.cY;
 
-    inverse_metric<value, 3, 3> unpinned_icY = cY.invert();
-
     ctx.pin(icY);
 
     tensor<value, 3, 3> cA = args.cA;
@@ -658,20 +656,21 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
 
             dtcAij.idx(i, j) += (-3.f/5.f) * sigma * BiMj_TF.idx(i, j);
             #endif // AIJ_SIGMA
-
-            ///matter
-            if(use_matter)
-            {
-                tensor<value, 3, 3> xSij = interop.calculate_adm_X_Sij(ctx, args);
-
-                tensor<value, 3, 3> xgASij = trace_free(-8 * M_PI * gA * xSij, cY, icY);
-
-                //ctx.add("DBGXGA", xgASij.idx(0, 0));
-                //ctx.add("Debug_cS0", args.matt.cS.idx(0));
-
-                dtcAij.idx(i, j) += xgASij.idx(i, j);
-            }
         }
+    }
+
+
+    ///matter
+    if(use_matter)
+    {
+        tensor<value, 3, 3> xSij = interop.calculate_adm_X_Sij(ctx, args);
+
+        tensor<value, 3, 3> xgASij = trace_free(-8 * M_PI * gA * xSij, cY, icY);
+
+        //ctx.add("DBGXGA", xgASij.idx(0, 0));
+        //ctx.add("Debug_cS0", args.matt.cS.idx(0));
+
+        dtcAij += xgASij;
     }
 
     for(int i=0; i < 6; i++)
