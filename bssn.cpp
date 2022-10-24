@@ -982,10 +982,6 @@ void bssn::build_K(matter_interop& interop, equation_context& ctx, bool use_matt
 
     tensor<value, 3, 3> icAij = raise_both(cA, icY);
 
-    value p1 = (1/3.f) * gA * K * K;
-
-    value p2 = gA * sum_multiply(icAij, cA);
-
     tensor<value, 3, 3> didja;
 
     for(int i=0; i < 3; i++)
@@ -1003,44 +999,11 @@ void bssn::build_K(matter_interop& interop, equation_context& ctx, bool use_matt
         dgA.idx(i) = diff1(ctx, args.gA, i);
     }
 
-    value summed_didja;
+    value p3 = -W * W * sum_multiply(icY.to_tensor(), didja);
 
-    /*for(int i=0; i < 3; i++)
-    {
-        summed_didja += raise_index(didja, icY, 0).idx(i, i);
-    }*/
+    value p4 = W * sum_multiply(raise_index(dgA, icY, 0), dW);
 
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            summed_didja += icY.idx(i, j) * didja.idx(i, j);
-        }
-    }
-
-    value p3 = summed_didja * -W * W;
-
-    value p4;
-
-    {
-        value sum = 0;
-
-        for(int i=0; i < 3; i++)
-        {
-            value DiW = dW.idx(i);
-
-            value raised_DiA = raise_index(dgA, icY, 0).idx(i);
-
-            sum += raised_DiA * DiW * W;
-        }
-
-        p4 = sum;
-    }
-
-    value p5 = sum(tensor_upwind(ctx, gB, K));
-
-    value dtK = p1 + p2 + p3 + p4 + p5;
-
+    value dtK = gA * ((1/3.f) * K * K + sum_multiply(icAij, cA)) + p3 + p4 + sum(tensor_upwind(ctx, gB, K));
     #endif
 
     if(use_matter)
