@@ -982,7 +982,7 @@ void bssn::build_K(matter_interop& interop, equation_context& ctx, bool use_matt
 
     tensor<value, 3, 3> icAij = raise_both(cA, icY);
 
-    value p1 = (1/3) * gA * K * K;
+    value p1 = (1/3.f) * gA * K * K;
 
     value p2 = gA * sum_multiply(icAij, cA);
 
