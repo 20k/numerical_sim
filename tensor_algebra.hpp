@@ -241,10 +241,8 @@ tensor<T, N, N, N> christoffel_symbols_1(differentiator& ctx, const metric<T, N,
 ///for the tensor DcDa, this returns idx(a, c)
 template<typename T, int N>
 inline
-tensor<T, N, N> covariant_derivative_low_vec(differentiator& ctx, const tensor<T, N>& v_in, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
+tensor<T, N, N> covariant_derivative_low_vec(differentiator& ctx, const tensor<T, N>& v_in, const tensor<T, N, N, N>& christoff2)
 {
-    auto christoff = christoffel_symbols_2(ctx, met, inverse);
-
     tensor<T, N, N> lac;
 
     for(int a=0; a < N; a++)
@@ -255,10 +253,47 @@ tensor<T, N, N> covariant_derivative_low_vec(differentiator& ctx, const tensor<T
 
             for(int b=0; b < N; b++)
             {
-                sum = sum + christoff.idx(b, c, a) * v_in.idx(b);
+                sum = sum + christoff2.idx(b, c, a) * v_in.idx(b);
             }
 
             lac.idx(a, c) = diff1(ctx, v_in.idx(a), c) - sum;
+        }
+    }
+
+    return lac;
+}
+
+///https://en.wikipedia.org/wiki/Covariant_derivative#Covariant_derivative_by_field_type
+///for the tensor DcDa, this returns idx(a, c)
+template<typename T, int N>
+inline
+tensor<T, N, N> covariant_derivative_low_vec(differentiator& ctx, const tensor<T, N>& v_in, const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse)
+{
+    auto christoff2 = christoffel_symbols_2(ctx, met, inverse);
+
+    return covariant_derivative_low_vec(ctx, v_in, christoff2);
+}
+
+///https://en.wikipedia.org/wiki/Covariant_derivative#Covariant_derivative_by_field_type
+///for the tensor DcDa, this returns idx(a, c)
+template<typename T, int N>
+inline
+tensor<T, N, N> covariant_derivative_upper_vec(differentiator& ctx, const tensor<T, N>& v_in, const tensor<T, N, N, N>& christoff2)
+{
+    tensor<T, N, N> lac;
+
+    for(int a=0; a < N; a++)
+    {
+        for(int b=0; b < N; b++)
+        {
+            T sum = 0;
+
+            for(int c=0; c < N; c++)
+            {
+                sum = sum + christoff2.idx(a, b, c) * v_in.idx(c);
+            }
+
+            lac.idx(a, b) = diff1(ctx, v_in.idx(a), b) + sum;
         }
     }
 

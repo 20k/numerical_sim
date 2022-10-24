@@ -1740,7 +1740,11 @@ void ccz4::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
 
     tensor<value, 3> Zi_lower = args.get_Zi_lowered(ctx);
 
-    tensor<value, 3, 3> ZiDj = covariant_derivative_low_vec(ctx, Zi_lower, args.cY, icY);
+    tensor<value, 3, 3, 3> christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
+
+    tensor<value, 3, 3, 3> full_christoff2 = get_full_christoffel2(args.W, args.dW, args.cY, christoff2);
+
+    tensor<value, 3, 3> ZiDj = covariant_derivative_low_vec(ctx, Zi_lower, full_christoff2);
 
     ctx.pin(ZiDj);
 
@@ -1872,8 +1876,10 @@ void ccz4::build_K(matter_interop& interop, equation_context& ctx, bool use_matt
     }
 
     tensor<value, 3> Zi_upper = args.get_Zi_raised(ctx);
+    tensor<value, 3, 3, 3> christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
+    tensor<value, 3, 3, 3> full_christoff2 = get_full_christoffel2(args.W, args.dW, args.cY, christoff2);
 
-    tensor<value, 3, 3> ZiDj = covariant_derivative_low_vec(ctx, Zi_upper, args.cY, icY);
+    tensor<value, 3, 3> ZiDj = covariant_derivative_upper_vec(ctx, Zi_upper, full_christoff2);
 
     value ZiDj_sum = 0;
 
@@ -1907,8 +1913,10 @@ void ccz4::build_theta(equation_context& ctx)
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
     tensor<value, 3> Zi_upper = args.get_Zi_raised(ctx);
+    tensor<value, 3, 3, 3> christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
+    tensor<value, 3, 3, 3> full_christoff2 = get_full_christoffel2(args.W, args.dW, args.cY, christoff2);
 
-    tensor<value, 3, 3> ZiDj = covariant_derivative_low_vec(ctx, Zi_upper, args.cY, icY);
+    tensor<value, 3, 3> ZiDj = covariant_derivative_upper_vec(ctx, Zi_upper, full_christoff2);
 
     value ZiDj_sum = 0;
 

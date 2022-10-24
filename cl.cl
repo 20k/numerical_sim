@@ -759,7 +759,9 @@ void evolve_cY(__global ushort4* points, int point_count,
 
     /*88 106 104*/
 
-    if(ix == 88 && iy == 106 && iz == 104)
+    ///73.000000 106.000000 106.000000
+    //if(ix == 88 && iy == 106 && iz == 104)
+    if(ix == 73 && iy == 106 && iz == 106)
     {
         printf("Vals cY: %f %f %f %f %f %f cA: %f %f %f %f %f %f K: %f W: %f cGih %f %f %f theta %f gauge %f %f %f %f R: %f", cY0[index], cY1[index], cY2[index], cY3[index], cY4[index], cY5[index],
                cA0[index], cA1[index], cA2[index], cA3[index], cA4[index], cA5[index],
