@@ -475,6 +475,7 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
     ctx.pin(christoff1);
     ctx.pin(christoff2);
 
+    #ifndef USE_W
     unit_metric<value, 3, 3> cY = args.cY;
 
     ctx.pin(icY);
@@ -659,13 +660,81 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
         }
     }
 
+    #else
+
+    tensor<value, 3> dgA;
+
+    for(int i=0; i < 3; i++)
+    {
+        dgA.idx(i) = diff1(ctx, args.gA, i);
+    }
+
+    tensor<value, 3> dW = args.dW_calc;
+    value W = args.W_impl;
+
+    ctx.pin(icY);
+
+    tensor<value, 3, 3> xgARij = bssn::calculate_xgARij(ctx, args, icY, christoff1, christoff2);
+
+    ctx.pin(xgARij);
+
+    tensor<value, 3, 3> dadw;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            dadw.idx(i, j) = 0.5f * (dgA.idx(i) * dW.idx(j) + dgA.idx(j) * dW.idx(i));
+        }
+    }
+
+    tensor<value, 3, 3> didja;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            didja.idx(i, j) = double_covariant_derivative(ctx, args.gA, args.digA, args.cY, icY, args.christoff2).idx(j, i);
+        }
+    }
+
+    tensor<value, 3, 3> dtcAij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value p1 = trace_free(xgARij, args.cY, icY).idx(i, j);
+
+            value p2 = args.gA * args.K * args.cA.idx(i, j);
+
+            value s3 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                s3 += -2 * args.gA * args.cA.idx(i, k) * raise_index(args.cA, icY, 0).idx(k, j);
+            }
+
+            value p3 = s3;
+
+            value p4 = -2 * W * trace_free(dadw, args.cY, icY).idx(i, j);
+
+            value p5 = -W * W * trace_free(didja, args.cY, icY).idx(i, j);
+
+            value p9 = lie_derivative_weight(ctx, args.gB, args.cA).idx(i, j);
+
+            dtcAij.idx(i, j) = p1 + p2 + p3 + p4 + p5 + p9;
+        }
+    }
+
+    #endif //USE_W
 
     ///matter
     if(use_matter)
     {
         tensor<value, 3, 3> xSij = interop.calculate_adm_X_Sij(ctx, args);
 
-        tensor<value, 3, 3> xgASij = trace_free(-8 * M_PI * gA * xSij, cY, icY);
+        tensor<value, 3, 3> xgASij = trace_free(-8 * M_PI * args.gA * xSij, args.cY, icY);
 
         //ctx.add("DBGXGA", xgASij.idx(0, 0));
         //ctx.add("Debug_cS0", args.matt.cS.idx(0));
