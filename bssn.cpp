@@ -940,10 +940,11 @@ void bssn::build_K(matter_interop& interop, equation_context& ctx, bool use_matt
     value gA = args.gA;
 
     tensor<value, 3> gB = args.gB;
+    value K = args.K;
 
+    #if 0
     value X = args.get_X();
     tensor<value, 3> dX = args.get_dX();
-    value K = args.K;
 
     tensor<value, 3, 3> Xdidja;
 
@@ -975,6 +976,72 @@ void bssn::build_K(matter_interop& interop, equation_context& ctx, bool use_matt
     tensor<value, 3, 3> icAij = raise_both(cA, icY);
 
     value dtK = sum(tensor_upwind(ctx, gB, K)) - sum_multiply(icY.to_tensor(), Xdidja) + gA * (sum_multiply(icAij, cA) + (1/3.f) * K * K);
+    #else
+    value W = args.W_impl;
+    tensor<value, 3> dW = args.dW_calc;
+
+    tensor<value, 3, 3> icAij = raise_both(cA, icY);
+
+    value p1 = (1/3) * gA * K * K;
+
+    value p2 = gA * sum_multiply(icAij, cA);
+
+    tensor<value, 3, 3> didja;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            didja.idx(i, j) = double_covariant_derivative(ctx, args.gA, args.digA, cY, icY, args.christoff2).idx(j, i);
+        }
+    }
+
+    tensor<value, 3> dgA;
+
+    for(int i=0; i < 3; i++)
+    {
+        dgA.idx(i) = diff1(ctx, args.gA, i);
+    }
+
+    value summed_didja;
+
+    /*for(int i=0; i < 3; i++)
+    {
+        summed_didja += raise_index(didja, icY, 0).idx(i, i);
+    }*/
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            summed_didja += icY.idx(i, j) * didja.idx(i, j);
+        }
+    }
+
+    value p3 = summed_didja * -W * W;
+
+    value p4;
+
+    {
+        value sum = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            value DiW = dW.idx(i);
+
+            value raised_DiA = raise_index(dgA, icY, 0).idx(i);
+
+            sum += raised_DiA * DiW * W;
+        }
+
+        p4 = sum;
+    }
+
+    value p5 = sum(tensor_upwind(ctx, gB, K));
+
+    value dtK = p1 + p2 + p3 + p4 + p5;
+
+    #endif
 
     if(use_matter)
     {
