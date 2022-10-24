@@ -784,12 +784,21 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
 
         value s2 = 2 * gA * -(2.f/3.f) * Yij_Kj.idx(i);
 
+        #ifndef USE_W
         value s3 = 0;
 
         for(int j=0; j < 3; j++)
         {
             s3 += 2 * (-1.f/4.f) * gA_X * 6 * icAij.idx(i, j) * dX.idx(j);
         }
+        #else
+        value s3 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s3 += 2 * (-1.f/4.f) * gA / max(args.W_impl, 0.0001f) * 6 * icAij.idx(i, j) * 2 * args.dW_calc.idx(j);
+        }
+        #endif
 
         value s4 = 0;
 
