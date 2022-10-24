@@ -48,7 +48,7 @@ struct standard_arguments
     unit_metric<value, 3, 3> cY;
     tensor<value, 3, 3> cA;
 
-    value X;
+    value X_impl;
     value K;
 
     tensor<value, 3> cGi;
@@ -71,13 +71,23 @@ struct standard_arguments
     tensor<value, 3, 3, 3> dcYij;
     tensor<value, 3, 3> digB;
     tensor<value, 3> digA;
-    tensor<value, 3> dX;
+    tensor<value, 3> dX_impl;
 
     tensor<value, 3> bigGi;
     tensor<value, 3> derived_cGi; ///undifferentiated cGi. Poor naming
     tensor<value, 3> always_derived_cGi; ///always calculated from metric
 
     tensor<value, 3, 3, 3> christoff2;
+
+    value get_X()
+    {
+        return X_impl;
+    }
+
+    tensor<value, 3> get_dX()
+    {
+        return dX_impl;
+    }
 
     standard_arguments(equation_context& ctx)
     {
@@ -131,27 +141,21 @@ struct standard_arguments
 
         //cA.idx(1, 1) = -(raised_cAij.idx(0, 0) + raised_cAij.idx(2, 2) + cA.idx(0, 1) * icY.idx(0, 1) + cA.idx(1, 2) * icY.idx(1, 2)) / (icY.idx(1, 1));
 
-        X = max(bidx("X", interpolate, false), 0);
+        X_impl = max(bidx("X", interpolate, false), 0);
         K = bidx("K", interpolate, false);
 
         //X = max(X, 0.0001f);
 
-        gA_X = gA / max(X, 0.001f);
+        gA_X = gA / max(X_impl, 0.001f);
 
         cGi.idx(0) = bidx("cGi0", interpolate, false);
         cGi.idx(1) = bidx("cGi1", interpolate, false);
         cGi.idx(2) = bidx("cGi2", interpolate, false);
 
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                Yij.idx(i, j) = cY.idx(i, j) / max(X, 0.001f);
-                iYij.idx(i, j) = X * icY.idx(i, j);
-            }
-        }
+        Yij = cY / max(get_X(), 0.001f);
+        iYij = get_X() * icY;
 
-        tensor<value, 3, 3> Aij = cA / max(X, 0.001f);
+        tensor<value, 3, 3> Aij = cA / max(get_X(), 0.001f);
 
         Kij = Aij + Yij.to_tensor() * (K / 3.f);
 
@@ -178,9 +182,9 @@ struct standard_arguments
         digA.idx(1) = bidx("digA1", interpolate, true);
         digA.idx(2) = bidx("digA2", interpolate, true);
 
-        dX.idx(0) = bidx("dX0", interpolate, true);
-        dX.idx(1) = bidx("dX1", interpolate, true);
-        dX.idx(2) = bidx("dX2", interpolate, true);
+        dX_impl.idx(0) = bidx("dX0", interpolate, true);
+        dX_impl.idx(1) = bidx("dX1", interpolate, true);
+        dX_impl.idx(2) = bidx("dX2", interpolate, true);
 
         ///derivative
         for(int i=0; i < 3; i++)

@@ -108,7 +108,7 @@ tensor<value, 3> bssn::calculate_momentum_constraint(matter_interop& interop, eq
     auto unpinned_icY = icY;
     ctx.pin(icY);
 
-    value X_clamped = max(args.X, 0.001f);
+    value X_clamped = max(args.get_X(), 0.001f);
 
     tensor<value, 3> Mi;
 
@@ -117,6 +117,8 @@ tensor<value, 3> bssn::calculate_momentum_constraint(matter_interop& interop, eq
     tensor<value, 3, 3> mixed_cAij = raise_index(args.cA, icY, 0);
 
     tensor<value, 3> ji_lower = interop.calculate_adm_Si(ctx, args);
+
+    tensor<value, 3> dX = args.get_dX();
 
     for(int i=0; i < 3; i++)
     {
@@ -136,7 +138,7 @@ tensor<value, 3> bssn::calculate_momentum_constraint(matter_interop& interop, eq
 
         for(int m=0; m < 3; m++)
         {
-            s3 += -(3.f/2.f) * mixed_cAij.idx(m, i) * diff1(ctx, args.X, m) / X_clamped;
+            s3 += -(3.f/2.f) * mixed_cAij.idx(m, i) * dX.idx(m) / X_clamped;
         }
 
         /*Mi.idx(i) = dual_if(args.X <= 0.001f,
@@ -170,7 +172,7 @@ value bssn::calculate_hamiltonian_constraint(matter_interop& interop, equation_c
 
     tensor<value, 3, 3> xgARij = calculate_xgARij(ctx, args, icY, christoff1, args.christoff2);
 
-    tensor<value, 3, 3> Rij = xgARij / max(args.X * args.gA, 0.0001f);
+    tensor<value, 3, 3> Rij = xgARij / max(args.get_X() * args.gA, 0.0001f);
 
     value R = trace(Rij, args.iYij);
 
@@ -306,7 +308,10 @@ tensor<value, 3, 3> bssn::calculate_xgARij(equation_context& ctx, standard_argum
         }
     }
 
-    tensor<value, 3, 3> cov_div_X = double_covariant_derivative(ctx, args.X, args.dX, args.cY, icY, christoff2);
+    tensor<value, 3> dX = args.get_dX();
+
+    ///this needs to be fixed if we're using W
+    tensor<value, 3, 3> cov_div_X = double_covariant_derivative(ctx, args.get_X(), args.dX_impl, args.cY, icY, christoff2);
     ctx.pin(cov_div_X);
 
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf
@@ -324,11 +329,11 @@ tensor<value, 3, 3> bssn::calculate_xgARij(equation_context& ctx, standard_argum
                 for(int n=0; n < 3; n++)
                 {
                     s1 += icY.idx(m, n) * cov_div_X.idx(n, m);
-                    s2 += icY.idx(m, n) * args.dX.idx(m) * args.dX.idx(n);
+                    s2 += icY.idx(m, n) * dX.idx(m) * dX.idx(n);
                 }
             }
 
-            value s3 = (1/2.f) * (args.gA * cov_div_X.idx(j, i) - gA_X * (1/2.f) * args.dX.idx(i) * args.dX.idx(j));
+            value s3 = (1/2.f) * (args.gA * cov_div_X.idx(j, i) - gA_X * (1/2.f) * dX.idx(i) * dX.idx(j));
 
             s1 = args.gA * (args.cY.idx(i, j) / 2.f) * s1;
             s2 = gA_X * (args.cY.idx(i, j) / 2.f) * -(3.f/2.f) * s2;
@@ -337,7 +342,7 @@ tensor<value, 3, 3> bssn::calculate_xgARij(equation_context& ctx, standard_argum
         }
     }
 
-    tensor<value, 3, 3> xgARij = xgARphiij + args.X * args.gA * cRij;
+    tensor<value, 3, 3> xgARij = xgARphiij + args.get_X() * args.gA * cRij;
 
     ctx.pin(xgARij);
 
@@ -391,7 +396,7 @@ value calculate_hamiltonian(equation_context& ctx, standard_arguments& args)
 
     tensor<value, 3, 3> xgARij = bssn::calculate_xgARij(ctx, args, icY, christoff1, args.christoff2);
 
-    return calculate_hamiltonian(args.cY, icY, args.Yij, args.iYij, (xgARij / (max(args.X, 0.001f) * args.gA)), args.K, args.cA);
+    return calculate_hamiltonian(args.cY, icY, args.Yij, args.iYij, (xgARij / (max(args.get_X(), 0.001f) * args.gA)), args.K, args.cA);
 }
 
 void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_matter)
@@ -448,8 +453,10 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
 
     tensor<value, 3> gB = args.gB;
 
-    value X = args.X;
+    value X = args.get_X();
     value K = args.K;
+
+    tensor<value, 3> dX = args.get_dX();
 
     tensor<value, 3> derived_cGi = args.derived_cGi;
 
@@ -466,7 +473,7 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
             value Xderiv = X * double_covariant_derivative(ctx, args.gA, args.digA, cY, icY, args.christoff2).idx(j, i);
             //value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, args.digA, cY, icY).idx(j, i);
 
-            value s2 = 0.5f * (diff1(ctx, X, i) * diff1(ctx, gA, j) + diff1(ctx, X, j) * diff1(ctx, gA, i));
+            value s2 = 0.5f * (dX.idx(i) * diff1(ctx, gA, j) + dX.idx(j) * diff1(ctx, gA, i));
 
             value s3 = 0;
 
@@ -661,7 +668,7 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
 
     tensor<value, 3> gB = args.gB;
 
-    value X = args.X;
+    value X = args.get_X();
     value K = args.K;
 
     tensor<value, 3, 3> icAij = raise_both(cA, icY);
@@ -874,7 +881,8 @@ void bssn::build_K(matter_interop& interop, equation_context& ctx, bool use_matt
 
     tensor<value, 3> gB = args.gB;
 
-    value X = args.X;
+    value X = args.get_X();
+    tensor<value, 3> dX = args.get_dX();
     value K = args.K;
 
     tensor<value, 3, 3> Xdidja;
@@ -886,7 +894,7 @@ void bssn::build_K(matter_interop& interop, equation_context& ctx, bool use_matt
             value Xderiv = X * double_covariant_derivative(ctx, args.gA, args.digA, cY, icY, args.christoff2).idx(j, i);
             //value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, args.digA, cY, icY).idx(j, i);
 
-            value s2 = 0.5f * (diff1(ctx, X, i) * diff1(ctx, gA, j) + diff1(ctx, X, j) * diff1(ctx, gA, i));
+            value s2 = 0.5f * (dX.idx(i) * diff1(ctx, gA, j) + dX.idx(j) * diff1(ctx, gA, i));
 
             value s3 = 0;
 
@@ -894,7 +902,7 @@ void bssn::build_K(matter_interop& interop, equation_context& ctx, bool use_matt
             {
                 for(int n=0; n < 3; n++)
                 {
-                    value v = -0.5f * cY.idx(i, j) * icY.idx(m, n) * diff1(ctx, X, m) * diff1(ctx, gA, n);
+                    value v = -0.5f * cY.idx(i, j) * icY.idx(m, n) * dX.idx(m) * diff1(ctx, gA, n);
 
                     s3 += v;
                 }
@@ -943,6 +951,7 @@ void bssn::build_K(matter_interop& interop, equation_context& ctx, bool use_matt
 
 void bssn::build_X(equation_context& ctx)
 {
+    ///obviously needs to be different if we're using W
     standard_arguments args(ctx);
 
     tensor<value, 3> linear_dB;
@@ -952,7 +961,7 @@ void bssn::build_X(equation_context& ctx)
         linear_dB.idx(i) = diff1(ctx, args.gB.idx(i), i);
     }
 
-    value dtX = (2.f/3.f) * args.X * (args.gA * args.K - sum(linear_dB)) + sum(tensor_upwind(ctx, args.gB, args.X));
+    value dtX = (2.f/3.f) * args.get_X() * (args.gA * args.K - sum(linear_dB)) + sum(tensor_upwind(ctx, args.gB, args.get_X()));
 
     ctx.add("dtX", dtX);
 }
@@ -994,7 +1003,7 @@ void bssn::build_gB(equation_context& ctx)
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-    value X = args.X;
+    value X = args.get_X();
 
     tensor<value, 3> bjdjbi;
 

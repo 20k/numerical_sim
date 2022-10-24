@@ -1772,14 +1772,9 @@ struct matter
         return -degenerate * (PQvis / Gamma) * sum_interior_rhs;
     }
 
-    tensor<value, 3> cSkvi_rhs(equation_context& ctx, const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const value& P, const value& W)
+    tensor<value, 3> cSkvi_rhs(equation_context& ctx, const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const tensor<value, 3>& dchi, const value& P, const value& W)
     {
-        tensor<value, 3> dX;
-
-        for(int i=0; i < 3; i++)
-        {
-            dX.idx(i) = diff1(ctx, chi, i);
-        }
+        tensor<value, 3> dX = dchi;
 
         //value PQvis = calculate_PQvis(ctx, gA, gB, icY, chi, W);
 
@@ -3763,7 +3758,7 @@ value get_cacheable_W(equation_context& ctx, standard_arguments& args, matter& m
     {
         ctx.pin(W);
 
-        W = w_next(W, matt.p_star, matter_X_2(args.X), icY, matt.cS, matt.Gamma, matt.e_star);
+        W = w_next(W, matt.p_star, matter_X_2(args.get_X()), icY, matt.cS, matt.Gamma, matt.e_star);
     }
 
     return W;
@@ -3782,7 +3777,7 @@ namespace hydrodynamics
 
         ctx.pin(sW);
 
-        value pressure = matt.gamma_eos_from_e_star(matter_X_2(args.X), sW);
+        value pressure = matt.gamma_eos_from_e_star(matter_X_2(args.get_X()), sW);
 
         ctx.add("init_pressure", pressure);
         ctx.add("init_W", sW);
@@ -3797,7 +3792,7 @@ namespace hydrodynamics
 
         inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-        value PQvis = matt.calculate_PQvis(ctx, args.gA, args.gB, icY, matter_X_2(args.X), sW);
+        value PQvis = matt.calculate_PQvis(ctx, args.gA, args.gB, icY, matter_X_2(args.get_X()), sW);
 
         ctx.add("init_artificial_viscosity", PQvis);
     }
@@ -3811,10 +3806,10 @@ namespace hydrodynamics
 
         value sW = bidx("hW", ctx.uses_linear, false);
 
-        tensor<value, 3, 3> cSk_vi = matt.cSk_vi(icY, args.gA, args.gB, matter_X_2(args.X), sW);
+        tensor<value, 3, 3> cSk_vi = matt.cSk_vi(icY, args.gA, args.gB, matter_X_2(args.get_X()), sW);
 
-        tensor<value, 3> p_star_vi = matt.p_star_vi(icY, args.gA, args.gB, matter_X_2(args.X), sW);
-        tensor<value, 3> e_star_vi = matt.e_star_vi(icY, args.gA, args.gB, matter_X_2(args.X), sW);
+        tensor<value, 3> p_star_vi = matt.p_star_vi(icY, args.gA, args.gB, matter_X_2(args.get_X()), sW);
+        tensor<value, 3> e_star_vi = matt.e_star_vi(icY, args.gA, args.gB, matter_X_2(args.get_X()), sW);
 
         value P = bidx("pressure", ctx.uses_linear, false);
 
@@ -3842,7 +3837,7 @@ namespace hydrodynamics
 
         //value sW = get_cacheable_W(ctx, args, matt2);
 
-        value rhs_dte_star = matt2.estar_vi_rhs(ctx, args.gA, args.gB, icY, matter_X_1(args.X), sW);
+        value rhs_dte_star = matt2.estar_vi_rhs(ctx, args.gA, args.gB, icY, matter_X_1(args.get_X()), sW);
 
         /*ctx.add("DBG_RHS_DTESTAR", rhs_dte_star);
 
@@ -3865,7 +3860,7 @@ namespace hydrodynamics
             lhs_dtSk.idx(k) = sum;
         }
 
-        tensor<value, 3> rhs_dtSk = matt2.cSkvi_rhs(ctx, icY, args.gA, args.gB, matter_X_2(args.X), P, sW);
+        tensor<value, 3> rhs_dtSk = matt2.cSkvi_rhs(ctx, icY, args.gA, args.gB, matter_X_2(args.get_X()), args.get_dX(), P, sW);
 
         value dtp_star = -lhs_dtp_star;
         value dte_star = -lhs_dte_star + rhs_dte_star;
@@ -3897,7 +3892,7 @@ namespace hydrodynamics
 
         value sW = bidx("hW", ctx.uses_linear, false);
 
-        tensor<value, 3> vi_upper = matt.get_v_upper(icY, args.gA, args.gB, matter_X_2(args.X), sW);
+        tensor<value, 3> vi_upper = matt.get_v_upper(icY, args.gA, args.gB, matter_X_2(args.get_X()), sW);
 
         value quantity = max(bidx("quantity_in", ctx.uses_linear, false), 0.f);
 
@@ -3932,7 +3927,7 @@ struct eularian_matter : matter_interop
 
         ctx.pin(W);
 
-        return matt.calculate_adm_S(args.cY, args.cY.invert(), args.X, W);
+        return matt.calculate_adm_S(args.cY, args.cY.invert(), args.get_X(), W);
     }
 
     virtual value calculate_adm_p(equation_context& ctx, standard_arguments& args) override
@@ -3943,7 +3938,7 @@ struct eularian_matter : matter_interop
 
         ctx.pin(W);
 
-        return matt.calculate_adm_p(args.X, W);
+        return matt.calculate_adm_p(args.get_X(), W);
     }
 
     virtual tensor<value, 3, 3> calculate_adm_X_Sij(equation_context& ctx, standard_arguments& args) override
@@ -3954,14 +3949,14 @@ struct eularian_matter : matter_interop
 
         ctx.pin(W);
 
-        return matt.calculate_adm_X_Sij(args.X, W, args.cY);
+        return matt.calculate_adm_X_Sij(args.get_X(), W, args.cY);
     }
 
     virtual tensor<value, 3> calculate_adm_Si(equation_context& ctx, standard_arguments& args) override
     {
         matter matt(ctx);
 
-        return matt.calculate_adm_Si(args.X);
+        return matt.calculate_adm_Si(args.get_X());
     }
 };
 
@@ -4141,162 +4136,9 @@ tensor<value, 3, 3, 3> gpu_covariant_derivative_low_tensor(equation_context& ctx
     return ret;
 }
 
-void build_momentum_constraint(equation_context& ctx, bool use_matter)
+void build_momentum_constraint(matter_interop& interop, equation_context& ctx, bool use_matter)
 {
-    standard_arguments args(ctx);
-
-    inverse_metric<value, 3, 3> icY = args.cY.invert();
-    auto unpinned_icY = icY;
-    ctx.pin(icY);
-
-    /*value X_recip = 0.f;
-
-    {
-        float min_X = 0.001;
-
-        X_recip = dual_if(args.X <= min_X,
-        [&]()
-        {
-            return 1.f / min_X;
-        },
-        [&]()
-        {
-            return 1.f / args.X;
-        });
-    }*/
-
-    value X_clamped = max(args.X, 0.001f);
-
-    tensor<value, 3> Mi;
-
-    for(int i=0; i < 3; i++)
-    {
-        Mi.idx(i) = 0;
-    }
-
-    //#define BETTERDAMP_DTCAIJ
-    //#define DAMP_DTCAIJ
-    //#define AIJ_SIGMA
-    #if defined(DAMP_DTCAIJ) || defined(BETTERDAMP_DTCAIJ) || defined(AIJ_SIGMA)
-    #define CALCULATE_MOMENTUM_CONSTRAINT
-    #endif // defined
-
-    #ifdef CALCULATE_MOMENTUM_CONSTRAINT
-    #if 1
-    tensor<value, 3, 3, 3> dmni = gpu_covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
-
-    tensor<value, 3, 3> mixed_cAij = raise_index(args.cA, args.cY, icY);
-
-    tensor<value, 3> ji_lower = args.matt.calculate_adm_Si(args.X);
-
-    for(int i=0; i < 3; i++)
-    {
-        value s1 = 0;
-
-        for(int m=0; m < 3; m++)
-        {
-            for(int n=0; n < 3; n++)
-            {
-                s1 += icY.idx(m, n) * dmni.idx(m, n, i);
-            }
-        }
-
-        value s2 = -(2.f/3.f) * diff1(ctx, args.K, i);
-
-        value s3 = 0;
-
-        for(int m=0; m < 3; m++)
-        {
-            s3 += -(3.f/2.f) * mixed_cAij.idx(m, i) * diff1(ctx, args.X, m) / X_clamped;
-        }
-
-        /*Mi.idx(i) = dual_if(args.X <= 0.001f,
-        []()
-        {
-            return 0.f;
-        },
-        [&]()
-        {
-            return s1 + s2 + s3;
-        });*/
-
-        Mi.idx(i) = s1 + s2 + s3;
-
-        if(use_matter)
-        {
-            Mi.idx(i) += -8 * M_PI * ji_lower.idx(i);
-        }
-    }
-    #endif // 0
-
-    /*tensor<value, 3, 3> second_cAij = raise_second_index(args.cA, args.cY, unpinned_icY);
-
-    for(int i=0; i < 3; i++)
-    {
-        value s1 = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            s1 += diff1(ctx, second_cAij.idx(i, j), j);
-        }
-
-        value s2 = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            for(int k=0; k < 3; k++)
-            {
-                s2 += -0.5f * icY.idx(j, k) * diff1(ctx, args.cA.idx(j, k), i);
-            }
-        }
-
-        value s3 = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            s3 += -0.25f * 6 * (1/X_clamped) * diff1(ctx, args.X, j) * second_cAij.idx(i, j);
-        }
-
-        value s4 = -(2.f/3.f) * diff1(ctx, args.K, i);
-
-        Mi.idx(i) = s1 + s2 + s3 + s4;
-    }*/
-    #endif // 0
-
-    /*tensor<value, 3> Mi;
-
-    tensor<value, 3, 3> second_cAij = raise_second_index(args.cA, args.cY, unpinned_icY);
-
-    for(int i=0; i < 3; i++)
-    {
-        value s1 = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            s1 += hacky_differentiate(second_cAij.idx(i, j), j);
-        }
-
-        value s2 = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            for(int k=0; k < 3; k++)
-            {
-                s2 += -0.5f * icY.idx(j, k) * hacky_differentiate(args.cA.idx(j, k), i);
-            }
-        }
-
-        value s3 = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            s3 += -0.25f * 6 * X_recip * hacky_differentiate(args.X, j) * second_cAij.idx(i, j);
-        }
-
-        value s4 = -(2.f/3.f) * hacky_differentiate(args.K, i);
-
-        Mi.idx(i) = s1 + s2 + s3 + s4;
-    }*/
+    tensor<value, 3> Mi = bssn::calculate_momentum_constraint(interop, ctx, use_matter);
 
     for(int i=0; i < 3; i++)
     {
@@ -4576,7 +4418,7 @@ void extract_waveforms(equation_context& ctx)
 
     tensor<value, 3, 3> xgARij = bssn::calculate_xgARij(ctx, args, icY, christoff1, christoff2);
 
-    tensor<value, 3, 3> Rij = xgARij / (args.gA * args.X);
+    tensor<value, 3, 3> Rij = xgARij / (args.gA * args.get_X());
 
     ctx.pin(Rij);
 
@@ -4589,8 +4431,10 @@ void extract_waveforms(equation_context& ctx)
 
     ctx.pin(Yij);
 
-    inverse_metric<value, 3, 3> iYij = args.X * icY;
+    inverse_metric<value, 3, 3> iYij = args.iYij;
     ctx.pin(iYij);
+
+    tensor<value, 3> dX = args.get_dX();
 
     //inverse_metric<value, 3, 3> iYij = Yij.invert();
 
@@ -4611,12 +4455,12 @@ void extract_waveforms(equation_context& ctx)
 
                 for(int m=0; m < 3; m++)
                 {
-                    sum += -args.cY.idx(j, k) * icY.idx(i, m) * diff1(ctx, args.X, m);
+                    sum += -args.cY.idx(j, k) * icY.idx(i, m) * dX.idx(m);
                 }
 
-                christoff_Y.idx(i, j, k) = christoff2.idx(i, j, k) - (1 / (2 * args.X)) *
-                (kronecker.idx(i, k) * diff1(ctx, args.X, j) +
-                 kronecker.idx(i, j) * diff1(ctx, args.X, k) +
+                christoff_Y.idx(i, j, k) = christoff2.idx(i, j, k) - (1 / (2 * args.get_X())) *
+                (kronecker.idx(i, k) * dX.idx(j) +
+                 kronecker.idx(i, j) * dX.idx(k) +
                  sum);
             }
         }
@@ -5181,9 +5025,11 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     ctx.pin(iYij);*/
 
-    inverse_metric<value, 3, 3> iYij = args.X * args.cY.invert();
+    inverse_metric<value, 3, 3> iYij = args.iYij;
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+    tensor<value, 3> dX = args.get_dX();
 
     tensor<value, 3, 3, 3> conformal_christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
 
@@ -5202,11 +5048,11 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
                 for(int m=0; m < 3; m++)
                 {
-                    sm += icY.idx(i, m) * diff1(ctx, args.X, m);
+                    sm += icY.idx(i, m) * dX.idx(m);
                 }
 
                 full_christoffel2.idx(i, j, k) = conformal_christoff2.idx(i, j, k) -
-                                                 (1.f/(2.f * args.X)) * (kronecker_ik * diff1(ctx, args.X, j) + kronecker_ij * diff1(ctx, args.X, k) - args.cY.idx(j, k) * sm);
+                                                 (1.f/(2.f * args.get_X())) * (kronecker_ik * dX.idx(j) + kronecker_ij * dX.idx(k) - args.cY.idx(j, k) * sm);
             }
         }
     }
@@ -5651,7 +5497,7 @@ int main()
     build_intermediate_thin_cY5(ctx12);
 
     equation_context ctx13;
-    build_momentum_constraint(ctx13, holes.use_matter);
+    build_momentum_constraint(interop, ctx13, holes.use_matter);
 
     equation_context ctx14;
     //build_hamiltonian_constraint(ctx14);
