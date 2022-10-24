@@ -117,22 +117,6 @@ https://arxiv.org/pdf/gr-qc/9908027.pdf - hydrodynamic paper off which the one I
 
 //#define USE_GBB
 
-template<typename T, int N>
-unit_metric<T, N, N> get_flat_metric()
-{
-    unit_metric<T, N, N> ret;
-
-    for(int i=0; i < N; i++)
-    {
-        for(int j=0; j < N; j++)
-        {
-            ret.idx(i, j) = i == j ? 1 : 0;
-        }
-    }
-
-    return ret;
-}
-
 //#define SYMMETRY_BOUNDARY
 #define BORDER_WIDTH 4
 

@@ -26,17 +26,19 @@ void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
     value X = pow(Y, -1.f/6.f);
     #endif
 
+    #ifndef USE_W
     tensor<value, 3, 3> cAij = X * Aij;
+    metric<value, 3, 3> cYij = X * Yij;
+    #else
+    tensor<value, 3, 3> cAij = X * X * Aij;
+    metric<value, 3, 3> cYij = X * X * Yij;
+    #endif
 
-    tensor<value, 3, 3> cYij;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            cYij.idx(i, j) = (i == j) ? 1 : 0;
-        }
-    }
+    ///need to do the same thing for Aij. Think the extrinsic curvature near the centre is screwed
+    #define FORCE_FLAT
+    #ifdef FORCE_FLAT
+    cYij = get_flat_metric<value, 3>();
+    #endif // FORCE_FLAT
 
     for(int i=0; i < 6; i++)
     {
