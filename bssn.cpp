@@ -18,8 +18,8 @@ void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
     value K = 0;
 
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf (58)
-
-    value X = exp(-4 * conformal_factor);
+    //value X = exp(-4 * conformal_factor);
+    value X = pow(Y, -1.f/3.f);
 
     tensor<value, 3, 3> cAij = X * Aij;
 
