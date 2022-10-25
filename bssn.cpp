@@ -1866,7 +1866,7 @@ void ccz4::build_K(matter_interop& interop, equation_context& ctx, bool use_matt
 
     tensor<value, 3, 3> DiDja = calculate_didja(ctx);
 
-    tensor<value, 3, 3> raised_didja = -raise_index(DiDja, icY, 0);
+    tensor<value, 3, 3> raised_didja = -raise_index(DiDja, args.iYij, 0);
 
     value p1 = 0;
 
