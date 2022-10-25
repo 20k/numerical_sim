@@ -4124,6 +4124,10 @@ void build_momentum_constraint(matter_interop& interop, equation_context& ctx, b
 {
     tensor<value, 3> Mi = bssn::calculate_momentum_constraint(interop, ctx, use_matter);
 
+    #if defined(BETTERDAMP_DTCAIJ) || defined(DAMP_DTCAIJ) || defined(AIJ_SIGMA)
+    #define CALCULATE_MOMENTUM_CONSTRAINT
+    #endif // defined
+
     for(int i=0; i < 3; i++)
     {
         ctx.add("init_momentum" + std::to_string(i), Mi.idx(i));

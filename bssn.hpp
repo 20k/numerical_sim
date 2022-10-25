@@ -40,6 +40,7 @@ value bidx(const std::string& buf, bool interpolate, bool is_derivative)
 }
 
 #define USE_W
+//#define BETTERDAMP_DTCAIJ
 
 struct standard_arguments
 {

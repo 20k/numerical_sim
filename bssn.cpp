@@ -111,7 +111,7 @@ tensor<value, 3> bssn::calculate_momentum_constraint(matter_interop& interop, eq
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
     auto unpinned_icY = icY;
-    ctx.pin(icY);
+    //ctx.pin(icY);
 
     value X_clamped = max(args.get_X(), 0.001f);
 
