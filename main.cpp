@@ -5357,10 +5357,10 @@ int main()
 
     std::cout << "EXT " << cl::get_extensions(clctx.ctx) << std::endl;
 
-    std::string argument_string = "-I ./ -cl-std=CL2.0 -cl-mad-enable ";
+    std::string argument_string = "-I ./ -cl-std=CL2.0 -cl-mad-enable -cl-fast-relaxed-math ";
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {213, 213, 213};
+    vec3i size = {255, 255, 255};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
