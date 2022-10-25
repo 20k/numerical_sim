@@ -39,6 +39,8 @@ value bidx(const std::string& buf, bool interpolate, bool is_derivative)
     }
 }
 
+#define USE_W
+
 struct standard_arguments
 {
     value gA;
@@ -48,7 +50,6 @@ struct standard_arguments
     unit_metric<value, 3, 3> cY;
     tensor<value, 3, 3> cA;
 
-    value X;
     value K;
 
     tensor<value, 3> cGi;
@@ -71,13 +72,40 @@ struct standard_arguments
     tensor<value, 3, 3, 3> dcYij;
     tensor<value, 3, 3> digB;
     tensor<value, 3> digA;
-    tensor<value, 3> dX;
+
+    #ifndef USE_W
+    value X_impl;
+    tensor<value, 3> dX_impl;
+    tensor<value, 3> dX_calc;
+    #else
+    value W_impl;
+    tensor<value, 3> dW_impl;
+    tensor<value, 3> dW_calc;
+    #endif
 
     tensor<value, 3> bigGi;
     tensor<value, 3> derived_cGi; ///undifferentiated cGi. Poor naming
     tensor<value, 3> always_derived_cGi; ///always calculated from metric
 
     tensor<value, 3, 3, 3> christoff2;
+
+    value get_X()
+    {
+        #ifndef USE_W
+        return X_impl;
+        #else
+        return W_impl * W_impl;
+        #endif
+    }
+
+    tensor<value, 3> get_dX()
+    {
+        #ifndef USE_W
+        return dX_calc;
+        #else
+        return 2 * W_impl * dW_calc;
+        #endif
+    }
 
     standard_arguments(equation_context& ctx)
     {
@@ -131,27 +159,26 @@ struct standard_arguments
 
         //cA.idx(1, 1) = -(raised_cAij.idx(0, 0) + raised_cAij.idx(2, 2) + cA.idx(0, 1) * icY.idx(0, 1) + cA.idx(1, 2) * icY.idx(1, 2)) / (icY.idx(1, 1));
 
-        X = max(bidx("X", interpolate, false), 0);
+        #ifndef USE_W
+        X_impl = max(bidx("X", interpolate, false), 0);
+        #else
+        W_impl = bidx("X", interpolate, false);
+        #endif
+
         K = bidx("K", interpolate, false);
 
         //X = max(X, 0.0001f);
 
-        gA_X = gA / max(X, 0.001f);
+        gA_X = gA / max(get_X(), 0.001f);
 
         cGi.idx(0) = bidx("cGi0", interpolate, false);
         cGi.idx(1) = bidx("cGi1", interpolate, false);
         cGi.idx(2) = bidx("cGi2", interpolate, false);
 
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                Yij.idx(i, j) = cY.idx(i, j) / max(X, 0.001f);
-                iYij.idx(i, j) = X * icY.idx(i, j);
-            }
-        }
+        Yij = cY / max(get_X(), 0.001f);
+        iYij = get_X() * icY;
 
-        tensor<value, 3, 3> Aij = cA / max(X, 0.001f);
+        tensor<value, 3, 3> Aij = cA / max(get_X(), 0.001f);
 
         Kij = Aij + Yij.to_tensor() * (K / 3.f);
 
@@ -178,9 +205,25 @@ struct standard_arguments
         digA.idx(1) = bidx("digA1", interpolate, true);
         digA.idx(2) = bidx("digA2", interpolate, true);
 
-        dX.idx(0) = bidx("dX0", interpolate, true);
-        dX.idx(1) = bidx("dX1", interpolate, true);
-        dX.idx(2) = bidx("dX2", interpolate, true);
+        #ifndef USE_W
+        dX_impl.idx(0) = bidx("dX0", interpolate, true);
+        dX_impl.idx(1) = bidx("dX1", interpolate, true);
+        dX_impl.idx(2) = bidx("dX2", interpolate, true);
+
+        for(int i=0; i < 3; i++)
+        {
+            dX_calc.idx(i) = diff1(ctx, X_impl, i);
+        }
+        #else
+        dW_impl.idx(0) = bidx("dX0", interpolate, true);
+        dW_impl.idx(1) = bidx("dX1", interpolate, true);
+        dW_impl.idx(2) = bidx("dX2", interpolate, true);
+
+        for(int i=0; i < 3; i++)
+        {
+            dW_calc.idx(i) = diff1(ctx, W_impl, i);
+        }
+        #endif
 
         ///derivative
         for(int i=0; i < 3; i++)

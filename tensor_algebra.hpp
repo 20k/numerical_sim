@@ -306,5 +306,21 @@ tensor<T, N, N> lower_both(const tensor<T, N, N>& mT, const metric<T, N, N>& met
     return lower_index(lower_index(mT, met, 0), met, 1);
 }
 
+template<typename T, int N>
+inline
+unit_metric<T, N, N> get_flat_metric()
+{
+    unit_metric<T, N, N> ret;
+
+    for(int i=0; i < N; i++)
+    {
+        for(int j=0; j < N; j++)
+        {
+            ret.idx(i, j) = i == j ? 1 : 0;
+        }
+    }
+
+    return ret;
+}
 
 #endif // TENSOR_ALGEBRA_HPP_INCLUDED
