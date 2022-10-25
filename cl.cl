@@ -1601,7 +1601,7 @@ void render(STANDARD_ARGS(),
 
         int index = IDX(ix, iy, iz);
 
-        #define RENDER_METRIC
+        //#define RENDER_METRIC
         #ifdef RENDER_METRIC
         float Yxx = cY0[index];
         float Yxy = cY1[index];
@@ -1715,6 +1715,19 @@ void render(STANDARD_ARGS(),
 
         ascalar *= 0.2f;
         #endif // RENDER_DCY
+
+        #define RENDER_MOMENTUM
+        #ifdef RENDER_MOMENTUM
+        int order = D_FULL;
+
+        float M0 = init_momentum0;
+        float M1 = init_momentum1;
+        float M2 = init_momentum2;
+
+        float M = (fabs(M0) + fabs(M1) + fabs(M2)) / 3.f;
+
+        float ascalar = M * 1000 / 40.f;
+        #endif // RENDER_MOMENTUM
 
         #ifndef RENDER_GB
         max_scalar = max(ascalar, max_scalar);
