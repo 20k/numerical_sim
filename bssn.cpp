@@ -1673,12 +1673,12 @@ value get_k3(equation_context& ctx)
 
 value get_kc(equation_context& ctx)
 {
-    return 0.5f;
+    return 1.f;
 }
 
 value get_kz(equation_context& ctx)
 {
-    return 0.1f;
+    return 1.f;
 }
 
 void ccz4::build_cY(equation_context& ctx)
