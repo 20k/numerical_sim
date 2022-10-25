@@ -2073,7 +2073,7 @@ void ccz4::build_theta(equation_context& ctx)
 
     for(int i=0; i < 3; i++)
     {
-        ZiDia += 2 * Zi_upper.idx(i) * diff1(ctx, args.gA, i);
+        ZiDia += Zi_upper.idx(i) * diff1(ctx, args.gA, i);
     }
 
     value R = get_R(ctx, args);
