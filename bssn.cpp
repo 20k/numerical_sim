@@ -1555,7 +1555,7 @@ tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, ccz4_args& args)
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf
     tensor<value, 3, 3> xgARphiij;
 
-    for(int i=0; i < 3; i++)
+    /*for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
@@ -1577,6 +1577,58 @@ tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, ccz4_args& args)
             s2 = gA_X * (cY.idx(i, j) / 2.f) * -(3.f/2.f) * s2;
 
             xgARphiij.idx(i, j) = s1 + s2 + s3;
+        }
+    }*/
+
+    value iX = 1.f / max(args.X, 0.0001f);
+
+    value cgi_hat_x = 0;
+
+    for(int k=0; k < 3; k++)
+    {
+        cgi_hat_x += args.cGi_hat.idx(k) * dX.idx(k);
+    }
+
+    tensor<value, 3> Zi_upper = args.get_Zi_raised(ctx);
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value p1 = gA * 0.5f * diff2(ctx, X, j, i, dX.idx(j), dX.idx(i));
+
+            value p2 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                p2 += -0.5f * gA * christoff2.idx(k, i, j) * dX.idx(k);
+            }
+
+            value p3 = -0.25f * gA_X * dX.idx(i) * dX.idx(j);
+
+            value p4 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                p4 += 2 * gA_X * Zi_upper.idx(k) * 0.5f * (cY.idx(k, i) * dX.idx(j) + cY.idx(k, j) * dX.idx(i));
+            }
+
+            value p5 = 0;
+            value s5 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                for(int m=0; m < 3; m++)
+                {
+                    value inner = diff2(ctx, X, m, k, dX.idx(m), dX.idx(k)) - (3.f/2.f) * iX * dX.idx(k) * dX.idx(m);
+
+                    s5 += icY.idx(k, m) * inner;
+                }
+            }
+
+            p5 = 0.5f * args.gA * cY.idx(i, j) * (s5 - cgi_hat_x);
+
+            xgARphiij.idx(i, j) = p1 + p2 + p3 + p4 + p5;
         }
     }
 
@@ -1906,9 +1958,9 @@ void ccz4::build_W(equation_context& ctx)
 
 value get_R(equation_context& ctx, ccz4_args& args)
 {
-    tensor<value, 3, 3> Rij = calculate_xgARij(ctx, args) / max(args.X * args.gA, 0.0001f);
+    tensor<value, 3, 3> XRij = calculate_xgARij(ctx, args) / max(args.gA, 0.0001f);
 
-    return trace(Rij, args.iYij);
+    return trace(XRij, args.cY.invert());
 }
 
 void ccz4::build_K(matter_interop& interop, equation_context& ctx, bool use_matter)
