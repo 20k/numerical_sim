@@ -118,6 +118,7 @@ https://arxiv.org/pdf/gr-qc/9908027.pdf - hydrodynamic paper off which the one I
 //#define USE_GBB
 
 template<typename T, int N>
+inline
 unit_metric<T, N, N> get_flat_metric()
 {
     unit_metric<T, N, N> ret;

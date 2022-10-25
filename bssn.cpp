@@ -1174,7 +1174,7 @@ struct ccz4_args
     unit_metric<value, 3, 3> cY;
     tensor<value, 3, 3> cA;
 
-    value W;
+    value X;
     value K;
     value theta;
 
@@ -1183,7 +1183,7 @@ struct ccz4_args
     tensor<value, 3, 3, 3> dcYij;
     tensor<value, 3, 3> digB;
     tensor<value, 3> digA;
-    tensor<value, 3> dW;
+    tensor<value, 3> dX;
 
     inverse_metric<value, 3, 3> iYij;
 
@@ -1242,7 +1242,7 @@ struct ccz4_args
             }
         }
 
-        W = bidx("X", interpolate, false);
+        X = bidx("X", interpolate, false);
         K = bidx("K", interpolate, false);
 
         theta = bidx("constraint_theta", interpolate, false);
@@ -1266,9 +1266,9 @@ struct ccz4_args
         digA.idx(1) = bidx("digA1", interpolate, true);
         digA.idx(2) = bidx("digA2", interpolate, true);
 
-        dW.idx(0) = bidx("dX0", interpolate, true);
-        dW.idx(1) = bidx("dX1", interpolate, true);
-        dW.idx(2) = bidx("dX2", interpolate, true);
+        dX.idx(0) = bidx("dX0", interpolate, true);
+        dX.idx(1) = bidx("dX1", interpolate, true);
+        dX.idx(2) = bidx("dX2", interpolate, true);
 
         ///derivative
         for(int i=0; i < 3; i++)
@@ -1282,7 +1282,7 @@ struct ccz4_args
             }
         }
 
-        iYij = W * W * cY.invert();
+        iYij = X * cY.invert();
     }
 
     tensor<value, 3> get_cGi(equation_context& ctx)
@@ -1350,7 +1350,7 @@ struct ccz4_args
         ///to actually raise it, we need to multiply by w^2
         tensor<value, 3> cYij_Zj = get_cYij_Zj(ctx);
 
-        return W * W * cYij_Zj;
+        return X * cYij_Zj;
     }
 
     tensor<value, 3> get_Zi_lowered(equation_context& ctx)
@@ -1378,6 +1378,23 @@ struct ccz4_args
     }
 };
 
+template<typename T, int N>
+inline
+unit_metric<T, N, N> get_flat_metric()
+{
+    unit_metric<T, N, N> ret;
+
+    for(int i=0; i < N; i++)
+    {
+        for(int j=0; j < N; j++)
+        {
+            ret.idx(i, j) = i == j ? 1 : 0;
+        }
+    }
+
+    return ret;
+}
+
 void ccz4::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const tensor<value, 3, 3>& Aij, const value& gA)
 {
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
@@ -1393,10 +1410,12 @@ void ccz4::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
 
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf (58)
 
-    value W = pow(Y, -1.f/6.f);
+    value X = pow(Y, -1.f/3.f);
 
-    tensor<value, 3, 3> cAij = W * W * Aij;
-    metric<value, 3, 3> cYij = W * W * Yij;
+    tensor<value, 3, 3> cAij = X * Aij;
+    metric<value, 3, 3> cYij = X * Yij;
+
+    cYij = get_flat_metric<value, 3>();
 
     for(int i=0; i < 6; i++)
     {
@@ -1417,7 +1436,7 @@ void ccz4::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
     ctx.add("init_cGi2", cGi.idx(2));
 
     ctx.add("init_K", K);
-    ctx.add("init_X", W);
+    ctx.add("init_X", X);
 
     ctx.add("init_gA", gA);
     ctx.add("init_gB0", gB0);
@@ -1439,14 +1458,14 @@ void ccz4::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
     ctx.add("init_constraint_theta", 0);
 }
 
-tensor<value, 3, 3> calculate_Rij(equation_context& ctx, ccz4_args& args)
+tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, ccz4_args& args)
 {
     tensor<value, 3, 3> cRij;
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
     ctx.pin(icY);
 
-    tensor<value, 3> cGi = args.get_cGi(ctx);
+    tensor<value, 3> cGi_hat = args.cGi_hat;
 
     tensor<value, 3, 3, 3> christoff1 = christoffel_symbols_1(ctx, args.cY);
     tensor<value, 3, 3, 3> christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
@@ -1460,12 +1479,11 @@ tensor<value, 3, 3> calculate_Rij(equation_context& ctx, ccz4_args& args)
     {
         for(int j=0; j < 3; j++)
         {
-            DcGi.idx(i, j) = diff1(ctx, cGi.idx(i), j);
+            DcGi.idx(i, j) = diff1(ctx, cGi_hat.idx(i), j);
         }
     }
 
     ctx.pin(DcGi);
-    ctx.pin(cGi);
 
     for(int i=0; i < 3; i++)
     {
@@ -1493,7 +1511,7 @@ tensor<value, 3, 3> calculate_Rij(equation_context& ctx, ccz4_args& args)
 
             for(int k=0; k < 3; k++)
             {
-                s3 = s3 + 0.5f * cGi.idx(k) * (christoff1.idx(i, j, k) + christoff1.idx(j, i, k));
+                s3 = s3 + 0.5f * cGi_hat.idx(k) * (christoff1.idx(i, j, k) + christoff1.idx(j, i, k));
             }
 
             value s4 = 0;
@@ -1525,53 +1543,46 @@ tensor<value, 3, 3> calculate_Rij(equation_context& ctx, ccz4_args& args)
 
     std::cout << "FARBLEBLARGLELEN " << type_to_string(cRij.idx(0, 0)).size() << std::endl;
 
-    value i_W_sq = 1/max(args.W * args.W, 0.0001f);
+    value X = args.X;
+    auto dX = args.dX;
+    auto cY = args.cY;
+    auto gA = args.gA;
+    auto gA_X = args.gA / max(args.X, 0.0001f);
 
-    tensor<value, 3, 3> didjW;
+    tensor<value, 3, 3> cov_div_X = double_covariant_derivative(ctx, X, dX, cY, icY, christoff2);
+    ctx.pin(cov_div_X);
 
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            ///dcd uses the notation i;j
-            didjW.idx(i, j) = double_covariant_derivative(ctx, args.W, args.dW, args.cY, icY, christoff2).idx(j, i);
-        }
-    }
-
-    tensor<value, 3> dW = args.dW;
-
-    tensor<value, 3, 3> rphiij;
+    ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf
+    tensor<value, 3, 3> xgARphiij;
 
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
-            value i1 = didjW.idx(i, j);
-
+            value s1 = 0;
             value s2 = 0;
 
-            for(int l=0; l < 3; l++)
+            for(int m=0; m < 3; m++)
             {
-                s2 += raise_index(didjW, icY, 0).idx(l, l);
+                for(int n=0; n < 3; n++)
+                {
+                    s1 += icY.idx(m, n) * cov_div_X.idx(n, m);
+                    s2 += icY.idx(m, n) * dX.idx(m) * dX.idx(n);
+                }
             }
 
-            value i2 = args.cY.idx(i, j) * s2;
+            value s3 = (1/2.f) * (gA * cov_div_X.idx(j, i) - gA_X * (1/2.f) * dX.idx(i) * dX.idx(j));
 
-            value left = args.W * (i1 + i2);
+            s1 = gA * (cY.idx(i, j) / 2.f) * s1;
+            s2 = gA_X * (cY.idx(i, j) / 2.f) * -(3.f/2.f) * s2;
 
-            value right_sum = sum_multiply(raise_index(dW, icY, 0), dW);
-
-            value right = -2 * args.cY.idx(i, j) * right_sum;
-
-            value full = i_W_sq * (left + right);
-
-            rphiij.idx(i, j) = full;
+            xgARphiij.idx(i, j) = s1 + s2 + s3;
         }
     }
 
-    std::cout << "ARBLEBLARGLELEN " << type_to_string(rphiij.idx(0, 0)).size() << std::endl;
+    tensor<value, 3, 3> xgARij = xgARphiij + X * gA * cRij;
 
-    return cRij + rphiij;
+    return xgARij;
 }
 
 namespace
@@ -1589,6 +1600,30 @@ namespace
 
 value get_R(equation_context& ctx, ccz4_args& args);
 
+value get_k1(equation_context& ctx)
+{
+    ccz4_args args(ctx);
+
+    return 0.05 / max(args.gA, 0.0001f);
+    //return 0;
+}
+
+value get_k2(equation_context& ctx)
+{
+    return 0;
+}
+
+value get_k3(equation_context& ctx)
+{
+    return 0.5f;
+    //return 0;
+}
+
+value get_kc(equation_context& ctx)
+{
+    return 0.5f;
+}
+
 void ccz4::build_cY(equation_context& ctx)
 {
     ccz4_args args(ctx);
@@ -1598,6 +1633,8 @@ void ccz4::build_cY(equation_context& ctx)
     ///https://arxiv.org/pdf/gr-qc/0511048.pdf (1)
     ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.66
     tensor<value, 3, 3> dtcYij = -2 * args.gA * trace_free(args.cA, args.cY, args.cY.invert()) + lie_cYij;
+
+    dtcYij += -(get_kc(ctx) / 3.f) * args.gA * args.cY.to_tensor() * log(args.cY.det());
 
     for(int i=0; i < 6; i++)
     {
@@ -1686,6 +1723,8 @@ tensor<value, 3, 3> calculate_didja(equation_context& ctx)
 
     ccz4_args args(ctx);
 
+    auto gA = args.gA;
+
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
     tensor<value, 3, 3, 3> christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
@@ -1698,12 +1737,11 @@ tensor<value, 3, 3> calculate_didja(equation_context& ctx)
         {
             value s1 = double_covariant_derivative(ctx, args.gA, args.digA, args.cY, icY, christoff2).idx(j, i);
 
-            value X = W_to_X(args.W);
-            tensor<value, 3> dX = dW_to_dX(args.W, args.dW);
+            value X = args.X;
 
             value clamped_X = 1/max(X, 0.0001f);
 
-            value s2 = (1/clamped_X) * 0.5f * (dX.idx(i) * args.digA.idx(j) + dX.idx(j) * args.digA.idx(i));
+            value s2 = (1/clamped_X) * 0.5f * (diff1(ctx, X, i) * diff1(ctx, gA, j) + diff1(ctx, X, j) * diff1(ctx, gA, i));
 
             value i3 = 0;
 
@@ -1711,7 +1749,7 @@ tensor<value, 3, 3> calculate_didja(equation_context& ctx)
             {
                 for(int n=0; n < 3; n++)
                 {
-                    value v = icY.idx(m, n) * dX.idx(m) * diff1(ctx, args.gA, n);
+                    value v = icY.idx(m, n) *  diff1(ctx, X, m) * diff1(ctx, gA, n);
 
                     i3 += v;
                 }
@@ -1730,6 +1768,8 @@ void ccz4::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
 {
     ccz4_args args(ctx);
 
+
+    #if 0
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
     ctx.pin(icY);
@@ -1798,6 +1838,36 @@ void ccz4::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
     }
 
     tensor<value, 3, 3> dtcAij = TF + part_2 + part_3 + lie_derivative_weight(ctx, args.gB, args.cA);
+    #endif
+
+    tensor<value, 3, 3> dtcAij = lie_derivative_weight(ctx, args.gB, args.cA);
+
+    value A_trace = trace(args.cA, args.cY.invert());
+
+    dtcAij += -(get_kc(ctx) / 3.f) * args.gA * args.cY.to_tensor() * A_trace;
+
+    tensor<value, 3, 3> XDiDja = args.X * calculate_didja(ctx);
+
+    tensor<value, 3, 3> xgARij = calculate_xgARij(ctx, args);
+
+    dtcAij += trace_free(xgARij - XDiDja, args.cY, args.cY.invert());
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value lp1 = args.gA * args.K * args.cA.idx(i, j);
+
+            value s2 = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                s2 += -2 * args.cA.idx(i, k) * raise_index(args.cA, args.cY.invert(), 0).idx(k, j);
+            }
+
+            dtcAij.idx(i, j) += lp1 + args.gA * s2;
+        }
+    }
 
     for(int i=0; i < 6; i++)
     {
@@ -1820,42 +1890,23 @@ void ccz4::build_W(equation_context& ctx)
         dkbk += diff1(ctx, args.gB.idx(i), i);
     }
 
-    value bkdw = 0;
+    value bkdx = 0;
 
     for(int i=0; i < 3; i++)
     {
-        bkdw += args.gB.idx(i) * diff1(ctx, args.W, i);
+        bkdx += args.gB.idx(i) * diff1(ctx, args.X, i);
     }
 
-    value dtW = (1.f/3.f) * args.gA * args.W * args.K - (1.f/3.f) * args.W * dkbk + bkdw;
+    value dtX = bkdx + (2.f/3.f) * args.X * (args.gA * (args.K + 2 * args.theta) - dkbk);
 
-    ctx.add("dtX", dtW);
+    ctx.add("dtX", dtX);
 }
 
 value get_R(equation_context& ctx, ccz4_args& args)
 {
-    tensor<value, 3, 3> Rij = calculate_Rij(ctx, args);
+    tensor<value, 3, 3> Rij = calculate_xgARij(ctx, args) / max(args.X * args.gA, 0.0001f);
 
     return trace(Rij, args.iYij);
-}
-
-value get_k1(equation_context& ctx)
-{
-    ccz4_args args(ctx);
-
-    return 0.05 / max(args.gA, 0.0001f);
-    //return 0;
-}
-
-value get_k2(equation_context& ctx)
-{
-    return 0;
-}
-
-value get_k3(equation_context& ctx)
-{
-    return 0.5f;
-    //return 0;
 }
 
 void ccz4::build_K(matter_interop& interop, equation_context& ctx, bool use_matter)
