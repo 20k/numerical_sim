@@ -2055,6 +2055,9 @@ void ccz4::build_cGi_hat(matter_interop& interop, equation_context& ctx, bool us
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
+    tensor<value, 3> Zi_upper = args.get_Zi_raised(ctx);
+
+    #if 0
     tensor<value, 3, 3> aIJ = raise_both(args.cA, icY);
 
     tensor<value, 3, 3, 3> christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
@@ -2173,6 +2176,88 @@ void ccz4::build_cGi_hat(matter_interop& interop, equation_context& ctx, bool us
 
         dtcG_hat.idx(i) = p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8_1 + p8_2 + p9 + p10;
     }
+    #endif
+
+    tensor<value, 3, 3> aIJ = raise_both(args.cA, icY);
+
+    tensor<value, 3, 3, 3> christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
+
+    value dkbk = 0;
+
+    for(int k=0; k < 3; k++)
+    {
+        dkbk += args.digB.idx(k, k);
+    }
+
+    tensor<value, 3> dtcG_hat;
+
+    for(int i=0; i < 3; i++)
+    {
+        value bjdjcg_hat;
+
+        for(int j=0; j < 3; j++)
+        {
+            bjdjcg_hat += args.gB.idx(j) * diff1(ctx, args.cGi_hat.idx(i), j);
+        }
+
+        value cg_hatdjbi;
+
+        for(int j=0; j < 3; j++)
+        {
+            cg_hatdjbi += -args.cGi_hat.idx(j) * diff1(ctx, args.gB.idx(i), j);
+        }
+
+        value cg_hat_djbj = (2.f/3.f) * args.cGi_hat.idx(i) * dkbk;
+
+        value icYddb;
+        value icYddb2;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                icYddb += icY.idx(j, k) * diff2(ctx, args.gB.idx(i), j, k, args.digB.idx(j, i), args.digB.idx(k, i));
+                icYddb2 += (1.f/3.f) * icY.idx(i, j) * diff2(ctx, args.gB.idx(k), k, j, args.digB.idx(k, k), args.digB.idx(j, k));
+            }
+        }
+
+        value aijdja;
+
+        for(int j=0; j < 3; j++)
+        {
+            aijdja += -2.f * aIJ.idx(i, j) * diff1(ctx, args.gA, j);
+        }
+
+        value acgca;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                acgca += 2 * args.gA * christoff2.idx(i, j, k) * aIJ.idx(j, k);
+            }
+        }
+
+        value aijdjx;
+        value icydjk;
+
+        for(int j=0; j < 3; j++)
+        {
+            aijdjx += 2 * args.gA * -(3.f/(2 * max(args.X, 0.0001f))) * aIJ.idx(i, j) * diff1(ctx, args.X, j);
+            icydjk += 2 * args.gA * -(2.f/3.f) * icY.idx(i, j) * diff1(ctx, args.K, j);
+        }
+
+        value icyinner;
+
+        for(int j=0; j< 3; j++)
+        {
+            icyinner += 2 * args.gA * -icY.idx(i, j) * ((1.f/3.f) * diff1(ctx, args.theta, j) + diff1(ctx, args.gA, j) * args.theta / max(args.gA, 0.0001f));
+        }
+
+        value ainner2 = 2 * args.gA * -(1.f/max(args.X, 0.0001f)) * Zi_upper.idx(i) * (get_kz(ctx) + (2.f/3.f) * (args.K + 2 * args.theta));
+
+        dtcG_hat.idx(i) = bjdjcg_hat + cg_hatdjbi + cg_hat_djbj + icYddb + icYddb2 + aijdja + acgca + aijdjx + icydjk + icyinner + ainner2;
+    }
 
     ctx.add("dtcGi0", dtcG_hat.idx(0));
     ctx.add("dtcGi1", dtcG_hat.idx(1));
@@ -2192,7 +2277,9 @@ void ccz4::build_gA(equation_context& ctx)
     //int m = 4;
     //value dtgA = lie_derivative(ctx, args.gB, args.gA) - 2 * args.gA * args.K * pow(bl, m);
 
-    value dtgA = lie_derivative(ctx, args.gB, args.gA) - 2 * args.gA * (args.K - 2 * args.theta);
+    value regular_K = args.K + 2 * args.theta;
+
+    value dtgA = lie_derivative(ctx, args.gB, args.gA) - 2 * args.gA * regular_K;
 
     /*value dibi = 0;
 
