@@ -362,32 +362,20 @@ tensor<value, 3, 3> bssn::calculate_xgARij(equation_context& ctx, standard_argum
         }
     }
 
+    value W = args.W_impl;
     tensor<value, 3> dW = args.dW_calc;
 
+    value p2 = -2 * sum_multiply(dW, raise_index(dW, icY, 0));
+    value p3 = W * sum_multiply(icY.to_tensor(), didjW);
+
+    ///https://iopscience.iop.org/article/10.1088/1361-6382/ac7e16/pdf (2.6)
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
-            value i1 = didjW.idx(i, j);
+            value p1 = W * didjW.idx(i, j);
 
-            value s2 = 0;
-
-            for(int l=0; l < 3; l++)
-            {
-                s2 += raise_index(didjW, icY, 0).idx(l, l);
-            }
-
-            value i2 = args.cY.idx(i, j) * s2;
-
-            value left = args.W_impl * (i1 + i2);
-
-            value right_sum = sum_multiply(raise_index(dW, icY, 0), dW);
-
-            value right = -2 * args.cY.idx(i, j) * right_sum;
-
-            value full = (left + right);
-
-            xgARphiij.idx(i, j) = args.gA * full;
+            xgARphiij.idx(i, j) = args.gA * (p1 + args.cY.idx(i, j) * (p2 + p3));
         }
     }
     #endif
@@ -487,8 +475,6 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
     ctx.pin(christoff2);
 
     unit_metric<value, 3, 3> cY = args.cY;
-
-    inverse_metric<value, 3, 3> unpinned_icY = cY.invert();
 
     ctx.pin(icY);
 
