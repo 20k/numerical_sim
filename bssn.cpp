@@ -1624,6 +1624,11 @@ value get_kc(equation_context& ctx)
     return 0.5f;
 }
 
+value get_kz(equation_context& ctx)
+{
+    return 0.1f;
+}
+
 void ccz4::build_cY(equation_context& ctx)
 {
     ccz4_args args(ctx);
@@ -1655,11 +1660,8 @@ void ccz4::build_cY(equation_context& ctx)
     ctx.add("DT_R", tr);*/
 }
 
-tensor<value, 3, 3, 3> get_full_christoffel2(const value& W, const tensor<value, 3>& dW, const unit_metric<value, 3, 3>& cY, const tensor<value, 3, 3, 3>& christoff2)
+tensor<value, 3, 3, 3> get_full_christoffel2(const value& X, const tensor<value, 3>& dX, const unit_metric<value, 3, 3>& cY, const tensor<value, 3, 3, 3>& christoff2)
 {
-    value X = W_to_X(W);
-    tensor<value, 3> dX = dW_to_dX(W, dW);
-
     value clamped_X = max(X, 0.0001f);
 
     inverse_metric<value, 3, 3> icY = cY.invert();
@@ -1913,7 +1915,7 @@ void ccz4::build_K(matter_interop& interop, equation_context& ctx, bool use_matt
 {
     ccz4_args args(ctx);
 
-    inverse_metric<value, 3, 3> icY = args.cY.invert();
+    /*inverse_metric<value, 3, 3> icY = args.cY.invert();
 
     tensor<value, 3, 3> DiDja = calculate_didja(ctx);
 
@@ -1952,7 +1954,46 @@ void ccz4::build_K(matter_interop& interop, equation_context& ctx, bool use_matt
 
     value p4 = -3 * args.gA * get_k1(ctx) * (1 + get_k2(ctx)) * args.theta;
 
-    value dtK = p1 + p2 + p3 + p4;
+    value dtK = p1 + p2 + p3 + p4;*/
+
+    value bkdk = 0;
+
+    for(int j=0; j < 3; j++)
+    {
+        bkdk += args.gB.idx(j) * diff1(ctx, args.K, j);
+    }
+
+    value dtK;
+
+    dtK += bkdk;
+
+    tensor<value, 3, 3> DiDja = calculate_didja(ctx);
+
+    tensor<value, 3, 3> raised_didja = -raise_index(DiDja, args.iYij, 0);
+
+    value didia = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        didia += raised_didja.idx(i, i);
+    }
+
+    dtK += didia;
+
+    value aij_aIJ = sum_multiply(args.cA, raise_both(args.cA, args.cY.invert()));
+
+    dtK += args.gA * ((1.f/3.f) * pow(args.K + 2 * args.theta, 2) + aij_aIJ + get_kz(ctx) * args.theta);
+
+    tensor<value, 3> Zi_upper = args.get_Zi_raised(ctx);
+
+    value sum = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        sum += 2 * Zi_upper.idx(i) * diff1(ctx, args.gA, i);
+    }
+
+    dtK += sum;
 
     ctx.add("dtK", dtK);
 }
@@ -1965,7 +2006,7 @@ void ccz4::build_theta(equation_context& ctx)
 
     tensor<value, 3> Zi_upper = args.get_Zi_raised(ctx);
     tensor<value, 3, 3, 3> christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
-    tensor<value, 3, 3, 3> full_christoff2 = get_full_christoffel2(args.W, args.dW, args.cY, christoff2);
+    tensor<value, 3, 3, 3> full_christoff2 = get_full_christoffel2(args.X, args.dX, args.cY, christoff2);
 
     tensor<value, 3, 3> ZiDj = covariant_derivative_upper_vec(ctx, Zi_upper, full_christoff2);
 
@@ -1976,17 +2017,16 @@ void ccz4::build_theta(equation_context& ctx)
         ZiDj_sum += ZiDj.idx(i, i);
     }
 
-    value R = get_R(ctx, args);
-
-    value aij_aIJ = 0;
+    value ZiDia = 0;
 
     for(int i=0; i < 3; i++)
     {
-        for(int j=0; j < 3; j++)
-        {
-            aij_aIJ += args.cA.idx(i, j) * raise_both(args.cA, icY).idx(i, j);
-        }
+        ZiDia += 2 * Zi_upper.idx(i) * diff1(ctx, args.gA, i);
     }
+
+    value R = get_R(ctx, args);
+
+    value aij_aIJ = sum_multiply(args.cA, raise_both(args.cA, args.cY.invert()));
 
     value bkdktheta = 0;
 
@@ -1996,12 +2036,17 @@ void ccz4::build_theta(equation_context& ctx)
     }
 
     ///dtconstraint_theta
-    value dtconstraint_theta = 0.5f * args.gA * (R + 2 * ZiDj_sum - aij_aIJ + (2.f/3.f) * args.K * args.K - 2 * args.theta * args.K)
-                               - sum_multiply(Zi_upper, args.digA)
-                               + bkdktheta
-                               - args.gA * get_k1(ctx) * (2 + get_k2(ctx)) * args.theta;
+    value dttheta = 0;
 
-    ctx.add("dtconstraint_theta", dtconstraint_theta);
+    dttheta += bkdktheta;
+
+    dttheta += 0.5f * args.gA * (R + 2 * ZiDj_sum + (2.f/3.f) * args.K * args.K + (2.f/3.f) * args.theta * (args.K - 2 * args.theta) - aij_aIJ);
+
+    dttheta += -ZiDia;
+
+    dttheta += -args.gA * 2 * get_kz(ctx) * args.theta;
+
+    ctx.add("dtconstraint_theta", dttheta);
 }
 
 void ccz4::build_cGi_hat(matter_interop& interop, equation_context& ctx, bool use_matter)
