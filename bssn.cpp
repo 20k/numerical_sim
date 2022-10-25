@@ -117,6 +117,7 @@ tensor<value, 3> bssn::calculate_momentum_constraint(matter_interop& interop, eq
 
     tensor<value, 3> Mi;
 
+    #if 0
     tensor<value, 3, 3, 3> dmni = covariant_derivative_low_tensor(ctx, args.cA, args.cY, icY);
 
     tensor<value, 3, 3> mixed_cAij = raise_index(args.cA, icY, 0);
@@ -162,6 +163,46 @@ tensor<value, 3> bssn::calculate_momentum_constraint(matter_interop& interop, eq
         {
             Mi.idx(i) += -8 * M_PI * ji_lower.idx(i);
         }
+    }
+    #endif
+
+    ///https://arxiv.org/pdf/1205.5111v1.pdf (54)
+    value X = args.get_X();
+    tensor<value, 3> dX = args.get_dX();
+
+    tensor<value, 3, 3> aij_raised = raise_index(args.cA, icY, 1);
+
+    tensor<value, 3> dPhi = -dX / (4 * max(X, 0.0001f));
+
+    for(int i=0; i < 3; i++)
+    {
+        value s1 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s1 += diff1(ctx, aij_raised.idx(i, j), j);
+        }
+
+        value s2 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                s2 += -0.5f * icY.idx(j, k) * diff1(ctx, args.cA.idx(j, k), i);
+            }
+        }
+
+        value s3 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s3 += 6 * dPhi.idx(j) * aij_raised.idx(i, j);
+        }
+
+        value p4 = -(2.f/3.f) * diff1(ctx, args.K, i);
+
+        Mi.idx(i) = s1 + s2 + s3 + p4;
     }
 
     return Mi;
