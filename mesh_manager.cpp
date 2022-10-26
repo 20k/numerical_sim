@@ -629,6 +629,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     mqueue.begin_splice(main_queue);
 
+    ///need to size check the buffers
     auto check_for_nans = [&](const std::string& name, cl::buffer& buf)
     {
         return;
@@ -1045,6 +1046,98 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             #endif // DISS_UNIDIR
         }
     }
+    #endif
+
+    #ifdef RK4_2
+    auto post_step = [&](auto& buf, float step)
+    {
+        dissipate_set(mqueue, data[0], buf, points_set, step, dim, scale);
+        enforce_constraints(buf);
+    };
+
+    auto copy_points = [&](auto& in, auto& out)
+    {
+        assert(in.buffers.size() == out.buffers.size());
+
+        for(int i=0; i < (int)in.buffers.size(); i++)
+        {
+            if(in.buffers[i].buf.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z())
+                continue;
+
+            assert(in.buffers[i].buf.alloc_size == out.buffers[i].buf.alloc_size);
+
+            cl::args copy;
+            copy.push_back(points_set.all_points);
+            copy.push_back(points_set.all_count);
+            copy.push_back(in.buffers[i].buf.as_device_read_only());
+            copy.push_back(out.buffers[i].buf.as_device_write_only());
+            copy.push_back(clsize);
+
+            mqueue.exec("copy_valid", copy, {points_set.all_count}, {128});
+        }
+    };
+
+    ///performs accum += (q - base) * factor
+    auto accumulator = [&](auto& q_val, auto& accum, float factor)
+    {
+        for(int i=0; i < (int)q_val.buffers.size(); i++)
+        {
+            if(q_val.buffers[i].buf.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z())
+                continue;
+
+            cl::args acc;
+            acc.push_back(points_set.all_points);
+            acc.push_back(points_set.all_count);
+            acc.push_back(clsize);
+            acc.push_back(accum.buffers[i].buf);
+            acc.push_back(base_yn.buffers[i].buf.as_device_read_only());
+            acc.push_back(q_val.buffers[i].buf.as_device_read_only());
+            acc.push_back(factor);
+
+            mqueue.exec("do_rk4_accumulate", acc, {points_set.all_count}, {128});
+        }
+    };
+
+    auto& accum = data[1];
+
+    copy_points(data[0], accum);
+
+    auto& temp_1 = data[2];
+
+    auto data_get = [&]()
+    {
+        return buffer_set(ctx, dim, get_buffer_cfg(sett));
+    };
+
+    auto& temp_2 = free_data.get_named(data_get, "temp2");
+
+    ///temp_1 == q1
+    step(data[0], temp_1, timestep * 0.5f, true);
+
+    accumulator(temp_1, accum, 2.f/6.f);
+
+    post_step(temp_1, timestep * 0.5f);
+
+    ///temp_2 == q2
+    step(temp_1, temp_2, timestep * 0.5f, false);
+
+    accumulator(temp_2, accum, 4.f/6.f);
+
+    post_step(temp_2, timestep * 0.5f);
+
+    ///temp_1 now == q3
+    step(temp_2, temp_1, timestep, false);
+
+    accumulator(temp_1, accum, 2.f/6.f);
+
+    post_step(temp_1, timestep);
+
+    step(temp_1, temp_2, timestep, false);
+
+    accumulator(temp_2, accum, 1.f/6.f);
+
+    //post_step(temp_2);
+
     #endif
 
     //#define TRAPEZOIDAL
