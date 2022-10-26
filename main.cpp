@@ -1640,7 +1640,7 @@ struct matter
     }
 
     ///the reason to calculate X_Sij is that its regular in terms of chi
-    tensor<value, 3, 3> calculate_adm_X_Sij(const value& chi, const value& W, const unit_metric<value, 3, 3>& cY)
+    tensor<value, 3, 3> calculate_adm_X_Sij(const value& chi, const value& W, const metric<value, 3, 3>& cY)
     {
         value em6phi = chi_to_e_m6phi_unclamped(chi);
         value h = calculate_h_with_gamma_eos(chi, W);
@@ -1662,7 +1662,7 @@ struct matter
         return Sij * chi + X_P_Yij;
     }
 
-    value calculate_adm_S(const unit_metric<value, 3, 3>& cY, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
+    value calculate_adm_S(const metric<value, 3, 3>& cY, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
     {
         ///so. Raise Sij with iYij, which is X * icY
         ///now I'm actually raising X * Sij which means....... i can use icY?
@@ -3984,7 +3984,7 @@ void build_constraints(equation_context& ctx)
 {
     standard_arguments args(ctx);
 
-    unit_metric<value, 3, 3> cY = args.cY;
+    metric<value, 3, 3> cY = args.cY;
     tensor<value, 3, 3> cA = args.cA;
 
     value det_cY_pow = pow(cY.det(), 1.f/3.f);

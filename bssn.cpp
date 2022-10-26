@@ -515,7 +515,7 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
     ctx.pin(christoff1);
     ctx.pin(christoff2);
 
-    unit_metric<value, 3, 3> cY = args.cY;
+    metric<value, 3, 3> cY = args.cY;
 
     ctx.pin(icY);
 
@@ -732,7 +732,7 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
 
     ctx.pin(christoff2);
 
-    unit_metric<value, 3, 3> cY = args.cY;
+    metric<value, 3, 3> cY = args.cY;
 
     inverse_metric<value, 3, 3> unpinned_icY = cY.invert();
 
@@ -955,7 +955,7 @@ void bssn::build_K(matter_interop& interop, equation_context& ctx, bool use_matt
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-    unit_metric<value, 3, 3> cY = args.cY;
+    metric<value, 3, 3> cY = args.cY;
 
     ctx.pin(icY);
 
