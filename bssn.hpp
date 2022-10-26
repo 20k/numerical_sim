@@ -41,6 +41,7 @@ value bidx(const std::string& buf, bool interpolate, bool is_derivative)
 
 #define USE_W
 //#define BETTERDAMP_DTCAIJ
+#define DAMP_C
 
 struct standard_arguments
 {
@@ -48,7 +49,12 @@ struct standard_arguments
     tensor<value, 3> gB;
     tensor<value, 3> gBB;
 
+    #ifndef DAMP_C
     unit_metric<value, 3, 3> cY;
+    #else
+    metric<value, 3, 3> cY;
+    #endif
+
     tensor<value, 3, 3> cA;
 
     value K;

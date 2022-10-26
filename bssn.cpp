@@ -74,6 +74,18 @@ void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
     ctx.add("init_gBB1", gBB1);
     ctx.add("init_gBB2", gBB2);
     #endif // USE_GBB
+
+    #ifdef USE_W
+    ctx.add("X_IS_ACTUALLY_W", 1);
+    #endif
+
+    #ifdef DAMP_C
+    ctx.add("DAMPED_CONSTRAINTS", 1);
+    #endif // DAMP_C
+
+    standard_arguments args(ctx);
+
+    ctx.add("GET_X", args.get_X());
 }
 
 ///returns DcTab
@@ -244,6 +256,15 @@ value bssn::calculate_hamiltonian_constraint(matter_interop& interop, equation_c
     return ret;
 }
 
+value get_kc()
+{
+    #ifdef DAMP_C
+    return 1.f;
+    #else
+    return 0.f;
+    #endif
+}
+
 void bssn::build_cY(equation_context& ctx)
 {
     standard_arguments args(ctx);
@@ -262,7 +283,9 @@ void bssn::build_cY(equation_context& ctx)
 
     ///https://arxiv.org/pdf/gr-qc/0511048.pdf (1)
     ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.66
-    tensor<value, 3, 3> dtcYij = -2 * args.gA * args.cA + lie_cYij;
+    tensor<value, 3, 3> dtcYij = -2 * args.gA * trace_free(args.cA, args.cY, args.cY.invert()) + lie_cYij;
+
+    dtcYij += -(get_kc()/3.f) * args.gA * args.cY.to_tensor() * log(args.cY.det());
 
     ///makes it to 50 with this enabled
     #define USE_DTCYIJ_MODIFICATION
@@ -711,6 +734,8 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
             }
         }
     }
+
+    dtcAij += -(get_kc()/3.f) * args.gA * args.cY.to_tensor() * trace(args.cA, args.cY.invert());
 
     for(int i=0; i < 6; i++)
     {

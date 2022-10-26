@@ -439,6 +439,10 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
                                    STANDARD_ARGS(),
                                    float scale, int4 dim)
 {
+    #if defined(DAMPED_CONSTRAINTS) && defined(X_IS_ACTUALLY_W)
+    return;
+    #endif
+
     int idx = get_global_id(0);
 
     if(idx >= point_count)
@@ -459,8 +463,10 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
     if(gA[index] > 1)
         gA[index] = 1;
 
+    #ifndef X_IS_ACTUALLY_W
     if(X[index] < 0)
         X[index] = 0;
+    #endif
 
     #ifndef NO_CAIJYY
 
@@ -471,6 +477,7 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
     if(found_det <= 1 + tol && found_det >= 1 - tol)
         return;
 
+    #ifndef DAMPED_CONSTRAINTS
     ///if this fires, its probably matter falling into a black hole
     NNANCHECK(CY_DET, "CY_DET");
 
@@ -506,6 +513,7 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
 
     cA3[index] = fixed_cA3;
     #endif // NO_CAIJYY
+    #endif
 }
 
 __kernel
