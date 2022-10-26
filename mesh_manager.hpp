@@ -127,26 +127,21 @@ struct matter_initial_vars
 template<typename T>
 struct basic_pool
 {
-    std::vector<T> elements;
+    std::map<std::string, T> elements;
 
     template<typename U>
-    T get(U&& u)
+    T& get_named(U&& u, const std::string& name)
     {
-        if(elements.size() == 0)
+        auto it = elements.find(name);
+
+        if(it == elements.end())
         {
-            return u();
+            elements.insert({name, u()});
+
+            return elements.find(name)->second;
         }
 
-        T front = std::move(elements.front());
-
-        elements.erase(elements.begin());
-
-        return front;
-    }
-
-    void give_back(T&& val)
-    {
-        elements.push_back(std::move(val));
+        return it->second;
     }
 };
 

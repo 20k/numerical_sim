@@ -1108,7 +1108,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         return buffer_set(ctx, dim, get_buffer_cfg(sett));
     };
 
-    auto temp_2 = free_data.get(data_get);
+    auto& temp_2 = free_data.get_named(data_get, "temp2");
 
     ///temp_1 == q1
     step(data[0], temp_1, timestep * 0.5f, true);
@@ -1136,8 +1136,6 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     accumulator(temp_2, accum, 1.f/6.f);
 
     //post_step(temp_2);
-
-    free_data.give_back(std::move(temp_2));
 
     //#define TRAPEZOIDAL
     #ifdef TRAPEZOIDAL
