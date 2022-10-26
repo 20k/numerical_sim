@@ -114,6 +114,23 @@ void calculate_rk4_val(__global ushort4* points, int point_count, int4 dim, __gl
     yn_inout[index] = xn[index] + factor * yn;
 }
 
+__kernel
+void do_rk4_accumulate(__global ushort4* points, int point_count, int4 dim, __global float* accum, __global float* base, __global float* Q, float factor)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    int index = IDX(ix, iy, iz);
+
+    accum[index] += (Q[index] - base[index]) * factor;
+}
+
 void buffer_write(__global float* buffer, int3 position, int4 dim, float value)
 {
     buffer[position.z * dim.x * dim.y + position.y * dim.x + position.x] = value;

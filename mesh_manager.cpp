@@ -1010,7 +1010,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     diff_to_input(generic_data[(which_data + 1) % 2].buffers, timestep);
     #endif
 
-    #define BACKWARD_EULER
+    //#define BACKWARD_EULER
     #ifdef BACKWARD_EULER
     int iterations = 2;
 
@@ -1046,6 +1046,87 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         }
     }
     #endif
+
+    auto post_step = [&](auto& buf)
+    {
+        dissipate_set(mqueue, data[0], buf, points_set, timestep, dim, scale);
+        enforce_constraints(buf);
+    };
+
+    auto copy_points = [&](auto& in, auto& out)
+    {
+        for(int i=0; i < (int)in.buffers.size(); i++)
+        {
+            cl::args copy;
+            copy.push_back(points_set.all_points);
+            copy.push_back(points_set.all_count);
+            copy.push_back(in.buffers[i].buf);
+            copy.push_back(out.buffers[i].buf);
+            copy.push_back(clsize);
+
+            mqueue.exec("copy_valid", copy, {points_set.all_count}, {128});
+        }
+    };
+
+    ///performs accum += (q - base) * factor
+    auto accumulator = [&](auto& q_val, auto& accum, float factor)
+    {
+        for(int i=0; i < (int)q_val.buffers.size(); i++)
+        {
+            cl::args acc;
+            acc.push_back(points_set.all_points);
+            acc.push_back(points_set.all_count);
+            acc.push_back(clsize);
+            acc.push_back(accum.buffers[i].buf);
+            acc.push_back(base_yn.buffers[i].buf);
+            acc.push_back(q_val.buffers[i].buf);
+            acc.push_back(factor);
+
+            mqueue.exec("do_rk4_accumulate", acc, {points_set.all_count}, {128});
+        }
+    };
+
+    auto& accum = data[1];
+
+    copy_points(data[0], accum);
+
+    auto& temp_1 = data[2];
+
+    auto data_get = [&]()
+    {
+        return buffer_set(ctx, dim, get_buffer_cfg(sett));
+    };
+
+    auto temp_2 = free_data.get(data_get);
+
+    ///temp_1 == q1
+    step(data[0], temp_1, timestep * 0.5f, true);
+
+    accumulator(temp_1, accum, 2.f/6.f);
+
+    post_step(temp_1);
+
+    ///temp_2 == q2
+    step(temp_1, temp_2, timestep * 0.5f, false);
+
+    accumulator(temp_2, accum, 4.f/6.f);
+
+    post_step(temp_2);
+
+    ///temp_1 now == q3
+    step(temp_2, temp_1, timestep, false);
+
+    accumulator(temp_1, accum, 2.f/6.f);
+
+    post_step(temp_1);
+
+    step(temp_1, temp_2, timestep, false);
+
+    accumulator(temp_2, accum, 1.f/6.f);
+
+    //post_step(temp_2);
+
+    free_data.give_back(std::move(temp_2));
 
     //#define TRAPEZOIDAL
     #ifdef TRAPEZOIDAL
