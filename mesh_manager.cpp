@@ -1081,6 +1081,9 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     {
         for(int i=0; i < (int)q_val.buffers.size(); i++)
         {
+            if(q_val.buffers[i].buf.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z())
+                continue;
+
             cl::args acc;
             acc.push_back(points_set.all_points);
             acc.push_back(points_set.all_count);
