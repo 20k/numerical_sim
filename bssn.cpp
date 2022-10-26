@@ -1218,7 +1218,7 @@ void bssn::build_gB(equation_context& ctx)
 
     #define STATIC_DAMP
     #ifdef STATIC_DAMP
-    value Ns_r = 1.45f;
+    value Ns_r = 2.1f;
     #endif
 
     value N = max(Ns_r, 0.5f);

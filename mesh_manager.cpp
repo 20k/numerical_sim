@@ -1011,7 +1011,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     diff_to_input(generic_data[(which_data + 1) % 2].buffers, timestep);
     #endif
 
-    #define BACKWARD_EULER
+    //#define BACKWARD_EULER
     #ifdef BACKWARD_EULER
     int iterations = 2;
 
@@ -1048,6 +1048,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     }
     #endif
 
+    #define RK4_2
     #ifdef RK4_2
     auto post_step = [&](auto& buf, float step)
     {
