@@ -5650,7 +5650,7 @@ int main()
 
     base_mesh.init(clctx.cqueue, u_arg, matter_vars);
 
-    matter_vars.clear(clctx.ctx);
+    matter_vars = matter_initial_vars(clctx.ctx);
 
     u_arg = cl::buffer(clctx.ctx);
 

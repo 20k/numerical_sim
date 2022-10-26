@@ -122,29 +122,31 @@ struct matter_initial_vars
     {
 
     }
+};
 
-    void clear(cl::context& ctx)
+template<typename T>
+struct basic_pool
+{
+    std::vector<T> elements;
+
+    template<typename U>
+    T get(U&& u)
     {
-        auto clr = [&](cl::buffer& b)
+        if(elements.size() == 0)
         {
-            b = cl::buffer(ctx);
-        };
+            return u();
+        }
 
-        for(auto& i : bcAij)
-            clr(i);
+        T front = std::move(elements.front());
 
-        clr(superimposed_tov_phi);
+        elements.erase(elements.begin());
 
-        clr(pressure_buf);
-        clr(rho_buf);
-        clr(rhoH_buf);
-        clr(p0_buf);
+        return front;
+    }
 
-        for(auto& i : Si_buf)
-            clr(i);
-
-        for(auto& i : colour_buf)
-            clr(i);
+    void give_back(T&& val)
+    {
+        elements.push_back(std::move(val));
     }
 };
 
@@ -162,6 +164,8 @@ struct cpu_mesh
     float scale = 1;
 
     std::array<buffer_set, 3> data;
+
+    basic_pool<buffer_set> free_data;
 
     hydro_state hydro_st;
 
