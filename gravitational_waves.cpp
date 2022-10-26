@@ -179,23 +179,23 @@ void gravitational_wave_manager::callback(cl_event event, cl_int event_command_s
     delete ((callback_data*)user_data);
 }
 
-void gravitational_wave_manager::issue_extraction(cl::command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<ref_counted_buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize, cl::gl_rendertexture& tex)
+void gravitational_wave_manager::issue_extraction(cl::managed_command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<ref_counted_buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize, cl::gl_rendertexture& tex)
 {
     cl::args waveform_args;
 
     cl_int point_count = raw_harmonic_points.size();
 
-    waveform_args.push_back(harmonic_points);
+    waveform_args.push_back(harmonic_points.as_device_read_only());
     waveform_args.push_back(point_count);
 
     for(auto& i : buffers)
     {
-        waveform_args.push_back(i);
+        waveform_args.push_back(i.as_device_read_only());
     }
 
     for(auto& i : thin_intermediates)
     {
-        waveform_args.push_back(i);
+        waveform_args.push_back(i.as_device_read_only());
     }
 
     cl::buffer& next = wave_buffers[(next_buffer % 3)];
@@ -204,7 +204,7 @@ void gravitational_wave_manager::issue_extraction(cl::command_queue& cqueue, std
     waveform_args.push_back(scale);
     waveform_args.push_back(clsize);
     waveform_args.push_back(next);
-    waveform_args.push_back(tex);
+    //waveform_args.push_back(tex);
 
     cl::event kernel_event = cqueue.exec("extract_waveform", waveform_args, {point_count}, {128});
 

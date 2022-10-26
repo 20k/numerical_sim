@@ -621,20 +621,11 @@ void cpu_mesh::clean_buffer(cl::managed_command_queue& mqueue, cl::buffer& in, c
 }
 
 ///returns buffers and intermediates
-std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool)
+void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, step_callback callback)
 {
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
-    std::vector<cl::buffer> last_valid_thin_buffer;
-
-    for(auto& i : data[0].buffers)
-    {
-        last_valid_thin_buffer.push_back(i.buf);
-    }
-
     auto& base_yn = data[0];
-
-    std::vector<ref_counted_buffer> intermediates;
 
     mqueue.begin_splice(main_queue);
 
@@ -680,20 +671,23 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
         clean_buffer(mqueue, in_buf.buf, out_buf.buf, base_buf.buf, in_buf.asymptotic_value, in_buf.wave_speed, current_timestep);
     };
 
-    auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
+    auto step = [&](auto& generic_in, auto& generic_out, float current_timestep, bool first)
     {
-        intermediates.clear();
-
-        last_valid_thin_buffer.clear();
-
         step_hydro(ctx, mqueue, pool, generic_in, generic_out, base_yn, current_timestep);
 
-        for(auto& i : generic_in.buffers)
-        {
-            last_valid_thin_buffer.push_back(i.buf);
-        }
+        std::vector<ref_counted_buffer> intermediates = get_derivatives_of(ctx, generic_in, mqueue, pool);
 
-        intermediates = get_derivatives_of(ctx, generic_in, mqueue, pool);
+        if(first)
+        {
+            std::vector<cl::buffer> linear_bufs;
+
+            for(auto& i : data[0].buffers)
+            {
+                linear_bufs.push_back(i.buf);
+            }
+
+            callback(mqueue, linear_bufs, intermediates);
+        }
 
         ///end all the differentiation work before we move on
         if(sett.calculate_momentum_constraint)
@@ -1028,9 +1022,9 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     for(int i=0; i < iterations; i++)
     {
         if(i != 0)
-            step(data[2], data[1], timestep);
+            step(data[2], data[1], timestep, false);
         else
-            step(data[0], data[1], timestep);
+            step(data[0], data[1], timestep, true);
 
         if(i != iterations - 1)
         {
@@ -1129,6 +1123,4 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     mqueue.end_splice(main_queue);
 
     std::swap(data[1], data[0]);
-
-    return {last_valid_thin_buffer, intermediates};
 }

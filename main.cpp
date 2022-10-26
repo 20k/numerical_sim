@@ -5681,19 +5681,6 @@ int main()
 
     std::cout << "Init time " << time_to_main.get_elapsed_time_s() << std::endl;
 
-    std::vector<cl::buffer> last_valid_buffer;
-
-    {
-        buffer_set& base_buf = base_mesh.data[0];
-
-        for(named_buffer& b : base_buf.buffers)
-        {
-            last_valid_buffer.push_back(b.buf);
-        }
-    }
-
-    std::vector<ref_counted_buffer> last_valid_thin = base_mesh.get_derivatives_of(clctx.ctx, base_mesh.data[0], mqueue, thin_pool);
-
     mqueue.block();
 
     float rendering_err = 0.01f;
@@ -5903,14 +5890,9 @@ int main()
         {
             steps++;
 
-            ///kill ref counting
-            last_valid_thin.clear();
-            last_valid_buffer.clear();
-
-            std::tie(last_valid_buffer, last_valid_thin) = base_mesh.full_step(clctx.ctx, clctx.cqueue, mqueue, timestep, thin_pool);
-
+            auto callback = [&](cl::managed_command_queue& mqueue, std::vector<cl::buffer>& bufs, std::vector<ref_counted_buffer>& intermediates)
             {
-                wave_manager.issue_extraction(clctx.cqueue, last_valid_buffer, last_valid_thin, scale, clsize, rtex);
+                wave_manager.issue_extraction(mqueue, bufs, intermediates, scale, clsize, rtex);
 
                 std::vector<dual_types::complex<float>> values = wave_manager.process();
 
@@ -5919,31 +5901,33 @@ int main()
                     real_decomp.push_back(v.real);
                     imaginary_decomp.push_back(v.imaginary);
                 }
-            }
+
+                if(!should_render)
+                {
+                    cl::args render;
+
+                    for(auto& i : bufs)
+                    {
+                        render.push_back(i.as_device_read_only());
+                    }
+
+                    for(auto& i : intermediates)
+                    {
+                        render.push_back(i.as_device_read_only());
+                    }
+
+                    //render.push_back(bssnok_datas[which_data]);
+                    render.push_back(scale);
+                    render.push_back(clsize);
+                    render.push_back(rtex);
+
+                    mqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
+                }
+            };
+
+            base_mesh.full_step(clctx.ctx, clctx.cqueue, mqueue, timestep, thin_pool, callback);
 
             time_elapsed_s += timestep;
-        }
-
-        if(!should_render)
-        {
-            cl::args render;
-
-            for(auto& i : last_valid_buffer)
-            {
-                render.push_back(i.as_device_read_only());
-            }
-
-            for(auto& i : last_valid_thin)
-            {
-                render.push_back(i.as_device_read_only());
-            }
-
-            //render.push_back(bssnok_datas[which_data]);
-            render.push_back(scale);
-            render.push_back(clsize);
-            render.push_back(rtex);
-
-            clctx.cqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
         }
 
         if(should_render || snap)
@@ -5952,11 +5936,11 @@ int main()
             {
                 cl::args render_args;
 
-                auto buffers = last_valid_buffer;
+                auto buffers = base_mesh.data[0].buffers;
 
                 for(auto& i : buffers)
                 {
-                    render_args.push_back(i.as_device_read_only());
+                    render_args.push_back(i.buf.as_device_read_only());
                 }
 
                 cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
@@ -5990,9 +5974,9 @@ int main()
                     init_args.push_back(ray_buffer);
                     init_args.push_back(ray_count);
 
-                    for(auto& i : last_valid_buffer)
+                    for(auto& i : base_mesh.data[0].buffers)
                     {
-                        init_args.push_back(i.as_device_read_only());
+                        init_args.push_back(i.buf.as_device_read_only());
                     }
 
                     init_args.push_back(scale);
@@ -6011,9 +5995,9 @@ int main()
                     render_args.push_back(ray_buffer);
                     render_args.push_back(rays_terminated);
 
-                    for(auto& i : last_valid_buffer)
+                    for(auto& i : base_mesh.data[0].buffers)
                     {
-                        render_args.push_back(i.as_device_read_only());
+                        render_args.push_back(i.buf.as_device_read_only());
                     }
 
                     cl_int use_colour = base_mesh.sett.use_matter_colour;
@@ -6038,9 +6022,9 @@ int main()
                     texture_args.push_back(ccamera_pos);
                     texture_args.push_back(ccamera_quat);
 
-                    for(auto& i : last_valid_buffer)
+                    for(auto& i : base_mesh.data[0].buffers)
                     {
-                        texture_args.push_back(i.as_device_read_only());
+                        texture_args.push_back(i.buf.as_device_read_only());
                     }
 
                     texture_args.push_back(scale);
@@ -6055,9 +6039,9 @@ int main()
                     render_args.push_back(ray_count_terminated.as_device_read_only());
                     render_args.push_back(rtex);
 
-                    for(auto& i : last_valid_buffer)
+                    for(auto& i : base_mesh.data[0].buffers)
                     {
-                        render_args.push_back(i.as_device_read_only());
+                        render_args.push_back(i.buf.as_device_read_only());
                     }
 
                     render_args.push_back(scale);
@@ -6074,7 +6058,7 @@ int main()
             }
         }
 
-        if(rendering_method == 2 && snap)
+        /*if(rendering_method == 2 && snap)
         {
             cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
             cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
@@ -6125,7 +6109,7 @@ int main()
             step_args.push_back(timestep);
 
             clctx.cqueue.exec("step_accurate_rays", step_args, {width * height}, {128});
-        }
+        }*/
 
         rtex.unacquire(clctx.cqueue);
 
