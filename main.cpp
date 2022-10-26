@@ -3311,13 +3311,13 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.96, 0};
+    h1.momentum = {0, 0.133, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     compact_object::data h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.96, 0};
+    h2.momentum = {0, -0.133, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     objects = {h1, h2};
@@ -5362,7 +5362,7 @@ int main()
     std::string argument_string = "-I ./ -cl-std=CL2.0 -cl-mad-enable ";
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {213, 213, 213};
+    vec3i size = {255, 255, 255};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -6014,11 +6014,6 @@ int main()
                     for(auto& i : last_valid_buffer)
                     {
                         render_args.push_back(i.as_device_read_only());
-                    }
-
-                    for(auto& i : base_mesh.colours[0].buffers)
-                    {
-                        render_args.push_back(i.buf.as_device_read_only());
                     }
 
                     cl_int use_colour = base_mesh.sett.use_matter_colour;

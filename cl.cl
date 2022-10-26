@@ -136,7 +136,8 @@ float get_distance(int x1, int y1, int z1, int x2, int y2, int z2, int4 dim, flo
                 a p##cA0, a p##cA1, a p##cA2, a p##cA3, a p##cA4, a p##cA5, \
                 a p##cGi0, a p##cGi1, a p##cGi2, a p##K, a p##X, a p##gA, a p##gB0, a p##gB1, a p##gB2, \
                 a p##gBB0, a p##gBB1, a p##gBB2, \
-                a p##Dp_star, a p##De_star, a p##DcS0, a p##DcS1, a p##DcS2
+                a p##Dp_star, a p##De_star, a p##DcS0, a p##DcS1, a p##DcS2, \
+                a p##dRed, a p##dGreen, a p##dBlue
 
 #define GET_DERIVLIST(a, p) a p##dcYij0, a p##dcYij1, a p##dcYij2, a p##dcYij3, a p##dcYij4, a p##dcYij5, a p##dcYij6, a p##dcYij7, a p##dcYij8, a p##dcYij9, a p##dcYij10, a p##dcYij11, a p##dcYij12, a p##dcYij13, a p##dcYij14, a p##dcYij15, a p##dcYij16, a p##dcYij17, \
                     a p##digA0, a p##digA1, a p##digA2, \
@@ -330,9 +331,6 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
                                                __global float* colour0_in,
                                                __global float* colour1_in,
                                                __global float* colour2_in,
-                                               __global float* dRed,
-                                               __global float* dGreen,
-                                               __global float* dBlue,
                                                __global float* u_value,
                                                __global float* tov_phi,
                                                float scale, int4 dim,
@@ -2141,9 +2139,6 @@ float get_static_verlet_ds(float3 Xpos, __global float* X, float scale, int4 dim
 __kernel
 void trace_rays(__global struct lightray_simple* rays_in, __global struct lightray_simple* rays_terminated,
                 STANDARD_ARGS(),
-                __global float* dRed,
-                __global float* dGreen,
-                __global float* dBlue,
                 int use_colour,
                 float scale, int4 dim, int width, int height, float err_in)
 {

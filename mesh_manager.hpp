@@ -159,7 +159,6 @@ struct cpu_mesh
     float scale = 1;
 
     std::array<buffer_set, 3> data;
-    std::array<colour_set, 3> colours;
 
     hydro_state hydro_st;
 
@@ -175,7 +174,7 @@ struct cpu_mesh
 
     void init(cl::command_queue& cqueue, cl::buffer& u_arg, matter_initial_vars& vars);
 
-    void step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, int idx_in, int idx_out, int idx_base, float timestep, int iteration);
+    void step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep);
 
     ref_counted_buffer get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool);
 

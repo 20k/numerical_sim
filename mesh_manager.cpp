@@ -46,9 +46,9 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
         {"DcS1", "evolve_hydro_all", 0.25f, 0, 1, 1},
         {"DcS2", "evolve_hydro_all", 0.25f, 0, 1, 1},
 
-        /*{"dRed", "evolve_advect", 0.25f, 0, 1, 2},
-        {"dGreen", "evolve_advect", 0.25f, 0, 1, 2},
-        {"dBlue", "evolve_advect", 0.25f, 0, 1, 2},*/
+        {"dRed", "evolve_advect", 0.25f, 0, 1, 3},
+        {"dGreen", "evolve_advect", 0.25f, 0, 1, 3},
+        {"dBlue", "evolve_advect", 0.25f, 0, 1, 3},
     };
 
     for(int kk=0; kk < (int)values.size(); kk++)
@@ -71,6 +71,10 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
         {
             buf.buf.alloc(buf_size);
         }
+        else if(type == 3 && cfg.use_matter_colour)
+        {
+            buf.buf.alloc(buf_size);
+        }
         else
         {
             buf.buf.alloc(sizeof(cl_int));
@@ -81,7 +85,7 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
         buf.dissipation_coeff = std::get<2>(values[kk]);
         buf.asymptotic_value = std::get<3>(values[kk]);
         buf.wave_speed = std::get<4>(values[kk]);
-        buf.matter_term = std::get<5>(values[kk]) == 1;
+        buf.matter_term = std::get<5>(values[kk]) == 1 || std::get<5>(values[kk]) == 3;
     }
 }
 
@@ -94,37 +98,6 @@ named_buffer& buffer_set::lookup(const std::string& name)
     }
 
     assert(false);
-}
-
-colour_set::colour_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
-{
-    std::vector<std::tuple<std::string, std::string, float, float, float>> values =
-    {
-        {"dRed", "hydro_advect", 0.25f, 0, 0},
-        {"dGreen", "hydro_advect", 0.25f, 0, 0},
-        {"dBlue", "hydro_advect", 0.25f, 0, 0}
-    };
-
-    for(int kk=0; kk < (int)values.size(); kk++)
-    {
-        named_buffer& buf = buffers.emplace_back(ctx);
-
-        if(cfg.use_matter_colour)
-        {
-            buf.buf.alloc(size.x() * size.y() * size.z() * sizeof(cl_float));
-        }
-        else
-        {
-            buf.buf.alloc(sizeof(cl_int));
-        }
-
-        buf.name = std::get<0>(values[kk]);
-        buf.modified_by = std::get<1>(values[kk]);
-        buf.dissipation_coeff = std::get<2>(values[kk]);
-        buf.asymptotic_value = std::get<3>(values[kk]);
-        buf.wave_speed = std::get<4>(values[kk]);
-        buf.matter_term = true;
-    }
 }
 
 template<typename T>
@@ -303,7 +276,6 @@ buffer_set_cfg get_buffer_cfg(cpu_mesh_settings sett)
 
 cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points) :
         data{buffer_set(ctx, _dim, get_buffer_cfg(_sett)), buffer_set(ctx, _dim, get_buffer_cfg(_sett)), buffer_set(ctx, _dim, get_buffer_cfg(_sett))},
-        colours{colour_set(ctx, _dim, get_buffer_cfg(_sett)), colour_set(ctx, _dim, get_buffer_cfg(_sett)), colour_set(ctx, _dim, get_buffer_cfg(_sett))},
         points_set{ctx},
         momentum_constraint{ctx, ctx, ctx}, hydro_st(ctx)
 {
@@ -377,11 +349,6 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, matter_initial
         hydro_init.push_back(vars.colour_buf[1]);
         hydro_init.push_back(vars.colour_buf[2]);
 
-        for(auto& i : colours[0].buffers)
-        {
-            hydro_init.push_back(i.buf);
-        }
-
         hydro_init.push_back(u_arg);
         hydro_init.push_back(vars.superimposed_tov_phi);
         hydro_init.push_back(scale);
@@ -399,22 +366,12 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, matter_initial
         cl::copy(cqueue, data[0].buffers[i].buf, data[1].buffers[i].buf);
         cl::copy(cqueue, data[0].buffers[i].buf, data[2].buffers[i].buf);
     }
-
-    for(int i=0; i < (int)colours[0].buffers.size(); i++)
-    {
-        cl::copy(cqueue, colours[0].buffers[i].buf, colours[1].buffers[i].buf);
-        cl::copy(cqueue, colours[0].buffers[i].buf, colours[2].buffers[i].buf);
-    }
 }
 
-void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, int idx_in, int idx_out, int idx_base, float timestep, int iteration)
+void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep)
 {
     if(!sett.use_matter)
         return;
-
-    buffer_set& in = data[idx_in];
-    buffer_set& out = data[idx_out];
-    buffer_set& base = data[idx_base];
 
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
@@ -536,13 +493,20 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
         cqueue.exec("evolve_hydro_all", evolve, {points_set.all_count}, {128});
     }
 
+    auto clean_by_name = [&](const std::string& name)
+    {
+        clean_buffer(cqueue, in.lookup(name).buf, out.lookup(name).buf, base.lookup(name).buf, in.lookup(name).asymptotic_value, in.lookup(name).wave_speed, timestep);
+    };
+
     if(sett.use_matter_colour)
     {
-        for(int buf_idx=0; buf_idx < colours[0].buffers.size(); buf_idx++)
+        std::vector<std::string> cols = {"dRed", "dGreen", "dBlue"};
+
+        for(const std::string& buf_name : cols)
         {
-            cl::buffer buf_in = colours[idx_in].buffers[buf_idx].buf;
-            cl::buffer buf_out = colours[idx_out].buffers[buf_idx].buf;
-            cl::buffer buf_base = colours[idx_base].buffers[buf_idx].buf;
+            cl::buffer buf_in = in.lookup(buf_name).buf;
+            cl::buffer buf_out = out.lookup(buf_name).buf;
+            cl::buffer buf_base = base.lookup(buf_name).buf;
 
             cl::args advect;
             advect.push_back(points_set.all_points);
@@ -568,16 +532,10 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
             cqueue.exec("hydro_advect", advect, {points_set.all_count}, {128});
         }
 
-        dissipate_set(cqueue, colours[idx_base], colours[idx_out], points_set, timestep, dim, scale);
-
-        if(iteration != 1)
-            std::swap(colours[1], colours[2]);
+        clean_by_name("dRed");
+        clean_by_name("dGreen");
+        clean_by_name("dBlue");
     }
-
-    auto clean_by_name = [&](const std::string& name)
-    {
-        clean_buffer(cqueue, in.lookup(name).buf, out.lookup(name).buf, base.lookup(name).buf, in.lookup(name).asymptotic_value, in.lookup(name).wave_speed, timestep);
-    };
 
     clean_by_name("Dp_star");
     clean_by_name("De_star");
@@ -722,18 +680,13 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
         clean_buffer(mqueue, in_buf.buf, out_buf.buf, base_buf.buf, in_buf.asymptotic_value, in_buf.wave_speed, current_timestep);
     };
 
-    //auto step = [&](auto& generic_in, auto& generic_out, float current_timestep, int iteration)
-
-    auto step = [&](int idx_in, int idx_out, float current_timestep, int iteration)
+    auto step = [&](auto& generic_in, auto& generic_out, float current_timestep)
     {
-        auto& generic_in = data[idx_in];
-        auto& generic_out = data[idx_out];
-
         intermediates.clear();
 
         last_valid_thin_buffer.clear();
 
-        step_hydro(ctx, mqueue, pool, idx_in, idx_out, 0, current_timestep, iteration);
+        step_hydro(ctx, mqueue, pool, generic_in, generic_out, base_yn, current_timestep);
 
         for(auto& i : generic_in.buffers)
         {
@@ -1075,9 +1028,9 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     for(int i=0; i < iterations; i++)
     {
         if(i != 0)
-            step(2, 1, timestep, i);
+            step(data[2], data[1], timestep);
         else
-            step(0, 1, timestep, i);
+            step(data[0], data[1], timestep);
 
         if(i != iterations - 1)
         {
@@ -1172,11 +1125,6 @@ std::pair<std::vector<cl::buffer>, std::vector<ref_counted_buffer>> cpu_mesh::fu
     //clean(scratch.buffers, b2.buffers);
 
     enforce_constraints(data[1]);
-
-    if(sett.use_matter_colour)
-    {
-        std::swap(colours[0], colours[1]);
-    }
 
     mqueue.end_splice(main_queue);
 

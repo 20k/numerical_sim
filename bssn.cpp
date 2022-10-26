@@ -259,7 +259,7 @@ value bssn::calculate_hamiltonian_constraint(matter_interop& interop, equation_c
 value get_kc()
 {
     #ifdef DAMP_C
-    return 1.f;
+    return 10.f;
     #else
     return 0.f;
     #endif
@@ -1218,7 +1218,7 @@ void bssn::build_gB(equation_context& ctx)
 
     #define STATIC_DAMP
     #ifdef STATIC_DAMP
-    value Ns_r = 2;
+    value Ns_r = 1.45f;
     #endif
 
     value N = max(Ns_r, 0.5f);
