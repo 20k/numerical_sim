@@ -629,6 +629,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     mqueue.begin_splice(main_queue);
 
+    ///need to size check the buffers
     auto check_for_nans = [&](const std::string& name, cl::buffer& buf)
     {
         return;
@@ -1055,13 +1056,20 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     auto copy_points = [&](auto& in, auto& out)
     {
+        assert(in.buffers.size() == out.buffers.size());
+
         for(int i=0; i < (int)in.buffers.size(); i++)
         {
+            if(in.buffers[i].buf.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z())
+                continue;
+
+            assert(in.buffers[i].buf.alloc_size == out.buffers[i].buf.alloc_size);
+
             cl::args copy;
             copy.push_back(points_set.all_points);
             copy.push_back(points_set.all_count);
-            copy.push_back(in.buffers[i].buf);
-            copy.push_back(out.buffers[i].buf);
+            copy.push_back(in.buffers[i].buf.as_device_read_only());
+            copy.push_back(out.buffers[i].buf.as_device_write_only());
             copy.push_back(clsize);
 
             mqueue.exec("copy_valid", copy, {points_set.all_count}, {128});
