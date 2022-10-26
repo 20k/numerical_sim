@@ -1048,9 +1048,9 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     }
     #endif
 
-    auto post_step = [&](auto& buf)
+    auto post_step = [&](auto& buf, float step)
     {
-        dissipate_set(mqueue, data[0], buf, points_set, timestep, dim, scale);
+        dissipate_set(mqueue, data[0], buf, points_set, step, dim, scale);
         enforce_constraints(buf);
     };
 
@@ -1089,8 +1089,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             acc.push_back(points_set.all_count);
             acc.push_back(clsize);
             acc.push_back(accum.buffers[i].buf);
-            acc.push_back(base_yn.buffers[i].buf);
-            acc.push_back(q_val.buffers[i].buf);
+            acc.push_back(base_yn.buffers[i].buf.as_device_read_only());
+            acc.push_back(q_val.buffers[i].buf.as_device_read_only());
             acc.push_back(factor);
 
             mqueue.exec("do_rk4_accumulate", acc, {points_set.all_count}, {128});
@@ -1115,21 +1115,21 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     accumulator(temp_1, accum, 2.f/6.f);
 
-    post_step(temp_1);
+    post_step(temp_1, timestep * 0.5f);
 
     ///temp_2 == q2
     step(temp_1, temp_2, timestep * 0.5f, false);
 
     accumulator(temp_2, accum, 4.f/6.f);
 
-    post_step(temp_2);
+    post_step(temp_2, timestep * 0.5f);
 
     ///temp_1 now == q3
     step(temp_2, temp_1, timestep, false);
 
     accumulator(temp_1, accum, 2.f/6.f);
 
-    post_step(temp_1);
+    post_step(temp_1, timestep);
 
     step(temp_1, temp_2, timestep, false);
 
