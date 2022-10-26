@@ -5362,7 +5362,7 @@ int main()
     std::string argument_string = "-I ./ -cl-std=CL2.0 -cl-mad-enable ";
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {255, 255, 255};
+    vec3i size = {213, 213, 213};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -5892,15 +5892,7 @@ int main()
 
             auto callback = [&](cl::managed_command_queue& mqueue, std::vector<cl::buffer>& bufs, std::vector<ref_counted_buffer>& intermediates)
             {
-                wave_manager.issue_extraction(mqueue, bufs, intermediates, scale, clsize, rtex);
-
-                std::vector<dual_types::complex<float>> values = wave_manager.process();
-
-                for(dual_types::complex<float> v : values)
-                {
-                    real_decomp.push_back(v.real);
-                    imaginary_decomp.push_back(v.imaginary);
-                }
+                wave_manager.issue_extraction(clctx.cqueue, bufs, intermediates, scale, clsize, rtex);
 
                 if(!should_render)
                 {
@@ -5928,6 +5920,16 @@ int main()
             base_mesh.full_step(clctx.ctx, clctx.cqueue, mqueue, timestep, thin_pool, callback);
 
             time_elapsed_s += timestep;
+        }
+
+        {
+            std::vector<dual_types::complex<float>> values = wave_manager.process();
+
+            for(dual_types::complex<float> v : values)
+            {
+                real_decomp.push_back(v.real);
+                imaginary_decomp.push_back(v.imaginary);
+            }
         }
 
         if(should_render || snap)

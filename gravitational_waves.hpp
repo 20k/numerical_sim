@@ -24,15 +24,14 @@ struct gravitational_wave_manager
     cl_int4 wave_pos;
     vec3i simulation_size;
 
-    std::array<cl::buffer, 3> wave_buffers;
+    std::vector<cl::buffer> wave_buffers;
+    std::vector<std::pair<cl::event, cl_float2*>> gpu_data_in_flight;
     std::vector<cl_float2*> pending_unprocessed_data;
-    std::mutex lock;
-    std::optional<cl::event> last_event;
 
     std::vector<cl_ushort4> raw_harmonic_points;
-    cl::buffer harmonic_points;
 
     cl::command_queue read_queue;
+    cl::buffer harmonic_points;
 
     uint32_t next_buffer = 0;
 
@@ -40,8 +39,7 @@ struct gravitational_wave_manager
 
     gravitational_wave_manager(cl::context& ctx, vec3i _simulation_size, float c_at_max, float scale);
 
-    static void callback(cl_event event, cl_int event_command_status, void* user_data);
-    void issue_extraction(cl::managed_command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<ref_counted_buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize, cl::gl_rendertexture& tex);
+    void issue_extraction(cl::command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<ref_counted_buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize, cl::gl_rendertexture& tex);
     std::vector<dual_types::complex<float>> process();
 };
 

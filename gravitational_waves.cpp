@@ -147,7 +147,7 @@ dual_types::complex<float> get_harmonic(const std::vector<cl_ushort4>& points, c
 }
 
 gravitational_wave_manager::gravitational_wave_manager(cl::context& ctx, vec3i _simulation_size, float c_at_max, float scale) :
-    wave_buffers{ctx, ctx, ctx}, read_queue(ctx, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE), harmonic_points{ctx}
+    read_queue(ctx, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE), harmonic_points{ctx}
 {
     simulation_size = _simulation_size;
 
@@ -160,26 +160,15 @@ gravitational_wave_manager::gravitational_wave_manager(cl::context& ctx, vec3i _
     harmonic_points.write(read_queue, raw_harmonic_points);
     read_queue.block();
 
-    for(int i=0; i < (int)wave_buffers.size(); i++)
+    int num_wave_buffers = 8;
+
+    for(int i=0; i < num_wave_buffers; i++)
     {
-        wave_buffers[i].alloc(sizeof(cl_float2) * elements);
+        wave_buffers.emplace_back(ctx).alloc(sizeof(cl_float2) * elements);
     }
 }
 
-void gravitational_wave_manager::callback(cl_event event, cl_int event_command_status, void* user_data)
-{
-    callback_data& data = *(callback_data*)user_data;
-
-    if(event_command_status != CL_COMPLETE)
-        return;
-
-    std::lock_guard guard(data.me->lock);
-    data.me->pending_unprocessed_data.push_back((cl_float2*)data.read);
-
-    delete ((callback_data*)user_data);
-}
-
-void gravitational_wave_manager::issue_extraction(cl::managed_command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<ref_counted_buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize, cl::gl_rendertexture& tex)
+void gravitational_wave_manager::issue_extraction(cl::command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<ref_counted_buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize, cl::gl_rendertexture& tex)
 {
     cl::args waveform_args;
 
@@ -198,7 +187,7 @@ void gravitational_wave_manager::issue_extraction(cl::managed_command_queue& cqu
         waveform_args.push_back(i.as_device_read_only());
     }
 
-    cl::buffer& next = wave_buffers[(next_buffer % 3)];
+    cl::buffer& next = wave_buffers[(next_buffer % wave_buffers.size())];
     next_buffer++;
 
     waveform_args.push_back(scale);
@@ -210,34 +199,39 @@ void gravitational_wave_manager::issue_extraction(cl::managed_command_queue& cqu
 
     cl_float2* next_data = new cl_float2[elements];
 
-    cl::event data = next.read_async(read_queue, (char*)next_data, elements * sizeof(cl_float2), {kernel_event});
+    cl::event event = next.read_async(read_queue, (char*)next_data, elements * sizeof(cl_float2), {kernel_event});
 
-    callback_data* cb_data = new callback_data;
-    cb_data->me = this;
-    cb_data->read = next_data;
-
-    data.set_completion_callback(callback, cb_data);
-
-    if(last_event.has_value())
-    {
-        last_event.value().block();
-    }
-
-    last_event = data;
+    gpu_data_in_flight.push_back({event, next_data});
 }
 
 std::vector<dual_types::complex<float>> gravitational_wave_manager::process()
 {
+    if(gpu_data_in_flight.size() >= wave_buffers.size())
+    {
+        printf("Ran out of hacky extraction buffers\n");
+    }
+
+    for(int i=0; i < (int)gpu_data_in_flight.size(); i++)
+    {
+        auto [event, data_ptr] = gpu_data_in_flight[i];
+
+        if(event.is_finished())
+        {
+            pending_unprocessed_data.push_back(data_ptr);
+
+            gpu_data_in_flight.erase(gpu_data_in_flight.begin() + i);
+            i--;
+            continue;
+        }
+        else
+            break;
+    }
+
     std::vector<dual_types::complex<float>> complex_harmonics;
 
-    std::vector<cl_float2*> to_process;
+    std::vector<cl_float2*> to_process = std::move(pending_unprocessed_data);
 
-    {
-        std::lock_guard guard(lock);
-
-        to_process = std::move(pending_unprocessed_data);
-        pending_unprocessed_data.clear();
-    }
+    pending_unprocessed_data.clear();
 
     for(cl_float2* vec : to_process)
     {
