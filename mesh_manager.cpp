@@ -1013,7 +1013,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     #define BACKWARD_EULER
     #ifdef BACKWARD_EULER
-    int iterations = 2;
+    int iterations = 4;
 
     if(iterations == 1)
     {
@@ -1039,7 +1039,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             dissipate_unidir(b2, scratch);
             enforce_constraints(scratch);
             #else
-            dissipate_set(mqueue, data[0], data[1], points_set, timestep, dim, scale);
+            //dissipate_set(mqueue, data[0], data[1], points_set, timestep, dim, scale);
             enforce_constraints(data[1]);
 
             std::swap(data[1], data[2]);
