@@ -1100,7 +1100,13 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     step(temp, data[0], data[1], data[2], timestep, false);
     post_step(data[2], timestep);
 
+    ///so. data[2] is yn, data[0] is ynm1, data[1] is ynm2
+
+    ///after this, data[0] is yn, data[2] is ynm1, data[1] is ynm2
     std::swap(data[2], data[0]);
+
+    ///after this, data[0] is yn, data[1] is ynm1, data[2] is ynm2 and now useless
+    std::swap(data[2], data[1]);
 
     current_tick++;
 

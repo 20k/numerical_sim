@@ -1024,9 +1024,9 @@ void evolve_X(__global ushort4* points, int point_count,
 
     float f_dtX = dtX;
 
-    float b0 = base_X[index];
+    float b0 = GET_BASE(X);
 
-    oX[index] = max(f_dtX * timestep + b0, 0.f);
+    oX[index] = max((2.f/3.f) * f_dtX * timestep + b0, 0.f);
 
     /**/
 
