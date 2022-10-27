@@ -5862,21 +5862,13 @@ int main()
         if(run)
             step = true;
 
-        ///rk4
-        ///though no signs of any notable instability for backwards euler
-        /*float timestep = 0.08;
+        ///this can be 0.11 for rk4
+        float timestep = 0.045;
 
-        if(steps < 20)
-           timestep = 0.016;
-
-        if(steps < 10)
-            timestep = 0.0016;*/
-
-        ///todo: backwards euler test
-        float timestep = 0.09;
-
-        //timestep = 0.04;
-
+        ///i need to review if this does anything whatsoever, one paper mentioned
+        ///it being beneficial to take small steps initially
+        ///but jeez if it isn't true that this is some absolute rubbish ad-hoc
+        ///nonsense that i've never tested and has 0 justification
         if(steps < 20)
            timestep = 0.001;
 

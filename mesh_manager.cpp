@@ -1052,6 +1052,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     #ifdef RK4_2
     auto post_step = [&](auto& buf, float step)
     {
+        ///this dissipate doesn't seem to be strictly necessary
         dissipate_set(mqueue, data[0], buf, points_set, step, dim, scale);
         enforce_constraints(buf);
     };
