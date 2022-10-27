@@ -885,7 +885,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     };
     #endif // 0
 
-    auto dissipate_unidir = [&](auto& in, auto& out)
+    /*auto dissipate_unidir = [&](auto& in, auto& out)
     {
         assert(in.buffers.size() == out.buffers.size());
 
@@ -923,7 +923,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
             check_for_nans(in.buffers[i].name + "_diss", out.buffers[i].buf);
         }
-    };
+    };*/
     ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
     //#define RK4
     #ifdef RK4
@@ -1086,17 +1086,22 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         std::swap(data[0], data[1]);
     }
 
-    step(data[0], data[0], data[0], data[2], (3.f/2.f) * timestep, true);
+    //step(data[0], data[0], data[0], data[2], (3.f/2.f) * timestep, true);
+
+    step(data[0], data[0], data[1], data[2], timestep, true);
 
     post_step(data[2], timestep);
 
     ///so, data[2] is now yn, data[0] is ynm1, data[1], is ynm2
 
-    step(data[2], data[0], data[1], temp, timestep, false);
-    post_step(temp, timestep);
+    for(int i=0; i < 1; i++)
+    {
+        step(data[2], data[0], data[1], temp, timestep, false);
+        post_step(temp, timestep);
 
-    step(temp, data[0], data[1], data[2], timestep, false);
-    post_step(data[2], timestep);
+        step(temp, data[0], data[1], data[2], timestep, false);
+        post_step(data[2], timestep);
+    }
 
     ///so. data[2] is yn, data[0] is ynm1, data[1] is ynm2
 
