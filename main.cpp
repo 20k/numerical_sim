@@ -5362,7 +5362,7 @@ int main()
     std::string argument_string = "-I ./ -cl-std=CL2.0 -cl-mad-enable ";
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {213, 213, 213};
+    vec3i size = {299, 299, 299};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -5877,11 +5877,11 @@ int main()
 
         //timestep = 0.04;
 
-        if(steps < 20)
+        /*if(steps < 20)
            timestep = 0.001;
 
         if(steps < 10)
-            timestep = 0.0001;
+            timestep = 0.0001;*/
 
         if(pao && time_elapsed_s > 250)
             step = false;
