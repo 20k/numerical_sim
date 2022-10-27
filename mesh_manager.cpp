@@ -1011,7 +1011,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     diff_to_input(generic_data[(which_data + 1) % 2].buffers, timestep);
     #endif
 
-    #define BACKWARD_EULER
+    //#define BACKWARD_EULER
     #ifdef BACKWARD_EULER
     int iterations = 2;
 
@@ -1048,13 +1048,38 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     }
     #endif
 
-    #ifdef RK4_2
     auto post_step = [&](auto& buf, float step)
     {
         dissipate_set(mqueue, data[0], buf, points_set, step, dim, scale);
         enforce_constraints(buf);
     };
 
+    #define BACKWARDS_DIFFERENTIATE_2
+    #ifdef BACKWARDS_DIFFERENTIATE_2
+    auto data_get = [&]()
+    {
+        return buffer_set(ctx, dim, get_buffer_cfg(sett));
+    };
+
+    auto& temp = free_data.get_named(data_get, "temp");
+
+    ///data[0] = yn-1
+    ///data[1] = yn-2
+
+    ///need to get yn into data[0]
+
+    if(current_tick == 0)
+    {
+        step(data[0], data[1], timestep, false);
+        post_step(data[1], timestep);
+        std::swap(data[0], data[1]);
+    }
+
+    current_tick++;
+
+    #endif // BACKWARDS_DIFFERENTIATE_2
+
+    #ifdef RK4_2
     auto copy_points = [&](auto& in, auto& out)
     {
         assert(in.buffers.size() == out.buffers.size());
