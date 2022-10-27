@@ -628,7 +628,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 {
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
-    auto& base_yn = data[0];
+    //auto& base_yn = data[0];
 
     mqueue.begin_splice(main_queue);
 
@@ -1086,6 +1086,22 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         std::swap(data[0], data[1]);
     }
 
+    auto& guess_dest = data[2];
+
+    step(data[0], data[0], data[0], guess_dest, (3.f/2.f) * timestep, true);
+
+    post_step(guess_dest, timestep);
+
+    ///so, data[2] is now yn, data[0] is ynm1, data[1], is ynm2
+
+    step(data[2], data[0], data[1], temp, timestep, false);
+    post_step(temp, timestep);
+
+    step(temp, data[0], data[1], data[2], timestep, false);
+    post_step(data[2], timestep);
+
+    std::swap(data[2], data[0]);
+
     current_tick++;
 
     #endif // BACKWARDS_DIFFERENTIATE_2
@@ -1240,16 +1256,16 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     std::swap(b2, scratch);
     #else
-    dissipate_set(mqueue, data[0], data[1], points_set, timestep, dim, scale);
+    //dissipate_set(mqueue, data[0], data[1], points_set, timestep, dim, scale);
     #endif
 
     //dissipate(get_input().buffers, get_output().buffers);
 
     //clean(scratch.buffers, b2.buffers);
 
-    enforce_constraints(data[1]);
+    //enforce_constraints(data[1]);
 
     mqueue.end_splice(main_queue);
 
-    std::swap(data[1], data[0]);
+    //std::swap(data[1], data[0]);
 }
