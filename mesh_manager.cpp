@@ -1086,11 +1086,9 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         std::swap(data[0], data[1]);
     }
 
-    auto& guess_dest = data[2];
+    step(data[0], data[0], data[0], data[2], (3.f/2.f) * timestep, true);
 
-    step(data[0], data[0], data[0], guess_dest, (3.f/2.f) * timestep, true);
-
-    post_step(guess_dest, timestep);
+    post_step(data[2], timestep);
 
     ///so, data[2] is now yn, data[0] is ynm1, data[1], is ynm2
 
