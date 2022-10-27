@@ -185,7 +185,7 @@ struct cpu_mesh
     ///returns buffers and intermediates
     void full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, step_callback callback);
 
-    void clean_buffer(cl::managed_command_queue& mqueue, cl::buffer& in, cl::buffer& out, cl::buffer& base, float asym, float speed, float timestep);
+    void clean_buffer(cl::managed_command_queue& mqueue, cl::buffer& in, cl::buffer& out, cl::buffer& ynm1, cl::buffer& ynm2, float asym, float speed, float timestep);
 
     int current_tick = 0;
 };

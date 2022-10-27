@@ -666,7 +666,8 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
 __kernel
 void clean_data_thin(__global ushort4* points, int point_count,
                 __global float* input,
-                __global float* base,
+                __global float* ynm1,
+                __global float* ynm2,
                 __global float* out,
                 __global ushort* order_ptr,
                 float scale, int4 dim,
@@ -698,16 +699,21 @@ void clean_data_thin(__global ushort4* points, int point_count,
 
     float sommer_dtc = sommer_thin_out;
 
-    out[index] = sommer_dtc * timestep + base[index];
+    float b0 = -(1.f/3.f) * ynm2[index] + (4.f/3.f) * ynm1[index];
+
+    out[index] = (2.f/3.f) * sommer_dtc * timestep + b0;
 }
 
 #define DISSB 0.1f
+
+#define GET_BASE(val) -(1.f/3.f) * ynm2_##val [index] + (4.f/3.f) * ynm1_##val [index]
 
 __kernel
 void evolve_cY(__global ushort4* points, int point_count,
             STANDARD_ARGS(),
             STANDARD_ARGS(o),
-            STANDARD_ARGS(base_),
+            STANDARD_ARGS(ynm1_),
+            STANDARD_ARGS(ynm2_),
             __global float* momentum0, __global float* momentum1, __global float* momentum2,
             STANDARD_DERIVS(),
             float scale, int4 dim, float timestep, __global ushort* order_ptr)
@@ -744,19 +750,19 @@ void evolve_cY(__global ushort4* points, int point_count,
     float f_dtcYij4 = dtcYij4;
     float f_dtcYij5 = dtcYij5;
 
-    float b0 = base_cY0[index];
-    float b1 = base_cY1[index];
-    float b2 = base_cY2[index];
-    float b3 = base_cY3[index];
-    float b4 = base_cY4[index];
-    float b5 = base_cY5[index];
+    float b0 = GET_BASE(cY0);
+    float b1 = GET_BASE(cY1);
+    float b2 = GET_BASE(cY2);
+    float b3 = GET_BASE(cY3);
+    float b4 = GET_BASE(cY4);
+    float b5 = GET_BASE(cY5);
 
-    ocY0[index] = f_dtcYij0 * timestep + b0;
-    ocY1[index] = f_dtcYij1 * timestep + b1;
-    ocY2[index] = f_dtcYij2 * timestep + b2;
-    ocY3[index] = f_dtcYij3 * timestep + b3;
-    ocY4[index] = f_dtcYij4 * timestep + b4;
-    ocY5[index] = f_dtcYij5 * timestep + b5;
+    ocY0[index] = (2.f/3.f) * f_dtcYij0 * timestep + b0;
+    ocY1[index] = (2.f/3.f) * f_dtcYij1 * timestep + b1;
+    ocY2[index] = (2.f/3.f) * f_dtcYij2 * timestep + b2;
+    ocY3[index] = (2.f/3.f) * f_dtcYij3 * timestep + b3;
+    ocY4[index] = (2.f/3.f) * f_dtcYij4 * timestep + b4;
+    ocY5[index] = (2.f/3.f) * f_dtcYij5 * timestep + b5;
 
     /*if(X[index] < DISSB)
     {
@@ -780,7 +786,8 @@ __kernel
 void evolve_cA(__global ushort4* points, int point_count,
             STANDARD_ARGS(),
             STANDARD_ARGS(o),
-            STANDARD_ARGS(base_),
+            STANDARD_ARGS(ynm1_),
+            STANDARD_ARGS(ynm2_),
             __global float* momentum0, __global float* momentum1, __global float* momentum2,
             STANDARD_DERIVS(),
             float scale, int4 dim, float timestep, __global ushort* order_ptr)
@@ -817,21 +824,21 @@ void evolve_cA(__global ushort4* points, int point_count,
     float f_dtcAij4 = dtcAij4;
     float f_dtcAij5 = dtcAij5;
 
-    float b0 = base_cA0[index];
-    float b1 = base_cA1[index];
-    float b2 = base_cA2[index];
-    float b3 = base_cA3[index];
-    float b4 = base_cA4[index];
-    float b5 = base_cA5[index];
+    float b0 = GET_BASE(cA0);
+    float b1 = GET_BASE(cA1);
+    float b2 = GET_BASE(cA2);
+    float b3 = GET_BASE(cA3);
+    float b4 = GET_BASE(cA4);
+    float b5 = GET_BASE(cA5);
 
-    ocA0[index] = f_dtcAij0 * timestep + b0;
-    ocA1[index] = f_dtcAij1 * timestep + b1;
-    ocA2[index] = f_dtcAij2 * timestep + b2;
+    ocA0[index] = (2.f/3.f) * f_dtcAij0 * timestep + b0;
+    ocA1[index] = (2.f/3.f) * f_dtcAij1 * timestep + b1;
+    ocA2[index] = (2.f/3.f) * f_dtcAij2 * timestep + b2;
     #ifndef NO_CAIJYY
-    ocA3[index] = f_dtcAij3 * timestep + b3;
+    ocA3[index] = (2.f/3.f) * f_dtcAij3 * timestep + b3;
     #endif // NO_CAIJYY
-    ocA4[index] = f_dtcAij4 * timestep + b4;
-    ocA5[index] = f_dtcAij5 * timestep + b5;
+    ocA4[index] = (2.f/3.f) * f_dtcAij4 * timestep + b4;
+    ocA5[index] = (2.f/3.f) * f_dtcAij5 * timestep + b5;
 
     ///NAN ocA0 107 125 125
 
@@ -862,7 +869,8 @@ __kernel
 void evolve_cGi(__global ushort4* points, int point_count,
             STANDARD_ARGS(),
             STANDARD_ARGS(o),
-            STANDARD_ARGS(base_),
+            STANDARD_ARGS(ynm1_),
+            STANDARD_ARGS(ynm2_),
             __global float* momentum0, __global float* momentum1, __global float* momentum2,
             STANDARD_DERIVS(),
             float scale, int4 dim, float timestep, __global ushort* order_ptr)
@@ -900,13 +908,13 @@ void evolve_cGi(__global ushort4* points, int point_count,
     #endif // USE_GBB
 
     {
-        float b0 = base_cGi0[index];
-        float b1 = base_cGi1[index];
-        float b2 = base_cGi2[index];
+        float b0 = GET_BASE(cGi0);
+        float b1 = GET_BASE(cGi1);
+        float b2 = GET_BASE(cGi2);
 
-        ocGi0[index] = f_dtcGi0 * timestep + b0;
-        ocGi1[index] = f_dtcGi1 * timestep + b1;
-        ocGi2[index] = f_dtcGi2 * timestep + b2;
+        ocGi0[index] = (2.f/3.f) * f_dtcGi0 * timestep + b0;
+        ocGi1[index] = (2.f/3.f) * f_dtcGi1 * timestep + b1;
+        ocGi2[index] = (2.f/3.f) * f_dtcGi2 * timestep + b2;
     }
 
     /*if(X[index] < DISSB)
@@ -938,7 +946,8 @@ __kernel
 void evolve_K(__global ushort4* points, int point_count,
             STANDARD_ARGS(),
             STANDARD_ARGS(o),
-            STANDARD_ARGS(base_),
+            STANDARD_ARGS(ynm1_),
+            STANDARD_ARGS(ynm2_),
             __global float* momentum0, __global float* momentum1, __global float* momentum2,
             STANDARD_DERIVS(),
             float scale, int4 dim, float timestep, __global ushort* order_ptr)
@@ -965,9 +974,9 @@ void evolve_K(__global ushort4* points, int point_count,
 
     float f_dtK = dtK;
 
-    float b0 = base_K[index];
+    float b0 = GET_BASE(K);
 
-    oK[index] = f_dtK * timestep + b0;
+    oK[index] = (2.f/3.f) * f_dtK * timestep + b0;
 
     /*if(X[index] < DISSB)
     {
@@ -987,7 +996,8 @@ __kernel
 void evolve_X(__global ushort4* points, int point_count,
             STANDARD_ARGS(),
             STANDARD_ARGS(o),
-            STANDARD_ARGS(base_),
+            STANDARD_ARGS(ynm1_),
+            STANDARD_ARGS(ynm2_),
             __global float* momentum0, __global float* momentum1, __global float* momentum2,
             STANDARD_DERIVS(),
             float scale, int4 dim, float timestep, __global ushort* order_ptr)
@@ -1027,7 +1037,8 @@ __kernel
 void evolve_gA(__global ushort4* points, int point_count,
             STANDARD_ARGS(),
             STANDARD_ARGS(o),
-            STANDARD_ARGS(base_),
+            STANDARD_ARGS(ynm1_),
+            STANDARD_ARGS(ynm2_),
             __global float* momentum0, __global float* momentum1, __global float* momentum2,
             STANDARD_DERIVS(),
             float scale, int4 dim, float timestep, __global ushort* order_ptr)
@@ -1054,19 +1065,19 @@ void evolve_gA(__global ushort4* points, int point_count,
 
     float f_dtgA = dtgA;
 
-    float b0 = base_gA[index];
+    float b0 = GET_BASE(gA);
 
-    ogA[index] = max(f_dtgA * timestep + b0, 0.f);
+    ogA[index] = max((2.f/3.f) * f_dtgA * timestep + b0, 0.f);
 
     NANCHECK(ogA);
 }
-
 
 __kernel
 void evolve_gB(__global ushort4* points, int point_count,
             STANDARD_ARGS(),
             STANDARD_ARGS(o),
-            STANDARD_ARGS(base_),
+            STANDARD_ARGS(ynm1_),
+            STANDARD_ARGS(ynm2_),
             __global float* momentum0, __global float* momentum1, __global float* momentum2,
             STANDARD_DERIVS(),
             float scale, int4 dim, float timestep, __global ushort* order_ptr)
@@ -1097,13 +1108,13 @@ void evolve_gB(__global ushort4* points, int point_count,
     float f_dtgB1 = dtgB1;
     float f_dtgB2 = dtgB2;
 
-    float b0 = base_gB0[index];
-    float b1 = base_gB1[index];
-    float b2 = base_gB2[index];
+    float b0 = GET_BASE(gB0);
+    float b1 = GET_BASE(gB1);
+    float b2 = GET_BASE(gB2);
 
-    ogB0[index] = f_dtgB0 * timestep + b0;
-    ogB1[index] = f_dtgB1 * timestep + b1;
-    ogB2[index] = f_dtgB2 * timestep + b2;
+    ogB0[index] = (2.f/3.f) * f_dtgB0 * timestep + b0;
+    ogB1[index] = (2.f/3.f) * f_dtgB1 * timestep + b1;
+    ogB2[index] = (2.f/3.f) * f_dtgB2 * timestep + b2;
 
     NANCHECK(ogB0);
     NANCHECK(ogB1);

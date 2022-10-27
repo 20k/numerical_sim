@@ -370,6 +370,7 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, matter_initial
 
 void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep)
 {
+    #if 0
     if(!sett.use_matter)
         return;
 
@@ -542,6 +543,7 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
     clean_by_name("DcS0");
     clean_by_name("DcS1");
     clean_by_name("DcS2");
+    #endif
 }
 
 ref_counted_buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool)
@@ -595,7 +597,7 @@ std::vector<ref_counted_buffer> cpu_mesh::get_derivatives_of(cl::context& ctx, b
     return intermediates;
 }
 
-void cpu_mesh::clean_buffer(cl::managed_command_queue& mqueue, cl::buffer& in, cl::buffer& out, cl::buffer& base, float asym, float speed, float timestep)
+void cpu_mesh::clean_buffer(cl::managed_command_queue& mqueue, cl::buffer& in, cl::buffer& out, cl::buffer& ynm1, cl::buffer& ynm2, float asym, float speed, float timestep)
 {
     if(in.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z())
         return;
@@ -607,7 +609,8 @@ void cpu_mesh::clean_buffer(cl::managed_command_queue& mqueue, cl::buffer& in, c
     cleaner.push_back(points_set.border_count);
 
     cleaner.push_back(in.as_device_read_only());
-    cleaner.push_back(base.as_device_read_only());
+    cleaner.push_back(ynm1.as_device_read_only());
+    cleaner.push_back(ynm2.as_device_read_only());
     cleaner.push_back(out);
 
     cleaner.push_back(points_set.order);
@@ -667,16 +670,16 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     };
     #endif // 0
 
-    auto clean_thin = [&](auto& in_buf, auto& out_buf, auto& base_buf, float current_timestep)
+    auto clean_thin = [&](auto& in_buf, auto& out_buf, auto& ynm1, auto& ynm2, float current_timestep)
     {
-        clean_buffer(mqueue, in_buf.buf, out_buf.buf, base_buf.buf, in_buf.asymptotic_value, in_buf.wave_speed, current_timestep);
+        clean_buffer(mqueue, in_buf.buf, out_buf.buf, ynm1.buf, ynm2.buf, in_buf.asymptotic_value, in_buf.wave_speed, current_timestep);
     };
 
-    auto step = [&](auto& generic_in, auto& generic_out, float current_timestep, bool first)
+    auto step = [&](auto& generic_yn, auto& generic_ynm1, auto& generic_ynm2, auto& generic_out, float current_timestep, bool first)
     {
-        step_hydro(ctx, mqueue, pool, generic_in, generic_out, base_yn, current_timestep);
+        //step_hydro(ctx, mqueue, pool, generic_in, generic_out, base_yn, current_timestep);
 
-        std::vector<ref_counted_buffer> intermediates = get_derivatives_of(ctx, generic_in, mqueue, pool);
+        std::vector<ref_counted_buffer> intermediates = get_derivatives_of(ctx, generic_yn, mqueue, pool);
 
         if(first)
         {
@@ -691,7 +694,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         }
 
         ///end all the differentiation work before we move on
-        if(sett.calculate_momentum_constraint)
+        /*if(sett.calculate_momentum_constraint)
         {
             cl::args momentum_args;
 
@@ -713,7 +716,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             momentum_args.push_back(points_set.order);
 
             mqueue.exec("calculate_momentum_constraint", momentum_args, {points_set.all_count}, {128});
-        }
+        }*/
 
         auto step_kernel = [&](const std::string& name)
         {
@@ -722,7 +725,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             a1.push_back(points_set.all_points);
             a1.push_back(points_set.all_count);
 
-            for(auto& i : generic_in.buffers)
+            for(auto& i : generic_yn.buffers)
             {
                 a1.push_back(i.buf.as_device_read_only());
             }
@@ -735,7 +738,12 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
                     a1.push_back(i.buf.as_device_inaccessible());
             }
 
-            for(auto& i : base_yn.buffers)
+            for(auto& i : generic_ynm1.buffers)
+            {
+                a1.push_back(i.buf.as_device_read_only());
+            }
+
+            for(auto& i : generic_ynm2.buffers)
             {
                 a1.push_back(i.buf.as_device_read_only());
             }
@@ -767,16 +775,17 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             }
 
             ///clean
-            for(int i=0; i < (int)generic_in.buffers.size(); i++)
+            for(int i=0; i < (int)generic_yn.buffers.size(); i++)
             {
-                named_buffer& buf_in = generic_in.buffers[i];
-                named_buffer& buf_base = base_yn.buffers[i];
+                named_buffer& buf_in = generic_yn.buffers[i];
+                named_buffer& buf_ynm1 = generic_ynm1.buffers[i];
+                named_buffer& buf_ynm2 = generic_ynm2.buffers[i];
                 named_buffer& buf_out = generic_out.buffers[i];
 
                 if(buf_in.modified_by != name)
                     continue;
 
-                clean_thin(buf_in, buf_out, buf_base, current_timestep);
+                clean_thin(buf_in, buf_out, buf_ynm1, buf_ynm2, current_timestep);
             }
         };
 
@@ -1070,7 +1079,9 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     if(current_tick == 0)
     {
-        step(data[0], data[1], timestep, false);
+        ///so. need to bootstrap with a euler kickstart, and then pipe it into d0
+        ///the 3/2 factor is to counter the 2/3 factor, to make this euler
+        step(data[0], data[0], data[0], data[1], (3.f/2.f) * timestep, false);
         post_step(data[1], timestep);
         std::swap(data[0], data[1]);
     }
