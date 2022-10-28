@@ -21,6 +21,7 @@
 #include "tensor_algebra.hpp"
 #include "bssn.hpp"
 #include <toolkit/fs_helpers.hpp>
+#include "hydrodynamics.hpp"
 
 /**
 current paper set
@@ -5668,7 +5669,7 @@ int main()
 
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
 
-    base_mesh.init(clctx.cqueue, u_arg, matter_vars);
+    base_mesh.init(clctx.cqueue, u_arg, matter_vars.bcAij);
 
     matter_vars = matter_initial_vars(clctx.ctx);
 

@@ -62,13 +62,6 @@ struct evolution_points
     evolution_points(cl::context& ctx) : border_points(ctx), all_points(ctx), order(ctx){}
 };
 
-struct hydro_state
-{
-    cl::buffer should_evolve;
-
-    hydro_state(cl::context& ctx) : should_evolve(ctx){}
-};
-
 evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size);
 
 struct thin_intermediates_pool
@@ -87,32 +80,14 @@ struct cpu_mesh_settings
     //bool use_gBB = false;
 };
 
-struct matter_initial_vars
-{
-    std::array<cl::buffer, 6> bcAij;
-    cl::buffer superimposed_tov_phi;
-
-    cl::buffer pressure_buf;
-    cl::buffer rho_buf;
-    cl::buffer rhoH_buf;
-    cl::buffer p0_buf;
-    std::array<cl::buffer, 3> Si_buf;
-    std::array<cl::buffer, 3> colour_buf;
-
-    ///there must be a better way of doing this, c++ pls
-    matter_initial_vars(cl::context& ctx) : bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, superimposed_tov_phi{ctx},
-                                            pressure_buf{ctx}, rho_buf{ctx}, rhoH_buf{ctx}, p0_buf{ctx}, Si_buf{ctx, ctx, ctx}, colour_buf{ctx, ctx, ctx}
-    {
-
-    }
-};
-
 struct cpu_mesh;
 
 struct plugin
 {
     virtual void init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue,         thin_intermediates_pool& pool, buffer_set& to_init);
     virtual void step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep);
+
+    ~plugin(){}
 };
 
 template<typename T>
@@ -153,8 +128,6 @@ struct cpu_mesh
 
     basic_pool<buffer_set> free_data;
 
-    hydro_state hydro_st;
-
     evolution_points points_set;
 
     std::array<cl::buffer, 3> momentum_constraint;
@@ -165,9 +138,7 @@ struct cpu_mesh
 
     cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& buffers);
 
-    void init(cl::command_queue& cqueue, cl::buffer& u_arg, matter_initial_vars& vars);
-
-    void step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep);
+    void init(cl::command_queue& cqueue, cl::buffer& u_arg, std::array<cl::buffer, 6>& bcAij);
 
     ref_counted_buffer get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool);
 
