@@ -19,47 +19,31 @@ float get_c_at_max()
     return 45.f * (251.f/300.f);
 }
 
-///todo: do this inherity
-struct named_buffer
+struct buffer_descriptor
 {
-    cl::buffer buf;
-
     std::string name;
     std::string modified_by;
     float dissipation_coeff = 0.f;
     float asymptotic_value = 0;
     float wave_speed = 1;
-
-    named_buffer(cl::context& ctx) : buf(ctx){}
 };
 
-struct buffer_set_cfg
+///todo: do this inherity
+struct named_buffer
 {
-    bool use_matter = false;
-    bool use_matter_colour = false;
-    bool use_gBB = false;
+    cl::buffer buf;
+    buffer_descriptor desc;
+
+    named_buffer(cl::context& ctx) : buf(ctx){}
 };
 
 struct buffer_set
 {
     std::vector<named_buffer> buffers;
 
-    buffer_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg);
+    buffer_set(cl::context& ctx, vec3i size, const std::vector<buffer_descriptor>& in_buffers);
 
     named_buffer& lookup(const std::string& name);
-};
-
-struct colour_set
-{
-    std::vector<named_buffer> buffers;
-
-    colour_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg);
-};
-
-struct gpu_mesh
-{
-    cl_int4 centre;
-    cl_int4 dim;
 };
 
 struct evolution_points
@@ -100,7 +84,7 @@ struct cpu_mesh_settings
     bool calculate_momentum_constraint = false;
     bool use_matter = false;
     bool use_matter_colour = false;
-    bool use_gBB = false;
+    //bool use_gBB = false;
 };
 
 struct matter_initial_vars
@@ -171,7 +155,7 @@ struct cpu_mesh
     static constexpr float dissipate_high = 0.25;
     static constexpr float dissipate_gauge = 0.25;
 
-    cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points);
+    cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& buffers);
 
     void init(cl::command_queue& cqueue, cl::buffer& u_arg, matter_initial_vars& vars);
 

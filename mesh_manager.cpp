@@ -3,88 +3,16 @@
 #include <execution>
 #include <iostream>
 
-buffer_set::buffer_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
+buffer_set::buffer_set(cl::context& ctx, vec3i size, const std::vector<buffer_descriptor>& in_buffers)
 {
-    ///often 1 is used here as well. Seems to make a noticable difference to reflections
-    float gauge_wave_speed = sqrt(2);
+    uint64_t buf_size = size.x() * size.y() * size.z() * sizeof(cl_float);
 
-    std::vector<std::tuple<std::string, std::string, float, float, float, int>> values =
+    for(const buffer_descriptor& desc : in_buffers)
     {
-        {"cY0", "evolve_cY", cpu_mesh::dissipate_low, 1, 1, 0},
-        {"cY1", "evolve_cY", cpu_mesh::dissipate_low, 0, 1, 0},
-        {"cY2", "evolve_cY", cpu_mesh::dissipate_low, 0, 1, 0},
-        {"cY3", "evolve_cY", cpu_mesh::dissipate_low, 1, 1, 0},
-        {"cY4", "evolve_cY", cpu_mesh::dissipate_low, 0, 1, 0},
-        {"cY5", "evolve_cY", cpu_mesh::dissipate_low, 1, 1, 0},
-
-        {"cA0", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, 0},
-        {"cA1", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, 0},
-        {"cA2", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, 0},
-        {"cA3", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, 0},
-        {"cA4", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, 0},
-        {"cA5", "evolve_cA", cpu_mesh::dissipate_high, 0, 1, 0},
-
-        {"cGi0", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1, 0},
-        {"cGi1", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1, 0},
-        {"cGi2", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1, 0},
-
-        {"K", "evolve_K", cpu_mesh::dissipate_high, 0, 1, 0},
-        {"X", "evolve_X", cpu_mesh::dissipate_low, 1, 1, 0},
-
-        {"gA", "evolve_gA", cpu_mesh::dissipate_gauge, 1, gauge_wave_speed, 0},
-        {"gB0", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 0},
-        {"gB1", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 0},
-        {"gB2", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 0},
-
-        {"gBB0", "evolve_cGi", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 2},
-        {"gBB1", "evolve_cGi", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 2},
-        {"gBB2", "evolve_cGi", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed, 2},
-
-        {"Dp_star", "evolve_hydro_all", 0.25f, 0, 1, 1},
-        {"De_star", "evolve_hydro_all", 0.25f, 0, 1, 1},
-        {"DcS0", "evolve_hydro_all", 0.25f, 0, 1, 1},
-        {"DcS1", "evolve_hydro_all", 0.25f, 0, 1, 1},
-        {"DcS2", "evolve_hydro_all", 0.25f, 0, 1, 1},
-
-        {"dRed", "evolve_advect", 0.25f, 0, 1, 3},
-        {"dGreen", "evolve_advect", 0.25f, 0, 1, 3},
-        {"dBlue", "evolve_advect", 0.25f, 0, 1, 3},
-    };
-
-    for(int kk=0; kk < (int)values.size(); kk++)
-    {
-        uint64_t buf_size = size.x() * size.y() * size.z() * sizeof(cl_float);
-
         named_buffer& buf = buffers.emplace_back(ctx);
 
-        int type = std::get<5>(values[kk]);
-
-        if(type == 0)
-        {
-            buf.buf.alloc(buf_size);
-        }
-        else if(type == 1 && cfg.use_matter)
-        {
-            buf.buf.alloc(buf_size);
-        }
-        else if(type == 2 && cfg.use_gBB)
-        {
-            buf.buf.alloc(buf_size);
-        }
-        else if(type == 3 && cfg.use_matter_colour)
-        {
-            buf.buf.alloc(buf_size);
-        }
-        else
-        {
-            buf.buf.alloc(sizeof(cl_int));
-        }
-
-        buf.name = std::get<0>(values[kk]);
-        buf.modified_by = std::get<1>(values[kk]);
-        buf.dissipation_coeff = std::get<2>(values[kk]);
-        buf.asymptotic_value = std::get<3>(values[kk]);
-        buf.wave_speed = std::get<4>(values[kk]);
+        buf.buf.alloc(buf_size);
+        buf.desc = desc;
     }
 }
 
@@ -92,7 +20,7 @@ named_buffer& buffer_set::lookup(const std::string& name)
 {
     for(named_buffer& buf : buffers)
     {
-        if(buf.name == name)
+        if(buf.desc.name == name)
             return buf;
     }
 
@@ -117,7 +45,7 @@ void dissipate_set(cl::managed_command_queue& mqueue, T& base_reference, T& inou
         diss.push_back(base_reference.buffers[i].buf.as_device_read_only());
         diss.push_back(inout.buffers[i].buf);
 
-        float coeff = inout.buffers[i].dissipation_coeff;
+        float coeff = inout.buffers[i].desc.dissipation_coeff;
 
         diss.push_back(coeff);
         diss.push_back(scale);
@@ -263,18 +191,8 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::manage
     return next;
 }
 
-buffer_set_cfg get_buffer_cfg(cpu_mesh_settings sett)
-{
-    buffer_set_cfg cfg;
-    cfg.use_matter = sett.use_matter;
-    cfg.use_matter_colour = sett.use_matter_colour;
-    cfg.use_gBB = sett.use_gBB;
-
-    return cfg;
-}
-
-cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points) :
-        data{buffer_set(ctx, _dim, get_buffer_cfg(_sett)), buffer_set(ctx, _dim, get_buffer_cfg(_sett)), buffer_set(ctx, _dim, get_buffer_cfg(_sett))},
+cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& buffers) :
+        data{buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers)},
         points_set{ctx},
         momentum_constraint{ctx, ctx, ctx}, hydro_st(ctx)
 {
@@ -494,7 +412,7 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
 
     auto clean_by_name = [&](const std::string& name)
     {
-        clean_buffer(cqueue, in.lookup(name).buf, out.lookup(name).buf, base.lookup(name).buf, in.lookup(name).asymptotic_value, in.lookup(name).wave_speed, timestep);
+        clean_buffer(cqueue, in.lookup(name).buf, out.lookup(name).buf, base.lookup(name).buf, in.lookup(name).desc.asymptotic_value, in.lookup(name).desc.wave_speed, timestep);
     };
 
     if(sett.use_matter_colour)
@@ -668,7 +586,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     auto clean_thin = [&](auto& in_buf, auto& out_buf, auto& base_buf, float current_timestep)
     {
-        clean_buffer(mqueue, in_buf.buf, out_buf.buf, base_buf.buf, in_buf.asymptotic_value, in_buf.wave_speed, current_timestep);
+        clean_buffer(mqueue, in_buf.buf, out_buf.buf, base_buf.buf, in_buf.desc.asymptotic_value, in_buf.desc.wave_speed, current_timestep);
     };
 
     auto step = [&](auto& generic_in, auto& generic_out, float current_timestep, bool first)
@@ -728,7 +646,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
             for(named_buffer& i : generic_out.buffers)
             {
-                if(i.modified_by == name)
+                if(i.desc.modified_by == name)
                     a1.push_back(i.buf);
                 else
                     a1.push_back(i.buf.as_device_inaccessible());
@@ -759,10 +677,10 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
             for(auto& i : generic_out.buffers)
             {
-                if(i.modified_by != name)
+                if(i.desc.modified_by != name)
                     continue;
 
-                check_for_nans(i.name + "_step", i.buf);
+                check_for_nans(i.desc.name + "_step", i.buf);
             }
 
             ///clean
@@ -772,7 +690,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
                 named_buffer& buf_base = base_yn.buffers[i];
                 named_buffer& buf_out = generic_out.buffers[i];
 
-                if(buf_in.modified_by != name)
+                if(buf_in.desc.modified_by != name)
                     continue;
 
                 clean_thin(buf_in, buf_out, buf_base, current_timestep);
@@ -811,7 +729,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
         for(auto& i : generic_out.buffers)
         {
-            check_for_nans(i.name + "_constrain", i.buf);
+            check_for_nans(i.desc.name + "_constrain", i.buf);
         }
     };
 
