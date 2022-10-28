@@ -163,6 +163,8 @@
 		<Unit filename="gravitational_waves.cpp" />
 		<Unit filename="gravitational_waves.hpp" />
 		<Unit filename="hydrodynamics.cl" />
+		<Unit filename="hydrodynamics.cpp" />
+		<Unit filename="hydrodynamics.hpp" />
 		<Unit filename="initial_conditions.cl" />
 		<Unit filename="laplace_order.cl" />
 		<Unit filename="laplace_solver.cpp" />
