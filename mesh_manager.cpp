@@ -3,7 +3,7 @@
 #include <execution>
 #include <iostream>
 
-buffer_set::buffer_set(cl::context& ctx, vec3i size, const std::vector<buffer_descriptor>& buffers)
+buffer_set::buffer_set(cl::context& ctx, vec3i size, const std::vector<buffer_descriptor>& in_buffers)
 {
     ///often 1 is used here as well. Seems to make a noticable difference to reflections
     /*float gauge_wave_speed = sqrt(2);
@@ -89,14 +89,12 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size, const std::vector<buffer_de
 
     uint64_t buf_size = size.x() * size.y() * size.z() * sizeof(cl_float);
 
-    for(const buffer_descriptor& desc : buffers)
+    for(const buffer_descriptor& desc : in_buffers)
     {
-        named_buffer buf(ctx);
+        named_buffer& buf = buffers.emplace_back(ctx);
 
         buf.buf.alloc(buf_size);
         buf.desc = desc;
-
-        buffers.push_back(buf);
     }
 }
 
@@ -104,7 +102,7 @@ named_buffer& buffer_set::lookup(const std::string& name)
 {
     for(named_buffer& buf : buffers)
     {
-        if(buf.name == name)
+        if(buf.desc.name == name)
             return buf;
     }
 
@@ -129,7 +127,7 @@ void dissipate_set(cl::managed_command_queue& mqueue, T& base_reference, T& inou
         diss.push_back(base_reference.buffers[i].buf.as_device_read_only());
         diss.push_back(inout.buffers[i].buf);
 
-        float coeff = inout.buffers[i].dissipation_coeff;
+        float coeff = inout.buffers[i].desc.dissipation_coeff;
 
         diss.push_back(coeff);
         diss.push_back(scale);
@@ -275,7 +273,7 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::manage
     return next;
 }
 
-cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points) :
+cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& buffers) :
         data{buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers)},
         points_set{ctx},
         momentum_constraint{ctx, ctx, ctx}, hydro_st(ctx)
@@ -496,7 +494,7 @@ void cpu_mesh::step_hydro(cl::context& ctx, cl::managed_command_queue& cqueue, t
 
     auto clean_by_name = [&](const std::string& name)
     {
-        clean_buffer(cqueue, in.lookup(name).buf, out.lookup(name).buf, base.lookup(name).buf, in.lookup(name).asymptotic_value, in.lookup(name).wave_speed, timestep);
+        clean_buffer(cqueue, in.lookup(name).buf, out.lookup(name).buf, base.lookup(name).buf, in.lookup(name).desc.asymptotic_value, in.lookup(name).desc.wave_speed, timestep);
     };
 
     if(sett.use_matter_colour)
@@ -670,7 +668,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     auto clean_thin = [&](auto& in_buf, auto& out_buf, auto& base_buf, float current_timestep)
     {
-        clean_buffer(mqueue, in_buf.buf, out_buf.buf, base_buf.buf, in_buf.asymptotic_value, in_buf.wave_speed, current_timestep);
+        clean_buffer(mqueue, in_buf.buf, out_buf.buf, base_buf.buf, in_buf.desc.asymptotic_value, in_buf.desc.wave_speed, current_timestep);
     };
 
     auto step = [&](auto& generic_in, auto& generic_out, float current_timestep, bool first)
@@ -730,7 +728,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
             for(named_buffer& i : generic_out.buffers)
             {
-                if(i.modified_by == name)
+                if(i.desc.modified_by == name)
                     a1.push_back(i.buf);
                 else
                     a1.push_back(i.buf.as_device_inaccessible());
@@ -761,10 +759,10 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
             for(auto& i : generic_out.buffers)
             {
-                if(i.modified_by != name)
+                if(i.desc.modified_by != name)
                     continue;
 
-                check_for_nans(i.name + "_step", i.buf);
+                check_for_nans(i.desc.name + "_step", i.buf);
             }
 
             ///clean
@@ -774,7 +772,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
                 named_buffer& buf_base = base_yn.buffers[i];
                 named_buffer& buf_out = generic_out.buffers[i];
 
-                if(buf_in.modified_by != name)
+                if(buf_in.desc.modified_by != name)
                     continue;
 
                 clean_thin(buf_in, buf_out, buf_base, current_timestep);
@@ -813,7 +811,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
         for(auto& i : generic_out.buffers)
         {
-            check_for_nans(i.name + "_constrain", i.buf);
+            check_for_nans(i.desc.name + "_constrain", i.buf);
         }
     };
 

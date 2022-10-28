@@ -41,7 +41,7 @@ struct buffer_set
 {
     std::vector<named_buffer> buffers;
 
-    buffer_set(cl::context& ctx, vec3i size, const std::vector<buffer_descriptor>& buffers);
+    buffer_set(cl::context& ctx, vec3i size, const std::vector<buffer_descriptor>& in_buffers);
 
     named_buffer& lookup(const std::string& name);
 };

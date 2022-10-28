@@ -20,6 +20,7 @@
 #include "laplace_solver.hpp"
 #include "tensor_algebra.hpp"
 #include "bssn.hpp"
+#include <toolkit/fs_helpers.hpp>
 
 /**
 current paper set
@@ -5567,13 +5568,13 @@ int main()
 
         for(const buffer_descriptor& desc : buffers)
         {
-            generated_arglist += " a p##" + desc.name + ", "
+            generated_arglist += " a p##" + desc.name + ", ";
         }
 
-        if(generated_arglist.back() == ',')
+        while(generated_arglist.back() == ',' || generated_arglist.back() == ' ')
             generated_arglist.pop_back();
 
-        file::write("./generated_arglist.cl", generated_arglist);
+        file::write("./generated_arglist.cl", generated_arglist, file::mode::TEXT);
     }
 
     cl::program prog(clctx.ctx, "cl.cl");
