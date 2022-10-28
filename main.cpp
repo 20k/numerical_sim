@@ -5490,6 +5490,92 @@ int main()
 
     std::cout << "Size " << argument_string.size() << std::endl;
 
+
+    cpu_mesh_settings base_settings;
+
+    #ifdef USE_HALF_INTERMEDIATE
+    base_settings.use_half_intermediates = true;
+    #else
+    base_settings.use_half_intermediates = false;
+    #endif // USE_HALF_INTERMEDIATE
+
+    base_settings.use_matter = holes.use_matter;
+    base_settings.use_matter_colour = false;
+
+    #ifdef USE_GBB
+    base_settings.use_gBB = true;
+    #endif // USE_GBB
+
+    #ifdef CALCULATE_MOMENTUM_CONSTRAINT
+    base_settings.calculate_momentum_constraint = true;
+    #endif // CALCULATE_MOMENTUM_CONSTRAINT
+
+    float gauge_wave_speed = sqrt(2.f);
+
+    std::vector<buffer_descriptor> buffers = {
+        {"cY0", "evolve_cY", cpu_mesh::dissipate_low, 1, 1},
+        {"cY1", "evolve_cY", cpu_mesh::dissipate_low, 0, 1},
+        {"cY2", "evolve_cY", cpu_mesh::dissipate_low, 0, 1},
+        {"cY3", "evolve_cY", cpu_mesh::dissipate_low, 1, 1},
+        {"cY4", "evolve_cY", cpu_mesh::dissipate_low, 0, 1},
+        {"cY5", "evolve_cY", cpu_mesh::dissipate_low, 1, 1},
+
+        {"cA0", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
+        {"cA1", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
+        {"cA2", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
+        {"cA3", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
+        {"cA4", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
+        {"cA5", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
+
+        {"cGi0", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1},
+        {"cGi1", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1},
+        {"cGi2", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1},
+
+        {"K", "evolve_K", cpu_mesh::dissipate_high, 0, 1},
+        {"X", "evolve_X", cpu_mesh::dissipate_low, 1, 1},
+
+        {"gA", "evolve_gA", cpu_mesh::dissipate_gauge, 1, gauge_wave_speed},
+        {"gB0", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed},
+        {"gB1", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed},
+        {"gB2", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed},
+    };
+
+    #ifdef USE_GBB
+    buffers.push_back({"gBB0", "evolve_cGi", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed});
+    buffers.push_back({"gBB1", "evolve_cGi", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed});
+    buffers.push_back({"gBB2", "evolve_cGi", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed});
+    #endif // USE_GBB
+
+    if(base_settings.use_matter)
+    {
+        buffers.push_back({"Dp_star", "evolve_hydro_all", 0.25f, 0, 1});
+        buffers.push_back({"De_star", "evolve_hydro_all", 0.25f, 0, 1});
+        buffers.push_back({"DcS0", "evolve_hydro_all", 0.25f, 0, 1});
+        buffers.push_back({"DcS1", "evolve_hydro_all", 0.25f, 0, 1});
+        buffers.push_back({"DcS2", "evolve_hydro_all", 0.25f, 0, 1});
+
+        if(base_settings.use_matter_colour)
+        {
+            buffers.push_back({"dRed", "evolve_advect", 0.25f, 0, 1});
+            buffers.push_back({"dGreen", "evolve_advect", 0.25f, 0, 1});
+            buffers.push_back({"dBlue", "evolve_advect", 0.25f, 0, 1});
+        }
+    }
+
+    {
+        std::string generated_arglist = "#define GET_ARGLIST(a, p) ";
+
+        for(const buffer_descriptor& desc : buffers)
+        {
+            generated_arglist += " a p##" + desc.name + ", "
+        }
+
+        if(generated_arglist.back() == ',')
+            generated_arglist.pop_back();
+
+        file::write("./generated_arglist.cl", generated_arglist);
+    }
+
     cl::program prog(clctx.ctx, "cl.cl");
     prog.build(clctx.ctx, argument_string);
 
@@ -5569,77 +5655,6 @@ int main()
 
     cl::buffer texture_coordinates(clctx.ctx);
     texture_coordinates.alloc(sizeof(cl_float2) * width * height);
-
-    cpu_mesh_settings base_settings;
-
-    #ifdef USE_HALF_INTERMEDIATE
-    base_settings.use_half_intermediates = true;
-    #else
-    base_settings.use_half_intermediates = false;
-    #endif // USE_HALF_INTERMEDIATE
-
-    base_settings.use_matter = holes.use_matter;
-    base_settings.use_matter_colour = false;
-
-    #ifdef USE_GBB
-    base_settings.use_gBB = true;
-    #endif // USE_GBB
-
-    #ifdef CALCULATE_MOMENTUM_CONSTRAINT
-    base_settings.calculate_momentum_constraint = true;
-    #endif // CALCULATE_MOMENTUM_CONSTRAINT
-
-    float gauge_wave_speed = sqrt(2.f);
-
-    std::vector<buffer_descriptor> buffers = {
-        {"cY0", "evolve_cY", cpu_mesh::dissipate_low, 1, 1},
-        {"cY1", "evolve_cY", cpu_mesh::dissipate_low, 0, 1},
-        {"cY2", "evolve_cY", cpu_mesh::dissipate_low, 0, 1},
-        {"cY3", "evolve_cY", cpu_mesh::dissipate_low, 1, 1},
-        {"cY4", "evolve_cY", cpu_mesh::dissipate_low, 0, 1},
-        {"cY5", "evolve_cY", cpu_mesh::dissipate_low, 1, 1},
-
-        {"cA0", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
-        {"cA1", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
-        {"cA2", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
-        {"cA3", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
-        {"cA4", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
-        {"cA5", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
-
-        {"cGi0", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1},
-        {"cGi1", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1},
-        {"cGi2", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1},
-
-        {"K", "evolve_K", cpu_mesh::dissipate_high, 0, 1},
-        {"X", "evolve_X", cpu_mesh::dissipate_low, 1, 1},
-
-        {"gA", "evolve_gA", cpu_mesh::dissipate_gauge, 1, gauge_wave_speed},
-        {"gB0", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed},
-        {"gB1", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed},
-        {"gB2", "evolve_gB", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed},
-    };
-
-    #ifdef USE_GBB
-    buffers.push_back({"gBB0", "evolve_cGi", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed});
-    buffers.push_back({"gBB1", "evolve_cGi", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed});
-    buffers.push_back({"gBB2", "evolve_cGi", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed});
-    #endif // USE_GBB
-
-    if(base_settings.use_matter)
-    {
-        buffers.push_back({"Dp_star", "evolve_hydro_all", 0.25f, 0, 1});
-        buffers.push_back({"De_star", "evolve_hydro_all", 0.25f, 0, 1});
-        buffers.push_back({"DcS0", "evolve_hydro_all", 0.25f, 0, 1});
-        buffers.push_back({"DcS1", "evolve_hydro_all", 0.25f, 0, 1});
-        buffers.push_back({"DcS2", "evolve_hydro_all", 0.25f, 0, 1});
-
-        if(base_settings.use_matter_colour)
-        {
-            buffers.push_back({"dRed", "evolve_advect", 0.25f, 0, 1});
-            buffers.push_back({"dGreen", "evolve_advect", 0.25f, 0, 1});
-            buffers.push_back({"dBlue", "evolve_advect", 0.25f, 0, 1});
-        }
-    }
 
     cpu_mesh base_mesh(clctx.ctx, clctx.cqueue, {0,0,0}, size, base_settings, evolve_points, buffers);
 
