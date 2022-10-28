@@ -15,6 +15,9 @@
 					<Add option="-Og" />
 					<Add option="-g" />
 				</Compiler>
+				<Linker>
+					<Add option="-Og" />
+				</Linker>
 			</Target>
 			<Target title="Release">
 				<Option output="bin/Release/numerical_sim" prefix_auto="1" extension_auto="1" />
@@ -157,6 +160,7 @@
 		<Unit filename="generic_laplace.cl" />
 		<Unit filename="gravitational_waves.cpp" />
 		<Unit filename="gravitational_waves.hpp" />
+		<Unit filename="hydrodynamics.cl" />
 		<Unit filename="initial_conditions.cl" />
 		<Unit filename="laplace_order.cl" />
 		<Unit filename="laplace_solver.cpp" />

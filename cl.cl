@@ -8,6 +8,7 @@
 
 #include "transform_position.cl"
 #include "common.cl"
+#include "evolution_common.cl"
 #include "evolve_points.cl"
 
 ///because we need to cutoff slightly before the real edge due to various factors
@@ -149,24 +150,6 @@ float get_distance(int x1, int y1, int z1, int x2, int y2, int z2, int4 dim, flo
     return fast_length(d2 - d1);
 }
 
-#define GET_ARGLIST(a, p) a p##cY0, a p##cY1, a p##cY2, a p##cY3, a p##cY4, a p##cY5, \
-                a p##cA0, a p##cA1, a p##cA2, a p##cA3, a p##cA4, a p##cA5, \
-                a p##cGi0, a p##cGi1, a p##cGi2, a p##K, a p##X, a p##gA, a p##gB0, a p##gB1, a p##gB2, \
-                a p##gBB0, a p##gBB1, a p##gBB2, \
-                a p##Dp_star, a p##De_star, a p##DcS0, a p##DcS1, a p##DcS2, \
-                a p##dRed, a p##dGreen, a p##dBlue
-
-#define GET_DERIVLIST(a, p) a p##dcYij0, a p##dcYij1, a p##dcYij2, a p##dcYij3, a p##dcYij4, a p##dcYij5, a p##dcYij6, a p##dcYij7, a p##dcYij8, a p##dcYij9, a p##dcYij10, a p##dcYij11, a p##dcYij12, a p##dcYij13, a p##dcYij14, a p##dcYij15, a p##dcYij16, a p##dcYij17, \
-                    a p##digA0, a p##digA1, a p##digA2, \
-                    a p##digB0, a p##digB1, a p##digB2, a p##digB3, a p##digB4, a p##digB5, a p##digB6, a p##digB7, a p##digB8, \
-                    a p##dX0, a p##dX1, a p##dX2
-
-#define STANDARD_ARGS(p) GET_ARGLIST(__global float*, p)
-#define STANDARD_DERIVS(p) GET_DERIVLIST(__global DERIV_PRECISION*, p)
-
-#define ALL_ARGS(p) GET_ARGLIST(, p), GET_DERIVLIST(, p)
-#define GET_STANDARD_ARGS(p) GET_ARGLIST(, p)
-
 __kernel
 void calculate_initial_conditions(STANDARD_ARGS(),
                                   __global float* u_value,
@@ -299,24 +282,6 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     }*/
 }
 
-#define IS_DEGENERATE(x) (isnan(x) || !isfinite(x))
-
-#define NANCHECK_IMPL(w) if(IS_DEGENERATE(w[index])){printf("NAN " #w " %i %i %i %f\n", ix, iy, iz, w[index]);}
-#define LNANCHECK_IMPL(w)  if(IS_DEGENERATE(w)){printf("NAN " #w " %i %i %i %f\n", ix, iy, iz, w);}
-#define NNANCHECK_IMPL(w, name) if(IS_DEGENERATE(w)){printf("NAN " name " %i %i %i %f\n", ix, iy, iz, w);}
-
-
-//#define DEBUGGING
-#ifdef DEBUGGING
-#define NANCHECK(w) NANCHECK_IMPL(w)
-#define LNANCHECK(w) LNANCHECK_IMPL(w)
-#define NNANCHECK(w, name) NNANCHECK_IMPL(w, name)
-#else
-#define NANCHECK(w)
-#define LNANCHECK(w)
-#define NNANCHECK(w, name)
-#endif
-
 __kernel
 void nan_checker(__global ushort4* points, int point_count, __global float* arg, float scale, int4 dim)
 {
@@ -332,121 +297,6 @@ void nan_checker(__global ushort4* points, int point_count, __global float* arg,
     int index = IDX(ix,iy,iz);
 
     NANCHECK_IMPL(arg);
-}
-
-#define MIN_P_STAR 1e-6f
-
-__kernel
-void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
-                                               __global float* pressure_in,
-                                               __global float* rho_in,
-                                               __global float* rhoH_in,
-                                               __global float* p0_in,
-                                               __global float* Si0_in,
-                                               __global float* Si1_in,
-                                               __global float* Si2_in,
-                                               __global float* colour0_in,
-                                               __global float* colour1_in,
-                                               __global float* colour2_in,
-                                               __global float* u_value,
-                                               __global float* tov_phi,
-                                               float scale, int4 dim,
-                                               int use_colour)
-{
-    int ix = get_global_id(0);
-    int iy = get_global_id(1);
-    int iz = get_global_id(2);
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    int index = IDX(ix,iy,iz);
-
-    float3 offset = transform_position(ix, iy, iz, dim, scale);
-
-    float ox = offset.x;
-    float oy = offset.y;
-    float oz = offset.z;
-
-    float TEMPORARIEShydroconvert;
-
-    float dp_val = build_p_star;
-    float de_val = build_e_star;
-
-    float cS0 = build_sk0;
-    float cS1 = build_sk1;
-    float cS2 = build_sk2;
-
-    //printf("w2 %f %i %i %i\n", debug_w2, ix, iy,iz);
-
-    ///dp_val and cS are both regular
-    if(dp_val < MIN_P_STAR)
-    {
-        dp_val = 0;
-        de_val = 0;
-        cS0 = 0;
-        cS1 = 0;
-        cS2 = 0;
-    }
-
-    dp_val = max(dp_val, 0.f);
-    de_val = max(de_val, 0.f);
-
-    /*LNANCHECK(D_eps_p0);
-    LNANCHECK(D_p0);
-    LNANCHECK(D_h);
-    LNANCHECK(D_pressure);
-    LNANCHECK(D_gA_u0);
-
-    if(D_eps_p0 < 0)
-    {
-        printf("ep0 %f h %f p0 %f press %f p* %f rho %f rhoH %f conf press %f p0 %f phi %f W2 %f littlee %f eps %f\n", D_eps_p0, D_h, D_p0, D_pressure, D_p_star, D_rho, D_rhoH, D_conformal_pressure, D_conformal_rest_mass, D_phi, D_W2, D_littlee, D_eps);
-    }*/
-
-    //printf("%f %f\n", D_enthalpy, D_gA_u0);
-
-    /*if(ix == 107 && iy == 125 && iz == 125)
-    {
-        printf("Dtc %f %f %f %f %f %f %f %f\n", D_p0, D_gA, D_u0, D_chip, D_X, D_phi, D_u, D_DYN);
-    }*/
-
-
-    /*if((ix == 98 || ix == 99) && iy == 125 && iz == 125)
-    {
-        printf("Debugging yay %f %f %f\n", p0D, pD, phiasdf);
-    }*/
-
-    Dp_star[index] = dp_val;
-    De_star[index] = de_val;
-
-    DcS0[index] = cS0;
-    DcS1[index] = cS1;
-    DcS2[index] = cS2;
-
-    NANCHECK(Dp_star);
-    NANCHECK(De_star);
-    NANCHECK(DcS0);
-    NANCHECK(DcS1);
-    NANCHECK(DcS2);
-
-    if(use_colour)
-    {
-        dRed[index] = (build_cR) * dp_val;
-        dGreen[index] = (build_cG) * dp_val;
-        dBlue[index] = (build_cB) * dp_val;
-    }
-
-    ///89.000000 106.000000 106.000000
-    /*if(ix == 87 && iy == 106 && iz == 106)
-    {
-        printf("Si %f %f %f p* %f\n", cS0, cS1, cS2, dp_val);
-    }*/
-
-    /*Dp_star[index] = 0;
-    De_star[index] = 0;
-    DcS0[index] = 0;
-    DcS1[index] = 0;
-    DcS2[index] = 0;*/
 }
 
 __kernel
@@ -1110,14 +960,11 @@ void evolve_gB(__global ushort4* points, int point_count,
     NANCHECK(ogB2);
 }
 
-#define HYDRO_ORDER 2
-
-///this is incorrect due to intermediates needing to be 0 ?
 __kernel
-void calculate_hydro_evolved(__global ushort4* points, int point_count,
-                             STANDARD_ARGS(),
-                             float scale, int4 dim, __global ushort* order_ptr,
-                             __global char* restrict should_evolve)
+void dissipate_single_unidir(__global ushort4* points, int point_count,
+                             __global float* buffer, __global float* obuffer,
+                             float coefficient,
+                             float scale, int4 dim, float timestep, __global ushort* order_ptr)
 {
     int local_idx = get_global_id(0);
 
@@ -1131,344 +978,19 @@ void calculate_hydro_evolved(__global ushort4* points, int point_count,
     int index = IDX(ix, iy, iz);
     int order = order_ptr[index];
 
-    if((order & D_FULL) == 0 && (order & D_LOW) == 0)
+    if((order & D_FULL) == 0)
     {
-        should_evolve[index] = false;
+        obuffer[index] = buffer[index];
         return;
     }
 
-    float P_count = 0;
+    float damp = 1;
 
-    #pragma unroll
-    for(int i=-HYDRO_ORDER; i <= HYDRO_ORDER; i++)
-    {
-        P_count += max(Dp_star[IDX(ix + i, iy, iz)], 0.f);
-    }
+    float TEMPORARIES9;
 
-    #pragma unroll
-    for(int i=-HYDRO_ORDER; i <= HYDRO_ORDER; i++)
-    {
-        if(i == 0)
-            continue;
+    float dissipate_single = KREISS_DISSIPATE_SINGULAR;
 
-        P_count += max(Dp_star[IDX(ix, iy + i, iz)], 0.f);
-    }
-
-    #pragma unroll
-    for(int i=-HYDRO_ORDER; i <= HYDRO_ORDER; i++)
-    {
-        if(i == 0)
-            continue;
-
-        P_count += max(Dp_star[IDX(ix, iy, iz + i)], 0.f);
-    }
-
-    should_evolve[index] = P_count > 0;
-}
-
-///does not use any derivatives
-__kernel
-void calculate_hydro_intermediates(__global ushort4* points, int point_count,
-                                   STANDARD_ARGS(),
-                                   __global float* pressure,
-                                   __global float* hW,
-                                   float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve)
-{
-    int local_idx = get_global_id(0);
-
-    if(local_idx >= point_count)
-        return;
-
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
-
-    int index = IDX(ix, iy, iz);
-    int order = order_ptr[index];
-
-    int any_valid = 0;
-
-    #pragma unroll
-    for(int i=-HYDRO_ORDER; i <= HYDRO_ORDER; i++)
-    {
-        any_valid += should_evolve[IDX(ix + i, iy, iz)];
-    }
-
-    #pragma unroll
-    for(int i=-HYDRO_ORDER; i <= HYDRO_ORDER; i++)
-    {
-        if(i == 0)
-            continue;
-
-        any_valid += should_evolve[IDX(ix, iy + i, iz)];
-    }
-
-    #pragma unroll
-    for(int i=-HYDRO_ORDER; i <= HYDRO_ORDER; i++)
-    {
-        if(i == 0)
-            continue;
-
-        any_valid += should_evolve[IDX(ix, iy, iz + i)];
-    }
-
-    if(any_valid == 0)
-        return;
-
-    if(Dp_star[index] < MIN_P_STAR)
-    {
-        pressure[index] = 0;
-        hW[index] = 0;
-        return;
-    }
-
-    float TEMPORARIEShydrointermediates;
-
-    float cpress = init_pressure;
-    float W_var = init_W;
-
-    pressure[index] = cpress;
-    hW[index] = W_var;
-
-    NANCHECK(pressure);
-    NANCHECK(hW);
-}
-
-__kernel
-void add_hydro_artificial_viscosity(__global ushort4* points, int point_count,
-                                    STANDARD_ARGS(),
-                                    __global float* pressure,
-                                    __global float* hW,
-                                    float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve)
-{
-
-    int local_idx = get_global_id(0);
-
-    if(local_idx >= point_count)
-        return;
-
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
-
-    int index = IDX(ix, iy, iz);
-    int order = order_ptr[index];
-
-    if(((order & D_FULL) == 0 && ((order & D_LOW) == 0)) || should_evolve[index] == 0)
-        return;
-
-    float TEMPORARIEShydroviscosity;
-
-    float added = init_artificial_viscosity;
-
-    if(added == 0)
-        return;
-
-    pressure[IDX(ix,iy,iz)] += added;
-}
-
-///does use derivatives
-__kernel
-void evolve_hydro_all(__global ushort4* points, int point_count,
-                      STANDARD_ARGS(),
-                      STANDARD_ARGS(o),
-                      STANDARD_ARGS(base_),
-                      __global float* pressure,
-                      __global float* hW,
-                      float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve, float timestep)
-{
-    int local_idx = get_global_id(0);
-
-    if(local_idx >= point_count)
-        return;
-
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
-
-    int index = IDX(ix, iy, iz);
-    int order = order_ptr[index];
-
-    ///we're copying over base. Is that correct? Because sommerfeld
-    ///for hydro this is likely a significant overhead
-    if(((order & D_FULL) == 0 && ((order & D_LOW) == 0)) || should_evolve[index] == 0)
-    {
-        oDp_star[index] = Dp_star[index];
-        oDe_star[index] = De_star[index];
-
-        oDcS0[index] = DcS0[index];
-        oDcS1[index] = DcS1[index];
-        oDcS2[index] = DcS2[index];
-        return;
-    }
-
-    float f_dtp_star = init_dtp_star;
-
-    float base_p_star =  base_Dp_star[index];
-    float fin_p_star = f_dtp_star * timestep + base_p_star;
-
-    LNANCHECK(base_p_star);
-
-    float TEMPORARIEShydrofinal;
-
-    if(fin_p_star <= MIN_P_STAR)
-    {
-        oDp_star[index] = 0;
-        oDe_star[index] = 0;
-        oDcS0[index] = 0;
-        oDcS1[index] = 0;
-        oDcS2[index] = 0;
-
-        return;
-    }
-
-    float f_dte_star = init_dte_star;
-    float f_dtSk0 = init_dtSk0;
-    float f_dtSk1 = init_dtSk1;
-    float f_dtSk2 = init_dtSk2;
-
-    float base_e_star = base_De_star[index];
-    float base_cS0 = base_DcS0[index];
-    float base_cS1 = base_DcS1[index];
-    float base_cS2 = base_DcS2[index];
-
-    LNANCHECK(base_e_star);
-    LNANCHECK(base_cS0);
-    LNANCHECK(base_cS1);
-    LNANCHECK(base_cS2);
-
-    float fin_e_star = f_dte_star * timestep + base_e_star;
-    float fin_cS0 = f_dtSk0 * timestep + base_cS0;
-    float fin_cS1 = f_dtSk1 * timestep + base_cS1;
-    float fin_cS2 = f_dtSk2 * timestep + base_cS2;
-
-    ///clamping to 0.05 this fixes some issues
-    ///this makes a big difference to stability around collisions
-    fin_cS0 = clamp(fin_cS0, -0.05f, 0.05f);
-    fin_cS1 = clamp(fin_cS1, -0.05f, 0.05f);
-    fin_cS2 = clamp(fin_cS2, -0.05f, 0.05f);
-
-    /*fin_cS0 = clamp(fin_cS0, -1.f, 1.f);
-    fin_cS1 = clamp(fin_cS1, -1.f, 1.f);
-    fin_cS2 = clamp(fin_cS2, -1.f, 1.f);*/
-
-    ///?
-    if(fin_p_star < 1e-5 * p_star_max)
-    {
-        fin_e_star = min(fin_e_star, 10 * fin_p_star);
-    }
-
-    /*if(fin_p_star > 1)
-    {
-        fin_p_star = 1;
-        fin_e_star = min(fin_e_star, 10 * fin_p_star);
-    }*/
-
-    ///this *does* seem to help
-    /*if(X[index] < 0.1)
-    {
-        fin_p_star = 0;
-        fin_e_star = 0;
-
-        fin_cS0 = 0;
-        fin_cS1 = 0;
-        fin_cS2 = 0;
-    }*/
-
-    float area_half_width = scale * max(max(dim.x, dim.y), dim.z) / 2.f;
-
-    float3 offset = transform_position(ix, iy, iz, dim, scale);
-
-    float my_radius = fast_length(offset);
-
-    float diss = 5;
-
-    ///either interior to the black hole, or near the border. The latter is kind of hacky
-    if(gA[index] < 0.45f || my_radius >= area_half_width * 0.85f)
-    {
-        fin_p_star += (0 - fin_p_star) * timestep * diss;
-        fin_e_star += (0 - fin_e_star) * timestep * diss;
-
-        fin_cS0 += (0 - fin_cS0) * timestep * diss;
-        fin_cS1 += (0 - fin_cS1) * timestep * diss;
-        fin_cS2 += (0 - fin_cS2) * timestep * diss;
-    }
-
-    fin_p_star = max(fin_p_star, 0.f);
-    fin_e_star = max(fin_e_star, 0.f);
-
-    oDp_star[index] = fin_p_star;
-    oDe_star[index] = fin_e_star;
-
-    oDcS0[index] = fin_cS0;
-    oDcS1[index] = fin_cS1;
-    oDcS2[index] = fin_cS2;
-
-    NANCHECK(oDp_star);
-    NANCHECK(oDe_star);
-    NANCHECK(oDcS0);
-    NANCHECK(oDcS1);
-    NANCHECK(oDcS2);
-
-    //if(ix == 97 && iy == 124 && iz == 124)
-    /*if(ix == 94 && iy == 123 && iz == 125)
-    {
-        printf("McSigh p* %f e* %f cS0 %f cS1 %f cS2 %f lhs %f rhs %f fulldt %f\n", oDp_star[index], oDe_star[index], oDcS0[index], oDcS1[index], oDcS2[index], lhs_dtsk0, rhs_dtsk0, f_dtSk0);
-    }*/
-
-
-    /*if(ix == 98 && iy == 125 && iz == 125)
-    {
-        printf("Base? %f\n", base_e_star);
-
-        printf("dg1 %.24f %f %f\n", DINTERIOR, DP1, DP2);
-
-        printf("AVAL %f pq %f irhs %f p0eps %f rhsdte %f lhs %f estar %f %f %f\n", DBG_A, DBG_PQVIS, DBG_IRHS, DBG_p0eps, DBG_RHS_DTESTAR, DBG_LHS_DTESTAR, DBG_ESTARVI0, DBG_ESTARVI1, DBG_ESTARVI2);
-    }*/
-}
-
-__kernel
-void hydro_advect(__global ushort4* points, int point_count,
-                  STANDARD_ARGS(),
-                  __global float* hW,
-                  __global float* quantity_base,
-                  __global float* quantity_in,
-                  __global float* quantity_out,
-                  float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve, float timestep)
-{
-    int local_idx = get_global_id(0);
-
-    if(local_idx >= point_count)
-        return;
-
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
-
-    int index = IDX(ix, iy, iz);
-    int order = order_ptr[index];
-
-    if(((order & D_FULL) == 0 && ((order & D_LOW) == 0)) || should_evolve[index] == 0)
-    {
-        quantity_out[IDX(ix,iy,iz)] = quantity_in[IDX(ix,iy,iz)];
-        return;
-    }
-
-    float TEMPORARIEShydroadvect;
-
-    float f_quantity = HYDRO_ADVECT;
-
-    float fin = f_quantity * timestep + quantity_base[index];
-
-    //fin = clamp(fin, 0.f, 1.f);
-
-    if(fin < 0)
-        fin = 0;
-
-    if(Dp_star[index] < MIN_P_STAR)
-        fin = 0;
-
-    quantity_out[index] = fin;
+    obuffer[index] = buffer[index] + damp * dissipate_single * timestep;
 }
 
 __kernel
@@ -1533,39 +1055,6 @@ void dissipate_single(__global ushort4* points, int point_count,
         return;
 
     obuffer[index] += damp * dissipate_single * timestep;
-}
-
-__kernel
-void dissipate_single_unidir(__global ushort4* points, int point_count,
-                             __global float* buffer, __global float* obuffer,
-                             float coefficient,
-                             float scale, int4 dim, float timestep, __global ushort* order_ptr)
-{
-    int local_idx = get_global_id(0);
-
-    if(local_idx >= point_count)
-        return;
-
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
-
-    int index = IDX(ix, iy, iz);
-    int order = order_ptr[index];
-
-    if((order & D_FULL) == 0)
-    {
-        obuffer[index] = buffer[index];
-        return;
-    }
-
-    float damp = 1;
-
-    float TEMPORARIES9;
-
-    float dissipate_single = KREISS_DISSIPATE_SINGULAR;
-
-    obuffer[index] = buffer[index] + damp * dissipate_single * timestep;
 }
 
 __kernel
