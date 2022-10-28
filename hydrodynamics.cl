@@ -460,12 +460,14 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
     NANCHECK(DcS1);
     NANCHECK(DcS2);
 
+    #ifdef HAS_COLOUR
     if(use_colour)
     {
         dRed[index] = (build_cR) * dp_val;
         dGreen[index] = (build_cG) * dp_val;
         dBlue[index] = (build_cB) * dp_val;
     }
+    #endif
 
     ///89.000000 106.000000 106.000000
     /*if(ix == 87 && iy == 106 && iz == 106)

@@ -1759,9 +1759,11 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         }
         else
         {
+            #ifdef HAS_COLOUR
             accum_R += buffer_read_linear(dRed, voxel_pos, dim) * 1;
             accum_G += buffer_read_linear(dGreen, voxel_pos, dim) * 1;
             accum_B += buffer_read_linear(dBlue, voxel_pos, dim) * 1;
+            #endif
         }
 
         /*if(density > SOLID_DENSITY)

@@ -5560,6 +5560,9 @@ int main()
             buffers.push_back({"dRed", "evolve_advect", 0.25f, 0, 1});
             buffers.push_back({"dGreen", "evolve_advect", 0.25f, 0, 1});
             buffers.push_back({"dBlue", "evolve_advect", 0.25f, 0, 1});
+
+            argument_string += "-DHAS_COLOUR ";
+            hydro_argument_string += "-DHAS_COLOUR ";
         }
     }
 
@@ -5568,7 +5571,7 @@ int main()
 
         for(const buffer_descriptor& desc : buffers)
         {
-            generated_arglist += " a p##" + desc.name + ", ";
+            generated_arglist += "a p##" + desc.name + ", ";
         }
 
         while(generated_arglist.back() == ',' || generated_arglist.back() == ' ')
