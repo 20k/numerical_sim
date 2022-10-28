@@ -191,10 +191,11 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::manage
     return next;
 }
 
-cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& buffers) :
+cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& buffers, std::vector<plugin*> _plugins) :
         data{buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers)},
         points_set{ctx},
-        momentum_constraint{ctx, ctx, ctx}
+        momentum_constraint{ctx, ctx, ctx},
+        plugins(_plugins)
 {
     centre = _centre;
     dim = _dim;
@@ -218,7 +219,7 @@ cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, v
     }
 }
 
-void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, std::array<cl::buffer, 6>& bcAij)
+void cpu_mesh::init(cl::context& ctx, cl::command_queue& cqueue, thin_intermediates_pool& pool, cl::buffer& u_arg, std::array<cl::buffer, 6>& bcAij)
 {
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
@@ -241,6 +242,11 @@ void cpu_mesh::init(cl::command_queue& cqueue, cl::buffer& u_arg, std::array<cl:
         init.push_back(clsize);
 
         cqueue.exec("calculate_initial_conditions", init, {dim.x(), dim.y(), dim.z()}, {8, 8, 1});
+    }
+
+    for(plugin* p : plugins)
+    {
+        p->init(*this, ctx, cqueue, pool, data[0]);
     }
 
     for(int i=0; i < (int)data[0].buffers.size(); i++)
@@ -380,7 +386,10 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     auto step = [&](auto& generic_in, auto& generic_out, float current_timestep, bool first)
     {
-        //step_hydro(ctx, mqueue, pool, generic_in, generic_out, base_yn, current_timestep);
+        for(plugin* p : plugins)
+        {
+            p->step(*this, ctx, mqueue, pool, generic_in, generic_out, base_yn, current_timestep);
+        }
 
         std::vector<ref_counted_buffer> intermediates = get_derivatives_of(ctx, generic_in, mqueue, pool);
 

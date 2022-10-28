@@ -3308,7 +3308,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    #define PAPER_0610128
+    //#define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -3471,7 +3471,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #endif // GAS_CLOUD_BLACK_HOLE
 
     ///this is an extremely cool matter case
-    //#define NEUTRON_ACCRETION
+    #define NEUTRON_ACCRETION
     #ifdef NEUTRON_ACCRETION
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
@@ -5661,7 +5661,18 @@ int main()
     cl::buffer texture_coordinates(clctx.ctx);
     texture_coordinates.alloc(sizeof(cl_float2) * width * height);
 
-    cpu_mesh base_mesh(clctx.ctx, clctx.cqueue, {0,0,0}, size, base_settings, evolve_points, buffers);
+    auto bcAij = matter_vars.bcAij;
+
+    std::vector<plugin*> plugins;
+
+    if(holes.use_matter)
+    {
+        eularian_hydrodynamics* hydro = new eularian_hydrodynamics(clctx.ctx, std::move(matter_vars), u_arg);
+
+        plugins.push_back(hydro);
+    }
+
+    cpu_mesh base_mesh(clctx.ctx, clctx.cqueue, {0,0,0}, size, base_settings, evolve_points, buffers, plugins);
 
     cl_float time_elapsed_s = 0;
 
@@ -5669,10 +5680,9 @@ int main()
 
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
 
-    base_mesh.init(clctx.cqueue, u_arg, matter_vars.bcAij);
+    base_mesh.init(clctx.ctx, clctx.cqueue, thin_pool, u_arg, matter_vars.bcAij);
 
     matter_vars = matter_initial_vars(clctx.ctx);
-
     u_arg = cl::buffer(clctx.ctx);
 
     std::vector<float> real_graph;
