@@ -1,6 +1,6 @@
 #include "hydrodynamics.hpp"
 
-eularian_hydrodynamics::eularian_hydrodynamics(cl::context& ctx, matter_initial_vars&& _vars, cl::buffer _u_arg) : hydro_st(ctx), vars(std::move(_vars)), u_arg(_u_arg){}
+eularian_hydrodynamics::eularian_hydrodynamics(cl::context& ctx, matter_initial_vars _vars, cl::buffer _u_arg) : hydro_st(ctx), vars(_vars), u_arg(_u_arg){}
 
 void eularian_hydrodynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue, thin_intermediates_pool& pool, buffer_set& to_init)
 {

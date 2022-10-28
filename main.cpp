@@ -5667,7 +5667,7 @@ int main()
 
     if(holes.use_matter)
     {
-        eularian_hydrodynamics* hydro = new eularian_hydrodynamics(clctx.ctx, std::move(matter_vars), u_arg);
+        eularian_hydrodynamics* hydro = new eularian_hydrodynamics(clctx.ctx, matter_vars, u_arg);
 
         plugins.push_back(hydro);
     }
