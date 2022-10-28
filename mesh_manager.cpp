@@ -85,7 +85,6 @@ buffer_set::buffer_set(cl::context& ctx, vec3i size, buffer_set_cfg cfg)
         buf.dissipation_coeff = std::get<2>(values[kk]);
         buf.asymptotic_value = std::get<3>(values[kk]);
         buf.wave_speed = std::get<4>(values[kk]);
-        buf.matter_term = std::get<5>(values[kk]) == 1 || std::get<5>(values[kk]) == 3;
     }
 }
 

@@ -27,7 +27,6 @@ struct named_buffer
     std::string name;
     std::string modified_by;
     float dissipation_coeff = 0.f;
-    bool matter_term = false;
     float asymptotic_value = 0;
     float wave_speed = 1;
 
