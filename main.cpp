@@ -5492,7 +5492,6 @@ int main()
 
     std::cout << "Size " << argument_string.size() << std::endl;
 
-
     cpu_mesh_settings base_settings;
 
     #ifdef USE_HALF_INTERMEDIATE
@@ -5501,8 +5500,7 @@ int main()
     base_settings.use_half_intermediates = false;
     #endif // USE_HALF_INTERMEDIATE
 
-    base_settings.use_matter = holes.use_matter;
-    base_settings.use_matter_colour = false;
+    bool use_matter_colour = false;
 
     #ifdef USE_GBB
     base_settings.use_gBB = true;
@@ -5548,23 +5546,33 @@ int main()
     buffers.push_back({"gBB2", "evolve_cGi", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed});
     #endif // USE_GBB
 
-    if(base_settings.use_matter)
+    std::vector<plugin*> plugins;
+
+    if(holes.use_matter)
     {
-        buffers.push_back({"Dp_star", "evolve_hydro_all", 0.25f, 0, 1});
-        buffers.push_back({"De_star", "evolve_hydro_all", 0.25f, 0, 1});
-        buffers.push_back({"DcS0", "evolve_hydro_all", 0.25f, 0, 1});
-        buffers.push_back({"DcS1", "evolve_hydro_all", 0.25f, 0, 1});
-        buffers.push_back({"DcS2", "evolve_hydro_all", 0.25f, 0, 1});
+        eularian_hydrodynamics* hydro = new eularian_hydrodynamics(clctx.ctx);
 
-        if(base_settings.use_matter_colour)
+        hydro->use_colour = use_matter_colour;
+
+        plugins.push_back(hydro);
+    }
+
+    for(plugin* p : plugins)
+    {
+        auto extra = p->get_buffers();
+
+        for(auto& i : extra)
         {
-            buffers.push_back({"dRed", "evolve_advect", 0.25f, 0, 1});
-            buffers.push_back({"dGreen", "evolve_advect", 0.25f, 0, 1});
-            buffers.push_back({"dBlue", "evolve_advect", 0.25f, 0, 1});
+            std::cout << "Added " << i.name << std::endl;
 
-            argument_string += "-DHAS_COLOUR ";
-            hydro_argument_string += "-DHAS_COLOUR ";
+            buffers.push_back(i);
         }
+    }
+
+    if(use_matter_colour)
+    {
+        argument_string += "-DHAS_COLOUR ";
+        hydro_argument_string += "-DHAS_COLOUR ";
     }
 
     {
@@ -5584,7 +5592,7 @@ int main()
     cl::program prog(clctx.ctx, "cl.cl");
     prog.build(clctx.ctx, argument_string);
 
-    async_u.join();
+    bool joined = false;
 
     if(holes.use_matter)
     {
@@ -5621,7 +5629,24 @@ int main()
 
         cl::program hydro_prog(clctx.ctx, "hydrodynamics.cl");
         hydro_prog.build(clctx.ctx, hydro_argument_string);
+
+        async_u.join();
+        joined = true;
+
         clctx.ctx.register_program(hydro_prog);
+    }
+
+    if(!joined)
+        async_u.join();
+
+    for(plugin* p : plugins)
+    {
+        eularian_hydrodynamics* ptr = dynamic_cast<eularian_hydrodynamics*>(p);
+
+        if(ptr == nullptr)
+            continue;
+
+        ptr->grab_resources(matter_vars, u_arg);
     }
 
     #if 0
@@ -5660,17 +5685,6 @@ int main()
 
     cl::buffer texture_coordinates(clctx.ctx);
     texture_coordinates.alloc(sizeof(cl_float2) * width * height);
-
-    auto bcAij = matter_vars.bcAij;
-
-    std::vector<plugin*> plugins;
-
-    if(holes.use_matter)
-    {
-        eularian_hydrodynamics* hydro = new eularian_hydrodynamics(clctx.ctx, matter_vars, u_arg);
-
-        plugins.push_back(hydro);
-    }
 
     cpu_mesh base_mesh(clctx.ctx, clctx.cqueue, {0,0,0}, size, base_settings, evolve_points, buffers, plugins);
 
@@ -6033,7 +6047,7 @@ int main()
                         render_args.push_back(i.buf.as_device_read_only());
                     }
 
-                    cl_int use_colour = base_mesh.sett.use_matter_colour;
+                    cl_int use_colour = use_matter_colour;
 
                     render_args.push_back(use_colour);
 

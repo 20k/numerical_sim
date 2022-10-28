@@ -75,15 +75,13 @@ struct cpu_mesh_settings
 {
     bool use_half_intermediates = false;
     bool calculate_momentum_constraint = false;
-    bool use_matter = false;
-    bool use_matter_colour = false;
-    //bool use_gBB = false;
 };
 
 struct cpu_mesh;
 
 struct plugin
 {
+    virtual std::vector<buffer_descriptor> get_buffers(){assert(false); return std::vector<buffer_descriptor>();}
     virtual void init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue,         thin_intermediates_pool& pool, buffer_set& to_init){assert(false);}
     virtual void step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep){assert(false);}
 

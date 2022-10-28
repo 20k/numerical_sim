@@ -1,6 +1,32 @@
 #include "hydrodynamics.hpp"
 
-eularian_hydrodynamics::eularian_hydrodynamics(cl::context& ctx, matter_initial_vars _vars, cl::buffer _u_arg) : hydro_st(ctx), vars(_vars), u_arg(_u_arg){}
+eularian_hydrodynamics::eularian_hydrodynamics(cl::context& ctx) : hydro_st(ctx), vars(ctx), u_arg(ctx){}
+
+void eularian_hydrodynamics::grab_resources(matter_initial_vars _vars, cl::buffer _u_arg)
+{
+    vars = _vars;
+    u_arg = _u_arg;
+}
+
+std::vector<buffer_descriptor> eularian_hydrodynamics::get_buffers()
+{
+    std::vector<buffer_descriptor> buffers;
+
+    buffers.push_back({"Dp_star", "evolve_hydro_all", 0.25f, 0, 1});
+    buffers.push_back({"De_star", "evolve_hydro_all", 0.25f, 0, 1});
+    buffers.push_back({"DcS0", "evolve_hydro_all", 0.25f, 0, 1});
+    buffers.push_back({"DcS1", "evolve_hydro_all", 0.25f, 0, 1});
+    buffers.push_back({"DcS2", "evolve_hydro_all", 0.25f, 0, 1});
+
+    if(use_colour)
+    {
+        buffers.push_back({"dRed", "evolve_advect", 0.25f, 0, 1});
+        buffers.push_back({"dGreen", "evolve_advect", 0.25f, 0, 1});
+        buffers.push_back({"dBlue", "evolve_advect", 0.25f, 0, 1});
+    }
+
+    return buffers;
+}
 
 void eularian_hydrodynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue, thin_intermediates_pool& pool, buffer_set& to_init)
 {
@@ -16,6 +42,8 @@ void eularian_hydrodynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_
 
     for(auto& i : to_init.buffers)
     {
+        assert(i.buf.alloc_size == dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+
         hydro_init.push_back(i.buf);
     }
 
@@ -35,9 +63,9 @@ void eularian_hydrodynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_
     hydro_init.push_back(scale);
     hydro_init.push_back(clsize);
 
-    cl_int use_colour = mesh.sett.use_matter_colour;
+    cl_int cl_use_colour = use_colour;
 
-    hydro_init.push_back(use_colour);
+    hydro_init.push_back(cl_use_colour);
 
     cqueue.exec("calculate_hydrodynamic_initial_conditions", hydro_init, {dim.x(), dim.y(), dim.z()}, {8, 8, 1});
 
@@ -175,7 +203,7 @@ void eularian_hydrodynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_
         mesh.clean_buffer(cqueue, in.lookup(name).buf, out.lookup(name).buf, base.lookup(name).buf, in.lookup(name).desc.asymptotic_value, in.lookup(name).desc.wave_speed, timestep);
     };
 
-    if(mesh.sett.use_matter_colour)
+    if(use_colour)
     {
         std::vector<std::string> cols = {"dRed", "dGreen", "dBlue"};
 
