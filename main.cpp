@@ -2452,7 +2452,10 @@ struct superimposed_gpu_data
             i.alloc(cells * sizeof(cl_float));
             i.fill(cqueue, cl_float{0});
         }
+    }
 
+    void build_accumulation_matter_programs(cl::context& ctx)
+    {
         ///ppw2p generic kernel
         {
             equation_context ectx;
@@ -2661,10 +2664,18 @@ struct superimposed_gpu_data
 
     void pull_all(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, float scale, vec3i dim)
     {
+        bool built_accum_matter_kernel = false;
+
         for(const compact_object::data& obj : objs)
         {
             if(obj.t == compact_object::NEUTRON_STAR)
             {
+                if(!built_accum_matter_kernel)
+                {
+                    build_accumulation_matter_programs(clctx);
+                    built_accum_matter_kernel = true;
+                }
+
                 neutron_star_gpu_data dat(clctx);
                 dat.create(clctx, cqueue, calculate_ppw2p_kernel, calculate_bcAij_matter_kernel, obj, scale, dim);
 
