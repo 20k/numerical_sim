@@ -4942,64 +4942,6 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
     vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
 
-    /*for(int i=0; i < 3; i++)
-    {
-        value v = diff1(ctx, args.gA, i);
-
-        ctx.alias(v, args.digA.idx(i));
-    }
-
-    ///dcgB alias
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            value v = diff1(ctx, args.gB.idx(j), i);
-
-            ctx.alias(v, args.digB.idx(i, j));
-        }
-    }
-
-    ///dcYij alias
-    for(int k=0; k < 3; k++)
-    {
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                value v = diff1(ctx, args.cY.idx(i, j), k);
-
-                ctx.alias(v, args.dcYij.idx(k, i, j));
-            }
-        }
-    }
-
-    for(int i=0; i < 3; i++)
-    {
-        value v = diff1(ctx, args.X, i);
-
-        ctx.alias(v, args.dX.idx(i));
-    }*/
-
-    tensor<value, 3, 3> digB;
-
-    ///derivative
-    for(int i=0; i < 3; i++)
-    {
-        ///index
-        for(int j=0; j < 3; j++)
-        {
-            digB.idx(i, j) = diff1(ctx, args.gB.idx(j), i);
-        }
-    }
-
-    tensor<value, 3> digA;
-
-    for(int i=0; i < 3; i++)
-    {
-        digA.idx(i) = diff1(ctx, args.gA, i);
-    }
-
     float universe_length = (dim/2.f).max_elem();
 
     value scale = "scale";
@@ -5008,10 +4950,6 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     //tensor<value, 3> X_upper = {"lp1", "lp2", "lp3"};
     tensor<value, 3> V_upper = {"V0", "V1", "V2"};
-
-    /*inverse_metric<value, 3, 3> iYij = args.Yij.invert();
-
-    ctx.pin(iYij);*/
 
     inverse_metric<value, 3, 3> iYij = args.iYij;
 
