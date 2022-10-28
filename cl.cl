@@ -2138,6 +2138,7 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
     }
     else if(ray_in.hit_type == 2)
     {
+        #ifdef RENDER_MATTER
         float3 val = (float3)(0.5f,0.5f,0.5f);
 
         float3 Xpos = (float3)(ray_in.lp1, ray_in.lp2, ray_in.lp3);
@@ -2182,6 +2183,7 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
         //col = fabs(normal);
 
         write_imagef(screen, (int2){x, y}, (float4)(col.xyz, 1));
+        #endif
     }
 }
 
