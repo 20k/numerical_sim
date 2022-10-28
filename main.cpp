@@ -5319,8 +5319,6 @@ int main()
         printf("Voxel pos %f %f %f\n", pos.x(), pos.y(), pos.z());
     }
 
-    equation_context setup_static;
-
     cl::buffer u_arg(clctx.ctx);
 
     cl::program evolve_prog(clctx.ctx, "evolve_points.cl");
@@ -5441,7 +5439,6 @@ int main()
     ctx5.build(argument_string, 4);
     ctx6.build(argument_string, 5);
     ctx7.build(argument_string, 6);
-    setup_static.build(argument_string, 8);
     ctx10.build(argument_string, 9);
     ctx11.build(argument_string, 10);
     ctx12.build(argument_string, 11);
