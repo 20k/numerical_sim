@@ -5298,6 +5298,7 @@ int main()
     std::cout << "EXT " << cl::get_extensions(clctx.ctx) << std::endl;
 
     std::string argument_string = "-I ./ -cl-std=CL2.0 -cl-mad-enable ";
+    std::string hydro_argument_string = argument_string;
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
     vec3i size = {213, 213, 213};
@@ -5435,31 +5436,6 @@ int main()
 
     printf("Begin hydro\n");
 
-    equation_context hydro_intermediates;
-    hydrodynamics::build_intermediate_variables_derivatives(hydro_intermediates);
-
-    printf("Post interm\n");
-
-    equation_context hydro_viscosity;
-    hydrodynamics::build_artificial_viscosity(hydro_viscosity);
-
-    printf("Post viscosity\n");
-
-    equation_context hydro_final;
-    hydrodynamics::build_equations(hydro_final);
-
-    printf("Post main hydro equations\n");
-
-    equation_context hydro_advect;
-    hydrodynamics::build_advection(hydro_advect);
-
-    printf("Post advect\n");
-
-    equation_context build_hydro_quantities;
-    construct_hydrodynamic_quantities(build_hydro_quantities, holes.objs);
-
-    printf("End hydro\n");
-
     ctx1.build(argument_string, 0);
     ctx4.build(argument_string, 3);
     ctx5.build(argument_string, 4);
@@ -5482,13 +5458,8 @@ int main()
     dtgA.build(argument_string, "tga");
     dtgB.build(argument_string, "tgb");
 
-    hydro_intermediates.build(argument_string, "hydrointermediates");
-    hydro_viscosity.build(argument_string, "hydroviscosity");
-    hydro_final.build(argument_string, "hydrofinal");
-    hydro_advect.build(argument_string, "hydroadvect");
-    build_hydro_quantities.build(argument_string, "hydroconvert");
-
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
+    hydro_argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 
     if(holes.use_matter)
     {
@@ -5505,9 +5476,11 @@ int main()
     #ifdef USE_HALF_INTERMEDIATE
     int intermediate_data_size = sizeof(cl_half);
     argument_string += "-DDERIV_PRECISION=half ";
+    hydro_argument_string += "-DDERIV_PRECISION=half ";
     #else
     int intermediate_data_size = sizeof(cl_float);
     argument_string += "-DDERIV_PRECISION=float ";
+    hydro_argument_string += "-DDERIV_PRECISION=float ";
     #endif
 
     {
@@ -5521,6 +5494,44 @@ int main()
     prog.build(clctx.ctx, argument_string);
 
     async_u.join();
+
+    if(holes.use_matter)
+    {
+        equation_context hydro_intermediates;
+        hydrodynamics::build_intermediate_variables_derivatives(hydro_intermediates);
+
+        printf("Post interm\n");
+
+        equation_context hydro_viscosity;
+        hydrodynamics::build_artificial_viscosity(hydro_viscosity);
+
+        printf("Post viscosity\n");
+
+        equation_context hydro_final;
+        hydrodynamics::build_equations(hydro_final);
+
+        printf("Post main hydro equations\n");
+
+        equation_context hydro_advect;
+        hydrodynamics::build_advection(hydro_advect);
+
+        printf("Post advect\n");
+
+        equation_context build_hydro_quantities;
+        construct_hydrodynamic_quantities(build_hydro_quantities, holes.objs);
+
+        printf("End hydro\n");
+
+        hydro_intermediates.build(argument_string, "hydrointermediates");
+        hydro_viscosity.build(argument_string, "hydroviscosity");
+        hydro_final.build(argument_string, "hydrofinal");
+        hydro_advect.build(argument_string, "hydroadvect");
+        build_hydro_quantities.build(argument_string, "hydroconvert");
+
+        cl::program hydro_prog(clctx.ctx, "hydrodynamics.cl");
+        hydro_prog.build(clctx.ctx, hydro_argument_string);
+        clctx.ctx.register_program(hydro_prog);
+    }
 
     #if 0
     for(int i=0; i < (int)holes.holes.size(); i++)
