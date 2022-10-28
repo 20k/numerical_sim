@@ -3306,7 +3306,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    #define PAPER_0610128
+    //#define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -3469,7 +3469,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #endif // GAS_CLOUD_BLACK_HOLE
 
     ///this is an extremely cool matter case
-    //#define NEUTRON_ACCRETION
+    #define NEUTRON_ACCRETION
     #ifdef NEUTRON_ACCRETION
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
@@ -5522,11 +5522,11 @@ int main()
 
         printf("End hydro\n");
 
-        hydro_intermediates.build(argument_string, "hydrointermediates");
-        hydro_viscosity.build(argument_string, "hydroviscosity");
-        hydro_final.build(argument_string, "hydrofinal");
-        hydro_advect.build(argument_string, "hydroadvect");
-        build_hydro_quantities.build(argument_string, "hydroconvert");
+        hydro_intermediates.build(hydro_argument_string, "hydrointermediates");
+        hydro_viscosity.build(hydro_argument_string, "hydroviscosity");
+        hydro_final.build(hydro_argument_string, "hydrofinal");
+        hydro_advect.build(hydro_argument_string, "hydroadvect");
+        build_hydro_quantities.build(hydro_argument_string, "hydroconvert");
 
         cl::program hydro_prog(clctx.ctx, "hydrodynamics.cl");
         hydro_prog.build(clctx.ctx, hydro_argument_string);

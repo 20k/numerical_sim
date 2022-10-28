@@ -1,5 +1,8 @@
+#pragma OPENCL EXTENSION cl_khr_fp16 : enable
+
 #include "common.cl"
 #include "evolution_common.cl"
+#include "transform_position.cl"
 
 #define MIN_P_STAR 1e-6f
 
