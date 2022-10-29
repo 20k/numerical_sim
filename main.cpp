@@ -4688,38 +4688,67 @@ void process_geodesics(equation_context& ctx)
 
     frame_basis basis = calculate_frame_basis(ctx, real_metric);
 
-    /*vec<4, value> basis_x = basis.v3;
-    vec<4, value> basis_y = basis.v4;
-    vec<4, value> basis_z = basis.v2;
-
-    ctx.pin(basis_x);
-    ctx.pin(basis_y);
-    ctx.pin(basis_z);
-
-    pixel_direction = pixel_direction.norm();
-
-    vec<3, value> basis3_x = {basis_x.y(), basis_x.z(), basis_x.w()};
-    vec<3, value> basis3_y = {basis_y.y(), basis_y.z(), basis_y.w()};
-    vec<3, value> basis3_z = {basis_z.y(), basis_z.z(), basis_z.w()};
-
-    ctx.pin(basis3_x);
-    ctx.pin(basis3_y);
-    ctx.pin(basis3_z);
-
-    pixel_direction = unrotate_vector(basis3_x.norm(), basis3_y.norm(), basis3_z.norm(),  pixel_direction);
-
-    ctx.pin(pixel_direction);*/
-
     vec<4, value> e0 = basis.v1;
     vec<4, value> e1 = basis.v2;
     vec<4, value> e2 = basis.v3;
     vec<4, value> e3 = basis.v4;
 
+    vec<4, value> basis_x;
+    vec<4, value> basis_y;
+    vec<4, value> basis_z;
 
-    vec<4, value> pixel_x = pixel_direction.x() * basis_x;
-    vec<4, value> pixel_y = pixel_direction.y() * basis_y;
-    vec<4, value> pixel_z = pixel_direction.z() * basis_z;
-    vec<4, value> pixel_t = -basis.v1;
+    bool should_orient = true;
+
+    if(should_orient)
+    {
+        tetrad tet = {e0, e1, e2, e3};
+        inverse_tetrad itet = get_tetrad_inverse(tet);
+
+        vec<4, value> cartesian_basis_x = {0, 1, 0, 0};
+        vec<4, value> cartesian_basis_y = {0, 0, 1, 0};
+        vec<4, value> cartesian_basis_z = {0, 0, 0, 1};
+
+        vec<4, value> tE1 = coordinate_to_tetrad_basis(cartesian_basis_y, itet);
+        vec<4, value> tE2 = coordinate_to_tetrad_basis(cartesian_basis_x, itet);
+        vec<4, value> tE3 = coordinate_to_tetrad_basis(cartesian_basis_z, itet);
+
+        ortho_result result = orthonormalise(tE1.yzw(), tE2.yzw(), tE3.yzw());
+
+        basis_x = {0, result.v2.x(), result.v2.y(), result.v2.z()};
+        basis_y = {0, result.v1.x(), result.v1.y(), result.v1.z()};
+        basis_z = {0, result.v3.x(), result.v3.y(), result.v3.z()};
+        ///basis_t == e0
+    }
+
+    tetrad oriented = {e0, basis_x, basis_y, basis_z};
+
+    /*
+    {
+        float4 observer_velocity = get_timelike_vector(cartesian_basis_speed, 1, e0, e1, e2, e3);
+
+        float lorentz[16] = {};
+
+        #ifndef GENERIC_BIG_METRIC
+        float g_metric[4] = {};
+        calculate_metric_generic(at_metric, g_metric, cfg);
+        calculate_lorentz_boost(e0, observer_velocity, g_metric, lorentz);
+        #else
+        float g_metric_big[16] = {0};
+        calculate_metric_generic_big(at_metric, g_metric_big, cfg);
+        calculate_lorentz_boost_big(e0, observer_velocity, g_metric_big, lorentz);
+        #endif // GENERIC_METRIC
+
+        e0 = observer_velocity;
+        e1 = tensor_contract(lorentz, e1);
+        e2 = tensor_contract(lorentz, e2);
+        e3 = tensor_contract(lorentz, e3);
+    }
+    */
+
+    vec<4, value> pixel_x = pixel_direction.x() * oriented.e[1];
+    vec<4, value> pixel_y = pixel_direction.y() * oriented.e[2];
+    vec<4, value> pixel_z = pixel_direction.z() * oriented.e[3];
+    vec<4, value> pixel_t = -oriented.e[0];
 
     #define INVERT_TIME
     #ifdef INVERT_TIME

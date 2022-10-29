@@ -599,13 +599,13 @@ struct tetrad
     std::array<vec<4, value>, 4> e;
 };
 
-struct tetrad_inverse
+struct inverse_tetrad
 {
     std::array<vec<4, value>, 4> e;
 };
 
 inline
-tetrad_inverse get_tetrad_inverse(const tetrad& in)
+inverse_tetrad get_tetrad_inverse(const tetrad& in)
 {
     /*float m[16] = {e0_hi.x, e0_hi.y, e0_hi.z, e0_hi.w,
                    e1_hi.x, e1_hi.y, e1_hi.z, e1_hi.w,
@@ -621,7 +621,7 @@ tetrad_inverse get_tetrad_inverse(const tetrad& in)
 
     matrix_inverse(m, inv);
 
-    tetrad_inverse out;
+    inverse_tetrad out;
     out.e[0] = {inv[0 * 4 + 0], inv[0 * 4 + 1], inv[0 * 4 + 2], inv[0 * 4 + 3]};
     out.e[1] = {inv[1 * 4 + 0], inv[1 * 4 + 1], inv[1 * 4 + 2], inv[1 * 4 + 3]};
     out.e[2] = {inv[2 * 4 + 0], inv[2 * 4 + 1], inv[2 * 4 + 2], inv[2 * 4 + 3]};
@@ -632,7 +632,7 @@ tetrad_inverse get_tetrad_inverse(const tetrad& in)
 
 /// e upper i, lower mu, which must be inverse of tetrad to coordinate basis vectors
 inline
-vec<4, value> coordinate_to_tetrad_basis(const vec<4, value>& vec_up, const tetrad_inverse& e_lo)
+vec<4, value> coordinate_to_tetrad_basis(const vec<4, value>& vec_up, const inverse_tetrad& e_lo)
 {
     vec<4, value> ret;
 
@@ -652,5 +652,35 @@ vec<4, value> tetrad_to_coordinate_basis(const vec<4, value>& vec_up, const tetr
     return vec_up.x() * e_hi.e[0] + vec_up.y() * e_hi.e[1] + vec_up.z() * e_hi.e[2] + vec_up.w() * e_hi.e[3];
 }
 
+struct ortho_result
+{
+    vec<3, value> v1, v2, v3;
+};
+
+inline
+vec<3, value> project(const vec<3, value>& u, const vec<3, value>& v)
+{
+    return (dot(u, v) / dot(u, u)) * u;
+}
+
+inline
+ortho_result orthonormalise(const vec<3, value>& i1, const vec<3, value>& i2, const vec<3, value>& i3)
+{
+    vec<3, value> u1 = i1;
+    vec<3, value> u2 = i2;
+    vec<3, value> u3 = i3;
+
+    u2 = u2 - project(u1, u2);
+
+    u3 = u3 - project(u1, u3);
+    u3 = u3 - project(u2, u3);
+
+    struct ortho_result result;
+    result.v1 = u1.norm();
+    result.v2 = u2.norm();
+    result.v3 = u3.norm();
+
+    return result;
+};
 
 #endif // TENSOR_ALGEBRA_HPP_INCLUDED
