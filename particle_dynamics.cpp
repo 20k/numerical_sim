@@ -141,9 +141,12 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         cqueue.exec(kern, {particle_num}, {128});
     }
+
+    cl::copy(cqueue, particle_3_position[0], particle_3_position[1]);
+    cl::copy(cqueue, particle_3_velocity[0], particle_3_velocity[1]);
 }
 
 void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep, int iteration, int max_iteration)
 {
-
+    ///so. Need to take all my particles, advance them forwards in time. Some complications because I'm not going to do this in a backwards euler way, so only on the 0th iteration do we do fun things. Need to pre-swap buffers
 }
