@@ -41,7 +41,7 @@ struct eularian_hydrodynamics : plugin
 
     void grab_resources(matter_initial_vars _vars, cl::buffer _u_arg);
 
-    std::vector<buffer_descriptor> get_buffers();
+    virtual std::vector<buffer_descriptor> get_buffers() override;
     virtual void init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue,         thin_intermediates_pool& pool, buffer_set& to_init) override;
     virtual void step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep, int iteration, int max_iteration) override;
 };
