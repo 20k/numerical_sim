@@ -277,11 +277,17 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ectx.build(argument_string, 6);
     }
 
+    ///relevant resources
+    ///https://arxiv.org/pdf/1611.07906.pdf 16
+    ///https://artscimedia.case.edu/wp-content/uploads/sites/213/2018/08/18010345/Mertens_SestoGR18.pdf
+    ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.81
+    ///https://einsteinrelativelyeasy.com/index.php/fr/einstein/9-general-relativity/78-the-energy-momentum-tensor
+    ///https://arxiv.org/pdf/1905.08890.pdf
+    ///https://en.wikipedia.org/wiki/Stress%E2%80%93energy_tensor#Stress%E2%80%93energy_in_special_situations
     {
         equation_context ectx;
         standard_arguments args(ectx);
 
-        ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.81
         tensor<value, 3> v_upper = {"vel.x", "vel.y", "vel.z"};
 
         value sum = 0;
