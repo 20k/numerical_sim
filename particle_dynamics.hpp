@@ -5,7 +5,8 @@
 
 struct particle_dynamics : plugin
 {
-    std::array<cl::buffer, 2> particles;
+    std::array<cl::buffer, 2> particle_3_position;
+    std::array<cl::buffer, 2> particle_3_velocity;
 
     cl::buffer adm_p;
     std::array<cl::buffer, 3> adm_Si;
