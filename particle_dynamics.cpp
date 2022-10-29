@@ -180,12 +180,12 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     adm_S.alloc(size);*/
 
-    int particle_num = 16;
+    particle_count = 16;
 
     for(int i=0; i < 2; i++)
     {
-        particle_3_position[i].alloc(sizeof(cl_float) * 3 * particle_num);
-        particle_3_velocity[i].alloc(sizeof(cl_float) * 3 * particle_num);
+        particle_3_position[i].alloc(sizeof(cl_float) * 3 * particle_count);
+        particle_3_velocity[i].alloc(sizeof(cl_float) * 3 * particle_count);
     }
 
     float generation_radius = 0.5f * get_c_at_max()/2.f;
@@ -196,7 +196,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     std::vector<vec3f> positions;
     std::vector<vec3f> directions;
 
-    for(int i=0; i < particle_num; i++)
+    for(int i=0; i < particle_count; i++)
     {
         int kk=0;
 
@@ -224,10 +224,10 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     particle_3_position[0].write(cqueue, positions);
 
     cl::buffer initial_dirs(ctx);
-    initial_dirs.alloc(sizeof(cl_float) * 3 * particle_num);
+    initial_dirs.alloc(sizeof(cl_float) * 3 * particle_count);
     initial_dirs.write(cqueue, directions);
 
-    assert((int)positions.size() == particle_num);
+    assert((int)positions.size() == particle_count);
 
     std::string argument_string = "-I ./ -cl-std=CL2.0 ";
 
@@ -335,6 +335,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     pd = cl::program(ctx, "particle_dynamics.cl");
     pd.build(ctx, argument_string);
 
+    ctx.register_program(pd);
+
     {
         cl::kernel kern(pd, "init_geodesics");
 
@@ -349,13 +351,13 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         args.push_back(initial_dirs);
         args.push_back(particle_3_velocity[0]);
 
-        args.push_back(particle_num);
+        args.push_back(particle_count);
         args.push_back(scale);
         args.push_back(clsize);
 
         kern.set_args(args);
 
-        cqueue.exec(kern, {particle_num}, {128});
+        cqueue.exec(kern, {particle_count}, {128});
     }
 
     cl::copy(cqueue, particle_3_position[0], particle_3_position[1]);
@@ -378,4 +380,43 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
 {
     ///so. Need to take all my particles, advance them forwards in time. Some complications because I'm not going to do this in a backwards euler way, so only on the 0th iteration do we do fun things. Need to pre-swap buffers
     ///need to fill up the adm buffers from the *current* particle positions
+
+    if(iteration == 0)
+    {
+        cl_int4 clsize = {mesh.dim.x(), mesh.dim.y(), mesh.dim.z(), 0};
+
+        std::swap(particle_3_position[0], particle_3_position[1]);
+        std::swap(particle_3_velocity[0], particle_3_velocity[1]);
+
+        //cl::kernel build_kern(pg, "build_matter_sources");
+
+        in.lookup("adm_p").buf.set_to_zero(mqueue);
+        in.lookup("adm_Si0").buf.set_to_zero(mqueue);
+        in.lookup("adm_Si1").buf.set_to_zero(mqueue);
+        in.lookup("adm_Si2").buf.set_to_zero(mqueue);
+        in.lookup("adm_Sij0").buf.set_to_zero(mqueue);
+        in.lookup("adm_Sij1").buf.set_to_zero(mqueue);
+        in.lookup("adm_Sij2").buf.set_to_zero(mqueue);
+        in.lookup("adm_Sij3").buf.set_to_zero(mqueue);
+        in.lookup("adm_Sij4").buf.set_to_zero(mqueue);
+        in.lookup("adm_Sij5").buf.set_to_zero(mqueue);
+        in.lookup("adm_S").buf.set_to_zero(mqueue);
+
+        cl::args args;
+        args.push_back(particle_3_position[0]);
+        args.push_back(particle_3_velocity[0]);
+        args.push_back(particle_count);
+
+        for(named_buffer& i : in.buffers)
+        {
+            args.push_back(i.buf);
+        }
+
+        args.push_back(mesh.scale);
+        args.push_back(clsize);
+
+        //build_kern.set_args(args);
+
+        mqueue.exec("build_matter_sources", args, {1}, {1});
+    }
 }
