@@ -1,4 +1,6 @@
 #include "particle_dynamics.hpp"
+#include <geodesic/dual_value.hpp>
+#include "equation_context.hpp"
 
 particle_dynamics::particle_dynamics(cl::context& ctx) : particle_3_position{ctx, ctx}, particle_3_velocity{ctx, ctx}, adm_p{ctx}, adm_Si{ctx, ctx, ctx}, adm_Sij{ctx, ctx, ctx, ctx, ctx, ctx}, adm_S{ctx}
 {
@@ -9,7 +11,6 @@ std::vector<buffer_descriptor> particle_dynamics::get_buffers()
 {
     return std::vector<buffer_descriptor>();
 }
-
 
 void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue,         thin_intermediates_pool& pool, buffer_set& to_init)
 {
@@ -31,7 +32,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     adm_S.alloc(size);
 
-    int particle_num = 1024;
+    int particle_num = 16;
 
     for(int i=0; i < 2; i++)
     {
@@ -45,6 +46,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     std::minstd_rand0 rng(1234);
 
     std::vector<vec3f> positions;
+    std::vector<vec3f> directions;
 
     for(int i=0; i < particle_num; i++)
     {
@@ -66,9 +68,23 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         if(kk == 1024)
             throw std::runtime_error("Did not successfully assign particle position");
+
+        directions.push_back({1, 0, 0});
     }
 
+    cl::buffer initial_dirs(ctx);
+    initial_dirs.alloc(sizeof(cl_float) * 3 * particle_num);
+    initial_dirs.write(cqueue, directions);
+
     assert((int)positions.size() == particle_num);
+
+    {
+        std::string argument_string = "-I ./ -cl-std=CL2.0 ";
+
+        vec<4, value> pos = {0, "px", "py", "pz"};
+
+        equation_context ectx;
+    }
 }
 
 void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep, int iteration, int max_iteration)
