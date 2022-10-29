@@ -114,7 +114,24 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
 }
 
 __kernel
-void build_matter_sources(__global float* positions_in, __global float* velocities_in, STANDARD_ARGS())
+void build_matter_sources(__global float* positions_in, __global float* velocities_in, int geodesic_count, STANDARD_ARGS(), float scale, int4 dim)
 {
+    int idx = get_global_index(0);
+    int local_size = get_local_size(0);
 
+    int num = ceil((float)geodesic_count / local_size);
+
+    for(int i=0; i < num; i++)
+    {
+        int gidx = idx + i * local_size;
+
+        float3 world_pos = (float3)(positions_in[gidx * 3 + 0], positions_in[gidx * 3 + 1], positions_in[gidx * 3 + 2]);
+        float3 vel = (float3)(velocities_in[gidx * 3 + 0], velocities_in[gidx * 3 + 1], velocities_in[gidx * 3 + 2]);
+
+        float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
+
+        int ix = round(voxel_pos.x);
+        int iy = round(voxel_pos.y);
+        int iz = round(voxel_pos.z);
+    }
 }

@@ -4199,17 +4199,6 @@ std::array<vec<3, value>, 3> orthonormalise(equation_context& ctx, const vec<3, 
     return {u1, u2, u3};
 }
 
-///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses (3.33)
-tensor<value, 4> get_adm_hypersurface_normal_raised(const value& gA, const tensor<value, 3>& gB)
-{
-    return {1/gA, -gB.idx(0)/gA, -gB.idx(1)/gA, -gB.idx(2)/gA};
-}
-
-tensor<value, 4> get_adm_hypersurface_normal_lowered(const value& gA)
-{
-    return {-gA, 0, 0, 0};
-}
-
 ///https://arxiv.org/pdf/1503.08455.pdf (10)
 ///also the projection tensor
 metric<value, 4, 4> calculate_induced_metric(const metric<value, 3, 3>& adm, const value& gA, const tensor<value, 3>& gB)

@@ -210,6 +210,32 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ectx.build(argument_string, 6);
     }
 
+    {
+        equation_context ectx;
+        standard_arguments args(ectx);
+
+        ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.81
+        tensor<value, 3> v_upper = {"vel.x", "vel.y", "vel.z"};
+
+        value sum = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                sum += args.cY.idx(i, j) * v_upper.idx(i) * v_upper.idx(j);
+            }
+        }
+
+        tensor<value, 4> hypersurface_normal_raised = get_adm_hypersurface_normal_raised(args.gA, args.gB);
+
+        value paper_w = sqrt(1 + sum);
+
+        tensor<value, 4> v_full = {0, v_upper.idx(0), v_upper.idx(1), v_upper.idx(2)};
+
+        tensor<value, 4> u_full = v_full + paper_w * hypersurface_normal_raised;
+    }
+
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 
     pd = cl::program(ctx, "particle_dynamics.cl");

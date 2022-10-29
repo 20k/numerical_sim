@@ -769,4 +769,18 @@ value dot_metric(const tensor<value, N>& v1_upper, const tensor<value, N>& v2_up
     return dot(v1_upper, lower_index(v2_upper, met, 0));
 }
 
+
+///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses (3.33)
+inline
+tensor<value, 4> get_adm_hypersurface_normal_raised(const value& gA, const tensor<value, 3>& gB)
+{
+    return {1/gA, -gB.idx(0)/gA, -gB.idx(1)/gA, -gB.idx(2)/gA};
+}
+
+inline
+tensor<value, 4> get_adm_hypersurface_normal_lowered(const value& gA)
+{
+    return {-gA, 0, 0, 0};
+}
+
 #endif // TENSOR_ALGEBRA_HPP_INCLUDED
