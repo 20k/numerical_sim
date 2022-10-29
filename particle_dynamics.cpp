@@ -14,6 +14,8 @@ value particle_matter_interop::calculate_adm_S(equation_context& ctx, standard_a
 {
     value adm_S = bidx("adm_S", ctx.uses_linear, false);
 
+    printf("Using particle ADM matter\n");
+
     return adm_S;
 }
 

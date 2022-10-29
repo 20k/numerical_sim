@@ -5235,13 +5235,13 @@ int main()
     bssn::build_cY(dtcY);
 
     equation_context dtcA;
-    bssn::build_cA(*interop, dtcA, holes.use_matter);
+    bssn::build_cA(*interop, dtcA, holes.use_matter || use_geodesic_particles);
 
     equation_context dtcGi;
-    bssn::build_cGi(*interop, dtcGi, holes.use_matter);
+    bssn::build_cGi(*interop, dtcGi, holes.use_matter || use_geodesic_particles);
 
     equation_context dtK;
-    bssn::build_K(*interop, dtK, holes.use_matter);
+    bssn::build_K(*interop, dtK, holes.use_matter || use_geodesic_particles);
 
     equation_context dtX;
     bssn::build_X(dtX);
@@ -5279,7 +5279,7 @@ int main()
     build_intermediate_thin_cY5(ctx12);
 
     equation_context ctx13;
-    build_momentum_constraint(*interop, ctx13, holes.use_matter);
+    build_momentum_constraint(*interop, ctx13, holes.use_matter || use_geodesic_particles);
 
     equation_context ctx14;
     //build_hamiltonian_constraint(ctx14);
