@@ -154,6 +154,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
                 continue;
 
             positions.push_back(pos);
+            break;
         }
 
         if(kk == 1024)
@@ -180,6 +181,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         direction = direction.norm();
 
         equation_context ectx;
+        ectx.uses_linear = true;
         standard_arguments args(ectx);
 
         metric<value, 4, 4> real_metric = calculate_real_metric(args.Yij, args.gA, args.gB);

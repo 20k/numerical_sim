@@ -22,6 +22,7 @@
 #include "bssn.hpp"
 #include <toolkit/fs_helpers.hpp>
 #include "hydrodynamics.hpp"
+#include "particle_dynamics.hpp"
 
 /**
 current paper set
@@ -5388,6 +5389,15 @@ int main()
         hydro->use_colour = use_matter_colour;
 
         plugins.push_back(hydro);
+    }
+
+    bool use_geodesic_particles = true;
+
+    if(use_geodesic_particles)
+    {
+        particle_dynamics* particles = new particle_dynamics(clctx.ctx);
+
+        plugins.push_back(particles);
     }
 
     for(plugin* p : plugins)

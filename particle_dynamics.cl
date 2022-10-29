@@ -1,4 +1,5 @@
 #include "evolution_common.cl"
+#include "common.cl"
 
 __kernel
 void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float* initial_dirs3, __global float* velocities3, int geodesic_count, float scale, int4 dim)
@@ -11,6 +12,14 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float*
     float px = positions3[idx * 3 + 0];
     float py = positions3[idx * 3 + 1];
     float pz = positions3[idx * 3 + 1];
+
+    float3 as_voxel = world_to_voxel((float3)(px, py, pz), dim, scale);
+
+    as_voxel = clamp(as_voxel, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = as_voxel.x;
+    float fy = as_voxel.y;
+    float fz = as_voxel.z;
 
     float dirx = initial_dirs3[idx * 3 + 0];
     float diry = initial_dirs3[idx * 3 + 1];
@@ -116,7 +125,7 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
 __kernel
 void build_matter_sources(__global float* positions_in, __global float* velocities_in, int geodesic_count, STANDARD_ARGS(), float scale, int4 dim)
 {
-    int idx = get_global_index(0);
+    int idx = get_global_id(0);
     int local_size = get_local_size(0);
 
     int num = ceil((float)geodesic_count / local_size);
