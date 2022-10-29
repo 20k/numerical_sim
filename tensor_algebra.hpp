@@ -683,4 +683,39 @@ ortho_result orthonormalise(const vec<3, value>& i1, const vec<3, value>& i2, co
     return result;
 };
 
+
+///https://arxiv.org/pdf/0904.4184.pdf 1.4.18
+///forms the velocity of a timelike geodesic
+inline
+vec<4, value> get_timelike_vector(const vec<3, value>& cartesian_basis_speed, float time_direction,
+                                  const tetrad& tet)
+{
+    value v = cartesian_basis_speed.length();
+    value Y = 1 / sqrt(1 - v*v);
+
+    value B = v;
+
+    value psi = B * Y;
+
+    vec<4, value> bT = time_direction * Y * tet.e[0];
+
+    vec<3, value> dir = cartesian_basis_speed.norm();
+
+    vec<3, value> degen_dir = {0, 0, 1};
+
+    value is_degenerate = dir.length() == 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        dir[i] = if_v(is_degenerate, degen_dir[i], dir[i]);
+    }
+
+    vec<4, value> bX = psi * dir.x() * tet.e[1];
+    vec<4, value> bY = psi * dir.y() * tet.e[2];
+    vec<4, value> bZ = psi * dir.z() * tet.e[3];
+
+    return bT + bX + bY + bZ;
+}
+
+
 #endif // TENSOR_ALGEBRA_HPP_INCLUDED
