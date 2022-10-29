@@ -4147,46 +4147,6 @@ void build_momentum_constraint(matter_interop& interop, equation_context& ctx, b
     }
 }
 
-template<int N>
-value dot_product(const vec<N, value>& u, const vec<N, value>& v, const metric<value, N, N>& met)
-{
-    tensor<value, N> as_tensor;
-
-    for(int i=0; i < N; i++)
-    {
-        as_tensor.idx(i) = u[i];
-    }
-
-    auto lowered_as_tensor = lower_index(as_tensor, met, 0);
-
-    vec<N, value> lowered;
-
-    for(int i=0; i < N; i++)
-    {
-        lowered[i] = lowered_as_tensor.idx(i);
-    }
-
-    return dot(lowered, v);
-}
-
-template<int N>
-vec<N, value> gram_proj(const vec<N, value>& u, const vec<N, value>& v, const metric<value, N, N>& met)
-{
-    value top = dot_product(u, v, met);
-
-    value bottom = dot_product(u, u, met);
-
-    return (top / bottom) * u;
-}
-
-template<int N>
-vec<N, value> normalize_big_metric(const vec<N, value>& in, const metric<value, N, N>& met)
-{
-    value dot = dot_product(in, in, met);
-
-    return in / sqrt(fabs(dot));
-}
-
 ///raised indices for v/1/2/3
 std::array<vec<3, value>, 3> orthonormalise(equation_context& ctx, const vec<3, value>& v1, const vec<3, value>& v2, const vec<3, value>& v3, const metric<value, 3, 3>& met)
 {
@@ -4239,43 +4199,6 @@ std::array<vec<3, value>, 3> orthonormalise(equation_context& ctx, const vec<3, 
     ctx.pin(u3);
 
     return {u1, u2, u3};
-}
-
-
-///https://arxiv.org/pdf/1503.08455.pdf (8)
-metric<value, 4, 4> calculate_real_metric(const metric<value, 3, 3>& adm, const value& gA, const tensor<value, 3>& gB)
-{
-    tensor<value, 3> lower_gB = lower_index(gB, adm, 0);
-
-    metric<value, 4, 4> ret;
-
-    value gB_sum = 0;
-
-    for(int i=0; i < 3; i++)
-    {
-        gB_sum = gB_sum + lower_gB.idx(i) * gB.idx(i);
-    }
-
-    ///https://arxiv.org/pdf/gr-qc/0703035.pdf 4.43
-    ret.idx(0, 0) = -gA * gA + gB_sum;
-
-    ///latin indices really run from 1-4
-    for(int i=1; i < 4; i++)
-    {
-        ///https://arxiv.org/pdf/gr-qc/0703035.pdf 4.45
-        ret.idx(i, 0) = lower_gB.idx(i - 1);
-        ret.idx(0, i) = ret.idx(i, 0); ///symmetry
-    }
-
-    for(int i=1; i < 4; i++)
-    {
-        for(int j=1; j < 4; j++)
-        {
-            ret.idx(i, j) = adm.idx(i - 1, j - 1);
-        }
-    }
-
-    return ret;
 }
 
 ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses (3.33)
@@ -4687,85 +4610,6 @@ void extract_waveforms(equation_context& ctx)
 }
 #endif // 0
 
-
-struct frame_basis
-{
-    vec<4, value> v1;
-    vec<4, value> v2;
-    vec<4, value> v3;
-    vec<4, value> v4;
-};
-
-frame_basis calculate_frame_basis(equation_context& ctx, const metric<value, 4, 4>& met)
-{
-    tensor<value, 4> ti1 = {met.idx(0, 0), met.idx(0, 1), met.idx(0, 2), met.idx(0, 3)};
-    tensor<value, 4> ti2 = {met.idx(0, 1), met.idx(1, 1), met.idx(1, 2), met.idx(1, 3)};
-    tensor<value, 4> ti3 = {met.idx(0, 2), met.idx(1, 2), met.idx(2, 2), met.idx(2, 3)};
-    tensor<value, 4> ti4 = {met.idx(0, 3), met.idx(1, 3), met.idx(2, 3), met.idx(3, 3)};
-
-    auto metric_inverse = met.invert();
-
-    ctx.pin(metric_inverse);
-
-    ti1 = raise_index(ti1, metric_inverse, 0);
-    ti2 = raise_index(ti2, metric_inverse, 0);
-    ti3 = raise_index(ti3, metric_inverse, 0);
-    ti4 = raise_index(ti4, metric_inverse, 0);
-
-    ctx.pin(ti1);
-    ctx.pin(ti2);
-    ctx.pin(ti3);
-    ctx.pin(ti4);
-
-    vec<4, value> i1 = {ti1.idx(0), ti1.idx(1), ti1.idx(2), ti1.idx(3)};
-    vec<4, value> i2 = {ti2.idx(0), ti2.idx(1), ti2.idx(2), ti2.idx(3)};
-    vec<4, value> i3 = {ti3.idx(0), ti3.idx(1), ti3.idx(2), ti3.idx(3)};
-    vec<4, value> i4 = {ti4.idx(0), ti4.idx(1), ti4.idx(2), ti4.idx(3)};
-
-    vec<4, value> u1 = i1;
-
-    vec<4, value> u2 = i2;
-    u2 = u2 - gram_proj(u1, u2, met);
-
-    ctx.pin(u2);
-
-    vec<4, value> u3 = i3;
-    u3 = u3 - gram_proj(u1, u3, met);
-    u3 = u3 - gram_proj(u2, u3, met);
-
-    ctx.pin(u3);
-
-    vec<4, value> u4 = i4;
-    u4 = u4 - gram_proj(u1, u4, met);
-    u4 = u4 - gram_proj(u2, u4, met);
-    u4 = u4 - gram_proj(u3, u4, met);
-
-    ctx.pin(u4);
-
-    u1 = u1.norm();
-    u2 = u2.norm();
-    u3 = u3.norm();
-    u4 = u4.norm();
-
-    ctx.pin(u1);
-    ctx.pin(u2);
-    ctx.pin(u3);
-    ctx.pin(u4);
-
-    u1 = normalize_big_metric(u1, met);
-    u2 = normalize_big_metric(u2, met);
-    u3 = normalize_big_metric(u3, met);
-    u4 = normalize_big_metric(u4, met);
-
-    frame_basis ret;
-    ret.v1 = u1;
-    ret.v2 = u2;
-    ret.v3 = u3;
-    ret.v4 = u4;
-
-    return ret;
-}
-
 vec<3, value> rotate_vector(const vec<3, value>& bx, const vec<3, value>& by, const vec<3, value>& bz, const vec<3, value>& v)
 {
     /*
@@ -4844,7 +4688,7 @@ void process_geodesics(equation_context& ctx)
 
     frame_basis basis = calculate_frame_basis(ctx, real_metric);
 
-    vec<4, value> basis_x = basis.v3;
+    /*vec<4, value> basis_x = basis.v3;
     vec<4, value> basis_y = basis.v4;
     vec<4, value> basis_z = basis.v2;
 
@@ -4864,7 +4708,13 @@ void process_geodesics(equation_context& ctx)
 
     pixel_direction = unrotate_vector(basis3_x.norm(), basis3_y.norm(), basis3_z.norm(),  pixel_direction);
 
-    ctx.pin(pixel_direction);
+    ctx.pin(pixel_direction);*/
+
+    vec<4, value> e0 = basis.v1;
+    vec<4, value> e1 = basis.v2;
+    vec<4, value> e2 = basis.v3;
+    vec<4, value> e3 = basis.v4;
+
 
     vec<4, value> pixel_x = pixel_direction.x() * basis_x;
     vec<4, value> pixel_y = pixel_direction.y() * basis_y;

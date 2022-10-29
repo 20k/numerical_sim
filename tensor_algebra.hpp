@@ -4,24 +4,8 @@
 #include <vec/tensor.hpp>
 #include <geodesic/dual_value.hpp>
 #include <assert.h>
-
-struct differentiator
-{
-    virtual value diff1(const value& in, int idx){assert(false); return value{0};};
-    virtual value diff2(const value& in, int idx, int idy, const value& dx, const value& dy){assert(false); return value{0};};
-};
-
-inline
-value diff1(differentiator& ctx, const value& in, int idx)
-{
-    return ctx.diff1(in, idx);
-}
-
-inline
-value diff2(differentiator& ctx, const value& in, int idx, int idy, const value& dx, const value& dy)
-{
-    return ctx.diff2(in, idx, idy, dx, dy);
-}
+#include "equation_context.hpp"
+#include "differentiator.hpp"
 
 ///https://arxiv.org/pdf/gr-qc/9810065.pdf
 template<typename T, int N>
@@ -322,5 +306,351 @@ unit_metric<T, N, N> get_flat_metric()
 
     return ret;
 }
+
+///all the tetrad/frame basis stuff needs a rework, its from when I didn't know what was going on
+///and poorly ported from the raytracer
+template<int N>
+value dot_product(const vec<N, value>& u, const vec<N, value>& v, const metric<value, N, N>& met)
+{
+    tensor<value, N> as_tensor;
+
+    for(int i=0; i < N; i++)
+    {
+        as_tensor.idx(i) = u[i];
+    }
+
+    auto lowered_as_tensor = lower_index(as_tensor, met, 0);
+
+    vec<N, value> lowered;
+
+    for(int i=0; i < N; i++)
+    {
+        lowered[i] = lowered_as_tensor.idx(i);
+    }
+
+    return dot(lowered, v);
+}
+
+template<int N>
+vec<N, value> gram_proj(const vec<N, value>& u, const vec<N, value>& v, const metric<value, N, N>& met)
+{
+    value top = dot_product(u, v, met);
+
+    value bottom = dot_product(u, u, met);
+
+    return (top / bottom) * u;
+}
+
+template<int N>
+vec<N, value> normalize_big_metric(const vec<N, value>& in, const metric<value, N, N>& met)
+{
+    value dot = dot_product(in, in, met);
+
+    return in / sqrt(fabs(dot));
+}
+
+
+struct frame_basis
+{
+    vec<4, value> v1;
+    vec<4, value> v2;
+    vec<4, value> v3;
+    vec<4, value> v4;
+};
+
+inline
+frame_basis calculate_frame_basis(equation_context& ctx, const metric<value, 4, 4>& met)
+{
+    tensor<value, 4> ti1 = {met.idx(0, 0), met.idx(0, 1), met.idx(0, 2), met.idx(0, 3)};
+    tensor<value, 4> ti2 = {met.idx(0, 1), met.idx(1, 1), met.idx(1, 2), met.idx(1, 3)};
+    tensor<value, 4> ti3 = {met.idx(0, 2), met.idx(1, 2), met.idx(2, 2), met.idx(2, 3)};
+    tensor<value, 4> ti4 = {met.idx(0, 3), met.idx(1, 3), met.idx(2, 3), met.idx(3, 3)};
+
+    auto metric_inverse = met.invert();
+
+    ctx.pin(metric_inverse);
+
+    ti1 = raise_index(ti1, metric_inverse, 0);
+    ti2 = raise_index(ti2, metric_inverse, 0);
+    ti3 = raise_index(ti3, metric_inverse, 0);
+    ti4 = raise_index(ti4, metric_inverse, 0);
+
+    ctx.pin(ti1);
+    ctx.pin(ti2);
+    ctx.pin(ti3);
+    ctx.pin(ti4);
+
+    vec<4, value> i1 = {ti1.idx(0), ti1.idx(1), ti1.idx(2), ti1.idx(3)};
+    vec<4, value> i2 = {ti2.idx(0), ti2.idx(1), ti2.idx(2), ti2.idx(3)};
+    vec<4, value> i3 = {ti3.idx(0), ti3.idx(1), ti3.idx(2), ti3.idx(3)};
+    vec<4, value> i4 = {ti4.idx(0), ti4.idx(1), ti4.idx(2), ti4.idx(3)};
+
+    vec<4, value> u1 = i1;
+
+    vec<4, value> u2 = i2;
+    u2 = u2 - gram_proj(u1, u2, met);
+
+    ctx.pin(u2);
+
+    vec<4, value> u3 = i3;
+    u3 = u3 - gram_proj(u1, u3, met);
+    u3 = u3 - gram_proj(u2, u3, met);
+
+    ctx.pin(u3);
+
+    vec<4, value> u4 = i4;
+    u4 = u4 - gram_proj(u1, u4, met);
+    u4 = u4 - gram_proj(u2, u4, met);
+    u4 = u4 - gram_proj(u3, u4, met);
+
+    ctx.pin(u4);
+
+    u1 = u1.norm();
+    u2 = u2.norm();
+    u3 = u3.norm();
+    u4 = u4.norm();
+
+    ctx.pin(u1);
+    ctx.pin(u2);
+    ctx.pin(u3);
+    ctx.pin(u4);
+
+    u1 = normalize_big_metric(u1, met);
+    u2 = normalize_big_metric(u2, met);
+    u3 = normalize_big_metric(u3, met);
+    u4 = normalize_big_metric(u4, met);
+
+    frame_basis ret;
+    ret.v1 = u1;
+    ret.v2 = u2;
+    ret.v3 = u3;
+    ret.v4 = u4;
+
+    return ret;
+}
+
+
+///https://arxiv.org/pdf/1503.08455.pdf (8)
+inline
+metric<value, 4, 4> calculate_real_metric(const metric<value, 3, 3>& adm, const value& gA, const tensor<value, 3>& gB)
+{
+    tensor<value, 3> lower_gB = lower_index(gB, adm, 0);
+
+    metric<value, 4, 4> ret;
+
+    value gB_sum = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        gB_sum = gB_sum + lower_gB.idx(i) * gB.idx(i);
+    }
+
+    ///https://arxiv.org/pdf/gr-qc/0703035.pdf 4.43
+    ret.idx(0, 0) = -gA * gA + gB_sum;
+
+    ///latin indices really run from 1-4
+    for(int i=1; i < 4; i++)
+    {
+        ///https://arxiv.org/pdf/gr-qc/0703035.pdf 4.45
+        ret.idx(i, 0) = lower_gB.idx(i - 1);
+        ret.idx(0, i) = ret.idx(i, 0); ///symmetry
+    }
+
+    for(int i=1; i < 4; i++)
+    {
+        for(int j=1; j < 4; j++)
+        {
+            ret.idx(i, j) = adm.idx(i - 1, j - 1);
+        }
+    }
+
+    return ret;
+}
+
+template<typename T>
+inline
+void matrix_inverse(const T m[16], T invOut[16])
+{
+    T inv[16], det;
+
+    inv[0] = m[5]  * m[10] * m[15] -
+             m[5]  * m[11] * m[14] -
+             m[9]  * m[6]  * m[15] +
+             m[9]  * m[7]  * m[14] +
+             m[13] * m[6]  * m[11] -
+             m[13] * m[7]  * m[10];
+
+    inv[4] = -m[4]  * m[10] * m[15] +
+              m[4]  * m[11] * m[14] +
+              m[8]  * m[6]  * m[15] -
+              m[8]  * m[7]  * m[14] -
+              m[12] * m[6]  * m[11] +
+              m[12] * m[7]  * m[10];
+
+    inv[8] = m[4]  * m[9] * m[15] -
+             m[4]  * m[11] * m[13] -
+             m[8]  * m[5] * m[15] +
+             m[8]  * m[7] * m[13] +
+             m[12] * m[5] * m[11] -
+             m[12] * m[7] * m[9];
+
+    inv[12] = -m[4]  * m[9] * m[14] +
+               m[4]  * m[10] * m[13] +
+               m[8]  * m[5] * m[14] -
+               m[8]  * m[6] * m[13] -
+               m[12] * m[5] * m[10] +
+               m[12] * m[6] * m[9];
+
+    inv[1] = -m[1]  * m[10] * m[15] +
+              m[1]  * m[11] * m[14] +
+              m[9]  * m[2] * m[15] -
+              m[9]  * m[3] * m[14] -
+              m[13] * m[2] * m[11] +
+              m[13] * m[3] * m[10];
+
+    inv[5] = m[0]  * m[10] * m[15] -
+             m[0]  * m[11] * m[14] -
+             m[8]  * m[2] * m[15] +
+             m[8]  * m[3] * m[14] +
+             m[12] * m[2] * m[11] -
+             m[12] * m[3] * m[10];
+
+    inv[9] = -m[0]  * m[9] * m[15] +
+              m[0]  * m[11] * m[13] +
+              m[8]  * m[1] * m[15] -
+              m[8]  * m[3] * m[13] -
+              m[12] * m[1] * m[11] +
+              m[12] * m[3] * m[9];
+
+    inv[13] = m[0]  * m[9] * m[14] -
+              m[0]  * m[10] * m[13] -
+              m[8]  * m[1] * m[14] +
+              m[8]  * m[2] * m[13] +
+              m[12] * m[1] * m[10] -
+              m[12] * m[2] * m[9];
+
+    inv[2] = m[1]  * m[6] * m[15] -
+             m[1]  * m[7] * m[14] -
+             m[5]  * m[2] * m[15] +
+             m[5]  * m[3] * m[14] +
+             m[13] * m[2] * m[7] -
+             m[13] * m[3] * m[6];
+
+    inv[6] = -m[0]  * m[6] * m[15] +
+              m[0]  * m[7] * m[14] +
+              m[4]  * m[2] * m[15] -
+              m[4]  * m[3] * m[14] -
+              m[12] * m[2] * m[7] +
+              m[12] * m[3] * m[6];
+
+    inv[10] = m[0]  * m[5] * m[15] -
+              m[0]  * m[7] * m[13] -
+              m[4]  * m[1] * m[15] +
+              m[4]  * m[3] * m[13] +
+              m[12] * m[1] * m[7] -
+              m[12] * m[3] * m[5];
+
+    inv[14] = -m[0]  * m[5] * m[14] +
+               m[0]  * m[6] * m[13] +
+               m[4]  * m[1] * m[14] -
+               m[4]  * m[2] * m[13] -
+               m[12] * m[1] * m[6] +
+               m[12] * m[2] * m[5];
+
+    inv[3] = -m[1] * m[6] * m[11] +
+              m[1] * m[7] * m[10] +
+              m[5] * m[2] * m[11] -
+              m[5] * m[3] * m[10] -
+              m[9] * m[2] * m[7] +
+              m[9] * m[3] * m[6];
+
+    inv[7] = m[0] * m[6] * m[11] -
+             m[0] * m[7] * m[10] -
+             m[4] * m[2] * m[11] +
+             m[4] * m[3] * m[10] +
+             m[8] * m[2] * m[7] -
+             m[8] * m[3] * m[6];
+
+    inv[11] = -m[0] * m[5] * m[11] +
+               m[0] * m[7] * m[9] +
+               m[4] * m[1] * m[11] -
+               m[4] * m[3] * m[9] -
+               m[8] * m[1] * m[7] +
+               m[8] * m[3] * m[5];
+
+    inv[15] = m[0] * m[5] * m[10] -
+              m[0] * m[6] * m[9] -
+              m[4] * m[1] * m[10] +
+              m[4] * m[2] * m[9] +
+              m[8] * m[1] * m[6] -
+              m[8] * m[2] * m[5];
+
+    det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+
+    det = 1.0 / det;
+
+    for(int i = 0; i < 16; i++)
+        invOut[i] = inv[i] * det;
+}
+
+
+struct tetrad
+{
+    std::array<vec<4, value>, 4> e;
+};
+
+struct tetrad_inverse
+{
+    std::array<vec<4, value>, 4> e;
+};
+
+inline
+tetrad_inverse get_tetrad_inverse(const tetrad& in)
+{
+    /*float m[16] = {e0_hi.x, e0_hi.y, e0_hi.z, e0_hi.w,
+                   e1_hi.x, e1_hi.y, e1_hi.z, e1_hi.w,
+                   e2_hi.x, e2_hi.y, e2_hi.z, e2_hi.w,
+                   e3_hi.x, e3_hi.y, e3_hi.z, e3_hi.w};*/
+
+    value m[16] = {in.e[0].x(), in.e[1].x(), in.e[2].x(), in.e[3].x(),
+                   in.e[0].y(), in.e[1].y(), in.e[2].y(), in.e[3].y(),
+                   in.e[0].z(), in.e[1].z(), in.e[2].z(), in.e[3].z(),
+                   in.e[0].w(), in.e[1].w(), in.e[2].w(), in.e[3].w()};
+
+    value inv[16] = {0};
+
+    matrix_inverse(m, inv);
+
+    tetrad_inverse out;
+    out.e[0] = {inv[0 * 4 + 0], inv[0 * 4 + 1], inv[0 * 4 + 2], inv[0 * 4 + 3]};
+    out.e[1] = {inv[1 * 4 + 0], inv[1 * 4 + 1], inv[1 * 4 + 2], inv[1 * 4 + 3]};
+    out.e[2] = {inv[2 * 4 + 0], inv[2 * 4 + 1], inv[2 * 4 + 2], inv[2 * 4 + 3]};
+    out.e[3] = {inv[3 * 4 + 0], inv[3 * 4 + 1], inv[3 * 4 + 2], inv[3 * 4 + 3]};
+
+    return out;
+}
+
+/// e upper i, lower mu, which must be inverse of tetrad to coordinate basis vectors
+inline
+vec<4, value> coordinate_to_tetrad_basis(const vec<4, value>& vec_up, const tetrad_inverse& e_lo)
+{
+    vec<4, value> ret;
+
+    ret.x() = dot(e_lo.e[0], vec_up);
+    ret.y() = dot(e_lo.e[1], vec_up);
+    ret.z() = dot(e_lo.e[2], vec_up);
+    ret.w() = dot(e_lo.e[3], vec_up);
+
+    return ret;
+}
+
+///so. The hi tetrads are the one we get out of gram schmidt
+///so this is lower i, upper mu, against a vec with upper i
+inline
+vec<4, value> tetrad_to_coordinate_basis(const vec<4, value>& vec_up, const tetrad& e_hi)
+{
+    return vec_up.x() * e_hi.e[0] + vec_up.y() * e_hi.e[1] + vec_up.z() * e_hi.e[2] + vec_up.w() * e_hi.e[3];
+}
+
 
 #endif // TENSOR_ALGEBRA_HPP_INCLUDED
