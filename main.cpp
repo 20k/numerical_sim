@@ -4838,18 +4838,6 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     ctx.pin(args.Kij);
     ctx.pin(args.Yij);
 
-    /*ctx.pin(args.gA);
-    ctx.pin(args.gB);
-    ctx.pin(args.cY);
-    ctx.pin(args.X);
-    ctx.pin(args.Yij);*/
-
-    //ctx.pin(args.Yij);
-
-    ///upper index, aka contravariant
-    vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
-    vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
-
     float universe_length = (dim/2.f).max_elem();
 
     value scale = "scale";
