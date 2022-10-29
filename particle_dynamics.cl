@@ -145,7 +145,6 @@ void build_matter_sources(__global float* positions_in, __global float* velociti
 
         voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
-
         int ix = round(voxel_pos.x);
         int iy = round(voxel_pos.y);
         int iz = round(voxel_pos.z);

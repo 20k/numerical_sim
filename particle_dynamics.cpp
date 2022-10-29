@@ -208,6 +208,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
             vec3f pos = {x, y, z};
 
+            pos.z() = 0;
+
             if(pos.length() >= generation_radius)
                 continue;
 
@@ -302,19 +304,21 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         value lorentz = u_full.idx(0);
 
-        tensor<value, 3> u3 = {u_full.idx(1), u_full.idx(2), u_full.idx(3)};
+        tensor<value, 3> u3_upper = {u_full.idx(1), u_full.idx(2), u_full.idx(3)};
+
+        tensor<value, 3> u3_lower = lower_index(u3_upper, args.Yij, 0);
 
         float mass = 0.05;
 
         value out_adm_p = mass * lorentz * lorentz;
-        tensor<value, 3> Si = mass * lorentz * u3;
+        tensor<value, 3> Si = mass * lorentz * u3_lower;
         tensor<value, 3, 3> Sij;
 
         for(int i=0; i < 3; i++)
         {
             for(int j=0; j < 3; j++)
             {
-                Sij.idx(i, j) = mass * u3.idx(i) * u3.idx(j);
+                Sij.idx(i, j) = mass * u3_lower.idx(i) * u3_lower.idx(j);
             }
         }
 
@@ -386,6 +390,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     ///so. Need to take all my particles, advance them forwards in time. Some complications because I'm not going to do this in a backwards euler way, so only on the 0th iteration do we do fun things. Need to pre-swap buffers
     ///need to fill up the adm buffers from the *current* particle positions
 
+    ///shit no its not correct, we need to be implicit otherwise the sources are incorrect innit. Its F(y+1)
     if(iteration == 0)
     {
         cl_int4 clsize = {mesh.dim.x(), mesh.dim.y(), mesh.dim.z(), 0};
