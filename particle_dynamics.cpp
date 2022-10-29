@@ -180,7 +180,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     adm_S.alloc(size);*/
 
-    particle_count = 16;
+    particle_count = 1;
 
     for(int i=0; i < 2; i++)
     {

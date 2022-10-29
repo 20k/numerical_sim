@@ -156,6 +156,8 @@ void build_matter_sources(__global float* positions_in, __global float* velociti
         float3 world_pos = (float3)(positions_in[gidx * 3 + 0], positions_in[gidx * 3 + 1], positions_in[gidx * 3 + 2]);
         float3 vel = (float3)(velocities_in[gidx * 3 + 0], velocities_in[gidx * 3 + 1], velocities_in[gidx * 3 + 2]);
 
+        printf("World Pos %f %f %f\n", world_pos.x, world_pos.y, world_pos.z);
+
         float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
 
         voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
@@ -164,16 +166,18 @@ void build_matter_sources(__global float* positions_in, __global float* velociti
         int iy = round(voxel_pos.y);
         int iz = round(voxel_pos.z);*/
 
-        int ocx = round(voxel_pos.x);
-        int ocy = round(voxel_pos.y);
-        int ocz = round(voxel_pos.z);
+        int ocx = floor(voxel_pos.x);
+        int ocy = floor(voxel_pos.y);
+        int ocz = floor(voxel_pos.z);
 
         ///ensure that we're always smeared across several boxes
-        float rs = 2 * scale;
+        float rs = scale;
 
         //printf("Rs %f\n", rs);
 
         int spread = 4;
+
+        float max_contrib = 0;
 
         for(int zz=-spread; zz <= spread; zz++)
         {
@@ -210,14 +214,64 @@ void build_matter_sources(__global float* positions_in, __global float* velociti
                         f_sp = 0;
                     }
 
-                    f_sp = f_sp/(M_PI * pow(rs, 3.f));
+                    max_contrib += f_sp;
+                }
+            }
+        }
 
-                    float weight = f_sp;
+        for(int zz=-spread; zz <= spread; zz++)
+        {
+            for(int yy=-spread; yy <= spread; yy++)
+            {
+                for(int xx=-spread; xx <= spread; xx++)
+                {
+                    int ix = xx + ocx;
+                    int iy = yy + ocy;
+                    int iz = zz + ocz;
+
+                    float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
+
+                    float to_centre_distance = length(cell_wp - world_pos);
+
+                    //float weight = 1 - max(to_centre_distance / rs, 1.f);
+
+                    ///https://arxiv.org/pdf/1611.07906.pdf 20
+                    float r_rs = to_centre_distance / rs;
+
+                    float f_sp = 0;
+
+                    if(r_rs <= 1)
+                    {
+                        f_sp = 1.f - (3.f/2.f) * r_rs * r_rs + (3.f/4.f) * pow(r_rs, 3.f);
+
+                        printf("First branch %f %f\n", f_sp, r_rs);
+                    }
+
+                    else if(r_rs <= 2)
+                    {
+                        f_sp = (1.f/4.f) * pow(2 - r_rs, 3.f);
+
+                        printf("Second branch %f %f\n", f_sp, r_rs);
+                    }
+                    else
+                    {
+                        f_sp = 0;
+                    }
+
+                    ///(493 pi)/840 + pi/480
+
+                    //f_sp = f_sp / (494 * M_PI / 840);
+
+                    //f_sp = f_sp/(M_PI * pow(rs, 3.f));
+
+                    float weight = f_sp / max_contrib;
 
                     if(weight == 0)
                         continue;
 
-                    //printf("Weight %f %i %i %i wp: %f %f %f centre: %f %f %f\n", weight, xx, yy, zz, cell_wp.x, cell_wp.y, cell_wp.z, world_pos.x, world_pos.y, world_pos.z);
+                    printf("Rs %f\n", rs);
+
+                    printf("Weight %f %i %i %i wp: %f %f %f centre: %f %f %f\n", weight, xx, yy, zz, cell_wp.x, cell_wp.y, cell_wp.z, world_pos.x, world_pos.y, world_pos.z);
 
                     {
                         float TEMPORARIESadmmatter;
