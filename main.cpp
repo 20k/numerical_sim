@@ -6042,6 +6042,6 @@ int main()
         if(frametime.get_elapsed_time_s() > 10)
             return 0;
 
-        printf("Time: %f\n", frametime.restart() * 1000.);
+        //printf("Time: %f\n", frametime.restart() * 1000.);
     }
 }

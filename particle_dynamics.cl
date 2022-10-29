@@ -11,7 +11,7 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float*
 
     float px = positions3[idx * 3 + 0];
     float py = positions3[idx * 3 + 1];
-    float pz = positions3[idx * 3 + 1];
+    float pz = positions3[idx * 3 + 2];
 
     float3 as_voxel = world_to_voxel((float3)(px, py, pz), dim, scale);
 
@@ -35,11 +35,15 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float*
         vx = OUT_VX;
         vy = OUT_VY;
         vz = OUT_VZ;
+
+        printf("Tet %f %f %f %f\n", Debug_t0, Debug_t1, Debug_t2, Debug_t3);
     }
 
     velocities3[idx * 3 + 0] = vx;
     velocities3[idx * 3 + 1] = vy;
     velocities3[idx * 3 + 2] = vz;
+
+    printf("Vel %f %f %f Dir %f %f %f\n", vx, vy, vz, dirx, diry, dirz);
 }
 
 ///this returns the change in X, which is not velocity
@@ -160,6 +164,8 @@ void build_matter_sources(__global float* positions_in, __global float* velociti
             float vadm_Sij4 = OUT_ADM_SIJ4;
             float vadm_Sij5 = OUT_ADM_SIJ5;
             float vadm_p = OUT_ADM_P;
+
+            //printf("Vadms %f\n", vadm_S);
 
             int index = IDX(ix,iy,iz);
 

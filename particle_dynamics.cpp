@@ -218,7 +218,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         if(kk == 1024)
             throw std::runtime_error("Did not successfully assign particle position");
 
-        directions.push_back({1, 0, 0});
+        directions.push_back({0.1, 0, 0});
     }
 
     particle_3_position[0].write(cqueue, positions);
@@ -236,7 +236,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         vec<4, value> position = {0, "px", "py", "pz"};
         vec<3, value> direction = {"dirx", "diry", "dirz"};
 
-        direction = direction.norm();
+        //direction = direction.norm();
 
         equation_context ectx;
         ectx.uses_linear = true;
@@ -252,6 +252,11 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ///so, our observer is whatever we get out of the metric which isn't terribly scientific
         ///but it should be uh. Stationary?
         tetrad tet = {basis.v1, basis.v2, basis.v3, basis.v4};
+
+        ectx.add("Debug_t0", basis.v2.x());
+        ectx.add("Debug_t1", basis.v2.y());
+        ectx.add("Debug_t2", basis.v2.z());
+        ectx.add("Debug_t3", basis.v2.w());
 
         vec<4, value> velocity = get_timelike_vector(direction, 1, tet);
 
