@@ -234,6 +234,40 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         tensor<value, 4> v_full = {0, v_upper.idx(0), v_upper.idx(1), v_upper.idx(2)};
 
         tensor<value, 4> u_full = v_full + paper_w * hypersurface_normal_raised;
+
+        value lorentz = u_full.idx(0);
+
+        tensor<value, 3> u3 = {u_full.idx(1), u_full.idx(2), u_full.idx(3)};
+
+        float mass = 0.05;
+
+        value out_adm_p = mass * lorentz * lorentz;
+        tensor<value, 3> Si = mass * lorentz * u3;
+        tensor<value, 3, 3> Sij;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                Sij.idx(i, j) = mass * u3.idx(i) * u3.idx(j);
+            }
+        }
+
+        value out_adm_S = out_adm_p - mass;
+
+        ectx.add("OUT_ADM_S", out_adm_S);
+        ectx.add("OUT_ADM_SI0", Si.idx(0));
+        ectx.add("OUT_ADM_SI1", Si.idx(1));
+        ectx.add("OUT_ADM_SI2", Si.idx(2));
+        ectx.add("OUT_ADM_SIJ0", Sij.idx(0, 0));
+        ectx.add("OUT_ADM_SIJ1", Sij.idx(1, 0));
+        ectx.add("OUT_ADM_SIJ2", Sij.idx(2, 0));
+        ectx.add("OUT_ADM_SIJ3", Sij.idx(1, 1));
+        ectx.add("OUT_ADM_SIJ4", Sij.idx(2, 1));
+        ectx.add("OUT_ADM_SIJ5", Sij.idx(2, 2));
+        ectx.add("OUT_ADM_P", out_adm_p);
+
+        ectx.build(argument_string, "admmatter");
     }
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
