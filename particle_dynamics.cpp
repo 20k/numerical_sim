@@ -3,7 +3,7 @@
 #include "equation_context.hpp"
 #include "bssn.hpp"
 
-particle_dynamics::particle_dynamics(cl::context& ctx) : particle_3_position{ctx, ctx}, particle_3_velocity{ctx, ctx}, adm_p{ctx}, adm_Si{ctx, ctx, ctx}, adm_Sij{ctx, ctx, ctx, ctx, ctx, ctx}, adm_S{ctx}
+particle_dynamics::particle_dynamics(cl::context& ctx) : particle_3_position{ctx, ctx}, particle_3_velocity{ctx, ctx}, adm_p{ctx}, adm_Si{ctx, ctx, ctx}, adm_Sij{ctx, ctx, ctx, ctx, ctx, ctx}, adm_S{ctx}, pd(ctx)
 {
 
 }
@@ -16,6 +16,9 @@ std::vector<buffer_descriptor> particle_dynamics::get_buffers()
 void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue,         thin_intermediates_pool& pool, buffer_set& to_init)
 {
     vec3i dim = mesh.dim;
+
+    cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
+    float scale = mesh.scale;
 
     uint64_t size = dim.x() * dim.y() * dim.z() * sizeof(cl_float);
 
@@ -73,6 +76,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         directions.push_back({1, 0, 0});
     }
 
+    particle_3_position[0].write(cqueue, positions);
+
     cl::buffer initial_dirs(ctx);
     initial_dirs.alloc(sizeof(cl_float) * 3 * particle_num);
     initial_dirs.write(cqueue, directions);
@@ -103,12 +108,38 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         vec<4, value> velocity = get_timelike_vector(direction, 1, tet);
 
-        ectx.add("out_vt", velocity.x());
-        ectx.add("out_vx", velocity.y());
-        ectx.add("out_vy", velocity.z());
-        ectx.add("out_vz", velocity.w());
+        ectx.add("OUT_VT", velocity.x());
+        ectx.add("OUT_VX", velocity.y());
+        ectx.add("OUT_VY", velocity.z());
+        ectx.add("OUT_VZ", velocity.w());
 
         ectx.build(argument_string, "tparticleinit");
+
+        pd = cl::program(ctx, "particle_dynamics.cl");
+        pd.build(ctx, argument_string);
+    }
+
+    {
+        cl::kernel kern(pd, "init_geodesics");
+
+        cl::args args;
+
+        for(named_buffer& i : to_init.buffers)
+        {
+            args.push_back(i.buf);
+        }
+
+        args.push_back(particle_3_position[0]);
+        args.push_back(initial_dirs);
+        args.push_back(particle_3_velocity[0]);
+
+        args.push_back(particle_num);
+        args.push_back(scale);
+        args.push_back(clsize);
+
+        kern.set_args(args);
+
+        cqueue.exec(kern, {particle_num}, {128});
     }
 }
 

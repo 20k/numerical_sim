@@ -13,6 +13,8 @@ struct particle_dynamics : plugin
     std::array<cl::buffer, 6> adm_Sij;
     cl::buffer adm_S;
 
+    cl::program pd;
+
     particle_dynamics(cl::context& ctx);
 
     virtual std::vector<buffer_descriptor> get_buffers() override;
