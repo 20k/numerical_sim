@@ -2,6 +2,15 @@
 #define PARTICLE_DYNAMICS_HPP_INCLUDED
 
 #include "mesh_manager.hpp"
+#include "bssn.hpp"
+
+struct particle_matter_interop : matter_interop
+{
+    virtual value               calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args) override;
+    virtual value               calculate_adm_p(equation_context& ctx, standard_arguments& bssn_args) override;
+    virtual tensor<value, 3, 3> calculate_adm_X_Sij(equation_context& ctx, standard_arguments& bssn_args) override;
+    virtual tensor<value, 3>    calculate_adm_Si(equation_context& ctx, standard_arguments& bssn_args) override;
+};
 
 struct particle_dynamics : plugin
 {
