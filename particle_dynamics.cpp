@@ -312,6 +312,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         tensor<value, 3> u3_upper = {u_full.idx(1), u_full.idx(2), u_full.idx(3)};
 
+        ///wait. But this is equal to vi_lower. Ah I'm such a muppet
         tensor<value, 3> u3_lower = lower_index(u3_upper, args.Yij, 0);
 
         float mass = 0.05;
