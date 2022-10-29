@@ -4808,25 +4808,6 @@ void process_geodesics(equation_context& ctx)
     ctx.pin("universe_size", universe_length);*/
 }
 
-template<typename T, int N>
-T dot(const tensor<T, N>& v1, const tensor<T, N>& v2)
-{
-    T ret = 0;
-
-    for(int i=0; i < N; i++)
-    {
-        ret += v1.idx(i) * v2.idx(i);
-    }
-
-    return ret;
-}
-
-template<int N>
-value dot_metric(const tensor<value, N>& v1_upper, const tensor<value, N>& v2_upper, const metric<value, N, N>& met)
-{
-    return dot(v1_upper, lower_index(v2_upper, met, 0));
-}
-
 ///https://arxiv.org/pdf/1208.3927.pdf (28a)
 void loop_geodesics(equation_context& ctx, vec3f dim)
 {

@@ -13,6 +13,82 @@ std::vector<buffer_descriptor> particle_dynamics::get_buffers()
     return std::vector<buffer_descriptor>();
 }
 
+void build_adm_geodesic(equation_context& ctx, vec3f dim)
+{
+    ctx.uses_linear = true;
+    ctx.order = 2;
+    ctx.use_precise_differentiation = false;
+
+    standard_arguments args(ctx);
+
+    ctx.pin(args.Kij);
+    ctx.pin(args.Yij);
+
+    float universe_length = (dim/2.f).max_elem();
+
+    value scale = "scale";
+
+    ctx.add("universe_size", universe_length * scale);
+
+    tensor<value, 3> V_upper = {"V0", "V1", "V2"};
+
+    inverse_metric<value, 3, 3> iYij = args.iYij;
+
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+    tensor<value, 3> dX = args.get_dX();
+
+    tensor<value, 3, 3, 3> conformal_christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
+
+    tensor<value, 3, 3, 3> full_christoffel2 = get_full_christoffel2(args.get_X(), dX, args.cY, icY, conformal_christoff2);
+
+    value length_sq = dot_metric(V_upper, V_upper, args.Yij);
+
+    value length = sqrt(fabs(length_sq));
+
+    V_upper = (V_upper * 1 / length);
+
+    ///https://arxiv.org/pdf/1208.3927.pdf (28a)
+    tensor<value, 3> dx = args.gA * V_upper - args.gB;
+
+    tensor<value, 3> V_upper_diff;
+
+    for(int i=0; i < 3; i++)
+    {
+        V_upper_diff.idx(i) = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            value kjvk = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                kjvk += args.Kij.idx(j, k) * V_upper.idx(k);
+            }
+
+            value christoffel_sum = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                christoffel_sum += full_christoffel2.idx(i, j, k) * V_upper.idx(k);
+            }
+
+            value dlog_gA = diff1(ctx, args.gA, j) / args.gA;
+
+            V_upper_diff.idx(i) += args.gA * V_upper.idx(j) * (V_upper.idx(i) * (dlog_gA - kjvk) + 2 * raise_index(args.Kij, iYij, 0).idx(i, j) - christoffel_sum)
+                                   - iYij.idx(i, j) * diff1(ctx, args.gA, j) - V_upper.idx(j) * diff1(ctx, args.gB.idx(i), j);
+        }
+    }
+
+    ctx.add("MASSIVE_V0Diff", V_upper_diff.idx(0));
+    ctx.add("MASSIVE_V1Diff", V_upper_diff.idx(1));
+    ctx.add("MASSIVE_V2Diff", V_upper_diff.idx(2));
+
+    ctx.add("MASSIVE_X0Diff", dx.idx(0));
+    ctx.add("MASSIVE_X1Diff", dx.idx(1));
+    ctx.add("MASSIVE_X2Diff", dx.idx(2));
+}
+
 void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue,         thin_intermediates_pool& pool, buffer_set& to_init)
 {
     vec3i dim = mesh.dim;

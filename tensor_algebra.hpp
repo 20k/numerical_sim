@@ -747,5 +747,26 @@ vec<4, value> get_timelike_vector(const vec<3, value>& cartesian_basis_speed, fl
     return bT + bX + bY + bZ;
 }
 
+///todo: this is all just crap
+template<typename T, int N>
+inline
+T dot(const tensor<T, N>& v1, const tensor<T, N>& v2)
+{
+    T ret = 0;
+
+    for(int i=0; i < N; i++)
+    {
+        ret += v1.idx(i) * v2.idx(i);
+    }
+
+    return ret;
+}
+
+template<int N>
+inline
+value dot_metric(const tensor<value, N>& v1_upper, const tensor<value, N>& v2_upper, const metric<value, N, N>& met)
+{
+    return dot(v1_upper, lower_index(v2_upper, met, 0));
+}
 
 #endif // TENSOR_ALGEBRA_HPP_INCLUDED
