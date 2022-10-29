@@ -315,7 +315,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ///wait. But this is equal to vi_lower. Ah I'm such a muppet
         tensor<value, 3> u3_lower = lower_index(u3_upper, args.Yij, 0);
 
-        float mass = 0.05;
+        float mass = 0.01;
 
         value out_adm_p = mass * lorentz * lorentz;
         tensor<value, 3> Si = mass * lorentz * u3_lower;

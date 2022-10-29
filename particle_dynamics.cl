@@ -1,5 +1,6 @@
 #include "evolution_common.cl"
 #include "common.cl"
+#include "transform_position.cl"
 
 __kernel
 void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float* initial_dirs3, __global float* velocities3, int geodesic_count, float scale, int4 dim)
@@ -126,6 +127,20 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     velocities_out[idx * 3 + 2] = vel.z;
 }
 
+/*float3 world_to_voxel_noround(float3 in, int4 dim, float scale)
+{
+    float3 centre = (float3)((dim.x - 1) / 2, (dim.y - 1)/2, (dim.z - 1)/2);
+
+    return (in/scale) + centre
+}*/
+
+float3 voxel_to_world_unrounded(float3 pos, int4 dim, float scale)
+{
+    float3 centre = {(dim.x - 1)/2, (dim.y - 1)/2, (dim.z - 1)/2};
+
+    return (pos - centre) * scale;
+}
+
 __kernel
 void build_matter_sources(__global float* positions_in, __global float* velocities_in, int geodesic_count, STANDARD_ARGS(), float scale, int4 dim)
 {
@@ -145,40 +160,98 @@ void build_matter_sources(__global float* positions_in, __global float* velociti
 
         voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
-        int ix = round(voxel_pos.x);
+        /*int ix = round(voxel_pos.x);
         int iy = round(voxel_pos.y);
-        int iz = round(voxel_pos.z);
+        int iz = round(voxel_pos.z);*/
 
+        int ocx = round(voxel_pos.x);
+        int ocy = round(voxel_pos.y);
+        int ocz = round(voxel_pos.z);
+
+        ///ensure that we're always smeared across several boxes
+        float rs = 2 * scale;
+
+        //printf("Rs %f\n", rs);
+
+        int spread = 4;
+
+        for(int zz=-spread; zz <= spread; zz++)
         {
-            float TEMPORARIESadmmatter;
+            for(int yy=-spread; yy <= spread; yy++)
+            {
+                for(int xx=-spread; xx <= spread; xx++)
+                {
+                    int ix = xx + ocx;
+                    int iy = yy + ocy;
+                    int iz = zz + ocz;
 
-            float vadm_S = OUT_ADM_S;
-            float vadm_Si0 = OUT_ADM_SI0;
-            float vadm_Si1 = OUT_ADM_SI1;
-            float vadm_Si2 = OUT_ADM_SI2;
-            float vadm_Sij0 = OUT_ADM_SIJ0;
-            float vadm_Sij1 = OUT_ADM_SIJ1;
-            float vadm_Sij2 = OUT_ADM_SIJ2;
-            float vadm_Sij3 = OUT_ADM_SIJ3;
-            float vadm_Sij4 = OUT_ADM_SIJ4;
-            float vadm_Sij5 = OUT_ADM_SIJ5;
-            float vadm_p = OUT_ADM_P;
+                    float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
 
-            //printf("Vadms %f\n", vadm_S);
+                    float to_centre_distance = length(cell_wp - world_pos);
 
-            int index = IDX(ix,iy,iz);
+                    //float weight = 1 - max(to_centre_distance / rs, 1.f);
 
-            adm_S[index] += vadm_S;
-            adm_Si0[index] += vadm_Si0;
-            adm_Si1[index] += vadm_Si1;
-            adm_Si2[index] += vadm_Si2;
-            adm_Sij0[index] += vadm_Sij0;
-            adm_Sij1[index] += vadm_Sij1;
-            adm_Sij2[index] += vadm_Sij2;
-            adm_Sij3[index] += vadm_Sij3;
-            adm_Sij4[index] += vadm_Sij4;
-            adm_Sij5[index] += vadm_Sij5;
-            adm_p[index] += vadm_p;
+                    ///https://arxiv.org/pdf/1611.07906.pdf 20
+                    float r_rs = to_centre_distance / rs;
+
+                    float f_sp = 0;
+
+                    if(r_rs <= 1)
+                    {
+                        f_sp = 1.f - (3.f/2.f) * r_rs * r_rs + (3.f/4.f) * pow(r_rs, 3.f);
+                    }
+
+                    else if(r_rs <= 2)
+                    {
+                        f_sp = (1.f/4.f) * pow(2 - r_rs, 3.f);
+                    }
+                    else
+                    {
+                        f_sp = 0;
+                    }
+
+                    f_sp = f_sp/(M_PI * pow(rs, 3.f));
+
+                    float weight = f_sp;
+
+                    if(weight == 0)
+                        continue;
+
+                    //printf("Weight %f %i %i %i wp: %f %f %f centre: %f %f %f\n", weight, xx, yy, zz, cell_wp.x, cell_wp.y, cell_wp.z, world_pos.x, world_pos.y, world_pos.z);
+
+                    {
+                        float TEMPORARIESadmmatter;
+
+                        float vadm_S = OUT_ADM_S;
+                        float vadm_Si0 = OUT_ADM_SI0;
+                        float vadm_Si1 = OUT_ADM_SI1;
+                        float vadm_Si2 = OUT_ADM_SI2;
+                        float vadm_Sij0 = OUT_ADM_SIJ0;
+                        float vadm_Sij1 = OUT_ADM_SIJ1;
+                        float vadm_Sij2 = OUT_ADM_SIJ2;
+                        float vadm_Sij3 = OUT_ADM_SIJ3;
+                        float vadm_Sij4 = OUT_ADM_SIJ4;
+                        float vadm_Sij5 = OUT_ADM_SIJ5;
+                        float vadm_p = OUT_ADM_P;
+
+                        //printf("Vadms %f\n", vadm_S);
+
+                        int index = IDX(ix,iy,iz);
+
+                        adm_S[index] += vadm_S * weight;
+                        adm_Si0[index] += vadm_Si0 * weight;
+                        adm_Si1[index] += vadm_Si1 * weight;
+                        adm_Si2[index] += vadm_Si2 * weight;
+                        adm_Sij0[index] += vadm_Sij0 * weight;
+                        adm_Sij1[index] += vadm_Sij1 * weight;
+                        adm_Sij2[index] += vadm_Sij2 * weight;
+                        adm_Sij3[index] += vadm_Sij3 * weight;
+                        adm_Sij4[index] += vadm_Sij4 * weight;
+                        adm_Sij5[index] += vadm_Sij5 * weight;
+                        adm_p[index] += vadm_p * weight;
+                    }
+                }
+            }
         }
     }
 }
