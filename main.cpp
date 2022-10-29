@@ -4682,6 +4682,8 @@ void process_geodesics(equation_context& ctx)
 
     ctx.pin(pixel_direction);
 
+    pixel_direction = pixel_direction.norm();
+
     metric<value, 4, 4> real_metric = calculate_real_metric(args.Yij, args.gA, args.gB);
 
     ctx.pin(real_metric);
@@ -4698,9 +4700,9 @@ void process_geodesics(equation_context& ctx)
     ctx.pin(e2);
     ctx.pin(e3);
 
-    vec<4, value> basis_x = e1;
-    vec<4, value> basis_y = e2;
-    vec<4, value> basis_z = e3;
+    vec<4, value> basis_x = e2;
+    vec<4, value> basis_y = e3;
+    vec<4, value> basis_z = e1;
 
     bool should_orient = true;
 
