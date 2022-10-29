@@ -4693,9 +4693,14 @@ void process_geodesics(equation_context& ctx)
     vec<4, value> e2 = basis.v3;
     vec<4, value> e3 = basis.v4;
 
-    vec<4, value> basis_x;
-    vec<4, value> basis_y;
-    vec<4, value> basis_z;
+    ctx.pin(e0);
+    ctx.pin(e1);
+    ctx.pin(e2);
+    ctx.pin(e3);
+
+    vec<4, value> basis_x = e1;
+    vec<4, value> basis_y = e2;
+    vec<4, value> basis_z = e3;
 
     bool should_orient = true;
 
@@ -4704,6 +4709,11 @@ void process_geodesics(equation_context& ctx)
         tetrad tet = {e0, e1, e2, e3};
         inverse_tetrad itet = get_tetrad_inverse(tet);
 
+        ctx.pin(itet.e[0]);
+        ctx.pin(itet.e[1]);
+        ctx.pin(itet.e[2]);
+        ctx.pin(itet.e[3]);
+
         vec<4, value> cartesian_basis_x = {0, 1, 0, 0};
         vec<4, value> cartesian_basis_y = {0, 0, 1, 0};
         vec<4, value> cartesian_basis_z = {0, 0, 0, 1};
@@ -4711,6 +4721,10 @@ void process_geodesics(equation_context& ctx)
         vec<4, value> tE1 = coordinate_to_tetrad_basis(cartesian_basis_y, itet);
         vec<4, value> tE2 = coordinate_to_tetrad_basis(cartesian_basis_x, itet);
         vec<4, value> tE3 = coordinate_to_tetrad_basis(cartesian_basis_z, itet);
+
+        ctx.pin(tE1);
+        ctx.pin(tE2);
+        ctx.pin(tE3);
 
         ortho_result result = orthonormalise(tE1.yzw(), tE2.yzw(), tE3.yzw());
 
