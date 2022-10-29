@@ -1,6 +1,7 @@
 #include "particle_dynamics.hpp"
 #include <geodesic/dual_value.hpp>
 #include "equation_context.hpp"
+#include "bssn.hpp"
 
 particle_dynamics::particle_dynamics(cl::context& ctx) : particle_3_position{ctx, ctx}, particle_3_velocity{ctx, ctx}, adm_p{ctx}, adm_Si{ctx, ctx, ctx}, adm_Sij{ctx, ctx, ctx, ctx, ctx, ctx}, adm_S{ctx}
 {
@@ -81,9 +82,33 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     {
         std::string argument_string = "-I ./ -cl-std=CL2.0 ";
 
-        vec<4, value> pos = {0, "px", "py", "pz"};
+        vec<4, value> position = {0, "px", "py", "pz"};
+        vec<3, value> direction = {"dirx", "diry", "dirz"};
+
+        direction = direction.norm();
 
         equation_context ectx;
+        standard_arguments args(ectx);
+
+        metric<value, 4, 4> real_metric = calculate_real_metric(args.Yij, args.gA, args.gB);
+
+        ectx.pin(real_metric);
+
+        frame_basis basis = calculate_frame_basis(ectx, real_metric);
+
+        ///todo, orient basis
+        ///so, our observer is whatever we get out of the metric which isn't terribly scientific
+        ///but it should be uh. Stationary?
+        tetrad tet = {basis.v1, basis.v2, basis.v3, basis.v4};
+
+        vec<4, value> velocity = get_timelike_vector(direction, 1, tet);
+
+        ectx.add("out_vt", velocity.x());
+        ectx.add("out_vx", velocity.y());
+        ectx.add("out_vy", velocity.z());
+        ectx.add("out_vz", velocity.w());
+
+
     }
 }
 
