@@ -358,6 +358,18 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     cl::copy(cqueue, particle_3_position[0], particle_3_position[1]);
     cl::copy(cqueue, particle_3_velocity[0], particle_3_velocity[1]);
+
+    to_init.lookup("adm_p").buf.set_to_zero(cqueue);
+    to_init.lookup("adm_Si0").buf.set_to_zero(cqueue);
+    to_init.lookup("adm_Si1").buf.set_to_zero(cqueue);
+    to_init.lookup("adm_Si2").buf.set_to_zero(cqueue);
+    to_init.lookup("adm_Sij0").buf.set_to_zero(cqueue);
+    to_init.lookup("adm_Sij1").buf.set_to_zero(cqueue);
+    to_init.lookup("adm_Sij2").buf.set_to_zero(cqueue);
+    to_init.lookup("adm_Sij3").buf.set_to_zero(cqueue);
+    to_init.lookup("adm_Sij4").buf.set_to_zero(cqueue);
+    to_init.lookup("adm_Sij5").buf.set_to_zero(cqueue);
+    to_init.lookup("adm_S").buf.set_to_zero(cqueue);
 }
 
 void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep, int iteration, int max_iteration)

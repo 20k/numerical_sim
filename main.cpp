@@ -5215,19 +5215,33 @@ int main()
     equation_context ctx1;
     get_initial_conditions_eqs(ctx1, holes.objs);
 
-    eularian_matter interop;
+    //eularian_matter interop;
+
+    matter_interop* interop = new matter_interop();
+
+    bool use_geodesic_particles = true;
+
+    if(holes.use_matter)
+    {
+        interop = new eularian_matter();
+    }
+
+    if(use_geodesic_particles)
+    {
+        interop = new particle_matter_interop();
+    }
 
     equation_context dtcY;
     bssn::build_cY(dtcY);
 
     equation_context dtcA;
-    bssn::build_cA(interop, dtcA, holes.use_matter);
+    bssn::build_cA(*interop, dtcA, holes.use_matter);
 
     equation_context dtcGi;
-    bssn::build_cGi(interop, dtcGi, holes.use_matter);
+    bssn::build_cGi(*interop, dtcGi, holes.use_matter);
 
     equation_context dtK;
-    bssn::build_K(interop, dtK, holes.use_matter);
+    bssn::build_K(*interop, dtK, holes.use_matter);
 
     equation_context dtX;
     bssn::build_X(dtX);
@@ -5265,7 +5279,7 @@ int main()
     build_intermediate_thin_cY5(ctx12);
 
     equation_context ctx13;
-    build_momentum_constraint(interop, ctx13, holes.use_matter);
+    build_momentum_constraint(*interop, ctx13, holes.use_matter);
 
     equation_context ctx14;
     //build_hamiltonian_constraint(ctx14);
@@ -5390,8 +5404,6 @@ int main()
 
         plugins.push_back(hydro);
     }
-
-    bool use_geodesic_particles = true;
 
     if(use_geodesic_particles)
     {

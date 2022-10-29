@@ -424,12 +424,13 @@ struct standard_arguments
     }
 };
 
+///matter interop needs to be moved to plugins
 struct matter_interop
 {
-    virtual value               calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args){assert(false); return value();};
-    virtual value               calculate_adm_p(equation_context& ctx, standard_arguments& bssn_args){assert(false); return value();};
-    virtual tensor<value, 3, 3> calculate_adm_X_Sij(equation_context& ctx, standard_arguments& bssn_args){assert(false); return tensor<value, 3, 3>();};
-    virtual tensor<value, 3>    calculate_adm_Si(equation_context& ctx, standard_arguments& bssn_args){assert(false); return tensor<value, 3>();};
+    virtual value               calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args){return 0;};
+    virtual value               calculate_adm_p(equation_context& ctx, standard_arguments& bssn_args){return 0;};
+    virtual tensor<value, 3, 3> calculate_adm_X_Sij(equation_context& ctx, standard_arguments& bssn_args){return {0,0,0,0,0,0,0,0,0};};
+    virtual tensor<value, 3>    calculate_adm_Si(equation_context& ctx, standard_arguments& bssn_args){return {0,0,0};};
 };
 
 namespace bssn
