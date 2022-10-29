@@ -218,7 +218,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         if(kk == 1024)
             throw std::runtime_error("Did not successfully assign particle position");
 
-        directions.push_back({0.1, 0, 0});
+        directions.push_back({0.00001, 0, 0});
     }
 
     particle_3_position[0].write(cqueue, positions);
@@ -407,21 +407,43 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         in.lookup("adm_Sij5").buf.set_to_zero(mqueue);
         in.lookup("adm_S").buf.set_to_zero(mqueue);
 
-        cl::args args;
-        args.push_back(particle_3_position[0]);
-        args.push_back(particle_3_velocity[0]);
-        args.push_back(particle_count);
-
-        for(named_buffer& i : in.buffers)
         {
-            args.push_back(i.buf);
+            cl::args args;
+            args.push_back(particle_3_position[0]);
+            args.push_back(particle_3_velocity[0]);
+            args.push_back(particle_count);
+
+            for(named_buffer& i : in.buffers)
+            {
+                args.push_back(i.buf);
+            }
+
+            args.push_back(mesh.scale);
+            args.push_back(clsize);
+
+            //build_kern.set_args(args);
+
+            mqueue.exec("build_matter_sources", args, {1}, {1});
         }
 
-        args.push_back(mesh.scale);
-        args.push_back(clsize);
+        {
+            cl::args args;
+            args.push_back(particle_3_position[0]);
+            args.push_back(particle_3_velocity[0]);
+            args.push_back(particle_3_position[1]);
+            args.push_back(particle_3_velocity[1]);
+            args.push_back(particle_count);
 
-        //build_kern.set_args(args);
+            for(named_buffer& i : in.buffers)
+            {
+                args.push_back(i.buf);
+            }
 
-        mqueue.exec("build_matter_sources", args, {1}, {1});
+            args.push_back(mesh.scale);
+            args.push_back(clsize);
+            args.push_back(timestep);
+
+            mqueue.exec("trace_geodesics", args, {particle_count}, {128});
+        }
     }
 }
