@@ -120,8 +120,6 @@ https://arxiv.org/pdf/gr-qc/9908027.pdf - hydrodynamic paper off which the one I
 //#define USE_GBB
 
 //#define SYMMETRY_BOUNDARY
-#define BORDER_WIDTH 4
-
 template<int elements = 5>
 struct differentiation_context
 {

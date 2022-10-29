@@ -6,6 +6,9 @@
 #include "tensor_algebra.hpp"
 #include "equation_context.hpp"
 
+///must be 4 because of damping
+#define BORDER_WIDTH 4
+
 inline
 value as_float3(const value& x, const value& y, const value& z)
 {

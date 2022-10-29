@@ -160,8 +160,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     assert((int)positions.size() == particle_num);
 
+    std::string argument_string = "-I ./ -cl-std=CL2.0 ";
+
     {
-        std::string argument_string = "-I ./ -cl-std=CL2.0 ";
 
         vec<4, value> position = {0, "px", "py", "pz"};
         vec<3, value> direction = {"dirx", "diry", "dirz"};
@@ -190,10 +191,12 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ectx.add("OUT_VZ", velocity.w());
 
         ectx.build(argument_string, "tparticleinit");
-
-        pd = cl::program(ctx, "particle_dynamics.cl");
-        pd.build(ctx, argument_string);
     }
+
+    argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
+
+    pd = cl::program(ctx, "particle_dynamics.cl");
+    pd.build(ctx, argument_string);
 
     {
         cl::kernel kern(pd, "init_geodesics");
