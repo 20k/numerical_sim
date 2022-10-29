@@ -83,3 +83,32 @@ void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, 
 
     *out = (float3){d0, d1, d2};
 }
+
+__kernel
+void trace_geodesics(__global float* positions_in, __global float* velocities_in, __global float* positions_out, __global float* velocities_out, int geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
+{
+    int idx = get_global_id(0);
+
+    if(idx >= geodesic_count)
+        return;
+
+    float3 Xpos = {positions_in[idx * 3 + 0], positions_in[idx * 3 + 1], positions_in[idx * 3 + 2]};
+    float3 vel = {velocities_in[idx * 3 + 0], velocities_in[idx * 3 + 1], velocities_in[idx * 3 + 2]};
+
+    float3 accel;
+    calculate_V_derivatives(&accel, Xpos, vel, scale, dim, GET_STANDARD_ARGS());
+
+    float3 XDiff;
+    velocity_to_XDiff(&XDiff, Xpos, vel, scale, dim, GET_STANDARD_ARGS());
+
+    Xpos += XDiff * timestep;
+    vel += accel * timestep;
+
+    positions_out[idx * 3 + 0] = Xpos.x;
+    positions_out[idx * 3 + 1] = Xpos.y;
+    positions_out[idx * 3 + 2] = Xpos.z;
+
+    velocities_out[idx * 3 + 0] = vel.x;
+    velocities_out[idx * 3 + 1] = vel.y;
+    velocities_out[idx * 3 + 2] = vel.z;
+}
