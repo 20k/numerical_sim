@@ -108,7 +108,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ectx.add("out_vy", velocity.z());
         ectx.add("out_vz", velocity.w());
 
-
+        ectx.build(argument_string, "tparticleinit");
     }
 }
 

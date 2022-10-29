@@ -155,6 +155,7 @@
 		<Unit filename="deps/toolkit/vertex.hpp" />
 		<Unit filename="deps/vec/tensor.hpp" />
 		<Unit filename="deps/vec/vec.hpp" />
+		<Unit filename="differentiator.hpp" />
 		<Unit filename="equation_context.hpp" />
 		<Unit filename="evolution_common.cl" />
 		<Unit filename="evolve_points.cl" />
@@ -174,6 +175,7 @@
 		<Unit filename="main.cpp" />
 		<Unit filename="mesh_manager.cpp" />
 		<Unit filename="mesh_manager.hpp" />
+		<Unit filename="particle_dynamics.cl" />
 		<Unit filename="particle_dynamics.cpp" />
 		<Unit filename="particle_dynamics.hpp" />
 		<Unit filename="ref_counted.hpp" />
