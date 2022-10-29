@@ -3,14 +3,24 @@
 #include "equation_context.hpp"
 #include "bssn.hpp"
 
-particle_dynamics::particle_dynamics(cl::context& ctx) : particle_3_position{ctx, ctx}, particle_3_velocity{ctx, ctx}, adm_p{ctx}, adm_Si{ctx, ctx, ctx}, adm_Sij{ctx, ctx, ctx, ctx, ctx, ctx}, adm_S{ctx}, pd(ctx)
+particle_dynamics::particle_dynamics(cl::context& ctx) : particle_3_position{ctx, ctx}, particle_3_velocity{ctx, ctx}, pd(ctx)
 {
 
 }
 
 std::vector<buffer_descriptor> particle_dynamics::get_buffers()
 {
-    return std::vector<buffer_descriptor>();
+    return {{"adm_p", "dont_care", 0.f, 0, 0},
+            {"adm_Si0", "dont_care", 0.f, 0, 0},
+            {"adm_Si1", "dont_care", 0.f, 0, 0},
+            {"adm_Si2", "dont_care", 0.f, 0, 0},
+            {"adm_Sij0", "dont_care", 0.f, 0, 0},
+            {"adm_Sij1", "dont_care", 0.f, 0, 0},
+            {"adm_Sij2", "dont_care", 0.f, 0, 0},
+            {"adm_Sij3", "dont_care", 0.f, 0, 0},
+            {"adm_Sij4", "dont_care", 0.f, 0, 0},
+            {"adm_Sij5", "dont_care", 0.f, 0, 0},
+            {"adm_S", "dont_care", 0.f, 0, 0}};
 }
 
 void build_adm_geodesic(equation_context& ctx, vec3f dim)
@@ -98,7 +108,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     uint64_t size = dim.x() * dim.y() * dim.z() * sizeof(cl_float);
 
-    adm_p.alloc(size);
+    /*adm_p.alloc(size);
 
     for(int i=0; i < 3; i++)
     {
@@ -110,7 +120,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         adm_Sij[i].alloc(size);
     }
 
-    adm_S.alloc(size);
+    adm_S.alloc(size);*/
 
     int particle_num = 16;
 

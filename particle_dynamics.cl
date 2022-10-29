@@ -112,3 +112,9 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     velocities_out[idx * 3 + 1] = vel.y;
     velocities_out[idx * 3 + 2] = vel.z;
 }
+
+__kernel
+void build_matter_sources(__global float* positions_in, __global float* velocities_in, STANDARD_ARGS())
+{
+
+}

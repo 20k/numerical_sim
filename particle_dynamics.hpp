@@ -8,10 +8,10 @@ struct particle_dynamics : plugin
     std::array<cl::buffer, 2> particle_3_position;
     std::array<cl::buffer, 2> particle_3_velocity;
 
-    cl::buffer adm_p;
+    /*cl::buffer adm_p;
     std::array<cl::buffer, 3> adm_Si;
     std::array<cl::buffer, 6> adm_Sij;
-    cl::buffer adm_S;
+    cl::buffer adm_S;*/
 
     cl::program pd;
 
