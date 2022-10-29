@@ -80,13 +80,13 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
         }
     }
 
-    ctx.add("MASSIVE_V0Diff", V_upper_diff.idx(0));
-    ctx.add("MASSIVE_V1Diff", V_upper_diff.idx(1));
-    ctx.add("MASSIVE_V2Diff", V_upper_diff.idx(2));
+    ctx.add("V0Diff", V_upper_diff.idx(0));
+    ctx.add("V1Diff", V_upper_diff.idx(1));
+    ctx.add("V2Diff", V_upper_diff.idx(2));
 
-    ctx.add("MASSIVE_X0Diff", dx.idx(0));
-    ctx.add("MASSIVE_X1Diff", dx.idx(1));
-    ctx.add("MASSIVE_X2Diff", dx.idx(2));
+    ctx.add("X0Diff", dx.idx(0));
+    ctx.add("X1Diff", dx.idx(1));
+    ctx.add("X2Diff", dx.idx(2));
 }
 
 void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue,         thin_intermediates_pool& pool, buffer_set& to_init)
@@ -191,6 +191,13 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ectx.add("OUT_VZ", velocity.w());
 
         ectx.build(argument_string, "tparticleinit");
+    }
+
+    {
+        equation_context ectx;
+        build_adm_geodesic(ectx, {mesh.dim.x(), mesh.dim.y(), mesh.dim.z()});
+
+        ectx.build(argument_string, 6);
     }
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
