@@ -4867,31 +4867,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     tensor<value, 3, 3, 3> conformal_christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
 
-    tensor<value, 3, 3, 3> full_christoffel2;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            for(int k=0; k < 3; k++)
-            {
-                float kronecker_ik = (i == k) ? 1 : 0;
-                float kronecker_ij = (i == j) ? 1 : 0;
-
-                value sm = 0;
-
-                for(int m=0; m < 3; m++)
-                {
-                    sm += icY.idx(i, m) * dX.idx(m);
-                }
-
-                full_christoffel2.idx(i, j, k) = conformal_christoff2.idx(i, j, k) -
-                                                 (1.f/(2.f * args.get_X())) * (kronecker_ik * dX.idx(j) + kronecker_ij * dX.idx(k) - args.cY.idx(j, k) * sm);
-            }
-        }
-    }
-
-    //tensor<value, 3, 3, 3> full_christoffel2 = christoffel_symbols_2(ctx, args.Yij, iYij);
+    tensor<value, 3, 3, 3> full_christoffel2 = get_full_christoffel2(args.get_X(), dX, args.cY, icY, conformal_christoff2);
 
     value length_sq = dot_metric(V_upper, V_upper, args.Yij);
 

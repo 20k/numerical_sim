@@ -307,6 +307,37 @@ unit_metric<T, N, N> get_flat_metric()
     return ret;
 }
 
+template<typename T>
+inline
+tensor<T, 3, 3, 3> get_full_christoffel2(const value& X, const tensor<value, 3>& dX, const metric<T, 3, 3>& cY, const inverse_metric<T, 3, 3>& icY, tensor<T, 3, 3, 3>& christoff2)
+{
+    tensor<value, 3, 3, 3> full_christoffel2;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                float kronecker_ik = (i == k) ? 1 : 0;
+                float kronecker_ij = (i == j) ? 1 : 0;
+
+                value sm = 0;
+
+                for(int m=0; m < 3; m++)
+                {
+                    sm += icY.idx(i, m) * dX.idx(m);
+                }
+
+                full_christoffel2.idx(i, j, k) = christoff2.idx(i, j, k) -
+                                                 (1.f/(2.f * X)) * (kronecker_ik * dX.idx(j) + kronecker_ij * dX.idx(k) - cY.idx(j, k) * sm);
+            }
+        }
+    }
+
+    return full_christoffel2;
+}
+
 ///all the tetrad/frame basis stuff needs a rework, its from when I didn't know what was going on
 ///and poorly ported from the raytracer
 template<int N>
@@ -348,7 +379,6 @@ vec<N, value> normalize_big_metric(const vec<N, value>& in, const metric<value, 
 
     return in / sqrt(fabs(dot));
 }
-
 
 struct frame_basis
 {
