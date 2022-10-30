@@ -174,11 +174,11 @@ void build_matter_sources(__global float* positions_in, __global float* velociti
         int ocz = floor(voxel_pos.z);
 
         ///ensure that we're always smeared across several boxes
-        float rs = scale;
+        float rs = 2 * scale;
 
         //printf("Rs %f\n", rs);
 
-        int spread = 4;
+        int spread = 8;
 
         float max_contrib = 0;
 
