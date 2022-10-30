@@ -144,6 +144,38 @@ float3 voxel_to_world_unrounded(float3 pos, int4 dim, float scale)
     return (pos - centre) * scale;
 }
 
+float get_f_sp(float r_rs)
+{
+    float f_sp = 0;
+
+    if(r_rs <= 1)
+    {
+        f_sp = 1.f - (3.f/2.f) * r_rs * r_rs + (3.f/4.f) * pow(r_rs, 3.f);
+    }
+
+    else if(r_rs <= 2)
+    {
+        f_sp = (1.f/4.f) * pow(2 - r_rs, 3.f);
+    }
+    else
+    {
+        f_sp = 0;
+    }
+
+    return f_sp;
+}
+
+__kernel
+void distribute_particle_spheres(__global float* positions, int geodesic_count, __global int* counts, int4 dim)
+{
+    int idx = get_global_id(0);
+
+    if(idx >= geodesic_count)
+        return;
+
+
+}
+
 __kernel
 void build_matter_sources(__global float* positions_in, __global float* velocities_in, int geodesic_count, STANDARD_ARGS(), float scale, int4 dim)
 {
@@ -201,21 +233,7 @@ void build_matter_sources(__global float* positions_in, __global float* velociti
                     ///https://arxiv.org/pdf/1611.07906.pdf 20
                     float r_rs = to_centre_distance / rs;
 
-                    float f_sp = 0;
-
-                    if(r_rs <= 1)
-                    {
-                        f_sp = 1.f - (3.f/2.f) * r_rs * r_rs + (3.f/4.f) * pow(r_rs, 3.f);
-                    }
-
-                    else if(r_rs <= 2)
-                    {
-                        f_sp = (1.f/4.f) * pow(2 - r_rs, 3.f);
-                    }
-                    else
-                    {
-                        f_sp = 0;
-                    }
+                    float f_sp = get_f_sp(r_rs);
 
                     max_contrib += f_sp;
                 }
@@ -241,20 +259,7 @@ void build_matter_sources(__global float* positions_in, __global float* velociti
                     ///https://arxiv.org/pdf/1611.07906.pdf 20
                     float r_rs = to_centre_distance / rs;
 
-                    float f_sp = 0;
-
-                    if(r_rs <= 1)
-                    {
-                        f_sp = 1.f - (3.f/2.f) * r_rs * r_rs + (3.f/4.f) * pow(r_rs, 3.f);
-                    }
-                    else if(r_rs <= 2)
-                    {
-                        f_sp = (1.f/4.f) * pow(2 - r_rs, 3.f);
-                    }
-                    else
-                    {
-                        f_sp = 0;
-                    }
+                    float f_sp = get_f_sp(r_rs);
 
                     //f_sp = f_sp/(M_PI * pow(rs, 3.f));
 
