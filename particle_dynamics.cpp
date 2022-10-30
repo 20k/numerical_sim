@@ -396,17 +396,36 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
 {
     ///so. Need to take all my particles, advance them forwards in time. Some complications because I'm not going to do this in a backwards euler way, so only on the 0th iteration do we do fun things. Need to pre-swap buffers
     ///need to fill up the adm buffers from the *current* particle positions
+    cl_int4 clsize = {mesh.dim.x(), mesh.dim.y(), mesh.dim.z(), 0};
 
     ///shit no its not correct, we need to be implicit otherwise the sources are incorrect innit. Its F(y+1)
     if(iteration == 0)
     {
-        cl_int4 clsize = {mesh.dim.x(), mesh.dim.y(), mesh.dim.z(), 0};
-
         std::swap(particle_3_position[0], particle_3_position[1]);
         std::swap(particle_3_velocity[0], particle_3_velocity[1]);
 
-        //cl::kernel build_kern(pg, "build_matter_sources");
+        {
+            cl::args args;
+            args.push_back(particle_3_position[0]);
+            args.push_back(particle_3_velocity[0]);
+            args.push_back(particle_3_position[1]);
+            args.push_back(particle_3_velocity[1]);
+            args.push_back(particle_count);
 
+            for(named_buffer& i : in.buffers)
+            {
+                args.push_back(i.buf);
+            }
+
+            args.push_back(mesh.scale);
+            args.push_back(clsize);
+            args.push_back(timestep);
+
+            mqueue.exec("trace_geodesics", args, {particle_count}, {128});
+        }
+    }
+
+    {
         in.lookup("adm_p").buf.set_to_zero(mqueue);
         in.lookup("adm_Si0").buf.set_to_zero(mqueue);
         in.lookup("adm_Si1").buf.set_to_zero(mqueue);
@@ -436,26 +455,6 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
             //build_kern.set_args(args);
 
             mqueue.exec("build_matter_sources", args, {1}, {1});
-        }
-
-        {
-            cl::args args;
-            args.push_back(particle_3_position[0]);
-            args.push_back(particle_3_velocity[0]);
-            args.push_back(particle_3_position[1]);
-            args.push_back(particle_3_velocity[1]);
-            args.push_back(particle_count);
-
-            for(named_buffer& i : in.buffers)
-            {
-                args.push_back(i.buf);
-            }
-
-            args.push_back(mesh.scale);
-            args.push_back(clsize);
-            args.push_back(timestep);
-
-            mqueue.exec("trace_geodesics", args, {particle_count}, {128});
         }
     }
 }
