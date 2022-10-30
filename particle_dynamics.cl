@@ -228,7 +228,7 @@ void allocate_particle_spheres(__global int* counts, __global int* memory_ptrs, 
 }
 
 __kernel
-void collect_particle_spheres(__global int* collected_count, __global int* memory_ptrs, __global int* collected_indices, float scale, int4 dim, int actually_write)
+void collect_particle_spheres(__global int* collected_count, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, float scale, int4 dim, int actually_write)
 {
     int idx = get_global_id(0);
 
@@ -240,6 +240,35 @@ void collect_particle_spheres(__global int* collected_count, __global int* memor
     float rs = 2 * scale;
 
     int spread = 6;
+
+    float total_weight = 0;
+
+    if(actually_write)
+    {
+        for(int zz=-spread; zz <= spread; zz++)
+        {
+            for(int yy=-spread; yy <= spread; yy++)
+            {
+                for(int xx=-spread; xx <= spread; xx++)
+                {
+                    int ix = xx + ocx;
+                    int iy = yy + ocy;
+                    int iz = zz + ocz;
+
+                    float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
+
+                    float to_centre_distance = fast_length(cell_wp - world_pos);
+
+                    ///https://arxiv.org/pdf/1611.07906.pdf 20
+                    float r_rs = to_centre_distance / rs;
+
+                    float f_sp = get_f_sp(r_rs);
+
+                    total_weight += f_sp;
+                }
+            }
+        }
+    }
 
     for(int zz=-spread; zz <= spread; zz++)
     {
@@ -270,8 +299,82 @@ void collect_particle_spheres(__global int* collected_count, __global int* memor
                     int my_memory_offset = memory_ptrs[IDX(ix,iy,iz)];
 
                     collected_indices[my_memory_offset + my_index] = idx;
+                    collected_weights[my_memory_offset + my_index] = total_weight;
                 }
             }
+        }
+    }
+}
+
+__kernel
+void do_weighted_summation(_global int* collected_count, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    int index = IDX(ix,iy,iz);
+
+    int my_count = counts[index];
+    int my_memory_start = memory_ptrs[index];
+
+    for(int i=0; i < my_count; i++)
+    {
+        int gidx = i + my_memory_start;
+
+        int geodesic_idx = collected_indices[gidx];
+        float total_weight_factor = collected_weights[gidx];
+
+        if(total_weight_factor == 0)
+            continue;
+
+        float3 world_pos = (float3)(positions_in[idx * 3 + 0], positions_in[idx * 3 + 1], positions_in[idx * 3 + 2]);
+        float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
+
+        float to_centre_distance = fast_length(cell_wp - world_pos);
+
+        float to_centre_distance = fast_length(cell_wp - world_pos);
+
+        ///https://arxiv.org/pdf/1611.07906.pdf 20
+        float r_rs = to_centre_distance / rs;
+
+        float f_sp = get_f_sp(r_rs) / total_weight_factor;
+
+        if(f_sp == 0)
+            continue;
+
+
+        {
+            float TEMPORARIESadmmatter;
+
+            float vadm_S = OUT_ADM_S;
+            float vadm_Si0 = OUT_ADM_SI0;
+            float vadm_Si1 = OUT_ADM_SI1;
+            float vadm_Si2 = OUT_ADM_SI2;
+            float vadm_Sij0 = OUT_ADM_SIJ0;
+            float vadm_Sij1 = OUT_ADM_SIJ1;
+            float vadm_Sij2 = OUT_ADM_SIJ2;
+            float vadm_Sij3 = OUT_ADM_SIJ3;
+            float vadm_Sij4 = OUT_ADM_SIJ4;
+            float vadm_Sij5 = OUT_ADM_SIJ5;
+            float vadm_p = OUT_ADM_P;
+
+            int index = IDX(ix,iy,iz);
+
+            adm_S[index] += vadm_S * weight;
+            adm_Si0[index] += vadm_Si0 * weight;
+            adm_Si1[index] += vadm_Si1 * weight;
+            adm_Si2[index] += vadm_Si2 * weight;
+            adm_Sij0[index] += vadm_Sij0 * weight;
+            adm_Sij1[index] += vadm_Sij1 * weight;
+            adm_Sij2[index] += vadm_Sij2 * weight;
+            adm_Sij3[index] += vadm_Sij3 * weight;
+            adm_Sij4[index] += vadm_Sij4 * weight;
+            adm_Sij5[index] += vadm_Sij5 * weight;
+            adm_p[index] += vadm_p * weight;
         }
     }
 }
