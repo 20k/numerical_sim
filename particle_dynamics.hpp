@@ -18,6 +18,12 @@ struct particle_dynamics : plugin
     std::array<cl::buffer, 2> particle_3_position;
     std::array<cl::buffer, 2> particle_3_velocity;
 
+    cl::buffer indices_block;
+    cl::buffer weights_block;
+
+    std::optional<cl::buffer> memory_ptrs;
+    std::optional<cl::buffer> counts;
+
     /*cl::buffer adm_p;
     std::array<cl::buffer, 3> adm_Si;
     std::array<cl::buffer, 6> adm_Sij;
