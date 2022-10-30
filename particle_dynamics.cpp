@@ -521,38 +521,4 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
 
         mqueue.exec("do_weighted_summation", args, {dim.x(), dim.y(), dim.z()}, {8,8,1});
     }
-
-
-    /*{
-        in.lookup("adm_p").buf.set_to_zero(mqueue);
-        in.lookup("adm_Si0").buf.set_to_zero(mqueue);
-        in.lookup("adm_Si1").buf.set_to_zero(mqueue);
-        in.lookup("adm_Si2").buf.set_to_zero(mqueue);
-        in.lookup("adm_Sij0").buf.set_to_zero(mqueue);
-        in.lookup("adm_Sij1").buf.set_to_zero(mqueue);
-        in.lookup("adm_Sij2").buf.set_to_zero(mqueue);
-        in.lookup("adm_Sij3").buf.set_to_zero(mqueue);
-        in.lookup("adm_Sij4").buf.set_to_zero(mqueue);
-        in.lookup("adm_Sij5").buf.set_to_zero(mqueue);
-        in.lookup("adm_S").buf.set_to_zero(mqueue);
-
-        {
-            cl::args args;
-            args.push_back(particle_3_position[0]);
-            args.push_back(particle_3_velocity[0]);
-            args.push_back(particle_count);
-
-            for(named_buffer& i : in.buffers)
-            {
-                args.push_back(i.buf);
-            }
-
-            args.push_back(mesh.scale);
-            args.push_back(clsize);
-
-            //build_kern.set_args(args);
-
-            mqueue.exec("build_matter_sources", args, {1}, {1});
-        }
-    }*/
 }
