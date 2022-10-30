@@ -228,7 +228,7 @@ void allocate_particle_spheres(__global int* counts, __global int* memory_ptrs, 
 }
 
 __kernel
-void collect_particle_spheres(__global float* positions, int geodesic_count, __global int* collected_count, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, float scale, int4 dim, int actually_write)
+void collect_particle_spheres(__global float* positions, int geodesic_count, __global int* collected_counts, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, float scale, int4 dim, int actually_write)
 {
     int idx = get_global_id(0);
 
@@ -300,7 +300,7 @@ void collect_particle_spheres(__global float* positions, int geodesic_count, __g
                 if(f_sp == 0)
                     continue;
 
-                int my_index = atomic_inc(&collected_count[IDX(ix,iy,iz)]);
+                int my_index = atomic_inc(&collected_counts[IDX(ix,iy,iz)]);
 
                 if(actually_write)
                 {
@@ -315,7 +315,7 @@ void collect_particle_spheres(__global float* positions, int geodesic_count, __g
 }
 
 __kernel
-void do_weighted_summation(__global float* positions, __global float* velocities, __global int* collected_count, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
+void do_weighted_summation(__global float* positions, __global float* velocities, __global int* collected_counts, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -326,7 +326,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
 
     int index = IDX(ix,iy,iz);
 
-    int my_count = counts[index];
+    int my_count = collected_counts[index];
     int my_memory_start = memory_ptrs[index];
 
     float rs = 2 * scale;
@@ -345,8 +345,6 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         float3 vel = (float3)(velocities[geodesic_idx * 3 + 0], velocities[geodesic_idx * 3 + 1], velocities[geodesic_idx * 3 + 2]);
 
         float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
-
-        float to_centre_distance = fast_length(cell_wp - world_pos);
 
         float to_centre_distance = fast_length(cell_wp - world_pos);
 
