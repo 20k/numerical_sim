@@ -115,8 +115,8 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     float3 XDiff;
     velocity_to_XDiff(&XDiff, Xpos, vel, scale, dim, GET_STANDARD_ARGS());
 
-    printf("In vel %f %f %f\n", vel.x, vel.y, vel.z);
-    printf("In accel %f %f %f\n", accel.x, accel.y, accel.z);
+    //printf("In vel %f %f %f\n", vel.x, vel.y, vel.z);
+    //printf("In accel %f %f %f\n", accel.x, accel.y, accel.z);
 
     Xpos += XDiff * timestep;
     vel += accel * timestep;
@@ -159,7 +159,7 @@ void build_matter_sources(__global float* positions_in, __global float* velociti
         float3 world_pos = (float3)(positions_in[gidx * 3 + 0], positions_in[gidx * 3 + 1], positions_in[gidx * 3 + 2]);
         float3 vel = (float3)(velocities_in[gidx * 3 + 0], velocities_in[gidx * 3 + 1], velocities_in[gidx * 3 + 2]);
 
-        printf("World Pos %f %f %f\n", world_pos.x, world_pos.y, world_pos.z);
+        //printf("World Pos %f %f %f\n", world_pos.x, world_pos.y, world_pos.z);
 
         float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
 

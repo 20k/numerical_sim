@@ -180,7 +180,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     adm_S.alloc(size);*/
 
-    particle_count = 1;
+    particle_count = 16;
 
     for(int i=0; i < 2; i++)
     {
@@ -220,7 +220,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         if(kk == 1024)
             throw std::runtime_error("Did not successfully assign particle position");
 
-        directions.push_back({0.00001, 0, 0});
+        directions.push_back({0.05, 0, 0});
     }
 
     particle_3_position[0].write(cqueue, positions);
