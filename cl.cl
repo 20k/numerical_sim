@@ -1095,7 +1095,6 @@ void render(STANDARD_ARGS(),
     //for(int z = 20; z < dim.z-20; z++)
 
     {
-
         float sponge_factor = sponge_damp_coeff(ix, iy, iz, scale, dim);
 
         #define SOMMER_RENDER
@@ -1112,6 +1111,11 @@ void render(STANDARD_ARGS(),
         }
 
         int index = IDX(ix, iy, iz);
+
+        #define RENDER_MATTER_S
+        #ifdef RENDER_MATTER_S
+        float ascalar = fabs(adm_S[index]) * 10000;
+        #endif // RENDER_MATTER_S
 
         //#define RENDER_METRIC
         #ifdef RENDER_METRIC
@@ -1228,7 +1232,7 @@ void render(STANDARD_ARGS(),
         ascalar *= 0.2f;
         #endif // RENDER_DCY
 
-        #define RENDER_MOMENTUM
+        //#define RENDER_MOMENTUM
         #ifdef RENDER_MOMENTUM
         int order = D_FULL;
 
@@ -1250,7 +1254,7 @@ void render(STANDARD_ARGS(),
 
     float real = 0;
 
-    #define RENDER_WAVES
+    //#define RENDER_WAVES
     #ifdef RENDER_WAVES
     {
         float TEMPORARIES4;
