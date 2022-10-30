@@ -1112,7 +1112,6 @@ void render(STANDARD_ARGS(),
 
         int index = IDX(ix, iy, iz);
 
-        #define RENDER_MATTER_P
         #ifdef RENDER_MATTER_P
         float ascalar = fabs(adm_p[index]) * 20;
         #endif // RENDER_MATTER_P
@@ -1254,7 +1253,7 @@ void render(STANDARD_ARGS(),
 
     float real = 0;
 
-    //#define RENDER_WAVES
+    #define RENDER_WAVES
     #ifdef RENDER_WAVES
     {
         float TEMPORARIES4;
@@ -1637,7 +1636,7 @@ float get_static_verlet_ds(float3 Xpos, __global float* X, float scale, int4 dim
 
     my_fraction = clamp(my_fraction, 0.f, 1.f);
 
-    #ifdef RENDER_MATTER
+    #if defined(RENDER_MATTER) || defined(TRACE_MATTER_P)
     return mix(0.4f, 4.f, my_fraction) * 0.1f;
     #else
     return mix(0.4f, 4.f, my_fraction);
@@ -1741,6 +1740,20 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
             hit_type = 0;
             break;
         }
+
+        #ifdef TRACE_MATTER_P
+        float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+        voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+        float p_val = buffer_read_linear(adm_p, voxel_pos, dim);
+
+        accum_R += p_val * 20;
+        accum_G += p_val * 20;
+        accum_B += p_val * 20;
+
+        if(accum_R > 1 && accum_G > 1 && accum_G > 1)
+            break;
+        #endif
 
         #ifdef RENDER_MATTER
         float3 voxel_pos = world_to_voxel(Xpos, dim, scale);

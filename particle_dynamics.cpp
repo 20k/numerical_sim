@@ -159,6 +159,21 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
     ctx.add("X2Diff", dx.idx(2));
 }
 
+float get_kepler_velocity(float distance_between_bodies, float my_mass, float their_mass)
+{
+    float R = distance_between_bodies;
+
+    float M = my_mass + their_mass;
+
+    float velocity = sqrt(M/R);
+
+    return velocity;
+
+    //float velocity = their_mass * their_mass / (R * M);
+}
+
+///https://www.mdpi.com/2075-4434/6/3/70/htm (7)
+
 void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue,         thin_intermediates_pool& pool, buffer_set& to_init)
 {
     vec3i dim = mesh.dim;
@@ -188,7 +203,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     adm_S.alloc(size);*/
 
-    particle_count = 16;
+    particle_count = 256;
 
     for(int i=0; i < 2; i++)
     {
@@ -204,6 +219,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     std::vector<vec3f> positions;
     std::vector<vec3f> directions;
 
+    float mass = 0.01;
+    float total_mass = mass * particle_count;
+
     for(int i=0; i < particle_count; i++)
     {
         int kk=0;
@@ -216,19 +234,39 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
             vec3f pos = {x, y, z};
 
-            pos.z() = 0;
+            pos.z() *= 0.001f;
 
-            if(pos.length() >= generation_radius)
+            float angle = atan2(pos.y(), pos.x());
+            float radius = pos.length();
+
+            if(radius >= generation_radius || radius < generation_radius * 0.1f)
                 continue;
 
             positions.push_back(pos);
+
+            vec2f velocity_direction = (vec2f){1, 0}.rot(angle + M_PI/2);
+
+            //float linear_velocity = get_kepler_velocity(radius, mass, total_mass - mass) * 0.15f;
+
+            //printf("Linear velocity %f\n", linear_velocity);
+
+            float linear_velocity = 0.025f;
+
+            vec2f velocity = linear_velocity * velocity_direction;
+
+            vec3f velocity3 = {velocity.x(), velocity.y(), 0};
+
+            directions.push_back(velocity3);
+
             break;
         }
 
         if(kk == 1024)
             throw std::runtime_error("Did not successfully assign particle position");
 
-        directions.push_back({0.00005, 0, 0});
+
+
+        //directions.push_back({0.00005, 0, 0});
     }
 
     particle_3_position[0].write(cqueue, positions);
@@ -322,8 +360,6 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         ///wait. But this is equal to vi_lower. Ah I'm such a muppet
         tensor<value, 3> u3_lower = lower_index(u3_upper, args.Yij, 0);
-
-        float mass = 0.05;
 
         value out_adm_p = mass * lorentz * lorentz;
         tensor<value, 3> Si = mass * lorentz * u3_lower;

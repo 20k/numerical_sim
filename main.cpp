@@ -5317,6 +5317,11 @@ int main()
         argument_string += "-DSOMMER_MATTER ";
     }
 
+    if(use_geodesic_particles)
+    {
+        argument_string += "-DTRACE_MATTER_P -DRENDER_MATTER_P ";
+    }
+
     #ifdef USE_GBB
     argument_string += "-DUSE_GBB ";
     #endif // USE_GBB
