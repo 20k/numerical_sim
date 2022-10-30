@@ -61,9 +61,11 @@ tensor<value, 3, 3> particle_matter_interop::calculate_adm_X_Sij(equation_contex
     return X * Sij;
 }
 
-particle_dynamics::particle_dynamics(cl::context& ctx) : particle_3_position{ctx, ctx}, particle_3_velocity{ctx, ctx}, pd(ctx), indices_block(ctx), weights_block(ctx)
+particle_dynamics::particle_dynamics(cl::context& ctx) : particle_3_position{ctx, ctx}, particle_3_velocity{ctx, ctx}, pd(ctx), indices_block(ctx), weights_block(ctx), memory_alloc_count(ctx)
 {
-
+    indices_block.alloc(sizeof(cl_int) * 1024 * 1024 * 40);
+    weights_block.alloc(sizeof(cl_float) * 1024 * 1024 * 40);
+    memory_alloc_count.alloc(sizeof(cl_int));
 }
 
 std::vector<buffer_descriptor> particle_dynamics::get_buffers()
@@ -160,6 +162,12 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
 void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue,         thin_intermediates_pool& pool, buffer_set& to_init)
 {
     vec3i dim = mesh.dim;
+
+    memory_ptrs = cl::buffer(ctx);
+    counts = cl::buffer(ctx);
+
+    memory_ptrs.value().alloc(sizeof(cl_int) * dim.x() * dim.y() * dim.z());
+    counts.value().alloc(sizeof(cl_int) * dim.x() * dim.y() * dim.z());
 
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
     float scale = mesh.scale;
@@ -394,9 +402,16 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
 void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep, int iteration, int max_iteration)
 {
+    cl::buffer& memory_ptrs_val = memory_ptrs.value();
+    cl::buffer& counts_val = counts.value();
+
+    memory_alloc_count.set_to_zero(mqueue);
+
     ///so. Need to take all my particles, advance them forwards in time. Some complications because I'm not going to do this in a backwards euler way, so only on the 0th iteration do we do fun things. Need to pre-swap buffers
     ///need to fill up the adm buffers from the *current* particle positions
+    vec3i dim = mesh.dim;
     cl_int4 clsize = {mesh.dim.x(), mesh.dim.y(), mesh.dim.z(), 0};
+    float scale = mesh.scale;
 
     ///shit no its not correct, we need to be implicit otherwise the sources are incorrect innit. Its F(y+1)
     if(iteration == 0)
@@ -417,7 +432,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
                 args.push_back(i.buf);
             }
 
-            args.push_back(mesh.scale);
+            args.push_back(scale);
             args.push_back(clsize);
             args.push_back(timestep);
 
@@ -425,7 +440,78 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         }
     }
 
+    counts_val.set_to_zero(mqueue);
+
+    ///find how many particles would be written per-cell
     {
+        cl_int actually_write = 0;
+
+        cl::args args;
+        args.push_back(particle_3_position[0]);
+        args.push_back(particle_count);
+        args.push_back(counts_val);
+        args.push_back(memory_ptrs_val);
+        args.push_back(indices_block);
+        args.push_back(weights_block);
+        args.push_back(scale);
+        args.push_back(clsize);
+        args.push_back(actually_write);
+
+        mqueue.exec("collect_particle_spheres", args, {particle_count}, {128});
+    }
+
+    ///allocate memory for each cell
+    {
+        cl::args args;
+        args.push_back(counts_val);
+        args.push_back(memory_ptrs_val);
+        args.push_back(memory_alloc_count);
+        args.push_back(clsize);
+
+        mqueue.exec("allocate_particle_spheres", args, {dim.x(), dim.y(), dim.z()}, {8,8,1});
+    }
+
+    ///write the indices and weights into indices_block, and weights_block at the offsets determined by memory_ptrs_val per-cell
+    {
+        cl_int actually_write = 1;
+
+        cl::args args;
+        args.push_back(particle_3_position[0]);
+        args.push_back(particle_count);
+        args.push_back(counts_val);
+        args.push_back(memory_ptrs_val);
+        args.push_back(indices_block);
+        args.push_back(weights_block);
+        args.push_back(scale);
+        args.push_back(clsize);
+        args.push_back(actually_write);
+
+        mqueue.exec("collect_particle_spheres", args, {particle_count}, {128});
+    }
+
+    ///calculate adm quantities per-cell by summing across the list of particles
+    {
+        cl::args args;
+        args.push_back(particle_3_position[0]);
+        args.push_back(particle_3_velocity[0]);
+        args.push_back(counts_val);
+        args.push_back(memory_ptrs_val);
+        args.push_back(indices_block);
+        args.push_back(weights_block);
+
+        for(named_buffer& i : in.buffers)
+        {
+            args.push_back(i.buf);
+        }
+
+        args.push_back(scale);
+        args.push_back(clsize);
+
+        mqueue.exec("do_weighted_summation", args, {dim.x(), dim.y(), dim.z()}, {8,8,1});
+    }
+
+
+    /*{
         in.lookup("adm_p").buf.set_to_zero(mqueue);
         in.lookup("adm_Si0").buf.set_to_zero(mqueue);
         in.lookup("adm_Si1").buf.set_to_zero(mqueue);
@@ -456,5 +542,5 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
 
             mqueue.exec("build_matter_sources", args, {1}, {1});
         }
-    }
+    }*/
 }

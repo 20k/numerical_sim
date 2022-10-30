@@ -225,6 +225,7 @@ void allocate_particle_spheres(__global int* counts, __global int* memory_ptrs, 
     int my_memory = atomic_add(memory_allocator, my_count);
 
     memory_ptrs[index] = my_memory;
+    counts[index] = 0;
 }
 
 __kernel
