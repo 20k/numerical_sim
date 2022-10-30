@@ -344,15 +344,18 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         }
     }
 
-    adm_S[index] = vadm_S;
-    adm_Si0[index] = vadm_Si0;
-    adm_Si1[index] = vadm_Si1;
-    adm_Si2[index] = vadm_Si2;
-    adm_Sij0[index] = vadm_Sij0;
-    adm_Sij1[index] = vadm_Sij1;
-    adm_Sij2[index] = vadm_Sij2;
-    adm_Sij3[index] = vadm_Sij3;
-    adm_Sij4[index] = vadm_Sij4;
-    adm_Sij5[index] = vadm_Sij5;
-    adm_p[index] = vadm_p;
+    if(vadm_p > 0 || (vadm_p == 0 && adm_p[index] != 0))
+    {
+        adm_S[index] = vadm_S;
+        adm_Si0[index] = vadm_Si0;
+        adm_Si1[index] = vadm_Si1;
+        adm_Si2[index] = vadm_Si2;
+        adm_Sij0[index] = vadm_Sij0;
+        adm_Sij1[index] = vadm_Sij1;
+        adm_Sij2[index] = vadm_Sij2;
+        adm_Sij3[index] = vadm_Sij3;
+        adm_Sij4[index] = vadm_Sij4;
+        adm_Sij5[index] = vadm_Sij5;
+        adm_p[index] = vadm_p;
+    }
 }
