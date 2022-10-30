@@ -194,7 +194,7 @@ void build_matter_sources(__global float* positions_in, __global float* velociti
 
                     float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
 
-                    float to_centre_distance = length(cell_wp - world_pos);
+                    float to_centre_distance = fast_length(cell_wp - world_pos);
 
                     //float weight = 1 - max(to_centre_distance / rs, 1.f);
 
@@ -234,7 +234,7 @@ void build_matter_sources(__global float* positions_in, __global float* velociti
 
                     float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
 
-                    float to_centre_distance = length(cell_wp - world_pos);
+                    float to_centre_distance = fast_length(cell_wp - world_pos);
 
                     //float weight = 1 - max(to_centre_distance / rs, 1.f);
 
