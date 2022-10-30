@@ -165,15 +165,115 @@ float get_f_sp(float r_rs)
     return f_sp;
 }
 
-__kernel
-void distribute_particle_spheres(__global float* positions, int geodesic_count, __global int* counts, int4 dim)
+/*__kernel
+void distribute_particle_spheres(__global float* positions, int geodesic_count, __global int* counts, float scale, int4 dim)
 {
     int idx = get_global_id(0);
 
     if(idx >= geodesic_count)
         return;
 
+    float3 world_pos = (float3)(positions_in[idx * 3 + 0], positions_in[idx * 3 + 1], positions_in[idx * 3 + 2]);
 
+    float rs = 2 * scale;
+
+    int spread = 6;
+
+    for(int zz=-spread; zz <= spread; zz++)
+    {
+        for(int yy=-spread; yy <= spread; yy++)
+        {
+            for(int xx=-spread; xx <= spread; xx++)
+            {
+                int ix = xx + ocx;
+                int iy = yy + ocy;
+                int iz = zz + ocz;
+
+                float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
+
+                float to_centre_distance = fast_length(cell_wp - world_pos);
+
+                ///https://arxiv.org/pdf/1611.07906.pdf 20
+                float r_rs = to_centre_distance / rs;
+
+                float f_sp = get_f_sp(r_rs);
+
+                if(f_sp == 0)
+                    continue;
+
+                int dim_index = IDX(ix,iy,iz);
+
+                atomic_add(&counts[dim_index], 1);
+            }
+        }
+    }
+}*/
+
+__kernel
+void allocate_particle_spheres(__global int* counts, __global int* memory_ptrs, __global int* memory_allocator, int4 dim)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    int index = IDX(ix,iy,iz);
+
+    int my_count = counts[index];
+    int my_memory = atomic_add(memory_allocator, my_count);
+
+    memory_ptrs[index] = my_memory;
+}
+
+__kernel
+void collect_particle_spheres(__global int* collected_count, __global int* memory_ptrs, __global int* collected_indices, float scale, int4 dim, int actually_write)
+{
+    int idx = get_global_id(0);
+
+    if(idx >= geodesic_count)
+        return;
+
+    float3 world_pos = (float3)(positions_in[idx * 3 + 0], positions_in[idx * 3 + 1], positions_in[idx * 3 + 2]);
+
+    float rs = 2 * scale;
+
+    int spread = 6;
+
+    for(int zz=-spread; zz <= spread; zz++)
+    {
+        for(int yy=-spread; yy <= spread; yy++)
+        {
+            for(int xx=-spread; xx <= spread; xx++)
+            {
+                int ix = xx + ocx;
+                int iy = yy + ocy;
+                int iz = zz + ocz;
+
+                float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
+
+                float to_centre_distance = fast_length(cell_wp - world_pos);
+
+                ///https://arxiv.org/pdf/1611.07906.pdf 20
+                float r_rs = to_centre_distance / rs;
+
+                float f_sp = get_f_sp(r_rs);
+
+                if(f_sp == 0)
+                    continue;
+
+                int my_index = atomic_inc(&collected_count[IDX(ix,iy,iz)]);
+
+                if(actually_write)
+                {
+                    int my_memory_offset = memory_ptrs[IDX(ix,iy,iz)];
+
+                    collected_indices[my_memory_offset + my_index] = idx;
+                }
+            }
+        }
+    }
 }
 
 __kernel
