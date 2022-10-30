@@ -178,7 +178,7 @@ void build_matter_sources(__global float* positions_in, __global float* velociti
 
         //printf("Rs %f\n", rs);
 
-        int spread = 8;
+        int spread = 6;
 
         float max_contrib = 0;
 
