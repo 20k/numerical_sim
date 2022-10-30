@@ -110,11 +110,11 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
 
     tensor<value, 3, 3, 3> full_christoffel2 = get_full_christoffel2(args.get_X(), dX, args.cY, icY, conformal_christoff2);
 
-    value length_sq = dot_metric(V_upper, V_upper, args.Yij);
+    //value length_sq = dot_metric(V_upper, V_upper, args.Yij);
 
-    value length = sqrt(fabs(length_sq));
+    //value length = sqrt(fabs(length_sq));
 
-    V_upper = (V_upper * 1 / length);
+    //V_upper = (V_upper * 1 / length);
 
     ///https://arxiv.org/pdf/1208.3927.pdf (28a)
     tensor<value, 3> dx = args.gA * V_upper - args.gB;

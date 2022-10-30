@@ -115,6 +115,9 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     float3 XDiff;
     velocity_to_XDiff(&XDiff, Xpos, vel, scale, dim, GET_STANDARD_ARGS());
 
+    printf("In vel %f %f %f\n", vel.x, vel.y, vel.z);
+    printf("In accel %f %f %f\n", accel.x, accel.y, accel.z);
+
     Xpos += XDiff * timestep;
     vel += accel * timestep;
 
@@ -244,14 +247,14 @@ void build_matter_sources(__global float* positions_in, __global float* velociti
                     {
                         f_sp = 1.f - (3.f/2.f) * r_rs * r_rs + (3.f/4.f) * pow(r_rs, 3.f);
 
-                        printf("First branch %f %f\n", f_sp, r_rs);
+                        //printf("First branch %f %f\n", f_sp, r_rs);
                     }
 
                     else if(r_rs <= 2)
                     {
                         f_sp = (1.f/4.f) * pow(2 - r_rs, 3.f);
 
-                        printf("Second branch %f %f\n", f_sp, r_rs);
+                        //printf("Second branch %f %f\n", f_sp, r_rs);
                     }
                     else
                     {
@@ -269,9 +272,9 @@ void build_matter_sources(__global float* positions_in, __global float* velociti
                     if(weight == 0)
                         continue;
 
-                    printf("Rs %f\n", rs);
+                    //printf("Rs %f\n", rs);
 
-                    printf("Weight %f %i %i %i wp: %f %f %f centre: %f %f %f\n", weight, xx, yy, zz, cell_wp.x, cell_wp.y, cell_wp.z, world_pos.x, world_pos.y, world_pos.z);
+                    //printf("Weight %f %i %i %i wp: %f %f %f centre: %f %f %f\n", weight, xx, yy, zz, cell_wp.x, cell_wp.y, cell_wp.z, world_pos.x, world_pos.y, world_pos.z);
 
                     {
                         float TEMPORARIESadmmatter;
