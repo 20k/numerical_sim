@@ -286,6 +286,18 @@ void do_weighted_summation(__global float* positions, __global float* velocities
     int my_count = collected_counts[index];
     int my_memory_start = memory_ptrs[index];
 
+    float vadm_S = 0;
+    float vadm_Si0 = 0;
+    float vadm_Si1 = 0;
+    float vadm_Si2 = 0;
+    float vadm_Sij0 = 0;
+    float vadm_Sij1 = 0;
+    float vadm_Sij2 = 0;
+    float vadm_Sij3 = 0;
+    float vadm_Sij4 = 0;
+    float vadm_Sij5 = 0;
+    float vadm_p = 0;
+
     float rs = 2 * scale;
 
     for(int i=0; i < my_count; i++)
@@ -318,29 +330,29 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         {
             float TEMPORARIESadmmatter;
 
-            float vadm_S = OUT_ADM_S;
-            float vadm_Si0 = OUT_ADM_SI0;
-            float vadm_Si1 = OUT_ADM_SI1;
-            float vadm_Si2 = OUT_ADM_SI2;
-            float vadm_Sij0 = OUT_ADM_SIJ0;
-            float vadm_Sij1 = OUT_ADM_SIJ1;
-            float vadm_Sij2 = OUT_ADM_SIJ2;
-            float vadm_Sij3 = OUT_ADM_SIJ3;
-            float vadm_Sij4 = OUT_ADM_SIJ4;
-            float vadm_Sij5 = OUT_ADM_SIJ5;
-            float vadm_p = OUT_ADM_P;
-
-            adm_S[index] += vadm_S * weight;
-            adm_Si0[index] += vadm_Si0 * weight;
-            adm_Si1[index] += vadm_Si1 * weight;
-            adm_Si2[index] += vadm_Si2 * weight;
-            adm_Sij0[index] += vadm_Sij0 * weight;
-            adm_Sij1[index] += vadm_Sij1 * weight;
-            adm_Sij2[index] += vadm_Sij2 * weight;
-            adm_Sij3[index] += vadm_Sij3 * weight;
-            adm_Sij4[index] += vadm_Sij4 * weight;
-            adm_Sij5[index] += vadm_Sij5 * weight;
-            adm_p[index] += vadm_p * weight;
+            vadm_S += OUT_ADM_S * weight;
+            vadm_Si0 += OUT_ADM_SI0 * weight;
+            vadm_Si1 += OUT_ADM_SI1 * weight;
+            vadm_Si2 += OUT_ADM_SI2 * weight;
+            vadm_Sij0 += OUT_ADM_SIJ0 * weight;
+            vadm_Sij1 += OUT_ADM_SIJ1 * weight;
+            vadm_Sij2 += OUT_ADM_SIJ2 * weight;
+            vadm_Sij3 += OUT_ADM_SIJ3 * weight;
+            vadm_Sij4 += OUT_ADM_SIJ4 * weight;
+            vadm_Sij5 += OUT_ADM_SIJ5 * weight;
+            vadm_p += OUT_ADM_P * weight;
         }
     }
+
+    adm_S[index] = vadm_S;
+    adm_Si0[index] = vadm_Si0;
+    adm_Si1[index] = vadm_Si1;
+    adm_Si2[index] = vadm_Si2;
+    adm_Sij0[index] = vadm_Sij0;
+    adm_Sij1[index] = vadm_Sij1;
+    adm_Sij2[index] = vadm_Sij2;
+    adm_Sij3[index] = vadm_Sij3;
+    adm_Sij4[index] = vadm_Sij4;
+    adm_Sij5[index] = vadm_Sij5;
+    adm_p[index] = vadm_p;
 }

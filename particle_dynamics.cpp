@@ -476,18 +476,6 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         }
     }
 
-    in.lookup("adm_p").buf.set_to_zero(mqueue);
-    in.lookup("adm_Si0").buf.set_to_zero(mqueue);
-    in.lookup("adm_Si1").buf.set_to_zero(mqueue);
-    in.lookup("adm_Si2").buf.set_to_zero(mqueue);
-    in.lookup("adm_Sij0").buf.set_to_zero(mqueue);
-    in.lookup("adm_Sij1").buf.set_to_zero(mqueue);
-    in.lookup("adm_Sij2").buf.set_to_zero(mqueue);
-    in.lookup("adm_Sij3").buf.set_to_zero(mqueue);
-    in.lookup("adm_Sij4").buf.set_to_zero(mqueue);
-    in.lookup("adm_Sij5").buf.set_to_zero(mqueue);
-    in.lookup("adm_S").buf.set_to_zero(mqueue);
-
     counts_val.set_to_zero(mqueue);
 
     ///find how many particles would be written per-cell
