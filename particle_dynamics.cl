@@ -228,14 +228,22 @@ void allocate_particle_spheres(__global int* counts, __global int* memory_ptrs, 
 }
 
 __kernel
-void collect_particle_spheres(__global int* collected_count, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, float scale, int4 dim, int actually_write)
+void collect_particle_spheres(__global float* positions, int geodesic_count, __global int* collected_count, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, float scale, int4 dim, int actually_write)
 {
     int idx = get_global_id(0);
 
     if(idx >= geodesic_count)
         return;
 
-    float3 world_pos = (float3)(positions_in[idx * 3 + 0], positions_in[idx * 3 + 1], positions_in[idx * 3 + 2]);
+    float3 world_pos = (float3)(positions[idx * 3 + 0], positions[idx * 3 + 1], positions[idx * 3 + 2]);
+
+    float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
+
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    int ocx = floor(voxel_pos.x);
+    int ocy = floor(voxel_pos.y);
+    int ocz = floor(voxel_pos.z);
 
     float rs = 2 * scale;
 
@@ -307,7 +315,7 @@ void collect_particle_spheres(__global int* collected_count, __global int* memor
 }
 
 __kernel
-void do_weighted_summation(_global int* collected_count, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
+void do_weighted_summation(__global float* positions, __global float* velocities, __global int* collected_count, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -321,6 +329,8 @@ void do_weighted_summation(_global int* collected_count, __global int* memory_pt
     int my_count = counts[index];
     int my_memory_start = memory_ptrs[index];
 
+    float rs = 2 * scale;
+
     for(int i=0; i < my_count; i++)
     {
         int gidx = i + my_memory_start;
@@ -331,8 +341,8 @@ void do_weighted_summation(_global int* collected_count, __global int* memory_pt
         if(total_weight_factor == 0)
             continue;
 
-        float3 world_pos = (float3)(positions_in[geodesic_idx * 3 + 0], positions_in[geodesic_idx * 3 + 1], positions_in[geodesic_idx * 3 + 2]);
-        float3 vel = (float3)(velocities_in[geodesic_idx * 3 + 0], velocities_in[geodesic_idx * 3 + 1], velocities_in[geodesic_idx * 3 + 2]);
+        float3 world_pos = (float3)(positions[geodesic_idx * 3 + 0], positions[geodesic_idx * 3 + 1], positions[geodesic_idx * 3 + 2]);
+        float3 vel = (float3)(velocities[geodesic_idx * 3 + 0], velocities[geodesic_idx * 3 + 1], velocities[geodesic_idx * 3 + 2]);
 
         float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
 
@@ -348,6 +358,7 @@ void do_weighted_summation(_global int* collected_count, __global int* memory_pt
         if(f_sp == 0)
             continue;
 
+        float weight = f_sp;
 
         {
             float TEMPORARIESadmmatter;
@@ -363,8 +374,6 @@ void do_weighted_summation(_global int* collected_count, __global int* memory_pt
             float vadm_Sij4 = OUT_ADM_SIJ4;
             float vadm_Sij5 = OUT_ADM_SIJ5;
             float vadm_p = OUT_ADM_P;
-
-            int index = IDX(ix,iy,iz);
 
             adm_S[index] += vadm_S * weight;
             adm_Si0[index] += vadm_Si0 * weight;
