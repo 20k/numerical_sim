@@ -295,7 +295,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     adm_S.alloc(size);*/
 
-    particle_count = 256;
+    particle_count = 2048;
 
     for(int i=0; i < (int)particle_3_position.size(); i++)
     {
@@ -327,7 +327,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
             vec3f pos = {x, y, z};
 
-            pos.z() *= 0.01f;
+            pos.z() *= 0.1f;
 
             float angle = atan2(pos.y(), pos.x());
             float radius = pos.length();
@@ -460,7 +460,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             }
         }
 
-        lorentz = sqrt(1 + sum);
+        lorentz = sqrt(1 + max(sum, 0.f));
 
         //tensor<value, 4> hypersurface_normal_raised = get_adm_hypersurface_normal_raised(args.gA, args.gB);
 

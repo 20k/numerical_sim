@@ -415,8 +415,9 @@ void do_weighted_summation(__global float* positions, __global float* velocities
 
             ///138 128 106
             ///55 105 106
+            ///48 110 107
             //if(ix == 138 && iy == 128 && iz == 106)
-            if(ix == 55 && iy == 105 && iz == 106)
+            if(ix == 50 && iy == 110 && iz == 105)
             {
                 printf("Adm p %f i %i max %i lorentz %f lazy_det %f\n", OUT_ADM_P, i, my_count, calculated_gamma, lazy_det);
             }
