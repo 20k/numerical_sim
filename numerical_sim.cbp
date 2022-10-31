@@ -159,7 +159,6 @@
 		<Unit filename="equation_context.hpp" />
 		<Unit filename="evolution_common.cl" />
 		<Unit filename="evolve_points.cl" />
-		<Unit filename="generated_arglist.cl" />
 		<Unit filename="generic_laplace.cl" />
 		<Unit filename="gravitational_waves.cpp" />
 		<Unit filename="gravitational_waves.hpp" />
