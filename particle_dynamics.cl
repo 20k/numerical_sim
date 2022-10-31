@@ -228,6 +228,9 @@ void collect_particle_spheres(__global float* positions, int geodesic_count, __g
                     int iy = yy + ocy;
                     int iz = zz + ocz;
 
+                    if(ix < 0 || iy < 0 || iz < 0 || ix >= dim.x || iy >= dim.y || iz >= dim.z)
+                        continue;
+
                     float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
 
                     float to_centre_distance = fast_length(cell_wp - world_pos);
@@ -252,6 +255,9 @@ void collect_particle_spheres(__global float* positions, int geodesic_count, __g
                 int ix = xx + ocx;
                 int iy = yy + ocy;
                 int iz = zz + ocz;
+
+                if(ix < 0 || iy < 0 || iz < 0 || ix >= dim.x || iy >= dim.y || iz >= dim.z)
+                    continue;
 
                 float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
 
