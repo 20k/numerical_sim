@@ -61,7 +61,7 @@ tensor<value, 3, 3> particle_matter_interop::calculate_adm_X_Sij(equation_contex
     return X * Sij;
 }
 
-particle_dynamics::particle_dynamics(cl::context& ctx) : particle_3_position{ctx, ctx, ctx}, particle_3_velocity{ctx, ctx, ctx}, pd(ctx), indices_block(ctx), weights_block(ctx), memory_alloc_count(ctx)
+particle_dynamics::particle_dynamics(cl::context& ctx) : particle_3_position{ctx, ctx, ctx}, particle_3_velocity{ctx, ctx, ctx}, particle_lorentz{ctx, ctx, ctx}, pd(ctx), indices_block(ctx), weights_block(ctx), memory_alloc_count(ctx)
 {
     indices_block.alloc(sizeof(cl_int) * 1024 * 1024 * 40);
     weights_block.alloc(sizeof(cl_float) * 1024 * 1024 * 40);
@@ -209,12 +209,13 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     {
         particle_3_position[i].alloc(sizeof(cl_float) * 3 * particle_count);
         particle_3_velocity[i].alloc(sizeof(cl_float) * 3 * particle_count);
+        particle_lorentz[i].alloc(sizeof(cl_float) * particle_count);
     }
 
     float generation_radius = 0.5f * get_c_at_max()/2.f;
 
     ///need to use an actual rng if i'm doing anything even vaguely scientific
-    std::minstd_rand0 rng(1234);
+    std::minstd_rand0 rng(3456);
 
     std::vector<vec3f> positions;
     std::vector<vec3f> directions;
@@ -234,7 +235,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
             vec3f pos = {x, y, z};
 
-            pos.z() *= 0.001f;
+            pos.z() *= 0.01f;
 
             float angle = atan2(pos.y(), pos.x());
             float radius = pos.length();
@@ -250,7 +251,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
             //printf("Linear velocity %f\n", linear_velocity);
 
-            float linear_velocity = 0.025f;
+            float linear_velocity = 0.0000025f;
 
             vec2f velocity = linear_velocity * velocity_direction;
 
@@ -263,10 +264,6 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         if(kk == 1024)
             throw std::runtime_error("Did not successfully assign particle position");
-
-
-
-        //directions.push_back({0.00005, 0, 0});
     }
 
     particle_3_position[0].write(cqueue, positions);
@@ -346,9 +343,11 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             }
         }
 
+        value lorentz = "gamma";
+
         tensor<value, 4> hypersurface_normal_raised = get_adm_hypersurface_normal_raised(args.gA, args.gB);
 
-        value paper_w = sqrt(1 + sum);
+        /*value paper_w = sqrt(1 + sum);
 
         tensor<value, 4> v_full = {0, v_upper.idx(0), v_upper.idx(1), v_upper.idx(2)};
 
@@ -356,9 +355,23 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         value lorentz = u_full.idx(0);
 
-        tensor<value, 3> u3_upper = {u_full.idx(1), u_full.idx(2), u_full.idx(3)};
+        tensor<value, 3> u3_upper = {u_full.idx(1), u_full.idx(2), u_full.idx(3)};*/
+
+        ///https://arxiv.org/pdf/gr-qc/0003101.pdf 34
+
+        //value lorentz = 1/sqrt(1 - sum);
+
+        /*tensor<value, 3> u3_upper = (v_upper * args.gA - args.gB) * lorentz / max(args.gA, 0.0001f);
 
         ///wait. But this is equal to vi_lower. Ah I'm such a muppet
+        tensor<value, 3> u3_lower = lower_index(u3_upper, args.Yij, 0);*/
+
+        tensor<value, 4> v_full = {0, v_upper.idx(0), v_upper.idx(1), v_upper.idx(2)};
+
+        tensor<value, 4> u_upper = lorentz * (hypersurface_normal_raised + v_full);
+
+        tensor<value, 3> u3_upper = {u_upper.idx(1), u_upper.idx(2), u_upper.idx(3)};
+
         tensor<value, 3> u3_lower = lower_index(u3_upper, args.Yij, 0);
 
         value out_adm_p = mass * lorentz * lorentz;
@@ -374,6 +387,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         }
 
         value out_adm_S = out_adm_p - mass;
+
+        //ectx.add("DEBUG_adm", hypersurface_normal_raised.idx(0));
 
         ectx.add("OUT_ADM_S", out_adm_S);
         ectx.add("OUT_ADM_SI0", Si.idx(0));
@@ -410,6 +425,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         args.push_back(particle_3_position[0]);
         args.push_back(initial_dirs);
         args.push_back(particle_3_velocity[0]);
+        args.push_back(particle_lorentz[0]);
 
         args.push_back(particle_count);
         args.push_back(scale);
@@ -425,6 +441,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     cl::copy(cqueue, particle_3_position[0], particle_3_position[2]);
     cl::copy(cqueue, particle_3_velocity[0], particle_3_velocity[2]);
+
+    cl::copy(cqueue, particle_lorentz[0], particle_lorentz[1]);
+    cl::copy(cqueue, particle_lorentz[0], particle_lorentz[2]);
 
     to_init.lookup("adm_p").buf.set_to_zero(cqueue);
     to_init.lookup("adm_Si0").buf.set_to_zero(cqueue);
@@ -584,10 +603,12 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     {
         std::swap(particle_3_position[in_idx], particle_3_position[out_idx]);
         std::swap(particle_3_velocity[in_idx], particle_3_velocity[out_idx]);
+        std::swap(particle_lorentz[in_idx], particle_lorentz[out_idx]);
     }
     else
     {
         std::swap(particle_3_position[base_idx], particle_3_position[out_idx]);
         std::swap(particle_3_velocity[base_idx], particle_3_velocity[out_idx]);
+        std::swap(particle_lorentz[base_idx], particle_lorentz[out_idx]);
     }
 }

@@ -17,6 +17,7 @@ struct particle_dynamics : plugin
     int particle_count = 0;
     std::array<cl::buffer, 3> particle_3_position;
     std::array<cl::buffer, 3> particle_3_velocity;
+    std::array<cl::buffer, 3> particle_lorentz;
 
     cl::buffer indices_block;
     cl::buffer weights_block;

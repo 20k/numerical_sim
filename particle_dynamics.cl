@@ -3,7 +3,7 @@
 #include "transform_position.cl"
 
 __kernel
-void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float* initial_dirs3, __global float* velocities3, int geodesic_count, float scale, int4 dim)
+void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float* initial_dirs3, __global float* velocities3, __global float* lorentzs, int geodesic_count, float scale, int4 dim)
 {
     int idx = get_global_id(0);
 
@@ -26,6 +26,7 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float*
     float diry = initial_dirs3[idx * 3 + 1];
     float dirz = initial_dirs3[idx * 3 + 2];
 
+    float vt = 0;
     float vx = 0;
     float vy = 0;
     float vz = 0;
@@ -33,11 +34,13 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float*
     {
         float TEMPORARIEStparticleinit;
 
+        vt = OUT_VT;
         vx = OUT_VX;
         vy = OUT_VY;
         vz = OUT_VZ;
     }
 
+    lorentzs[idx] = vt;
     velocities3[idx * 3 + 0] = vx;
     velocities3[idx * 3 + 1] = vy;
     velocities3[idx * 3 + 2] = vz;
@@ -355,6 +358,18 @@ void do_weighted_summation(__global float* positions, __global float* velocities
             vadm_Sij4 += OUT_ADM_SIJ4 * weight;
             vadm_Sij5 += OUT_ADM_SIJ5 * weight;
             vadm_p += OUT_ADM_P * weight;
+
+            /*if(vadm_p > 0)
+            {
+                printf("Pos %i %i %i\n", ix, iy, iz);
+            }*/
+
+            ///138 128 106
+
+            if(ix == 138 && iy == 128 && iz == 106)
+            {
+                printf("Adm p %f i %i max %i lorentz %f\n", OUT_ADM_P, i, my_count, 0);
+            }
         }
     }
 

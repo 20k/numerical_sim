@@ -1105,7 +1105,7 @@ void bssn::build_gA(equation_context& ctx)
     //int m = 4;
     //value dtgA = lie_derivative(ctx, args.gB, args.gA) - 2 * args.gA * args.K * pow(bl, m);
 
-    value dtgA = lie_derivative(ctx, args.gB, args.gA) - 2 * args.gA * args.K;
+    value dtgA = lie_derivative(ctx, args.gB, args.gA) - args.gA * args.gA * args.K;
 
     /*value dibi = 0;
 
@@ -1120,6 +1120,8 @@ void bssn::build_gA(equation_context& ctx)
     ///-a * (8/3) * A / (3 - a)
 
     //value dtgA = lie_derivative(ctx, args.gB, args.gA) + dibi * 0 - args.gA * (8.f/3.f) * args.K / (3 - args.gA);
+
+    //dtgA = 0;
 
     ctx.add("dtgA", dtgA);
 }
@@ -1227,6 +1229,8 @@ void bssn::build_gB(equation_context& ctx)
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
     ///todo: remove this
     tensor<value, 3> dtgB = (3.f/4.f) * args.derived_cGi + bjdjbi - N * args.gB;
+
+    //dtgB = {0,0,0};
 
     tensor<value, 3> dtgBB;
     dtgBB.idx(0) = 0;
