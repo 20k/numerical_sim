@@ -40,10 +40,11 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float*
         vz = OUT_VZ;
     }
 
+    ///https://arxiv.org/pdf/1611.07906.pdf (11)
     lorentzs[idx] = vt;
-    velocities3[idx * 3 + 0] = vx;
-    velocities3[idx * 3 + 1] = vy;
-    velocities3[idx * 3 + 2] = vz;
+    velocities3[idx * 3 + 0] = vx / vt;
+    velocities3[idx * 3 + 1] = vy / vt;
+    velocities3[idx * 3 + 2] = vz / vt;
 }
 
 ///this returns the change in X, which is not velocity
@@ -97,7 +98,7 @@ void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, 
     *out = (float3){d0, d1, d2};
 }
 
-void calculate_lorentz_derivative(float* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS())
+void calculate_lorentz_derivative(float* out, float3 Xpos, float3 vel, float lorentz_in, float scale, int4 dim, STANDARD_ARGS())
 {
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
 
@@ -111,6 +112,8 @@ void calculate_lorentz_derivative(float* out, float3 Xpos, float3 vel, float sca
     float V0 = vel.x;
     float V1 = vel.y;
     float V2 = vel.z;
+
+    float gamma = lorentz_in;
 
     float TEMPORARIESlorentz;
 
@@ -161,6 +164,27 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     velocities_out[idx * 3 + 0] = out_vel.x;
     velocities_out[idx * 3 + 1] = out_vel.y;
     velocities_out[idx * 3 + 2] = out_vel.z;
+}
+
+__kernel
+void evolve_lorentz(__global float* positions, __global float* velocities,
+                    __global float* lorentz_in, __global float* lorentz_out, __global float* lorentz_base,
+                    int geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
+{
+    int idx = get_global_id(0);
+
+    if(idx >= geodesic_count)
+        return;
+
+    float3 Xpos = {positions[idx * 3 + 0], positions[idx * 3 + 1], positions[idx * 3 + 2]};
+    float3 vel = {velocities[idx * 3 + 0], velocities[idx * 3 + 1], velocities[idx * 3 + 2]};
+
+    float current_lorentz = lorentz_in[idx];
+
+    float lorentz_diff = 0;
+    calculate_lorentz_derivative(&lorentz_diff, Xpos, vel, current_lorentz, scale, dim, GET_STANDARD_ARGS());
+
+    lorentz_out[idx] = max(lorentz_base[idx] + timestep * lorentz_diff, 1.f);
 }
 
 /*float3 world_to_voxel_noround(float3 in, int4 dim, float scale)
@@ -392,7 +416,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
 
             if(ix == 138 && iy == 128 && iz == 106)
             {
-                printf("Adm p %f i %i max %i lorentz %f\n", OUT_ADM_P, i, my_count, 0);
+                printf("Adm p %f i %i max %i lorentz %f\n", OUT_ADM_P, i, my_count, gamma);
             }
         }
     }

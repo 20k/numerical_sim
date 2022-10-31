@@ -170,7 +170,23 @@ void build_lorentz(equation_context& ctx)
     ctx.pin(args.Kij);
     ctx.pin(args.Yij);
 
+    value scale = "scale";
+    tensor<value, 3> V_upper = {"V0", "V1", "V2"};
+    value lorentz = "gamma";
+
     value diff = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        value kij_sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            kij_sum += args.Kij.idx(i, j) * V_upper.idx(j);
+        }
+
+        diff += lorentz * V_upper.idx(i) * (args.gA * kij_sum - diff1(ctx, args.gA, i));
+    }
 
     ctx.add("LorentzDiff", diff);
 }
@@ -549,6 +565,28 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(timestep);
 
         mqueue.exec("trace_geodesics", args, {particle_count}, {128});
+    }
+
+    {
+        cl::args args;
+        args.push_back(particle_3_position[in_idx]);
+        args.push_back(particle_3_velocity[in_idx]);
+        args.push_back(particle_lorentz[in_idx]);
+        args.push_back(particle_lorentz[out_idx]);
+        args.push_back(particle_lorentz[base_idx]);
+        args.push_back(particle_count);
+
+        for(named_buffer& i : in.buffers)
+        {
+            args.push_back(i.buf);
+        }
+
+
+        args.push_back(scale);
+        args.push_back(clsize);
+        args.push_back(timestep);
+
+        mqueue.exec("evolve_lorentz", args, {particle_count}, {128});
     }
 
     counts_val.set_to_zero(mqueue);
