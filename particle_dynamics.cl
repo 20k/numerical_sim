@@ -392,7 +392,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         float weight = f_sp;
 
         {
-            float gamma = lorentzs[geodesic_idx];
+            //float gamma = lorentzs[geodesic_idx];
 
             float TEMPORARIESadmmatter;
 
@@ -418,7 +418,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
             //if(ix == 138 && iy == 128 && iz == 106)
             if(ix == 55 && iy == 105 && iz == 106)
             {
-                printf("Adm p %f i %i max %i lorentz %f lazy_det %f\n", OUT_ADM_P, i, my_count, gamma, lazy_det);
+                printf("Adm p %f i %i max %i lorentz %f lazy_det %f\n", OUT_ADM_P, i, my_count, calculated_gamma, lazy_det);
             }
         }
     }

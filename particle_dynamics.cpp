@@ -504,7 +504,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         }*/
 
         value out_adm_p = mass * lorentz * lorentz;
-        value out_adm_S = p - mass;
+        value out_adm_S = out_adm_p - mass;
 
         tensor<value, 3> Si = mass * lorentz * u_lower;
 
@@ -546,6 +546,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         //ectx.add("DEBUG_adm", hypersurface_normal_raised.idx(0));
 
         ectx.add("lazy_det", 0);
+        ectx.add("calculated_gamma", lorentz);
 
         ectx.add("OUT_ADM_S", out_adm_S);
         ectx.add("OUT_ADM_SI0", Si.idx(0));
