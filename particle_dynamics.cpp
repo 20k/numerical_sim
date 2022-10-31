@@ -425,19 +425,23 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             }
         }*/
 
+        ///ok so
+        ///W = Y^-1/6
+        ///and what we want is Y^-1/2
+
+        value idet = pow(args.W_impl, 3);
+
         tensor<value, 3> v_lower = lower_index(v_upper, args.Yij, 0);
 
-        value lazy_det = sqrt(args.Yij.det());
-
-        value out_adm_p = mass * lorentz / lazy_det;
-        tensor<value, 3> Si = mass * lorentz * v_lower / lazy_det;
+        value out_adm_p = mass * lorentz * idet;
+        tensor<value, 3> Si = mass * lorentz * v_lower * idet;
         tensor<value, 3, 3> Sij;
 
         for(int i=0; i < 3; i++)
         {
             for(int j=0; j < 3; j++)
             {
-                Sij.idx(i, j) = mass * lorentz * v_lower.idx(i) * v_lower.idx(j) / lazy_det;
+                Sij.idx(i, j) = mass * lorentz * v_lower.idx(i) * v_lower.idx(j) * idet;
             }
         }
 
@@ -448,7 +452,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         //ectx.add("DEBUG_adm", hypersurface_normal_raised.idx(0));
 
-        ectx.add("lazy_det", lazy_det);
+        ectx.add("lazy_det", idet);
 
         ectx.add("OUT_ADM_S", out_adm_S);
         ectx.add("OUT_ADM_SI0", Si.idx(0));
