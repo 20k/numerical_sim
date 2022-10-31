@@ -97,6 +97,28 @@ void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, 
     *out = (float3){d0, d1, d2};
 }
 
+void calculate_lorentz_derivative(float* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+
+    ///isn't this already handled internally?
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float V0 = vel.x;
+    float V1 = vel.y;
+    float V2 = vel.z;
+
+    float TEMPORARIESlorentz;
+
+    float d0 = LorentzDiff;
+
+    *out = d0;
+}
+
 __kernel
 void trace_geodesics(__global float* positions_in, __global float* velocities_in,
                      __global float* positions_out, __global float* velocities_out,
@@ -289,7 +311,7 @@ void collect_particle_spheres(__global float* positions, int geodesic_count, __g
 }
 
 __kernel
-void do_weighted_summation(__global float* positions, __global float* velocities, __global int* collected_counts, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
+void do_weighted_summation(__global float* positions, __global float* velocities, __global float* lorentzs, __global int* collected_counts, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -345,6 +367,8 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         float weight = f_sp;
 
         {
+            float gamma = lorentzs[geodesic_idx];
+
             float TEMPORARIESadmmatter;
 
             vadm_S += OUT_ADM_S * weight;

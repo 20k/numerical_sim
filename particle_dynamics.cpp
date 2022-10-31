@@ -159,6 +159,22 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
     ctx.add("X2Diff", dx.idx(2));
 }
 
+void build_lorentz(equation_context& ctx)
+{
+    ctx.uses_linear = true;
+    ctx.order = 2;
+    ctx.use_precise_differentiation = false;
+
+    standard_arguments args(ctx);
+
+    ctx.pin(args.Kij);
+    ctx.pin(args.Yij);
+
+    value diff = 0;
+
+    ctx.add("LorentzDiff", diff);
+}
+
 float get_kepler_velocity(float distance_between_bodies, float my_mass, float their_mass)
 {
     float R = distance_between_bodies;
@@ -318,6 +334,13 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         build_adm_geodesic(ectx, {mesh.dim.x(), mesh.dim.y(), mesh.dim.z()});
 
         ectx.build(argument_string, 6);
+    }
+
+    {
+        equation_context ectx;
+        build_lorentz(ectx);
+
+        ectx.build(argument_string, "lorentz");
     }
 
     ///relevant resources
