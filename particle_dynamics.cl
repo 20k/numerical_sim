@@ -95,7 +95,10 @@ void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, 
 }
 
 __kernel
-void trace_geodesics(__global float* positions_in, __global float* velocities_in, __global float* positions_out, __global float* velocities_out, int geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
+void trace_geodesics(__global float* positions_in, __global float* velocities_in,
+                     __global float* positions_out, __global float* velocities_out,
+                     __global float* positions_base, __global float* velocities_base,
+                     int geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
 {
     int idx = get_global_id(0);
 
@@ -114,16 +117,25 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     //printf("In vel %f %f %f\n", vel.x, vel.y, vel.z);
     //printf("In accel %f %f %f\n", accel.x, accel.y, accel.z);
 
-    Xpos += XDiff * timestep;
-    vel += accel * timestep;
+    //Xpos += XDiff * timestep;
+    //vel += accel * timestep;
 
-    positions_out[idx * 3 + 0] = Xpos.x;
-    positions_out[idx * 3 + 1] = Xpos.y;
-    positions_out[idx * 3 + 2] = Xpos.z;
+    float3 dXpos = XDiff * timestep;
+    float3 dvel = accel * timestep;
 
-    velocities_out[idx * 3 + 0] = vel.x;
-    velocities_out[idx * 3 + 1] = vel.y;
-    velocities_out[idx * 3 + 2] = vel.z;
+    float3 base_Xpos = {positions_base[idx * 3 + 0], positions_base[idx * 3 + 1], positions_base[idx * 3 + 2]};
+    float3 base_vel = {velocities_base[idx * 3 + 0], velocities_base[idx * 3 + 1], velocities_base[idx * 3 + 2]};
+
+    float3 out_Xpos = base_Xpos + dXpos;
+    float3 out_vel = base_vel + dvel;
+
+    positions_out[idx * 3 + 0] = out_Xpos.x;
+    positions_out[idx * 3 + 1] = out_Xpos.y;
+    positions_out[idx * 3 + 2] = out_Xpos.z;
+
+    velocities_out[idx * 3 + 0] = out_vel.x;
+    velocities_out[idx * 3 + 1] = out_vel.y;
+    velocities_out[idx * 3 + 2] = out_vel.z;
 }
 
 /*float3 world_to_voxel_noround(float3 in, int4 dim, float scale)

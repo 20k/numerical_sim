@@ -61,7 +61,7 @@ tensor<value, 3, 3> particle_matter_interop::calculate_adm_X_Sij(equation_contex
     return X * Sij;
 }
 
-particle_dynamics::particle_dynamics(cl::context& ctx) : particle_3_position{ctx, ctx}, particle_3_velocity{ctx, ctx}, pd(ctx), indices_block(ctx), weights_block(ctx), memory_alloc_count(ctx)
+particle_dynamics::particle_dynamics(cl::context& ctx) : particle_3_position{ctx, ctx, ctx}, particle_3_velocity{ctx, ctx, ctx}, pd(ctx), indices_block(ctx), weights_block(ctx), memory_alloc_count(ctx)
 {
     indices_block.alloc(sizeof(cl_int) * 1024 * 1024 * 40);
     weights_block.alloc(sizeof(cl_float) * 1024 * 1024 * 40);
@@ -205,7 +205,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     particle_count = 256;
 
-    for(int i=0; i < 2; i++)
+    for(int i=0; i < (int)particle_3_position.size(); i++)
     {
         particle_3_position[i].alloc(sizeof(cl_float) * 3 * particle_count);
         particle_3_velocity[i].alloc(sizeof(cl_float) * 3 * particle_count);
@@ -423,6 +423,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     cl::copy(cqueue, particle_3_position[0], particle_3_position[1]);
     cl::copy(cqueue, particle_3_velocity[0], particle_3_velocity[1]);
 
+    cl::copy(cqueue, particle_3_position[0], particle_3_position[2]);
+    cl::copy(cqueue, particle_3_velocity[0], particle_3_velocity[2]);
+
     to_init.lookup("adm_p").buf.set_to_zero(cqueue);
     to_init.lookup("adm_Si0").buf.set_to_zero(cqueue);
     to_init.lookup("adm_Si1").buf.set_to_zero(cqueue);
@@ -454,7 +457,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     float scale = mesh.scale;
 
     ///shit no its not correct, we need to be implicit otherwise the sources are incorrect innit. Its F(y+1)
-    if(iteration == 0)
+    /*if(iteration == 0)
     {
         std::swap(particle_3_position[0], particle_3_position[1]);
         std::swap(particle_3_velocity[0], particle_3_velocity[1]);
@@ -478,6 +481,32 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
 
             mqueue.exec("trace_geodesics", args, {particle_count}, {128});
         }
+    }*/
+
+    int in_idx = pack.in_idx;
+    int out_idx = pack.out_idx;
+    int base_idx = pack.base_idx;
+
+    {
+        cl::args args;
+        args.push_back(particle_3_position[in_idx]);
+        args.push_back(particle_3_velocity[in_idx]);
+        args.push_back(particle_3_position[out_idx]);
+        args.push_back(particle_3_velocity[out_idx]);
+        args.push_back(particle_3_position[base_idx]);
+        args.push_back(particle_3_velocity[base_idx]);
+        args.push_back(particle_count);
+
+        for(named_buffer& i : in.buffers)
+        {
+            args.push_back(i.buf);
+        }
+
+        args.push_back(scale);
+        args.push_back(clsize);
+        args.push_back(timestep);
+
+        mqueue.exec("trace_geodesics", args, {particle_count}, {128});
     }
 
     counts_val.set_to_zero(mqueue);
@@ -487,7 +516,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         cl_int actually_write = 0;
 
         cl::args args;
-        args.push_back(particle_3_position[0]);
+        args.push_back(particle_3_position[in_idx]);
         args.push_back(particle_count);
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val);
@@ -516,7 +545,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         cl_int actually_write = 1;
 
         cl::args args;
-        args.push_back(particle_3_position[0]);
+        args.push_back(particle_3_position[in_idx]);
         args.push_back(particle_count);
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val);
@@ -532,8 +561,8 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     ///calculate adm quantities per-cell by summing across the list of particles
     {
         cl::args args;
-        args.push_back(particle_3_position[0]);
-        args.push_back(particle_3_velocity[0]);
+        args.push_back(particle_3_position[in_idx]);
+        args.push_back(particle_3_velocity[in_idx]);
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val);
         args.push_back(indices_block);
@@ -548,5 +577,17 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(clsize);
 
         mqueue.exec("do_weighted_summation", args, {dim.x(), dim.y(), dim.z()}, {8,8,1});
+    }
+
+    ///todo: not this, want to have the indices controlled from a higher level
+    if(iteration != max_iteration)
+    {
+        std::swap(particle_3_position[in_idx], particle_3_position[out_idx]);
+        std::swap(particle_3_velocity[in_idx], particle_3_velocity[out_idx]);
+    }
+    else
+    {
+        std::swap(particle_3_position[base_idx], particle_3_position[out_idx]);
+        std::swap(particle_3_velocity[base_idx], particle_3_velocity[out_idx]);
     }
 }

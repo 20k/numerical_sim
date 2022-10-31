@@ -15,8 +15,8 @@ struct particle_matter_interop : matter_interop
 struct particle_dynamics : plugin
 {
     int particle_count = 0;
-    std::array<cl::buffer, 2> particle_3_position;
-    std::array<cl::buffer, 2> particle_3_velocity;
+    std::array<cl::buffer, 3> particle_3_position;
+    std::array<cl::buffer, 3> particle_3_velocity;
 
     cl::buffer indices_block;
     cl::buffer weights_block;
