@@ -36,15 +36,11 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float*
         vx = OUT_VX;
         vy = OUT_VY;
         vz = OUT_VZ;
-
-        printf("Tet %f %f %f %f\n", Debug_t0, Debug_t1, Debug_t2, Debug_t3);
     }
 
     velocities3[idx * 3 + 0] = vx;
     velocities3[idx * 3 + 1] = vy;
     velocities3[idx * 3 + 2] = vz;
-
-    printf("Vel %f %f %f Dir %f %f %f\n", vx, vy, vz, dirx, diry, dirz);
 }
 
 ///this returns the change in X, which is not velocity
