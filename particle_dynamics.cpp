@@ -405,7 +405,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ///wait. But this is equal to vi_lower. Ah I'm such a muppet
         tensor<value, 3> u3_lower = lower_index(u3_upper, args.Yij, 0);*/
 
-        tensor<value, 4> v_full = {0, v_upper.idx(0), v_upper.idx(1), v_upper.idx(2)};
+        /*tensor<value, 4> v_full = {0, v_upper.idx(0), v_upper.idx(1), v_upper.idx(2)};
 
         tensor<value, 4> u_upper = lorentz * (hypersurface_normal_raised + v_full);
 
@@ -423,9 +423,28 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             {
                 Sij.idx(i, j) = mass * u3_lower.idx(i) * u3_lower.idx(j);
             }
+        }*/
+
+        tensor<value, 3> v_lower = lower_index(v_upper, args.Yij, 0);
+
+        value lazy_det = sqrt(args.Yij.det());
+
+        value out_adm_p = mass * lorentz / lazy_det;
+        tensor<value, 3> Si = mass * lorentz * v_lower / lazy_det;
+        tensor<value, 3, 3> Sij;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                Sij.idx(i, j) = mass * lorentz * v_lower.idx(i) * v_lower.idx(j) / lazy_det;
+            }
         }
 
-        value out_adm_S = out_adm_p - mass;
+        //value out_adm_S = out_adm_p - mass;
+
+        value out_adm_S = trace(Sij, args.iYij);
+
 
         //ectx.add("DEBUG_adm", hypersurface_normal_raised.idx(0));
 
