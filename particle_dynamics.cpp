@@ -343,7 +343,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
             //printf("Linear velocity %f\n", linear_velocity);
 
-            float linear_velocity = 0.0000025f;
+            float linear_velocity = 0.025f;
 
             vec2f velocity = linear_velocity * velocity_direction;
 
@@ -686,7 +686,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         mqueue.exec("trace_geodesics", args, {particle_count}, {128});
     }
 
-    {
+    /*{
         cl::args args;
         args.push_back(particle_3_position[in_idx]);
         args.push_back(particle_3_velocity[in_idx]);
@@ -706,7 +706,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(timestep);
 
         mqueue.exec("evolve_lorentz", args, {particle_count}, {128});
-    }
+    }*/
 
     counts_val.set_to_zero(mqueue);
 
