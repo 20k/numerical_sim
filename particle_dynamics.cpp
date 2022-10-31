@@ -605,6 +605,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         cl::args args;
         args.push_back(particle_3_position[in_idx]);
         args.push_back(particle_3_velocity[in_idx]);
+        args.push_back(particle_lorentz[in_idx]);
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val);
         args.push_back(indices_block);
