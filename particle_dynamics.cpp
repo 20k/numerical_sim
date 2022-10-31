@@ -98,6 +98,7 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
 
     value scale = "scale";
 
+    #if 0
     ctx.add("universe_size", universe_length * scale);
 
     tensor<value, 3> V_upper = {"V0", "V1", "V2"};
@@ -149,10 +150,69 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
                                    - iYij.idx(i, j) * diff1(ctx, args.gA, j) - V_upper.idx(j) * diff1(ctx, args.gB.idx(i), j);
         }
     }
+    #endif
 
-    ctx.add("V0Diff", V_upper_diff.idx(0));
-    ctx.add("V1Diff", V_upper_diff.idx(1));
-    ctx.add("V2Diff", V_upper_diff.idx(2));
+    tensor<value, 3> u_lower = {"V0", "V1", "V2"};
+
+    inverse_metric<value, 3, 3> iYij = args.iYij;
+
+    value sum = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            sum += iYij.idx(i, j) * u_lower.idx(i) * u_lower.idx(j);
+        }
+    }
+
+    value a_u0 = sqrt(1 + sum);
+    value u0 = a_u0 / args.gA;
+
+    tensor<value, 3> u_lower_diff;
+
+    for(int i=0; i < 3; i++)
+    {
+        value p1 = -a_u0 * diff1(ctx, args.gA, i);
+
+        value p2 = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            p2 += u_lower.idx(k) * diff1(ctx, args.gB.idx(k), i);
+        }
+
+
+        value p3 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int m=0; m < 3; m++)
+            {
+                p3 += -(1.f/(2.f * u0)) * u_lower.idx(j) * u_lower.idx(m) * diff1(ctx, iYij.idx(j, m), i);
+            }
+        }
+
+        u_lower_diff.idx(i) = p1 + p2 + p3;
+    }
+
+    tensor<value, 3> dx;
+
+    for(int j=0; j< 3; j++)
+    {
+        value p1 = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            p1 += iYij.idx(j, k) * u_lower.idx(k) / u0;
+        }
+
+        dx.idx(j) = p1 - args.gB.idx(j);
+    }
+
+    ctx.add("V0Diff", u_lower_diff.idx(0));
+    ctx.add("V1Diff", u_lower_diff.idx(1));
+    ctx.add("V2Diff", u_lower_diff.idx(2));
 
     ctx.add("X0Diff", dx.idx(0));
     ctx.add("X1Diff", dx.idx(1));
@@ -337,10 +397,14 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         vec<4, value> velocity = get_timelike_vector(direction, 1, tet);
 
-        ectx.add("OUT_VT", velocity.x());
-        ectx.add("OUT_VX", velocity.y());
-        ectx.add("OUT_VY", velocity.z());
-        ectx.add("OUT_VZ", velocity.w());
+        tensor<value, 3> ten_vel = {velocity.y(), velocity.z(), velocity.w()};
+
+        tensor<value, 3> lowered_vel = lower_index(ten_vel, args.Yij, 0);
+
+        ectx.add("OUT_VT", 1);
+        ectx.add("OUT_VX", lowered_vel.idx(0));
+        ectx.add("OUT_VY", lowered_vel.idx(1));
+        ectx.add("OUT_VZ", lowered_vel.idx(2));
 
         ectx.build(argument_string, "tparticleinit");
     }
@@ -370,7 +434,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         equation_context ectx;
         standard_arguments args(ectx);
 
-        tensor<value, 3> v_upper = {"vel.x", "vel.y", "vel.z"};
+        tensor<value, 3> u_lower = {"vel.x", "vel.y", "vel.z"};
 
         /*value sum = 0;
 
@@ -382,7 +446,21 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             }
         }*/
 
-        value lorentz = "gamma";
+        //value lorentz = "gamma";
+
+        value lorentz = 0;
+
+        value sum = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                sum += args.iYij.idx(i, j) * u_lower.idx(i) * u_lower.idx(j);
+            }
+        }
+
+        lorentz = sqrt(1 + sum);
 
         //tensor<value, 4> hypersurface_normal_raised = get_adm_hypersurface_normal_raised(args.gA, args.gB);
 
@@ -425,11 +503,26 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             }
         }*/
 
+        value out_adm_p = mass * lorentz * lorentz;
+        value out_adm_S = p - mass;
+
+        tensor<value, 3> Si = mass * lorentz * u_lower;
+
+        tensor<value, 3, 3> Sij;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                Sij.idx(i, j) = mass * u_lower.idx(i) * u_lower.idx(j);
+            }
+        }
+
         ///ok so
         ///W = Y^-1/6
         ///and what we want is Y^-1/2
 
-        value idet = pow(args.W_impl, 3);
+        /*value idet = pow(args.W_impl, 3);
 
         tensor<value, 3> v_lower = lower_index(v_upper, args.Yij, 0);
 
@@ -447,12 +540,12 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         //value out_adm_S = out_adm_p - mass;
 
-        value out_adm_S = trace(Sij, args.iYij);
+        value out_adm_S = trace(Sij, args.iYij);*/
 
 
         //ectx.add("DEBUG_adm", hypersurface_normal_raised.idx(0));
 
-        ectx.add("lazy_det", idet);
+        ectx.add("lazy_det", 0);
 
         ectx.add("OUT_ADM_S", out_adm_S);
         ectx.add("OUT_ADM_SI0", Si.idx(0));

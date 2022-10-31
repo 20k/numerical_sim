@@ -41,10 +41,11 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float*
     }
 
     ///https://arxiv.org/pdf/1611.07906.pdf (11)
+    ///only if not using u formalism!!
     lorentzs[idx] = vt;
-    velocities3[idx * 3 + 0] = vx / vt;
-    velocities3[idx * 3 + 1] = vy / vt;
-    velocities3[idx * 3 + 2] = vz / vt;
+    velocities3[idx * 3 + 0] = vx;
+    velocities3[idx * 3 + 1] = vy;
+    velocities3[idx * 3 + 2] = vz;
 }
 
 ///this returns the change in X, which is not velocity
