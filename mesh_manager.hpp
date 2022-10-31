@@ -79,11 +79,29 @@ struct cpu_mesh_settings
 
 struct cpu_mesh;
 
+struct buffer_pack
+{
+    buffer_set& in;
+    buffer_set& out;
+    buffer_set& base;
+
+    int in_idx = 0;
+    int out_idx = 0;
+    int base_idx = 0;
+
+    buffer_pack(buffer_set& _in, buffer_set& _out, buffer_set& _base, int _in_idx, int _out_idx, int _base_idx) : in(_in), out(_out), base(_base)
+    {
+        in_idx = _in_idx;
+        out_idx = _out_idx;
+        base_idx = _base_idx;
+    }
+};
+
 struct plugin
 {
     virtual std::vector<buffer_descriptor> get_buffers(){assert(false); return std::vector<buffer_descriptor>();}
     virtual void init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue,         thin_intermediates_pool& pool, buffer_set& to_init){assert(false);}
-    virtual void step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep, int iteration, int max_iteration){assert(false);}
+    virtual void step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration){assert(false);}
 
     virtual ~plugin(){}
 };

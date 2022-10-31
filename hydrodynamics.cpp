@@ -73,8 +73,12 @@ void eularian_hydrodynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_
     u_arg = cl::buffer(ctx);
 }
 
-void eularian_hydrodynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, buffer_set& in, buffer_set& out, buffer_set& base, float timestep, int iteration, int max_iteration)
+void eularian_hydrodynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration)
 {
+    buffer_set& in = pack.in;
+    buffer_set& out = pack.out;
+    buffer_set& base = pack.base;
+
     vec3i dim = mesh.dim;
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
     cl_float scale = mesh.scale;

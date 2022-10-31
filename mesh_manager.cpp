@@ -384,11 +384,16 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         clean_buffer(mqueue, in_buf.buf, out_buf.buf, base_buf.buf, in_buf.desc.asymptotic_value, in_buf.desc.wave_speed, current_timestep);
     };
 
-    auto step = [&](auto& generic_in, auto& generic_out, float current_timestep, bool trigger_callbacks, int iteration, int max_iteration)
+    auto step = [&](int generic_in_index, int generic_out_index, float current_timestep, bool trigger_callbacks, int iteration, int max_iteration)
     {
+        auto& generic_in = data[generic_in_index];
+        auto& generic_out = data[generic_out_index];
+
+        buffer_pack pack(generic_in, generic_out, data[0], generic_in_index, generic_out_index, 0);
+
         for(plugin* p : plugins)
         {
-            p->step(*this, ctx, mqueue, pool, generic_in, generic_out, base_yn, current_timestep, iteration, max_iteration);
+            p->step(*this, ctx, mqueue, pool, pack, current_timestep, iteration, max_iteration);
         }
 
         std::vector<ref_counted_buffer> intermediates = get_derivatives_of(ctx, generic_in, mqueue, pool);
@@ -738,9 +743,9 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     for(int i=0; i < iterations; i++)
     {
         if(i != 0)
-            step(data[2], data[1], timestep, false, i, iterations);
+            step(2, 1, timestep, false, i, iterations);
         else
-            step(data[0], data[1], timestep, true, i, iterations);
+            step(0, 1, timestep, true, i, iterations);
 
         if(i != iterations - 1)
         {
