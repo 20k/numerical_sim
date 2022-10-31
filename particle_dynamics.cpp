@@ -372,7 +372,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         tensor<value, 3> v_upper = {"vel.x", "vel.y", "vel.z"};
 
-        value sum = 0;
+        /*value sum = 0;
 
         for(int i=0; i < 3; i++)
         {
@@ -380,11 +380,11 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             {
                 sum += args.cY.idx(i, j) * v_upper.idx(i) * v_upper.idx(j);
             }
-        }
+        }*/
 
         value lorentz = "gamma";
 
-        tensor<value, 4> hypersurface_normal_raised = get_adm_hypersurface_normal_raised(args.gA, args.gB);
+        //tensor<value, 4> hypersurface_normal_raised = get_adm_hypersurface_normal_raised(args.gA, args.gB);
 
         /*value paper_w = sqrt(1 + sum);
 
@@ -447,6 +447,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
 
         //ectx.add("DEBUG_adm", hypersurface_normal_raised.idx(0));
+
+        ectx.add("lazy_det", lazy_det);
 
         ectx.add("OUT_ADM_S", out_adm_S);
         ectx.add("OUT_ADM_SI0", Si.idx(0));
