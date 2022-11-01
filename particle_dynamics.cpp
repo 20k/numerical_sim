@@ -303,7 +303,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
             //printf("Linear velocity %f\n", linear_velocity);
 
-            float linear_velocity = 0.075f;
+            float linear_velocity = 0.00125f * pow(radius / generation_radius, 2.f);
 
             vec2f velocity = linear_velocity * velocity_direction;
 
@@ -384,6 +384,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     ///https://einsteinrelativelyeasy.com/index.php/fr/einstein/9-general-relativity/78-the-energy-momentum-tensor
     ///https://arxiv.org/pdf/1905.08890.pdf
     ///https://en.wikipedia.org/wiki/Stress%E2%80%93energy_tensor#Stress%E2%80%93energy_in_special_situations
+    ///https://arxiv.org/pdf/1904.07841.pdf so, have to discretise the dirac delta. This paper gives explicit version
     {
         equation_context ectx;
         standard_arguments args(ectx);
