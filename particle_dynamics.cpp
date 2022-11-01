@@ -625,7 +625,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(p_data[in_idx].position.as_device_read_only());
         args.push_back(p_data[in_idx].mass.as_device_read_only());
         args.push_back(p_data[out_idx].mass.as_device_write_only());
-        args.push_back(p_data[base_idx].mass.as_device_inaccessible());
+        args.push_back(p_data[base_idx].mass.as_device_read_only());
         args.push_back(particle_count);
         args.push_back(timestep);
 
@@ -634,12 +634,12 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
 
     {
         cl::args args;
-        args.push_back(p_data[in_idx].position);
-        args.push_back(p_data[in_idx].velocity);
-        args.push_back(p_data[out_idx].position);
-        args.push_back(p_data[out_idx].velocity);
-        args.push_back(p_data[base_idx].position);
-        args.push_back(p_data[base_idx].velocity);
+        args.push_back(p_data[in_idx].position.as_device_read_only());
+        args.push_back(p_data[in_idx].velocity.as_device_read_only());
+        args.push_back(p_data[out_idx].position.as_device_write_only());
+        args.push_back(p_data[out_idx].velocity.as_device_write_only());
+        args.push_back(p_data[base_idx].position.as_device_read_only());
+        args.push_back(p_data[base_idx].velocity.as_device_read_only());
         args.push_back(particle_count);
 
         for(named_buffer& i : in.buffers)
