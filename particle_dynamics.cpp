@@ -267,12 +267,12 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     std::vector<vec3f> directions;
     std::vector<float> masses;
 
-    float mass = 0.01;
+    float init_mass = 0.01;
     //float total_mass = mass * particle_count;
 
     for(int i=0; i < particle_count; i++)
     {
-        masses.push_back(mass);
+        masses.push_back(init_mass);
     }
 
     for(int i=0; i < particle_count; i++)
@@ -319,6 +319,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     }
 
     p_data[0].position.write(cqueue, positions);
+    p_data[0].mass.write(cqueue, masses);
 
     cl::buffer initial_dirs(ctx);
     initial_dirs.alloc(sizeof(cl_float) * 3 * particle_count);
@@ -388,6 +389,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         standard_arguments args(ectx);
 
         tensor<value, 3> u_lower = {"vel.x", "vel.y", "vel.z"};
+
+        value mass = "mass";
 
         /*value sum = 0;
 
@@ -691,6 +694,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         cl::args args;
         args.push_back(p_data[in_idx].position);
         args.push_back(p_data[in_idx].velocity);
+        args.push_back(p_data[in_idx].mass);
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val);
         args.push_back(indices_block);

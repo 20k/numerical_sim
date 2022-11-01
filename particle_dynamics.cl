@@ -288,7 +288,7 @@ void collect_particle_spheres(__global float* positions, int geodesic_count, __g
 }
 
 __kernel
-void do_weighted_summation(__global float* positions, __global float* velocities, __global int* collected_counts, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
+void do_weighted_summation(__global float* positions, __global float* velocities, __global float* masses, __global int* collected_counts, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -345,6 +345,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
 
         {
             //float gamma = lorentzs[geodesic_idx];
+            float mass = masses[geodesic_idx];
 
             float TEMPORARIESadmmatter;
 
