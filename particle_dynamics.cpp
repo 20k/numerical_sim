@@ -516,6 +516,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ectx.add("OUT_ADM_SIJ5", Sij.idx(2, 2));
         ectx.add("OUT_ADM_P", out_adm_p);
 
+        ectx.add("MASS_CULL_SIZE", (get_c_at_max() / 2.f) * 0.8f);
+
         ectx.build(argument_string, "admmatter");
     }
 
@@ -617,6 +619,18 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     int in_idx = pack.in_idx;
     int out_idx = pack.out_idx;
     int base_idx = pack.base_idx;
+
+    {
+        cl::args args;
+        args.push_back(p_data[in_idx].position.as_device_read_only());
+        args.push_back(p_data[in_idx].mass.as_device_read_only());
+        args.push_back(p_data[out_idx].mass.as_device_write_only());
+        args.push_back(p_data[base_idx].mass.as_device_inaccessible());
+        args.push_back(particle_count);
+        args.push_back(timestep);
+
+        mqueue.exec("dissipate_mass", args, {particle_count}, {128});
+    }
 
     {
         cl::args args;
