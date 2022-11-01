@@ -61,7 +61,7 @@ tensor<value, 3, 3> particle_matter_interop::calculate_adm_X_Sij(equation_contex
     return X * Sij;
 }
 
-particle_dynamics::particle_dynamics(cl::context& ctx) : particle_3_position{ctx, ctx, ctx}, particle_3_velocity{ctx, ctx, ctx}, particle_lorentz{ctx, ctx, ctx}, pd(ctx), indices_block(ctx), weights_block(ctx), memory_alloc_count(ctx)
+particle_dynamics::particle_dynamics(cl::context& ctx) : p_data{ctx, ctx, ctx}, pd(ctx), indices_block(ctx), weights_block(ctx), memory_alloc_count(ctx)
 {
     indices_block.alloc(sizeof(cl_int) * 1024 * 1024 * 40);
     weights_block.alloc(sizeof(cl_float) * 1024 * 1024 * 40);
@@ -219,38 +219,6 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
     ctx.add("X2Diff", dx.idx(2));
 }
 
-void build_lorentz(equation_context& ctx)
-{
-    ctx.uses_linear = true;
-    ctx.order = 2;
-    ctx.use_precise_differentiation = false;
-
-    standard_arguments args(ctx);
-
-    ctx.pin(args.Kij);
-    ctx.pin(args.Yij);
-
-    value scale = "scale";
-    tensor<value, 3> V_upper = {"V0", "V1", "V2"};
-    value lorentz = "gamma";
-
-    value diff = 0;
-
-    for(int i=0; i < 3; i++)
-    {
-        value kij_sum = 0;
-
-        for(int j=0; j < 3; j++)
-        {
-            kij_sum += args.Kij.idx(i, j) * V_upper.idx(j);
-        }
-
-        diff += lorentz * V_upper.idx(i) * (args.gA * kij_sum - diff1(ctx, args.gA, i));
-    }
-
-    ctx.add("LorentzDiff", diff);
-}
-
 float get_kepler_velocity(float distance_between_bodies, float my_mass, float their_mass)
 {
     float R = distance_between_bodies;
@@ -281,27 +249,13 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     uint64_t size = dim.x() * dim.y() * dim.z() * sizeof(cl_float);
 
-    /*adm_p.alloc(size);
-
-    for(int i=0; i < 3; i++)
-    {
-        adm_Si[i].alloc(size);
-    }
-
-    for(int i=0; i < 6; i++)
-    {
-        adm_Sij[i].alloc(size);
-    }
-
-    adm_S.alloc(size);*/
-
     particle_count = 2048;
 
-    for(int i=0; i < (int)particle_3_position.size(); i++)
+    for(int i=0; i < (int)p_data.size(); i++)
     {
-        particle_3_position[i].alloc(sizeof(cl_float) * 3 * particle_count);
-        particle_3_velocity[i].alloc(sizeof(cl_float) * 3 * particle_count);
-        particle_lorentz[i].alloc(sizeof(cl_float) * particle_count);
+        p_data[i].position.alloc(sizeof(cl_float) * 3 * particle_count);
+        p_data[i].velocity.alloc(sizeof(cl_float) * 3 * particle_count);
+        p_data[i].mass.alloc(sizeof(cl_float) * particle_count);
     }
 
     float generation_radius = 0.5f * get_c_at_max()/2.f;
@@ -311,9 +265,15 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     std::vector<vec3f> positions;
     std::vector<vec3f> directions;
+    std::vector<float> masses;
 
     float mass = 0.01;
-    float total_mass = mass * particle_count;
+    //float total_mass = mass * particle_count;
+
+    for(int i=0; i < particle_count; i++)
+    {
+        masses.push_back(mass);
+    }
 
     for(int i=0; i < particle_count; i++)
     {
@@ -343,7 +303,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
             //printf("Linear velocity %f\n", linear_velocity);
 
-            float linear_velocity = 0.025f;
+            float linear_velocity = 0.075f;
 
             vec2f velocity = linear_velocity * velocity_direction;
 
@@ -358,7 +318,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             throw std::runtime_error("Did not successfully assign particle position");
     }
 
-    particle_3_position[0].write(cqueue, positions);
+    p_data[0].position.write(cqueue, positions);
 
     cl::buffer initial_dirs(ctx);
     initial_dirs.alloc(sizeof(cl_float) * 3 * particle_count);
@@ -414,13 +374,6 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         build_adm_geodesic(ectx, {mesh.dim.x(), mesh.dim.y(), mesh.dim.z()});
 
         ectx.build(argument_string, 6);
-    }
-
-    {
-        equation_context ectx;
-        build_lorentz(ectx);
-
-        ectx.build(argument_string, "lorentz");
     }
 
     ///relevant resources
@@ -580,10 +533,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             args.push_back(i.buf);
         }
 
-        args.push_back(particle_3_position[0]);
+        args.push_back(p_data[0].position);
         args.push_back(initial_dirs);
-        args.push_back(particle_3_velocity[0]);
-        args.push_back(particle_lorentz[0]);
+        args.push_back(p_data[0].velocity);
 
         args.push_back(particle_count);
         args.push_back(scale);
@@ -594,14 +546,13 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         cqueue.exec(kern, {particle_count}, {128});
     }
 
-    cl::copy(cqueue, particle_3_position[0], particle_3_position[1]);
-    cl::copy(cqueue, particle_3_velocity[0], particle_3_velocity[1]);
+    cl::copy(cqueue, p_data[0].position, p_data[1].position);
+    cl::copy(cqueue, p_data[0].velocity, p_data[1].velocity);
+    cl::copy(cqueue, p_data[0].mass, p_data[1].mass);
 
-    cl::copy(cqueue, particle_3_position[0], particle_3_position[2]);
-    cl::copy(cqueue, particle_3_velocity[0], particle_3_velocity[2]);
-
-    cl::copy(cqueue, particle_lorentz[0], particle_lorentz[1]);
-    cl::copy(cqueue, particle_lorentz[0], particle_lorentz[2]);
+    cl::copy(cqueue, p_data[0].position, p_data[2].position);
+    cl::copy(cqueue, p_data[0].velocity, p_data[2].velocity);
+    cl::copy(cqueue, p_data[0].mass, p_data[2].mass);
 
     to_init.lookup("adm_p").buf.set_to_zero(cqueue);
     to_init.lookup("adm_Si0").buf.set_to_zero(cqueue);
@@ -666,12 +617,12 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
 
     {
         cl::args args;
-        args.push_back(particle_3_position[in_idx]);
-        args.push_back(particle_3_velocity[in_idx]);
-        args.push_back(particle_3_position[out_idx]);
-        args.push_back(particle_3_velocity[out_idx]);
-        args.push_back(particle_3_position[base_idx]);
-        args.push_back(particle_3_velocity[base_idx]);
+        args.push_back(p_data[in_idx].position);
+        args.push_back(p_data[in_idx].velocity);
+        args.push_back(p_data[out_idx].position);
+        args.push_back(p_data[out_idx].velocity);
+        args.push_back(p_data[base_idx].position);
+        args.push_back(p_data[base_idx].velocity);
         args.push_back(particle_count);
 
         for(named_buffer& i : in.buffers)
@@ -686,28 +637,6 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         mqueue.exec("trace_geodesics", args, {particle_count}, {128});
     }
 
-    /*{
-        cl::args args;
-        args.push_back(particle_3_position[in_idx]);
-        args.push_back(particle_3_velocity[in_idx]);
-        args.push_back(particle_lorentz[in_idx]);
-        args.push_back(particle_lorentz[out_idx]);
-        args.push_back(particle_lorentz[base_idx]);
-        args.push_back(particle_count);
-
-        for(named_buffer& i : in.buffers)
-        {
-            args.push_back(i.buf);
-        }
-
-
-        args.push_back(scale);
-        args.push_back(clsize);
-        args.push_back(timestep);
-
-        mqueue.exec("evolve_lorentz", args, {particle_count}, {128});
-    }*/
-
     counts_val.set_to_zero(mqueue);
 
     ///find how many particles would be written per-cell
@@ -715,7 +644,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         cl_int actually_write = 0;
 
         cl::args args;
-        args.push_back(particle_3_position[in_idx]);
+        args.push_back(p_data[in_idx].position);
         args.push_back(particle_count);
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val);
@@ -744,7 +673,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         cl_int actually_write = 1;
 
         cl::args args;
-        args.push_back(particle_3_position[in_idx]);
+        args.push_back(p_data[in_idx].position);
         args.push_back(particle_count);
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val);
@@ -760,9 +689,8 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     ///calculate adm quantities per-cell by summing across the list of particles
     {
         cl::args args;
-        args.push_back(particle_3_position[in_idx]);
-        args.push_back(particle_3_velocity[in_idx]);
-        args.push_back(particle_lorentz[in_idx]);
+        args.push_back(p_data[in_idx].position);
+        args.push_back(p_data[in_idx].velocity);
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val);
         args.push_back(indices_block);
@@ -782,14 +710,14 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     ///todo: not this, want to have the indices controlled from a higher level
     if(iteration != max_iteration)
     {
-        std::swap(particle_3_position[in_idx], particle_3_position[out_idx]);
-        std::swap(particle_3_velocity[in_idx], particle_3_velocity[out_idx]);
-        std::swap(particle_lorentz[in_idx], particle_lorentz[out_idx]);
+        std::swap(p_data[in_idx].position, p_data[out_idx].position);
+        std::swap(p_data[in_idx].velocity, p_data[out_idx].velocity);
+        std::swap(p_data[in_idx].mass, p_data[out_idx].mass);
     }
     else
     {
-        std::swap(particle_3_position[base_idx], particle_3_position[out_idx]);
-        std::swap(particle_3_velocity[base_idx], particle_3_velocity[out_idx]);
-        std::swap(particle_lorentz[base_idx], particle_lorentz[out_idx]);
+        std::swap(p_data[base_idx].position, p_data[out_idx].position);
+        std::swap(p_data[base_idx].velocity, p_data[out_idx].velocity);
+        std::swap(p_data[base_idx].mass, p_data[out_idx].mass);
     }
 }

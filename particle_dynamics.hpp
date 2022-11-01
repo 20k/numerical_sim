@@ -12,12 +12,19 @@ struct particle_matter_interop : matter_interop
     virtual tensor<value, 3>    calculate_adm_Si(equation_context& ctx, standard_arguments& bssn_args) override;
 };
 
+struct particle_buffer
+{
+    cl::buffer position;
+    cl::buffer velocity;
+    cl::buffer mass;
+
+    particle_buffer(cl::context& ctx) : position(ctx), velocity(ctx), mass(ctx){}
+};
+
 struct particle_dynamics : plugin
 {
     int particle_count = 0;
-    std::array<cl::buffer, 3> particle_3_position;
-    std::array<cl::buffer, 3> particle_3_velocity;
-    std::array<cl::buffer, 3> particle_lorentz;
+    std::array<particle_buffer, 3> p_data;
 
     cl::buffer indices_block;
     cl::buffer weights_block;

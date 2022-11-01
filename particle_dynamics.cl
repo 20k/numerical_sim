@@ -3,7 +3,7 @@
 #include "transform_position.cl"
 
 __kernel
-void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float* initial_dirs3, __global float* velocities3, __global float* lorentzs, int geodesic_count, float scale, int4 dim)
+void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float* initial_dirs3, __global float* velocities3,int geodesic_count, float scale, int4 dim)
 {
     int idx = get_global_id(0);
 
@@ -26,7 +26,6 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float*
     float diry = initial_dirs3[idx * 3 + 1];
     float dirz = initial_dirs3[idx * 3 + 2];
 
-    float vt = 0;
     float vx = 0;
     float vy = 0;
     float vz = 0;
@@ -34,7 +33,6 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float*
     {
         float TEMPORARIEStparticleinit;
 
-        vt = OUT_VT;
         vx = OUT_VX;
         vy = OUT_VY;
         vz = OUT_VZ;
@@ -42,7 +40,6 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float*
 
     ///https://arxiv.org/pdf/1611.07906.pdf (11)
     ///only if not using u formalism!!
-    lorentzs[idx] = vt;
     velocities3[idx * 3 + 0] = vx;
     velocities3[idx * 3 + 1] = vy;
     velocities3[idx * 3 + 2] = vz;
@@ -99,30 +96,6 @@ void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, 
     *out = (float3){d0, d1, d2};
 }
 
-void calculate_lorentz_derivative(float* out, float3 Xpos, float3 vel, float lorentz_in, float scale, int4 dim, STANDARD_ARGS())
-{
-    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
-
-    ///isn't this already handled internally?
-    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
-
-    float fx = voxel_pos.x;
-    float fy = voxel_pos.y;
-    float fz = voxel_pos.z;
-
-    float V0 = vel.x;
-    float V1 = vel.y;
-    float V2 = vel.z;
-
-    float gamma = lorentz_in;
-
-    float TEMPORARIESlorentz;
-
-    float d0 = LorentzDiff;
-
-    *out = d0;
-}
-
 __kernel
 void trace_geodesics(__global float* positions_in, __global float* velocities_in,
                      __global float* positions_out, __global float* velocities_out,
@@ -165,27 +138,6 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     velocities_out[idx * 3 + 0] = out_vel.x;
     velocities_out[idx * 3 + 1] = out_vel.y;
     velocities_out[idx * 3 + 2] = out_vel.z;
-}
-
-__kernel
-void evolve_lorentz(__global float* positions, __global float* velocities,
-                    __global float* lorentz_in, __global float* lorentz_out, __global float* lorentz_base,
-                    int geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
-{
-    int idx = get_global_id(0);
-
-    if(idx >= geodesic_count)
-        return;
-
-    float3 Xpos = {positions[idx * 3 + 0], positions[idx * 3 + 1], positions[idx * 3 + 2]};
-    float3 vel = {velocities[idx * 3 + 0], velocities[idx * 3 + 1], velocities[idx * 3 + 2]};
-
-    float current_lorentz = lorentz_in[idx];
-
-    float lorentz_diff = 0;
-    calculate_lorentz_derivative(&lorentz_diff, Xpos, vel, current_lorentz, scale, dim, GET_STANDARD_ARGS());
-
-    lorentz_out[idx] = max(lorentz_base[idx] + timestep * lorentz_diff, 1.f);
 }
 
 /*float3 world_to_voxel_noround(float3 in, int4 dim, float scale)
@@ -336,7 +288,7 @@ void collect_particle_spheres(__global float* positions, int geodesic_count, __g
 }
 
 __kernel
-void do_weighted_summation(__global float* positions, __global float* velocities, __global float* lorentzs, __global int* collected_counts, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
+void do_weighted_summation(__global float* positions, __global float* velocities, __global int* collected_counts, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -417,10 +369,10 @@ void do_weighted_summation(__global float* positions, __global float* velocities
             ///55 105 106
             ///48 110 107
             //if(ix == 138 && iy == 128 && iz == 106)
-            if(ix == 50 && iy == 110 && iz == 105)
+            /*if(ix == 50 && iy == 110 && iz == 105)
             {
                 printf("Adm p %f i %i max %i lorentz %f lazy_det %f\n", OUT_ADM_P, i, my_count, calculated_gamma, lazy_det);
-            }
+            }*/
         }
     }
 
