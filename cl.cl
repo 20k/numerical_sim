@@ -1914,10 +1914,14 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
 
     density_col *= 10.f;
 
+    #ifndef TRACE_MATTER_P
     if(any(density_col > 1))
     {
         density_col /= max(density_col.x, max(density_col.y, density_col.z));
     }
+    #else
+    density_col = clamp(density_col, 0.f, 1.f);
+    #endif
 
     float uni_size = universe_size;
 
