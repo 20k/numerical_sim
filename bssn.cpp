@@ -215,6 +215,13 @@ tensor<value, 3> bssn::calculate_momentum_constraint(matter_interop& interop, eq
         value p4 = -(2.f/3.f) * diff1(ctx, args.K, i);
 
         Mi.idx(i) = s1 + s2 + s3 + p4;
+
+        if(use_matter)
+        {
+            tensor<value, 3> ji_lower = interop.calculate_adm_Si(ctx, args);
+
+            Mi.idx(i) += -8 * M_PI * ji_lower.idx(i);
+        }
     }
 
     return Mi;
