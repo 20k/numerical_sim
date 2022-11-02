@@ -433,7 +433,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
             value first_branch = (3.f/4.f) * pow(diff / scale, 2.f);
 
-            value second_branch = 0.5f * pow((3.f/2.f) - (diff / scale), 2.f);
+            value second_branch = 0.5f * pow((3.f/2.f) - (adiff / scale), 2.f);
 
             value third_branch = 0;
 
