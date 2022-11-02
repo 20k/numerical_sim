@@ -419,6 +419,57 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         lorentz = sqrt(1 + max(sum, 0.f));
 
+        ///https://arxiv.org/pdf/1904.07841.pdf 2.28
+        ///https://en.wikipedia.org/wiki/Four-momentum#Relation_to_four-velocity
+        value Ea = sqrt(mass * mass + mass * mass * sum);
+
+        tensor<value, 3> covariant_momentum = mass * u_lower; ///????
+
+        value scale = "scale";
+
+        auto cloud_function = [&](const value& diff)
+        {
+            value adiff = fabs(diff);
+
+            value first_branch = (3.f/4.f) * pow(diff / scale, 2.f);
+
+            value second_branch = 0.5f * pow((3.f/2.f) - (diff / scale), 2.f);
+
+            value third_branch = 0;
+
+            value first_is_true = adiff < 0.5f * scale;
+            value second_is_true = adiff < (3.f/2.f) * scale; ///technically not what the paper says, but pretty sure?
+
+            return if_v(first_is_true, first_branch,
+                        if_v(second_is_true, second_branch, third_branch));
+        };
+
+        tensor<value, 3> diff3 = {"vector_from_particle.x", "vector_from_particle.y", "vector_from_particle.z"};
+
+        value cloud_product = 1;
+
+        for(int i=0; i < 3; i++)
+        {
+            cloud_product = cloud_product * cloud_function(diff3.idx(i));
+        }
+
+        //value idet = pow(args.W_impl, 3);
+        value idet = pow(args.get_X(), 3.f/2.f);
+
+        value out_adm_p = idet * Ea * cloud_product;
+
+        tensor<value, 3> Si = idet * covariant_momentum * cloud_product;
+
+        tensor<value, 3, 3> Sij;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                Sij.idx(i, j) = idet * (covariant_momentum.idx(i) * covariant_momentum.idx(j) / Ea) * cloud_product;
+            }
+        }
+
         //tensor<value, 4> hypersurface_normal_raised = get_adm_hypersurface_normal_raised(args.gA, args.gB);
 
         /*value paper_w = sqrt(1 + sum);
@@ -460,7 +511,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             }
         }*/
 
-        value out_adm_p = mass * lorentz * lorentz;
+        /*value out_adm_p = mass * lorentz * lorentz;
         value out_adm_S = out_adm_p - mass;
 
         tensor<value, 3> Si = mass * lorentz * u_lower;
@@ -473,7 +524,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             {
                 Sij.idx(i, j) = mass * u_lower.idx(i) * u_lower.idx(j);
             }
-        }
+        }*/
+
+
 
         ///ok so
         ///W = Y^-1/6
@@ -499,6 +552,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         value out_adm_S = trace(Sij, args.iYij);*/
 
+        value out_adm_S = trace(Sij, args.iYij);
 
         //ectx.add("DEBUG_adm", hypersurface_normal_raised.idx(0));
 
