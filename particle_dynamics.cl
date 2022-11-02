@@ -343,10 +343,10 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         int gidx = i + my_memory_start;
 
         int geodesic_idx = collected_indices[gidx];
-        float total_weight_factor = collected_weights[gidx];
+        /*float total_weight_factor = collected_weights[gidx];
 
         if(total_weight_factor == 0)
-            continue;
+            continue;*/
 
         float3 world_pos = (float3)(positions[geodesic_idx * 3 + 0], positions[geodesic_idx * 3 + 1], positions[geodesic_idx * 3 + 2]);
         float3 vel = (float3)(velocities[geodesic_idx * 3 + 0], velocities[geodesic_idx * 3 + 1], velocities[geodesic_idx * 3 + 2]);
