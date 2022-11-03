@@ -152,6 +152,39 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
     }
     #endif
 
+    tensor<value, 3, 3, 3> diYij;
+
+    {
+        inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+        tensor<value, 3> dX = args.get_dX();
+
+        tensor<value, 3, 3, 3> conformal_christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
+
+        tensor<value, 3, 3, 3> full_christoffel2 = get_full_christoffel2(args.get_X(), dX, args.cY, icY, conformal_christoff2);
+
+        for(int c=0; c < 3; c++)
+        {
+            for(int a=0; a < 3; a++)
+            {
+                for(int b=0; b < 3; b++)
+                {
+                    value sum1 = 0;
+                    value sum2 = 0;
+
+                    for(int d=0; d < 3; d++)
+                    {
+                        sum1 += full_christoffel2.idx(a, c, d) * args.iYij.idx(d, b);
+                        sum2 += full_christoffel2.idx(b, c, d) * args.iYij.idx(a, d);
+                    }
+
+                    diYij.idx(c, a, b) = -(sum1 + sum2);
+                }
+            }
+        }
+    }
+
+
     tensor<value, 3> u_lower = {"V0", "V1", "V2"};
 
     inverse_metric<value, 3, 3> iYij = args.iYij;
@@ -190,7 +223,8 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
         {
             for(int m=0; m < 3; m++)
             {
-                p3 += -0.5f * i_u0 * u_lower.idx(j) * u_lower.idx(m) * diff1(ctx, iYij.idx(j, m), i);
+                p3 += -0.5f * i_u0 * u_lower.idx(j) * u_lower.idx(m) * diYij.idx(i, j, m);
+                //p3 += -0.5f * i_u0 * u_lower.idx(j) * u_lower.idx(m) * diff1(ctx, iYij.idx(j, m), i);
             }
         }
 
