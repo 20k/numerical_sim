@@ -249,7 +249,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     uint64_t size = dim.x() * dim.y() * dim.z() * sizeof(cl_float);
 
-    particle_count = 2048;
+    particle_count = 2048 * 10;
 
     for(int i=0; i < (int)p_data.size(); i++)
     {
@@ -267,7 +267,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     std::vector<vec3f> directions;
     std::vector<float> masses;
 
-    float init_mass = 0.01;
+    float init_mass = 0.0001;
     //float total_mass = mass * particle_count;
 
     for(int i=0; i < particle_count; i++)
@@ -303,7 +303,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
             //printf("Linear velocity %f\n", linear_velocity);
 
-            float linear_velocity = 0.00125f * pow(radius / generation_radius, 2.f);
+            float linear_velocity = 0.1f * pow(radius / generation_radius, 2.f);
 
             vec2f velocity = linear_velocity * velocity_direction;
 
@@ -695,6 +695,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(p_data[out_idx].velocity.as_device_write_only());
         args.push_back(p_data[base_idx].position.as_device_read_only());
         args.push_back(p_data[base_idx].velocity.as_device_read_only());
+        args.push_back(p_data[in_idx].mass.as_device_read_only());
         args.push_back(particle_count);
 
         for(named_buffer& i : in.buffers)
@@ -717,6 +718,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
 
         cl::args args;
         args.push_back(p_data[in_idx].position);
+        args.push_back(p_data[in_idx].mass);
         args.push_back(particle_count);
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val);
@@ -746,6 +748,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
 
         cl::args args;
         args.push_back(p_data[in_idx].position);
+        args.push_back(p_data[in_idx].mass);
         args.push_back(particle_count);
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val);

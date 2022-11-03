@@ -120,11 +120,15 @@ __kernel
 void trace_geodesics(__global float* positions_in, __global float* velocities_in,
                      __global float* positions_out, __global float* velocities_out,
                      __global float* positions_base, __global float* velocities_base,
+                     __global float* masses,
                      int geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
 {
     int idx = get_global_id(0);
 
     if(idx >= geodesic_count)
+        return;
+
+    if(masses[idx] <= 0.000001f)
         return;
 
     float3 Xpos = {positions_in[idx * 3 + 0], positions_in[idx * 3 + 1], positions_in[idx * 3 + 2]};
@@ -215,11 +219,14 @@ void allocate_particle_spheres(__global int* counts, __global int* memory_ptrs, 
 }
 
 __kernel
-void collect_particle_spheres(__global float* positions, int geodesic_count, __global int* collected_counts, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, float scale, int4 dim, int actually_write)
+void collect_particle_spheres(__global float* positions, __global float* masses, int geodesic_count, __global int* collected_counts, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, float scale, int4 dim, int actually_write)
 {
     int idx = get_global_id(0);
 
     if(idx >= geodesic_count)
+        return;
+
+    if(masses[idx] <= 0.000001f)
         return;
 
     float3 world_pos = (float3)(positions[idx * 3 + 0], positions[idx * 3 + 1], positions[idx * 3 + 2]);
@@ -343,6 +350,12 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         int gidx = i + my_memory_start;
 
         int geodesic_idx = collected_indices[gidx];
+
+        float mass = masses[geodesic_idx];
+
+        if(mass <= 0.000001f)
+            continue;
+
         float total_weight_factor = collected_weights[gidx];
 
         if(total_weight_factor == 0)
@@ -371,7 +384,6 @@ void do_weighted_summation(__global float* positions, __global float* velocities
 
         {
             //float gamma = lorentzs[geodesic_idx];
-            float mass = masses[geodesic_idx];
 
             float TEMPORARIESadmmatter;
 
