@@ -104,6 +104,12 @@ void dissipate_mass(__global float* positions, __global float* mass_in, __global
     if(idx >= geodesic_count)
         return;
 
+    if(mass_in[idx] <= 0.000001f)
+    {
+        mass_out[idx] = 0;
+        return;
+    }
+
     float3 Xpos = {positions[idx * 3 + 0], positions[idx * 3 + 1], positions[idx * 3 + 2]};
 
     if(fast_length(Xpos) >= MASS_CULL_SIZE)
