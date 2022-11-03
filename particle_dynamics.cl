@@ -2,6 +2,8 @@
 #include "common.cl"
 #include "transform_position.cl"
 
+#define GET_IDX(x, i) (x * 3 + i)
+
 __kernel
 void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float* initial_dirs3, __global float* velocities3,int geodesic_count, float scale, int4 dim)
 {
@@ -40,9 +42,9 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float*
 
     ///https://arxiv.org/pdf/1611.07906.pdf (11)
     ///only if not using u formalism!!
-    velocities3[idx * 3 + 0] = vx;
-    velocities3[idx * 3 + 1] = vy;
-    velocities3[idx * 3 + 2] = vz;
+    velocities3[GET_IDX(idx, 0)] = vx;
+    velocities3[GET_IDX(idx, 1)] = vy;
+    velocities3[GET_IDX(idx, 2)] = vz;
 }
 
 ///this returns the change in X, which is not velocity
@@ -110,7 +112,7 @@ void dissipate_mass(__global float* positions, __global float* mass_in, __global
         return;
     }
 
-    float3 Xpos = {positions[idx * 3 + 0], positions[idx * 3 + 1], positions[idx * 3 + 2]};
+    float3 Xpos = {positions[GET_IDX(idx, 0)], positions[GET_IDX(idx, 1)], positions[GET_IDX(idx, 2)]};
 
     if(fast_length(Xpos) >= MASS_CULL_SIZE)
     {
@@ -137,8 +139,8 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     if(masses[idx] <= 0.000001f)
         return;
 
-    float3 Xpos = {positions_in[idx * 3 + 0], positions_in[idx * 3 + 1], positions_in[idx * 3 + 2]};
-    float3 vel = {velocities_in[idx * 3 + 0], velocities_in[idx * 3 + 1], velocities_in[idx * 3 + 2]};
+    float3 Xpos = {positions_in[GET_IDX(idx, 0)], positions_in[GET_IDX(idx, 1)], positions_in[GET_IDX(idx, 2)]};
+    float3 vel = {velocities_in[GET_IDX(idx, 0)], velocities_in[GET_IDX(idx, 1)], velocities_in[GET_IDX(idx, 2)]};
 
     float3 accel;
     calculate_V_derivatives(&accel, Xpos, vel, scale, dim, GET_STANDARD_ARGS());
@@ -155,19 +157,19 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     float3 dXpos = XDiff * timestep;
     float3 dvel = accel * timestep;
 
-    float3 base_Xpos = {positions_base[idx * 3 + 0], positions_base[idx * 3 + 1], positions_base[idx * 3 + 2]};
-    float3 base_vel = {velocities_base[idx * 3 + 0], velocities_base[idx * 3 + 1], velocities_base[idx * 3 + 2]};
+    float3 base_Xpos = {positions_base[GET_IDX(idx, 0)], positions_base[GET_IDX(idx, 1)], positions_base[GET_IDX(idx, 2)]};
+    float3 base_vel = {velocities_base[GET_IDX(idx, 0)], velocities_base[GET_IDX(idx, 1)], velocities_base[GET_IDX(idx, 2)]};
 
     float3 out_Xpos = base_Xpos + dXpos;
     float3 out_vel = base_vel + dvel;
 
-    positions_out[idx * 3 + 0] = out_Xpos.x;
-    positions_out[idx * 3 + 1] = out_Xpos.y;
-    positions_out[idx * 3 + 2] = out_Xpos.z;
+    positions_out[GET_IDX(idx, 0)] = out_Xpos.x;
+    positions_out[GET_IDX(idx, 1)] = out_Xpos.y;
+    positions_out[GET_IDX(idx, 2)] = out_Xpos.z;
 
-    velocities_out[idx * 3 + 0] = out_vel.x;
-    velocities_out[idx * 3 + 1] = out_vel.y;
-    velocities_out[idx * 3 + 2] = out_vel.z;
+    velocities_out[GET_IDX(idx, 0)] = out_vel.x;
+    velocities_out[GET_IDX(idx, 1)] = out_vel.y;
+    velocities_out[GET_IDX(idx, 2)] = out_vel.z;
 }
 
 /*float3 world_to_voxel_noround(float3 in, int4 dim, float scale)
@@ -240,7 +242,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
     if(masses[idx] <= 0.000001f)
         return;
 
-    float3 world_pos = (float3)(positions[idx * 3 + 0], positions[idx * 3 + 1], positions[idx * 3 + 2]);
+    float3 world_pos = {positions[GET_IDX(idx, 0)], positions[GET_IDX(idx, 1)], positions[GET_IDX(idx, 2)]};
 
     float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
 
@@ -328,7 +330,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 }
 
 __kernel
-void do_weighted_summation(__global float* positions, __global float* velocities, __global float* masses, __global int* collected_counts, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
+void do_weighted_summation(__global float* positions, __global float* velocities, __global float* masses, int geodesic_count, __global int* collected_counts, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -372,8 +374,8 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         if(total_weight_factor == 0)
             continue;
 
-        float3 world_pos = (float3)(positions[geodesic_idx * 3 + 0], positions[geodesic_idx * 3 + 1], positions[geodesic_idx * 3 + 2]);
-        float3 vel = (float3)(velocities[geodesic_idx * 3 + 0], velocities[geodesic_idx * 3 + 1], velocities[geodesic_idx * 3 + 2]);
+        float3 world_pos = {positions[GET_IDX(geodesic_idx, 0)], positions[GET_IDX(geodesic_idx, 1)], positions[GET_IDX(geodesic_idx, 2)]};
+        float3 vel = {velocities[GET_IDX(geodesic_idx, 0)], velocities[GET_IDX(geodesic_idx, 1)], velocities[GET_IDX(geodesic_idx, 2)]};
 
         float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
 
