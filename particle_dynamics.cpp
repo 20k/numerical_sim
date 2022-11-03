@@ -393,20 +393,6 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         value mass = "mass";
 
-        /*value sum = 0;
-
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                sum += args.cY.idx(i, j) * v_upper.idx(i) * v_upper.idx(j);
-            }
-        }*/
-
-        //value lorentz = "gamma";
-
-        value lorentz = 0;
-
         value sum = 0;
 
         for(int i=0; i < 3; i++)
@@ -417,41 +403,11 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             }
         }
 
-        lorentz = sqrt(1 + max(sum, 0.f));
-
         ///https://arxiv.org/pdf/1904.07841.pdf 2.28
         ///https://en.wikipedia.org/wiki/Four-momentum#Relation_to_four-velocity
         value Ea = sqrt(mass * mass + mass * mass * sum);
 
         tensor<value, 3> covariant_momentum = mass * u_lower; ///????
-
-        /*value scale = "scale";
-
-        auto cloud_function = [&](const value& diff)
-        {
-            value adiff = fabs(diff);
-
-            value first_branch = (3.f/4.f) * pow(diff / scale, 2.f);
-
-            value second_branch = 0.5f * pow((3.f/2.f) - (adiff / scale), 2.f);
-
-            value third_branch = 0;
-
-            value first_is_true = adiff < 0.5f * scale;
-            value second_is_true = adiff < (3.f/2.f) * scale; ///technically not what the paper says, but pretty sure?
-
-            return if_v(first_is_true, first_branch,
-                        if_v(second_is_true, second_branch, third_branch));
-        };
-
-        tensor<value, 3> diff3 = {"vector_from_particle.x", "vector_from_particle.y", "vector_from_particle.z"};
-
-        value cloud_product = 1;
-
-        for(int i=0; i < 3; i++)
-        {
-            cloud_product = cloud_product * cloud_function(diff3.idx(i));
-        }*/
 
         //value idet = pow(args.W_impl, 3);
         value idet = pow(args.get_X(), 3.f/2.f);
@@ -470,94 +426,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             }
         }
 
-        //tensor<value, 4> hypersurface_normal_raised = get_adm_hypersurface_normal_raised(args.gA, args.gB);
-
-        /*value paper_w = sqrt(1 + sum);
-
-        tensor<value, 4> v_full = {0, v_upper.idx(0), v_upper.idx(1), v_upper.idx(2)};
-
-        tensor<value, 4> u_full = v_full + paper_w * hypersurface_normal_raised;
-
-        value lorentz = u_full.idx(0);
-
-        tensor<value, 3> u3_upper = {u_full.idx(1), u_full.idx(2), u_full.idx(3)};*/
-
-        ///https://arxiv.org/pdf/gr-qc/0003101.pdf 34
-
-        //value lorentz = 1/sqrt(1 - sum);
-
-        /*tensor<value, 3> u3_upper = (v_upper * args.gA - args.gB) * lorentz / max(args.gA, 0.0001f);
-
-        ///wait. But this is equal to vi_lower. Ah I'm such a muppet
-        tensor<value, 3> u3_lower = lower_index(u3_upper, args.Yij, 0);*/
-
-        /*tensor<value, 4> v_full = {0, v_upper.idx(0), v_upper.idx(1), v_upper.idx(2)};
-
-        tensor<value, 4> u_upper = lorentz * (hypersurface_normal_raised + v_full);
-
-        tensor<value, 3> u3_upper = {u_upper.idx(1), u_upper.idx(2), u_upper.idx(3)};
-
-        tensor<value, 3> u3_lower = lower_index(u3_upper, args.Yij, 0);
-
-        value out_adm_p = mass * lorentz * lorentz;
-        tensor<value, 3> Si = mass * lorentz * u3_lower;
-        tensor<value, 3, 3> Sij;
-
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                Sij.idx(i, j) = mass * u3_lower.idx(i) * u3_lower.idx(j);
-            }
-        }*/
-
-        /*value out_adm_p = mass * lorentz * lorentz;
-        value out_adm_S = out_adm_p - mass;
-
-        tensor<value, 3> Si = mass * lorentz * u_lower;
-
-        tensor<value, 3, 3> Sij;
-
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                Sij.idx(i, j) = mass * u_lower.idx(i) * u_lower.idx(j);
-            }
-        }*/
-
-
-
-        ///ok so
-        ///W = Y^-1/6
-        ///and what we want is Y^-1/2
-
-        /*value idet = pow(args.W_impl, 3);
-
-        tensor<value, 3> v_lower = lower_index(v_upper, args.Yij, 0);
-
-        value out_adm_p = mass * lorentz * idet;
-        tensor<value, 3> Si = mass * lorentz * v_lower * idet;
-        tensor<value, 3, 3> Sij;
-
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                Sij.idx(i, j) = mass * lorentz * v_lower.idx(i) * v_lower.idx(j) * idet;
-            }
-        }
-
-        //value out_adm_S = out_adm_p - mass;
-
-        value out_adm_S = trace(Sij, args.iYij);*/
-
         value out_adm_S = trace(Sij, args.iYij);
-
-        //ectx.add("DEBUG_adm", hypersurface_normal_raised.idx(0));
-
-        ectx.add("lazy_det", 0);
-        ectx.add("calculated_gamma", lorentz);
 
         ectx.add("OUT_ADM_S", out_adm_S);
         ectx.add("OUT_ADM_SI0", Si.idx(0));
