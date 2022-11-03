@@ -5,16 +5,16 @@
 #define GET_IDX(x, i) (x * 3 + i)
 
 __kernel
-void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float* initial_dirs3, __global float* velocities3,int geodesic_count, float scale, int4 dim)
+void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global float* initial_dirs3, __global float* positions3_out, __global float* velocities3_out, int geodesic_count, float scale, int4 dim)
 {
     int idx = get_global_id(0);
 
     if(idx >= geodesic_count)
         return;
 
-    float px = positions3[idx * 3 + 0];
-    float py = positions3[idx * 3 + 1];
-    float pz = positions3[idx * 3 + 2];
+    float px = positions3_in[idx * 3 + 0];
+    float py = positions3_in[idx * 3 + 1];
+    float pz = positions3_in[idx * 3 + 2];
 
     float3 as_voxel = world_to_voxel((float3)(px, py, pz), dim, scale);
 
@@ -40,11 +40,15 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3, __global float*
         vz = OUT_VZ;
     }
 
+    positions3_out[GET_IDX(idx, 0)] = px;
+    positions3_out[GET_IDX(idx, 1)] = py;
+    positions3_out[GET_IDX(idx, 2)] = pz;
+
     ///https://arxiv.org/pdf/1611.07906.pdf (11)
     ///only if not using u formalism!!
-    velocities3[GET_IDX(idx, 0)] = vx;
-    velocities3[GET_IDX(idx, 1)] = vy;
-    velocities3[GET_IDX(idx, 2)] = vz;
+    velocities3_out[GET_IDX(idx, 0)] = vx;
+    velocities3_out[GET_IDX(idx, 1)] = vy;
+    velocities3_out[GET_IDX(idx, 2)] = vz;
 }
 
 ///this returns the change in X, which is not velocity

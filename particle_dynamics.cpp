@@ -319,7 +319,10 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             throw std::runtime_error("Did not successfully assign particle position");
     }
 
-    p_data[0].position.write(cqueue, positions);
+    cl::buffer positions_in(ctx);
+    positions_in.alloc(p_data[0].position.alloc_size);
+    positions_in.write(cqueue, positions);
+
     p_data[0].mass.write(cqueue, masses);
 
     cl::buffer initial_dirs(ctx);
@@ -463,8 +466,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             args.push_back(i.buf);
         }
 
-        args.push_back(p_data[0].position);
+        args.push_back(positions_in);
         args.push_back(initial_dirs);
+        args.push_back(p_data[0].position);
         args.push_back(p_data[0].velocity);
 
         args.push_back(particle_count);
