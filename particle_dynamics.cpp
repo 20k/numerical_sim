@@ -167,7 +167,8 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
     }
 
     value a_u0 = sqrt(1 + sum);
-    value u0 = a_u0 / args.gA;
+    //value u0 = a_u0 / args.gA;
+    value i_u0 = args.gA / a_u0;
 
     tensor<value, 3> u_lower_diff;
 
@@ -189,7 +190,7 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
         {
             for(int m=0; m < 3; m++)
             {
-                p3 += -(1.f/(2.f * u0)) * u_lower.idx(j) * u_lower.idx(m) * diff1(ctx, iYij.idx(j, m), i);
+                p3 += -0.5f * i_u0 * u_lower.idx(j) * u_lower.idx(m) * diff1(ctx, iYij.idx(j, m), i);
             }
         }
 
@@ -204,7 +205,7 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
 
         for(int k=0; k < 3; k++)
         {
-            p1 += iYij.idx(j, k) * u_lower.idx(k) / u0;
+            p1 += iYij.idx(j, k) * u_lower.idx(k) * i_u0;
         }
 
         dx.idx(j) = p1 - args.gB.idx(j);
