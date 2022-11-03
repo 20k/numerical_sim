@@ -425,7 +425,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         tensor<value, 3> covariant_momentum = mass * u_lower; ///????
 
-        value scale = "scale";
+        /*value scale = "scale";
 
         auto cloud_function = [&](const value& diff)
         {
@@ -451,14 +451,14 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         for(int i=0; i < 3; i++)
         {
             cloud_product = cloud_product * cloud_function(diff3.idx(i));
-        }
+        }*/
 
         //value idet = pow(args.W_impl, 3);
         value idet = pow(args.get_X(), 3.f/2.f);
 
-        value out_adm_p = idet * Ea * cloud_product;
+        value out_adm_p = idet * Ea;
 
-        tensor<value, 3> Si = idet * covariant_momentum * cloud_product;
+        tensor<value, 3> Si = idet * covariant_momentum;
 
         tensor<value, 3, 3> Sij;
 
@@ -466,7 +466,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         {
             for(int j=0; j < 3; j++)
             {
-                Sij.idx(i, j) = idet * (covariant_momentum.idx(i) * covariant_momentum.idx(j) / Ea) * cloud_product;
+                Sij.idx(i, j) = idet * (covariant_momentum.idx(i) * covariant_momentum.idx(j) / Ea);
             }
         }
 

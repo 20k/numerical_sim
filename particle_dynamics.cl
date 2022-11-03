@@ -236,7 +236,7 @@ void collect_particle_spheres(__global float* positions, int geodesic_count, __g
 
     int spread = 6;
 
-    /*float total_weight = 0;
+    float total_weight = 0;
 
     if(actually_write)
     {
@@ -266,7 +266,7 @@ void collect_particle_spheres(__global float* positions, int geodesic_count, __g
                 }
             }
         }
-    }*/
+    }
 
     for(int zz=-spread; zz <= spread; zz++)
     {
@@ -281,7 +281,7 @@ void collect_particle_spheres(__global float* positions, int geodesic_count, __g
                 if(ix < 0 || iy < 0 || iz < 0 || ix >= dim.x || iy >= dim.y || iz >= dim.z)
                     continue;
 
-                /*float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
+                float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
 
                 float to_centre_distance = fast_length(cell_wp - world_pos);
 
@@ -293,7 +293,7 @@ void collect_particle_spheres(__global float* positions, int geodesic_count, __g
                 if(f_sp == 0)
                     continue;
 
-                total_weight = M_PI * pow(rs, 3);*/
+                //total_weight = M_PI * pow(rs, 3);
 
                 int my_index = atomic_inc(&collected_counts[IDX(ix,iy,iz)]);
 
@@ -302,7 +302,7 @@ void collect_particle_spheres(__global float* positions, int geodesic_count, __g
                     int my_memory_offset = memory_ptrs[IDX(ix,iy,iz)];
 
                     collected_indices[my_memory_offset + my_index] = idx;
-                    //collected_weights[my_memory_offset + my_index] = total_weight;
+                    collected_weights[my_memory_offset + my_index] = total_weight;
                 }
             }
         }
@@ -343,17 +343,17 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         int gidx = i + my_memory_start;
 
         int geodesic_idx = collected_indices[gidx];
-        /*float total_weight_factor = collected_weights[gidx];
+        float total_weight_factor = collected_weights[gidx];
 
         if(total_weight_factor == 0)
-            continue;*/
+            continue;
 
         float3 world_pos = (float3)(positions[geodesic_idx * 3 + 0], positions[geodesic_idx * 3 + 1], positions[geodesic_idx * 3 + 2]);
         float3 vel = (float3)(velocities[geodesic_idx * 3 + 0], velocities[geodesic_idx * 3 + 1], velocities[geodesic_idx * 3 + 2]);
 
         float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
 
-        /*float to_centre_distance = fast_length(cell_wp - world_pos);
+        float to_centre_distance = fast_length(cell_wp - world_pos);
 
         ///https://arxiv.org/pdf/1611.07906.pdf 20
         float r_rs = to_centre_distance / rs;
@@ -363,11 +363,11 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         if(f_sp == 0)
             continue;
 
-        float weight = f_sp;*/
+        float weight = f_sp;
 
-        float3 vector_from_particle = cell_wp - world_pos;
+        /*float3 vector_from_particle = cell_wp - world_pos;
 
-        float weight = 1;
+        float weight = 1;*/
 
         {
             //float gamma = lorentzs[geodesic_idx];
