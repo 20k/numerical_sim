@@ -218,9 +218,14 @@ void allocate_particle_spheres(__global int* counts, __global int* memory_ptrs, 
     int index = IDX(ix,iy,iz);
 
     int my_count = counts[index];
-    int my_memory = atomic_add(memory_allocator, my_count);
+
+    int my_memory = 0;
+
+    if(my_count > 0)
+        my_memory = atomic_add(memory_allocator, my_count);
 
     memory_ptrs[index] = my_memory;
+
     counts[index] = 0;
 }
 
@@ -247,7 +252,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 
     float rs = scale;
 
-    int spread = 6;
+    int spread = 4;
 
     float total_weight = 0;
 
