@@ -63,8 +63,8 @@ tensor<value, 3, 3> particle_matter_interop::calculate_adm_X_Sij(equation_contex
 
 particle_dynamics::particle_dynamics(cl::context& ctx) : p_data{ctx, ctx, ctx}, pd(ctx), indices_block(ctx), weights_block(ctx), memory_alloc_count(ctx)
 {
-    indices_block.alloc(sizeof(cl_int) * 1024 * 1024 * 40);
-    weights_block.alloc(sizeof(cl_float) * 1024 * 1024 * 40);
+    indices_block.alloc(max_intermediate_size);
+    weights_block.alloc(max_intermediate_size);
     memory_alloc_count.alloc(sizeof(cl_int));
 }
 
@@ -611,6 +611,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val);
         args.push_back(memory_alloc_count);
+        args.push_back(max_intermediate_size);
         args.push_back(clsize);
 
         mqueue.exec("allocate_particle_spheres", args, {dim.x(), dim.y(), dim.z()}, {8,8,1});

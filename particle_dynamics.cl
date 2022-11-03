@@ -212,7 +212,7 @@ float get_f_sp(float r_rs)
 }
 
 __kernel
-void allocate_particle_spheres(__global int* counts, __global int* memory_ptrs, __global int* memory_allocator, int4 dim)
+void allocate_particle_spheres(__global int* counts, __global int* memory_ptrs, __global int* memory_allocator, int max_memory, int4 dim)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -229,6 +229,12 @@ void allocate_particle_spheres(__global int* counts, __global int* memory_ptrs, 
 
     if(my_count > 0)
         my_memory = atomic_add(memory_allocator, my_count);
+
+    if(my_memory + my_count > max_memory)
+    {
+        printf("Overflow in allocate\n");
+        my_memory = 0;
+    }
 
     memory_ptrs[index] = my_memory;
 

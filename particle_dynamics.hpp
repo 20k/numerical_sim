@@ -38,6 +38,8 @@ struct particle_dynamics : plugin
     std::array<cl::buffer, 6> adm_Sij;
     cl::buffer adm_S;*/
 
+    cl_int max_intermediate_size = sizeof(cl_int) * 1024 * 1024 * 40;
+
     cl::program pd;
 
     particle_dynamics(cl::context& ctx);
