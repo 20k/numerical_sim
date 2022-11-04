@@ -549,6 +549,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     int out_idx = pack.out_idx;
     int base_idx = pack.base_idx;
 
+    ///make sure to mark up the particle code!
     {
         cl::args args;
         args.push_back(p_data[in_idx].position.as_device_read_only());

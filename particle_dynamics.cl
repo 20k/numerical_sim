@@ -264,7 +264,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 
     float rs = scale;
 
-    int spread = 4;
+    int spread = 3;
 
     float total_weight = 0;
 
