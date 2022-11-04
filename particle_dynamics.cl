@@ -1,3 +1,5 @@
+#pragma OPENCL EXTENSION cl_khr_int64_base_atomics : enable
+
 #include "evolution_common.cl"
 #include "common.cl"
 #include "transform_position.cl"
@@ -49,6 +51,18 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global flo
     velocities3_out[GET_IDX(idx, 0)] = vx;
     velocities3_out[GET_IDX(idx, 1)] = vy;
     velocities3_out[GET_IDX(idx, 2)] = vz;
+}
+
+__kernel
+void interpolate_particle_properties(__global float* p1, __global float* v1, __global float* p2, __global float* v2, __global float* op1, __global float* ov1, float fraction, ulong geodesic_count)
+{
+    size_t idx = get_global_id(0);
+
+    if(idx >= geodesic_count * 3)
+        return;
+
+    op1[idx] = mix(p1[idx], p2[idx], fraction);
+    ov1[idx] = mix(v1[idx], v2[idx], fraction);
 }
 
 ///this returns the change in X, which is not velocity
@@ -228,7 +242,7 @@ void allocate_particle_spheres(__global int* counts, __global ulong* memory_ptrs
     ulong my_memory = 0;
 
     if(my_count > 0)
-        my_memory = atomic_add(memory_allocator, my_count);
+        my_memory = atom_add(memory_allocator, my_count);
 
     if(my_memory + my_count > max_memory)
     {

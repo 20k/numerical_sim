@@ -23,8 +23,14 @@ struct particle_buffer
 
 struct particle_dynamics : plugin
 {
+    int current_N = 0;
+    int max_N = 4;
+
     cl_ulong particle_count = 0;
     std::array<particle_buffer, 3> p_data;
+
+    cl::buffer interpolated_position;
+    cl::buffer interpolated_velocity;
 
     cl::buffer indices_block;
     cl::buffer weights_block;
@@ -49,6 +55,9 @@ struct particle_dynamics : plugin
     virtual void init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue,         thin_intermediates_pool& pool, buffer_set& to_init) override;
     virtual void step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration) override;
     virtual void finalise(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, float timestep) override;
+
+private:
+    void particle_step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration);
 };
 
 #endif // PARTICLE_DYNAMICS_HPP_INCLUDED

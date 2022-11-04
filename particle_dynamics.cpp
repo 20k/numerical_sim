@@ -61,7 +61,7 @@ tensor<value, 3, 3> particle_matter_interop::calculate_adm_X_Sij(equation_contex
     return X * Sij;
 }
 
-particle_dynamics::particle_dynamics(cl::context& ctx) : p_data{ctx, ctx, ctx}, pd(ctx), indices_block(ctx), weights_block(ctx), memory_alloc_count(ctx)
+particle_dynamics::particle_dynamics(cl::context& ctx) : p_data{ctx, ctx, ctx}, interpolated_position{ctx}, interpolated_velocity{ctx}, pd(ctx), indices_block(ctx), weights_block(ctx), memory_alloc_count(ctx)
 {
     indices_block.alloc(max_intermediate_size * sizeof(cl_ulong));
     weights_block.alloc(max_intermediate_size * sizeof(cl_float));
@@ -258,6 +258,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         p_data[i].velocity.alloc(sizeof(cl_float) * 3 * particle_count);
         p_data[i].mass.alloc(sizeof(cl_float) * particle_count);
     }
+
+    interpolated_position.alloc(sizeof(cl_float) * 3 * particle_count);
+    interpolated_velocity.alloc(sizeof(cl_float) * 3 * particle_count);
 
     float generation_radius = 0.5f * get_c_at_max()/2.f;
 
@@ -501,53 +504,21 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     to_init.lookup("adm_S").buf.set_to_zero(cqueue);
 }
 
-void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration)
+void particle_dynamics::particle_step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration)
 {
     buffer_set& in = pack.in;
     buffer_set& out = pack.out;
     buffer_set& base = pack.base;
 
-    cl::buffer& memory_ptrs_val = memory_ptrs.value();
-    cl::buffer& counts_val = counts.value();
-
-    memory_alloc_count.set_to_zero(mqueue);
-
-    ///so. Need to take all my particles, advance them forwards in time. Some complications because I'm not going to do this in a backwards euler way, so only on the 0th iteration do we do fun things. Need to pre-swap buffers
-    ///need to fill up the adm buffers from the *current* particle positions
     vec3i dim = mesh.dim;
     cl_int4 clsize = {mesh.dim.x(), mesh.dim.y(), mesh.dim.z(), 0};
     float scale = mesh.scale;
 
-    ///shit no its not correct, we need to be implicit otherwise the sources are incorrect innit. Its F(y+1)
-    /*if(iteration == 0)
-    {
-        std::swap(particle_3_position[0], particle_3_position[1]);
-        std::swap(particle_3_velocity[0], particle_3_velocity[1]);
+    int in_idx = 0;
+    int out_idx = 1;
+    int base_idx = 0;
 
-        {
-            cl::args args;
-            args.push_back(particle_3_position[0]);
-            args.push_back(particle_3_velocity[0]);
-            args.push_back(particle_3_position[1]);
-            args.push_back(particle_3_velocity[1]);
-            args.push_back(particle_count);
-
-            for(named_buffer& i : in.buffers)
-            {
-                args.push_back(i.buf);
-            }
-
-            args.push_back(scale);
-            args.push_back(clsize);
-            args.push_back(timestep);
-
-            mqueue.exec("trace_geodesics", args, {particle_count}, {128});
-        }
-    }*/
-
-    int in_idx = pack.in_idx;
-    int out_idx = pack.out_idx;
-    int base_idx = pack.base_idx;
+    std::swap(p_data[in_idx], p_data[out_idx]);
 
     ///make sure to mark up the particle code!
     {
@@ -584,16 +555,55 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
 
         mqueue.exec("trace_geodesics", args, {particle_count}, {128});
     }
+}
+
+void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration)
+{
+    vec3i dim = mesh.dim;
+    cl_int4 clsize = {mesh.dim.x(), mesh.dim.y(), mesh.dim.z(), 0};
+    float scale = mesh.scale;
+
+    if(current_N == 0 && iteration == 0)
+    {
+        particle_step(mesh, ctx, mqueue,pool, pack, timestep * max_N, iteration, max_iteration);
+    }
+
+    float timestep_fraction = (float)current_N / max_N;
+
+    {
+        int in_idx = 0;
+        int out_idx = 1;
+
+        cl::args args;
+        args.push_back(p_data[in_idx].position);
+        args.push_back(p_data[in_idx].velocity);
+        args.push_back(p_data[out_idx].position);
+        args.push_back(p_data[out_idx].velocity);
+        args.push_back(interpolated_position);
+        args.push_back(interpolated_velocity);
+        args.push_back(timestep_fraction);
+        args.push_back(particle_count);
+
+        mqueue.exec("interpolate_particle_properties", args, {particle_count * 3}, {128});
+    }
+
+    cl::buffer& current_position = interpolated_position;
+    cl::buffer& current_velocity = interpolated_velocity;
+    cl::buffer& current_mass = p_data[0].mass;
+
+    cl::buffer& memory_ptrs_val = memory_ptrs.value();
+    cl::buffer& counts_val = counts.value();
 
     counts_val.set_to_zero(mqueue);
+    memory_alloc_count.set_to_zero(mqueue);
 
     ///find how many particles would be written per-cell
     {
         cl_int actually_write = 0;
 
         cl::args args;
-        args.push_back(p_data[in_idx].position);
-        args.push_back(p_data[in_idx].mass);
+        args.push_back(current_position);
+        args.push_back(current_mass);
         args.push_back(particle_count);
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val);
@@ -623,8 +633,8 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         cl_int actually_write = 1;
 
         cl::args args;
-        args.push_back(p_data[in_idx].position);
-        args.push_back(p_data[in_idx].mass);
+        args.push_back(current_position);
+        args.push_back(current_mass);
         args.push_back(particle_count);
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val);
@@ -640,16 +650,16 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     ///calculate adm quantities per-cell by summing across the list of particles
     {
         cl::args args;
-        args.push_back(p_data[in_idx].position);
-        args.push_back(p_data[in_idx].velocity);
-        args.push_back(p_data[in_idx].mass);
+        args.push_back(current_position);
+        args.push_back(current_velocity);
+        args.push_back(current_mass);
         args.push_back(particle_count);
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val);
         args.push_back(indices_block);
         args.push_back(weights_block);
 
-        for(named_buffer& i : in.buffers)
+        for(named_buffer& i : pack.in.buffers)
         {
             args.push_back(i.buf);
         }
@@ -661,7 +671,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     }
 
     ///todo: not this, want to have the indices controlled from a higher level
-    if(iteration != max_iteration)
+    /*if(iteration != max_iteration)
     {
         std::swap(p_data[in_idx].position, p_data[out_idx].position);
         std::swap(p_data[in_idx].velocity, p_data[out_idx].velocity);
@@ -672,10 +682,10 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         std::swap(p_data[base_idx].position, p_data[out_idx].position);
         std::swap(p_data[base_idx].velocity, p_data[out_idx].velocity);
         std::swap(p_data[base_idx].mass, p_data[out_idx].mass);
-    }
+    }*/
 }
 
 void particle_dynamics::finalise(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, float timestep)
 {
-
+    current_N = (current_N + 1) % max_N;
 }
