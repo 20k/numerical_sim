@@ -1,8 +1,12 @@
+#pragma OPENCL EXTENSION cl_khr_int64_base_atomics : enable
+
 #include "evolution_common.cl"
 #include "common.cl"
 #include "transform_position.cl"
 
 #define GET_IDX(x, i) (x * 3 + i)
+
+#define MASS_CUTOFF 0.0000001
 
 __kernel
 void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global float* initial_dirs3, __global float* positions3_out, __global float* velocities3_out, ulong geodesic_count, float scale, int4 dim)
@@ -110,7 +114,7 @@ void dissipate_mass(__global float* positions, __global float* mass_in, __global
     if(idx >= geodesic_count)
         return;
 
-    if(mass_in[idx] <= 0.000001f)
+    if(mass_in[idx] <= MASS_CUTOFF)
     {
         mass_out[idx] = 0;
         return;
@@ -140,7 +144,7 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     if(idx >= geodesic_count)
         return;
 
-    if(masses[idx] <= 0.000001f)
+    if(masses[idx] <= MASS_CUTOFF)
         return;
 
     float3 Xpos = {positions_in[GET_IDX(idx, 0)], positions_in[GET_IDX(idx, 1)], positions_in[GET_IDX(idx, 2)]};
@@ -228,7 +232,7 @@ void allocate_particle_spheres(__global int* counts, __global ulong* memory_ptrs
     ulong my_memory = 0;
 
     if(my_count > 0)
-        my_memory = atomic_add(memory_allocator, my_count);
+        my_memory = atom_add(memory_allocator, my_count);
 
     if(my_memory + my_count > max_memory)
     {
@@ -249,7 +253,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
     if(idx >= geodesic_count)
         return;
 
-    if(masses[idx] <= 0.000001f)
+    if(masses[idx] <= MASS_CUTOFF)
         return;
 
     float3 world_pos = {positions[GET_IDX(idx, 0)], positions[GET_IDX(idx, 1)], positions[GET_IDX(idx, 2)]};
@@ -376,7 +380,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
 
         float mass = masses[geodesic_idx];
 
-        if(mass <= 0.000001f)
+        if(mass <= MASS_CUTOFF)
             continue;
 
         float total_weight_factor = collected_weights[gidx];
