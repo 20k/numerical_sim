@@ -248,8 +248,6 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
     float scale = mesh.scale;
 
-    uint64_t size = dim.x() * dim.y() * dim.z() * sizeof(cl_float);
-
     particle_count = 2048 * 100;
 
     for(int i=0; i < (int)p_data.size(); i++)
@@ -271,12 +269,12 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     float init_mass = 0.00001;
     //float total_mass = mass * particle_count;
 
-    for(int i=0; i < particle_count; i++)
+    for(uint64_t i=0; i < particle_count; i++)
     {
         masses.push_back(init_mass);
     }
 
-    for(int i=0; i < particle_count; i++)
+    for(uint64_t i=0; i < particle_count; i++)
     {
         int kk=0;
 
