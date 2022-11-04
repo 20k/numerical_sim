@@ -5581,7 +5581,7 @@ int main()
     bool pao = false;
 
     bool render_skipping = false;
-    int skip_frames = 4;
+    int skip_frames = 8;
     int current_skip_frame = 0;
 
     clctx.cqueue.block();
