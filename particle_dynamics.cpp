@@ -63,9 +63,9 @@ tensor<value, 3, 3> particle_matter_interop::calculate_adm_X_Sij(equation_contex
 
 particle_dynamics::particle_dynamics(cl::context& ctx) : p_data{ctx, ctx, ctx}, pd(ctx), indices_block(ctx), weights_block(ctx), memory_alloc_count(ctx)
 {
-    indices_block.alloc(max_intermediate_size);
+    indices_block.alloc(max_intermediate_size * 2);
     weights_block.alloc(max_intermediate_size);
-    memory_alloc_count.alloc(sizeof(cl_int));
+    memory_alloc_count.alloc(sizeof(size_t));
 }
 
 std::vector<buffer_descriptor> particle_dynamics::get_buffers()
@@ -242,7 +242,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     memory_ptrs = cl::buffer(ctx);
     counts = cl::buffer(ctx);
 
-    memory_ptrs.value().alloc(sizeof(cl_int) * dim.x() * dim.y() * dim.z());
+    memory_ptrs.value().alloc(sizeof(cl_ulong) * dim.x() * dim.y() * dim.z());
     counts.value().alloc(sizeof(cl_int) * dim.x() * dim.y() * dim.z());
 
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};

@@ -5,9 +5,9 @@
 #define GET_IDX(x, i) (x * 3 + i)
 
 __kernel
-void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global float* initial_dirs3, __global float* positions3_out, __global float* velocities3_out, int geodesic_count, float scale, int4 dim)
+void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global float* initial_dirs3, __global float* positions3_out, __global float* velocities3_out, ulong geodesic_count, float scale, int4 dim)
 {
-    int idx = get_global_id(0);
+    size_t idx = get_global_id(0);
 
     if(idx >= geodesic_count)
         return;
@@ -103,9 +103,9 @@ void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, 
 }
 
 __kernel
-void dissipate_mass(__global float* positions, __global float* mass_in, __global float* mass_out, __global float* mass_base, int geodesic_count, float timestep)
+void dissipate_mass(__global float* positions, __global float* mass_in, __global float* mass_out, __global float* mass_base, ulong geodesic_count, float timestep)
 {
-    int idx = get_global_id(0);
+    size_t idx = get_global_id(0);
 
     if(idx >= geodesic_count)
         return;
@@ -133,9 +133,9 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
                      __global float* positions_out, __global float* velocities_out,
                      __global float* positions_base, __global float* velocities_base,
                      __global float* masses,
-                     int geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
+                     ulong geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
 {
-    int idx = get_global_id(0);
+    size_t idx = get_global_id(0);
 
     if(idx >= geodesic_count)
         return;
@@ -212,7 +212,7 @@ float get_f_sp(float r_rs)
 }
 
 __kernel
-void allocate_particle_spheres(__global int* counts, __global int* memory_ptrs, __global int* memory_allocator, int max_memory, int4 dim)
+void allocate_particle_spheres(__global int* counts, __global ulong* memory_ptrs, __global ulong* memory_allocator, ulong max_memory, int4 dim)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -225,7 +225,7 @@ void allocate_particle_spheres(__global int* counts, __global int* memory_ptrs, 
 
     int my_count = counts[index];
 
-    int my_memory = 0;
+    ulong my_memory = 0;
 
     if(my_count > 0)
         my_memory = atomic_add(memory_allocator, my_count);
@@ -242,7 +242,7 @@ void allocate_particle_spheres(__global int* counts, __global int* memory_ptrs, 
 }
 
 __kernel
-void collect_particle_spheres(__global float* positions, __global float* masses, int geodesic_count, __global int* collected_counts, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, float scale, int4 dim, int actually_write)
+void collect_particle_spheres(__global float* positions, __global float* masses, ulong geodesic_count, __global int* collected_counts, __global ulong* memory_ptrs, __global ulong* collected_indices, __global float* collected_weights, float scale, int4 dim, int actually_write)
 {
     int idx = get_global_id(0);
 
@@ -325,11 +325,11 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 
                 //total_weight = M_PI * pow(rs, 3);
 
-                int my_index = atomic_inc(&collected_counts[IDX(ix,iy,iz)]);
+                ulong my_index = atomic_inc(&collected_counts[IDX(ix,iy,iz)]);
 
                 if(actually_write)
                 {
-                    int my_memory_offset = memory_ptrs[IDX(ix,iy,iz)];
+                    ulong my_memory_offset = memory_ptrs[IDX(ix,iy,iz)];
 
                     collected_indices[my_memory_offset + my_index] = idx;
                     collected_weights[my_memory_offset + my_index] = total_weight;
@@ -340,7 +340,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 }
 
 __kernel
-void do_weighted_summation(__global float* positions, __global float* velocities, __global float* masses, int geodesic_count, __global int* collected_counts, __global int* memory_ptrs, __global int* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
+void do_weighted_summation(__global float* positions, __global float* velocities, __global float* masses, ulong geodesic_count, __global int* collected_counts, __global ulong* memory_ptrs, __global ulong* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -352,7 +352,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
     int index = IDX(ix,iy,iz);
 
     int my_count = collected_counts[index];
-    int my_memory_start = memory_ptrs[index];
+    ulong my_memory_start = memory_ptrs[index];
 
     float vadm_S = 0;
     float vadm_Si0 = 0;
@@ -370,9 +370,9 @@ void do_weighted_summation(__global float* positions, __global float* velocities
 
     for(int i=0; i < my_count; i++)
     {
-        int gidx = i + my_memory_start;
+        ulong gidx = i + my_memory_start;
 
-        int geodesic_idx = collected_indices[gidx];
+        ulong geodesic_idx = collected_indices[gidx];
 
         float mass = masses[geodesic_idx];
 
