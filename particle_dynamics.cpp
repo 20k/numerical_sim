@@ -674,3 +674,8 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         std::swap(p_data[base_idx].mass, p_data[out_idx].mass);
     }
 }
+
+void particle_dynamics::finalise(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, float timestep)
+{
+
+}

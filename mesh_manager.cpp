@@ -933,6 +933,11 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     enforce_constraints(data[1]);
 
+    for(plugin* p : plugins)
+    {
+        p->finalise(*this, ctx, mqueue, pool, timestep);
+    }
+
     mqueue.end_splice(main_queue);
 
     std::swap(data[1], data[0]);
