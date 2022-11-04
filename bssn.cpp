@@ -1112,7 +1112,7 @@ void bssn::build_gA(equation_context& ctx)
     //int m = 4;
     //value dtgA = lie_derivative(ctx, args.gB, args.gA) - 2 * args.gA * args.K * pow(bl, m);
 
-    value dtgA = lie_derivative(ctx, args.gB, args.gA) - 2 * args.gA * args.K;
+    value dtgA = lie_derivative(ctx, args.gB, args.gA) - args.gA * args.gA * args.K;
 
     /*value dibi = 0;
 
@@ -1227,7 +1227,7 @@ void bssn::build_gB(equation_context& ctx)
 
     #define STATIC_DAMP
     #ifdef STATIC_DAMP
-    value Ns_r = 1.45f;
+    value Ns_r = 0.5f;
     #endif
 
     value N = max(Ns_r, 0.5f);

@@ -24,7 +24,7 @@ struct particle_buffer
 struct particle_dynamics : plugin
 {
     int current_N = 0;
-    int max_N = 4;
+    int max_N = 6;
 
     cl_ulong particle_count = 0;
     std::array<particle_buffer, 3> p_data;
@@ -44,7 +44,7 @@ struct particle_dynamics : plugin
     std::array<cl::buffer, 6> adm_Sij;
     cl::buffer adm_S;*/
 
-    cl_ulong max_intermediate_size = cl_ulong{1024} * 1024 * 40;
+    cl_ulong max_intermediate_size = cl_ulong{1024} * 1024 * 240;
 
     cl::program pd;
 
