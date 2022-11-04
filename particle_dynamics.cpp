@@ -63,8 +63,8 @@ tensor<value, 3, 3> particle_matter_interop::calculate_adm_X_Sij(equation_contex
 
 particle_dynamics::particle_dynamics(cl::context& ctx) : p_data{ctx, ctx, ctx}, pd(ctx), indices_block(ctx), weights_block(ctx), memory_alloc_count(ctx)
 {
-    indices_block.alloc(max_intermediate_size * 2);
-    weights_block.alloc(max_intermediate_size);
+    indices_block.alloc(max_intermediate_size * sizeof(cl_ulong));
+    weights_block.alloc(max_intermediate_size * sizeof(cl_float));
     memory_alloc_count.alloc(sizeof(size_t));
 }
 
