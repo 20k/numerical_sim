@@ -180,6 +180,41 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     velocities_out[GET_IDX(idx, 2)] = out_vel.z;
 }
 
+__kernel
+void collect_geodesics(__global float* positions, __global float* masses, ulong geodesic_count, __global int* counts, __global ulong* memory_ptrs, __global ulong* collected_indices, float scale, int4 dim, float timestep, int actually_write)
+{
+    size_t idx = get_global_id(0);
+
+    if(idx >= geodesic_count)
+        return;
+
+    if(masses[idx] <= MASS_CUTOFF)
+        return;
+
+    float3 Xpos = {positions[GET_IDX(idx, 0)], positions[GET_IDX(idx, 1)], positions[GET_IDX(idx, 2)]};
+
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    int ix = (int)voxel_pos.x;
+    int iy = (int)voxel_pos.y;
+    int iz = (int)voxel_pos.z;
+
+    int buffer_index = IDX(ix,iy,iz);
+
+    ulong my_offset = atom_inc(&counts[buffer_index]);
+
+    if(actually_write)
+    {
+        ulong my_memory_ptr = memory_ptrs[buffer_index];
+
+        ulong my_index = my_offset + my_memory_ptr;
+
+        collected_indices[my_index] = idx;
+    }
+}
+
 /*float3 world_to_voxel_noround(float3 in, int4 dim, float scale)
 {
     float3 centre = (float3)((dim.x - 1) / 2, (dim.y - 1)/2, (dim.z - 1)/2);
@@ -329,7 +364,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 
                 //total_weight = M_PI * pow(rs, 3);
 
-                ulong my_index = atomic_inc(&collected_counts[IDX(ix,iy,iz)]);
+                ulong my_index = atom_inc(&collected_counts[IDX(ix,iy,iz)]);
 
                 if(actually_write)
                 {
