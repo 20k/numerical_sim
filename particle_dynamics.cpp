@@ -625,7 +625,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(max_intermediate_size);
         args.push_back(clsize);
 
-        mqueue.exec("allocate_particle_spheres", args, {dim.x(), dim.y(), dim.z()}, {8,8,1});
+        mqueue.exec("memory_allocate", args, {dim.x(), dim.y(), dim.z()}, {8,8,1});
     }
 
     ///write the indices and weights into indices_block, and weights_block at the offsets determined by memory_ptrs_val per-cell

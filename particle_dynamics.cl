@@ -251,7 +251,7 @@ float get_f_sp(float r_rs)
 }
 
 __kernel
-void allocate_particle_spheres(__global int* counts, __global ulong* memory_ptrs, __global ulong* memory_allocator, ulong max_memory, int4 dim)
+void memory_allocate(__global int* counts, __global ulong* memory_ptrs, __global ulong* memory_allocator, ulong max_memory, int4 dim)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
