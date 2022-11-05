@@ -572,6 +572,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         mqueue.exec("dissipate_mass", args, {particle_count}, {128});
     }
 
+    ///so. The collect/sort method is generally a big performance win, except for when particles are *very* densely packed together
     {
         cl_int actually_write = 0;
 
