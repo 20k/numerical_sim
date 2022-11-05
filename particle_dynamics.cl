@@ -198,9 +198,9 @@ void index_trace_geodesics(__global float* positions_in, __global float* velocit
 
     ulong idx = collected_indices[base_idx];
 
-    if(idx >= geodesic_count || idx >= *memory_alloc_count)
+    if(idx >= geodesic_count)
     {
-        printf("Critical error in index trace\n");
+        printf("Critical error in index trace %li %li %li\n", idx, geodesic_count, *memory_alloc_count);
         return;
     }
 
