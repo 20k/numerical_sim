@@ -250,7 +250,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
     float scale = mesh.scale;
 
-    particle_count = 1000 * 1000;
+    particle_count = 1000 * 5000;
 
     for(int i=0; i < (int)p_data.size(); i++)
     {
@@ -631,8 +631,6 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(p_data[base_idx].position.as_device_read_only());
         args.push_back(p_data[base_idx].velocity.as_device_read_only());
         args.push_back(p_data[in_idx].mass.as_device_read_only());
-        args.push_back(counts_val);
-        args.push_back(memory_ptrs_val);
         args.push_back(indices_block);
         args.push_back(memory_alloc_count);
         args.push_back(particle_count);
@@ -699,6 +697,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     }*/
 
     counts_val.set_to_zero(mqueue);
+    memory_alloc_count.set_to_zero(mqueue);
 
     ///find how many particles would be written per-cell
     {

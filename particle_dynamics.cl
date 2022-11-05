@@ -6,7 +6,7 @@
 
 #define GET_IDX(x, i) (x * 3 + i)
 
-#define MASS_CUTOFF 0.0000001
+#define MASS_CUTOFF 0.00000001
 
 __kernel
 void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global float* initial_dirs3, __global float* positions3_out, __global float* velocities3_out, ulong geodesic_count, float scale, int4 dim)
@@ -184,8 +184,8 @@ __kernel
 void index_trace_geodesics(__global float* positions_in, __global float* velocities_in,
                            __global float* positions_out, __global float* velocities_out,
                            __global float* positions_base, __global float* velocities_base,
-                          __global float* masses,
-                          __global int* counts, __global ulong* memory_ptrs, __global ulong* collected_indices, __global ulong* memory_alloc_count,
+                           __global float* masses,
+                           __global ulong* collected_indices, __global ulong* memory_alloc_count,
                           ulong geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
 {
     size_t base_idx = get_global_id(0);
@@ -197,6 +197,12 @@ void index_trace_geodesics(__global float* positions_in, __global float* velocit
         return;
 
     ulong idx = collected_indices[base_idx];
+
+    if(idx >= geodesic_count || idx >= *memory_alloc_count)
+    {
+        printf("Critical error in index trace\n");
+        return;
+    }
 
     if(masses[idx] <= MASS_CUTOFF)
         return;
