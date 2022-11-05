@@ -181,7 +181,73 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
 }
 
 __kernel
-void collect_geodesics(__global float* positions, __global float* masses, ulong geodesic_count, __global int* counts, __global ulong* memory_ptrs, __global ulong* collected_indices, float scale, int4 dim, float timestep, int actually_write)
+void cube_trace_geodesics(__global float* positions_in, __global float* velocities_in,
+                          __global float* positions_out, __global float* velocities_out,
+                          __global float* positions_base, __global float* velocities_base,
+                          __global float* masses,
+                          __global int* counts, __global ulong* memory_ptrs, __global ulong* collected_indices,
+                          ulong geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
+{
+    int ix = get_global_id(0);
+    int iy = get_global_id(1);
+    int iz = get_global_id(2);
+
+    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+        return;
+
+    int3 ipos = {ix, iy, iz};
+
+    if(any(ipos < BORDER_WIDTH) || any(ipos >= dim.xyz - BORDER_WIDTH - 1))
+        return;
+
+    int buffer_index = IDX(ix,iy,iz);
+
+    ulong my_memory_base = memory_ptrs[buffer_index];
+
+    int my_count = counts[buffer_index];
+
+    if(my_count == 0)
+        return;
+
+    for(int i=0; i < my_count; i++)
+    {
+        ulong memory_index = i + my_memory_base;
+
+        ulong idx = collected_indices[memory_index];
+
+        {
+
+            float3 Xpos = {positions_in[GET_IDX(idx, 0)], positions_in[GET_IDX(idx, 1)], positions_in[GET_IDX(idx, 2)]};
+            float3 vel = {velocities_in[GET_IDX(idx, 0)], velocities_in[GET_IDX(idx, 1)], velocities_in[GET_IDX(idx, 2)]};
+
+            float3 accel;
+            calculate_V_derivatives(&accel, Xpos, vel, scale, dim, GET_STANDARD_ARGS());
+
+            float3 XDiff;
+            velocity_to_XDiff(&XDiff, Xpos, vel, scale, dim, GET_STANDARD_ARGS());
+
+            float3 dXpos = XDiff * timestep;
+            float3 dvel = accel * timestep;
+
+            float3 base_Xpos = {positions_base[GET_IDX(idx, 0)], positions_base[GET_IDX(idx, 1)], positions_base[GET_IDX(idx, 2)]};
+            float3 base_vel = {velocities_base[GET_IDX(idx, 0)], velocities_base[GET_IDX(idx, 1)], velocities_base[GET_IDX(idx, 2)]};
+
+            float3 out_Xpos = base_Xpos + dXpos;
+            float3 out_vel = base_vel + dvel;
+
+            positions_out[GET_IDX(idx, 0)] = out_Xpos.x;
+            positions_out[GET_IDX(idx, 1)] = out_Xpos.y;
+            positions_out[GET_IDX(idx, 2)] = out_Xpos.z;
+
+            velocities_out[GET_IDX(idx, 0)] = out_vel.x;
+            velocities_out[GET_IDX(idx, 1)] = out_vel.y;
+            velocities_out[GET_IDX(idx, 2)] = out_vel.z;
+        }
+    }
+}
+
+__kernel
+void collect_geodesics(__global float* positions, __global float* masses, ulong geodesic_count, __global int* counts, __global ulong* memory_ptrs, __global ulong* collected_indices, float scale, int4 dim, int actually_write)
 {
     size_t idx = get_global_id(0);
 
@@ -250,6 +316,7 @@ float get_f_sp(float r_rs)
     return f_sp;
 }
 
+///this kernel is unnecessarily 3d
 __kernel
 void memory_allocate(__global int* counts, __global ulong* memory_ptrs, __global ulong* memory_allocator, ulong max_memory, int4 dim)
 {
