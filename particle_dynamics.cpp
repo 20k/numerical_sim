@@ -631,6 +631,33 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val);
         args.push_back(indices_block);
+        args.push_back(memory_alloc_count);
+        args.push_back(particle_count);
+
+        for(named_buffer& i : in.buffers)
+        {
+            args.push_back(i.buf);
+        }
+
+        args.push_back(scale);
+        args.push_back(clsize);
+        args.push_back(timestep);
+
+        mqueue.exec("index_trace_geodesics", args, {particle_count}, {128});
+    }
+
+    /*{
+        cl::args args;
+        args.push_back(p_data[in_idx].position.as_device_read_only());
+        args.push_back(p_data[in_idx].velocity.as_device_read_only());
+        args.push_back(p_data[out_idx].position.as_device_write_only());
+        args.push_back(p_data[out_idx].velocity.as_device_write_only());
+        args.push_back(p_data[base_idx].position.as_device_read_only());
+        args.push_back(p_data[base_idx].velocity.as_device_read_only());
+        args.push_back(p_data[in_idx].mass.as_device_read_only());
+        args.push_back(counts_val);
+        args.push_back(memory_ptrs_val);
+        args.push_back(indices_block);
         args.push_back(particle_count);
 
         for(named_buffer& i : in.buffers)
@@ -643,7 +670,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(timestep);
 
         mqueue.exec("cube_trace_geodesics", args, {dim.x(), dim.y(), dim.z()}, {8,8,1});
-    }
+    }*/
 
     /*{
         cl::args args;
