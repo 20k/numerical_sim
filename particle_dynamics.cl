@@ -321,6 +321,13 @@ void collect_geodesics(__global float* positions, __global float* masses, ulong 
     int iy = (int)voxel_pos.y;
     int iz = (int)voxel_pos.z;
 
+    /*ix /= 4;
+    iy /= 2;
+    iz /= 2;
+
+    if(ix < 0 || iy < 0 || iz < 0)
+        printf("WTF\n");*/
+
     int buffer_index = IDX(ix,iy,iz);
 
     ulong my_offset = atom_inc(&counts[buffer_index]);
