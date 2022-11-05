@@ -603,6 +603,8 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     }
 
     {
+        counts_val.set_to_zero(mqueue);
+
         cl_int actually_write = 1;
 
         cl::args args;
