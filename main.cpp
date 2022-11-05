@@ -5581,7 +5581,7 @@ int main()
     bool pao = false;
 
     bool render_skipping = false;
-    int skip_frames = 4;
+    int skip_frames = 8;
     int current_skip_frame = 0;
 
     clctx.cqueue.block();
@@ -5780,7 +5780,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.045f;
+        float timestep = 0.125f;
 
         //timestep = 0.04;
 
