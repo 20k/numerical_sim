@@ -268,7 +268,11 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     std::vector<vec3f> directions;
     std::vector<float> masses;
 
-    float init_mass = 0.000002;
+    float total_mass = 2;
+
+    float init_mass = total_mass / particle_count;
+
+    //float init_mass = 0.000002;
     //float total_mass = mass * particle_count;
 
     for(uint64_t i=0; i < particle_count; i++)
@@ -318,6 +322,12 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         if(kk == 1024)
             throw std::runtime_error("Did not successfully assign particle position");
     }
+
+    ///just for debugging performance, cuts off 30ms out of a 215 ms runtime. Ie sizeable
+    /*std::sort(positions.begin(), positions.end(), [](vec3f v1, vec3f v2)
+    {
+        return std::tie(v1.z(), v1.y(), v1.x()) < std::tie(v2.z(), v2.y(), v2.x());
+    });*/
 
     cl::buffer positions_in(ctx);
     positions_in.alloc(p_data[0].position.alloc_size);
