@@ -2,6 +2,7 @@
 #include <geodesic/dual_value.hpp>
 #include "equation_context.hpp"
 #include "bssn.hpp"
+#include "random.hpp"
 
 value particle_matter_interop::calculate_adm_p(equation_context& ctx, standard_arguments& bssn_args)
 {
