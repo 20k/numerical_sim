@@ -6,7 +6,8 @@
 
 #define GET_IDX(x, i) (x * 3 + i)
 
-#define MASS_CUTOFF 0.00000001
+///ah fine ok give up, we're not doing mass damping
+#define MASS_CUTOFF 0
 
 __kernel
 void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global float* initial_dirs3, __global float* positions3_out, __global float* velocities3_out, ulong geodesic_count, float scale, int4 dim)
