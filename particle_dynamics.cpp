@@ -323,7 +323,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     double milky_way_diameter_in_meters = pow(10., 21.);
 
-    double milky_way_mass_in_scale = (get_c_at_max() / milky_way_diameter_in_meters) * milky_way_mass_in_meters;
+    double milky_way_diameter_in_scale = get_c_at_max();
+
+    double milky_way_mass_in_scale = (milky_way_diameter_in_scale / milky_way_diameter_in_meters) * milky_way_mass_in_meters;
 
     printf("Milky mass numerical %.15f\n", milky_way_mass_in_scale);
 
@@ -345,7 +347,17 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         masses.push_back(init_mass);
     }
 
+    auto cdf = [&](float r)
+    {
+        return matter_cdf(milky_way_mass_in_scale, milky_way_diameter_in_scale/10.f, milky_way_diameter_in_scale/10.f, r, 1);
+    };
+
     xoshiro256ss_state rng = xoshiro256ss_init(1234);
+
+    auto random = [&]()
+    {
+        return uint64_to_double(xoshiro256ss(rng));
+    };
 
     for(uint64_t i=0; i < particle_count; i++)
     {
@@ -353,7 +365,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         for(; kk < 1024; kk++)
         {
-            float v0 = uint64_to_double(xoshiro256ss(rng));
+            /*float v0 = uint64_to_double(xoshiro256ss(rng));
             float v1 = uint64_to_double(xoshiro256ss(rng));
             float v2 = uint64_to_double(xoshiro256ss(rng));
 
@@ -366,7 +378,19 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             pos.z() *= 0.1f;
 
             float angle = atan2(pos.y(), pos.x());
-            float radius = pos.length();
+            float radius = pos.length();*/
+
+            float random_val = random();
+
+            float radius = select_from_cdf(random_val, milky_way_diameter_in_scale, cdf);
+
+            ///I have a distinct feeling we might need a sphere term in here
+            float angle = random() * 2 *  M_PI;
+
+            float z = (random() - 0.5f) * 2.f * milky_way_diameter_in_scale * 0.05f;
+
+            vec2f pos2 = {cos(angle) * radius, sin(angle) * radius};
+            vec3f pos = {pos2.x(), pos2.y(), z};
 
             if(radius >= generation_radius || radius < generation_radius * 0.1f)
                 continue;
