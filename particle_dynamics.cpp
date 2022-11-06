@@ -263,8 +263,6 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     float generation_radius = 0.5f * get_c_at_max()/2.f;
 
     ///need to use an actual rng if i'm doing anything even vaguely scientific
-    std::minstd_rand0 rng(3456);
-
     std::vector<vec3f> positions;
     std::vector<vec3f> directions;
     std::vector<float> masses;
@@ -306,15 +304,21 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         masses.push_back(init_mass);
     }
 
+    xoshiro256ss_state rng = xoshiro256ss_init(1234);
+
     for(uint64_t i=0; i < particle_count; i++)
     {
         int kk=0;
 
         for(; kk < 1024; kk++)
         {
-            float x = rand_det_s(rng, -1.f, 1.f) * generation_radius;
-            float y = rand_det_s(rng, -1.f, 1.f) * generation_radius;
-            float z = rand_det_s(rng, -1.f, 1.f) * generation_radius;
+            float v0 = uint64_to_double(xoshiro256ss(rng));
+            float v1 = uint64_to_double(xoshiro256ss(rng));
+            float v2 = uint64_to_double(xoshiro256ss(rng));
+
+            float x = (v0 - 0.5f) * 2 * generation_radius;
+            float y = (v1 - 0.5f) * 2 * generation_radius;
+            float z = (v2 - 0.5f) * 2 * generation_radius;
 
             vec3f pos = {x, y, z};
 

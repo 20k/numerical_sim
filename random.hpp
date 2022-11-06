@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <array>
+#include <bit>
 
 ///https://en.wikipedia.org/wiki/Xorshift
 ///todo: C++ify this
@@ -73,9 +74,9 @@ xoshiro256ss_state xoshiro256ss_init( uint64_t seed)
 inline
 double uint64_to_double(uint64_t v)
 {
-    uint64_t up = ((v & ((1ull << 52) - 1)) | 0x3FF0000000000000);
+    uint64_t up = (v & ((1ull << 52) - 1)) | 0x3FF0000000000000;
 
-    return (*(double*)&up) -  1.0;
+    return std::bit_cast<double>(up) - 1.0;
 }
 
 #endif // RANDOM_HPP_INCLUDED
