@@ -293,6 +293,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     float init_mass = total_mass / particle_count;
 
+    ///https://www.mdpi.com/2075-4434/6/3/70/htm mond galaxy info
+
     printf("Mass per particle %.20f\n", init_mass);
 
     //float init_mass = 0.000002;
