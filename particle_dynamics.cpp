@@ -234,6 +234,47 @@ float get_kepler_velocity(float distance_between_bodies, float my_mass, float th
     //float velocity = their_mass * their_mass / (R * M);
 }
 
+///https://arxiv.org/pdf/1705.04131.pdf 28
+float matter_cdf(float m0, float r0, float rc, float r, float B = 1)
+{
+    return m0 * pow(sqrt(r0/rc) * r/(r + rc), 3 * B);
+}
+
+float select_from_cdf(float value_0_1, float max_value, auto cdf)
+{
+    float value_at_max = cdf(max_value);
+    ///so. I have a cdf
+    ///I want to pull a value out of it
+    ///
+
+    float scaled = value_0_1 * value_at_max;
+
+    float next_upper = max_value;
+    float next_lower = 0;
+
+    for(int i=0; i < 10; i++)
+    {
+        float test_val = (next_upper + next_lower)/2.f;
+
+        float found_val = cdf(test_val);
+
+        if(found_val < scaled)
+        {
+            next_lower = test_val;
+        }
+        else if(found_val > scaled)
+        {
+            next_upper = test_val;
+        }
+        else
+        {
+            return test_val;
+        }
+    }
+
+    return (next_upper + next_lower)/2.f;
+}
+
 ///https://www.mdpi.com/2075-4434/6/3/70/htm (7)
 ///ok sweet! Next up, want to divorce particle step from field step
 ///ideally we'll step forwards the particles by a large timestep, and the interpolate to generate the underlying fields
