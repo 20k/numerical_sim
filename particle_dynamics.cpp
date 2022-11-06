@@ -250,7 +250,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
     float scale = mesh.scale;
 
-    particle_count = 1000 * 500;
+    particle_count = 1000 * 20;
 
     for(int i=0; i < (int)p_data.size(); i++)
     {
@@ -268,9 +268,32 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     std::vector<vec3f> directions;
     std::vector<float> masses;
 
-    float total_mass = 2;
+    double solar_mass = 1.98892 * pow(10., 30.);
+
+    //double milky_way_mass = 6. * pow(10., 42.);
+
+    double milky_way_mass = 6.43 * pow(10., 10.) * 1.16 * solar_mass;
+
+    double C = 299792458.;
+    double G = 6.67430 * pow(10., -11.);
+
+    double milky_way_mass_in_meters = milky_way_mass * G / (C*C);
+
+    printf("Milky mass %f\n", milky_way_mass_in_meters);
+
+    double milky_way_diameter_in_meters = pow(10., 21.);
+
+    double milky_way_mass_in_scale = (get_c_at_max() / milky_way_diameter_in_meters) * milky_way_mass_in_meters;
+
+    printf("Milky mass numerical %.15f\n", milky_way_mass_in_scale);
+
+    //float total_mass = 2;
+
+    float total_mass = milky_way_mass_in_scale;
 
     float init_mass = total_mass / particle_count;
+
+    printf("Mass per particle %.20f\n", init_mass);
 
     //float init_mass = 0.000002;
     //float total_mass = mass * particle_count;

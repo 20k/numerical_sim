@@ -1751,9 +1751,9 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         float p_val = buffer_read_linear(adm_p, voxel_pos, dim);
 
-        accum_R += p_val * 20;
-        accum_G += p_val * 20;
-        accum_B += p_val * 20;
+        accum_R += p_val * 2000000;
+        accum_G += p_val * 2000000;
+        accum_B += p_val * 2000000;
 
         if(accum_R > 1 && accum_G > 1 && accum_G > 1)
             break;
