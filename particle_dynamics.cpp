@@ -250,7 +250,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
     float scale = mesh.scale;
 
-    particle_count = 1000 * 5000;
+    particle_count = 1000 * 500;
 
     for(int i=0; i < (int)p_data.size(); i++)
     {
@@ -419,7 +419,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         ///https://arxiv.org/pdf/1904.07841.pdf 2.28
         ///https://en.wikipedia.org/wiki/Four-momentum#Relation_to_four-velocity
-        value Ea = sqrt(mass * mass + mass * mass * sum);
+        //value Ea = sqrt(mass * mass + mass * mass * sum);
+        value Ea = mass * sqrt(1 + sum);
 
         tensor<value, 3> covariant_momentum = mass * u_lower; ///????
 
