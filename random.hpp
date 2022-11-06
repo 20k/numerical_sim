@@ -50,19 +50,32 @@ uint64_t splitmix64(struct splitmix64_state *state)
 }
 
 inline
-void xoshiro256ss_init(struct xoshiro256ss_state *state, uint64_t seed)
+xoshiro256ss_state xoshiro256ss_init( uint64_t seed)
 {
-	struct splitmix64_state smstate = {seed};
+	splitmix64_state smstate = {seed};
 
 	uint64_t s0 = splitmix64(&smstate);
 	uint64_t s1 = splitmix64(&smstate);
 	uint64_t s2 = splitmix64(&smstate);
 	uint64_t s3 = splitmix64(&smstate);
 
-	state->s[0] = s0;
-	state->s[1] = s1;
-	state->s[2] = s2;
-	state->s[3] = s3;
+    xoshiro256ss_state state;
+
+	state.s[0] = s0;
+	state.s[1] = s1;
+	state.s[2] = s2;
+	state.s[3] = s3;
+
+	return state;
+}
+
+///returns [0, 1]
+inline
+double uint64_to_double(uint64_t v)
+{
+    uint64_t up = ((v & ((1ull << 52) - 1)) | 0x3FF0000000000000);
+
+    return (*(double*)&up) -  1.0;
 }
 
 #endif // RANDOM_HPP_INCLUDED
