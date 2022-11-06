@@ -245,7 +245,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     counts = cl::buffer(ctx);
 
     memory_ptrs.value().alloc(sizeof(cl_ulong) * dim.x() * dim.y() * dim.z());
-    counts.value().alloc(sizeof(cl_int) * dim.x() * dim.y() * dim.z());
+    counts.value().alloc(sizeof(cl_ulong) * dim.x() * dim.y() * dim.z());
 
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
     float scale = mesh.scale;
@@ -604,8 +604,6 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     }
 
     {
-        counts_val.set_to_zero(mqueue);
-
         cl_int actually_write = 1;
 
         cl::args args;
