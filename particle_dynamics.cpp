@@ -325,7 +325,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     double milky_way_diameter_in_scale = get_c_at_max();
 
-    double milky_way_mass_in_scale = (milky_way_diameter_in_scale / milky_way_diameter_in_meters) * milky_way_mass_in_meters;
+    double meters_to_scale = milky_way_diameter_in_scale / milky_way_diameter_in_meters;
+
+    double milky_way_mass_in_scale = meters_to_scale * milky_way_mass_in_meters;
 
     printf("Milky mass numerical %.15f\n", milky_way_mass_in_scale);
 
@@ -350,6 +352,21 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     auto cdf = [&](float r)
     {
         return matter_cdf(milky_way_mass_in_scale, milky_way_diameter_in_scale/10.f, milky_way_diameter_in_scale/10.f, r, 1);
+    };
+
+    auto get_mond_velocity = [](float r, float M, float G, float a0)
+    {
+        float p1 = G * M/r;
+
+        float p2 = (1/sqrt(2.f));
+
+        float frac = 2 * a0 / (G * M);
+
+        float p_inner = 1 + sqrt(1 + pow(r, 4.f) * pow(frac, 2.f));
+
+        float p3 = sqrt(p_inner);
+
+        return sqrt(p1 * p2 * p3);
     };
 
     xoshiro256ss_state rng = xoshiro256ss_init(1234);
@@ -403,7 +420,21 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
             //printf("Linear velocity %f\n", linear_velocity);
 
-            float linear_velocity = 0.1f * pow(radius / generation_radius, 2.f);
+            //float linear_velocity = 0.1f * pow(radius / generation_radius, 2.f);
+
+            double critical_acceleration_ms2 = 1.2 * pow(10., -8);
+
+            double critical_acceleration_im = critical_acceleration_ms2 / (C * C); ///units of 1/meters
+            double critical_acceleration_scale = critical_acceleration_im / meters_to_scale;
+
+            float mond_velocity = get_mond_velocity(radius, milky_way_mass_in_scale, 1, critical_acceleration_scale);
+
+            float linear_velocity = mond_velocity;
+
+            if(linear_velocity >= 0.5f)
+            {
+                printf("Umm\n");
+            }
 
             vec2f velocity = linear_velocity * velocity_direction;
 
