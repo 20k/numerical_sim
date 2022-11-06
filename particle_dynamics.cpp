@@ -420,7 +420,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ///https://arxiv.org/pdf/1904.07841.pdf 2.28
         ///https://en.wikipedia.org/wiki/Four-momentum#Relation_to_four-velocity
         //value Ea = sqrt(mass * mass + mass * mass * sum);
-        value Ea = mass * sqrt(1 + sum);
+        value lorentz = sqrt(1 + sum);
+        value Ea = mass * lorentz;
 
         tensor<value, 3> covariant_momentum = mass * u_lower; ///????
 
@@ -437,7 +438,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         {
             for(int j=0; j < 3; j++)
             {
-                Sij.idx(i, j) = idet * (covariant_momentum.idx(i) * covariant_momentum.idx(j) / Ea);
+                //Sij.idx(i, j) = idet * (covariant_momentum.idx(i) * covariant_momentum.idx(j) / Ea);
+                Sij.idx(i, j) = idet * (covariant_momentum.idx(i) * (u_lower.idx(j) / lorentz));
             }
         }
 
