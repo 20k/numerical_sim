@@ -386,6 +386,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         return uint64_to_double(xoshiro256ss(rng));
     };
 
+    ///oh! use the actual matter distribution we get out instead of the theoretical one
     for(uint64_t i=0; i < particle_count; i++)
     {
         int kk=0;
