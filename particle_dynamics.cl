@@ -151,6 +151,16 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     float3 Xpos = {positions_in[GET_IDX(idx, 0)], positions_in[GET_IDX(idx, 1)], positions_in[GET_IDX(idx, 2)]};
     float3 vel = {velocities_in[GET_IDX(idx, 0)], velocities_in[GET_IDX(idx, 1)], velocities_in[GET_IDX(idx, 2)]};
 
+    if(!all(isfinite(Xpos)))
+    {
+        printf("Xpos is non finite\n");
+    }
+
+    if(!all(isfinite(vel)))
+    {
+        printf("Vel is non finite\n");
+    }
+
     float3 accel;
     calculate_V_derivatives(&accel, Xpos, vel, scale, dim, GET_STANDARD_ARGS());
 
@@ -323,6 +333,12 @@ void collect_geodesics(__global float* positions, __global float* masses, ulong 
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
 
     voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    if(!all(isfinite(voxel_pos)))
+    {
+        printf("Non finite voxel pos in collect_geodesics\n");
+        return;
+    }
 
     int ix = (int)voxel_pos.x;
     int iy = (int)voxel_pos.y;
