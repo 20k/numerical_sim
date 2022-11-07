@@ -369,7 +369,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         return sqrt(p1 * p2 * p3);
     };
 
-    xoshiro256ss_state rng = xoshiro256ss_init(1234);
+    xoshiro256ss_state rng = xoshiro256ss_init(2345);
 
     auto random = [&]()
     {
@@ -409,7 +409,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             vec2f pos2 = {cos(angle) * radius, sin(angle) * radius};
             vec3f pos = {pos2.x(), pos2.y(), z};
 
-            if(radius >= generation_radius || radius < generation_radius * 0.1f)
+            //if(radius >= generation_radius || radius < generation_radius * 0.1f)
+
+            if(radius >= generation_radius)
                 continue;
 
             positions.push_back(pos);
@@ -546,7 +548,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ///https://arxiv.org/pdf/1904.07841.pdf 2.28
         ///https://en.wikipedia.org/wiki/Four-momentum#Relation_to_four-velocity
         //value Ea = sqrt(mass * mass + mass * mass * sum);
-        value lorentz = sqrt(1 + sum);
+        value lorentz = sqrt(1 + fabs(sum));
         value Ea = mass * lorentz;
 
         tensor<value, 3> covariant_momentum = mass * u_lower; ///????
@@ -702,7 +704,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     }
 
     ///so. The collect/sort method is generally a big performance win, except for when particles are *very* densely packed together
-    {
+    /*{
         cl_int actually_write = 0;
 
         counts_val.set_to_zero(mqueue);
@@ -772,7 +774,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(timestep);
 
         mqueue.exec("index_trace_geodesics", args, {particle_count}, {128});
-    }
+    }*/
 
     /*{
         cl::args args;
@@ -800,7 +802,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         mqueue.exec("cube_trace_geodesics", args, {dim.x(), dim.y(), dim.z()}, {8,8,1});
     }*/
 
-    /*{
+    {
         cl::args args;
         args.push_back(p_data[in_idx].position.as_device_read_only());
         args.push_back(p_data[in_idx].velocity.as_device_read_only());
@@ -821,7 +823,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(timestep);
 
         mqueue.exec("trace_geodesics", args, {particle_count}, {128});
-    }*/
+    }
 
     counts_val.set_to_zero(mqueue);
     memory_alloc_count.set_to_zero(mqueue);
