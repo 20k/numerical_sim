@@ -252,7 +252,7 @@ float select_from_cdf(float value_0_1, float max_value, auto cdf)
     float next_upper = max_value;
     float next_lower = 0;
 
-    for(int i=0; i < 10; i++)
+    for(int i=0; i < 50; i++)
     {
         float test_val = (next_upper + next_lower)/2.f;
 
@@ -271,6 +271,8 @@ float select_from_cdf(float value_0_1, float max_value, auto cdf)
             return test_val;
         }
     }
+
+    //printf("Looking for %.14f found %.14f with y = %.14f\n", scaled, (next_upper + next_lower)/2.f, cdf((next_upper + next_lower)/2.f));
 
     return (next_upper + next_lower)/2.f;
 }
@@ -292,7 +294,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
     float scale = mesh.scale;
 
-    particle_count = 1000 * 80;
+    particle_count = 1000 * 100;
 
     for(int i=0; i < (int)p_data.size(); i++)
     {
