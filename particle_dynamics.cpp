@@ -386,6 +386,64 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         return uint64_to_double(xoshiro256ss(rng));
     };
 
+    for(uint64_t i=0; i < particle_count; i++)
+    {
+        float random_val = random();
+
+        float radius = select_from_cdf(random_val, milky_way_diameter_in_scale/2.f, cdf);
+
+        ///M
+        float mass_density = cdf(radius);
+
+        ///I have a distinct feeling we might need a sphere term in here
+        float angle = random() * 2 *  M_PI;
+
+        float z = (random() - 0.5f) * 2.f * milky_way_diameter_in_scale * 0.05f;
+
+        vec2f pos2 = {cos(angle) * radius, sin(angle) * radius};
+        vec3f pos = {pos2.x(), pos2.y(), z};
+
+        positions.push_back(pos);
+    }
+
+    std::sort(positions.begin(), positions.end(), [](vec3f v1, vec3f v2)
+    {
+        return v1.length() < v2.length();
+    });
+
+    {
+        double real_cdf_by_radius = 0;
+
+        for(vec3f p : positions)
+        {
+            real_cdf_by_radius += init_mass;
+
+            float radius = p.length();
+
+            float M_r = real_cdf_by_radius;
+
+            float angle = atan2(p.y(), p.x());
+
+            vec2f velocity_direction = (vec2f){1, 0}.rot(angle + M_PI/2);
+
+            double critical_acceleration_ms2 = 1.2 * pow(10., -8);
+
+            double critical_acceleration_im = critical_acceleration_ms2 / (C * C); ///units of 1/meters
+            double critical_acceleration_scale = critical_acceleration_im / meters_to_scale;
+
+            float mond_velocity = get_mond_velocity(radius, M_r, 1, critical_acceleration_scale);
+
+            float linear_velocity = mond_velocity;
+
+            vec2f velocity = linear_velocity * velocity_direction;
+
+            vec3f velocity3 = {velocity.x(), velocity.y(), 0};
+
+            directions.push_back(velocity3);
+        }
+    }
+
+    #if 0
     ///oh! use the actual matter distribution we get out instead of the theoretical one
     for(uint64_t i=0; i < particle_count; i++)
     {
@@ -464,6 +522,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         if(kk == 1024)
             throw std::runtime_error("Did not successfully assign particle position");
     }
+    #endif
 
 
     {
@@ -739,6 +798,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     {
         cl::args args;
         args.push_back(p_data[in_idx].position.as_device_read_only());
+        args.push_back(p_data[in_idx].velocity.as_device_read_only());
         args.push_back(p_data[in_idx].mass.as_device_read_only());
         args.push_back(p_data[out_idx].mass.as_device_write_only());
         args.push_back(p_data[base_idx].mass.as_device_read_only());

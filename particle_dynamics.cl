@@ -118,7 +118,7 @@ void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, 
 }
 
 __kernel
-void dissipate_mass(__global float* positions, __global float* mass_in, __global float* mass_out, __global float* mass_base, ITYPE geodesic_count, float timestep)
+void dissipate_mass(__global float* positions, __global float* velocities, __global float* mass_in, __global float* mass_out, __global float* mass_base, ITYPE geodesic_count, float timestep)
 {
     size_t idx = get_global_id(0);
 
@@ -132,8 +132,9 @@ void dissipate_mass(__global float* positions, __global float* mass_in, __global
     }
 
     float3 Xpos = {positions[GET_IDX(idx, 0)], positions[GET_IDX(idx, 1)], positions[GET_IDX(idx, 2)]};
+    float3 vel = {velocities[GET_IDX(idx, 0)], velocities[GET_IDX(idx, 1)], velocities[GET_IDX(idx, 2)]};
 
-    if(fast_length(Xpos) >= MASS_CULL_SIZE)
+    if(fast_length(Xpos) >= MASS_CULL_SIZE || any(!isfinite(Xpos)) || any(!isfinite(vel)))
     {
         mass_out[idx] = 0;
     }
