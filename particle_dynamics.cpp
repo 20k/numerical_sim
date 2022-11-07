@@ -292,7 +292,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
     float scale = mesh.scale;
 
-    particle_count = 1000 * 20;
+    particle_count = 1000 * 80;
 
     for(int i=0; i < (int)p_data.size(); i++)
     {
@@ -336,6 +336,14 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     float total_mass = milky_way_mass_in_scale;
 
     float init_mass = total_mass / particle_count;
+
+    {
+        double time_for_light_to_traverse_s = milky_way_diameter_in_meters / C;
+        double time_for_light_to_traverse_m = time_for_light_to_traverse_s * C;
+        double time_for_light_to_traverse_scale = time_for_light_to_traverse_m * meters_to_scale;
+
+        printf("Light Time %f\n", time_for_light_to_traverse_scale);
+    }
 
     ///https://www.mdpi.com/2075-4434/6/3/70/htm mond galaxy info
 
@@ -673,6 +681,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
 void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration)
 {
+    elapsed += timestep;
+
     buffer_set& in = pack.in;
     buffer_set& out = pack.out;
     buffer_set& base = pack.base;
@@ -719,7 +729,10 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     int out_idx = pack.out_idx;
     int base_idx = pack.base_idx;
 
+    bool step_particles = elapsed > get_c_at_max() * 2;
+
     ///make sure to mark up the particle code!
+    if(step_particles)
     {
         cl::args args;
         args.push_back(p_data[in_idx].position.as_device_read_only());
@@ -831,6 +844,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         mqueue.exec("cube_trace_geodesics", args, {dim.x(), dim.y(), dim.z()}, {8,8,1});
     }*/
 
+    if(step_particles)
     {
         cl::args args;
         args.push_back(p_data[in_idx].position.as_device_read_only());
@@ -930,18 +944,21 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         mqueue.exec("do_weighted_summation", args, {dim.x(), dim.y(), dim.z()}, {8,8,1});
     }
 
-    ///todo: not this, want to have the indices controlled from a higher level
-    if(iteration != max_iteration)
+    if(step_particles)
     {
-        std::swap(p_data[in_idx].position, p_data[out_idx].position);
-        std::swap(p_data[in_idx].velocity, p_data[out_idx].velocity);
-        std::swap(p_data[in_idx].mass, p_data[out_idx].mass);
-    }
-    else
-    {
-        std::swap(p_data[base_idx].position, p_data[out_idx].position);
-        std::swap(p_data[base_idx].velocity, p_data[out_idx].velocity);
-        std::swap(p_data[base_idx].mass, p_data[out_idx].mass);
+        ///todo: not this, want to have the indices controlled from a higher level
+        if(iteration != max_iteration)
+        {
+            std::swap(p_data[in_idx].position, p_data[out_idx].position);
+            std::swap(p_data[in_idx].velocity, p_data[out_idx].velocity);
+            std::swap(p_data[in_idx].mass, p_data[out_idx].mass);
+        }
+        else
+        {
+            std::swap(p_data[base_idx].position, p_data[out_idx].position);
+            std::swap(p_data[base_idx].velocity, p_data[out_idx].velocity);
+            std::swap(p_data[base_idx].mass, p_data[out_idx].mass);
+        }
     }
 }
 
