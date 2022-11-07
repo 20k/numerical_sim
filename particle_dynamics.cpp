@@ -323,7 +323,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     double milky_way_diameter_in_meters = pow(10., 21.);
 
-    double milky_way_diameter_in_scale = get_c_at_max();
+    double milky_way_diameter_in_scale = get_c_at_max() * 0.6f;
 
     double meters_to_scale = milky_way_diameter_in_scale / milky_way_diameter_in_meters;
 
@@ -399,7 +399,10 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
             float random_val = random();
 
-            float radius = select_from_cdf(random_val, milky_way_diameter_in_scale, cdf);
+            float radius = select_from_cdf(random_val, milky_way_diameter_in_scale/2.f, cdf);
+
+            ///M
+            float mass_density = cdf(radius);
 
             ///I have a distinct feeling we might need a sphere term in here
             float angle = random() * 2 *  M_PI;
@@ -411,8 +414,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
             //if(radius >= generation_radius || radius < generation_radius * 0.1f)
 
-            if(radius >= generation_radius)
-                continue;
+            //if(radius >= generation_radius)
+            //    continue;
 
             positions.push_back(pos);
 
@@ -429,7 +432,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             double critical_acceleration_im = critical_acceleration_ms2 / (C * C); ///units of 1/meters
             double critical_acceleration_scale = critical_acceleration_im / meters_to_scale;
 
-            float mond_velocity = get_mond_velocity(radius, milky_way_mass_in_scale, 1, critical_acceleration_scale);
+            float mond_velocity = get_mond_velocity(radius, mass_density, 1, critical_acceleration_scale);
 
             float linear_velocity = mond_velocity;
 
@@ -449,6 +452,32 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         if(kk == 1024)
             throw std::runtime_error("Did not successfully assign particle position");
+    }
+
+
+    {
+        std::vector<vec3f> sorted_positions = positions;
+
+        std::sort(sorted_positions.begin(), sorted_positions.end(), [](vec3f v1, vec3f v2)
+        {
+            return v1.length() < v2.length();
+        });
+
+        double run_mass = 0;
+
+        int dbg_idx = 0;
+
+        for(vec3f v : sorted_positions)
+        {
+            float rad = v.length();
+
+            if((dbg_idx % 100) == 0)
+                printf("Current mass %.18f Expected mass %.18f at rad %.18f milky %.18f\n", run_mass / total_mass, cdf(rad) / cdf(milky_way_diameter_in_scale/2.f), rad, milky_way_diameter_in_scale);
+
+            run_mass += init_mass;
+
+            dbg_idx++;
+        }
     }
 
     ///just for debugging performance, cuts off 30ms out of a 215 ms runtime. Ie sizeable
