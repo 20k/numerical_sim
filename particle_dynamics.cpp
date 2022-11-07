@@ -294,7 +294,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
     float scale = mesh.scale;
 
-    particle_count = 1000 * 100;
+    particle_count = 1000 * 10;
 
     for(int i=0; i < (int)p_data.size(); i++)
     {
@@ -359,14 +359,18 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         masses.push_back(init_mass);
     }
 
+    float M0 = milky_way_mass_in_scale;
+    float R0 = milky_way_diameter_in_scale/5.f;
+    float Rc = milky_way_diameter_in_scale/5.f;
+
     auto cdf = [&](float r)
     {
-        return matter_cdf(milky_way_mass_in_scale, milky_way_diameter_in_scale/10.f, milky_way_diameter_in_scale/10.f, r, 1);
+        return matter_cdf(milky_way_mass_in_scale, R0, Rc, r, 1);
     };
 
-    auto get_mond_velocity = [](float r, float M, float G, float a0)
+    auto get_mond_velocity = [&](float r, float M, float G, float a0)
     {
-        float p1 = G * M/r;
+        /*float p1 = G * M/r;
 
         float p2 = (1/sqrt(2.f));
 
@@ -376,7 +380,18 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         float p3 = sqrt(p_inner);
 
-        return sqrt(p1 * p2 * p3);
+        return sqrt(p1 * p2 * p3);*/
+
+        float b = 1;
+        float B = 1;
+
+        float p1 = (G * M0) / r;
+
+        float p2 = pow(sqrt(R0/Rc) * r / (r + Rc), 3 * B);
+
+        float p3 = (1 + b * (1 + r/R0));
+
+        return p1 * p2 * p3;
     };
 
     xoshiro256ss_state rng = xoshiro256ss_init(2345);
