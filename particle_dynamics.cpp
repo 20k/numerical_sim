@@ -293,7 +293,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
     float scale = mesh.scale;
 
-    particle_count = 1000 * 100;
+    particle_count = 1000 * 80;
 
     for(int i=0; i < (int)p_data.size(); i++)
     {
@@ -532,7 +532,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
             //float mond_velocity = sqrt(1 * M_r / radius);
 
-            float mond_velocity = sqrt(1 * M_r * radius * radius * pow(radius * radius + 1 * 1, -3.f/2.f));
+            float mond_velocity = sqrt(1 * M_r * radius * radius * pow(radius * radius + 1 * 1, -3.f/2.f)) * 0;
 
             if((which % 100) == 0)
             {
