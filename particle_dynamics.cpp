@@ -494,10 +494,10 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         analytic_radius.push_back(radius);
     }
 
-    std::sort(positions.begin(), positions.end(), [](vec3f v1, vec3f v2)
+    /*std::sort(positions.begin(), positions.end(), [](vec3f v1, vec3f v2)
     {
         return v1.length() < v2.length();
-    });
+    });*/
 
     {
         double real_cdf_by_radius = 0;
@@ -528,11 +528,11 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             double critical_acceleration_im = critical_acceleration_ms2 / (C * C); ///units of 1/meters
             double critical_acceleration_scale = critical_acceleration_im / meters_to_scale;
 
-            //float mond_velocity = get_mond_velocity(radius, M_r, 1, critical_acceleration_scale);
+            float mond_velocity = get_mond_velocity(radius, M_r, 1, critical_acceleration_scale);
 
             //float mond_velocity = sqrt(1 * M_r / radius);
 
-            float mond_velocity = sqrt(1 * M_r * radius * radius * pow(radius * radius + 1 * 1, -3.f/2.f)) * 0;
+            //float mond_velocity = sqrt(1 * M_r * radius * radius * pow(radius * radius + 1 * 1, -3.f/2.f));
 
             if((which % 100) == 0)
             {
