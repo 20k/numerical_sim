@@ -241,16 +241,9 @@ float matter_cdf(float m0, float r0, float rc, float r, float B = 1)
     return m0 * pow(sqrt(r0/rc) * r/(r + rc), 3 * B);
 }
 
-float select_from_cdf(float value_0_1, float max_value, auto cdf)
+float select_from_cdf(float value_mx, float max_radius, auto cdf)
 {
-    float value_at_max = cdf(max_value);
-    ///so. I have a cdf
-    ///I want to pull a value out of it
-    ///
-
-    float scaled = value_0_1 * value_at_max;
-
-    float next_upper = max_value;
+    float next_upper = max_radius;
     float next_lower = 0;
 
     for(int i=0; i < 50; i++)
@@ -259,11 +252,15 @@ float select_from_cdf(float value_0_1, float max_value, auto cdf)
 
         float found_val = cdf(test_val);
 
-        if(found_val < scaled)
+        ///return clearly bad value
+        if(found_val > max_radius)
+            return max_radius * 10;
+
+        if(found_val < value_mx)
         {
             next_lower = test_val;
         }
-        else if(found_val > scaled)
+        else if(found_val > value_mx)
         {
             next_upper = test_val;
         }
@@ -378,7 +375,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         float a = 1;
 
-        return (milky_way_mass_in_scale / (2 * M_PI * a * a)) * pow(1 + rf*rf/a*a, -8.f/3.f);
+        return (milky_way_mass_in_scale / (2 * M_PI * a * a)) * pow(1 + rf*rf/a*a, -3.f/2.f);
     };
 
     auto cdf = [&](float r)
@@ -468,9 +465,14 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
                 break;
         }*/
 
-        float random_val = random();
+        float radius = 0;
 
-        float radius = select_from_cdf(random_val, milky_way_diameter_in_scale/2.f, cdf);
+        do
+        {
+            float random_mass = random() * milky_way_mass_in_scale;
+
+            radius = select_from_cdf(random_mass, milky_way_diameter_in_scale/2.f, cdf);
+        } while(radius >= milky_way_diameter_in_scale/2.f);
 
         ///M
         float mass_density = cdf(radius);
@@ -513,7 +515,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             double critical_acceleration_im = critical_acceleration_ms2 / (C * C); ///units of 1/meters
             double critical_acceleration_scale = critical_acceleration_im / meters_to_scale;
 
-            float mond_velocity = get_mond_velocity(radius, M_r, 1, critical_acceleration_scale);
+            //float mond_velocity = get_mond_velocity(radius, M_r, 1, critical_acceleration_scale);
+
+            float mond_velocity = sqrt(1 * M_r / radius);
 
             if((which % 100) == 0)
             {
