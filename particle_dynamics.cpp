@@ -293,7 +293,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
     float scale = mesh.scale;
 
-    particle_count = 1000 * 10;
+    particle_count = 1000 * 100;
 
     for(int i=0; i < (int)p_data.size(); i++)
     {
@@ -503,7 +503,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
             float radius = p.length();
 
-            float M_r = real_cdf_by_radius;
+            //float M_r = real_cdf_by_radius;
+
+            float M_r = cdf(radius);
 
             float angle = atan2(p.y(), p.x());
 
