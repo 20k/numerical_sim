@@ -480,7 +480,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ///I have a distinct feeling we might need a sphere term in here
         float angle = random() * 2 *  M_PI;
 
-        float z = (random() - 0.5f) * 2.f * milky_way_diameter_in_scale * 0.f;
+        float z = (random() - 0.5f) * 2.f * milky_way_diameter_in_scale * 0.000001f;
 
         vec2f pos2 = {cos(angle) * radius, sin(angle) * radius};
         vec3f pos = {pos2.x(), pos2.y(), z};

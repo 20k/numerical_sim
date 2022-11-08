@@ -134,6 +134,11 @@ void dissipate_mass(__global float* positions, __global float* velocities, __glo
     float3 Xpos = {positions[GET_IDX(idx, 0)], positions[GET_IDX(idx, 1)], positions[GET_IDX(idx, 2)]};
     float3 vel = {velocities[GET_IDX(idx, 0)], velocities[GET_IDX(idx, 1)], velocities[GET_IDX(idx, 2)]};
 
+    if(any(!isfinite(Xpos)) || any(!isfinite(vel)))
+    {
+        printf("Nan in dissipate mass\n");
+    }
+
     if(fast_length(Xpos) >= MASS_CULL_SIZE || any(!isfinite(Xpos)) || any(!isfinite(vel)))
     {
         mass_out[idx] = 0;
