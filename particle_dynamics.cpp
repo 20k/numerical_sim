@@ -305,6 +305,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     float generation_radius = 0.5f * get_c_at_max()/2.f;
 
     ///need to use an actual rng if i'm doing anything even vaguely scientific
+    std::vector<float> analytic_radius;
     std::vector<vec3f> positions;
     std::vector<vec3f> directions;
     std::vector<float> masses;
@@ -471,7 +472,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             float random_mass = random() * milky_way_mass_in_scale;
 
             radius = select_from_cdf(random_mass, milky_way_diameter_in_scale/2.f, cdf);
-        } while(radius >= milky_way_diameter_in_scale/2.f);
+        } while(radius >= milky_way_diameter_in_scale/2.f || radius <= milky_way_diameter_in_scale/100.f);
 
         ///M
         //float mass_density = cdf(radius);
@@ -479,12 +480,13 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ///I have a distinct feeling we might need a sphere term in here
         float angle = random() * 2 *  M_PI;
 
-        float z = (random() - 0.5f) * 2.f * milky_way_diameter_in_scale * 0.05f;
+        float z = (random() - 0.5f) * 2.f * milky_way_diameter_in_scale * 0.f;
 
         vec2f pos2 = {cos(angle) * radius, sin(angle) * radius};
         vec3f pos = {pos2.x(), pos2.y(), z};
 
         positions.push_back(pos);
+        analytic_radius.push_back(radius);
     }
 
     std::sort(positions.begin(), positions.end(), [](vec3f v1, vec3f v2)
@@ -497,11 +499,16 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         int which = 0;
 
-        for(vec3f p : positions)
+        //for(vec3f p : positions)
+
+        for(int i=0; i < (int)positions.size(); i++)
         {
+            vec3f p = positions[i];
+            float radius = analytic_radius[i];
+
             real_cdf_by_radius += init_mass;
 
-            float radius = p.length();
+            //float radius = p.length();
 
             //float M_r = real_cdf_by_radius;
 
@@ -516,9 +523,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             double critical_acceleration_im = critical_acceleration_ms2 / (C * C); ///units of 1/meters
             double critical_acceleration_scale = critical_acceleration_im / meters_to_scale;
 
-            //float mond_velocity = get_mond_velocity(radius, M_r, 1, critical_acceleration_scale);
+            float mond_velocity = get_mond_velocity(radius, M_r, 1, critical_acceleration_scale);
 
-            float mond_velocity = sqrt(1 * M_r / radius);
+            //float mond_velocity = sqrt(1 * M_r / radius);
 
             if((which % 100) == 0)
             {
