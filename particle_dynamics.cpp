@@ -314,7 +314,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     //double milky_way_mass = 6. * pow(10., 42.);
 
-    double milky_way_mass = 6.43 * pow(10., 10.) * 1.16 * solar_mass;
+    double milky_way_mass = 6.43 * pow(10., 10.) * 1.16 * solar_mass * 100;
 
     double C = 299792458.;
     double G = 6.67430 * pow(10., -11.);
@@ -523,7 +523,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
             vec2f velocity_direction = (vec2f){1, 0}.rot(angle + M_PI/2);
 
-            double critical_acceleration_ms2 = 1.2 * pow(10., -8);
+            ///that's cm, fucked up
+            double critical_acceleration_ms2 = 1.2 * pow(10., -10);
 
             double critical_acceleration_im = critical_acceleration_ms2 / (C * C); ///units of 1/meters
             double critical_acceleration_scale = critical_acceleration_im / meters_to_scale;
