@@ -243,6 +243,11 @@ float matter_cdf(float m0, float r0, float rc, float r, float B = 1)
 
 float select_from_cdf(float value_mx, float max_radius, auto cdf)
 {
+    float value_at_max = cdf(max_radius);
+
+    if(value_mx >= value_at_max)
+        return max_radius * 1000;
+
     float next_upper = max_radius;
     float next_lower = 0;
 
@@ -251,10 +256,6 @@ float select_from_cdf(float value_mx, float max_radius, auto cdf)
         float test_val = (next_upper + next_lower)/2.f;
 
         float found_val = cdf(test_val);
-
-        ///return clearly bad value
-        if(found_val > max_radius)
-            return max_radius * 10;
 
         if(found_val < value_mx)
         {
@@ -371,11 +372,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     auto surface_density = [&](float r)
     {
-        float rf = r / (milky_way_diameter_in_scale/2.f);
-
         float a = 1;
 
-        return (milky_way_mass_in_scale / (2 * M_PI * a * a)) * pow(1 + rf*rf/a*a, -3.f/2.f);
+        return (milky_way_mass_in_scale / (2 * M_PI * a * a)) * pow(1 + r*r/a*a, -3.f/2.f);
     };
 
     auto cdf = [&](float r)
@@ -475,7 +474,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         } while(radius >= milky_way_diameter_in_scale/2.f);
 
         ///M
-        float mass_density = cdf(radius);
+        //float mass_density = cdf(radius);
 
         ///I have a distinct feeling we might need a sphere term in here
         float angle = random() * 2 *  M_PI;
