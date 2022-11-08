@@ -332,6 +332,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     double milky_way_mass_in_scale = meters_to_scale * milky_way_mass_in_meters;
 
     printf("Milky mass numerical %.15f\n", milky_way_mass_in_scale);
+    printf("Milky Radius scale %.15f\n", milky_way_diameter_in_scale);
 
     //float total_mass = 2;
 
@@ -373,9 +374,13 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     auto surface_density = [&](float r)
     {
+        //float a = 1;
+
+        //return (milky_way_mass_in_scale / (2 * M_PI * a * a)) * pow(1 + r*r/a*a, -3.f/2.f);
+
         float a = 1;
 
-        return (milky_way_mass_in_scale / (2 * M_PI * a * a)) * pow(1 + r*r/a*a, -3.f/2.f);
+        return (milky_way_mass_in_scale * a / (2 * M_PI)) * pow(r*r + a*a, -3.f/2.f);
     };
 
     auto cdf = [&](float r)
@@ -523,9 +528,11 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             double critical_acceleration_im = critical_acceleration_ms2 / (C * C); ///units of 1/meters
             double critical_acceleration_scale = critical_acceleration_im / meters_to_scale;
 
-            float mond_velocity = get_mond_velocity(radius, M_r, 1, critical_acceleration_scale);
+            //float mond_velocity = get_mond_velocity(radius, M_r, 1, critical_acceleration_scale);
 
             //float mond_velocity = sqrt(1 * M_r / radius);
+
+            float mond_velocity = sqrt(1 * M_r * radius * radius * pow(radius * radius + 1 * 1, -3.f/2.f));
 
             if((which % 100) == 0)
             {

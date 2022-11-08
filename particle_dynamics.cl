@@ -658,6 +658,11 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         }
     }
 
+    /*if(index == IDX((dim.x/2) - 5, dim.y/2, dim.z/2))
+    {
+        printf("X %f\n", X[index]);
+    }*/
+
     if(vadm_p > 0 || (vadm_p == 0 && adm_p[index] != 0))
     {
         adm_S[index] = vadm_S;
