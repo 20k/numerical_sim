@@ -314,7 +314,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     //double milky_way_mass = 6. * pow(10., 42.);
 
-    double milky_way_mass = 6.43 * pow(10., 10.) * 1.16 * solar_mass * 100;
+    double milky_way_mass = 6.43 * pow(10., 10.) * 1.16 * solar_mass * 10000;
 
     double C = 299792458.;
     double G = 6.67430 * pow(10., -11.);
@@ -529,9 +529,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             double critical_acceleration_im = critical_acceleration_ms2 / (C * C); ///units of 1/meters
             double critical_acceleration_scale = critical_acceleration_im / meters_to_scale;
 
-            float mond_velocity = get_mond_velocity(radius, M_r, 1, critical_acceleration_scale);
+            //float mond_velocity = get_mond_velocity(radius, M_r, 1, critical_acceleration_scale);
 
-            //float mond_velocity = sqrt(1 * M_r / radius);
+            float mond_velocity = sqrt(1 * M_r / radius);
 
             //float mond_velocity = sqrt(1 * M_r * radius * radius * pow(radius * radius + 1 * 1, -3.f/2.f));
 
@@ -900,7 +900,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     int out_idx = pack.out_idx;
     int base_idx = pack.base_idx;
 
-    bool step_particles = elapsed > get_c_at_max() * 2;
+    bool step_particles = elapsed > get_c_at_max() * 2 || true;
 
     ///make sure to mark up the particle code!
     if(step_particles)
