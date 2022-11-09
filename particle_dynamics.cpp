@@ -477,7 +477,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             float random_mass = random() * milky_way_mass_in_scale;
 
             radius = select_from_cdf(random_mass, milky_way_diameter_in_scale/2.f, cdf);
-        } while(radius >= milky_way_diameter_in_scale/2.f || radius <= milky_way_diameter_in_scale/100.f);
+        } while(radius >= milky_way_diameter_in_scale/2.f);
 
         ///M
         //float mass_density = cdf(radius);
