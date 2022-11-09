@@ -3,6 +3,7 @@
 #include "equation_context.hpp"
 #include "bssn.hpp"
 #include "random.hpp"
+#include "spherical_integration.hpp"
 
 value particle_matter_interop::calculate_adm_p(equation_context& ctx, standard_arguments& bssn_args)
 {
@@ -240,29 +241,27 @@ float matter_cdf(float m0, float r0, float rc, float r, float B = 1)
     return m0 * pow(sqrt(r0/rc) * r/(r + rc), 3 * B);
 }
 
-float select_from_cdf(float value_0_1, float max_value, auto cdf)
+float select_from_cdf(float value_mx, float max_radius, auto cdf)
 {
-    float value_at_max = cdf(max_value);
-    ///so. I have a cdf
-    ///I want to pull a value out of it
-    ///
+    float value_at_max = cdf(max_radius);
 
-    float scaled = value_0_1 * value_at_max;
+    if(value_mx >= value_at_max)
+        return max_radius * 1000;
 
-    float next_upper = max_value;
+    float next_upper = max_radius;
     float next_lower = 0;
 
-    for(int i=0; i < 10; i++)
+    for(int i=0; i < 50; i++)
     {
         float test_val = (next_upper + next_lower)/2.f;
 
         float found_val = cdf(test_val);
 
-        if(found_val < scaled)
+        if(found_val < value_mx)
         {
             next_lower = test_val;
         }
-        else if(found_val > scaled)
+        else if(found_val > value_mx)
         {
             next_upper = test_val;
         }
@@ -271,6 +270,8 @@ float select_from_cdf(float value_0_1, float max_value, auto cdf)
             return test_val;
         }
     }
+
+    //printf("Looking for %.14f found %.14f with y = %.14f\n", scaled, (next_upper + next_lower)/2.f, cdf((next_upper + next_lower)/2.f));
 
     return (next_upper + next_lower)/2.f;
 }
@@ -304,6 +305,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     float generation_radius = 0.5f * get_c_at_max()/2.f;
 
     ///need to use an actual rng if i'm doing anything even vaguely scientific
+    std::vector<float> analytic_radius;
     std::vector<vec3f> positions;
     std::vector<vec3f> directions;
     std::vector<float> masses;
@@ -330,12 +332,21 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     double milky_way_mass_in_scale = meters_to_scale * milky_way_mass_in_meters;
 
     printf("Milky mass numerical %.15f\n", milky_way_mass_in_scale);
+    printf("Milky Radius scale %.15f\n", milky_way_diameter_in_scale);
 
     //float total_mass = 2;
 
     float total_mass = milky_way_mass_in_scale;
 
     float init_mass = total_mass / particle_count;
+
+    {
+        double time_for_light_to_traverse_s = milky_way_diameter_in_meters / C;
+        double time_for_light_to_traverse_m = time_for_light_to_traverse_s * C;
+        double time_for_light_to_traverse_scale = time_for_light_to_traverse_m * meters_to_scale;
+
+        printf("Light Time %f\n", time_for_light_to_traverse_scale);
+    }
 
     ///https://www.mdpi.com/2075-4434/6/3/70/htm mond galaxy info
 
@@ -349,12 +360,45 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         masses.push_back(init_mass);
     }
 
-    auto cdf = [&](float r)
+    float M0 = milky_way_mass_in_scale;
+    float R0 = milky_way_diameter_in_scale/5.f;
+    float Rc = milky_way_diameter_in_scale/5.f;
+
+    /*auto cdf = [&](float r)
     {
-        return matter_cdf(milky_way_mass_in_scale, milky_way_diameter_in_scale/10.f, milky_way_diameter_in_scale/10.f, r, 1);
+        return matter_cdf(milky_way_mass_in_scale, R0, Rc, r, 1);
+    };*/
+
+    //float integrated
+
+
+    auto surface_density = [&](float r)
+    {
+        //float a = 1;
+
+        //return (milky_way_mass_in_scale / (2 * M_PI * a * a)) * pow(1 + r*r/a*a, -3.f/2.f);
+
+        float a = 1;
+
+        return (milky_way_mass_in_scale * a / (2 * M_PI)) * pow(r*r + a*a, -3.f/2.f);
     };
 
-    auto get_mond_velocity = [](float r, float M, float G, float a0)
+    auto cdf = [&](float r)
+    {
+        /*auto p2 = [&](float r)
+        {
+            return 4 * M_PI * r * r * surface_density(r);
+        };*/
+
+        auto p3 = [&](float r)
+        {
+            return 2 * M_PI * r * surface_density(r);
+        };
+
+        return integrate_1d(p3, 64, r, 0.f);
+    };
+
+    auto get_mond_velocity = [&](float r, float M, float G, float a0)
     {
         float p1 = G * M/r;
 
@@ -367,6 +411,17 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         float p3 = sqrt(p_inner);
 
         return sqrt(p1 * p2 * p3);
+
+        /*float b = 0.352;
+        float B = 1;
+
+        float p1 = (G * M0) / r;
+
+        float p2 = pow(sqrt(R0/Rc) * r / (r + Rc), 3 * B);
+
+        float p3 = (1 + b * (1 + r/R0));
+
+        return sqrt(p1 * p2 * p3);*/
     };
 
     xoshiro256ss_state rng = xoshiro256ss_init(2345);
@@ -376,6 +431,129 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         return uint64_to_double(xoshiro256ss(rng));
     };
 
+    float approximate_core_mass = cdf(Rc);
+
+    /*int core_particles = ceilf(approximate_core_mass / init_mass);
+
+    for(int i=0; i < core_particles; i++)
+    {
+        vec3f random_pos;
+
+        while(1)
+        {
+            random_pos = {random(), random(), random()};
+
+            random_pos = (random_pos - 0.5f) * 2 * Rc;
+
+            if(random_pos.length() <= Rc)
+                break;
+        }
+
+        vec3f pos = random_pos;
+
+        pos.z() *= 0.05f;
+
+        positions.push_back(pos);
+    }*/
+
+    for(int i=0; i < particle_count; i++)
+    {
+        /*float radius = 0;
+
+        while(1)
+        {
+            float random_val = random();
+
+            radius = select_from_cdf(random_val, milky_way_diameter_in_scale/2.f, cdf);
+
+            if(radius > Rc)
+                break;
+        }*/
+
+        float radius = 0;
+
+        do
+        {
+            float random_mass = random() * milky_way_mass_in_scale;
+
+            radius = select_from_cdf(random_mass, milky_way_diameter_in_scale/2.f, cdf);
+        } while(radius >= milky_way_diameter_in_scale/2.f);
+
+        ///M
+        //float mass_density = cdf(radius);
+
+        ///I have a distinct feeling we might need a sphere term in here
+        float angle = random() * 2 *  M_PI;
+
+        float z = (random() - 0.5f) * 2.f * milky_way_diameter_in_scale * 0.000001f;
+
+        vec2f pos2 = {cos(angle) * radius, sin(angle) * radius};
+        vec3f pos = {pos2.x(), pos2.y(), z};
+
+        positions.push_back(pos);
+        analytic_radius.push_back(radius);
+    }
+
+    /*std::sort(positions.begin(), positions.end(), [](vec3f v1, vec3f v2)
+    {
+        return v1.length() < v2.length();
+    });*/
+
+    {
+        double real_cdf_by_radius = 0;
+
+        int which = 0;
+
+        //for(vec3f p : positions)
+
+        for(int i=0; i < (int)positions.size(); i++)
+        {
+            vec3f p = positions[i];
+            float radius = analytic_radius[i];
+
+            real_cdf_by_radius += init_mass;
+
+            //float radius = p.length();
+
+            //float M_r = real_cdf_by_radius;
+
+            float M_r = cdf(radius);
+
+            float angle = atan2(p.y(), p.x());
+
+            vec2f velocity_direction = (vec2f){1, 0}.rot(angle + M_PI/2);
+
+            ///that's cm, fucked up
+            double critical_acceleration_ms2 = 1.2 * pow(10., -10);
+
+            double critical_acceleration_im = critical_acceleration_ms2 / (C * C); ///units of 1/meters
+            double critical_acceleration_scale = critical_acceleration_im / meters_to_scale;
+
+            //float mond_velocity = get_mond_velocity(radius, M_r, 1, critical_acceleration_scale);
+
+            float mond_velocity = sqrt(1 * M_r / radius);
+
+            //float mond_velocity = sqrt(1 * M_r * radius * radius * pow(radius * radius + 1 * 1, -3.f/2.f));
+
+            if((which % 100) == 0)
+            {
+                printf("Velocity %f at radius %f Total Mass %.10f Analytic Mass %.10f\n", mond_velocity, radius, M_r, cdf(radius));
+            }
+
+            float linear_velocity = mond_velocity;
+
+            vec2f velocity = linear_velocity * velocity_direction;
+
+            vec3f velocity3 = {velocity.x(), velocity.y(), 0};
+
+            directions.push_back(velocity3);
+
+            which++;
+        }
+    }
+
+    #if 0
+    ///oh! use the actual matter distribution we get out instead of the theoretical one
     for(uint64_t i=0; i < particle_count; i++)
     {
         int kk=0;
@@ -453,6 +631,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         if(kk == 1024)
             throw std::runtime_error("Did not successfully assign particle position");
     }
+    #endif
 
 
     {
@@ -471,8 +650,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         {
             float rad = v.length();
 
-            if((dbg_idx % 100) == 0)
-                printf("Current mass %.18f Expected mass %.18f at rad %.18f milky %.18f\n", run_mass / total_mass, cdf(rad) / cdf(milky_way_diameter_in_scale/2.f), rad, milky_way_diameter_in_scale);
+            //if((dbg_idx % 100) == 0)
+            //    printf("Current mass %.18f Expected mass %.18f at rad %.18f milky %.18f\n", run_mass / total_mass, cdf(rad) / cdf(milky_way_diameter_in_scale/2.f), rad, milky_way_diameter_in_scale);
 
             run_mass += init_mass;
 
