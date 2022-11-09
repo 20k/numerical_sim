@@ -1113,7 +1113,7 @@ void render(STANDARD_ARGS(),
         int index = IDX(ix, iy, iz);
 
         #ifdef RENDER_MATTER_P
-        float ascalar = fabs(adm_p[index]) * 20;
+        float ascalar = fabs(adm_p[index]) * 2000000;
         #endif // RENDER_MATTER_P
 
         //#define RENDER_METRIC
