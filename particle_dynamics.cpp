@@ -495,8 +495,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         double radius = dist.select_radius(rng);
         double velocity = dist.get_velocity_at(radius);
 
-        printf("Local Velocity %f\n", velocity);
-        printf("Local To Meters", 1/dist.meters_to_local);
+        //printf("Local Velocity %f\n", velocity);
+        //printf("Local To Meters", 1/dist.meters_to_local);
 
         double angle = uint64_to_double(xoshiro256ss(rng)) * 2 * M_PI;
 
@@ -525,8 +525,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         assert(speed_in_c < 1);
 
-        printf("Velocity %f\n", speed_in_c);
-        printf("Position %f %f %f\n", pos.x(), pos.y(), pos.z());
+        //printf("Velocity %f\n", speed_in_c);
+        //printf("Position %f %f %f\n", pos.x(), pos.y(), pos.z());
     }
 
     /*for(int i=0; i < particle_count; i++)
