@@ -308,7 +308,7 @@ struct galaxy_distribution
     double local_G = 0;
     double meters_to_local = 0;
 
-    double local_radius_to_meters(double r)
+    double local_distance_to_meters(double r)
     {
         return r / meters_to_local;
     }
@@ -354,7 +354,7 @@ struct galaxy_distribution
         double to_local_distance = max_radius / params.radius_m;
         double to_local_mass = mass / params.mass_kg;
 
-        local_G = get_G() * to_local_mass / pow(to_local_distance, 3);
+        local_G = get_G() * pow(to_local_distance, 3) / to_local_mass;
         meters_to_local = to_local_distance;
     }
 
@@ -385,6 +385,9 @@ struct numerical_params
     double mass = 0;
     double radius = 0;
 
+    double mass_to_m = 0;
+    double m_to_scale = 0;
+
     numerical_params(const galaxy_params& params)
     {
         double C = 299792458.;
@@ -398,6 +401,19 @@ struct numerical_params
 
         mass = mass_in_m * meters_to_scale;
         radius = radius_in_m * meters_to_scale;
+
+        mass_to_m = G / (C*C);
+        m_to_scale = meters_to_scale;
+    }
+
+    double convert_mass_to_scale(double mass_kg)
+    {
+        return mass_kg * mass_to_m * m_to_scale;
+    }
+
+    double convert_distance_to_scale(double dist_m)
+    {
+        return dist_m * m_to_scale;
     }
 };
 
@@ -428,102 +444,34 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     }
 
     ///need to use an actual rng if i'm doing anything even vaguely scientific
-    std::vector<float> analytic_radius;
+    //std::vector<float> analytic_radius;
     std::vector<vec3f> positions;
     std::vector<vec3f> directions;
     std::vector<float> masses;
 
-    double solar_mass = 1.98892 * pow(10., 30.);
+    double milky_way_mass_kg = 6.43 * pow(10., 10.) * 1.16 * get_solar_mass_kg();
+    double milky_way_radius_m = pow(5., 20.);
 
-    //double milky_way_mass = 6. * pow(10., 42.);
+    galaxy_params params;
+    params.mass_kg = milky_way_mass_kg;
+    params.radius_m = milky_way_radius_m;
 
-    double milky_way_mass = 6.43 * pow(10., 10.) * 1.16 * get_solar_mass_kg();
+    galaxy_distribution dist(params);
 
-    double C = 299792458.;
-    double G = 6.67430 * pow(10., -11.);
+    numerical_params num_params(params);
 
-    double milky_way_mass_in_meters = milky_way_mass * G / (C*C);
-
-    printf("Milky mass %f\n", milky_way_mass_in_meters);
-
-    double milky_way_diameter_in_meters = pow(10., 21.);
-
-    double milky_way_diameter_in_scale = get_c_at_max() * 0.6f;
-
-    double meters_to_scale = milky_way_diameter_in_scale / milky_way_diameter_in_meters;
-
-    double milky_way_mass_in_scale = meters_to_scale * milky_way_mass_in_meters;
-
-    printf("Milky mass numerical %.15f\n", milky_way_mass_in_scale);
-    printf("Milky Radius scale %.15f\n", milky_way_diameter_in_scale);
-
-    //float total_mass = 2;
-
-    float total_mass = milky_way_mass_in_scale;
-
-    float init_mass = total_mass / particle_count;
-
-    {
-        double time_for_light_to_traverse_s = milky_way_diameter_in_meters / C;
-        double time_for_light_to_traverse_m = time_for_light_to_traverse_s * C;
-        double time_for_light_to_traverse_scale = time_for_light_to_traverse_m * meters_to_scale;
-
-        printf("Light Time %f\n", time_for_light_to_traverse_scale);
-    }
+    float init_mass = num_params.mass / particle_count;
 
     ///https://www.mdpi.com/2075-4434/6/3/70/htm mond galaxy info
 
     printf("Mass per particle %.20f\n", init_mass);
-
-    //float init_mass = 0.000002;
-    //float total_mass = mass * particle_count;
 
     for(uint64_t i=0; i < particle_count; i++)
     {
         masses.push_back(init_mass);
     }
 
-    float M0 = milky_way_mass_in_scale;
-    float R0 = milky_way_diameter_in_scale/5.f;
-    float Rc = milky_way_diameter_in_scale/5.f;
-
-    /*auto cdf = [&](float r)
-    {
-        return matter_cdf(milky_way_mass_in_scale, R0, Rc, r, 1);
-    };*/
-
-    //float integrated
-
-
-    auto surface_density = [&](float r)
-    {
-        //float a = 1;
-
-        //return (milky_way_mass_in_scale / (2 * M_PI * a * a)) * pow(1 + r*r/a*a, -3.f/2.f);
-
-        float a = 1;
-
-        return (milky_way_mass_in_scale * a / (2 * M_PI)) * pow(r*r + a*a, -3.f/2.f);
-    };
-
-    auto cdf = [&](float r)
-    {
-        ///correct for cumulative sphere model
-        /*auto p2 = [&](float r)
-        {
-            return 4 * M_PI * r * r * surface_density(r);
-        };*/
-
-        ///correct for surface density
-        auto p3 = [&](float r)
-        {
-            return 2 * M_PI * r * surface_density(r);
-        };
-
-        return integrate_1d(p3, 64, r, 0.f);
-    };
-
-    auto get_mond_velocity = [&](float r, float M, float G, float a0)
+    /*auto get_mond_velocity = [&](float r, float M, float G, float a0)
     {
         float p1 = G * M/r;
 
@@ -536,16 +484,42 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         float p3 = sqrt(p_inner);
 
         return sqrt(p1 * p2 * p3);
-    };
+    };*/
 
     xoshiro256ss_state rng = xoshiro256ss_init(2345);
 
-    auto random = [&]()
-    {
-        return uint64_to_double(xoshiro256ss(rng));
-    };
-
     for(int i=0; i < particle_count; i++)
+    {
+        double radius = dist.select_radius(rng);
+        double velocity = dist.get_velocity_at(radius);
+
+        double angle = uint64_to_double(xoshiro256ss(rng)) * 2 * M_PI;
+
+        double z = 0;
+
+        double radius_m = dist.local_distance_to_meters(radius);
+        double radius_scale = num_params.convert_distance_to_scale(radius_m);
+
+        //double scale_radius = num_params.convert_distance_to_scale(radius);
+
+        vec3f pos = {cos(angle) * radius_scale, sin(angle) * radius_scale, z};
+
+        positions.push_back(pos);
+
+        ///velocity is distance/s so should be fine
+        double speed_in_ms = dist.local_distance_to_meters(velocity);
+        double speed_in_c = speed_in_ms / get_c();
+
+        vec2f velocity_direction = (vec2f){1, 0}.rot(angle + M_PI/2);
+
+        vec2f velocity_2d = speed_in_c * velocity_direction;
+
+        vec3f velocity_fin = {velocity_2d.x(), velocity_2d.y(), 0.f};
+
+        directions.push_back(velocity_fin);
+    }
+
+    /*for(int i=0; i < particle_count; i++)
     {
         float radius = 0;
 
@@ -566,59 +540,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         positions.push_back(pos);
         analytic_radius.push_back(radius);
-    }
+    }*/
 
-    {
-        double real_cdf_by_radius = 0;
-
-        int which = 0;
-
-        //for(vec3f p : positions)
-
-        for(int i=0; i < (int)positions.size(); i++)
-        {
-            vec3f p = positions[i];
-            float radius = analytic_radius[i];
-
-            real_cdf_by_radius += init_mass;
-
-            //float radius = p.length();
-
-            //float M_r = real_cdf_by_radius;
-
-            float M_r = cdf(radius);
-
-            float angle = atan2(p.y(), p.x());
-
-            vec2f velocity_direction = (vec2f){1, 0}.rot(angle + M_PI/2);
-
-            double critical_acceleration_ms2 = 1.2 * pow(10., -10);
-
-            double critical_acceleration_im = critical_acceleration_ms2 / (C * C); ///units of 1/meters
-            double critical_acceleration_scale = critical_acceleration_im / meters_to_scale;
-
-            //float mond_velocity = get_mond_velocity(radius, M_r, 1, critical_acceleration_scale);
-
-            float mond_velocity = sqrt(1 * M_r / radius);
-
-            //float mond_velocity = sqrt(1 * M_r * radius * radius * pow(radius * radius + 1 * 1, -3.f/2.f));
-
-            if((which % 100) == 0)
-            {
-                printf("Velocity %f at radius %f Total Mass %.10f Analytic Mass %.10f\n", mond_velocity, radius, M_r, cdf(radius));
-            }
-
-            float linear_velocity = mond_velocity;
-
-            vec2f velocity = linear_velocity * velocity_direction;
-
-            vec3f velocity3 = {velocity.x(), velocity.y(), 0};
-
-            directions.push_back(velocity3);
-
-            which++;
-        }
-    }
 
     ///just for debugging performance, cuts off 30ms out of a 215 ms runtime. Ie sizeable
     /*std::sort(positions.begin(), positions.end(), [](vec3f v1, vec3f v2)
