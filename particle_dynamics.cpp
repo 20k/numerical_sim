@@ -276,6 +276,52 @@ float select_from_cdf(float value_mx, float max_radius, auto cdf)
     return (next_upper + next_lower)/2.f;
 }
 
+struct galaxy_params
+{
+    double mass_kg = 0;
+    double radius_m = 0;
+};
+
+///This is not geometric units, this is scale independent
+struct galaxy_distribution
+{
+    double central_mass_units = 0;
+    double radius = 0;
+
+    double surface_density(double radius)
+    {
+        return 0;
+    }
+
+    double cdf(double r)
+    {
+        ///correct for cumulative sphere model
+        /*auto p2 = [&](float r)
+        {
+            return 4 * M_PI * r * r * surface_density(r);
+        };*/
+
+        ///correct for surface density
+        auto p3 = [&](double r)
+        {
+            return 2 * M_PI * r * surface_density(r);
+        };
+
+        return integrate_1d(p3, 64, r, 0.);
+    };
+
+    galaxy_distribution(const galaxy_params& params)
+    {
+        ///decide scale. Probably just crack radius between 0 and 5 because astrophysics!
+        ///sun units?
+    }
+
+    double select_radius(xoshiro256ss_state& state)
+    {
+        return 0.;
+    }
+};
+
 ///https://www.mdpi.com/2075-4434/6/3/70/htm (7)
 ///ok sweet! Next up, want to divorce particle step from field step
 ///ideally we'll step forwards the particles by a large timestep, and the interpolate to generate the underlying fields
@@ -301,8 +347,6 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         p_data[i].velocity.alloc(sizeof(cl_float) * 3 * particle_count);
         p_data[i].mass.alloc(sizeof(cl_float) * particle_count);
     }
-
-    float generation_radius = 0.5f * get_c_at_max()/2.f;
 
     ///need to use an actual rng if i'm doing anything even vaguely scientific
     std::vector<float> analytic_radius;
