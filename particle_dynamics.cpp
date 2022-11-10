@@ -285,12 +285,14 @@ struct galaxy_params
 ///This is not geometric units, this is scale independent
 struct galaxy_distribution
 {
-    double central_mass_units = 0;
-    double radius = 0;
+    double mass = 0;
+    double max_radius = 0;
 
-    double surface_density(double radius)
+    double surface_density(double r)
     {
-        return 0;
+        double a = 1;
+
+        return (mass / (2 * M_PI * a * a)) * pow(1 + r*r/a*a, -3./2.);
     }
 
     double cdf(double r)
@@ -316,9 +318,25 @@ struct galaxy_distribution
         ///sun units?
     }
 
-    double select_radius(xoshiro256ss_state& state)
+    double select_radius(xoshiro256ss_state& rng)
     {
-        return 0.;
+        auto lambda_cdf = [&](double r)
+        {
+            return cdf(r);
+        };
+
+        double found_radius = 0;
+
+        do
+        {
+            double random = uint64_to_double(xoshiro256ss(rng));
+
+            double random_mass = random * mass;
+
+            found_radius = select_from_cdf(random_mass, max_radius, lambda_cdf);
+        } while(found_radius >= max_radius);
+
+        return found_radius;
     }
 };
 
