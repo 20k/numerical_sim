@@ -352,6 +352,21 @@ struct numerical_params
 {
     double mass = 0;
     double radius = 0;
+
+    numerical_params(const galaxy_params& params)
+    {
+        double C = 299792458.;
+        double G = 6.67430 * pow(10., -11.);
+
+        double mass_in_m = params.mass_kg * G / (C*C);
+        double radius_in_m = params.radius_m;
+
+        double max_scale_radius = get_c_at_max() * 0.5f * 0.7f;
+        double meters_to_scale = max_scale_radius / mass_in_m;
+
+        mass = mass_in_m * meters_to_scale;
+        radius = radius_in_m * meters_to_scale;
+    }
 };
 
 ///https://www.mdpi.com/2075-4434/6/3/70/htm (7)
