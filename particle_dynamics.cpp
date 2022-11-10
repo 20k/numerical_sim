@@ -397,7 +397,7 @@ struct numerical_params
         double radius_in_m = params.radius_m;
 
         double max_scale_radius = get_c_at_max() * 0.5f * 0.7f;
-        double meters_to_scale = max_scale_radius / mass_in_m;
+        double meters_to_scale = max_scale_radius / radius_in_m;
 
         mass = mass_in_m * meters_to_scale;
         radius = radius_in_m * meters_to_scale;
