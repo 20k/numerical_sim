@@ -306,6 +306,12 @@ struct galaxy_distribution
     double max_radius = 0;
 
     double local_G = 0;
+    double meters_to_local = 0;
+
+    double local_radius_to_meters(double r)
+    {
+        return r / meters_to_local;
+    }
 
     double surface_density(double r)
     {
@@ -349,6 +355,7 @@ struct galaxy_distribution
         double to_local_mass = mass / params.mass_kg;
 
         local_G = get_G() * to_local_mass / pow(to_local_distance, 3);
+        meters_to_local = to_local_distance;
     }
 
     double select_radius(xoshiro256ss_state& rng)
