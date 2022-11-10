@@ -402,6 +402,8 @@ struct numerical_params
         mass = mass_in_m * meters_to_scale;
         radius = radius_in_m * meters_to_scale;
 
+        printf("My mass %f\n", mass);
+
         mass_to_m = G / (C*C);
         m_to_scale = meters_to_scale;
     }
@@ -450,7 +452,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     std::vector<float> masses;
 
     double milky_way_mass_kg = 6.43 * pow(10., 10.) * 1.16 * get_solar_mass_kg();
-    double milky_way_radius_m = pow(5., 20.);
+    double milky_way_radius_m = 0.5f * pow(10., 21.);
 
     galaxy_params params;
     params.mass_kg = milky_way_mass_kg;
@@ -492,6 +494,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     {
         double radius = dist.select_radius(rng);
         double velocity = dist.get_velocity_at(radius);
+
+        printf("Local Velocity %f\n", velocity);
+        printf("Local To Meters", 1/dist.meters_to_local);
 
         double angle = uint64_to_double(xoshiro256ss(rng)) * 2 * M_PI;
 
