@@ -276,9 +276,21 @@ float select_from_cdf(float value_mx, float max_radius, auto cdf)
     return (next_upper + next_lower)/2.f;
 }
 
-double get_solar_mass()
+double get_solar_mass_kg()
 {
-    return 1.98892 * pow(10., 30.);
+    return 1.98892 * std::pow(10., 30.);
+}
+
+///m/s
+double get_c()
+{
+    return 299792458;
+}
+
+///m3 kg-1 s-2
+double get_G()
+{
+    return 6.67430 * std::pow(10., -11.);
 }
 
 struct galaxy_params
@@ -293,6 +305,8 @@ struct galaxy_distribution
     double mass = 0;
     double max_radius = 0;
 
+    double local_G = 0;
+
     double surface_density(double r)
     {
         double a = 1;
@@ -300,6 +314,7 @@ struct galaxy_distribution
         return (mass / (2 * M_PI * a * a)) * pow(1 + r*r/a*a, -3./2.);
     }
 
+    ///M(r)
     double cdf(double r)
     {
         ///correct for cumulative sphere model
@@ -317,13 +332,23 @@ struct galaxy_distribution
         return integrate_1d(p3, 64, r, 0.);
     };
 
+    double get_velocity_at(double r)
+    {
+        return std::sqrt(local_G * cdf(r) / r);
+    }
+
     galaxy_distribution(const galaxy_params& params)
     {
         ///decide scale. Probably just crack radius between 0 and 5 because astrophysics!
         ///sun units?
 
-        mass = params.mass_kg / get_solar_mass();
+        mass = params.mass_kg / get_solar_mass_kg();
         max_radius = 5; ///YEP
+
+        double to_local_distance = max_radius / params.radius_m;
+        double to_local_mass = mass / params.mass_kg;
+
+        local_G = get_G() * to_local_mass / pow(to_local_distance, 3);
     }
 
     double select_radius(xoshiro256ss_state& rng)
@@ -405,7 +430,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     //double milky_way_mass = 6. * pow(10., 42.);
 
-    double milky_way_mass = 6.43 * pow(10., 10.) * 1.16 * solar_mass;
+    double milky_way_mass = 6.43 * pow(10., 10.) * 1.16 * get_solar_mass_kg();
 
     double C = 299792458.;
     double G = 6.67430 * pow(10., -11.);
