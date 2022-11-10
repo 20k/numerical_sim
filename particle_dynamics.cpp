@@ -517,6 +517,11 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         vec3f velocity_fin = {velocity_2d.x(), velocity_2d.y(), 0.f};
 
         directions.push_back(velocity_fin);
+
+        assert(speed_in_c < 1);
+
+        printf("Velocity %f\n", speed_in_c);
+        printf("Position %f %f %f\n", pos.x(), pos.y(), pos.z());
     }
 
     /*for(int i=0; i < particle_count; i++)
