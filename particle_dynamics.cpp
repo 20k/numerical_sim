@@ -276,6 +276,11 @@ float select_from_cdf(float value_mx, float max_radius, auto cdf)
     return (next_upper + next_lower)/2.f;
 }
 
+double get_solar_mass()
+{
+    return 1.98892 * pow(10., 30.);
+}
+
 struct galaxy_params
 {
     double mass_kg = 0;
@@ -316,6 +321,9 @@ struct galaxy_distribution
     {
         ///decide scale. Probably just crack radius between 0 and 5 because astrophysics!
         ///sun units?
+
+        mass = params.mass_kg / get_solar_mass();
+        max_radius = 5; ///YEP
     }
 
     double select_radius(xoshiro256ss_state& rng)
@@ -338,6 +346,12 @@ struct galaxy_distribution
 
         return found_radius;
     }
+};
+
+struct numerical_params
+{
+    double mass = 0;
+    double radius = 0;
 };
 
 ///https://www.mdpi.com/2075-4434/6/3/70/htm (7)
