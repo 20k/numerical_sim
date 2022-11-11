@@ -356,7 +356,10 @@ struct galaxy_distribution
 
         return std::sqrt(p1 * p2 * p3);*/
 
-        return std::sqrt(local_G * cdf(r) / r);
+        //return std::sqrt(local_G * cdf(r) / r);
+
+        ///https://galaxiesbook.org/chapters/II-01.-Flattened-Mass-Distributions.html 8.16
+        return std::sqrt(local_G * cdf(r) * r * r * pow(r * r + 1 * 1, -3.f/2.f));
     }
 
     galaxy_distribution(const galaxy_params& params)
