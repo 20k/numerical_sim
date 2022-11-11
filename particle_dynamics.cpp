@@ -340,7 +340,7 @@ struct galaxy_distribution
 
     double get_velocity_at(double r)
     {
-        double a0_ms2 = 1.2 * pow(10., -10.);
+        /*double a0_ms2 = 1.2 * pow(10., -10.);
 
         double a0 = a0_ms2 * meters_to_local;
 
@@ -354,9 +354,9 @@ struct galaxy_distribution
 
         double p3 = sqrt(p_inner);
 
-        return std::sqrt(p1 * p2 * p3);
+        return std::sqrt(p1 * p2 * p3);*/
 
-        //return std::sqrt(local_G * cdf(r) / r);
+        return std::sqrt(local_G * cdf(r) / r);
     }
 
     galaxy_distribution(const galaxy_params& params)
