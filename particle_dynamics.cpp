@@ -470,8 +470,11 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     std::vector<vec3f> directions;
     std::vector<float> masses;
 
-    double milky_way_mass_kg = 6.43 * pow(10., 10.) * 1.16 * get_solar_mass_kg();
-    double milky_way_radius_m = 0.5f * pow(10., 21.);
+    ///https://arxiv.org/abs/1607.08364
+    //double milky_way_mass_kg = 6.43 * pow(10., 10.) * 1.16 * get_solar_mass_kg();
+    double milky_way_mass_kg = 4 * pow(10, 11) * get_solar_mass_kg();
+    //double milky_way_radius_m = 0.5f * pow(10., 21.);
+    double milky_way_radius_m = 0.5 * 8 * pow(10., 20.);
 
     galaxy_params params;
     params.mass_kg = milky_way_mass_kg;
