@@ -5142,7 +5142,7 @@ int main()
     std::string hydro_argument_string = argument_string;
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {213, 213, 213};
+    vec3i size = {155, 155, 155};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
