@@ -12,8 +12,8 @@
 				<Option type="1" />
 				<Option compiler="gcc-msys2-mingw64" />
 				<Compiler>
-					<Add option="-gdwarf-4" />
 					<Add option="-Og" />
+					<Add option="-g" />
 				</Compiler>
 				<Linker>
 					<Add option="-Og" />
@@ -26,7 +26,7 @@
 				<Option compiler="gcc-msys2-mingw64" />
 				<Compiler>
 					<Add option="-O2" />
-					<Add option="-gdwarf-4" />
+					<Add option="-g" />
 				</Compiler>
 				<Linker>
 					<Add option="-O2" />
