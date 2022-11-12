@@ -168,7 +168,7 @@ gravitational_wave_manager::gravitational_wave_manager(cl::context& ctx, vec3i _
     }
 }
 
-void gravitational_wave_manager::issue_extraction(cl::managed_command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<ref_counted_buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize, cl::gl_rendertexture& tex)
+void gravitational_wave_manager::issue_extraction(cl::managed_command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<ref_counted_buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize)
 {
     cl::args waveform_args;
 

@@ -5799,7 +5799,7 @@ int main()
 
             auto callback = [&](cl::managed_command_queue& mqueue, std::vector<cl::buffer>& bufs, std::vector<ref_counted_buffer>& intermediates)
             {
-                wave_manager.issue_extraction(mqueue, bufs, intermediates, scale, clsize, rtex);
+                wave_manager.issue_extraction(mqueue, bufs, intermediates, scale, clsize);
 
                 if(!should_render)
                 {
