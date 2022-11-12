@@ -12,8 +12,8 @@
 				<Option type="1" />
 				<Option compiler="gcc-msys2-mingw64" />
 				<Compiler>
+					<Add option="-gdwarf-4" />
 					<Add option="-Og" />
-					<Add option="-g" />
 				</Compiler>
 				<Linker>
 					<Add option="-Og" />
@@ -26,10 +26,10 @@
 				<Option compiler="gcc-msys2-mingw64" />
 				<Compiler>
 					<Add option="-O2" />
+					<Add option="-gdwarf-4" />
 				</Compiler>
 				<Linker>
 					<Add option="-O2" />
-					<Add option="-s" />
 				</Linker>
 			</Target>
 			<Target title="GpuProfile">
@@ -119,6 +119,7 @@
 			<Add option="-lImm32" />
 			<Add option="-ldwrite" />
 			<Add option="-l:libtbb12.dll.a" />
+			<Add option="-ldl" />
 		</Linker>
 		<Unit filename="bssn.cpp" />
 		<Unit filename="bssn.hpp" />
