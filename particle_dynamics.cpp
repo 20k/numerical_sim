@@ -299,7 +299,33 @@ struct galaxy_params
     double radius_m = 0;
 };
 
+struct disk_distribution
+{
+    double cdf(double M0, double G, double r)
+    {
+        auto surface_density = [M0](double r)
+        {
+            double a = 1;
+
+            return (M0 / (2 * M_PI * a * a)) * pow(1 + r*r/a*a, -3./2.);
+        };
+
+        auto integral = [&surface_density](double r)
+        {
+            return 2 * M_PI * r * surface_density(r);
+        };
+
+        return integrate_1d(integral, 64, r, 0.);
+    }
+
+    double get_velocity_at(double M0, double G, double r)
+    {
+        return std::sqrt(G * cdf(M0, G, r) * r * r * pow(r * r + 1 * 1, -3./2.));
+    }
+};
+
 ///This is not geometric units, this is scale independent
+template<typename T>
 struct galaxy_distribution
 {
     double mass = 0;
@@ -307,6 +333,8 @@ struct galaxy_distribution
 
     double local_G = 0;
     double meters_to_local = 0;
+
+    T distribution;
 
     double local_distance_to_meters(double r)
     {
@@ -330,12 +358,14 @@ struct galaxy_distribution
         };*/
 
         ///correct for surface density
-        auto p3 = [&](double r)
+        /*auto p3 = [&](double r)
         {
             return 2 * M_PI * r * surface_density(r);
         };
 
-        return integrate_1d(p3, 64, r, 0.);
+        return integrate_1d(p3, 64, r, 0.);*/
+
+        return distribution.cdf(mass, local_G, r);
     };
 
     double get_velocity_at(double r)
@@ -359,7 +389,9 @@ struct galaxy_distribution
         //return std::sqrt(local_G * cdf(r) / r);
 
         ///https://galaxiesbook.org/chapters/II-01.-Flattened-Mass-Distributions.html 8.16
-        return std::sqrt(local_G * cdf(r) * r * r * pow(r * r + 1 * 1, -3.f/2.f));
+        //return std::sqrt(local_G * cdf(r) * r * r * pow(r * r + 1 * 1, -3.f/2.f));
+
+        return distribution.get_velocity_at(mass, local_G, r);
     }
 
     galaxy_distribution(const galaxy_params& params)
@@ -455,7 +487,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
     float scale = mesh.scale;
 
-    particle_count = 1000 * 20;
+    particle_count = 1000 * 60;
 
     for(int i=0; i < (int)p_data.size(); i++)
     {
@@ -480,7 +512,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     params.mass_kg = milky_way_mass_kg;
     params.radius_m = milky_way_radius_m;
 
-    galaxy_distribution dist(params);
+    galaxy_distribution<disk_distribution> dist(params);
 
     numerical_params num_params(params);
 
