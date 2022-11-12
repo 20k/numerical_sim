@@ -301,6 +301,8 @@ struct galaxy_params
 
 struct disk_distribution
 {
+    bool is_disk = true;
+
     double cdf(double M0, double G, double r)
     {
         auto surface_density = [M0](double r)
@@ -323,6 +325,23 @@ struct disk_distribution
         return std::sqrt(G * cdf(M0, G, r) * r * r * pow(r * r + 1 * 1, -3./2.));
     }
 };
+
+/*struct spherical_distribution
+{
+    bool is_disk = false;
+
+    double cdf(double M0, double G, double r)
+    {
+        auto density = [M0](double r)
+        {
+            double r0 = 1;
+            double rc = 1;
+            double B = 1;
+
+            return
+        };
+    }
+};*/
 
 ///This is not geometric units, this is scale independent
 template<typename T>
