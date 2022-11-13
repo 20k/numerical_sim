@@ -5764,6 +5764,16 @@ int main()
                 ImGui::PlotLines("w4_l2_m2_im", real_decomp.data(), real_decomp.size(), 0, nullptr, FLT_MAX, FLT_MAX, ImVec2(400, 100));
             }
 
+            for(plugin* p : plugins)
+            {
+                particle_dynamics* dyn = dynamic_cast<particle_dynamics*>(p);
+
+                if(dyn == nullptr)
+                    continue;
+
+                ImGui::PlotLines("Initial Velocity", dyn->debug_velocities.data(), dyn->debug_velocities.size(), 0, nullptr, FLT_MAX, FLT_MAX, ImVec2(400, 100));
+            }
+
             ImGui::End();
 
         if(run)

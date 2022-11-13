@@ -436,8 +436,8 @@ struct galaxy_distribution
         ///https://galaxiesbook.org/chapters/II-01.-Flattened-Mass-Distributions.html 8.16
         //return std::sqrt(local_G * cdf(r) * r * r * pow(r * r + 1 * 1, -3.f/2.f));
 
-        return distribution.get_mond_velocity_at(mass, local_G, r, a0);
-        //return distribution.get_velocity_at(mass, local_G, r);
+        //return distribution.get_mond_velocity_at(mass, local_G, r, a0);
+        return distribution.get_velocity_at(mass, local_G, r);
     }
 
     galaxy_distribution(const galaxy_params& params)
@@ -627,6 +627,26 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         //printf("Velocity %f\n", speed_in_c);
         //printf("Position %f %f %f\n", pos.x(), pos.y(), pos.z());
+    }
+
+    {
+        std::vector<std::pair<vec3f, vec3f>> pos_vel;
+        pos_vel.reserve(particle_count);
+
+        for(int i=0; i < particle_count; i++)
+        {
+            pos_vel.push_back({positions[i], directions[i]});
+        }
+
+        std::sort(pos_vel.begin(), pos_vel.end(), [](auto& i1, auto& i2)
+        {
+            return i1.first.squared_length() < i2.first.squared_length();
+        });
+
+        for(auto& [p, v] : pos_vel)
+        {
+            debug_velocities.push_back(v.length());
+        }
     }
 
     /*for(int i=0; i < particle_count; i++)
