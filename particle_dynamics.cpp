@@ -303,11 +303,11 @@ struct disk_distribution
 {
     bool is_disk = true;
 
-    double a = 1;
+    double a = 3;
 
     double cdf(double M0, double G, double r)
     {
-        auto surface_density = [this, M0](double r)
+        /*auto surface_density = [this, M0](double r)
         {
             return (M0 * a / (2 * M_PI)) * 1./std::pow(r*r + a*a, 3./2.);
 
@@ -319,9 +319,9 @@ struct disk_distribution
             return 2 * M_PI * r * surface_density(r);
         };
 
-        return integrate_1d(integral, 64, r, 0.);
+        return integrate_1d(integral, 64, r, 0.);*/
 
-        //return M0 * (1 - a / sqrt(r*r + a*a));
+        return M0 * (1 - a / sqrt(r*r + a*a));
     }
 
     ///https://galaxiesbook.org/chapters/II-01.-Flattened-Mass-Distributions.html 8.17 implies that kuzmin uses M0, not the CDF
