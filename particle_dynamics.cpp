@@ -326,6 +326,30 @@ struct disk_distribution
         return std::sqrt(G * M0 * r * r * pow(r * r + a * a, -3./2.));
         //return std::sqrt(G * cdf(M0, G, r) * r * r * pow(r * r + a * a, -3./2.));
     }
+
+    ///https://adsabs.harvard.edu/full/1995MNRAS.276..453B
+    double get_mond_velocity_at(double M0, double G, double r, double a0)
+    {
+        ///they use h for a
+        double u = r / a;
+
+        double v_inf = pow(M0 * G * a0, 1./4.);
+
+        ///I've seen this before but I can't remember what it is
+        double squiggle = M0 * G / (a*a * a0);
+
+        double p1 = v_inf * v_inf;
+
+        double p2 = u*u / (1 + u*u);
+
+        double divisor_part = 1 + u*u;
+
+        double interior_1 = sqrt(1 + squiggle*squiggle / (4 * pow(divisor_part, 2)));
+
+        double interior_2 = squiggle / (2 * divisor_part);
+
+        return sqrt(p1 * p2 * sqrt(interior_1 + interior_2));
+    }
 };
 
 /*struct spherical_distribution
@@ -391,11 +415,11 @@ struct galaxy_distribution
 
     double get_velocity_at(double r)
     {
-        /*double a0_ms2 = 1.2 * pow(10., -10.);
+        double a0_ms2 = 1.2 * pow(10., -10.);
 
         double a0 = a0_ms2 * meters_to_local;
 
-        double p1 = local_G * cdf(r)/r;
+        /*double p1 = local_G * cdf(r)/r;
 
         double p2 = (1/sqrt(2.f));
 
@@ -412,7 +436,8 @@ struct galaxy_distribution
         ///https://galaxiesbook.org/chapters/II-01.-Flattened-Mass-Distributions.html 8.16
         //return std::sqrt(local_G * cdf(r) * r * r * pow(r * r + 1 * 1, -3.f/2.f));
 
-        return distribution.get_velocity_at(mass, local_G, r);
+        return distribution.get_mond_velocity_at(mass, local_G, r, a0);
+        //return distribution.get_velocity_at(mass, local_G, r);
     }
 
     galaxy_distribution(const galaxy_params& params)
