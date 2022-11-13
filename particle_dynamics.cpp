@@ -303,12 +303,12 @@ struct disk_distribution
 {
     bool is_disk = true;
 
+    double a = 1;
+
     double cdf(double M0, double G, double r)
     {
-        auto surface_density = [M0](double r)
+        auto surface_density = [this, M0](double r)
         {
-            double a = 1;
-
             return (M0 / (2 * M_PI * a * a)) * pow(1 + r*r/a*a, -3./2.);
         };
 
@@ -320,9 +320,11 @@ struct disk_distribution
         return integrate_1d(integral, 64, r, 0.);
     }
 
+    ///https://galaxiesbook.org/chapters/II-01.-Flattened-Mass-Distributions.html 8.17 implies that kuzmin uses M0, not the CDF
     double get_velocity_at(double M0, double G, double r)
     {
-        return std::sqrt(G * cdf(M0, G, r) * r * r * pow(r * r + 1 * 1, -3./2.));
+        return std::sqrt(G * M0 * r * r * pow(r * r + a * a, -3./2.));
+        //return std::sqrt(G * cdf(M0, G, r) * r * r * pow(r * r + a * a, -3./2.));
     }
 };
 
