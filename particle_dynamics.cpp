@@ -386,13 +386,6 @@ struct galaxy_distribution
         return r / meters_to_local;
     }
 
-    double surface_density(double r)
-    {
-        double a = 1;
-
-        return (mass / (2 * M_PI * a * a)) * pow(1 + r*r/a*a, -3./2.);
-    }
-
     ///M(r)
     double cdf(double r)
     {
@@ -446,7 +439,7 @@ struct galaxy_distribution
         ///sun units?
 
         mass = params.mass_kg / get_solar_mass_kg();
-        max_radius = 5; ///YEP
+        max_radius = 14.4; ///YEP
 
         double to_local_distance = max_radius / params.radius_m;
         double to_local_mass = mass / params.mass_kg;
@@ -643,9 +636,18 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             return i1.first.squared_length() < i2.first.squared_length();
         });
 
+        float selection_radius = 0;
+
         for(auto& [p, v] : pos_vel)
         {
-            debug_velocities.push_back(v.length());
+            float p_len = p.length();
+            float v_len = v.length();
+
+            if(p_len >= selection_radius)
+            {
+                selection_radius += 0.25f;
+                debug_velocities.push_back(v.length());
+            }
         }
     }
 
