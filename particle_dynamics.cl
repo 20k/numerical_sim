@@ -20,7 +20,7 @@
 #endif
 
 __kernel
-void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global float* initial_dirs3, __global float* positions3_out, __global float* velocities3_out, ITYPE geodesic_count, float scale, int4 dim)
+void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global float* initial_dirs3, __global float* masses, __global float* positions3_out, __global float* velocities3_out, ITYPE geodesic_count, float scale, int4 dim)
 {
     size_t idx = get_global_id(0);
 
@@ -46,14 +46,18 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global flo
     float vx = 0;
     float vy = 0;
     float vz = 0;
+    float lorentz = 0;
 
     {
         float TEMPORARIEStparticleinit;
 
+        lorentz = OUT_LORENTZ;
         vx = OUT_VX;
         vy = OUT_VY;
         vz = OUT_VZ;
     }
+
+    float Ea = lorentz * masses[idx];
 
     positions3_out[GET_IDX(idx, 0)] = px;
     positions3_out[GET_IDX(idx, 1)] = py;

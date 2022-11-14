@@ -762,6 +762,11 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         tensor<value, 3> lowered_vel = lower_index(ten_vel, args.Yij, 0);
 
+        value lorentz = velocity.x();
+
+        //value Ea = lorentz * mass;
+
+        ectx.add("OUT_LORENTZ", lorentz);
         ectx.add("OUT_VT", 1);
         ectx.add("OUT_VX", lowered_vel.idx(0));
         ectx.add("OUT_VY", lowered_vel.idx(1));
@@ -874,6 +879,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         args.push_back(positions_in);
         args.push_back(initial_dirs);
+        args.push_back(p_data[0].mass);
         args.push_back(p_data[0].position);
         args.push_back(p_data[0].velocity);
 
