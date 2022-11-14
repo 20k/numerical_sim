@@ -85,7 +85,7 @@ std::vector<buffer_descriptor> particle_dynamics::get_buffers()
             {"adm_S", "dont_care", 0.f, 0, 0}};
 }
 
-void build_lorentz(equation_context& ctx)
+void build_energy(equation_context& ctx)
 {
     ctx.uses_linear = true;
     ctx.order = 2;
@@ -98,7 +98,7 @@ void build_lorentz(equation_context& ctx)
 
     value scale = "scale";
     tensor<value, 3> V_upper = {"V0", "V1", "V2"};
-    value lorentz = "gamma";
+    value E = "eq_E";
 
     value diff = 0;
 
@@ -111,10 +111,10 @@ void build_lorentz(equation_context& ctx)
             kij_sum += args.Kij.idx(i, j) * V_upper.idx(j);
         }
 
-        diff += lorentz * V_upper.idx(i) * (args.gA * kij_sum - diff1(ctx, args.gA, i));
+        diff += E * V_upper.idx(i) * (args.gA * kij_sum - diff1(ctx, args.gA, i));
     }
 
-    ctx.add("LorentzDiff", diff);
+    ctx.add("EDiff", diff);
 }
 
 void build_adm_geodesic(equation_context& ctx, vec3f dim)
@@ -772,9 +772,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     {
         equation_context ectx;
-        build_lorentz(ectx);
+        build_energy(ectx);
 
-        ectx.build(argument_string, "lorentz");
+        ectx.build(argument_string, "energy");
     }
 
     {

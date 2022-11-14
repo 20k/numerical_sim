@@ -117,7 +117,7 @@ void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, 
     *out = (float3){d0, d1, d2};
 }
 
-void calculate_lorentz_derivative(float* out, float3 Xpos, float3 vel, float lorentz_in, float scale, int4 dim, STANDARD_ARGS())
+void calculate_energy_derivative(float* out, float3 Xpos, float3 vel, float energy_in, float scale, int4 dim, STANDARD_ARGS())
 {
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
 
@@ -132,11 +132,11 @@ void calculate_lorentz_derivative(float* out, float3 Xpos, float3 vel, float lor
     float V1 = vel.y;
     float V2 = vel.z;
 
-    float gamma = lorentz_in;
+    float eq_E = energy_in;
 
-    float TEMPORARIESlorentz;
+    float TEMPORARIESenergy;
 
-    float d0 = LorentzDiff;
+    float d0 = EDiff;
 
     *out = d0;
 }
@@ -226,8 +226,8 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
 }
 
 __kernel
-void evolve_lorentz(__global float* positions, __global float* velocities,
-                    __global float* lorentz_in, __global float* lorentz_out, __global float* lorentz_base,
+void evolve_energy(__global float* positions, __global float* velocities,
+                    __global float* energy_in, __global float* energy_out, __global float* energy_base,
                     int geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
 {
     int idx = get_global_id(0);
@@ -238,12 +238,12 @@ void evolve_lorentz(__global float* positions, __global float* velocities,
     float3 Xpos = {positions[idx * 3 + 0], positions[idx * 3 + 1], positions[idx * 3 + 2]};
     float3 vel = {velocities[idx * 3 + 0], velocities[idx * 3 + 1], velocities[idx * 3 + 2]};
 
-    float current_lorentz = lorentz_in[idx];
+    float current_energy = energy_in[idx];
 
-    float lorentz_diff = 0;
-    calculate_lorentz_derivative(&lorentz_diff, Xpos, vel, current_lorentz, scale, dim, GET_STANDARD_ARGS());
+    float diff = 0;
+    calculate_energy_derivative(&diff, Xpos, vel, current_energy, scale, dim, GET_STANDARD_ARGS());
 
-    lorentz_out[idx] = max(lorentz_base[idx] + timestep * lorentz_diff, 1.f);
+    energy_out[idx] = energy_base[idx] + timestep * diff;
 }
 
 #if 0
