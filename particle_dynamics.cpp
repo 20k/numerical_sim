@@ -85,6 +85,38 @@ std::vector<buffer_descriptor> particle_dynamics::get_buffers()
             {"adm_S", "dont_care", 0.f, 0, 0}};
 }
 
+void build_lorentz(equation_context& ctx)
+{
+    ctx.uses_linear = true;
+    ctx.order = 2;
+    ctx.use_precise_differentiation = false;
+
+    standard_arguments args(ctx);
+
+    ctx.pin(args.Kij);
+    ctx.pin(args.Yij);
+
+    value scale = "scale";
+    tensor<value, 3> V_upper = {"V0", "V1", "V2"};
+    value lorentz = "gamma";
+
+    value diff = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        value kij_sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            kij_sum += args.Kij.idx(i, j) * V_upper.idx(j);
+        }
+
+        diff += lorentz * V_upper.idx(i) * (args.gA * kij_sum - diff1(ctx, args.gA, i));
+    }
+
+    ctx.add("LorentzDiff", diff);
+}
+
 void build_adm_geodesic(equation_context& ctx, vec3f dim)
 {
     ctx.uses_linear = true;
@@ -736,6 +768,13 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ectx.add("OUT_VZ", lowered_vel.idx(2));
 
         ectx.build(argument_string, "tparticleinit");
+    }
+
+    {
+        equation_context ectx;
+        build_lorentz(ectx);
+
+        ectx.build(argument_string, "lorentz");
     }
 
     {
