@@ -1214,12 +1214,14 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         std::swap(p_data[in_idx].position, p_data[out_idx].position);
         std::swap(p_data[in_idx].velocity, p_data[out_idx].velocity);
         std::swap(p_data[in_idx].mass, p_data[out_idx].mass);
+        std::swap(p_data[in_idx].energy, p_data[out_idx].energy);
     }
     else
     {
         std::swap(p_data[base_idx].position, p_data[out_idx].position);
         std::swap(p_data[base_idx].velocity, p_data[out_idx].velocity);
         std::swap(p_data[base_idx].mass, p_data[out_idx].mass);
+        std::swap(p_data[base_idx].energy, p_data[out_idx].energy);
     }
 }
 
