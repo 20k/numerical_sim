@@ -604,6 +604,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
     }
 }
 
+///this kernel is likely the problem
 __kernel
 void do_weighted_summation(__global float* positions, __global float* velocities, __global float* masses, __global float* energies, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
 {
@@ -615,9 +616,6 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         return;
 
     int index = IDX(ix,iy,iz);
-
-    ITYPE my_count = collected_counts[index];
-    ITYPE my_memory_start = memory_ptrs[index];
 
     float vadm_S = 0;
     float vadm_Si0 = 0;
@@ -631,13 +629,35 @@ void do_weighted_summation(__global float* positions, __global float* velocities
     float vadm_Sij5 = 0;
     float vadm_p = 0;
 
+    ITYPE my_count = collected_counts[index];
+    ITYPE my_memory_start = memory_ptrs[index];
     float rs = scale;
+
+    if(my_count < 0)
+    {
+        printf("Err count\n");
+    }
+
+    if(my_count > 1)
+        my_count = 1;
 
     for(ITYPE i=0; i < my_count; i++)
     {
         ITYPE gidx = i + my_memory_start;
 
+        if(gidx >= 1024 * 1024 * 120 || gidx < 0)
+        {
+            printf("Borked\n");
+            return;
+        }
+
         ITYPE geodesic_idx = collected_indices[gidx];
+
+        if(geodesic_idx >= geodesic_count)
+        {
+            printf("broken\n");
+            return;
+        }
 
         float mass = masses[geodesic_idx];
         float energy = energies[geodesic_idx];
@@ -650,6 +670,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         if(total_weight_factor == 0)
             continue;
 
+        ///oh my god we're using ix, iy, iz as metric indices
         float3 world_pos = {positions[GET_IDX(geodesic_idx, 0)], positions[GET_IDX(geodesic_idx, 1)], positions[GET_IDX(geodesic_idx, 2)]};
         float3 vel = {velocities[GET_IDX(geodesic_idx, 0)], velocities[GET_IDX(geodesic_idx, 1)], velocities[GET_IDX(geodesic_idx, 2)]};
 

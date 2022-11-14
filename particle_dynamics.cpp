@@ -988,6 +988,8 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         mqueue.exec("dissipate_mass", args, {particle_count}, {128});
     }
 
+    //return;
+
     ///so. The collect/sort method is generally a big performance win, except for when particles are *very* densely packed together
     /*{
         cl_int actually_write = 0;
@@ -1108,7 +1110,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         mqueue.exec("evolve_energy", args, {particle_count}, {128});
     }
 
-    {
+    /*{
         cl::args args;
         args.push_back(p_data[in_idx].position);
         args.push_back(p_data[in_idx].velocity);
@@ -1129,7 +1131,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(timestep);
 
         mqueue.exec("trace_geodesics", args, {particle_count}, {128});
-    }
+    }*/
 
     counts_val.set_to_zero(mqueue);
     memory_alloc_count.set_to_zero(mqueue);
@@ -1208,6 +1210,8 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         mqueue.exec("do_weighted_summation", args, {dim.x(), dim.y(), dim.z()}, {8,8,1});
     }
 
+    #if 0
+
     ///todo: not this, want to have the indices controlled from a higher level
     if(iteration != max_iteration)
     {
@@ -1223,6 +1227,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         std::swap(p_data[base_idx].mass, p_data[out_idx].mass);
         std::swap(p_data[base_idx].energy, p_data[out_idx].energy);
     }
+    #endif
 }
 
 void particle_dynamics::finalise(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, float timestep)

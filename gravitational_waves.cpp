@@ -170,6 +170,8 @@ gravitational_wave_manager::gravitational_wave_manager(cl::context& ctx, vec3i _
 
 void gravitational_wave_manager::issue_extraction(cl::managed_command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<ref_counted_buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize)
 {
+    return;
+
     cl::args waveform_args;
 
     cl_int point_count = raw_harmonic_points.size();
@@ -199,10 +201,10 @@ void gravitational_wave_manager::issue_extraction(cl::managed_command_queue& cqu
 
     cl_float2* next_data = new cl_float2[elements];
 
-    cl::event event = next.read_async(read_queue, (char*)next_data, elements * sizeof(cl_float2), {kernel_event});
-    read_queue.flush();
+    //cl::event event = next.read_async(read_queue, (char*)next_data, elements * sizeof(cl_float2), {kernel_event});
+    //read_queue.flush();
 
-    gpu_data_in_flight.push_back({event, next_data});
+    //gpu_data_in_flight.push_back({event, next_data});
 }
 
 std::vector<dual_types::complex<float>> gravitational_wave_manager::process()
