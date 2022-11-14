@@ -800,6 +800,10 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     ///https://arxiv.org/pdf/1904.07841.pdf so, have to discretise the dirac delta. This paper gives explicit version
     {
         equation_context ectx;
+        ectx.uses_linear = true;
+        ectx.order = 2;
+        ectx.use_precise_differentiation = false;
+
         standard_arguments args(ectx);
 
         /*tensor<value, 3> u_lower = {"vel.x", "vel.y", "vel.z"};

@@ -608,14 +608,14 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 __kernel
 void do_weighted_summation(__global float* positions, __global float* velocities, __global float* masses, __global float* energies, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
 {
-    int ix = get_global_id(0);
-    int iy = get_global_id(1);
-    int iz = get_global_id(2);
+    int kix = get_global_id(0);
+    int kiy = get_global_id(1);
+    int kiz = get_global_id(2);
 
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+    if(kix >= dim.x || kiy >= dim.y || kiz >= dim.z)
         return;
 
-    int index = IDX(ix,iy,iz);
+    int index = IDX(kix,kiy,kiz);
 
     float vadm_S = 0;
     float vadm_Si0 = 0;
@@ -672,6 +672,8 @@ void do_weighted_summation(__global float* positions, __global float* velocities
 
         ///oh my god we're using ix, iy, iz as metric indices
         ///this will cause differentiation out of bounds
+        ///although I'm not differentiating, so crash still a small mystery
+        ///using ix, iy, iz *is* definitely wrong though
         float3 world_pos = {positions[GET_IDX(geodesic_idx, 0)], positions[GET_IDX(geodesic_idx, 1)], positions[GET_IDX(geodesic_idx, 2)]};
         float3 vel = {velocities[GET_IDX(geodesic_idx, 0)], velocities[GET_IDX(geodesic_idx, 1)], velocities[GET_IDX(geodesic_idx, 2)]};
 
@@ -688,6 +690,16 @@ void do_weighted_summation(__global float* positions, __global float* velocities
             continue;
 
         float weight = f_sp;
+
+
+        float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
+
+        ///isn't this already handled internally?
+        voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+        float fx = voxel_pos.x;
+        float fy = voxel_pos.y;
+        float fz = voxel_pos.z;
 
         /*float3 vector_from_particle = cell_wp - world_pos;
 
