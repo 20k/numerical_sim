@@ -178,6 +178,7 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
                      __global float* positions_out, __global float* velocities_out,
                      __global float* positions_base, __global float* velocities_base,
                      __global float* masses,
+                     __global float* energy_in,
                      ITYPE geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
 {
     size_t idx = get_global_id(0);
@@ -212,6 +213,8 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
 
     //Xpos += XDiff * timestep;
     //vel += accel * timestep;
+
+    float energy = energy_in[idx];
 
     float3 dXpos = XDiff * timestep;
     float3 dvel = accel * timestep;

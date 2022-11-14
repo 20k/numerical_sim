@@ -132,8 +132,8 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
 
     value scale = "scale";
 
-    #if 0
-    ctx.add("universe_size", universe_length * scale);
+    #if 1
+    //ctx.add("universe_size", universe_length * scale);
 
     tensor<value, 3> V_upper = {"V0", "V1", "V2"};
 
@@ -186,7 +186,7 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
     }
     #endif
 
-    tensor<value, 3> u_lower = {"V0", "V1", "V2"};
+    /*tensor<value, 3> u_lower = {"V0", "V1", "V2"};
 
     inverse_metric<value, 3, 3> iYij = args.iYij;
 
@@ -243,11 +243,11 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
         }
 
         dx.idx(j) = p1 - args.gB.idx(j);
-    }
+    }*/
 
-    ctx.add("V0Diff", u_lower_diff.idx(0));
-    ctx.add("V1Diff", u_lower_diff.idx(1));
-    ctx.add("V2Diff", u_lower_diff.idx(2));
+    ctx.add("V0Diff", V_upper_diff.idx(0));
+    ctx.add("V1Diff", V_upper_diff.idx(1));
+    ctx.add("V2Diff", V_upper_diff.idx(2));
 
     ctx.add("X0Diff", dx.idx(0));
     ctx.add("X1Diff", dx.idx(1));
@@ -759,9 +759,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         vec<4, value> velocity = get_timelike_vector(direction, 1, tet);
 
-        tensor<value, 3> ten_vel = {velocity.y(), velocity.z(), velocity.w()};
+        tensor<value, 3> upper_vel = {velocity.y(), velocity.z(), velocity.w()};
 
-        tensor<value, 3> lowered_vel = lower_index(ten_vel, args.Yij, 0);
+        //tensor<value, 3> lowered_vel = lower_index(upper_vel, args.Yij, 0);
 
         value lorentz = velocity.x();
 
@@ -769,9 +769,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         ectx.add("OUT_LORENTZ", lorentz);
         ectx.add("OUT_VT", 1);
-        ectx.add("OUT_VX", lowered_vel.idx(0));
-        ectx.add("OUT_VY", lowered_vel.idx(1));
-        ectx.add("OUT_VZ", lowered_vel.idx(2));
+        ectx.add("OUT_VX", upper_vel.idx(0) / lorentz);
+        ectx.add("OUT_VY", upper_vel.idx(1) / lorentz);
+        ectx.add("OUT_VZ", upper_vel.idx(2) / lorentz);
 
         ectx.build(argument_string, "tparticleinit");
     }
@@ -802,7 +802,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         equation_context ectx;
         standard_arguments args(ectx);
 
-        tensor<value, 3> u_lower = {"vel.x", "vel.y", "vel.z"};
+        /*tensor<value, 3> u_lower = {"vel.x", "vel.y", "vel.z"};
 
         value mass = "mass";
 
@@ -820,9 +820,19 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ///https://en.wikipedia.org/wiki/Four-momentum#Relation_to_four-velocity
         //value Ea = sqrt(mass * mass + mass * mass * sum);
         value lorentz = sqrt(1 + fabs(sum));
-        value Ea = mass * lorentz;
+        value Ea = mass * lorentz;*/
 
-        tensor<value, 3> covariant_momentum = mass * u_lower; ///????
+        tensor<value, 3> v_upper = {"vel.x", "vel.y", "vel.z"};
+        tensor<value, 3> v_lower = lower_index(v_upper, args.Yij, 0);
+
+        value Ea = "energy";
+        value mass = "mass";
+
+        //value lorentz = energy / mass;
+
+        //tensor<value, 3> u_lower = lower_index(v_upper, args.Yij, 0) * lorentz;
+
+        tensor<value, 3> covariant_momentum = v_lower * Ea; ///????
 
         //value idet = pow(args.W_impl, 3);
         value idet = pow(args.get_X(), 3.f/2.f);
@@ -838,7 +848,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             for(int j=0; j < 3; j++)
             {
                 //Sij.idx(i, j) = idet * (covariant_momentum.idx(i) * covariant_momentum.idx(j) / Ea);
-                Sij.idx(i, j) = idet * (covariant_momentum.idx(i) * (u_lower.idx(j) / lorentz));
+                Sij.idx(i, j) = idet * (covariant_momentum.idx(i) * v_lower.idx(j));
             }
         }
 
@@ -1081,11 +1091,33 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         cl::args args;
         args.push_back(p_data[in_idx].position);
         args.push_back(p_data[in_idx].velocity);
+        args.push_back(p_data[in_idx].energy);
+        args.push_back(p_data[out_idx].energy);
+        args.push_back(p_data[base_idx].energy);
+        args.push_back(particle_count);
+
+        for(named_buffer& i : in.buffers)
+        {
+            args.push_back(i.buf);
+        }
+
+        args.push_back(scale);
+        args.push_back(clsize);
+        args.push_back(timestep);
+
+        mqueue.exec("evolve_energy", args, {particle_count}, {128});
+    }
+
+    {
+        cl::args args;
+        args.push_back(p_data[in_idx].position);
+        args.push_back(p_data[in_idx].velocity);
         args.push_back(p_data[out_idx].position);
         args.push_back(p_data[out_idx].velocity);
         args.push_back(p_data[base_idx].position);
         args.push_back(p_data[base_idx].velocity);
         args.push_back(p_data[in_idx].mass);
+        args.push_back(p_data[in_idx].energy);
         args.push_back(particle_count);
 
         for(named_buffer& i : in.buffers)
