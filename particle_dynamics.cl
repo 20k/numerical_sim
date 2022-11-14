@@ -677,7 +677,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         float3 world_pos = {positions[GET_IDX(geodesic_idx, 0)], positions[GET_IDX(geodesic_idx, 1)], positions[GET_IDX(geodesic_idx, 2)]};
         float3 vel = {velocities[GET_IDX(geodesic_idx, 0)], velocities[GET_IDX(geodesic_idx, 1)], velocities[GET_IDX(geodesic_idx, 2)]};
 
-        float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
+        float3 cell_wp = voxel_to_world_unrounded((float3)(kix, kiy, kiz), dim, scale);
 
         float to_centre_distance = fast_length(cell_wp - world_pos);
 
