@@ -556,14 +556,14 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 __kernel
 void do_weighted_summation(__global float* positions, __global float* velocities, __global float* masses, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
 {
-    int ix = get_global_id(0);
-    int iy = get_global_id(1);
-    int iz = get_global_id(2);
+    int kix = get_global_id(0);
+    int kiy = get_global_id(1);
+    int kiz = get_global_id(2);
 
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
+    if(kix >= dim.x || kiy >= dim.y || kiz >= dim.z)
         return;
 
-    int index = IDX(ix,iy,iz);
+    int index = IDX(kix,kiy,kiz);
 
     ITYPE my_count = collected_counts[index];
     ITYPE my_memory_start = memory_ptrs[index];
@@ -601,7 +601,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         float3 world_pos = {positions[GET_IDX(geodesic_idx, 0)], positions[GET_IDX(geodesic_idx, 1)], positions[GET_IDX(geodesic_idx, 2)]};
         float3 vel = {velocities[GET_IDX(geodesic_idx, 0)], velocities[GET_IDX(geodesic_idx, 1)], velocities[GET_IDX(geodesic_idx, 2)]};
 
-        float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
+        float3 cell_wp = voxel_to_world_unrounded((float3)(kix, kiy, kiz), dim, scale);
 
         float to_centre_distance = fast_length(cell_wp - world_pos);
 
@@ -618,6 +618,14 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         /*float3 vector_from_particle = cell_wp - world_pos;
 
         float weight = 1;*/
+
+        float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
+
+        voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+        float fx = voxel_pos.x;
+        float fy = voxel_pos.y;
+        float fz = voxel_pos.z;
 
         {
             //float gamma = lorentzs[geodesic_idx];

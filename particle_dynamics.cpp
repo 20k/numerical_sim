@@ -755,6 +755,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     ///https://arxiv.org/pdf/1904.07841.pdf so, have to discretise the dirac delta. This paper gives explicit version
     {
         equation_context ectx;
+        ectx.uses_linear = true;
+        ectx.use_precise_differentiation = false;
+        ectx.order = 2;
         standard_arguments args(ectx);
 
         tensor<value, 3> u_lower = {"vel.x", "vel.y", "vel.z"};
@@ -773,6 +776,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         ///https://arxiv.org/pdf/1904.07841.pdf 2.28
         ///https://en.wikipedia.org/wiki/Four-momentum#Relation_to_four-velocity
+        ///its worth noting that the Ea formulation involves no divisions by lorentz factors
+        ///and Ea could be made numerically stable
+        ///this formalism seems the most obviously numerically stable however
         //value Ea = sqrt(mass * mass + mass * mass * sum);
         value lorentz = sqrt(1 + fabs(sum));
         value Ea = mass * lorentz;
