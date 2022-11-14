@@ -200,6 +200,7 @@ void gravitational_wave_manager::issue_extraction(cl::managed_command_queue& cqu
     cl_float2* next_data = new cl_float2[elements];
 
     cl::event event = next.read_async(read_queue, (char*)next_data, elements * sizeof(cl_float2), {kernel_event});
+    read_queue.flush();
 
     gpu_data_in_flight.push_back({event, next_data});
 }
