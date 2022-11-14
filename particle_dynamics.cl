@@ -638,9 +638,6 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         printf("Err count\n");
     }
 
-    if(my_count > 1)
-        my_count = 1;
-
     for(ITYPE i=0; i < my_count; i++)
     {
         ITYPE gidx = i + my_memory_start;
