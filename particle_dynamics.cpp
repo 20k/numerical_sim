@@ -569,6 +569,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         p_data[i].position.alloc(sizeof(cl_float) * 3 * particle_count);
         p_data[i].velocity.alloc(sizeof(cl_float) * 3 * particle_count);
         p_data[i].mass.alloc(sizeof(cl_float) * particle_count);
+        p_data[i].energy.alloc(sizeof(cl_float) * particle_count);
     }
 
     ///need to use an actual rng if i'm doing anything even vaguely scientific
@@ -882,6 +883,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         args.push_back(p_data[0].mass);
         args.push_back(p_data[0].position);
         args.push_back(p_data[0].velocity);
+        args.push_back(p_data[0].energy);
 
         args.push_back(particle_count);
         args.push_back(scale);
@@ -895,10 +897,12 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     cl::copy(cqueue, p_data[0].position, p_data[1].position);
     cl::copy(cqueue, p_data[0].velocity, p_data[1].velocity);
     cl::copy(cqueue, p_data[0].mass, p_data[1].mass);
+    cl::copy(cqueue, p_data[0].energy, p_data[1].energy);
 
     cl::copy(cqueue, p_data[0].position, p_data[2].position);
     cl::copy(cqueue, p_data[0].velocity, p_data[2].velocity);
     cl::copy(cqueue, p_data[0].mass, p_data[2].mass);
+    cl::copy(cqueue, p_data[0].energy, p_data[2].energy);
 
     to_init.lookup("adm_p").buf.set_to_zero(cqueue);
     to_init.lookup("adm_Si0").buf.set_to_zero(cqueue);

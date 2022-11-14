@@ -20,7 +20,7 @@
 #endif
 
 __kernel
-void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global float* initial_dirs3, __global float* masses, __global float* positions3_out, __global float* velocities3_out, ITYPE geodesic_count, float scale, int4 dim)
+void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global float* initial_dirs3, __global float* masses, __global float* positions3_out, __global float* velocities3_out, __global float* energy_out, ITYPE geodesic_count, float scale, int4 dim)
 {
     size_t idx = get_global_id(0);
 
@@ -68,6 +68,8 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global flo
     velocities3_out[GET_IDX(idx, 0)] = vx;
     velocities3_out[GET_IDX(idx, 1)] = vy;
     velocities3_out[GET_IDX(idx, 2)] = vz;
+
+    energy_out[idx] = Ea;
 }
 
 ///this returns the change in X, which is not velocity
