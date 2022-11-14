@@ -671,6 +671,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
             continue;
 
         ///oh my god we're using ix, iy, iz as metric indices
+        ///this will cause differentiation out of bounds
         float3 world_pos = {positions[GET_IDX(geodesic_idx, 0)], positions[GET_IDX(geodesic_idx, 1)], positions[GET_IDX(geodesic_idx, 2)]};
         float3 vel = {velocities[GET_IDX(geodesic_idx, 0)], velocities[GET_IDX(geodesic_idx, 1)], velocities[GET_IDX(geodesic_idx, 2)]};
 
