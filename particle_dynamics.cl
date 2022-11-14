@@ -178,7 +178,6 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
                      __global float* positions_out, __global float* velocities_out,
                      __global float* positions_base, __global float* velocities_base,
                      __global float* masses,
-                     __global float* energy_in,
                      ITYPE geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
 {
     size_t idx = get_global_id(0);
@@ -213,8 +212,6 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
 
     //Xpos += XDiff * timestep;
     //vel += accel * timestep;
-
-    float energy = energy_in[idx];
 
     float3 dXpos = XDiff * timestep;
     float3 dvel = accel * timestep;
@@ -608,7 +605,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 }
 
 __kernel
-void do_weighted_summation(__global float* positions, __global float* velocities, __global float* masses, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
+void do_weighted_summation(__global float* positions, __global float* velocities, __global float* masses, __global float* energies, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -643,6 +640,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         ITYPE geodesic_idx = collected_indices[gidx];
 
         float mass = masses[geodesic_idx];
+        float energy = energies[geodesic_idx];
 
         if(mass <= MASS_CUTOFF)
             continue;

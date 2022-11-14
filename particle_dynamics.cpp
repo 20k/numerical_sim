@@ -1117,7 +1117,6 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(p_data[base_idx].position);
         args.push_back(p_data[base_idx].velocity);
         args.push_back(p_data[in_idx].mass);
-        args.push_back(p_data[in_idx].energy);
         args.push_back(particle_count);
 
         for(named_buffer& i : in.buffers)
@@ -1191,6 +1190,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(p_data[in_idx].position);
         args.push_back(p_data[in_idx].velocity);
         args.push_back(p_data[in_idx].mass);
+        args.push_back(p_data[in_idx].energy);
         args.push_back(particle_count);
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val);
