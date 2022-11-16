@@ -72,17 +72,17 @@ particle_dynamics::particle_dynamics(cl::context& ctx) : p_data{ctx, ctx, ctx}, 
 
 std::vector<buffer_descriptor> particle_dynamics::get_buffers()
 {
-    return {{"adm_p", "dont_care", 0.f, 0, 0},
-            {"adm_Si0", "dont_care", 0.f, 0, 0},
-            {"adm_Si1", "dont_care", 0.f, 0, 0},
-            {"adm_Si2", "dont_care", 0.f, 0, 0},
-            {"adm_Sij0", "dont_care", 0.f, 0, 0},
-            {"adm_Sij1", "dont_care", 0.f, 0, 0},
-            {"adm_Sij2", "dont_care", 0.f, 0, 0},
-            {"adm_Sij3", "dont_care", 0.f, 0, 0},
-            {"adm_Sij4", "dont_care", 0.f, 0, 0},
-            {"adm_Sij5", "dont_care", 0.f, 0, 0},
-            {"adm_S", "dont_care", 0.f, 0, 0}};
+    return {{"adm_p", "do_weighted_summation", 0.f, 0, 0},
+            {"adm_Si0", "do_weighted_summation", 0.f, 0, 0},
+            {"adm_Si1", "do_weighted_summation", 0.f, 0, 0},
+            {"adm_Si2", "do_weighted_summation", 0.f, 0, 0},
+            {"adm_Sij0", "do_weighted_summation", 0.f, 0, 0},
+            {"adm_Sij1", "do_weighted_summation", 0.f, 0, 0},
+            {"adm_Sij2", "do_weighted_summation", 0.f, 0, 0},
+            {"adm_Sij3", "do_weighted_summation", 0.f, 0, 0},
+            {"adm_Sij4", "do_weighted_summation", 0.f, 0, 0},
+            {"adm_Sij5", "do_weighted_summation", 0.f, 0, 0},
+            {"adm_S", "do_weighted_summation", 0.f, 0, 0}};
 }
 
 void build_adm_geodesic(equation_context& ctx, vec3f dim)
@@ -925,10 +925,10 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     ///make sure to mark up the particle code!
     {
         cl::args args;
-        args.push_back(p_data[in_idx].position);
-        args.push_back(p_data[in_idx].mass);
+        args.push_back(p_data[in_idx].position.as_device_read_only());
+        args.push_back(p_data[in_idx].mass.as_device_read_only());
         args.push_back(p_data[out_idx].mass);
-        args.push_back(p_data[base_idx].mass);
+        args.push_back(p_data[base_idx].mass.as_device_read_only());
         args.push_back(particle_count);
         args.push_back(timestep);
 
@@ -1036,18 +1036,18 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
 
     {
         cl::args args;
-        args.push_back(p_data[in_idx].position);
-        args.push_back(p_data[in_idx].velocity);
+        args.push_back(p_data[in_idx].position.as_device_read_only());
+        args.push_back(p_data[in_idx].velocity.as_device_read_only());
         args.push_back(p_data[out_idx].position);
         args.push_back(p_data[out_idx].velocity);
-        args.push_back(p_data[base_idx].position);
-        args.push_back(p_data[base_idx].velocity);
-        args.push_back(p_data[in_idx].mass);
+        args.push_back(p_data[base_idx].position.as_device_read_only());
+        args.push_back(p_data[base_idx].velocity.as_device_read_only());
+        args.push_back(p_data[in_idx].mass.as_device_read_only());
         args.push_back(particle_count);
 
         for(named_buffer& i : in.buffers)
         {
-            args.push_back(i.buf);
+            args.push_back(i.buf.as_device_read_only());
         }
 
         args.push_back(scale);
@@ -1065,13 +1065,13 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         cl_int actually_write = 0;
 
         cl::args args;
-        args.push_back(p_data[in_idx].position);
-        args.push_back(p_data[in_idx].mass);
+        args.push_back(p_data[in_idx].position.as_device_read_only());
+        args.push_back(p_data[in_idx].mass.as_device_read_only());
         args.push_back(particle_count);
         args.push_back(counts_val);
-        args.push_back(memory_ptrs_val);
-        args.push_back(indices_block);
-        args.push_back(weights_block);
+        args.push_back(memory_ptrs_val.as_device_inaccessible());
+        args.push_back(indices_block.as_device_inaccessible());
+        args.push_back(weights_block.as_device_inaccessible());
         args.push_back(scale);
         args.push_back(clsize);
         args.push_back(actually_write);
@@ -1096,11 +1096,11 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         cl_int actually_write = 1;
 
         cl::args args;
-        args.push_back(p_data[in_idx].position);
-        args.push_back(p_data[in_idx].mass);
+        args.push_back(p_data[in_idx].position.as_device_read_only());
+        args.push_back(p_data[in_idx].mass.as_device_read_only());
         args.push_back(particle_count);
         args.push_back(counts_val);
-        args.push_back(memory_ptrs_val);
+        args.push_back(memory_ptrs_val.as_device_read_only());
         args.push_back(indices_block);
         args.push_back(weights_block);
         args.push_back(scale);
@@ -1113,18 +1113,21 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     ///calculate adm quantities per-cell by summing across the list of particles
     {
         cl::args args;
-        args.push_back(p_data[in_idx].position);
-        args.push_back(p_data[in_idx].velocity);
-        args.push_back(p_data[in_idx].mass);
+        args.push_back(p_data[in_idx].position.as_device_read_only());
+        args.push_back(p_data[in_idx].velocity.as_device_read_only());
+        args.push_back(p_data[in_idx].mass.as_device_read_only());
         args.push_back(particle_count);
-        args.push_back(counts_val);
-        args.push_back(memory_ptrs_val);
-        args.push_back(indices_block);
-        args.push_back(weights_block);
+        args.push_back(counts_val.as_device_read_only());
+        args.push_back(memory_ptrs_val.as_device_read_only());
+        args.push_back(indices_block.as_device_read_only());
+        args.push_back(weights_block.as_device_read_only());
 
         for(named_buffer& i : in.buffers)
         {
-            args.push_back(i.buf);
+            if(i.desc.modified_by == "do_weighted_summation")
+                args.push_back(i.buf);
+            else
+                args.push_back(i.buf.as_device_read_only());
         }
 
         args.push_back(scale);
