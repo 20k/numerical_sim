@@ -883,7 +883,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     cl::buffer& memory_ptrs_val = memory_ptrs.value();
     cl::buffer& counts_val = counts.value();
 
-    memory_alloc_count.set_to_zero(mqueue);
+    //memory_alloc_count.set_to_zero(mqueue);
 
     ///so. Need to take all my particles, advance them forwards in time. Some complications because I'm not going to do this in a backwards euler way, so only on the 0th iteration do we do fun things. Need to pre-swap buffers
     ///need to fill up the adm buffers from the *current* particle positions
