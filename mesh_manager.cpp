@@ -37,6 +37,9 @@ void dissipate_set(cl::managed_command_queue& mqueue, T& base_reference, T& inou
         if(base_reference.buffers[i].buf.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z())
             continue;
 
+        if(inout.buffers[i].desc.dissipation_coeff == 0)
+            continue;
+
         cl::args diss;
 
         diss.push_back(points_set.all_points);
@@ -52,9 +55,6 @@ void dissipate_set(cl::managed_command_queue& mqueue, T& base_reference, T& inou
         diss.push_back(clsize);
         diss.push_back(timestep);
         diss.push_back(points_set.order);
-
-        if(coeff == 0)
-            continue;
 
         mqueue.exec("dissipate_single", diss, {points_set.all_count}, {128});
 
