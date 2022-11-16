@@ -527,6 +527,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     memory_ptrs.value().alloc(sizeof(cl_ulong) * dim.x() * dim.y() * dim.z());
     counts.value().alloc(sizeof(cl_ulong) * dim.x() * dim.y() * dim.z());
 
+    counts.value().set_to_zero(cqueue);
+
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
     float scale = mesh.scale;
 
@@ -883,7 +885,15 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     cl::buffer& memory_ptrs_val = memory_ptrs.value();
     cl::buffer& counts_val = counts.value();
 
-    memory_alloc_count.set_to_zero(mqueue);
+    {
+        cl_ulong size = memory_alloc_count.alloc_size;
+
+        cl::args args;
+        args.push_back(memory_alloc_count);
+        args.push_back(size);
+
+        mqueue.exec("test_zero", args, {size}, {128});
+    }
 
     ///so. Need to take all my particles, advance them forwards in time. Some complications because I'm not going to do this in a backwards euler way, so only on the 0th iteration do we do fun things. Need to pre-swap buffers
     ///need to fill up the adm buffers from the *current* particle positions
@@ -923,7 +933,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     int base_idx = pack.base_idx;
 
     ///make sure to mark up the particle code!
-    {
+    /*{
         cl::args args;
         args.push_back(p_data[in_idx].position);
         args.push_back(p_data[in_idx].mass);
@@ -933,7 +943,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(timestep);
 
         mqueue.exec("dissipate_mass", args, {particle_count}, {128});
-    }
+    }*/
 
     ///so. The collect/sort method is generally a big performance win, except for when particles are *very* densely packed together
     /*{
@@ -1034,7 +1044,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         mqueue.exec("cube_trace_geodesics", args, {dim.x(), dim.y(), dim.z()}, {8,8,1});
     }*/
 
-    {
+    /*{
         cl::args args;
         args.push_back(p_data[in_idx].position);
         args.push_back(p_data[in_idx].velocity);
@@ -1057,8 +1067,28 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         mqueue.exec("trace_geodesics", args, {particle_count}, {128});
     }
 
-    counts_val.set_to_zero(mqueue);
-    memory_alloc_count.set_to_zero(mqueue);
+    //counts_val.set_to_zero(mqueue);
+    //memory_alloc_count.set_to_zero(mqueue);
+
+    {
+        cl_ulong size = counts_val.alloc_size;
+
+        cl::args args;
+        args.push_back(counts_val);
+        args.push_back(size);
+
+        mqueue.exec("test_zero", args, {size}, {128});
+    }
+
+    {
+        cl_ulong size = memory_alloc_count.alloc_size;
+
+        cl::args args;
+        args.push_back(memory_alloc_count);
+        args.push_back(size);
+
+        mqueue.exec("test_zero", args, {size}, {128});
+    }
 
     ///find how many particles would be written per-cell
     {
@@ -1108,7 +1138,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(actually_write);
 
         mqueue.exec("collect_particle_spheres", args, {particle_count}, {128});
-    }
+    }*/
 
     ///calculate adm quantities per-cell by summing across the list of particles
     {
@@ -1134,7 +1164,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     }
 
     ///todo: not this, want to have the indices controlled from a higher level
-    if(iteration != max_iteration)
+    /*if(iteration != max_iteration)
     {
         std::swap(p_data[in_idx].position, p_data[out_idx].position);
         std::swap(p_data[in_idx].velocity, p_data[out_idx].velocity);
@@ -1145,7 +1175,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         std::swap(p_data[base_idx].position, p_data[out_idx].position);
         std::swap(p_data[base_idx].velocity, p_data[out_idx].velocity);
         std::swap(p_data[base_idx].mass, p_data[out_idx].mass);
-    }
+    }*/
 }
 
 void particle_dynamics::finalise(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, float timestep)

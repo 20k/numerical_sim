@@ -20,6 +20,17 @@
 #endif
 
 __kernel
+void test_zero(__global char* in, ulong bytes)
+{
+    size_t idx = get_global_id(0);
+
+    if(idx >= bytes)
+        return;
+
+    in[idx] = 0;
+}
+
+__kernel
 void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global float* initial_dirs3, __global float* positions3_out, __global float* velocities3_out, ITYPE geodesic_count, float scale, int4 dim)
 {
     size_t idx = get_global_id(0);
@@ -440,7 +451,7 @@ void memory_allocate(__global ITYPE* counts, __global ITYPE* memory_ptrs, __glob
 
     if(my_memory + my_count > max_memory)
     {
-        printf("Overflow in allocate\n");
+        //printf("Overflow in allocate\n");
         my_memory = 0;
     }
 
@@ -468,7 +479,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 
     if(!all(isfinite(voxel_pos)))
     {
-        printf("Non finite voxel pos in collect pspheres\n");
+        //printf("Non finite voxel pos in collect pspheres\n");
         return;
     }
 
@@ -556,6 +567,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 __kernel
 void do_weighted_summation(__global float* positions, __global float* velocities, __global float* masses, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
 {
+    #if 1
     int kix = get_global_id(0);
     int kiy = get_global_id(1);
     int kiz = get_global_id(2);
@@ -593,16 +605,20 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         if(mass <= MASS_CUTOFF)
             continue;
 
+        ///?
         float total_weight_factor = collected_weights[gidx];
 
         if(total_weight_factor == 0)
             continue;
 
+        ///crashes
         float3 world_pos = {positions[GET_IDX(geodesic_idx, 0)], positions[GET_IDX(geodesic_idx, 1)], positions[GET_IDX(geodesic_idx, 2)]};
+
         float3 vel = {velocities[GET_IDX(geodesic_idx, 0)], velocities[GET_IDX(geodesic_idx, 1)], velocities[GET_IDX(geodesic_idx, 2)]};
 
         float3 cell_wp = voxel_to_world_unrounded((float3)(kix, kiy, kiz), dim, scale);
 
+        ///crashes
         float to_centre_distance = fast_length(cell_wp - world_pos);
 
         ///https://arxiv.org/pdf/1611.07906.pdf 20
@@ -630,7 +646,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         {
             //float gamma = lorentzs[geodesic_idx];
 
-            float TEMPORARIESadmmatter;
+            //float TEMPORARIESadmmatter;
 
             vadm_S += OUT_ADM_S * weight;
             vadm_Si0 += OUT_ADM_SI0 * weight;
@@ -674,4 +690,5 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         adm_Sij5[index] = vadm_Sij5;
         adm_p[index] = vadm_p;
     }
+    #endif
 }

@@ -37,6 +37,18 @@ void dissipate_set(cl::managed_command_queue& mqueue, T& base_reference, T& inou
         if(base_reference.buffers[i].buf.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z())
             continue;
 
+        if(i < base_reference.buffers.size()/2)
+            continue;
+
+        if(i >= base_reference.buffers.size()/2 + base_reference.buffers.size()/4)
+            continue;
+
+        ///WTF
+        if(inout.buffers.at(i).desc.dissipation_coeff == 0)
+            continue;
+
+        //std::cout << base_reference.buffers[i].desc.name << std::endl;
+
         cl::args diss;
 
         diss.push_back(points_set.all_points);
@@ -395,6 +407,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         {
             p->step(*this, ctx, mqueue, pool, pack, current_timestep, iteration, max_iteration);
         }
+
+        return;
 
         std::vector<ref_counted_buffer> intermediates = get_derivatives_of(ctx, generic_in, mqueue, pool);
 
@@ -760,9 +774,9 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             enforce_constraints(scratch);
             #else
             dissipate_set(mqueue, data[0], data[1], points_set, timestep, dim, scale);
-            enforce_constraints(data[1]);
+            //enforce_constraints(data[1]);
 
-            std::swap(data[1], data[2]);
+            //std::swap(data[1], data[2]);
             #endif // DISS_UNIDIR
         }
     }
@@ -924,14 +938,14 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     std::swap(b2, scratch);
     #else
-    dissipate_set(mqueue, data[0], data[1], points_set, timestep, dim, scale);
+    //dissipate_set(mqueue, data[0], data[1], points_set, timestep, dim, scale);
     #endif
 
     //dissipate(get_input().buffers, get_output().buffers);
 
     //clean(scratch.buffers, b2.buffers);
 
-    enforce_constraints(data[1]);
+    //enforce_constraints(data[1]);
 
     for(plugin* p : plugins)
     {
@@ -940,5 +954,5 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     mqueue.end_splice(main_queue);
 
-    std::swap(data[1], data[0]);
+    //std::swap(data[1], data[0]);
 }

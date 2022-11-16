@@ -5596,8 +5596,9 @@ int main()
     {
         steady_timer frametime;
 
-        win.poll();
+        //win.poll();
 
+        #if 0
         if(!ImGui::GetIO().WantCaptureKeyboard)
         {
             float speed = 0.001;
@@ -5679,11 +5680,12 @@ int main()
 
             camera_pos += offset;
         }
+        #endif
 
         //std::cout << camera_quat.q << std::endl;
         //std::cout << "POS " << camera_pos << std::endl;
 
-        auto buffer_size = rtex.size<2>();
+        /*auto buffer_size = rtex.size<2>();
 
         if((vec2i){buffer_size.x(), buffer_size.y()} != win.get_window_size())
         {
@@ -5712,13 +5714,13 @@ int main()
             rays_terminated.alloc(sizeof(cl_float) * 20 * width * height);
 
             texture_coordinates.alloc(sizeof(cl_float2) * width * height);
-        }
+        }*/
 
-        rtex.acquire(clctx.cqueue);
+        //rtex.acquire(clctx.cqueue);
 
         bool step = false;
 
-            ImGui::Begin("Test Window", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+            /*ImGui::Begin("Test Window", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
             if(ImGui::Button("Step"))
                 step = true;
@@ -5774,10 +5776,12 @@ int main()
                 ImGui::PlotLines("Initial Velocity", dyn->debug_velocities.data(), dyn->debug_velocities.size(), 0, nullptr, FLT_MAX, FLT_MAX, ImVec2(400, 100));
             }
 
-            ImGui::End();
+            ImGui::End();*/
 
         if(run)
             step = true;
+
+        step = true;
 
         ///rk4
         ///though no signs of any notable instability for backwards euler
@@ -5801,6 +5805,10 @@ int main()
 
             auto callback = [&](cl::managed_command_queue& mqueue, std::vector<cl::buffer>& bufs, std::vector<ref_counted_buffer>& intermediates)
             {
+                return;
+
+                ///could it still be this?
+                ///no
                 wave_manager.issue_extraction(mqueue, bufs, intermediates, scale, clsize);
 
                 if(!should_render)
@@ -5831,6 +5839,9 @@ int main()
             time_elapsed_s += timestep;
         }
 
+        //mqueue.block();
+        //clctx.cqueue.block();
+
         {
             std::vector<dual_types::complex<float>> values = wave_manager.process();
 
@@ -5841,9 +5852,11 @@ int main()
             }
         }
 
+        bool snap = false;
+
         if(should_render || snap)
         {
-            if(rendering_method == 0)
+            if(rendering_method == 0 && false)
             {
                 cl::args render_args;
 
@@ -5872,7 +5885,7 @@ int main()
 
             current_skip_frame = (current_skip_frame + 1) % skip_frames;
 
-            if(rendering_method == 1 && not_skipped)
+            if(rendering_method == 1 && not_skipped && false)
             {
                 cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
                 cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
@@ -6022,9 +6035,9 @@ int main()
             clctx.cqueue.exec("step_accurate_rays", step_args, {width * height}, {128});
         }*/
 
-        rtex.unacquire(clctx.cqueue);
+        //rtex.unacquire(clctx.cqueue);
 
-        {
+        /*{
             ImDrawList* lst = ImGui::GetBackgroundDrawList();
 
             ImVec2 screen_pos = ImGui::GetMainViewport()->Pos;
@@ -6042,9 +6055,9 @@ int main()
             }
 
             lst->AddImage((void*)rtex.texture_id, tl, br, ImVec2(0, 0), ImVec2(1.f, 1.f));
-        }
+        }*/
 
-        win.display();
+        //win.display();
 
         if(frametime.get_elapsed_time_s() > 10)
             return 0;
