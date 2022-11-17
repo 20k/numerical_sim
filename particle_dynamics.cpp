@@ -466,7 +466,7 @@ struct galaxy_distribution
             return cdf(r);
         };
 
-        double found_radius = 0;
+        /*double found_radius = 0;
 
         do
         {
@@ -477,7 +477,13 @@ struct galaxy_distribution
             found_radius = select_from_cdf(random_mass, max_radius, lambda_cdf);
         } while(found_radius >= max_radius);
 
-        return found_radius;
+        return found_radius;*/
+
+        double random = uint64_to_double(xoshiro256ss(rng));
+
+        double random_mass = random * mass;
+
+        return select_from_cdf(random_mass, max_radius, lambda_cdf);
     }
 };
 
@@ -537,22 +543,6 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
     float scale = mesh.scale;
 
-    particle_count = 1000 * 60;
-
-    for(int i=0; i < (int)p_data.size(); i++)
-    {
-        p_data[i].position.alloc(sizeof(cl_float) * 3 * particle_count);
-        p_data[i].velocity.alloc(sizeof(cl_float) * 3 * particle_count);
-        p_data[i].mass.alloc(sizeof(cl_float) * particle_count);
-    }
-
-    ///need to use an actual rng if i'm doing anything even vaguely scientific
-    //std::vector<float> analytic_radius;
-    std::vector<vec3f> positions;
-    std::vector<vec3f> directions;
-    std::vector<float> masses;
-    std::vector<float> analytic_cumulative_mass;
-
     ///https://arxiv.org/abs/1607.08364
     //double milky_way_mass_kg = 6.43 * pow(10., 10.) * 1.16 * get_solar_mass_kg();
     double milky_way_mass_kg = 4 * pow(10, 11) * get_solar_mass_kg();
@@ -567,37 +557,23 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     numerical_params num_params(params);
 
-    float init_mass = num_params.mass / particle_count;
-
-    ///https://www.mdpi.com/2075-4434/6/3/70/htm mond galaxy info
-
-    printf("Mass per particle %.20f\n", init_mass);
-
-    for(uint64_t i=0; i < particle_count; i++)
-    {
-        masses.push_back(init_mass);
-    }
-
-    /*auto get_mond_velocity = [&](float r, float M, float G, float a0)
-    {
-        float p1 = G * M/r;
-
-        float p2 = (1/sqrt(2.f));
-
-        float frac = 2 * a0 / (G * M);
-
-        float p_inner = 1 + sqrt(1 + pow(r, 4.f) * pow(frac, 2.f));
-
-        float p3 = sqrt(p_inner);
-
-        return sqrt(p1 * p2 * p3);
-    };*/
+    std::vector<vec3f> positions;
+    std::vector<vec3f> directions;
+    std::vector<float> masses;
+    std::vector<float> analytic_cumulative_mass;
 
     xoshiro256ss_state rng = xoshiro256ss_init(2345);
 
-    for(int i=0; i < particle_count; i++)
+    int test_particle_count = 1000 * 60;
+
+    ///oh crap. So, if we select a radius outside of the galaxy radius, we actually need to discard the particle instead?
+    for(int i=0; i < test_particle_count; i++)
     {
         double radius = dist.select_radius(rng);
+
+        if(radius >= dist.max_radius)
+            continue;
+
         double velocity = dist.get_velocity_at(radius);
 
         //printf("Local Velocity %f\n", velocity);
@@ -639,6 +615,43 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         //printf("Velocity %f\n", speed_in_c);
         //printf("Position %f %f %f\n", pos.x(), pos.y(), pos.z());
     }
+
+    particle_count = positions.size();
+
+    printf("Actual particle count %i\n", particle_count);
+
+    for(int i=0; i < (int)p_data.size(); i++)
+    {
+        p_data[i].position.alloc(sizeof(cl_float) * 3 * particle_count);
+        p_data[i].velocity.alloc(sizeof(cl_float) * 3 * particle_count);
+        p_data[i].mass.alloc(sizeof(cl_float) * particle_count);
+    }
+
+    float init_mass = num_params.mass / particle_count;
+
+    ///https://www.mdpi.com/2075-4434/6/3/70/htm mond galaxy info
+
+    printf("Mass per particle %.20f\n", init_mass);
+
+    for(uint64_t i=0; i < particle_count; i++)
+    {
+        masses.push_back(init_mass);
+    }
+
+    /*auto get_mond_velocity = [&](float r, float M, float G, float a0)
+    {
+        float p1 = G * M/r;
+
+        float p2 = (1/sqrt(2.f));
+
+        float frac = 2 * a0 / (G * M);
+
+        float p_inner = 1 + sqrt(1 + pow(r, 4.f) * pow(frac, 2.f));
+
+        float p3 = sqrt(p_inner);
+
+        return sqrt(p1 * p2 * p3);
+    };*/
 
     {
         std::vector<std::tuple<vec3f, vec3f, float>> pos_vel;
