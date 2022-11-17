@@ -627,7 +627,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         p_data[i].mass.alloc(sizeof(cl_float) * particle_count);
     }
 
-    float init_mass = num_params.mass / particle_count;
+    float init_mass = num_params.mass / test_particle_count;
 
     ///https://www.mdpi.com/2075-4434/6/3/70/htm mond galaxy info
 
