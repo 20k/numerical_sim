@@ -121,6 +121,31 @@ void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, 
     *out = (float3){d0, d1, d2};
 }
 
+
+void calculate_lorentz_derivative(float* out, float3 Xpos, float3 vel, float lorentz_in, float scale, int4 dim, STANDARD_ARGS())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+
+    ///isn't this already handled internally?
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float V0 = vel.x;
+    float V1 = vel.y;
+    float V2 = vel.z;
+
+    float eq_L = lorentz_in;
+
+    float TEMPORARIESlorentz;
+
+    float d0 = LorentzDiff;
+
+    *out = d0;
+}
+
 __kernel
 void dissipate_mass(__global float* positions, __global float* mass_in, __global float* mass_out, __global float* mass_base, ITYPE geodesic_count, float timestep)
 {
@@ -203,6 +228,27 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     velocities_out[GET_IDX(idx, 0)] = out_vel.x;
     velocities_out[GET_IDX(idx, 1)] = out_vel.y;
     velocities_out[GET_IDX(idx, 2)] = out_vel.z;
+}
+
+__kernel
+void evolve_lorentz(__global float* positions, __global float* velocities,
+                    __global float* lorentz_in, __global float* lorentz_out, __global float* lorentz_base,
+                    int geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
+{
+    int idx = get_global_id(0);
+
+    if(idx >= geodesic_count)
+        return;
+
+    float3 Xpos = {positions[idx * 3 + 0], positions[idx * 3 + 1], positions[idx * 3 + 2]};
+    float3 vel = {velocities[idx * 3 + 0], velocities[idx * 3 + 1], velocities[idx * 3 + 2]};
+
+    float current_lorentz = lorentz_in[idx];
+
+    float diff = 0;
+    calculate_lorentz_derivative(&diff, Xpos, vel, current_lorentz, scale, dim, GET_STANDARD_ARGS());
+
+    lorentz_out[idx] = lorentz_base[idx] + timestep * diff;
 }
 
 #if 0
@@ -558,7 +604,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 }
 
 __kernel
-void do_weighted_summation(__global float* positions, __global float* velocities, __global float* masses, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
+void do_weighted_summation(__global float* positions, __global float* velocities, __global float* masses, __global float* lorentz_in, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
 {
     int kix = get_global_id(0);
     int kiy = get_global_id(1);
@@ -602,6 +648,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         if(total_weight_factor == 0)
             continue;
 
+
         float3 world_pos = {positions[GET_IDX(geodesic_idx, 0)], positions[GET_IDX(geodesic_idx, 1)], positions[GET_IDX(geodesic_idx, 2)]};
         float3 vel = {velocities[GET_IDX(geodesic_idx, 0)], velocities[GET_IDX(geodesic_idx, 1)], velocities[GET_IDX(geodesic_idx, 2)]};
 
@@ -636,7 +683,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         int iz = kiz;
 
         {
-            //float gamma = lorentzs[geodesic_idx];
+            float lorentz = lorentz_in[geodesic_idx];
 
             float TEMPORARIESadmmatter;
 

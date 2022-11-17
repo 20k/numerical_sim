@@ -85,6 +85,39 @@ std::vector<buffer_descriptor> particle_dynamics::get_buffers()
             {"adm_S", "do_weighted_summation", 0.f, 0, 0}};
 }
 
+void build_lorentz(equation_context& ctx)
+{
+    ctx.uses_linear = true;
+    ctx.order = 2;
+    ctx.use_precise_differentiation = false;
+
+    standard_arguments args(ctx);
+
+    ctx.pin(args.Kij);
+    ctx.pin(args.Yij);
+
+    value scale = "scale";
+    tensor<value, 3> V_upper = {"V0", "V1", "V2"};
+    value L = "eq_L";
+
+    value diff = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        value kij_sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            kij_sum += args.Kij.idx(i, j) * V_upper.idx(j);
+        }
+
+        diff += L * V_upper.idx(i) * (args.gA * kij_sum - diff1(ctx, args.gA, i));
+    }
+
+    ctx.add("LorentzDiff", diff);
+}
+
+
 void build_adm_geodesic(equation_context& ctx, vec3f dim)
 {
     ctx.uses_linear = true;
@@ -100,7 +133,7 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
 
     value scale = "scale";
 
-    #if 0
+    #if 1
     ctx.add("universe_size", universe_length * scale);
 
     tensor<value, 3> V_upper = {"V0", "V1", "V2"};
@@ -154,6 +187,7 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
     }
     #endif
 
+    #if 0
     tensor<value, 3> u_lower = {"V0", "V1", "V2"};
 
     inverse_metric<value, 3, 3> iYij = args.iYij;
@@ -212,10 +246,11 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
 
         dx.idx(j) = p1 - args.gB.idx(j);
     }
+    #endif
 
-    ctx.add("V0Diff", u_lower_diff.idx(0));
-    ctx.add("V1Diff", u_lower_diff.idx(1));
-    ctx.add("V2Diff", u_lower_diff.idx(2));
+    ctx.add("V0Diff", V_upper_diff.idx(0));
+    ctx.add("V1Diff", V_upper_diff.idx(1));
+    ctx.add("V2Diff", V_upper_diff.idx(2));
 
     ctx.add("X0Diff", dx.idx(0));
     ctx.add("X1Diff", dx.idx(1));
@@ -789,6 +824,13 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     {
         equation_context ectx;
+        build_lorentz(ectx);
+
+        ectx.build(argument_string, "lorentz");
+    }
+
+    {
+        equation_context ectx;
         build_adm_geodesic(ectx, {mesh.dim.x(), mesh.dim.y(), mesh.dim.z()});
 
         ectx.build(argument_string, 6);
@@ -1100,6 +1142,27 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         cl::args args;
         args.push_back(p_data[in_idx].position.as_device_read_only());
         args.push_back(p_data[in_idx].velocity.as_device_read_only());
+        args.push_back(p_data[in_idx].lorentz.as_device_read_only());
+        args.push_back(p_data[out_idx].lorentz);
+        args.push_back(p_data[base_idx].lorentz.as_device_read_only());
+        args.push_back(particle_count);
+
+        for(named_buffer& i : in.buffers)
+        {
+            args.push_back(i.buf.as_device_read_only());
+        }
+
+        args.push_back(scale);
+        args.push_back(clsize);
+        args.push_back(timestep);
+
+        mqueue.exec("evolve_lorentz", args, {particle_count}, {128});
+    }
+
+    {
+        cl::args args;
+        args.push_back(p_data[in_idx].position.as_device_read_only());
+        args.push_back(p_data[in_idx].velocity.as_device_read_only());
         args.push_back(p_data[out_idx].position);
         args.push_back(p_data[out_idx].velocity);
         args.push_back(p_data[base_idx].position.as_device_read_only());
@@ -1178,6 +1241,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(p_data[in_idx].position.as_device_read_only());
         args.push_back(p_data[in_idx].velocity.as_device_read_only());
         args.push_back(p_data[in_idx].mass.as_device_read_only());
+        args.push_back(p_data[in_idx].lorentz.as_device_read_only());
         args.push_back(particle_count);
         args.push_back(counts_val.as_device_read_only());
         args.push_back(memory_ptrs_val.as_device_read_only());
