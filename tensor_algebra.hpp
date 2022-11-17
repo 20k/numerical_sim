@@ -391,29 +391,10 @@ struct frame_basis
 inline
 frame_basis calculate_frame_basis(equation_context& ctx, const metric<value, 4, 4>& met)
 {
-    tensor<value, 4> ti1 = {met.idx(0, 0), met.idx(0, 1), met.idx(0, 2), met.idx(0, 3)};
-    tensor<value, 4> ti2 = {met.idx(0, 1), met.idx(1, 1), met.idx(1, 2), met.idx(1, 3)};
-    tensor<value, 4> ti3 = {met.idx(0, 2), met.idx(1, 2), met.idx(2, 2), met.idx(2, 3)};
-    tensor<value, 4> ti4 = {met.idx(0, 3), met.idx(1, 3), met.idx(2, 3), met.idx(3, 3)};
-
-    auto metric_inverse = met.invert();
-
-    ctx.pin(metric_inverse);
-
-    ti1 = raise_index(ti1, metric_inverse, 0);
-    ti2 = raise_index(ti2, metric_inverse, 0);
-    ti3 = raise_index(ti3, metric_inverse, 0);
-    ti4 = raise_index(ti4, metric_inverse, 0);
-
-    ctx.pin(ti1);
-    ctx.pin(ti2);
-    ctx.pin(ti3);
-    ctx.pin(ti4);
-
-    vec<4, value> i1 = {ti1.idx(0), ti1.idx(1), ti1.idx(2), ti1.idx(3)};
-    vec<4, value> i2 = {ti2.idx(0), ti2.idx(1), ti2.idx(2), ti2.idx(3)};
-    vec<4, value> i3 = {ti3.idx(0), ti3.idx(1), ti3.idx(2), ti3.idx(3)};
-    vec<4, value> i4 = {ti4.idx(0), ti4.idx(1), ti4.idx(2), ti4.idx(3)};
+    vec<4, value> i1 = {1, 0, 0, 0};
+    vec<4, value> i2 = {0, 1, 0, 0};
+    vec<4, value> i3 = {0, 0, 1, 0};
+    vec<4, value> i4 = {0, 0, 0, 1};
 
     vec<4, value> u1 = i1;
 
@@ -433,16 +414,6 @@ frame_basis calculate_frame_basis(equation_context& ctx, const metric<value, 4, 
     u4 = u4 - gram_proj(u2, u4, met);
     u4 = u4 - gram_proj(u3, u4, met);
 
-    ctx.pin(u4);
-
-    u1 = u1.norm();
-    u2 = u2.norm();
-    u3 = u3.norm();
-    u4 = u4.norm();
-
-    ctx.pin(u1);
-    ctx.pin(u2);
-    ctx.pin(u3);
     ctx.pin(u4);
 
     u1 = normalize_big_metric(u1, met);
