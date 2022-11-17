@@ -910,7 +910,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             for(int j=0; j < 3; j++)
             {
                 //Sij.idx(i, j) = idet * (covariant_momentum.idx(i) * covariant_momentum.idx(j) / Ea);
-                Sij.idx(i, j) = idet * (covariant_momentum.idx(i) * (u_lower.idx(j) / lorentz));
+                Sij.idx(i, j) = idet * (covariant_momentum.idx(i) * v_lower.idx(j));
             }
         }
 
