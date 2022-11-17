@@ -20,7 +20,7 @@
 #endif
 
 __kernel
-void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global float* initial_dirs3, __global float* positions3_out, __global float* velocities3_out, ITYPE geodesic_count, float scale, int4 dim)
+void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global float* initial_dirs3, __global float* positions3_out, __global float* velocities3_out, __global float* lorentz_out, ITYPE geodesic_count, float scale, int4 dim)
 {
     size_t idx = get_global_id(0);
 
@@ -44,22 +44,18 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global flo
     float dirz = initial_dirs3[idx * 3 + 2];
 
     float lorentz = 0;
-    float ux = 0;
-    float uy = 0;
-    float uz = 0;
+    float vx = 0;
+    float vy = 0;
+    float vz = 0;
 
     {
         float TEMPORARIEStparticleinit;
 
         lorentz = OUT_lorentz;
-        ux = OUT_UX;
-        uy = OUT_UY;
-        uz = OUT_UZ;
+        vx = OUT_VX;
+        vy = OUT_VY;
+        vz = OUT_VZ;
     }
-
-    float vx = ux / lorentz;
-    float vy = uy / lorentz;
-    float vz = uz / lorentz;
 
     positions3_out[GET_IDX(idx, 0)] = px;
     positions3_out[GET_IDX(idx, 1)] = py;
@@ -70,6 +66,8 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global flo
     velocities3_out[GET_IDX(idx, 0)] = vx;
     velocities3_out[GET_IDX(idx, 1)] = vy;
     velocities3_out[GET_IDX(idx, 2)] = vz;
+
+    lorentz_out[idx] = lorentz;
 }
 
 ///this returns the change in X, which is not velocity

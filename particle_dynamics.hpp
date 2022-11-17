@@ -17,8 +17,9 @@ struct particle_buffer
     cl::buffer position;
     cl::buffer velocity;
     cl::buffer mass;
+    cl::buffer lorentz;
 
-    particle_buffer(cl::context& ctx) : position(ctx), velocity(ctx), mass(ctx){}
+    particle_buffer(cl::context& ctx) : position(ctx), velocity(ctx), mass(ctx), lorentz(ctx){}
 };
 
 struct particle_dynamics : plugin

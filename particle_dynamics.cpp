@@ -625,6 +625,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         p_data[i].position.alloc(sizeof(cl_float) * 3 * particle_count);
         p_data[i].velocity.alloc(sizeof(cl_float) * 3 * particle_count);
         p_data[i].mass.alloc(sizeof(cl_float) * particle_count);
+        p_data[i].lorentz.alloc(sizeof(cl_float) * particle_count);
     }
 
     float init_mass = num_params.mass / test_particle_count;
@@ -779,9 +780,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         value lorentz = tensor_velocity.idx(0);
 
         ectx.add("OUT_lorentz", lorentz);
-        ectx.add("OUT_UX", adm_velocity.idx(1));
-        ectx.add("OUT_UY", adm_velocity.idx(2));
-        ectx.add("OUT_UZ", adm_velocity.idx(3));
+        ectx.add("OUT_VX", adm_velocity.idx(1));
+        ectx.add("OUT_VY", adm_velocity.idx(2));
+        ectx.add("OUT_VZ", adm_velocity.idx(3));
 
         ectx.build(argument_string, "tparticleinit");
     }
@@ -901,6 +902,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         args.push_back(initial_dirs);
         args.push_back(p_data[0].position);
         args.push_back(p_data[0].velocity);
+        args.push_back(p_data[0].lorentz);
 
         args.push_back(particle_count);
         args.push_back(scale);
@@ -914,10 +916,12 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     cl::copy(cqueue, p_data[0].position, p_data[1].position);
     cl::copy(cqueue, p_data[0].velocity, p_data[1].velocity);
     cl::copy(cqueue, p_data[0].mass, p_data[1].mass);
+    cl::copy(cqueue, p_data[0].lorentz, p_data[1].lorentz);
 
     cl::copy(cqueue, p_data[0].position, p_data[2].position);
     cl::copy(cqueue, p_data[0].velocity, p_data[2].velocity);
     cl::copy(cqueue, p_data[0].mass, p_data[2].mass);
+    cl::copy(cqueue, p_data[0].lorentz, p_data[2].lorentz);
 
     to_init.lookup("adm_p").buf.set_to_zero(cqueue);
     to_init.lookup("adm_Si0").buf.set_to_zero(cqueue);
@@ -1197,15 +1201,11 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     ///todo: not this, want to have the indices controlled from a higher level
     if(iteration != max_iteration)
     {
-        std::swap(p_data[in_idx].position, p_data[out_idx].position);
-        std::swap(p_data[in_idx].velocity, p_data[out_idx].velocity);
-        std::swap(p_data[in_idx].mass, p_data[out_idx].mass);
+        std::swap(p_data[in_idx], p_data[out_idx]);
     }
     else
     {
-        std::swap(p_data[base_idx].position, p_data[out_idx].position);
-        std::swap(p_data[base_idx].velocity, p_data[out_idx].velocity);
-        std::swap(p_data[base_idx].mass, p_data[out_idx].mass);
+        std::swap(p_data[base_idx], p_data[out_idx]);
     }
 }
 
