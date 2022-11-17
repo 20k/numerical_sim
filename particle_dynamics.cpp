@@ -810,6 +810,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ///G = u0
 
         ///todo. Check nuvu = 0
+        ///todo: check vivi = 1 for.. photons?
         tensor<value, 4> adm_velocity = (tensor_velocity / tensor_velocity.idx(0)) - get_adm_hypersurface_normal_raised(args.gA, args.gB);
 
         value lorentz = tensor_velocity.idx(0);
@@ -851,11 +852,11 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ectx.order = 2;
         standard_arguments args(ectx);
 
-        tensor<value, 3> u_lower = {"vel.x", "vel.y", "vel.z"};
+        //tensor<value, 3> u_lower = {"vel.x", "vel.y", "vel.z"};
 
         value mass = "mass";
 
-        value sum = 0;
+        /*value sum = 0;
 
         for(int i=0; i < 3; i++)
         {
@@ -871,7 +872,16 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ///and Ea could be made numerically stable
         ///this formalism seems the most obviously numerically stable however
         //value Ea = sqrt(mass * mass + mass * mass * sum);
-        value lorentz = sqrt(1 + fabs(sum));
+        value lorentz = sqrt(1 + fabs(sum));*/
+
+        tensor<value, 3> v_upper = {"vel.x", "vel.y", "vel.z"};
+
+        tensor<value, 3> v_lower = lower_index(v_upper, args.Yij, 0);
+
+        value lorentz = "lorentz";
+
+        tensor<value, 3> u_lower = lorentz * v_lower;
+
         value Ea = mass * lorentz;
 
         tensor<value, 3> covariant_momentum = mass * u_lower; ///????
