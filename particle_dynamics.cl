@@ -67,7 +67,8 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global flo
     velocities3_out[GET_IDX(idx, 1)] = vy;
     velocities3_out[GET_IDX(idx, 2)] = vz;
 
-    lorentz_out[idx] = lorentz;
+    ///yep!
+    lorentz_out[idx] = lorentz - 1;
 }
 
 ///this returns the change in X, which is not velocity
@@ -249,6 +250,12 @@ void evolve_lorentz(__global float* positions, __global float* velocities,
     calculate_lorentz_derivative(&diff, Xpos, vel, current_lorentz, scale, dim, GET_STANDARD_ARGS());
 
     lorentz_out[idx] = lorentz_base[idx] + timestep * diff;
+    /*if(idx == 1025)
+    {
+        printf("Hi odiff %.23f in %.23f out %.23f full %.23f\n", odiff, base, out, lorentz_out[idx]);
+
+        //printf("Lorentz %.23f out %.23f Vel %f %f %f diff %.23f step %f\n", current_lorentz, lorentz_out[idx], vel.x, vel.y, vel.z, odiff, timestep);
+    }*/
 }
 
 #if 0

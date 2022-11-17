@@ -98,7 +98,7 @@ void build_lorentz(equation_context& ctx)
 
     value scale = "scale";
     tensor<value, 3> V_upper = {"V0", "V1", "V2"};
-    value L = "eq_L";
+    value L = value{"eq_L"} + 1;
 
     value diff = 0;
 
@@ -878,7 +878,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         tensor<value, 3> v_lower = lower_index(v_upper, args.Yij, 0);
 
-        value lorentz = "lorentz";
+        value lorentz = value{"lorentz"} + 1;
 
         tensor<value, 3> u_lower = lorentz * v_lower;
 
@@ -1273,13 +1273,22 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     }
 
     ///todo: not this, want to have the indices controlled from a higher level
-    if(iteration != max_iteration)
+    /*if(iteration != max_iteration)
     {
         std::swap(p_data[in_idx], p_data[out_idx]);
     }
     else
     {
         std::swap(p_data[base_idx], p_data[out_idx]);
+    }*/
+
+    if(iteration != max_iteration - 1)
+    {
+        std::swap(p_data[1], p_data[2]);
+    }
+    else
+    {
+        std::swap(p_data[1], p_data[0]);
     }
 }
 
