@@ -8,7 +8,7 @@ void laplace_interior(__global float* buffer_in, __global float* buffer_out, flo
 
     float u0n1 = 0;
 
-    if(x_degenerate || y_degenerate || z_degenerate)
+    if(x_degenerate || y_degenerate || z_degenerate || true)
     {
         float uxm1 = buffer_in[IDX(ix-1, iy, iz)];
         float uxp1 = buffer_in[IDX(ix+1, iy, iz)];
