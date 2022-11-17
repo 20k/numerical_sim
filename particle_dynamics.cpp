@@ -819,8 +819,18 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         tensor<value, 3> covariant_momentum = mass * u_lower; ///????
 
+        value idet = 0;
+
+        #ifdef USE_W
+        value W_impl = bidx("X", false, false);
+
+        idet = pow(W_impl, 3);
+        #else
+        assert(false);
+        #endif
+
         //value idet = pow(args.W_impl, 3);
-        value idet = pow(args.get_X(), 3.f/2.f);
+        //value idet = pow(args.get_X(), 3.f/2.f);
 
         value out_adm_p = idet * Ea;
 

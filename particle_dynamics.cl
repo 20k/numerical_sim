@@ -627,6 +627,10 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         float fy = voxel_pos.y;
         float fz = voxel_pos.z;
 
+        int ix = kix;
+        int iy = kiy;
+        int iz = kiz;
+
         {
             //float gamma = lorentzs[geodesic_idx];
 
