@@ -281,6 +281,7 @@ void bssn::build_cY(equation_context& ctx)
     ctx.pin(args.cY);
 
     tensor<value, 3> bigGi_lower = lower_index(args.bigGi, args.cY, 0);
+    ///Oh no. These are associated with Y, not cY
     tensor<value, 3> gB_lower = lower_index(args.gB, args.cY, 0);
 
     ctx.pin(bigGi_lower);
