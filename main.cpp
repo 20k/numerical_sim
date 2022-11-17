@@ -5772,6 +5772,9 @@ int main()
                     continue;
 
                 ImGui::PlotLines("Initial Velocity", dyn->debug_velocities.data(), dyn->debug_velocities.size(), 0, nullptr, FLT_MAX, FLT_MAX, ImVec2(400, 100));
+
+                ImGui::PlotLines("Real Mass", dyn->debug_real_mass.data(), dyn->debug_real_mass.size(), 0, nullptr, FLT_MAX, FLT_MAX, ImVec2(400, 100));
+                ImGui::PlotLines("Analytic Mass", dyn->debug_analytic_mass.data(), dyn->debug_analytic_mass.size(), 0, nullptr, FLT_MAX, FLT_MAX, ImVec2(400, 100));
             }
 
             ImGui::End();

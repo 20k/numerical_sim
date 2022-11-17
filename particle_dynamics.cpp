@@ -382,12 +382,18 @@ struct galaxy_distribution
 
     double local_G = 0;
     double meters_to_local = 0;
+    double kg_to_local = 0;
 
     T distribution;
 
     double local_distance_to_meters(double r)
     {
         return r / meters_to_local;
+    }
+
+    double local_mass_to_kg(double m)
+    {
+        return m / kg_to_local;
     }
 
     ///M(r)
@@ -450,6 +456,7 @@ struct galaxy_distribution
 
         local_G = get_G() * pow(to_local_distance, 3) / to_local_mass;
         meters_to_local = to_local_distance;
+        kg_to_local = to_local_mass;
     }
 
     double select_radius(xoshiro256ss_state& rng)
@@ -544,6 +551,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     std::vector<vec3f> positions;
     std::vector<vec3f> directions;
     std::vector<float> masses;
+    std::vector<float> analytic_cumulative_mass;
 
     ///https://arxiv.org/abs/1607.08364
     //double milky_way_mass_kg = 6.43 * pow(10., 10.) * 1.16 * get_solar_mass_kg();
@@ -620,6 +628,12 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         directions.push_back(velocity_fin);
 
+        double local_analytic_mass = dist.cdf(radius);
+        double analytic_mass_kg = dist.local_mass_to_kg(local_analytic_mass);
+        double analytic_mass_scale = num_params.convert_mass_to_scale(analytic_mass_kg);
+
+        analytic_cumulative_mass.push_back(analytic_mass_scale);
+
         assert(speed_in_c < 1);
 
         //printf("Velocity %f\n", speed_in_c);
@@ -627,22 +641,24 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     }
 
     {
-        std::vector<std::pair<vec3f, vec3f>> pos_vel;
+        std::vector<std::tuple<vec3f, vec3f, float>> pos_vel;
         pos_vel.reserve(particle_count);
 
         for(int i=0; i < particle_count; i++)
         {
-            pos_vel.push_back({positions[i], directions[i]});
+            pos_vel.push_back({positions[i], directions[i], analytic_cumulative_mass[i]});
         }
 
         std::sort(pos_vel.begin(), pos_vel.end(), [](auto& i1, auto& i2)
         {
-            return i1.first.squared_length() < i2.first.squared_length();
+            return std::get<0>(i1).squared_length() < std::get<0>(i2).squared_length();
         });
 
         float selection_radius = 0;
 
-        for(auto& [p, v] : pos_vel)
+        float real_mass = 0;
+
+        for(auto& [p, v, m] : pos_vel)
         {
             float p_len = p.length();
             float v_len = v.length();
@@ -651,7 +667,12 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             {
                 selection_radius += 0.25f;
                 debug_velocities.push_back(v.length());
+
+                debug_real_mass.push_back(real_mass);
+                debug_analytic_mass.push_back(m);
             }
+
+            real_mass += init_mass;
         }
     }
 

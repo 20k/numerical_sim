@@ -34,6 +34,8 @@ struct particle_dynamics : plugin
     std::optional<cl::buffer> counts;
 
     std::vector<float> debug_velocities;
+    std::vector<float> debug_analytic_mass;
+    std::vector<float> debug_real_mass;
 
     /*cl::buffer adm_p;
     std::array<cl::buffer, 3> adm_Si;
