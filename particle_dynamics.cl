@@ -43,17 +43,23 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global flo
     float diry = initial_dirs3[idx * 3 + 1];
     float dirz = initial_dirs3[idx * 3 + 2];
 
-    float vx = 0;
-    float vy = 0;
-    float vz = 0;
+    float lorentz = 0;
+    float ux = 0;
+    float uy = 0;
+    float uz = 0;
 
     {
         float TEMPORARIEStparticleinit;
 
-        vx = OUT_VX;
-        vy = OUT_VY;
-        vz = OUT_VZ;
+        lorentz = OUT_lorentz;
+        ux = OUT_UX;
+        uy = OUT_UY;
+        uz = OUT_UZ;
     }
+
+    float vx = ux / lorentz;
+    float vy = uy / lorentz;
+    float vz = uz / lorentz;
 
     positions3_out[GET_IDX(idx, 0)] = px;
     positions3_out[GET_IDX(idx, 1)] = py;

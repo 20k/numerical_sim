@@ -760,14 +760,28 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         vec<4, value> velocity = get_timelike_vector(direction, 1, tet);
 
-        tensor<value, 3> ten_vel = {velocity.y(), velocity.z(), velocity.w()};
+        /*tensor<value, 3> ten_vel = {velocity.y(), velocity.z(), velocity.w()};
 
-        tensor<value, 3> lowered_vel = lower_index(ten_vel, args.Yij, 0);
+        tensor<value, 3> lowered_vel = lower_index(ten_vel, args.Yij, 0);*/
 
-        ectx.add("OUT_VT", 1);
-        ectx.add("OUT_VX", lowered_vel.idx(0));
-        ectx.add("OUT_VY", lowered_vel.idx(1));
-        ectx.add("OUT_VZ", lowered_vel.idx(2));
+        ///4 velocity
+        tensor<value, 4> tensor_velocity = {velocity[0], velocity[1], velocity[2], velocity[3]};
+
+        ///https://arxiv.org/pdf/1208.3927.pdf (8)
+        ///pa = E(na + va)
+        ///ua = G(na + va) (divide by mass)
+        ///(ua/G) - na = va
+        ///G = u0
+
+        ///todo. Check nuvu = 0
+        tensor<value, 4> adm_velocity = (tensor_velocity / tensor_velocity.idx(0)) - get_adm_hypersurface_normal_raised(args.gA, args.gB);
+
+        value lorentz = tensor_velocity.idx(0);
+
+        ectx.add("OUT_lorentz", lorentz);
+        ectx.add("OUT_UX", adm_velocity.idx(1));
+        ectx.add("OUT_UY", adm_velocity.idx(2));
+        ectx.add("OUT_UZ", adm_velocity.idx(3));
 
         ectx.build(argument_string, "tparticleinit");
     }
