@@ -222,6 +222,8 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     float3 out_Xpos = base_Xpos + dXpos;
     float3 out_vel = base_vel + dvel;
 
+    //printf("Pos %f %f %f\n", out_Xpos.x, out_Xpos.y, out_Xpos.z);
+
     positions_out[GET_IDX(idx, 0)] = out_Xpos.x;
     positions_out[GET_IDX(idx, 1)] = out_Xpos.y;
     positions_out[GET_IDX(idx, 2)] = out_Xpos.z;
@@ -722,7 +724,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         }
     }
 
-    if(vadm_p > 0 || (vadm_p == 0 && adm_p[index] != 0))
+    if(vadm_p != 0 || (vadm_p == 0 && adm_p[index] != 0))
     {
         adm_S[index] = vadm_S;
         adm_Si0[index] = vadm_Si0;
