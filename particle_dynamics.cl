@@ -485,6 +485,28 @@ float get_f_sp(float r_rs)
     return f_sp;
 }
 
+float cloud(float diff, float scale)
+{
+    diff = fabs(diff);
+
+    if(diff <= 0.5f * scale)
+    {
+        return (3.f/4.f) + pow(diff/scale, 2.f);
+    }
+
+    if(diff <= (3.f/2.f) * scale)
+    {
+        return 0.5f * pow((3.f/2.f) - diff/scale, 2.f);
+    }
+
+    return 0;
+}
+
+float cloud3(float3 diff, float scale)
+{
+    return cloud(diff.x, scale) * cloud(diff.y, scale) * cloud(diff.z, scale);
+}
+
 ///this kernel is unnecessarily 3d
 __kernel
 void memory_allocate(__global ITYPE* counts, __global ITYPE* memory_ptrs, __global ITYPE* memory_allocator, ITYPE max_memory, int4 dim)
@@ -545,9 +567,9 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 
     float rs = scale;
 
-    int spread = 3;
+    int spread = 4;
 
-    float total_weight = 0;
+    /*float total_weight = 0;
 
     if(actually_write)
     {
@@ -577,7 +599,9 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
                 }
             }
         }
-    }
+    }*/
+
+    float total_weight = 0;
 
     for(int zz=-spread; zz <= spread; zz++)
     {
@@ -594,12 +618,17 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 
                 float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
 
-                float to_centre_distance = fast_length(cell_wp - world_pos);
+                /*float to_centre_distance = fast_length(cell_wp - world_pos);
 
                 ///https://arxiv.org/pdf/1611.07906.pdf 20
                 float r_rs = to_centre_distance / rs;
 
                 float f_sp = get_f_sp(r_rs);
+
+                if(f_sp == 0)
+                    continue;*/
+
+                float f_sp = cloud3(cell_wp - world_pos, scale);
 
                 if(f_sp == 0)
                     continue;
@@ -660,23 +689,29 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         if(mass == 0)
             continue;
 
-        float total_weight_factor = collected_weights[gidx];
+        /*float total_weight_factor = collected_weights[gidx];
 
         if(total_weight_factor == 0)
-            continue;
-
+            continue;*/
 
         float3 world_pos = {positions[GET_IDX(geodesic_idx, 0)], positions[GET_IDX(geodesic_idx, 1)], positions[GET_IDX(geodesic_idx, 2)]};
         float3 vel = {velocities[GET_IDX(geodesic_idx, 0)], velocities[GET_IDX(geodesic_idx, 1)], velocities[GET_IDX(geodesic_idx, 2)]};
 
         float3 cell_wp = voxel_to_world_unrounded((float3)(kix, kiy, kiz), dim, scale);
 
-        float to_centre_distance = fast_length(cell_wp - world_pos);
+        /*float to_centre_distance = fast_length(cell_wp - world_pos);
 
         ///https://arxiv.org/pdf/1611.07906.pdf 20
         float r_rs = to_centre_distance / rs;
 
         float f_sp = get_f_sp(r_rs) / total_weight_factor;
+
+        if(f_sp == 0)
+            continue;
+
+        float weight = f_sp;*/
+
+        float f_sp = cloud3(cell_wp - world_pos, scale);
 
         if(f_sp == 0)
             continue;
