@@ -7,7 +7,7 @@
 #define GET_IDX(x, i) (x * 3 + i)
 
 ///ah fine ok give up, we're not doing mass damping
-#define MASS_CUTOFF 0
+//#define MASS_CUTOFF 0
 
 #ifdef USE_64_BIT
 #define ITYPE ulong
@@ -155,7 +155,7 @@ void dissipate_mass(__global float* positions, __global float* mass_in, __global
     if(idx >= geodesic_count)
         return;
 
-    if(mass_in[idx] <= MASS_CUTOFF)
+    if(mass_in[idx] == 0)
     {
         mass_out[idx] = 0;
         return;
@@ -185,7 +185,7 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     if(idx >= geodesic_count)
         return;
 
-    if(masses[idx] <= MASS_CUTOFF)
+    if(masses[idx] == 0)
         return;
 
     float3 Xpos = {positions_in[GET_IDX(idx, 0)], positions_in[GET_IDX(idx, 1)], positions_in[GET_IDX(idx, 2)]};
@@ -283,7 +283,7 @@ void index_trace_geodesics(__global float* positions_in, __global float* velocit
         return;
     }
 
-    if(masses[idx] <= MASS_CUTOFF)
+    if(masses[idx] == 0)
         return;
 
     float3 Xpos = {positions_in[GET_IDX(idx, 0)], positions_in[GET_IDX(idx, 1)], positions_in[GET_IDX(idx, 2)]};
@@ -393,7 +393,7 @@ void collect_geodesics(__global float* positions, __global float* masses, ulong 
     if(idx >= geodesic_count)
         return;
 
-    if(masses[idx] <= MASS_CUTOFF)
+    if(masses[idx] == 0)
         return;
 
     float3 Xpos = {positions[GET_IDX(idx, 0)], positions[GET_IDX(idx, 1)], positions[GET_IDX(idx, 2)]};
@@ -514,7 +514,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
     if(idx >= geodesic_count)
         return;
 
-    if(masses[idx] <= MASS_CUTOFF)
+    if(masses[idx] == 0)
         return;
 
     float3 world_pos = {positions[GET_IDX(idx, 0)], positions[GET_IDX(idx, 1)], positions[GET_IDX(idx, 2)]};
@@ -647,7 +647,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
 
         float mass = masses[geodesic_idx];
 
-        if(mass <= MASS_CUTOFF)
+        if(mass == 0)
             continue;
 
         float total_weight_factor = collected_weights[gidx];
