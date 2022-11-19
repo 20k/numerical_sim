@@ -715,7 +715,11 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
     float scale = mesh.scale;
 
-    auto [positions, directions, masses] = build_galaxy(*this);
+    //auto [positions, directions, masses] = build_galaxy(*this);
+
+    std::vector<vec3f> positions = {{-6, 0, 0}};
+    std::vector<vec3f> directions = {{0, 0, 0}};
+    std::vector<float> masses = {{0.01}};
 
     particle_count = positions.size();
 
@@ -1063,6 +1067,14 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(p_data[out_idx].mass);
         args.push_back(p_data[base_idx].mass.as_device_read_only());
         args.push_back(particle_count);
+
+        for(named_buffer& i : in.buffers)
+        {
+            args.push_back(i.buf.as_device_read_only());
+        }
+
+        args.push_back(scale);
+        args.push_back(clsize);
         args.push_back(timestep);
 
         mqueue.exec("dissipate_mass", args, {particle_count}, {128});

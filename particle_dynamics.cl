@@ -148,7 +148,7 @@ void calculate_lorentz_derivative(float* out, float3 Xpos, float3 vel, float lor
 }
 
 __kernel
-void dissipate_mass(__global float* positions, __global float* mass_in, __global float* mass_out, __global float* mass_base, ITYPE geodesic_count, float timestep)
+void dissipate_mass(__global float* positions, __global float* mass_in, __global float* mass_out, __global float* mass_base, ITYPE geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
 {
     size_t idx = get_global_id(0);
 
@@ -163,7 +163,14 @@ void dissipate_mass(__global float* positions, __global float* mass_in, __global
 
     float3 Xpos = {positions[GET_IDX(idx, 0)], positions[GET_IDX(idx, 1)], positions[GET_IDX(idx, 2)]};
 
-    if(fast_length(Xpos) >= MASS_CULL_SIZE)
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+
+    ///isn't this already handled internally?
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float gA_val = buffer_read_linear(gA, voxel_pos, dim);
+
+    if(fast_length(Xpos) >= MASS_CULL_SIZE || gA_val < 0.1f)
     {
         mass_out[idx] = 0;
     }
