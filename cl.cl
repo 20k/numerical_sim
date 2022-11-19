@@ -1749,7 +1749,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
         voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
-        float p_val = buffer_read_linear(adm_p, voxel_pos, dim);
+        float p_val = fabs(buffer_read_linear(adm_p, voxel_pos, dim));
 
         accum_R += p_val * 2000000;
         accum_G += p_val * 2000000;
