@@ -538,7 +538,7 @@ struct numerical_params
         double mass_in_m = params.mass_kg * G / (C*C);
         double radius_in_m = params.radius_m;
 
-        double max_scale_radius = get_c_at_max() * 0.5f * 0.7f;
+        double max_scale_radius = get_c_at_max() * 0.5f * 0.4f;
         double meters_to_scale = max_scale_radius / radius_in_m;
 
         mass = mass_in_m * meters_to_scale;

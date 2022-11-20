@@ -510,7 +510,7 @@ float dirac_disc(float r, float scale)
 
 float dirac_disc(float r, float scale)
 {
-    float e = 4 * scale;
+    float e = 3 * scale;
 
     if(r/e < 1.f)
     {
@@ -640,6 +640,9 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
                     continue;*/
 
                 float f_sp = dirac_disc(to_centre_distance, scale);
+
+                if(f_sp == 0)
+                    continue;
 
                 //total_weight = M_PI * pow(rs, 3);
 
