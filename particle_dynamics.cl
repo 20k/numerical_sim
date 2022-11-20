@@ -485,6 +485,41 @@ float get_f_sp(float r_rs)
     return f_sp;
 }
 
+///https://www.sciencedirect.com/science/article/pii/S259003742100042X
+/*float phi(float r_frac)
+{
+    if(r_frac < 0.5f)
+    {
+        return (3.f/4.f) - r_frac * r_frac;
+    }
+
+    return (9.f/8.f) - (3.f/2.f) * r_frac + r_frac*r_frac/2.f;
+}
+
+float dirac_disc(float r, float scale)
+{
+    float frac = r / scale;
+
+    float rphi = 1.5f;
+
+    if(frac <= rphi)
+        return phi(frac);
+
+    return 0;
+}*/
+
+float dirac_disc(float r, float scale)
+{
+    float e = 4 * scale;
+
+    if(r/e < 1.f)
+    {
+        return (1/e) * 0.5f * (1 + cos(M_PI * r/e));
+    }
+
+    return 0.f;
+}
+
 ///this kernel is unnecessarily 3d
 __kernel
 void memory_allocate(__global ITYPE* counts, __global ITYPE* memory_ptrs, __global ITYPE* memory_allocator, ITYPE max_memory, int4 dim)
@@ -545,11 +580,11 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 
     float rs = scale;
 
-    int spread = 3;
+    int spread = 6;
 
     float total_weight = 0;
 
-    if(actually_write)
+    /*if(actually_write)
     {
         for(int zz=-spread; zz <= spread; zz++)
         {
@@ -577,7 +612,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
                 }
             }
         }
-    }
+    }*/
 
     for(int zz=-spread; zz <= spread; zz++)
     {
@@ -597,12 +632,14 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
                 float to_centre_distance = fast_length(cell_wp - world_pos);
 
                 ///https://arxiv.org/pdf/1611.07906.pdf 20
-                float r_rs = to_centre_distance / rs;
+                /*float r_rs = to_centre_distance / rs;
 
                 float f_sp = get_f_sp(r_rs);
 
                 if(f_sp == 0)
-                    continue;
+                    continue;*/
+
+                float f_sp = dirac_disc(to_centre_distance, scale);
 
                 //total_weight = M_PI * pow(rs, 3);
 
@@ -660,11 +697,12 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         if(mass == 0)
             continue;
 
-        float total_weight_factor = collected_weights[gidx];
+        /*float total_weight_factor = collected_weights[gidx];
 
         if(total_weight_factor == 0)
-            continue;
+            continue;*/
 
+        //printf("Weight factor %f\n", total_weight_factor);
 
         float3 world_pos = {positions[GET_IDX(geodesic_idx, 0)], positions[GET_IDX(geodesic_idx, 1)], positions[GET_IDX(geodesic_idx, 2)]};
         float3 vel = {velocities[GET_IDX(geodesic_idx, 0)], velocities[GET_IDX(geodesic_idx, 1)], velocities[GET_IDX(geodesic_idx, 2)]};
@@ -674,9 +712,16 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         float to_centre_distance = fast_length(cell_wp - world_pos);
 
         ///https://arxiv.org/pdf/1611.07906.pdf 20
-        float r_rs = to_centre_distance / rs;
+        /*float r_rs = to_centre_distance / rs;
 
         float f_sp = get_f_sp(r_rs) / total_weight_factor;
+
+        if(f_sp == 0)
+            continue;
+
+        float weight = f_sp;*/
+
+        float f_sp = dirac_disc(to_centre_distance, scale);
 
         if(f_sp == 0)
             continue;

@@ -717,9 +717,27 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     //auto [positions, directions, masses] = build_galaxy(*this);
 
-    std::vector<vec3f> positions = {{-6, 0, 0}};
-    std::vector<vec3f> directions = {{0, 0, 0}};
-    std::vector<float> masses = {{0.01}};
+    std::vector<vec3f> positions;
+    std::vector<vec3f> directions;
+    std::vector<float> masses;
+
+    float start = -3.f;
+    float fin = -18.f;
+
+    for(int i=0; i < 40; i++)
+    {
+        //float along = (fin - start) * (float)i/20 + start;
+
+        float anglef = (float)i / 20;
+
+        float angle = 2 * M_PI * anglef;
+
+        vec3f pos = {cos(angle) * -8.f, sin(angle) * 8.f, 0};
+
+        positions.push_back(pos);
+        directions.push_back({0,0,0});
+        masses.push_back(0.1);
+    }
 
     particle_count = positions.size();
 
