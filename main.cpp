@@ -3355,6 +3355,15 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif
 
+    compact_object::data h1;
+    h1.t = compact_object::BLACK_HOLE;
+    h1.bare_mass = 0.5;
+    h1.momentum = {0, 0, 0};
+    h1.position = {0, 0, 0};
+    h1.angular_momentum = {0, 0, 0};
+
+    objects = {h1};
+
     //#define SPINNING_SINGLE_NEUTRON
     #ifdef SPINNING_SINGLE_NEUTRON
     compact_object::data h1;
@@ -5142,7 +5151,7 @@ int main()
     std::string hydro_argument_string = argument_string;
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {213, 213, 213};
+    vec3i size = {255, 255, 255};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -5581,7 +5590,7 @@ int main()
     bool pao = false;
 
     bool render_skipping = false;
-    int skip_frames = 16;
+    int skip_frames = 5;
     int current_skip_frame = 0;
 
     clctx.cqueue.block();
@@ -5793,7 +5802,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.3f;
+        float timestep = 0.035f;
 
         if(pao && time_elapsed_s > 250)
             step = false;

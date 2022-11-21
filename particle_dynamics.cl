@@ -171,7 +171,7 @@ void dissipate_mass(__global float* positions, __global float* mass_in, __global
     float gA_val = buffer_read_linear(gA, voxel_pos, dim);
     float X_val = buffer_read_linear(X, voxel_pos, dim);
 
-    if(fast_length(Xpos) >= MASS_CULL_SIZE || gA_val < 0.1f || X_val < 0.01f)
+    if(fast_length(Xpos) >= MASS_CULL_SIZE || gA_val < 0.05f || X_val < 0.01f)
     {
         mass_out[idx] = 0;
     }
@@ -508,9 +508,13 @@ float dirac_disc(float r, float scale)
     return 0;
 }*/
 
+///ok, i HAVE screwed up. This works for the 1d case
+///when r is say, -2 to 2, this integrates to 1
+///but we're in the 3d case
+///https://www.wolframalpha.com/input?key=&i=integrate+0.125+*+%281+%2B+cos%28pi+*+r%2F4%29%29+between+-4+and+4
 float dirac_disc(float r, float scale)
 {
-    float e = 3 * scale;
+    float e = 15 * scale;
 
     if(r/e < 1.f)
     {
@@ -580,7 +584,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 
     float rs = scale;
 
-    int spread = 6;
+    int spread = 20;
 
     float total_weight = 0;
 
