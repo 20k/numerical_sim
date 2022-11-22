@@ -28,7 +28,6 @@ struct particle_dynamics : plugin
     std::array<particle_buffer, 3> p_data;
 
     cl::buffer indices_block;
-    cl::buffer weights_block;
     cl::buffer memory_alloc_count;
 
     std::optional<cl::buffer> memory_ptrs;

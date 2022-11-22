@@ -63,10 +63,9 @@ tensor<value, 3, 3> particle_matter_interop::calculate_adm_X_Sij(equation_contex
     return X * Sij;
 }
 
-particle_dynamics::particle_dynamics(cl::context& ctx) : p_data{ctx, ctx, ctx}, pd(ctx), indices_block(ctx), weights_block(ctx), memory_alloc_count(ctx)
+particle_dynamics::particle_dynamics(cl::context& ctx) : p_data{ctx, ctx, ctx}, pd(ctx), indices_block(ctx), memory_alloc_count(ctx)
 {
     indices_block.alloc(max_intermediate_size * sizeof(cl_ulong));
-    weights_block.alloc(max_intermediate_size * sizeof(cl_float));
     memory_alloc_count.alloc(sizeof(size_t));
 }
 
@@ -724,7 +723,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     float start = -3.f;
     float fin = -18.f;
 
-    float total_mass = -0.2f;
+    float total_mass = -0.1f;
 
     for(int i=0; i < 40; i++)
     {
@@ -1251,7 +1250,6 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val.as_device_inaccessible());
         args.push_back(indices_block.as_device_inaccessible());
-        args.push_back(weights_block.as_device_inaccessible());
         args.push_back(scale);
         args.push_back(clsize);
         args.push_back(actually_write);
@@ -1271,7 +1269,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         mqueue.exec("memory_allocate", args, {dim.x(), dim.y(), dim.z()}, {8,8,1});
     }
 
-    ///write the indices and weights into indices_block, and weights_block at the offsets determined by memory_ptrs_val per-cell
+    ///write the indices indices_block at the offsets determined by memory_ptrs_val per-cell
     {
         cl_int actually_write = 1;
 
@@ -1282,7 +1280,6 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val.as_device_read_only());
         args.push_back(indices_block);
-        args.push_back(weights_block);
         args.push_back(scale);
         args.push_back(clsize);
         args.push_back(actually_write);
@@ -1301,7 +1298,6 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(counts_val.as_device_read_only());
         args.push_back(memory_ptrs_val.as_device_read_only());
         args.push_back(indices_block.as_device_read_only());
-        args.push_back(weights_block.as_device_read_only());
 
         for(named_buffer& i : in.buffers)
         {

@@ -588,7 +588,7 @@ void memory_allocate(__global ITYPE* counts, __global ITYPE* memory_ptrs, __glob
 }
 
 __kernel
-void collect_particle_spheres(__global float* positions, __global float* masses, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, __global float* collected_weights, float scale, int4 dim, int actually_write)
+void collect_particle_spheres(__global float* positions, __global float* masses, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, float scale, int4 dim, int actually_write)
 {
     size_t idx = get_global_id(0);
 
@@ -617,40 +617,6 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
     float rs = scale;
 
     int spread = ceil(get_rs(scale)/scale) + 3;
-
-    //int spread = 20;
-
-    float total_weight = 0;
-
-    /*if(actually_write)
-    {
-        for(int zz=-spread; zz <= spread; zz++)
-        {
-            for(int yy=-spread; yy <= spread; yy++)
-            {
-                for(int xx=-spread; xx <= spread; xx++)
-                {
-                    int ix = xx + ocx;
-                    int iy = yy + ocy;
-                    int iz = zz + ocz;
-
-                    if(ix < 0 || iy < 0 || iz < 0 || ix >= dim.x || iy >= dim.y || iz >= dim.z)
-                        continue;
-
-                    float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
-
-                    float to_centre_distance = fast_length(cell_wp - world_pos);
-
-                    ///https://arxiv.org/pdf/1611.07906.pdf 20
-                    float r_rs = to_centre_distance / rs;
-
-                    float f_sp = get_f_sp(r_rs);
-
-                    total_weight += f_sp;
-                }
-            }
-        }
-    }*/
 
     for(int zz=-spread; zz <= spread; zz++)
     {
@@ -682,8 +648,6 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
                 if(f_sp == 0)
                     continue;
 
-                //total_weight = M_PI * pow(rs, 3);
-
                 ITYPE my_index = AINC(&collected_counts[IDX(ix,iy,iz)]);
 
                 if(actually_write)
@@ -691,7 +655,6 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
                     ITYPE my_memory_offset = memory_ptrs[IDX(ix,iy,iz)];
 
                     collected_indices[my_memory_offset + my_index] = idx;
-                    collected_weights[my_memory_offset + my_index] = total_weight;
                 }
             }
         }
@@ -699,7 +662,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 }
 
 __kernel
-void do_weighted_summation(__global float* positions, __global float* velocities, __global float* masses, __global float* lorentz_in, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, __global float* collected_weights, STANDARD_ARGS(), float scale, int4 dim)
+void do_weighted_summation(__global float* positions, __global float* velocities, __global float* masses, __global float* lorentz_in, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, STANDARD_ARGS(), float scale, int4 dim)
 {
     int kix = get_global_id(0);
     int kiy = get_global_id(1);
@@ -738,13 +701,6 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         if(mass == 0)
             continue;
 
-        /*float total_weight_factor = collected_weights[gidx];
-
-        if(total_weight_factor == 0)
-            continue;*/
-
-        //printf("Weight factor %f\n", total_weight_factor);
-
         float3 world_pos = {positions[GET_IDX(geodesic_idx, 0)], positions[GET_IDX(geodesic_idx, 1)], positions[GET_IDX(geodesic_idx, 2)]};
         float3 vel = {velocities[GET_IDX(geodesic_idx, 0)], velocities[GET_IDX(geodesic_idx, 1)], velocities[GET_IDX(geodesic_idx, 2)]};
 
@@ -752,26 +708,12 @@ void do_weighted_summation(__global float* positions, __global float* velocities
 
         float to_centre_distance = fast_length(cell_wp - world_pos);
 
-        ///https://arxiv.org/pdf/1611.07906.pdf 20
-        /*float r_rs = to_centre_distance / rs;
-
-        float f_sp = get_f_sp(r_rs) / total_weight_factor;
-
-        if(f_sp == 0)
-            continue;
-
-        float weight = f_sp;*/
-
         float f_sp = dirac_disc(to_centre_distance, scale);
 
         if(f_sp == 0)
             continue;
 
         float weight = f_sp;
-
-        /*float3 vector_from_particle = cell_wp - world_pos;
-
-        float weight = 1;*/
 
         float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
 
