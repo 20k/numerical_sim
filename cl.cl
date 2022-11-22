@@ -1112,8 +1112,10 @@ void render(STANDARD_ARGS(),
 
         int index = IDX(ix, iy, iz);
 
+        float ascalar = 0;
+
         #ifdef RENDER_MATTER_P
-        float ascalar = fabs(adm_p[index]) * 2000000;
+        ascalar = fabs(adm_p[index]) * 2000000;
         #endif // RENDER_MATTER_P
 
         //#define RENDER_METRIC
@@ -1134,7 +1136,7 @@ void render(STANDARD_ARGS(),
                           fabs(Yyz / cX) +
                           fabs(Yzz / cX);
 
-        float ascalar = fabs(curvature / 1000.f);
+        ascalar = fabs(curvature / 1000.f);
         #endif // RENDER_METRIC
 
         //#define RENDER_CY
@@ -1153,7 +1155,7 @@ void render(STANDARD_ARGS(),
                           fabs(Yyz) +
                           fabs(Yzz);
 
-        float ascalar = fabs(curvature / 1.f);
+        ascalar = fabs(curvature / 1.f);
         #endif // RENDER_CY
 
         //#define RENDER_AIJ
@@ -1172,27 +1174,27 @@ void render(STANDARD_ARGS(),
                           fabs(Ayz) +
                           fabs(Azz);
 
-        float ascalar = fabs(curvature / 1.f);
+        ascalar = fabs(curvature / 1.f);
         #endif // RENDER_AIJ
 
         //#define RENDER_K
         #ifdef RENDER_K
-        float ascalar = fabs(K[index] * 40);
+        ascalar = fabs(K[index] * 40);
         #endif // RENDER_K
 
         //#define RENDER_X
         #ifdef RENDER_X
-        float ascalar = fabs(X[index] / 50);
+        ascalar = fabs(X[index] / 50);
         #endif // RENDER_X
 
         //#define RENDER_CGI
         #ifdef RENDER_CGI
-        float ascalar = fabs(cGi0[index]) + fabs(cGi1[index]) + fabs(cGi2[index]);
+        ascalar = fabs(cGi0[index]) + fabs(cGi1[index]) + fabs(cGi2[index]);
         #endif // RENDER_CGI
 
         //#define RENDER_GA
         #ifdef RENDER_GA
-        float ascalar = fabs(gA[index] / 50);
+        ascalar = fabs(gA[index] / 50);
         #endif // RENDER_GA
 
         //#define RENDER_GB
@@ -1209,7 +1211,7 @@ void render(STANDARD_ARGS(),
 
         //#define RENDER_DCY
         #ifdef RENDER_DCY
-        float ascalar = fabs(dcYij0[index]) +
+        ascalar =       fabs(dcYij0[index]) +
                         fabs(dcYij1[index]) +
                         fabs(dcYij2[index]) +
                         fabs(dcYij3[index]) +
@@ -1241,7 +1243,7 @@ void render(STANDARD_ARGS(),
 
         float M = (fabs(M0) + fabs(M1) + fabs(M2)) / 3.f;
 
-        float ascalar = M * 1000 / 40.f;
+        ascalar = M * 1000 / 40.f;
         #endif // RENDER_MOMENTUM
 
         #ifndef RENDER_GB
