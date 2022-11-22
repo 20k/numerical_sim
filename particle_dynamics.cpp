@@ -538,7 +538,7 @@ struct numerical_params
         double mass_in_m = params.mass_kg * G / (C*C);
         double radius_in_m = params.radius_m;
 
-        double max_scale_radius = get_c_at_max() * 0.5f * 0.4f;
+        double max_scale_radius = get_c_at_max() * 0.5f * 0.6f;
         double meters_to_scale = max_scale_radius / radius_in_m;
 
         mass = mass_in_m * meters_to_scale;
@@ -715,9 +715,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
     float scale = mesh.scale;
 
-    //auto [positions, directions, masses] = build_galaxy(*this);
+    auto [positions, directions, masses] = build_galaxy(*this);
 
-    std::vector<vec3f> positions;
+    /*std::vector<vec3f> positions;
     std::vector<vec3f> directions;
     std::vector<float> masses;
 
@@ -732,12 +732,12 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         float angle = 2 * M_PI * anglef;
 
-        vec3f pos = {cos(angle) * 15.f, sin(angle) * 15.f, 0};
+        vec3f pos = {cos(angle) * 7.f, sin(angle) * 7.f, 0};
 
         positions.push_back(pos);
         directions.push_back({0,0,0});
-        masses.push_back(0.025);
-    }
+        masses.push_back(-0.0025);
+    }*/
 
     particle_count = positions.size();
 
@@ -921,12 +921,6 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         value lorentz = value{"lorentz"} + 1;
 
-        tensor<value, 3> u_lower = lorentz * v_lower;
-
-        value Ea = mass * lorentz;
-
-        tensor<value, 3> covariant_momentum = mass * u_lower; ///????
-
         value idet = 0;
 
         #ifdef USE_W
@@ -940,9 +934,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         //value idet = pow(args.W_impl, 3);
         //value idet = pow(args.get_X(), 3.f/2.f);
 
-        value out_adm_p = idet * Ea;
+        value out_adm_p = idet * mass * lorentz;
 
-        tensor<value, 3> Si = idet * covariant_momentum;
+        tensor<value, 3> Si = idet * mass * lorentz * v_lower;
 
         tensor<value, 3, 3> Sij;
 
@@ -951,7 +945,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
             for(int j=0; j < 3; j++)
             {
                 //Sij.idx(i, j) = idet * (covariant_momentum.idx(i) * covariant_momentum.idx(j) / Ea);
-                Sij.idx(i, j) = idet * (covariant_momentum.idx(i) * v_lower.idx(j));
+                Sij.idx(i, j) = idet * mass * lorentz * v_lower.idx(i) * v_lower.idx(j);
             }
         }
 
