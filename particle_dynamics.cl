@@ -171,7 +171,7 @@ void dissipate_mass(__global float* positions, __global float* mass_in, __global
     float gA_val = buffer_read_linear(gA, voxel_pos, dim);
     float X_val = buffer_read_linear(X, voxel_pos, dim);
 
-    if(fast_length(Xpos) >= MASS_CULL_SIZE || gA_val < 0.05f || X_val < 0.01f)
+    if(fast_length(Xpos) >= MASS_CULL_SIZE || gA_val < 0.1f || X_val < 0.01f)
     {
         mass_out[idx] = 0;
     }
