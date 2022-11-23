@@ -532,16 +532,18 @@ float get_radius(float scale)
     return 4 * scale;
 }
 
+float remap_range(float val, float min_val, float max_val, float min_out, float max_out)
+{
+    val = clamp(val, min_val, max_val);
+
+    float frac = (val - min_val) / (max_val - min_val);
+
+    return frac * (max_out - min_out) + min_out;
+}
+
 float modify_radius(float base_radius, float gA)
 {
-    float min_gA = 0.1f;
-    float max_gA = 1.f;
-
-    gA = clamp(gA, min_gA, max_gA);
-
-    float frac = (gA - min_gA) / (max_gA - min_gA);
-
-    return mix(base_radius * 0.25f, base_radius, frac);
+    return remap_range(gA, 0.1f, 1.f, base_radius * 0.25f, base_radius);
 }
 
 ///https://arxiv.org/pdf/1611.07906.pdf (20)
