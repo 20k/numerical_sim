@@ -546,6 +546,11 @@ float modify_radius(float base_radius, float gA)
     return remap_range(gA, 0.1f, 1.f, base_radius * 0.25f, base_radius);
 }
 
+float modify_mass(float base_mass, float gA)
+{
+    return remap_range(gA, 0.1f, 0.2f, 0.f, base_mass);
+}
+
 ///https://arxiv.org/pdf/1611.07906.pdf (20)
 float dirac_disc(float r, float radius)
 {
@@ -728,6 +733,11 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
         float gA_val = buffer_read_linear(gA, voxel_pos, dim);
+
+        mass = modify_mass(mass, gA_val);
+
+        if(mass == 0)
+            continue;
 
         float base_radius = get_radius(scale);
         float current_radius = modify_radius(base_radius, gA_val);
