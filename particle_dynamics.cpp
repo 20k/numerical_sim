@@ -701,6 +701,7 @@ particle_data build_galaxy(particle_dynamics& dyn)
 ///ok sweet! Next up, want to divorce particle step from field step
 ///ideally we'll step forwards the particles by a large timestep, and the interpolate to generate the underlying fields
 ///geodesic trace time >> discretisation time, so shouldn't be a problem, and that'll take us to 2m particles
+///https://arxiv.org/pdf/1611.07906.pdf particle hamiltonian constraint
 void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue, thin_intermediates_pool& pool, buffer_set& to_init)
 {
     vec3i dim = mesh.dim;
