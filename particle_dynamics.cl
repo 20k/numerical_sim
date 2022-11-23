@@ -527,15 +527,15 @@ float dirac_disc(float r, float scale)
     return 0.f;
 }*/
 
-float get_rs(float scale)
+float get_radius(float scale)
 {
-    return 3 * scale;
+    return 4 * scale;
 }
 
 ///https://arxiv.org/pdf/1611.07906.pdf (20)
-float dirac_disc(float r, float scale)
+float dirac_disc(float r, float radius)
 {
-    float rs = get_rs(scale);
+    float rs = radius;
 
     float frac = r / rs;
 
@@ -614,9 +614,10 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
     int ocy = floor(voxel_pos.y);
     int ocz = floor(voxel_pos.z);
 
-    float rs = scale;
+    float base_radius = get_radius(scale);
+    float current_radius = base_radius;
 
-    int spread = ceil(get_rs(scale)/scale) + 3;
+    int spread = ceil(current_radius / scale) + 3;
 
     for(int zz=-spread; zz <= spread; zz++)
     {
@@ -643,7 +644,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
                 if(f_sp == 0)
                     continue;*/
 
-                float f_sp = dirac_disc(to_centre_distance, scale);
+                float f_sp = dirac_disc(to_centre_distance, current_radius);
 
                 if(f_sp == 0)
                     continue;
@@ -708,7 +709,10 @@ void do_weighted_summation(__global float* positions, __global float* velocities
 
         float to_centre_distance = fast_length(cell_wp - world_pos);
 
-        float f_sp = dirac_disc(to_centre_distance, scale);
+        float base_radius = get_radius(scale);
+        float current_radius = base_radius;
+
+        float f_sp = dirac_disc(to_centre_distance, current_radius);
 
         if(f_sp == 0)
             continue;

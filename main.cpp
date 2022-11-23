@@ -3355,14 +3355,14 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif
 
-    compact_object::data h1;
+    /*compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
     h1.bare_mass = 0.5;
     h1.momentum = {0, 0, 0};
     h1.position = {0, 0, 0};
     h1.angular_momentum = {0, 0, 0};
 
-    objects = {h1};
+    objects = {h1};*/
 
     //#define SPINNING_SINGLE_NEUTRON
     #ifdef SPINNING_SINGLE_NEUTRON

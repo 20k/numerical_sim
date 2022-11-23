@@ -723,7 +723,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     float start = -3.f;
     float fin = -18.f;
 
-    float total_mass = -0.1f;
+    float total_mass = 0.5f;
 
     for(int i=0; i < 40; i++)
     {
