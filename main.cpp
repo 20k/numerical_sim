@@ -2082,6 +2082,7 @@ value tov_phi_at_coordinate_general(const tensor<value, 3>& world_position)
     //return dual_types::apply("tov_phi", as_float3(vx, vy, vz), "dim");
 }
 
+///so. Need to awkward mash particle ph in here
 laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_object::data>& cpu_holes, cl::buffer& aij_aIJ_buf, cl::buffer& ppw2p_buf)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
