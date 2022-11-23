@@ -532,6 +532,18 @@ float get_radius(float scale)
     return 4 * scale;
 }
 
+float modify_radius(float base_radius, float gA)
+{
+    float min_gA = 0.1f;
+    float max_gA = 1.f;
+
+    gA = clamp(gA, min_gA, max_gA);
+
+    float frac = (gA - min_gA) / (max_gA - min_gA);
+
+    return mix(base_radius * 0.25f, base_radius, frac);
+}
+
 ///https://arxiv.org/pdf/1611.07906.pdf (20)
 float dirac_disc(float r, float radius)
 {
@@ -588,7 +600,7 @@ void memory_allocate(__global ITYPE* counts, __global ITYPE* memory_ptrs, __glob
 }
 
 __kernel
-void collect_particle_spheres(__global float* positions, __global float* masses, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, float scale, int4 dim, int actually_write)
+void collect_particle_spheres(__global float* positions, __global float* masses, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, STANDARD_ARGS(), float scale, int4 dim, int actually_write)
 {
     size_t idx = get_global_id(0);
 
@@ -614,8 +626,10 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
     int ocy = floor(voxel_pos.y);
     int ocz = floor(voxel_pos.z);
 
+    float gA_val = buffer_read_linear(gA, voxel_pos, dim);
+
     float base_radius = get_radius(scale);
-    float current_radius = base_radius;
+    float current_radius = modify_radius(base_radius, gA_val);
 
     int spread = ceil(current_radius / scale) + 3;
 
@@ -707,10 +721,16 @@ void do_weighted_summation(__global float* positions, __global float* velocities
 
         float3 cell_wp = voxel_to_world_unrounded((float3)(kix, kiy, kiz), dim, scale);
 
-        float to_centre_distance = fast_length(cell_wp - world_pos);
+        float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
+
+        voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+        float gA_val = buffer_read_linear(gA, voxel_pos, dim);
 
         float base_radius = get_radius(scale);
-        float current_radius = base_radius;
+        float current_radius = modify_radius(base_radius, gA_val);
+
+        float to_centre_distance = fast_length(cell_wp - world_pos);
 
         float f_sp = dirac_disc(to_centre_distance, current_radius);
 
@@ -718,10 +738,6 @@ void do_weighted_summation(__global float* positions, __global float* velocities
             continue;
 
         float weight = f_sp;
-
-        float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
-
-        voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
         float fx = voxel_pos.x;
         float fy = voxel_pos.y;

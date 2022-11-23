@@ -1250,6 +1250,12 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val.as_device_inaccessible());
         args.push_back(indices_block.as_device_inaccessible());
+
+        for(named_buffer& i : in.buffers)
+        {
+            args.push_back(i.buf.as_device_read_only());
+        }
+
         args.push_back(scale);
         args.push_back(clsize);
         args.push_back(actually_write);
@@ -1280,6 +1286,12 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val.as_device_read_only());
         args.push_back(indices_block);
+
+        for(named_buffer& i : in.buffers)
+        {
+            args.push_back(i.buf.as_device_read_only());
+        }
+
         args.push_back(scale);
         args.push_back(clsize);
         args.push_back(actually_write);
