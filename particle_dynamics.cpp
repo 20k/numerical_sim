@@ -256,6 +256,10 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
     ctx.add("X2Diff", dx.idx(2));
 }
 
+void particle_dynamics::add_particles(particle_data&& data)
+{
+    start_data = std::move(data);
+}
 
 ///https://www.mdpi.com/2075-4434/6/3/70/htm (7)
 ///ok sweet! Next up, want to divorce particle step from field step
@@ -277,29 +281,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     //auto [positions, directions, masses] = build_galaxy(*this);
 
-    std::vector<vec3f> positions;
-    std::vector<vec3f> directions;
-    std::vector<float> masses;
-
-    float start = -3.f;
-    float fin = -18.f;
-
-    float total_mass = 0.5f;
-
-    for(int i=0; i < 40; i++)
-    {
-        //float along = (fin - start) * (float)i/20 + start;
-
-        float anglef = (float)i / 40;
-
-        float angle = 2 * M_PI * anglef;
-
-        vec3f pos = {cos(angle) * 7.f, sin(angle) * 7.f, 0};
-
-        positions.push_back(pos);
-        directions.push_back({0,0,0});
-        masses.push_back(total_mass / 40);
-    }
+    std::vector<vec3f> positions = std::move(start_data.positions);
+    std::vector<vec3f> directions = std::move(start_data.velocities);
+    std::vector<float> masses = std::move(start_data.masses);
 
     particle_count = positions.size();
 

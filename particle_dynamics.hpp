@@ -4,6 +4,17 @@
 #include "mesh_manager.hpp"
 #include "bssn.hpp"
 
+struct particle_data
+{
+    std::vector<vec3f> positions;
+    std::vector<vec3f> velocities;
+    std::vector<float> masses;
+
+    std::vector<float> debug_velocities;
+    std::vector<float> debug_analytic_mass;
+    std::vector<float> debug_real_mass;
+};
+
 struct particle_matter_interop : matter_interop
 {
     virtual value               calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args) override;
@@ -33,6 +44,8 @@ struct particle_dynamics : plugin
     std::optional<cl::buffer> memory_ptrs;
     std::optional<cl::buffer> counts;
 
+    particle_data start_data;
+
     /*cl::buffer adm_p;
     std::array<cl::buffer, 3> adm_Si;
     std::array<cl::buffer, 6> adm_Sij;
@@ -43,6 +56,8 @@ struct particle_dynamics : plugin
     cl::program pd;
 
     particle_dynamics(cl::context& ctx);
+
+    void add_particles(particle_data&& data);
 
     virtual std::vector<buffer_descriptor> get_buffers() override;
 

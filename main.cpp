@@ -5424,6 +5424,31 @@ int main()
     {
         particle_dynamics* particles = new particle_dynamics(clctx.ctx);
 
+        ///temporary!
+        {
+            particle_data data;
+
+            float start = -3.f;
+            float fin = -18.f;
+
+            float total_mass = 0.5f;
+
+            for(int i=0; i < 40; i++)
+            {
+                float anglef = (float)i / 40;
+
+                float angle = 2 * M_PI * anglef;
+
+                vec3f pos = {cos(angle) * 7.f, sin(angle) * 7.f, 0};
+
+                data.positions.push_back(pos);
+                data.velocities.push_back({0,0,0});
+                data.masses.push_back(total_mass / 40);
+            }
+
+            particles->add_particles(std::move(data));
+        }
+
         plugins.push_back(particles);
     }
 
