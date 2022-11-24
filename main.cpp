@@ -2017,8 +2017,10 @@ float get_nonspinning_adm_mass(cl::command_queue& cqueue, int idx, const std::ve
 struct initial_conditions
 {
     bool use_matter = false;
+    bool use_particles = false;
 
     std::vector<compact_object::data> objs;
+    particle_data particles;
 };
 
 inline
@@ -3152,7 +3154,7 @@ std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& hole
 #endif // 0
 
 inline
-initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, float scale, std::vector<compact_object::data> objs)
+initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, float scale, std::vector<compact_object::data> objs, std::optional<particle_data>&& p_data_opt)
 {
     initial_conditions ret;
 
@@ -3180,6 +3182,12 @@ initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_q
 
     ret.objs = objs;
     //ret.use_matter = true;
+
+    if(p_data_opt.has_value())
+    {
+        ret.use_particles = true;
+        ret.particles = std::move(p_data_opt.value());
+    }
 
     return ret;
 }
@@ -3316,6 +3324,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #define BARE_BLACK_HOLES
     #ifdef BARE_BLACK_HOLES
     std::vector<compact_object::data> objects;
+    std::optional<particle_data> data_opt;
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
@@ -3587,7 +3596,35 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // MERGE_THEN_COLLAPSE
 
-    return get_bare_initial_conditions(clctx, cqueue, scale, objects);
+    #define PARTICLE_TEST
+    #ifdef PARTICLE_TEST
+
+    {
+        particle_data data;
+
+        float start = -3.f;
+        float fin = -18.f;
+
+        float total_mass = 0.5f;
+
+        for(int i=0; i < 40; i++)
+        {
+            float anglef = (float)i / 40;
+
+            float angle = 2 * M_PI * anglef;
+
+            vec3f pos = {cos(angle) * 7.f, sin(angle) * 7.f, 0};
+
+            data.positions.push_back(pos);
+            data.velocities.push_back({0,0,0});
+            data.masses.push_back(total_mass / 40);
+        }
+
+        data_opt = std::move(data);
+    }
+    #endif
+
+    return get_bare_initial_conditions(clctx, cqueue, scale, objects, std::move(data_opt));
     #endif // BARE_BLACK_HOLES
 
     //#define USE_ADM_HOLE
@@ -5229,14 +5266,12 @@ int main()
 
     matter_interop* interop = new matter_interop();
 
-    bool use_geodesic_particles = true;
-
     if(holes.use_matter)
     {
         interop = new eularian_matter();
     }
 
-    if(use_geodesic_particles)
+    if(holes.use_particles)
     {
         interop = new particle_matter_interop();
     }
@@ -5245,13 +5280,13 @@ int main()
     bssn::build_cY(dtcY);
 
     equation_context dtcA;
-    bssn::build_cA(*interop, dtcA, holes.use_matter || use_geodesic_particles);
+    bssn::build_cA(*interop, dtcA, holes.use_matter || holes.use_particles);
 
     equation_context dtcGi;
-    bssn::build_cGi(*interop, dtcGi, holes.use_matter || use_geodesic_particles);
+    bssn::build_cGi(*interop, dtcGi, holes.use_matter || holes.use_particles);
 
     equation_context dtK;
-    bssn::build_K(*interop, dtK, holes.use_matter || use_geodesic_particles);
+    bssn::build_K(*interop, dtK, holes.use_matter || holes.use_particles);
 
     equation_context dtX;
     bssn::build_X(dtX);
@@ -5289,7 +5324,7 @@ int main()
     build_intermediate_thin_cY5(ctx12);
 
     equation_context ctx13;
-    build_momentum_constraint(*interop, ctx13, holes.use_matter || use_geodesic_particles);
+    build_momentum_constraint(*interop, ctx13, holes.use_matter || holes.use_particles);
 
     equation_context ctx14;
     //build_hamiltonian_constraint(ctx14);
@@ -5327,7 +5362,7 @@ int main()
         argument_string += "-DSOMMER_MATTER ";
     }
 
-    if(use_geodesic_particles)
+    if(holes.use_particles)
     {
         argument_string += "-DTRACE_MATTER_P -DRENDER_MATTER_P ";
     }
@@ -5420,34 +5455,11 @@ int main()
         plugins.push_back(hydro);
     }
 
-    if(use_geodesic_particles)
+    if(holes.use_particles)
     {
         particle_dynamics* particles = new particle_dynamics(clctx.ctx);
 
-        ///temporary!
-        {
-            particle_data data;
-
-            float start = -3.f;
-            float fin = -18.f;
-
-            float total_mass = 0.5f;
-
-            for(int i=0; i < 40; i++)
-            {
-                float anglef = (float)i / 40;
-
-                float angle = 2 * M_PI * anglef;
-
-                vec3f pos = {cos(angle) * 7.f, sin(angle) * 7.f, 0};
-
-                data.positions.push_back(pos);
-                data.velocities.push_back({0,0,0});
-                data.masses.push_back(total_mass / 40);
-            }
-
-            particles->add_particles(std::move(data));
-        }
+        particles->add_particles(std::move(holes.particles));
 
         plugins.push_back(particles);
     }
