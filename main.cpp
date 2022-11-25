@@ -2397,6 +2397,16 @@ struct superimposed_gpu_data
     std::array<cl::buffer, 3> Si_buf;
     std::array<cl::buffer, 3> colour_buf;
 
+    cl::buffer particle_position;
+    cl::buffer particle_mass;
+    cl::buffer particle_lorentz;
+
+    cl::buffer particle_counts;
+    cl::buffer particle_indices;
+    cl::buffer particle_memory_count;
+
+    cl_int max_particle_memory = 1024 * 1024 * 120;
+
     cl::buffer u_arg;
 
     cl::program ppw2p_program;
@@ -2411,7 +2421,9 @@ struct superimposed_gpu_data
     superimposed_gpu_data(cl::context& ctx, cl::command_queue& cqueue, vec3i dim) : tov_phi{ctx}, bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, aij_aIJ{ctx}, ppw2p{ctx},
                                                                                                       pressure_buf{ctx}, rho_buf{ctx}, rhoH_buf{ctx}, p0_buf{ctx}, Si_buf{ctx, ctx, ctx}, u_arg{ctx},
                                                                                                       colour_buf{ctx, ctx, ctx},
-                                                                                                      ppw2p_program(ctx), bcAij_matter_program(ctx), multi_matter_program(ctx)
+                                                                                                      ppw2p_program(ctx), bcAij_matter_program(ctx), multi_matter_program(ctx),
+                                                                                                      particle_position(ctx), particle_mass(ctx), particle_lorentz(ctx),
+                                                                                                      particle_counts(ctx), particle_indices(ctx), particle_memory_count(ctx)
     {
         int cells = dim.x() * dim.y() * dim.z();
 
@@ -2454,6 +2466,14 @@ struct superimposed_gpu_data
             i.alloc(cells * sizeof(cl_float));
             i.fill(cqueue, cl_float{0});
         }
+
+        particle_counts.alloc(cells * sizeof(cl_ulong));
+        particle_counts.fill(cqueue, cl_ulong{0});
+
+        particle_indices.alloc(max_particle_memory * sizeof(cl_ulong));
+
+        particle_memory_count.alloc(sizeof(cl_ulong));
+        particle_memory_count.fill(cqueue, cl_ulong{0});
     }
 
     void build_accumulation_matter_programs(cl::context& ctx)
@@ -2664,7 +2684,7 @@ struct superimposed_gpu_data
         std::tie(multi_matter_program, multi_matter_kernel) = build_and_fetch_kernel(ctx, ectx, "initial_conditions.cl", "multi_accumulate", "multiaccumulate");
     }
 
-    void pull_all(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, float scale, vec3i dim)
+    void pull_all(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, const particle_data& particles, float scale, vec3i dim)
     {
         bool built_accum_matter_kernel = false;
 
@@ -5228,7 +5248,7 @@ int main()
         cl::command_queue cqueue(clctx.ctx);
 
         superimposed_gpu_data super(clctx.ctx, cqueue, size);
-        super.pull_all(clctx.ctx, cqueue, holes.objs, scale, size);
+        super.pull_all(clctx.ctx, cqueue, holes.objs, holes.particles, scale, size);
 
         u_arg = super.u_arg;
 

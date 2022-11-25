@@ -336,7 +336,7 @@ void memory_allocate(__global ITYPE* counts, __global ITYPE* memory_ptrs, __glob
 
     if(my_memory + my_count > max_memory)
     {
-        printf("Overflow in allocate\n");
+        printf("Overflow in allocate in initial conditions\n");
         my_memory = 0;
     }
 
