@@ -344,4 +344,59 @@ void memory_allocate(__global ITYPE* counts, __global ITYPE* memory_ptrs, __glob
     counts[index] = 0;
 }
 
+///calculates mass * lorentz * dirac
+///does not contain the X aka phi term
+__kernel
+void calculate_E_without_conformal(__global float* positions, __global float* masses, __global float* lorentz_in, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, float scale, int4 dim)
+{
+    int kix = get_global_id(0);
+    int kiy = get_global_id(1);
+    int kiz = get_global_id(2);
+
+    if(kix >= dim.x || kiy >= dim.y || kiz >= dim.z)
+        return;
+
+    int index = IDX(kix,kiy,kiz);
+
+    ITYPE my_count = collected_counts[index];
+    ITYPE my_memory_start = memory_ptrs[index];
+
+    ///e == p == ph
+    float vadm_p = 0;
+
+    for(ITYPE i=0; i < my_count; i++)
+    {
+        ITYPE gidx = i + my_memory_start;
+
+        ITYPE geodesic_idx = collected_indices[gidx];
+
+        float mass = masses[geodesic_idx];
+
+        if(mass == 0)
+            continue;
+
+        float3 world_pos = {positions[GET_IDX(geodesic_idx, 0)], positions[GET_IDX(geodesic_idx, 1)], positions[GET_IDX(geodesic_idx, 2)]};
+        float3 vel = {velocities[GET_IDX(geodesic_idx, 0)], velocities[GET_IDX(geodesic_idx, 1)], velocities[GET_IDX(geodesic_idx, 2)]};
+
+        float3 cell_wp = voxel_to_world_unrounded((float3)(kix, kiy, kiz), dim, scale);
+
+        float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
+
+        float base_radius = get_particle_radius(scale);
+
+        float to_centre_distance = fast_length(cell_wp - world_pos);
+
+        float f_sp = dirac_disc(to_centre_distance, base_radius);
+
+        if(f_sp == 0)
+            continue;
+
+        float lorentz = lorentz_in[geodesic_idx];
+
+        vadm_p += mass * lorentz * f_sp;
+    }
+
+    adm_p[index] = vadm_p;
+}
+
 #endif // INITIAL_PARTICLES
