@@ -2423,7 +2423,7 @@ struct superimposed_gpu_data
 
     cl::buffer particle_grid_E_without_conformal;
 
-    cl_int max_particle_memory = 1024 * 1024 * 120;
+    cl_int max_particle_memory = 1024 * 1024 * 1024;
 
     cl::buffer u_arg;
 
@@ -3800,10 +3800,14 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     float b = 10 * M;
 
+    printf("B %.23f\n", b);
+
     ///e = sqrt(1 - a^2/b^2)
     float little_e = 0.9;
 
     float a = sqrt(b*b - b*b * little_e*little_e);
+
+    printf("A %.23f\n", a);
 
     auto density_func = [&](tensor<float, 3> pos)
     {
@@ -3817,6 +3821,8 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     float mN = 2 * Mn + (6.f/5.f) * (Mn*Mn / (b * little_e)) * log((1 + little_e) / (1 - little_e));
 
     float m = mN / particles;
+
+    printf("Particle mass %.23f\n", m);
 
     ///this is particle size!
     float rs = L / 75;
@@ -3843,10 +3849,16 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
             continue;
         }
 
+        //printf("Pos %f %f %f\n", pos.x(), pos.y(), pos.z());
+
         data.positions.push_back({pos.x(), pos.y(), pos.z()});
         data.velocities.push_back({0,0,0});
         data.masses.push_back(m);
     }
+
+    printf("Particles %i\n", data.positions.size());
+
+    data_opt = std::move(data);
 
     #endif
 
