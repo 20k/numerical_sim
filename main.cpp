@@ -2117,7 +2117,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     return solve;
 }
 
-std::pair<cl::program, cl::kernel> build_and_fetch_kernel(cl::context& clctx, equation_context& ctx, const std::string& filename, const std::string& kernel_name, const std::string& temporaries_name)
+std::pair<cl::program, std::vector<cl::kernel>> build_and_fetch_kernel(cl::context& clctx, equation_context& ctx, const std::string& filename, const std::vector<std::string>& kernel_name, const std::string& temporaries_name)
 {
     std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
 
@@ -2126,9 +2126,21 @@ std::pair<cl::program, cl::kernel> build_and_fetch_kernel(cl::context& clctx, eq
     cl::program t_program(clctx, filename);
     t_program.build(clctx, local_build_str);
 
-    cl::kernel kern(t_program, kernel_name);
+    std::vector<cl::kernel> kerns;
 
-    return {t_program, kern};
+    for(auto& i : kernel_name)
+    {
+        kerns.emplace_back(t_program, i);
+    }
+
+    return {t_program, kerns};
+}
+
+std::pair<cl::program, cl::kernel> build_and_fetch_kernel(cl::context& clctx, equation_context& ctx, const std::string& filename, const std::string& kernel_name, const std::string& temporaries_name)
+{
+    auto result = build_and_fetch_kernel(clctx, ctx, filename, std::vector<std::string>{kernel_name}, temporaries_name);
+
+    return {result.first, result.second[0]};
 }
 
 struct black_hole_gpu_data
@@ -2788,6 +2800,9 @@ struct superimposed_gpu_data
 
     void pull(cl::context& clctx, cl::command_queue& cqueue, const particle_data& particles, float scale, vec3i dim)
     {
+        if(particles.positions.size() == 0)
+            return;
+
 
     }
 
