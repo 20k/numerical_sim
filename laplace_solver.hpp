@@ -11,10 +11,11 @@ struct laplace_data
     value rhs;
     cl::buffer aij_aIJ;
     cl::buffer ppw2p;
+    cl::buffer nonconformal_pH;
     std::vector<std::pair<std::string, value>> extras;
     equation_context ectx;
 
-    laplace_data(cl::buffer& in_aij_aIJ, cl::buffer& in_ppw2p) : aij_aIJ(in_aij_aIJ), ppw2p(in_ppw2p){}
+    laplace_data(cl::buffer& in_aij_aIJ, cl::buffer& in_ppw2p, cl::buffer& in_nonconformal_pH) : aij_aIJ(in_aij_aIJ), ppw2p(in_ppw2p), nonconformal_pH(in_nonconformal_pH){}
 };
 
 cl::buffer laplace_solver(cl::context& clcltx, cl::command_queue& cqueue, laplace_data& data, float scale, vec3i dim, float err = 0.0001f);

@@ -22,7 +22,7 @@ void check_symmetry(const std::string& debug_name, cl::kernel& kern, cl::command
     #endif // CHECK_SYMMETRY
 }
 
-cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& setup, cl::kernel& iterate, cl::buffer& cached_aij_aIJ, cl::buffer& cached_ppw2p,
+cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& setup, cl::kernel& iterate, cl::buffer& cached_aij_aIJ, cl::buffer& cached_ppw2p, cl::buffer& nonconformal_pH,
                        vec<4, cl_int> base_size, float c_at_max, int scale_factor, std::optional<cl::buffer> base, cl_float etol)
 {
     vec<4, cl_int> reduced_clsize = ((base_size - 1) / scale_factor) + 1;
@@ -84,6 +84,7 @@ cl::buffer solve_for_u(cl::context& ctx, cl::command_queue& cqueue, cl::kernel& 
         iterate_u_args.push_back(reduced_u_args[(which_reduced + 1) % 2]);
         iterate_u_args.push_back(cached_aij_aIJ);
         iterate_u_args.push_back(cached_ppw2p);
+        iterate_u_args.push_back(nonconformal_pH);
         iterate_u_args.push_back(local_scale);
         iterate_u_args.push_back(reduced_clsize);
         iterate_u_args.push_back(still_going[which_still_going]);
@@ -231,11 +232,12 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, laplace
 
     cl::buffer cached_aij_aIJ = data.aij_aIJ;
     cl::buffer cached_ppw2p = data.ppw2p;
+    cl::buffer nonconformal_pH = data.nonconformal_pH;
 
     float c_at_max = scale * dim.largest_elem();
 
     ///todo: use iterate
-    return solve_for_u(clctx, cqueue, setup, iterate, cached_aij_aIJ, cached_ppw2p, clsize, c_at_max, 1, std::nullopt, err);
+    return solve_for_u(clctx, cqueue, setup, iterate, cached_aij_aIJ, cached_ppw2p, nonconformal_pH, clsize, c_at_max, 1, std::nullopt, err);
 
     //return iterate_u(clctx, cqueue, setup, iterate, extract, dim, c_at_max, err);
 }

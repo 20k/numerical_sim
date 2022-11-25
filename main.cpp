@@ -2102,13 +2102,15 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
 
     value cached_aij_aIJ = bidx("cached_aij_aIJ", false, false);
     value cached_ppw2p = bidx("cached_ppw2p", false, false);
+    value cached_non_conformal_pH = bidx("nonconformal_pH", false, false);
 
     ///https://arxiv.org/pdf/1606.04881.pdf I think I need to do (85)
     ///ok no: I think what it is is that they're solving for ph in ToV, which uses tov's conformally flat variable
     ///whereas I'm getting values directly out of an analytic solution
-    value U_RHS = (-1.f/8.f) * cached_aij_aIJ * pow(phi, -7) - 2 * M_PI * pow(phi, -3) * cached_ppw2p;
+    ///the latter term comes from phi^5 * X^(3/2) == phi^5 * phi^-6, == phi^-1
+    value U_RHS = (-1.f/8.f) * cached_aij_aIJ * pow(phi, -7) - 2 * M_PI * pow(phi, -3) * cached_ppw2p - 2 * M_PI * pow(phi, -1) * cached_non_conformal_pH;
 
-    laplace_data solve(aij_aIJ_buf, ppw2p_buf);
+    laplace_data solve(aij_aIJ_buf, ppw2p_buf, nonconformal_pH);
 
     solve.rhs = U_RHS;
     solve.boundary = 1;
