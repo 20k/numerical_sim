@@ -235,3 +235,113 @@ void multi_accumulate(__global struct matter_data* data,
     colour2[index] += ACCUM_COLOUR2;
 }
 #endif // ALL_MATTER_VARIABLES
+
+#ifdef INITIAL_PARTICLES
+
+
+#ifdef USE_64_BIT
+#define ITYPE ulong
+#define AADD(x, y) atom_add(x, y)
+#define AINC(x) atom_inc(x)
+#else
+#define ITYPE int
+#define AADD(x, y) atomic_add(x, y)
+#define AINC(x) atomic_inc(x)
+#endif
+
+#define ITYPE int
+
+#include "particle_dynamics_common.cl"
+#include "common.cl"
+#include "transform_position.cl"
+
+float3 voxel_to_world_unrounded(float3 pos, int4 dim, float scale)
+{
+    float3 centre = {(dim.x - 1)/2, (dim.y - 1)/2, (dim.z - 1)/2};
+
+    return (pos - centre) * scale;
+}
+
+__kernel
+void collect_particles(__global float* positions, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, float scale, int4 dim, int actually_write)
+{
+    size_t idx = get_global_id(0);
+
+    if(idx >= geodesic_count)
+        return;
+
+    float3 world_pos = {positions[GET_IDX(idx, 0)], positions[GET_IDX(idx, 1)], positions[GET_IDX(idx, 2)]};
+
+    float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
+
+    int ocx = floor(voxel_pos.x);
+    int ocy = floor(voxel_pos.y);
+    int ocz = floor(voxel_pos.z);
+
+    float radius = get_particle_radius(scale);
+
+    int spread = ceil(radius / scale) + 3;
+
+    for(int zz=-spread; zz <= spread; zz++)
+    {
+        for(int yy=-spread; yy <= spread; yy++)
+        {
+            for(int xx=-spread; xx <= spread; xx++)
+            {
+                int ix = xx + ocx;
+                int iy = yy + ocy;
+                int iz = zz + ocz;
+
+                if(ix < 0 || iy < 0 || iz < 0 || ix >= dim.x || iy >= dim.y || iz >= dim.z)
+                    continue;
+
+                float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
+
+                float to_centre_distance = fast_length(cell_wp - world_pos);
+
+                float f_sp = dirac_disc(to_centre_distance, current_radius);
+
+                if(f_sp == 0)
+                    continue;
+
+                ITYPE my_index = AINC(&collected_counts[IDX(ix,iy,iz)]);
+
+                if(actually_write)
+                {
+                    ITYPE my_memory_offset = memory_ptrs[IDX(ix,iy,iz)];
+
+                    collected_indices[my_memory_offset + my_index] = idx;
+                }
+            }
+        }
+    }
+}
+
+
+///this kernel is unnecessarily 3d
+__kernel
+void memory_allocate(__global ITYPE* counts, __global ITYPE* memory_ptrs, __global ITYPE* memory_allocator, ITYPE max_memory, ulong work_size)
+{
+    size_t index = get_global_id(0);
+
+    if(index >= work_size)
+        return;
+
+    ITYPE my_count = counts[index];
+
+    ITYPE my_memory = 0;
+
+    if(my_count > 0)
+        my_memory = AADD(memory_allocator, my_count);
+
+    if(my_memory + my_count > max_memory)
+    {
+        printf("Overflow in allocate\n");
+        my_memory = 0;
+    }
+
+    memory_ptrs[index] = my_memory;
+    counts[index] = 0;
+}
+
+#endif // INITIAL_PARTICLES
