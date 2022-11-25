@@ -23,6 +23,7 @@
 #include <toolkit/fs_helpers.hpp>
 #include "hydrodynamics.hpp"
 #include "particle_dynamics.hpp"
+#include "random.hpp"
 
 /**
 current paper set
@@ -3758,7 +3759,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // MERGE_THEN_COLLAPSE
 
-    #define PARTICLE_TEST
+    //#define PARTICLE_TEST
     #ifdef PARTICLE_TEST
 
     {
@@ -3784,6 +3785,69 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
         data_opt = std::move(data);
     }
+    #endif
+
+    ///https://arxiv.org/pdf/1611.07906.pdf
+    #define SPINDLE_COLLAPSE
+    #ifdef SPINDLE_COLLAPSE
+    int particles = pow(10, 6);
+
+    float L = get_c_at_max();
+
+    float M = L/20;
+
+    float Mn = M;///????
+
+    float b = 10 * M;
+
+    ///e = sqrt(1 - a^2/b^2)
+    float little_e = 0.9;
+
+    float a = sqrt(b*b - b*b * little_e*little_e);
+
+    auto density_func = [&](tensor<float, 3> pos)
+    {
+        float rad = ((pow(pos.x(), 2) + pow(pos.y(), 2)) / (a*a)) + pow(pos.z(), 2) / (b*b);
+
+        float density = 3 * Mn / (4 * M_PI * a * a * b);
+
+        return dual_types::if_v(rad <= 1.f, density, 0.f);
+    };
+
+    float mN = 2 * Mn + (6.f/5.f) * (Mn*Mn / (b * little_e)) * log((1 + little_e) / (1 - little_e));
+
+    float m = mN / particles;
+
+    ///this is particle size!
+    float rs = L / 75;
+
+    xoshiro256ss_state st = xoshiro256ss_init(1234);
+
+    auto random = [&]()
+    {
+        return uint64_to_double(xoshiro256ss(st));
+    };
+
+    particle_data data;
+
+    for(int i=0; i < particles; i++)
+    {
+        tensor<float, 3> half_pos = {random() - 0.5, random() - 0.5, random() - 0.5};
+        tensor<float, 3> pos = half_pos * get_c_at_max();
+
+        float density = density_func(pos);
+
+        if(density == 0)
+        {
+            i--;
+            continue;
+        }
+
+        data.positions.push_back({pos.x(), pos.y(), pos.z()});
+        data.velocities.push_back({0,0,0});
+        data.masses.push_back(m);
+    }
+
     #endif
 
     return get_bare_initial_conditions(clctx, cqueue, scale, objects, std::move(data_opt));
