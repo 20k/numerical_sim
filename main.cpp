@@ -2085,7 +2085,7 @@ value tov_phi_at_coordinate_general(const tensor<value, 3>& world_position)
 }
 
 ///so. Need to awkward mash particle ph in here
-laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_object::data>& cpu_holes, cl::buffer& aij_aIJ_buf, cl::buffer& ppw2p_buf)
+laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_object::data>& cpu_holes, cl::buffer& aij_aIJ_buf, cl::buffer& ppw2p_buf, cl::buffer& nonconformal_pH)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
@@ -2405,6 +2405,8 @@ struct superimposed_gpu_data
     cl::buffer particle_indices;
     cl::buffer particle_memory_count;
 
+    cl::buffer particle_grid_E_without_conformal;
+
     cl_int max_particle_memory = 1024 * 1024 * 120;
 
     cl::buffer u_arg;
@@ -2423,7 +2425,8 @@ struct superimposed_gpu_data
                                                                                                       colour_buf{ctx, ctx, ctx},
                                                                                                       ppw2p_program(ctx), bcAij_matter_program(ctx), multi_matter_program(ctx),
                                                                                                       particle_position(ctx), particle_mass(ctx), particle_lorentz(ctx),
-                                                                                                      particle_counts(ctx), particle_indices(ctx), particle_memory_count(ctx)
+                                                                                                      particle_counts(ctx), particle_indices(ctx), particle_memory_count(ctx),
+                                                                                                      particle_grid_E_without_conformal(ctx)
     {
         int cells = dim.x() * dim.y() * dim.z();
 
@@ -2474,6 +2477,9 @@ struct superimposed_gpu_data
 
         particle_memory_count.alloc(sizeof(cl_ulong));
         particle_memory_count.fill(cqueue, cl_ulong{0});
+
+        particle_grid_E_without_conformal.alloc(cells * sizeof(cl_float));
+        particle_grid_E_without_conformal.fill(cqueue, cl_float{0});
     }
 
     void build_accumulation_matter_programs(cl::context& ctx)
@@ -2715,7 +2721,9 @@ struct superimposed_gpu_data
         ///need to handle particle data here. Currently only doing stationary particles, which do not have a velocity component
         ///So write the particle positions, set up everything, do the fast method (sigh), and then go
 
-        laplace_data solve = setup_u_laplace(clctx, objs, aij_aIJ, ppw2p);
+        pull(clctx, cqueue, particles, scale, dim);
+
+        laplace_data solve = setup_u_laplace(clctx, objs, aij_aIJ, ppw2p, particle_grid_E_without_conformal);
         u_arg = laplace_solver(clctx, cqueue, solve, scale, dim, 0.000001f);
 
         tensor<value, 3> pos = {"ox", "oy", "oz"};
@@ -2776,6 +2784,11 @@ struct superimposed_gpu_data
         multi_matter_kernel.set_args(args);
 
         cqueue.exec(multi_matter_kernel, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
+    }
+
+    void pull(cl::context& clctx, cl::command_queue& cqueue, const particle_data& particles, float scale, vec3i dim)
+    {
+
     }
 
     void pull(cl::context& clctx, cl::command_queue& cqueue, neutron_star_gpu_data& dat, const compact_object::data& obj, float scale, vec3i dim)
