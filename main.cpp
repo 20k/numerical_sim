@@ -2692,6 +2692,9 @@ struct superimposed_gpu_data
             }
         }
 
+        ///need to handle particle data here. Currently only doing stationary particles, which do not have a velocity component
+        ///So write the particle positions, set up everything, do the fast method (sigh), and then go
+
         laplace_data solve = setup_u_laplace(clctx, objs, aij_aIJ, ppw2p);
         u_arg = laplace_solver(clctx, cqueue, solve, scale, dim, 0.000001f);
 

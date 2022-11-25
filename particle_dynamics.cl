@@ -3,6 +3,7 @@
 #include "evolution_common.cl"
 #include "common.cl"
 #include "transform_position.cl"
+#include "particle_dynamics_common.cl"
 
 #define GET_IDX(x, i) (x * 3 + i)
 
@@ -464,27 +465,6 @@ float3 voxel_to_world_unrounded(float3 pos, int4 dim, float scale)
     return (pos - centre) * scale;
 }
 
-float get_f_sp(float r_rs)
-{
-    float f_sp = 0;
-
-    if(r_rs <= 1)
-    {
-        f_sp = 1.f - (3.f/2.f) * r_rs * r_rs + (3.f/4.f) * pow(r_rs, 3.f);
-    }
-
-    else if(r_rs <= 2)
-    {
-        f_sp = (1.f/4.f) * pow(2 - r_rs, 3.f);
-    }
-    else
-    {
-        f_sp = 0;
-    }
-
-    return f_sp;
-}
-
 ///https://www.sciencedirect.com/science/article/pii/S259003742100042X
 /*float phi(float r_frac)
 {
@@ -527,11 +507,6 @@ float dirac_disc(float r, float scale)
     return 0.f;
 }*/
 
-float get_radius(float scale)
-{
-    return 4 * scale;
-}
-
 float remap_range(float val, float min_val, float max_val, float min_out, float max_out)
 {
     val = clamp(val, min_val, max_val);
@@ -549,30 +524,6 @@ float modify_radius(float base_radius, float gA)
 float modify_mass(float base_mass, float gA)
 {
     return remap_range(gA, 0.1f, 0.2f, 0.f, base_mass);
-}
-
-///https://arxiv.org/pdf/1611.07906.pdf (20)
-float dirac_disc(float r, float radius)
-{
-    float rs = radius;
-
-    float frac = r / rs;
-
-    float mult = 1/(M_PI * pow(rs, 3.f));
-
-    if(frac <= 1)
-    {
-        float val = 1.f - (3.f/2.f) * pow(frac, 2.f) + (3.f/4.f) * pow(frac, 3.f);
-
-        return mult * val;
-    }
-
-    if(frac <= 2)
-    {
-        return mult * (1.f/4.f) * pow(2.f - frac, 3.f);
-    }
-
-    return 0.f;
 }
 
 ///this kernel is unnecessarily 3d
@@ -635,7 +586,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 
     float gA_val = buffer_read_linear(gA, voxel_pos, dim);
 
-    float base_radius = get_radius(scale);
+    float base_radius = get_particle_radius(scale);
     float current_radius = modify_radius(base_radius, gA_val);
 
     int spread = ceil(current_radius / scale) + 3;
@@ -739,7 +690,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         if(mass == 0)
             continue;
 
-        float base_radius = get_radius(scale);
+        float base_radius = get_particle_radius(scale);
         float current_radius = modify_radius(base_radius, gA_val);
 
         float to_centre_distance = fast_length(cell_wp - world_pos);
