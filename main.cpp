@@ -2822,8 +2822,21 @@ struct superimposed_gpu_data
 
         particle_position.write(cqueue, particles.positions);
         particle_mass.write(cqueue, particles.masses);
-        ///nope!
-        particle_lorentz.fill(cqueue, cl_float{1.f});
+
+        {
+            std::vector<float> lorentz;
+
+            for(vec3f vel : particles.velocities)
+            {
+                float v = vel.length();
+
+                float gamma = 1/sqrt(1 - v*v);
+
+                lorentz.push_back(gamma);
+            }
+
+            particle_lorentz.write(cqueue, lorentz);
+        }
 
         particle_counts.fill(cqueue, cl_ulong{0});
         particle_memory_count.set_to_zero(cqueue);
