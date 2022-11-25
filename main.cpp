@@ -2415,6 +2415,7 @@ struct superimposed_gpu_data
 
     cl::buffer particle_counts;
     cl::buffer particle_indices;
+    cl::buffer particle_memory;
     cl::buffer particle_memory_count;
 
     cl::buffer particle_grid_E_without_conformal;
@@ -2437,7 +2438,7 @@ struct superimposed_gpu_data
                                                                                                       colour_buf{ctx, ctx, ctx},
                                                                                                       ppw2p_program(ctx), bcAij_matter_program(ctx), multi_matter_program(ctx),
                                                                                                       particle_position(ctx), particle_mass(ctx), particle_lorentz(ctx),
-                                                                                                      particle_counts(ctx), particle_indices(ctx), particle_memory_count(ctx),
+                                                                                                      particle_counts(ctx), particle_indices(ctx), particle_memory(ctx), particle_memory_count(ctx),
                                                                                                       particle_grid_E_without_conformal(ctx)
     {
         int cells = dim.x() * dim.y() * dim.z();
@@ -2483,6 +2484,8 @@ struct superimposed_gpu_data
         }
 
         particle_counts.alloc(cells * sizeof(cl_ulong));
+        particle_memory.alloc(cells * sizeof(cl_ulong));
+
         particle_counts.fill(cqueue, cl_ulong{0});
 
         particle_indices.alloc(max_particle_memory * sizeof(cl_ulong));
@@ -2803,7 +2806,100 @@ struct superimposed_gpu_data
         if(particles.positions.size() == 0)
             return;
 
+        cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
+        uint64_t particle_count = particles.positions.size();
+
+        assert(particle_count <= INT_MAX);
+
+        cl_int clcount = particle_count;
+
+        particle_position.alloc(sizeof(cl_float) * 3 * particle_count);
+        particle_mass.alloc(sizeof(cl_float) * particle_count);
+        particle_lorentz.alloc(sizeof(cl_float) * particle_count);
+
+        particle_position.write(cqueue, particles.positions);
+        particle_mass.write(cqueue, particles.masses);
+        ///nope!
+        particle_lorentz.fill(cqueue, cl_float{1.f});
+
+        particle_counts.fill(cqueue, cl_ulong{0});
+        particle_memory_count.set_to_zero(cqueue);
+
+        equation_context ectx;
+
+        ectx.add("INITIAL_PARTICLES", 1);
+
+        auto [prog, kerns] = build_and_fetch_kernel(clctx, ectx, "initial_conditions.cl", {"collect_particles", "memory_allocate", "calculate_E_without_conformal"}, "none");
+
+        {
+            cl_int actually_write = 0;
+
+            cl::args args;
+            args.push_back(particle_position);
+            args.push_back(clcount);
+            args.push_back(particle_counts);
+            args.push_back(particle_memory);
+            args.push_back(particle_indices);
+            args.push_back(scale);
+            args.push_back(clsize);
+            args.push_back(actually_write);
+
+            kerns[0].set_args(args);
+
+            cqueue.exec(kerns[0], {particle_count}, {128});
+        }
+
+        {
+            cl_ulong work = dim.x() * dim.y() * dim.z();
+
+            cl::args args;
+            args.push_back(particle_counts);
+            args.push_back(particle_memory);
+            args.push_back(particle_memory_count);
+            args.push_back(max_particle_memory);
+            args.push_back(work);
+
+            kerns[1].set_args(args);
+
+            cqueue.exec(kerns[1], {work}, {128});
+        }
+
+        {
+            cl_int actually_write = 1;
+
+            cl::args args;
+            args.push_back(particle_position);
+            args.push_back(clcount);
+            args.push_back(particle_counts);
+            args.push_back(particle_memory);
+            args.push_back(particle_indices);
+            args.push_back(scale);
+            args.push_back(clsize);
+            args.push_back(actually_write);
+
+            kerns[0].set_args(args);
+
+            cqueue.exec(kerns[0], {particle_count}, {128});
+        }
+
+        {
+            cl::args args;
+            args.push_back(particle_position);
+            args.push_back(particle_mass);
+            args.push_back(particle_lorentz);
+            args.push_back(particle_grid_E_without_conformal);
+            args.push_back(clcount);
+            args.push_back(particle_counts);
+            args.push_back(particle_memory);
+            args.push_back(particle_indices);
+            args.push_back(scale);
+            args.push_back(clsize);
+
+            kerns[2].set_args(args);
+
+            cqueue.exec(kerns[2], {dim.x(), dim.y(), dim.z()}, {8,8,1});
+        }
     }
 
     void pull(cl::context& clctx, cl::command_queue& cqueue, neutron_star_gpu_data& dat, const compact_object::data& obj, float scale, vec3i dim)

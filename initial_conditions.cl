@@ -237,8 +237,6 @@ void multi_accumulate(__global struct matter_data* data,
 #endif // ALL_MATTER_VARIABLES
 
 #ifdef INITIAL_PARTICLES
-
-
 #ifdef USE_64_BIT
 #define ITYPE ulong
 #define AADD(x, y) atom_add(x, y)
@@ -249,11 +247,10 @@ void multi_accumulate(__global struct matter_data* data,
 #define AINC(x) atomic_inc(x)
 #endif
 
-#define ITYPE int
+#define GET_IDX(x, i) (x * 3 + i)
 
 #include "particle_dynamics_common.cl"
-#include "common.cl"
-#include "transform_position.cl"
+
 
 float3 voxel_to_world_unrounded(float3 pos, int4 dim, float scale)
 {
@@ -299,7 +296,7 @@ void collect_particles(__global float* positions, ITYPE geodesic_count, __global
 
                 float to_centre_distance = fast_length(cell_wp - world_pos);
 
-                float f_sp = dirac_disc(to_centre_distance, current_radius);
+                float f_sp = dirac_disc(to_centre_distance, radius);
 
                 if(f_sp == 0)
                     continue;
@@ -347,7 +344,7 @@ void memory_allocate(__global ITYPE* counts, __global ITYPE* memory_ptrs, __glob
 ///calculates mass * lorentz * dirac
 ///does not contain the X aka phi term
 __kernel
-void calculate_E_without_conformal(__global float* positions, __global float* masses, __global float* lorentz_in, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, float scale, int4 dim)
+void calculate_E_without_conformal(__global float* positions, __global float* masses, __global float* lorentz_in, __global float* adm_p, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, float scale, int4 dim)
 {
     int kix = get_global_id(0);
     int kiy = get_global_id(1);
@@ -376,7 +373,6 @@ void calculate_E_without_conformal(__global float* positions, __global float* ma
             continue;
 
         float3 world_pos = {positions[GET_IDX(geodesic_idx, 0)], positions[GET_IDX(geodesic_idx, 1)], positions[GET_IDX(geodesic_idx, 2)]};
-        float3 vel = {velocities[GET_IDX(geodesic_idx, 0)], velocities[GET_IDX(geodesic_idx, 1)], velocities[GET_IDX(geodesic_idx, 2)]};
 
         float3 cell_wp = voxel_to_world_unrounded((float3)(kix, kiy, kiz), dim, scale);
 
