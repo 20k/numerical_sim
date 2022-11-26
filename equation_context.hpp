@@ -24,7 +24,7 @@ struct equation_context : differentiator
     bool always_directional_derivatives = false;
     bool is_derivative_free = false;
 
-    int order = 2;
+    int order = 3;
 
     virtual value diff1(const value& in, int idx){return ::diff1(*this, in, idx);};
     virtual value diff2(const value& in, int idx, int idy, const value& dx, const value& dy){return ::diff2(*this, in, idx, idy, dx, dy);};

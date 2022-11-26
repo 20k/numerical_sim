@@ -3790,15 +3790,18 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     ///https://arxiv.org/pdf/1611.07906.pdf
     #define SPINDLE_COLLAPSE
     #ifdef SPINDLE_COLLAPSE
-    int particles = pow(10, 6);
+    int particles = 5 * pow(10, 5);
 
-    float L = get_c_at_max();
+    //float L = get_c_at_max() * 0.6;
 
-    float M = L/20;
+    /*float M = L/20;
+    float b = 10 * M;*/
+
+    //float M = 1.05;
+    float M = 1.35f * 1.f;
+    float b = 13.5;
 
     float Mn = M;///????
-
-    float b = 10 * M;
 
     printf("B %.23f\n", b);
 
@@ -3811,7 +3814,17 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     auto density_func = [&](tensor<float, 3> pos)
     {
-        float rad = ((pow(pos.x(), 2) + pow(pos.y(), 2)) / (a*a)) + pow(pos.z(), 2) / (b*b);
+        //float rad = ((pow(pos.x(), 2) + pow(pos.y(), 2)) / (a*a)) + pow(pos.z(), 2) / (b*b);
+
+        /*float p1 = pos.x() * pos.x() / (a*a);
+        float p2 = pos.y() * pos.y() / (a*a);
+        float p3 = pos.z() * pos.z() / (b*b);*/
+
+        float p1 = pos.z() * pos.z() / (a*a);
+        float p2 = pos.y() * pos.y() / (a*a);
+        float p3 = pos.x() * pos.x() / (b*b);
+
+        float rad = p1 + p2 + p3;
 
         float density = 3 * Mn / (4 * M_PI * a * a * b);
 
@@ -3825,7 +3838,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     printf("Particle mass %.23f\n", m);
 
     ///this is particle size!
-    float rs = L / 75;
+    //float rs = L / 75;
 
     xoshiro256ss_state st = xoshiro256ss_init(1234);
 
@@ -5427,7 +5440,7 @@ int main()
     std::string hydro_argument_string = argument_string;
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {255, 255, 255};
+    vec3i size = {155, 155, 155};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();

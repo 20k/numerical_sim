@@ -1707,7 +1707,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     float accum_B = 0;
 
     //#pragma unroll(16)
-    for(int iteration=0; iteration < 512; iteration++)
+    for(int iteration=0; iteration < 4096; iteration++)
     {
         #ifdef VERLET_2
         ///finish previous iteration
@@ -1753,9 +1753,9 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         float p_val = fabs(buffer_read_linear(adm_p, voxel_pos, dim));
 
-        accum_R += p_val * 2000000;
-        accum_G += p_val * 2000000;
-        accum_B += p_val * 2000000;
+        accum_R += p_val * 0.0002;
+        accum_G += p_val * 0.0002;
+        accum_B += p_val * 0.0002;
 
         if(accum_R > 1 && accum_G > 1 && accum_G > 1)
             break;
@@ -1826,11 +1826,11 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
             printf("%f %f %f  %f %f %f\n", V0, V1, V2, lp1, lp2, lp3);
         }*/
 
-        if(length_sq(XDiff) < 0.2f * 0.2f)
+        /*if(length_sq(XDiff) < 0.2f * 0.2f)
         {
             hit_type = 1;
             break;
-        }
+        }*/
     }
 
     struct lightray_simple ray_out;
