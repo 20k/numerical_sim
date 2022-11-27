@@ -32,13 +32,6 @@ tensor<value, 3> particle_matter_interop::calculate_adm_Si(equation_context& ctx
 
 tensor<value, 3, 3> particle_matter_interop::calculate_adm_X_Sij(equation_context& ctx, standard_arguments& bssn_args)
 {
-    value adm_Sij0 = bidx("adm_Sij0", ctx.uses_linear, false);
-    value adm_Sij1 = bidx("adm_Sij1", ctx.uses_linear, false);
-    value adm_Sij2 = bidx("adm_Sij2", ctx.uses_linear, false);
-    value adm_Sij3 = bidx("adm_Sij3", ctx.uses_linear, false);
-    value adm_Sij4 = bidx("adm_Sij4", ctx.uses_linear, false);
-    value adm_Sij5 = bidx("adm_Sij5", ctx.uses_linear, false);
-
     value X = bssn_args.get_X();
 
     tensor<value, 3, 3> Sij;
@@ -56,7 +49,7 @@ tensor<value, 3, 3> particle_matter_interop::calculate_adm_X_Sij(equation_contex
         {
             int index = arg_table[i * 3 + j];
 
-            Sij.idx(i, j) = bidx("adm_Sij" + std::to_string(index), false, false);
+            Sij.idx(i, j) = bidx("adm_Sij" + std::to_string(index), ctx.uses_linear, false);
         }
     }
 
