@@ -3759,7 +3759,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // MERGE_THEN_COLLAPSE
 
-    #define PARTICLE_TEST
+    //#define PARTICLE_TEST
     #ifdef PARTICLE_TEST
 
     {
@@ -3783,6 +3783,27 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
             //data.velocities.push_back(-pos.norm() * 0.4);
             data.masses.push_back(total_mass / 40);
         }
+
+        data_opt = std::move(data);
+    }
+    #endif
+
+    #define PARTICLE_MATTER_INTEROP_TEST
+    #ifdef PARTICLE_MATTER_INTEROP_TEST
+    {
+        particle_data data;
+
+        data.positions.push_back({8,0,0});
+        data.velocities.push_back({0,0,0});
+        data.masses.push_back(0.1f);
+
+        compact_object::data h1;
+        h1.t = compact_object::NEUTRON_STAR;
+        h1.bare_mass = 0.3f;
+        h1.position = {-8.f, 0.f, 0.f};
+        h1.matter.compactness = 0.06;
+
+        objects = {h1};
 
         data_opt = std::move(data);
     }
@@ -5428,7 +5449,7 @@ int main()
     std::string hydro_argument_string = argument_string;
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {255, 255, 255};
+    vec3i size = {213, 213, 213};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();

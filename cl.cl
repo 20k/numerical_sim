@@ -1748,54 +1748,57 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         }
 
         #ifdef TRACE_MATTER_P
-        float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
-        voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+        {
+            float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+            voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
-        float p_val = fabs(buffer_read_linear(adm_p, voxel_pos, dim));
+            float p_val = fabs(buffer_read_linear(adm_p, voxel_pos, dim));
 
-        accum_R += p_val * 1;
-        accum_G += p_val * 1;
-        accum_B += p_val * 1;
+            accum_R += p_val * 1;
+            accum_G += p_val * 1;
+            accum_B += p_val * 1;
 
-        if(accum_R > 1 && accum_G > 1 && accum_G > 1)
-            break;
+            if(accum_R > 1 && accum_G > 1 && accum_G > 1)
+                break;
+        }
         #endif
 
         #ifdef RENDER_MATTER
-        float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
-        voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
-
-        float pstar_val = buffer_read_linear(Dp_star, voxel_pos, dim);
-
-        /*if(pstar_val > 0.001f)
         {
-            Xpos_last = Xpos;
-            hit_type = 2;
-            break;
-        }*/
+            float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+            voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
-        if(!use_colour)
-        {
-            accum_R += pstar_val;
-            accum_G += pstar_val;
-            accum_B += pstar_val;
+            float pstar_val = buffer_read_linear(Dp_star, voxel_pos, dim);
+
+            /*if(pstar_val > 0.001f)
+            {
+                Xpos_last = Xpos;
+                hit_type = 2;
+                break;
+            }*/
+
+            if(!use_colour)
+            {
+                accum_R += pstar_val;
+                accum_G += pstar_val;
+                accum_B += pstar_val;
+            }
+            else
+            {
+                #ifdef HAS_COLOUR
+                accum_R += buffer_read_linear(dRed, voxel_pos, dim) * 1;
+                accum_G += buffer_read_linear(dGreen, voxel_pos, dim) * 1;
+                accum_B += buffer_read_linear(dBlue, voxel_pos, dim) * 1;
+                #endif
+            }
+
+            /*if(density > SOLID_DENSITY)
+            {
+                Xpos_last = Xpos;
+                hit_type = 2;
+                break;
+            }*/
         }
-        else
-        {
-            #ifdef HAS_COLOUR
-            accum_R += buffer_read_linear(dRed, voxel_pos, dim) * 1;
-            accum_G += buffer_read_linear(dGreen, voxel_pos, dim) * 1;
-            accum_B += buffer_read_linear(dBlue, voxel_pos, dim) * 1;
-            #endif
-        }
-
-        /*if(density > SOLID_DENSITY)
-        {
-            Xpos_last = Xpos;
-            hit_type = 2;
-            break;
-        }*/
-
         #endif // RENDER_MATTER
 
         #endif // VERLET_2
