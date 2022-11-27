@@ -171,7 +171,7 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
                 christoffel_sum += full_christoffel2.idx(i, j, k) * V_upper.idx(k);
             }
 
-            value dlog_gA = diff1(ctx, args.gA, j) / max(args.gA, 1e-4.f);
+            value dlog_gA = diff1(ctx, args.gA, j) / max(args.gA, 1e-4f);
 
             V_upper_diff.idx(i) += args.gA * V_upper.idx(j) * (V_upper.idx(i) * (dlog_gA - kjvk) + 2 * raise_index(args.Kij, iYij, 0).idx(i, j) - christoffel_sum)
                                    - iYij.idx(i, j) * diff1(ctx, args.gA, j) - V_upper.idx(j) * diff1(ctx, args.gB.idx(i), j);
