@@ -431,6 +431,18 @@ struct matter_interop
     virtual value               calculate_adm_p(equation_context& ctx, standard_arguments& bssn_args){return 0;};
     virtual tensor<value, 3, 3> calculate_adm_X_Sij(equation_context& ctx, standard_arguments& bssn_args){return {0,0,0,0,0,0,0,0,0};};
     virtual tensor<value, 3>    calculate_adm_Si(equation_context& ctx, standard_arguments& bssn_args){return {0,0,0};};
+
+    virtual ~matter_interop(){}
+};
+
+struct matter_meta_interop : matter_interop
+{
+    std::vector<matter_interop*> sub_interop;
+
+    virtual value               calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args) override;
+    virtual value               calculate_adm_p(equation_context& ctx, standard_arguments& bssn_args) override;
+    virtual tensor<value, 3, 3> calculate_adm_X_Sij(equation_context& ctx, standard_arguments& bssn_args) override;
+    virtual tensor<value, 3>    calculate_adm_Si(equation_context& ctx, standard_arguments& bssn_args) override;
 };
 
 namespace bssn

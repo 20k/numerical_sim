@@ -1,5 +1,53 @@
 #include "bssn.hpp"
 
+value matter_meta_interop::calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args)
+{
+    value ret;
+
+    for(auto& i : sub_interop)
+    {
+        ret += i->calculate_adm_S(ctx, bssn_args);
+    }
+
+    return ret;
+}
+
+value matter_meta_interop::calculate_adm_p(equation_context& ctx, standard_arguments& bssn_args)
+{
+    value ret;
+
+    for(auto& i : sub_interop)
+    {
+        ret += i->calculate_adm_p(ctx, bssn_args);
+    }
+
+    return ret;
+}
+
+tensor<value, 3, 3> matter_meta_interop::calculate_adm_X_Sij(equation_context& ctx, standard_arguments& bssn_args)
+{
+    tensor<value, 3, 3> ret;
+
+    for(auto& i : sub_interop)
+    {
+        ret += i->calculate_adm_X_Sij(ctx, bssn_args);
+    }
+
+    return ret;
+}
+
+tensor<value, 3> matter_meta_interop::calculate_adm_Si(equation_context& ctx, standard_arguments& bssn_args)
+{
+    tensor<value, 3> ret;
+
+    for(auto& i : sub_interop)
+    {
+        ret += i->calculate_adm_Si(ctx, bssn_args);
+    }
+
+    return ret;
+}
+
 void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const tensor<value, 3, 3>& Aij, const value& gA)
 {
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};

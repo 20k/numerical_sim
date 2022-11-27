@@ -3759,7 +3759,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // MERGE_THEN_COLLAPSE
 
-    //#define PARTICLE_TEST
+    #define PARTICLE_TEST
     #ifdef PARTICLE_TEST
 
     {
@@ -3780,6 +3780,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
             data.positions.push_back(pos);
             data.velocities.push_back({0,0,0});
+            //data.velocities.push_back(-pos.norm() * 0.4);
             data.masses.push_back(total_mass / 40);
         }
 
@@ -3788,7 +3789,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #endif
 
     ///https://arxiv.org/pdf/1611.07906.pdf
-    #define SPINDLE_COLLAPSE
+    //#define SPINDLE_COLLAPSE
     #ifdef SPINDLE_COLLAPSE
     int particles = pow(10, 6);
 
@@ -5500,31 +5501,29 @@ int main()
     equation_context ctx1;
     get_initial_conditions_eqs(ctx1, holes.objs);
 
-    //eularian_matter interop;
-
-    matter_interop* interop = new matter_interop();
+    matter_meta_interop meta_interop;
 
     if(holes.use_matter)
     {
-        interop = new eularian_matter();
+        meta_interop.sub_interop.push_back(new eularian_matter());
     }
 
     if(holes.use_particles)
     {
-        interop = new particle_matter_interop();
+        meta_interop.sub_interop.push_back(new particle_matter_interop());
     }
 
     equation_context dtcY;
     bssn::build_cY(dtcY);
 
     equation_context dtcA;
-    bssn::build_cA(*interop, dtcA, holes.use_matter || holes.use_particles);
+    bssn::build_cA(meta_interop, dtcA, holes.use_matter || holes.use_particles);
 
     equation_context dtcGi;
-    bssn::build_cGi(*interop, dtcGi, holes.use_matter || holes.use_particles);
+    bssn::build_cGi(meta_interop, dtcGi, holes.use_matter || holes.use_particles);
 
     equation_context dtK;
-    bssn::build_K(*interop, dtK, holes.use_matter || holes.use_particles);
+    bssn::build_K(meta_interop, dtK, holes.use_matter || holes.use_particles);
 
     equation_context dtX;
     bssn::build_X(dtX);
@@ -5562,7 +5561,7 @@ int main()
     build_intermediate_thin_cY5(ctx12);
 
     equation_context ctx13;
-    build_momentum_constraint(*interop, ctx13, holes.use_matter || holes.use_particles);
+    build_momentum_constraint(meta_interop, ctx13, holes.use_matter || holes.use_particles);
 
     equation_context ctx14;
     //build_hamiltonian_constraint(ctx14);
@@ -6078,7 +6077,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.04f;
+        float timestep = 0.03f;
 
         if(pao && time_elapsed_s > 250)
             step = false;
