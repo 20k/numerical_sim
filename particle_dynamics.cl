@@ -516,13 +516,17 @@ float remap_range(float val, float min_val, float max_val, float min_out, float 
     return frac * (max_out - min_out) + min_out;
 }
 
+///a fully dynamic radius is incorrect, causes issues in particle -> neutron star
+///this only expresses itself when using the *correct* equations for particle dynamics
 float modify_radius(float base_radius, float gA)
 {
-    return remap_range(gA, 0.1f, 1.f, base_radius * 0.25f, base_radius);
+    return base_radius;
+    //return remap_range(gA, 0.1f, 1.f, base_radius * 0.25f, base_radius);
 }
 
 float modify_mass(float base_mass, float gA)
 {
+    //return base_mass;
     return remap_range(gA, 0.1f, 0.2f, 0.f, base_mass);
 }
 
@@ -700,6 +704,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
 
         float weight = f_sp;
 
+        ///should fx, fy, and fz be cell_wp?
         float fx = voxel_pos.x;
         float fy = voxel_pos.y;
         float fz = voxel_pos.z;

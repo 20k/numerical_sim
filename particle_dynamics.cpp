@@ -427,7 +427,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     ///https://arxiv.org/pdf/1904.07841.pdf so, have to discretise the dirac delta. This paper gives explicit version
     {
         equation_context ectx;
-        ectx.uses_linear = true;
+        ectx.uses_linear = false;
         ectx.use_precise_differentiation = false;
         ectx.order = 2;
         standard_arguments args(ectx);
@@ -460,18 +460,18 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         value lorentz = value{"lorentz"} + 1;
 
-        value idet = 0;
+        /*value idet = 0;
 
         #ifdef USE_W
-        value W_impl = bidx("X", ectx.uses_linear, false);
+        value W_impl = bidx("X", false, false);
 
         idet = pow(W_impl, 3);
         #else
         assert(false);
-        #endif
+        #endif*/
 
         //value idet = pow(args.W_impl, 3);
-        //value idet = pow(args.get_X(), 3.f/2.f);
+        value idet = pow(args.get_X(), 3.f/2.f);
 
         value out_adm_p = idet * mass * lorentz;
 
