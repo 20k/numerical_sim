@@ -520,8 +520,8 @@ float remap_range(float val, float min_val, float max_val, float min_out, float 
 ///this only expresses itself when using the *correct* equations for particle dynamics
 float modify_radius(float base_radius, float gA)
 {
-    return base_radius;
-    //return remap_range(gA, 0.1f, 1.f, base_radius * 0.25f, base_radius);
+    //return base_radius;
+    return remap_range(gA, 0.1f, 0.2f, base_radius * 0.25f, base_radius);
 }
 
 float modify_mass(float base_mass, float gA)
