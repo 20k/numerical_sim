@@ -3788,7 +3788,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     }
     #endif
 
-    #define PARTICLE_MATTER_INTEROP_TEST
+    //#define PARTICLE_MATTER_INTEROP_TEST
     #ifdef PARTICLE_MATTER_INTEROP_TEST
     {
         particle_data data;
@@ -3810,11 +3810,11 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #endif
 
     ///https://arxiv.org/pdf/1611.07906.pdf
-    //#define SPINDLE_COLLAPSE
+    #define SPINDLE_COLLAPSE
     #ifdef SPINDLE_COLLAPSE
-    int particles = pow(10, 6);
+    int particles = 2.5 * pow(10, 5);
 
-    float L = get_c_at_max();
+    float L = get_c_at_max() * 0.8f;
 
     float M = L/20;
 
@@ -3833,7 +3833,13 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     auto density_func = [&](tensor<float, 3> pos)
     {
-        float rad = ((pow(pos.x(), 2) + pow(pos.y(), 2)) / (a*a)) + pow(pos.z(), 2) / (b*b);
+        //float rad = ((pow(pos.x(), 2) + pow(pos.y(), 2)) / (a*a)) + pow(pos.z(), 2) / (b*b);
+
+        float p1 = pos.z() * pos.z() / (a*a);
+        float p2 = pos.y() * pos.y() / (a*a);
+        float p3 = pos.x() * pos.x() / (b*b);
+
+        float rad = p1 + p2 + p3;
 
         float density = 3 * Mn / (4 * M_PI * a * a * b);
 
@@ -5449,7 +5455,7 @@ int main()
     std::string hydro_argument_string = argument_string;
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {213, 213, 213};
+    vec3i size = {255, 255, 255};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
