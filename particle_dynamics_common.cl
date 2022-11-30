@@ -1,6 +1,6 @@
 float get_particle_radius(float scale)
 {
-    return 4 * scale;
+    return 2 * scale;
 }
 
 ///https://arxiv.org/pdf/1611.07906.pdf (20)

@@ -3812,7 +3812,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     ///https://arxiv.org/pdf/1611.07906.pdf
     #define SPINDLE_COLLAPSE
     #ifdef SPINDLE_COLLAPSE
-    int particles = 2.5 * pow(10, 5);
+    int particles = 5 * pow(10, 5);
 
     float L = get_c_at_max() * 0.8f;
 
