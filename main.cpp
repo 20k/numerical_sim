@@ -24,6 +24,7 @@
 #include "hydrodynamics.hpp"
 #include "particle_dynamics.hpp"
 #include "random.hpp"
+#include "galaxy_model.hpp"
 
 /**
 current paper set
@@ -3809,8 +3810,66 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     }
     #endif
 
+    //#define GALAXY_SIM
+    #ifdef GALAXY_SIM
+    data_opt = build_galaxy();
+    #endif
+
+    #define ACCRETION_DISK
+    #ifdef ACCRETION_DISK
+
+    {
+        compact_object::data h1;
+        h1.t = compact_object::BLACK_HOLE;
+        h1.bare_mass = 0.483;
+        h1.position = {0,0,0};
+        h1.angular_momentum = {0, 0, 0};
+
+        objects = {h1};
+
+        xoshiro256ss_state st = xoshiro256ss_init(1234);
+
+        auto random = [&]()
+        {
+            return uint64_to_double(xoshiro256ss(st));
+        };
+
+        particle_data data;
+
+        float M = 0.001;
+        int N = 100000;
+
+        for(int i=0; i < N; i++)
+        {
+            float theta = random() * 2 * M_PI;
+            //float a2 = random() * M_PI;
+            float phi = acos(2 * random() - 1);
+
+            float rad = random() * (10.f - 5.f) + 5.f;
+
+            vec3f posn = {sin(phi) * cos(theta), sin(theta) * sin(phi), cos(phi)};
+
+            vec3f pos = posn * rad;
+
+            float vel = (random() - 0.5f) * 0.8f;
+
+            vec3f dir = {random(), random(), random()};
+
+            dir = dir.norm() * vel;
+
+            float mass = M/N;
+
+            data.positions.push_back(pos);
+            data.velocities.push_back(dir);
+            data.masses.push_back(mass);
+        }
+
+        //data_opt = std::move(data);
+    }
+    #endif
+
     ///https://arxiv.org/pdf/1611.07906.pdf
-    #define SPINDLE_COLLAPSE
+    //#define SPINDLE_COLLAPSE
     #ifdef SPINDLE_COLLAPSE
     int particles = 5 * pow(10, 5);
 
@@ -5455,7 +5514,7 @@ int main()
     std::string hydro_argument_string = argument_string;
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {255, 255, 255};
+    vec3i size = {213, 213, 213};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -5892,7 +5951,7 @@ int main()
     bool pao = false;
 
     bool render_skipping = false;
-    int skip_frames = 5;
+    int skip_frames = 8;
     int current_skip_frame = 0;
 
     clctx.cqueue.block();

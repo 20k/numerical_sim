@@ -172,6 +172,28 @@ void dissipate_mass(__global float* positions, __global float* mass_in, __global
     float gA_val = buffer_read_linear(gA, voxel_pos, dim);
     float X_val = buffer_read_linear(X, voxel_pos, dim);
 
+    bool is_invalid = gA_val < 0.4f || X_val < 0.01f || fast_length(Xpos) >= MASS_CULL_SIZE;
+
+    if(!is_invalid)
+    {
+        mass_out[idx] = mass_in[idx];
+        return;
+    }
+
+    float target = 0;
+    float dissipate_time = 20;
+
+    float diff = (mass_in[idx] - target);
+    //float sign = signum(mass_in[idx]);
+
+    float strength = timestep / dissipate_time;
+
+    float dt_mass = diff * strength;
+
+    mass_out[idx] = mass_base[idx] + strength * dt_mass;
+
+    /*
+
     if(fast_length(Xpos) >= MASS_CULL_SIZE || gA_val < 0.1f || X_val < 0.01f)
     {
         mass_out[idx] = 0;
@@ -179,7 +201,9 @@ void dissipate_mass(__global float* positions, __global float* mass_in, __global
     else
     {
         mass_out[idx] = mass_in[idx];
-    }
+    }*/
+
+
 }
 
 __kernel
@@ -520,13 +544,13 @@ float remap_range(float val, float min_val, float max_val, float min_out, float 
 ///this only expresses itself when using the *correct* equations for particle dynamics
 float modify_radius(float base_radius, float gA)
 {
-    //return base_radius;
-    return remap_range(gA, 0.1f, 0.2f, base_radius * 0.5f, base_radius);
+    return base_radius;
+    return remap_range(gA, 0.1f, 0.4f, base_radius * 0.25f, base_radius);
 }
 
 float modify_mass(float base_mass, float gA)
 {
-    //return base_mass;
+    return base_mass;
     return remap_range(gA, 0.1f, 0.2f, 0.f, base_mass);
 }
 
