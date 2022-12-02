@@ -5723,10 +5723,6 @@ int main()
 
     bool use_matter_colour = false;
 
-    #ifdef USE_GBB
-    base_settings.use_gBB = true;
-    #endif // USE_GBB
-
     #ifdef CALCULATE_MOMENTUM_CONSTRAINT
     base_settings.calculate_momentum_constraint = true;
     #endif // CALCULATE_MOMENTUM_CONSTRAINT
