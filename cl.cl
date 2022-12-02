@@ -192,6 +192,11 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     cA4[index] = init_cA4;
     cA5[index] = init_cA5;
 
+    if(cA0[index] != 0)
+    {
+        printf("Fuccd %f %i %i %i\n", cA0[index], ix, iy, iz);
+    }
+
     cGi0[index] = init_cGi0;
     cGi1[index] = init_cGi1;
     cGi2[index] = init_cGi2;
@@ -702,6 +707,22 @@ void evolve_cA(__global ushort4* points, int point_count,
     NANCHECK(ocA4);
     NANCHECK(ocA5);
 
+
+    if(IDX(ix,iy,iz) == IDX((dim.x-1)/2,(dim.y-1)/2,(dim.z-1)/2))
+    {
+        //printf("Here cY %f %f %f %f %f %f X: %f cA %f %f %f %f %f %f gA %f XP01 %f %f\n", cY0[index], cY1[index], cY2[index], cY3[index], cY4[index], cY5[index],
+        //                                                                 X[index],
+        //                                                                 cA0[index], cA1[index], cA2[index], cA3[index], cA4[index], cA5[index],
+        //                                                                 gA[index], XP1, XP2);
+
+        printf("Here cA %f %f %f %f %f %f p1 p2 p3 %f %f %f\n", cA0[index], cA1[index], cA2[index], cA3[index], cA4[index], cA5[index], debug_p1, debug_p2, debug_p3);
+    }
+
+    /*if(fabs(cA0[index]) > 0.001f)
+    {
+        printf("WHAT %f %i %i %i\n", cA0[index], ix, iy, iz);
+    }*/
+
     /*if(ix == 97 && iy == 124 && iz == 124)
     {
         printf("Here we go again xsij %f %f %f cS0 %f\n", DBGXGA, cA0[index], cY0[index], Debug_cS0);
@@ -964,7 +985,7 @@ __kernel
 void dissipate_single_unidir(__global ushort4* points, int point_count,
                              __global float* buffer, __global float* obuffer,
                              float coefficient,
-                             float scale, int4 dim, float timestep, __global ushort* order_ptr)
+                             float scale, int4 dim, float timestep, __global ushort* order_ptr, int debug)
 {
     int local_idx = get_global_id(0);
 
@@ -997,7 +1018,7 @@ __kernel
 void dissipate_single(__global ushort4* points, int point_count,
                       __global float* buffer, __global float* obuffer,
                       float coefficient,
-                      float scale, int4 dim, float timestep, __global ushort* order_ptr)
+                      float scale, int4 dim, float timestep, __global ushort* order_ptr, int debug)
 {
     int local_idx = get_global_id(0);
 
@@ -1048,6 +1069,19 @@ void dissipate_single(__global ushort4* points, int point_count,
     float TEMPORARIES9;
 
     float dissipate_single = KREISS_DISSIPATE_SINGULAR;
+
+    /*if(debug)
+    {
+        if(IDX(ix,iy,iz) == IDX((dim.x-1)/2,(dim.y-1)/2,(dim.z-1)/2))
+        {
+            //printf("Here cY %f %f %f %f %f %f X: %f cA %f %f %f %f %f %f gA %f XP01 %f %f\n", cY0[index], cY1[index], cY2[index], cY3[index], cY4[index], cY5[index],
+            //                                                                 X[index],
+            //                                                                 cA0[index], cA1[index], cA2[index], cA3[index], cA4[index], cA5[index],
+            //                                                                 gA[index], XP1, XP2);
+
+            printf("Hi there in %f out %f diff %f\n", buffer[index], obuffer[index], dissipate_single * damp * timestep);
+        }
+    }*/
 
     float tol = 1e-6;
 

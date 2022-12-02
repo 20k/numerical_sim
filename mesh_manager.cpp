@@ -56,6 +56,10 @@ void dissipate_set(cl::managed_command_queue& mqueue, T& base_reference, T& inou
         diss.push_back(timestep);
         diss.push_back(points_set.order);
 
+        cl_int debug = base_reference.buffers[i].desc.name == "cA0";
+
+        diss.push_back(debug);
+
         mqueue.exec("dissipate_single", diss, {points_set.all_count}, {128});
 
         //check_for_nans(inout.buffers[i].name + "_diss_single", inout.buffers[i].buf);
@@ -627,6 +631,10 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             diss.push_back(timestep);
             diss.push_back(points_set.order);
 
+            cl_int debug = in.buffers[i].name == "cA0";
+
+            diss.push_back(debug);
+
             //if(coeff == 0)
             //    continue;
 
@@ -733,7 +741,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     #define BACKWARD_EULER
     #ifdef BACKWARD_EULER
-    int iterations = 2;
+    int iterations = 4;
 
     if(iterations == 1)
     {

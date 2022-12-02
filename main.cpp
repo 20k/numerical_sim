@@ -305,13 +305,13 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
     ///https://en.wikipedia.org/wiki/Finite_difference_coefficient according to wikipedia, this is the 6th derivative with 2nd order accuracy. I am confused, but at least I know where it came from
     value scale = "scale";
 
-    //#define FOURTH
+    #define FOURTH
     #ifdef FOURTH
     differentiation_context<5> dctx(in, idx);
     value stencil = -(1 / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
     #endif // FOURTH
 
-    #define SIXTH
+    //#define SIXTH
     #ifdef SIXTH
     differentiation_context<7> dctx(in, idx);
     value stencil = (1 / (64.f * scale)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
@@ -5695,7 +5695,7 @@ int main()
     #endif // USE_GBB
 
     ///seems to make 0 difference to instability time
-    #define USE_HALF_INTERMEDIATE
+    //#define USE_HALF_INTERMEDIATE
     #ifdef USE_HALF_INTERMEDIATE
     int intermediate_data_size = sizeof(cl_half);
     argument_string += "-DDERIV_PRECISION=half ";
@@ -6159,7 +6159,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.03f;
+        float timestep = 0.02f;
 
         if(pao && time_elapsed_s > 250)
             step = false;
@@ -6418,6 +6418,6 @@ int main()
         if(frametime.get_elapsed_time_s() > 10)
             return 0;
 
-        printf("Time: %f\n", frametime.restart() * 1000.);
+        //printf("Time: %f\n", frametime.restart() * 1000.);
     }
 }

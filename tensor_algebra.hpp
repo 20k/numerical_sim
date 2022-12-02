@@ -41,6 +41,18 @@ tensor<T, N, N> trace_free(const tensor<T, N, N>& mT, const metric<T, N, N>& met
     }
 
     return TF;
+
+    /*tensor<T, N, N> TF2;
+
+    for(int i=0; i < N; i++)
+    {
+        for(int j=0; j < N; j++)
+        {
+            TF2.idx(i, j) = 0.5f * (TF.idx(i, j) + TF.idx(j, i));
+        }
+    }
+
+    return TF2;*/
 }
 
 ///B^i * Di whatever

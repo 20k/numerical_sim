@@ -671,6 +671,9 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
 
     tensor<value, 3, 3> without_trace = trace_free(with_trace, cY, icY);
 
+    ctx.add("XP1", trace_free(-Xdidja, cY, icY).idx(0, 0));
+    ctx.add("XP2", trace_free(xgARij, cY, icY).idx(0, 0));
+
     #ifdef BETTERDAMP_DTCAIJ
     tensor<value, 3, 3> momentum_deriv;
 
