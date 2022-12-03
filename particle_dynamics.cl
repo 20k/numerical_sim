@@ -172,7 +172,16 @@ void dissipate_mass(__global float* positions, __global float* mass_in, __global
     float gA_val = buffer_read_linear(gA, voxel_pos, dim);
     float X_val = buffer_read_linear(X, voxel_pos, dim);
 
-    bool is_invalid = gA_val < 0.4f || X_val < 0.01f || fast_length(Xpos) >= MASS_CULL_SIZE;
+    bool oob = fast_length(Xpos) >= MASS_CULL_SIZE;
+
+    if(oob)
+    {
+        mass_out[idx] = 0;
+        return;
+    }
+
+    ///the oob check here is redundant, but I will absolutely forget if I experiment with the above check
+    bool is_invalid = gA_val < 0.4f || X_val < 0.01f || oob;
 
     if(!is_invalid)
     {
@@ -183,14 +192,19 @@ void dissipate_mass(__global float* positions, __global float* mass_in, __global
     float target = 0;
     float dissipate_time = 20;
 
-    float diff = (mass_in[idx] - target);
-    //float sign = signum(mass_in[idx]);
+    float dt_mass = (target - mass_in[idx]);
 
-    float strength = timestep / dissipate_time;
+    float current_mass = mass_in[idx];
+    float next_mass = mass_base[idx] + dt_mass * (timestep / dissipate_time);
 
-    float dt_mass = diff * strength;
-
-    mass_out[idx] = mass_base[idx] + strength * dt_mass;
+    if(sign(current_mass) != sign(next_mass))
+    {
+        mass_out[idx] = 0;
+    }
+    else
+    {
+        mass_out[idx] = next_mass;
+    }
 
     /*
 
@@ -202,8 +216,6 @@ void dissipate_mass(__global float* positions, __global float* mass_in, __global
     {
         mass_out[idx] = mass_in[idx];
     }*/
-
-
 }
 
 __kernel
