@@ -2,6 +2,17 @@
 #include "common.cl"
 #include "generic_laplace.cl"
 
+float calculate_phi(__global float* u_offset_in, int ix, int iy, int iz, float scale, int4 dim)
+{
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
+
+    float ox = offset.x;
+    float oy = offset.y;
+    float oz = offset.z;
+
+    return GET_PHI;
+}
+
 __kernel
 void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out, __global float* cached_aij_aIJ, __global float* cached_ppw2p, __global float* nonconformal_pH,
                        float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol)
@@ -19,18 +30,9 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     if(ix < 1 || iy < 1 || iz < 1 || ix >= dim.x - 1 || iy >= dim.y - 1 || iz >= dim.z - 1)
         return;
 
-    float3 offset = transform_position(ix, iy, iz, dim, scale);
-
-    float ox = offset.x;
-    float oy = offset.y;
-    float oz = offset.z;
-
-    /*float TEMPORARIESlaplacesolve;
-    float RHS = U_RHS;*/
+    float phi = calculate_phi(u_offset_in, ix, iy, iz, scale, dim);
 
     int index = IDX(ix,iy,iz);
-
-    float phi = GET_PHI;
 
     ///https://arxiv.org/pdf/1606.04881.pdf I think I need to do (85)
     ///ok no: I think what it is is that they're solving for ph in ToV, which uses tov's conformally flat variable
