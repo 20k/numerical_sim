@@ -3869,7 +3869,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
         }
         #endif
 
-        //#define ACCRETE_FLATDISK
+        #define ACCRETE_FLATDISK
         #ifdef ACCRETE_FLATDISK
         //N /= 10;
 
@@ -3902,7 +3902,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
         }
         #endif
 
-        //data_opt = std::move(data);
+        data_opt = std::move(data);
     }
     #endif
 
@@ -6202,7 +6202,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.015f;
+        float timestep = 0.025f;
 
         if(pao && time_elapsed_s > 250)
             step = false;
