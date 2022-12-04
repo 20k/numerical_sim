@@ -1246,6 +1246,23 @@ void render(STANDARD_ARGS(),
         ascalar = M * 1000 / 40.f;
         #endif // RENDER_MOMENTUM
 
+        #define RENDER_HAMILTONIAN
+        #ifdef RENDER_HAMILTONIAN
+        int order = D_FULL;
+
+        float TEMPORARIEShamiltonian;
+
+        float H0 = init_hamiltonian;
+
+        ascalar = fabs(H0) * 100;
+
+        if(ix == 100 && iy == 100)
+        {
+            printf("H0 %f\n", H0);
+        }
+
+        #endif // RENDER_HAMILTONIAN
+
         #ifndef RENDER_GB
         max_scalar = max(ascalar, max_scalar);
         #else
