@@ -1360,6 +1360,13 @@ void bssn::build_gB(equation_context& ctx)
     dtgBB = (3.f/4.f) * dtcGi - N * args.gBB;
     #endif
 
+    //#define USE_SINGLE_GBB
+    #ifdef USE_SINGLE_GBB
+    dtgB = (3.f/4.f) * args.gBB;
+
+    dtgBB = args.gA * args.gA * dtcGi - N * args.gBB;
+    #endif
+
     //#endif // PAPER_0610128
     #endif // USE_GBB
 

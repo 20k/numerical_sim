@@ -305,13 +305,13 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
     ///https://en.wikipedia.org/wiki/Finite_difference_coefficient according to wikipedia, this is the 6th derivative with 2nd order accuracy. I am confused, but at least I know where it came from
     value scale = "scale";
 
-    //#define FOURTH
+    #define FOURTH
     #ifdef FOURTH
     differentiation_context<5> dctx(in, idx);
     value stencil = -(1 / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
     #endif // FOURTH
 
-    #define SIXTH
+    //#define SIXTH
     #ifdef SIXTH
     differentiation_context<7> dctx(in, idx);
     value stencil = (1 / (64.f * scale)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
@@ -3821,9 +3821,12 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     {
         compact_object::data h1;
         h1.t = compact_object::BLACK_HOLE;
-        h1.bare_mass = 0.483;
+        /*h1.bare_mass = 0.483;
         h1.position = {0,0,0};
-        h1.angular_momentum = {0, 0, 0};
+        h1.angular_momentum = {0, 0, 0};*/
+
+        h1.bare_mass = 0.1764;
+        h1.angular_momentum = {0, 0, 0.225};
 
         objects = {h1};
 
@@ -3839,6 +3842,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
         float M = 0.001;
         int N = 100000;
 
+        #ifdef ACCRETE_FULLYRANDOM
         for(int i=0; i < N; i++)
         {
             float theta = random() * 2 * M_PI;
@@ -3853,7 +3857,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
             float vel = (random() - 0.5f) * 0.8f;
 
-            vec3f dir = {random(), random(), random()};
+            vec3f dir = {random() - 0.5f, random() - 0.5f, random() - 0.5f};
 
             dir = dir.norm() * vel;
 
@@ -3863,8 +3867,42 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
             data.velocities.push_back(dir);
             data.masses.push_back(mass);
         }
+        #endif
 
-        //data_opt = std::move(data);
+        #define ACCRETE_FLATDISK
+        #ifdef ACCRETE_FLATDISK
+        //N /= 10;
+
+        for(int i=0; i < N; i++)
+        {
+            float theta = random() * 2 * M_PI;
+
+            float rad = random() * (10.f - 5.f) + 5.f;
+
+            vec2f pos2d = {cos(theta), sin(theta)};
+
+            vec3f pos3d = {pos2d.x(), pos2d.y(), 0.f};
+
+            vec3f pos = pos3d * rad;
+
+            float vel = (random()) * 0.4f;
+
+            ///rotate around +z in the same direction as the black hole
+            vec2f forward_2d = pos2d.rot(M_PI/2);
+
+            vec3f forward_3d = {forward_2d.x(), forward_2d.y(), 0.f};
+
+            vec3f dir = forward_3d.norm() * vel;
+
+            float mass = M/N;
+
+            data.positions.push_back(pos);
+            data.velocities.push_back(dir);
+            data.masses.push_back(mass);
+        }
+        #endif
+
+        data_opt = std::move(data);
     }
     #endif
 
