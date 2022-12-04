@@ -1246,7 +1246,7 @@ void render(STANDARD_ARGS(),
         ascalar = M * 1000 / 40.f;
         #endif // RENDER_MOMENTUM
 
-        #define RENDER_HAMILTONIAN
+        //#define RENDER_HAMILTONIAN
         #ifdef RENDER_HAMILTONIAN
         int order = D_FULL;
 
@@ -1256,10 +1256,10 @@ void render(STANDARD_ARGS(),
 
         ascalar = fabs(H0) * 100;
 
-        if(ix == 100 && iy == 100)
+        /*if(ix == 100 && iy == 100)
         {
             printf("H0 %f\n", H0);
-        }
+        }*/
 
         #endif // RENDER_HAMILTONIAN
 

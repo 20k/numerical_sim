@@ -322,7 +322,10 @@ value get_kc()
     #endif
 }
 
-void bssn::build_cY(equation_context& ctx)
+///https://arxiv.org/pdf/gr-qc/0401076.pdf
+#define DAMP_HAMILTONIAN
+
+void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_matter)
 {
     standard_arguments args(ctx);
 
@@ -344,6 +347,10 @@ void bssn::build_cY(equation_context& ctx)
     tensor<value, 3, 3> dtcYij = -2 * args.gA * trace_free(args.cA, args.cY, args.cY.invert()) + lie_cYij;
 
     dtcYij += -(get_kc()/3.f) * args.gA * args.cY.to_tensor() * log(args.cY.det());
+
+    #ifdef DAMP_HAMILTONIAN
+    dtcYij += 0.01f * args.gA * args.cY.to_tensor() * -calculate_hamiltonian_constraint(interop, ctx, use_matter);
+    #endif
 
     ///makes it to 50 with this enabled
     #define USE_DTCYIJ_MODIFICATION
@@ -794,6 +801,11 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
     }
 
     dtcAij += -(get_kc()/3.f) * args.gA * args.cY.to_tensor() * trace(args.cA, args.cY.invert());
+
+
+    #ifdef DAMP_HAMILTONIAN
+    dtcAij += -0.5f * args.gA * args.cA * -calculate_hamiltonian_constraint(interop, ctx, use_matter);
+    #endif
 
     for(int i=0; i < 6; i++)
     {
