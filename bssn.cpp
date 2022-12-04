@@ -166,6 +166,7 @@ tensor<value, 3, 3, 3> covariant_derivative_low_tensor(equation_context& ctx, co
     return ret;
 }
 
+///https://iopscience.iop.org/article/10.1088/1361-6382/ac7e16/pdf 2.8 would be a nicer formulation
 tensor<value, 3> bssn::calculate_momentum_constraint(matter_interop& interop, equation_context& ctx, bool use_matter)
 {
     standard_arguments args(ctx);
