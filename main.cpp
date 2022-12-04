@@ -2395,6 +2395,70 @@ private:
     }
 };
 
+///u_solve(clctx, cqueue, objs, aij_aIJ, ppw2p, particle_grid_E_without_conformal, scale, dim, 0.0000001f);
+cl::buffer u_solve(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, cl::buffer& aij_aIJ, cl::buffer& ppw2p, cl::buffer& particle_grid_E_without_conformal, float scale, vec3i dim, float etol)
+{
+    std::array<cl::buffer, 2> u_result{clctx, clctx};
+    std::array<cl::buffer, 2> still_going{clctx, clctx};
+
+    for(int i=0; i < 2; i++)
+    {
+        u_result[i].alloc(sizeof(cl_float) * dim.x() * dim.y() * dim.z());
+        u_result[i].fill(cqueue, cl_float{1.f});
+
+        still_going[i].alloc(sizeof(cl_int));
+        still_going[i].fill(cqueue, cl_int{1});
+    }
+
+    tensor<value, 3> pos = {"ox", "oy", "oz"};
+    value u_value = dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim");
+
+    //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
+    ///todo when I forget: I'm using the conformal guess here for neutron stars which probably isn't right
+    value BL_s_dyn = calculate_conformal_guess(pos, objs);
+
+    ///https://arxiv.org/pdf/1606.04881.pdf 74
+    value phi = BL_s_dyn + u_value;
+
+    equation_context ectx;
+    ectx.add("GET_PHI", phi);
+
+    cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
+
+    {
+        auto [prog, kern] = build_and_fetch_kernel(clctx, ectx, "u_solver2.cl", "iterative_u_solve", "none");
+
+        int N = 8000;
+
+        for(int i=0; i < N; i++)
+        {
+            cl::args args;
+            args.push_back(u_result[0]);
+            args.push_back(u_result[1]);
+            args.push_back(aij_aIJ);
+            args.push_back(ppw2p);
+            args.push_back(particle_grid_E_without_conformal);
+            args.push_back(scale);
+            args.push_back(clsize);
+            args.push_back(still_going[0]);
+            args.push_back(still_going[1]);
+            args.push_back(etol);
+
+            kern.set_args(args);
+
+            if((i % 50) == 0 && still_going[1].read<cl_int>(cqueue)[0] == 0)
+                break;
+
+            still_going[0].set_to_zero(cqueue);
+
+            std::swap(u_result[0], u_result[1]);
+            std::swap(still_going[0], still_going[1]);
+        }
+    }
+
+    return u_result[0];
+}
+
 struct superimposed_gpu_data
 {
     ///this isn't added to, its forcibly imposed
@@ -2742,8 +2806,10 @@ struct superimposed_gpu_data
 
         pull(clctx, cqueue, particles, scale, dim);
 
-        laplace_data solve = setup_u_laplace(clctx, objs, aij_aIJ, ppw2p, particle_grid_E_without_conformal);
-        u_arg = laplace_solver(clctx, cqueue, solve, scale, dim, 0.0000001f);
+        //laplace_data solve = setup_u_laplace(clctx, objs, aij_aIJ, ppw2p, particle_grid_E_without_conformal);
+        //u_arg = laplace_solver(clctx, cqueue, solve, scale, dim, 0.0000001f);
+
+        u_arg = u_solve(clctx, cqueue, objs, aij_aIJ, ppw2p, particle_grid_E_without_conformal, scale, dim, 0.0000001f);
 
         tensor<value, 3> pos = {"ox", "oy", "oz"};
 
@@ -3821,12 +3887,11 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     {
         compact_object::data h1;
         h1.t = compact_object::BLACK_HOLE;
-        /*h1.bare_mass = 0.483;
-        h1.position = {0,0,0};
-        h1.angular_momentum = {0, 0, 0};*/
+        h1.bare_mass = 0.483;
+        h1.angular_momentum = {0, 0, 0};
 
-        h1.bare_mass = 0.1764;
-        h1.angular_momentum = {0, 0, 0.225};
+        //h1.bare_mass = 0.1764;
+        //h1.angular_momentum = {0, 0, 0.225};
 
         objects = {h1};
 
@@ -3869,7 +3934,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
         }
         #endif
 
-        #define ACCRETE_FLATDISK
+        //#define ACCRETE_FLATDISK
         #ifdef ACCRETE_FLATDISK
         //N /= 10;
 
@@ -3902,7 +3967,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
         }
         #endif
 
-        data_opt = std::move(data);
+        //data_opt = std::move(data);
     }
     #endif
 
@@ -5738,7 +5803,7 @@ int main()
     #endif // USE_GBB
 
     ///seems to make 0 difference to instability time
-    #define USE_HALF_INTERMEDIATE
+    //#define USE_HALF_INTERMEDIATE
     #ifdef USE_HALF_INTERMEDIATE
     int intermediate_data_size = sizeof(cl_half);
     argument_string += "-DDERIV_PRECISION=half ";
