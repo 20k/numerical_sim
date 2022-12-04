@@ -13,6 +13,63 @@ float calculate_phi(__global float* u_offset_in, int ix, int iy, int iz, float s
     return GET_PHI;
 }
 
+float calculate_guess(int ix, int iy, int iz, float scale, int4 dim)
+{
+    float3 offset = transform_position(ix, iy, iz, dim, scale);
+
+    float ox = offset.x;
+    float oy = offset.y;
+    float oz = offset.z;
+
+    return GET_GUESS;
+}
+
+///1, -2, 1
+///total 0 is -6
+
+float calc_d2(int ix, int iy, int iz, float scale, int4 dim, int direction)
+{
+    if(direction == 0)
+    {
+        return      (calculate_guess(ix-1, iy, iz, scale, dim)
+               - 2 * calculate_guess(ix  , iy, iz, scale, dim)
+               +     calculate_guess(ix+1, iy, iz, scale, dim)) / pow(scale, 2.f);
+    }
+
+    if(direction == 1)
+    {
+        return      (calculate_guess(ix, iy-1, iz, scale, dim)
+               - 2 * calculate_guess(ix, iy  , iz, scale, dim)
+               +     calculate_guess(ix, iy+1, iz, scale, dim)) / pow(scale, 2.f);
+    }
+
+    if(direction == 2)
+    {
+        return      (calculate_guess(ix, iy, iz-1, scale, dim)
+               - 2 * calculate_guess(ix, iy, iz  , scale, dim)
+               +     calculate_guess(ix, iy, iz+1, scale, dim)) / pow(scale, 2.f);
+    }
+
+    return NAN;
+
+    /*if(direction == 1)
+    {
+        return (u_offset_in[IDX(ix,iy-1,iz)] - 2 * u_offset_in[IDX(ix,iy,iz)] + u_offset_in[IDX(ix,iy+1,iz)]) / pow(scale, 2.f);
+    }
+
+    if(direction == 2)
+    {
+        return (u_offset_in[IDX(ix,iy,iz-1)] - 2 * u_offset_in[IDX(ix,iy,iz)] + u_offset_in[IDX(ix,iy,iz+1)]) / pow(scale, 2.f);
+    }*/
+}
+
+float laplace(int ix, int iy, int iz, float scale, int4 dim)
+{
+    return calc_d2(ix, iy, iz, scale, dim, 0) +
+           calc_d2(ix, iy, iz, scale, dim, 1) +
+           calc_d2(ix, iy, iz, scale, dim, 2);
+}
+
 __kernel
 void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out, __global float* cached_aij_aIJ, __global float* cached_ppw2p, __global float* nonconformal_pH,
                        float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol)
@@ -42,8 +99,16 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
     float p1 = (-1.f/8.f) * cached_aij_aIJ[index] * pow(phi, -7.f);
     float p2 = -2 * M_PI * cached_ppw2p[index] * pow(phi, -3.f);
     float p3 = -2 * M_PI * pow(phi, -1.f) * nonconformal_pH[index];
+    float p4 = - laplace(ix, iy, iz, scale, dim);
 
-    float RHS = p1 + p2 + p3;
+    //printf("Blah blah blabh\n");
+
+    if(ix == 127 && iz == 127 && (iy == 126 || iy == 127 || iy == 128))
+    {
+        printf("P4 %.23f Guess %.23f %i\n", p4, calculate_guess(ix,iy,iz, scale, dim), iy);
+    }
+
+    float RHS = p1 + p2 + p3 + p4;
 
     float h2f0 = scale * scale * RHS;
 

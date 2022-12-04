@@ -2061,7 +2061,7 @@ value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<c
 
         ///I'm not sure this is correct to do for neutron stars
         //if(hole.t == compact_object::BLACK_HOLE)
-            dist = max(dist, 1e-3);
+            dist = max(dist, 1e-1);
         //else
         //    dist = max(dist, 1e-1);
 
@@ -2395,7 +2395,6 @@ private:
     }
 };
 
-///u_solve(clctx, cqueue, objs, aij_aIJ, ppw2p, particle_grid_E_without_conformal, scale, dim, 0.0000001f);
 cl::buffer u_solve(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, cl::buffer& aij_aIJ, cl::buffer& ppw2p, cl::buffer& particle_grid_E_without_conformal, float scale, vec3i dim, float etol)
 {
     std::array<cl::buffer, 2> u_result{clctx, clctx};
@@ -2423,6 +2422,8 @@ cl::buffer u_solve(cl::context& clctx, cl::command_queue& cqueue, const std::vec
     equation_context ectx;
     ectx.add("GET_PHI", phi);
 
+    ectx.add("GET_GUESS", BL_s_dyn);
+
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
     {
@@ -2445,6 +2446,8 @@ cl::buffer u_solve(cl::context& clctx, cl::command_queue& cqueue, const std::vec
             args.push_back(etol);
 
             kern.set_args(args);
+
+            cqueue.exec(kern, {dim.x(), dim.y(), dim.y()}, {8, 8, 1});
 
             if((i % 50) == 0 && still_going[1].read<cl_int>(cqueue)[0] == 0)
                 break;

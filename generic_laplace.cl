@@ -96,6 +96,11 @@ void laplace_interior(__global float* buffer_in, __global float* buffer_out, flo
 
     float u = buffer_in[IDX(ix,iy,iz)];
 
+    if(ix == 127 && iz == 127 && (iy == 126 || iy == 127 || iy == 128))
+    {
+        printf("u %.23f %i\n", u, iy);
+    }
+
     float err = u0n1 - u;
 
     if(fabs(err) > etol)
@@ -103,5 +108,5 @@ void laplace_interior(__global float* buffer_in, __global float* buffer_out, flo
         atomic_xchg(still_going, 1);
     }
 
-    buffer_out[IDX(ix, iy, iz)] = mix(u, u0n1, 0.9f);
+    buffer_out[IDX(ix, iy, iz)] = mix(u, u0n1, 0.1f);
 }
