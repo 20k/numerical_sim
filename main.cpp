@@ -4542,6 +4542,11 @@ tensor<value, 3, 3, 3> gpu_covariant_derivative_low_tensor(equation_context& ctx
     return ret;
 }
 
+void build_hamiltonian_constraint(matter_interop& interop, equation_context& ctx, bool use_matter)
+{
+    ctx.add("init_hamiltonian", bssn::calculate_hamiltonian_constraint(interop, ctx, use_matter));
+}
+
 void build_momentum_constraint(matter_interop& interop, equation_context& ctx, bool use_matter)
 {
     tensor<value, 3> Mi = bssn::calculate_momentum_constraint(interop, ctx, use_matter);
@@ -5552,7 +5557,7 @@ int main()
     std::string hydro_argument_string = argument_string;
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {213, 213, 213};
+    vec3i size = {255, 255, 255};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -5688,7 +5693,7 @@ int main()
     build_momentum_constraint(meta_interop, ctx13, holes.use_matter || holes.use_particles);
 
     equation_context ctx14;
-    //build_hamiltonian_constraint(ctx14);
+    build_hamiltonian_constraint(meta_interop, ctx14, holes.use_matter || holes.use_particles);
 
     equation_context ctxsommerthin;
     build_sommerfeld_thin(ctxsommerthin);
@@ -5702,7 +5707,7 @@ int main()
     ctx11.build(argument_string, 10);
     ctx12.build(argument_string, 11);
     ctx13.build(argument_string, 12);
-    //ctx14.build(argument_string, "unused1");
+    ctx14.build(argument_string, "hamiltonian");
     ctxdirectional.build(argument_string, "directional");
     ctxsommerthin.build(argument_string, "sommerthin");
 
@@ -6197,7 +6202,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.03f;
+        float timestep = 0.015f;
 
         if(pao && time_elapsed_s > 250)
             step = false;
