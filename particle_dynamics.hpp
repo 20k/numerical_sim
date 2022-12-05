@@ -15,6 +15,7 @@ struct particle_data
     std::vector<float> debug_real_mass;
 
     float minimum_mass = 0;
+    float particle_brightness = 1.f;
 
     void calculate_minimum_mass()
     {

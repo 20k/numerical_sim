@@ -2023,9 +2023,6 @@ struct initial_conditions
 
     std::vector<compact_object::data> objs;
     particle_data particles;
-
-    ///absolute, used for rendering
-    float minimum_mass = 0;
 };
 
 inline
@@ -3844,7 +3841,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
         particle_data data;
 
-        float M = 0.001;
+        float M = 0.1;
         int N = 100000;
 
         #ifdef ACCRETE_FULLYRANDOM
@@ -3906,6 +3903,8 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
             data.masses.push_back(mass);
         }
         #endif
+
+        data.particle_brightness = 0.0001f;
 
         data_opt = std::move(data);
     }
@@ -5727,6 +5726,7 @@ int main()
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
     hydro_argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
     argument_string += "-DMINIMUM_MASS=" + dual_types::to_string_s(holes.particles.minimum_mass) + " ";
+    argument_string += "-DPARTICLE_BRIGHTNESS=" + dual_types::to_string_s(holes.particles.particle_brightness) + " ";
 
     if(holes.use_matter)
     {

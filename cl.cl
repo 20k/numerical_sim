@@ -1778,9 +1778,11 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
             float p_val = fabs(buffer_read_linear(adm_p, voxel_pos, dim));
 
-            accum_R += p_val * 1200;
-            accum_G += p_val * 1200;
-            accum_B += p_val * 1200;
+            float voxels_intersected = fast_length(XDiff) * ds;
+
+            accum_R += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
+            accum_G += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
+            accum_B += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
 
             if(accum_R > 1 && accum_G > 1 && accum_G > 1)
                 break;
