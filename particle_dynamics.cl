@@ -631,7 +631,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
     int ocy = floor(voxel_pos.y);
     int ocz = floor(voxel_pos.z);
 
-    float gA_val = buffer_read_linear(gA, voxel_pos, dim);
+    /*float gA_val = buffer_read_linear(gA, voxel_pos, dim);
 
     float base_radius = get_particle_radius(scale);
     float current_radius = modify_radius(base_radius, gA_val);
@@ -668,6 +668,15 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
                 }
             }
         }
+    }*/
+
+    ITYPE my_index = AINC(&collected_counts[IDX(ocx,ocy,ocz)]);
+
+    if(actually_write)
+    {
+        ITYPE my_memory_offset = memory_ptrs[IDX(ocx,ocy,ocz)];
+
+        collected_indices[my_memory_offset + my_index] = idx;
     }
 }
 
@@ -681,10 +690,12 @@ void do_weighted_summation(__global float* positions, __global float* velocities
     if(kix >= dim.x || kiy >= dim.y || kiz >= dim.z)
         return;
 
-    int index = IDX(kix,kiy,kiz);
+    //int index = IDX(kix,kiy,kiz);
 
-    ITYPE my_count = collected_counts[index];
-    ITYPE my_memory_start = memory_ptrs[index];
+    float base_radius = get_particle_radius(scale);
+    float max_dirac = base_radius * 2;
+
+    int spread = ceil(max_dirac / scale) + 1;
 
     float vadm_S = 0;
     float vadm_Si0 = 0;
@@ -698,6 +709,102 @@ void do_weighted_summation(__global float* positions, __global float* velocities
     float vadm_Sij5 = 0;
     float vadm_p = 0;
 
+    for(int liz = -spread; liz <= spread; liz++)
+    {
+        for(int liy = -spread; liy <= spread; liy++)
+        {
+            for(int lix = -spread; lix <= spread; lix++)
+            {
+                int ix = lix + kix;
+                int iy = liy + kiy;
+                int iz = liz + kiz;
+
+                if(ix < 0 || iy < 0 || iz < 0 || ix >= dim.x || iy >= dim.y || iz >= dim.z)
+                    continue;
+
+                int index = IDX(ix,iy,iz);
+
+                ITYPE my_count = collected_counts[index];
+                ITYPE my_memory_start = memory_ptrs[index];
+
+                for(ITYPE i=0; i < my_count; i++)
+                {
+                    ITYPE gidx = i + my_memory_start;
+
+                    ITYPE geodesic_idx = collected_indices[gidx];
+
+                    float mass = masses[geodesic_idx];
+
+                    if(mass == 0)
+                        continue;
+
+                    float3 world_pos = {positions[GET_IDX(geodesic_idx, 0)], positions[GET_IDX(geodesic_idx, 1)], positions[GET_IDX(geodesic_idx, 2)]};
+                    float3 vel = {velocities[GET_IDX(geodesic_idx, 0)], velocities[GET_IDX(geodesic_idx, 1)], velocities[GET_IDX(geodesic_idx, 2)]};
+
+                    float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
+
+                    float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
+
+                    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+                    float gA_val = buffer_read_linear(gA, voxel_pos, dim);
+
+                    mass = modify_mass(mass, gA_val);
+
+                    if(mass == 0)
+                        continue;
+
+                    float base_radius = get_particle_radius(scale);
+                    float current_radius = modify_radius(base_radius, gA_val);
+
+                    float to_centre_distance = length(cell_wp - world_pos);
+
+                    float f_sp = dirac_disc(to_centre_distance, current_radius);
+
+                    if(f_sp == 0)
+                        continue;
+
+                    float weight = f_sp;
+
+                    {
+                        float lorentz = lorentz_in[geodesic_idx];
+
+                        float TEMPORARIESadmmatter;
+
+                        vadm_S += OUT_ADM_S * weight;
+                        vadm_Si0 += OUT_ADM_SI0 * weight;
+                        vadm_Si1 += OUT_ADM_SI1 * weight;
+                        vadm_Si2 += OUT_ADM_SI2 * weight;
+                        vadm_Sij0 += OUT_ADM_SIJ0 * weight;
+                        vadm_Sij1 += OUT_ADM_SIJ1 * weight;
+                        vadm_Sij2 += OUT_ADM_SIJ2 * weight;
+                        vadm_Sij3 += OUT_ADM_SIJ3 * weight;
+                        vadm_Sij4 += OUT_ADM_SIJ4 * weight;
+                        vadm_Sij5 += OUT_ADM_SIJ5 * weight;
+                        vadm_p += OUT_ADM_P * weight;
+
+                        /*if(vadm_p > 0)
+                        {
+                            printf("Pos %i %i %i\n", ix, iy, iz);
+                        }*/
+
+                        ///138 128 106
+                        ///55 105 106
+                        ///48 110 107
+                        //if(ix == 138 && iy == 128 && iz == 106)
+                        /*if(ix == 50 && iy == 110 && iz == 105)
+                        {
+                            printf("Adm p %f i %i max %i lorentz %f lazy_det %f\n", OUT_ADM_P, i, my_count, calculated_gamma, lazy_det);
+                        }*/
+                    }
+                }
+            }
+        }
+    }
+
+    int index = IDX(kix,kiy,kiz);
+
+    #if 0
     for(ITYPE i=0; i < my_count; i++)
     {
         ITYPE gidx = i + my_memory_start;
@@ -778,6 +885,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
             }*/
         }
     }
+    #endif
 
     if(vadm_p != 0 || (vadm_p == 0 && adm_p[index] != 0))
     {
