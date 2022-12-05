@@ -470,6 +470,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
                 a1.push_back(i.as_device_read_only());
             }
 
+            append_utility_buffers(a1);
+
             a1.push_back(scale);
             a1.push_back(clsize);
             a1.push_back(current_timestep);
@@ -941,4 +943,9 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     mqueue.end_splice(main_queue);
 
     std::swap(data[1], data[0]);
+}
+
+void cpu_mesh::append_utility_buffers(cl::args& args)
+{
+    args.push_back(nullptr);
 }

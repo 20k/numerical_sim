@@ -5812,6 +5812,9 @@ int main()
     buffers.push_back({"gBB2", "evolve_cGi", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed});
     #endif // USE_GBB
 
+    ///not triplicated
+    std::vector<buffer_descriptor> utility_buffers;
+
     std::vector<plugin*> plugins;
 
     if(holes.use_matter)
@@ -5856,6 +5859,23 @@ int main()
         for(const buffer_descriptor& desc : buffers)
         {
             generated_arglist += "a p##" + desc.name + ", ";
+        }
+
+        while(generated_arglist.back() == ',' || generated_arglist.back() == ' ')
+            generated_arglist.pop_back();
+
+        generated_arglist += "\n\n";
+
+        generated_arglist += "#define GET_UTILITY(a, p) ";
+
+        for(const buffer_descriptor& desc : utility_buffers)
+        {
+            generated_arglist += "a p##" + desc.name + ", ";
+        }
+
+        if(utility_buffers.size() == 0)
+        {
+            generated_arglist += "a p##UTILITYDUMMY";
         }
 
         while(generated_arglist.back() == ',' || generated_arglist.back() == ' ')
@@ -6235,6 +6255,8 @@ int main()
                         render.push_back(i.as_device_read_only());
                     }
 
+                    base_mesh.append_utility_buffers(render);
+
                     //render.push_back(bssnok_datas[which_data]);
                     render.push_back(scale);
                     render.push_back(clsize);
@@ -6328,6 +6350,8 @@ int main()
                     {
                         render_args.push_back(i.buf.as_device_read_only());
                     }
+
+                    base_mesh.append_utility_buffers(render_args);
 
                     cl_int use_colour = use_matter_colour;
 

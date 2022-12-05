@@ -166,6 +166,8 @@ struct cpu_mesh
 
     void clean_buffer(cl::managed_command_queue& mqueue, cl::buffer& in, cl::buffer& out, cl::buffer& base, float asym, float speed, float timestep);
 
+    void append_utility_buffers(cl::args& args);
+
     std::vector<plugin*> plugins;
 };
 

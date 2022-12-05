@@ -38,6 +38,8 @@
 #define STANDARD_ARGS(p) GET_ARGLIST(__global float*, p)
 #define STANDARD_DERIVS(p) GET_DERIVLIST(__global DERIV_PRECISION*, p)
 
+#define STANDARD_UTILITY(p) GET_UTILITY(__global float*, p)
+
 #define ALL_ARGS(p) GET_ARGLIST(, p), GET_DERIVLIST(, p)
 #define GET_STANDARD_ARGS(p) GET_ARGLIST(, p)
 
