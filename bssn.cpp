@@ -348,6 +348,7 @@ void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_mat
 
     dtcYij += -(get_kc()/3.f) * args.gA * args.cY.to_tensor() * log(args.cY.det());
 
+    ///this specifically is incredibly low
     #ifdef DAMP_HAMILTONIAN
     dtcYij += 0.01f * args.gA * args.cY.to_tensor() * -calculate_hamiltonian_constraint(interop, ctx, use_matter);
     #endif
