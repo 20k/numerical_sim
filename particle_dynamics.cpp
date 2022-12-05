@@ -866,6 +866,8 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
                 args.push_back(i.buf.as_device_read_only());
         }
 
+        mesh.append_utility_buffers(args);
+
         args.push_back(scale);
         args.push_back(clsize);
 
