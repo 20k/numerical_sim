@@ -5726,6 +5726,7 @@ int main()
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
     hydro_argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
+    argument_string += "-DMINIMUM_MASS=" + dual_types::to_string_s(holes.particles.minimum_mass) + " ";
 
     if(holes.use_matter)
     {
