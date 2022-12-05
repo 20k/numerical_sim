@@ -3355,14 +3355,7 @@ initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_q
         ret.use_particles = true;
         ret.particles = std::move(p_data_opt.value());
 
-        float min_mass = FLT_MAX;
-
-        for(float m : ret.particles.masses)
-        {
-            min_mass = std::min(fabs(m), min_mass);
-        }
-
-        ret.minimum_mass = min_mass;
+        ret.particles.calculate_minimum_mass();
     }
 
     return ret;

@@ -13,6 +13,18 @@ struct particle_data
     std::vector<float> debug_velocities;
     std::vector<float> debug_analytic_mass;
     std::vector<float> debug_real_mass;
+
+    float minimum_mass = 0;
+
+    void calculate_minimum_mass()
+    {
+        minimum_mass = FLT_MAX;
+
+        for(float m : masses)
+        {
+            minimum_mass = std::min(fabs(m), minimum_mass);
+        }
+    }
 };
 
 struct particle_matter_interop : matter_interop

@@ -350,6 +350,13 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     std::string argument_string = "-I ./ -cl-std=CL2.0 ";
 
     {
+        equation_context ectx;
+        ectx.add("MINIMUM_MASS", start_data.minimum_mass);
+
+        ectx.build(argument_string, "massdiss");
+    }
+
+    {
 
         vec<4, value> position = {0, "px", "py", "pz"};
         vec<3, value> direction = {"dirx", "diry", "dirz"};
