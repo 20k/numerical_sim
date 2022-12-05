@@ -197,7 +197,9 @@ void dissipate_mass(__global float* positions, __global float* mass_in, __global
     float current_mass = mass_in[idx];
     float next_mass = mass_base[idx] + dt_mass * (timestep / dissipate_time);
 
-    if(sign(current_mass) != sign(next_mass))
+    float mass_cutoff = MINIMUM_MASS/100.f;
+
+    if(sign(current_mass) != sign(next_mass) || fabs(next_mass) <= mass_cutoff)
     {
         mass_out[idx] = 0;
     }
