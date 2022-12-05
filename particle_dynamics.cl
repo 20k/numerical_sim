@@ -672,14 +672,17 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 }
 
 __kernel
-void do_weighted_summation(__global float* positions, __global float* velocities, __global float* masses, __global float* lorentz_in, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, STANDARD_ARGS(), float scale, int4 dim)
+void do_weighted_summation(__global ushort4* points, int point_count,
+                           __global float* positions, __global float* velocities, __global float* masses, __global float* lorentz_in, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, STANDARD_ARGS(), float scale, int4 dim)
 {
-    int kix = get_global_id(0);
-    int kiy = get_global_id(1);
-    int kiz = get_global_id(2);
+    int local_idx = get_global_id(0);
 
-    if(kix >= dim.x || kiy >= dim.y || kiz >= dim.z)
+    if(local_idx >= point_count)
         return;
+
+    int kix = points[local_idx].x;
+    int kiy = points[local_idx].y;
+    int kiz = points[local_idx].z;
 
     int index = IDX(kix,kiy,kiz);
 

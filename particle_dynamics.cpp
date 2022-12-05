@@ -847,6 +847,8 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     ///calculate adm quantities per-cell by summing across the list of particles
     {
         cl::args args;
+        args.push_back(mesh.points_set.all_points);
+        args.push_back(mesh.points_set.all_count);
         args.push_back(p_data[in_idx].position.as_device_read_only());
         args.push_back(p_data[in_idx].velocity.as_device_read_only());
         args.push_back(p_data[in_idx].mass.as_device_read_only());
@@ -867,7 +869,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(scale);
         args.push_back(clsize);
 
-        mqueue.exec("do_weighted_summation", args, {dim.x(), dim.y(), dim.z()}, {8,8,1});
+        mqueue.exec("do_weighted_summation", args, {mesh.points_set.all_count}, {128});
     }
 
     ///todo: not this, want to have the indices controlled from a higher level
