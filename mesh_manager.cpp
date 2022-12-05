@@ -191,8 +191,9 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::manage
     return next;
 }
 
-cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& buffers, std::vector<plugin*> _plugins) :
+cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& buffers, const std::vector<buffer_descriptor>& utility_buffers, std::vector<plugin*> _plugins) :
         data{buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers)},
+        utility_data{buffer_set(ctx, _dim, utility_buffers)},
         points_set{ctx},
         momentum_constraint{ctx, ctx, ctx},
         plugins(_plugins)
@@ -428,6 +429,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
                 momentum_args.push_back(i);
             }
 
+            append_utility_buffers("calculate_momentum_constraint", momentum_args);
+
             momentum_args.push_back(scale);
             momentum_args.push_back(clsize);
             momentum_args.push_back(points_set.order);
@@ -470,7 +473,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
                 a1.push_back(i.as_device_read_only());
             }
 
-            append_utility_buffers(a1);
+            append_utility_buffers(name, a1);
 
             a1.push_back(scale);
             a1.push_back(clsize);
@@ -945,7 +948,20 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     std::swap(data[1], data[0]);
 }
 
-void cpu_mesh::append_utility_buffers(cl::args& args)
+void cpu_mesh::append_utility_buffers(const std::string& kernel_name, cl::args& args)
 {
-    args.push_back(nullptr);
+    if(utility_data.buffers.size() == 0)
+    {
+        args.push_back(nullptr);
+    }
+    else
+    {
+        for(named_buffer& buf : utility_data.buffers)
+        {
+            if(buf.desc.modified_by == kernel_name)
+                args.push_back(buf.buf);
+            else
+                args.push_back(buf.buf.as_device_read_only());
+        }
+    }
 }

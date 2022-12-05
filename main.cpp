@@ -5845,6 +5845,15 @@ int main()
 
             buffers.push_back(i);
         }
+
+        auto extra2 = p->get_utility_buffers();
+
+        for(auto& i : extra2)
+        {
+            std::cout << "Added utility " << i.name << std::endl;
+
+            utility_buffers.push_back(i);
+        }
     }
 
     if(use_matter_colour)
@@ -5983,7 +5992,7 @@ int main()
     cl::buffer texture_coordinates(clctx.ctx);
     texture_coordinates.alloc(sizeof(cl_float2) * width * height);
 
-    cpu_mesh base_mesh(clctx.ctx, clctx.cqueue, {0,0,0}, size, base_settings, evolve_points, buffers, plugins);
+    cpu_mesh base_mesh(clctx.ctx, clctx.cqueue, {0,0,0}, size, base_settings, evolve_points, buffers, utility_buffers, plugins);
 
     cl_float time_elapsed_s = 0;
 
@@ -6255,7 +6264,7 @@ int main()
                         render.push_back(i.as_device_read_only());
                     }
 
-                    base_mesh.append_utility_buffers(render);
+                    base_mesh.append_utility_buffers("render", render);
 
                     //render.push_back(bssnok_datas[which_data]);
                     render.push_back(scale);
@@ -6351,7 +6360,7 @@ int main()
                         render_args.push_back(i.buf.as_device_read_only());
                     }
 
-                    base_mesh.append_utility_buffers(render_args);
+                    base_mesh.append_utility_buffers("trace_rays", render_args);
 
                     cl_int use_colour = use_matter_colour;
 

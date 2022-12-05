@@ -99,7 +99,8 @@ struct buffer_pack
 
 struct plugin
 {
-    virtual std::vector<buffer_descriptor> get_buffers(){assert(false); return std::vector<buffer_descriptor>();}
+    virtual std::vector<buffer_descriptor> get_buffers(){return std::vector<buffer_descriptor>();}
+    virtual std::vector<buffer_descriptor> get_utility_buffers(){return std::vector<buffer_descriptor>();}
     virtual void init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue,         thin_intermediates_pool& pool, buffer_set& to_init){assert(false);}
     virtual void step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration){assert(false);}
     virtual void finalise(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, float timestep) {}
@@ -142,6 +143,7 @@ struct cpu_mesh
     float scale = 1;
 
     std::array<buffer_set, 3> data;
+    buffer_set utility_data;
 
     basic_pool<buffer_set> free_data;
 
@@ -153,7 +155,7 @@ struct cpu_mesh
     static constexpr float dissipate_high = 0.25;
     static constexpr float dissipate_gauge = 0.25;
 
-    cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& buffers, std::vector<plugin*> _plugins);
+    cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& buffers, const std::vector<buffer_descriptor>& utility_buffers, std::vector<plugin*> _plugins);
 
     void init(cl::context& ctx, cl::command_queue& cqueue, thin_intermediates_pool& pool, cl::buffer& u_arg, std::array<cl::buffer, 6>& bcAij);
 
@@ -166,7 +168,7 @@ struct cpu_mesh
 
     void clean_buffer(cl::managed_command_queue& mqueue, cl::buffer& in, cl::buffer& out, cl::buffer& base, float asym, float speed, float timestep);
 
-    void append_utility_buffers(cl::args& args);
+    void append_utility_buffers(const std::string& kernel_name, cl::args& args);
 
     std::vector<plugin*> plugins;
 };

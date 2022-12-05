@@ -455,6 +455,7 @@ __kernel
 void calculate_momentum_constraint(__global ushort4* points, int point_count,
                                    STANDARD_ARGS(),
                                    __global float* momentum0, __global float* momentum1, __global float* momentum2,
+                                   STANDARD_UTILITY(),
                                    float scale, int4 dim,
                                    __global ushort* order_ptr)
 {

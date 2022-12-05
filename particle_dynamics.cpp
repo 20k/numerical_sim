@@ -62,7 +62,7 @@ particle_dynamics::particle_dynamics(cl::context& ctx) : p_data{ctx, ctx, ctx}, 
     memory_alloc_count.alloc(sizeof(size_t));
 }
 
-std::vector<buffer_descriptor> particle_dynamics::get_buffers()
+std::vector<buffer_descriptor> particle_dynamics::get_utility_buffers()
 {
     return {{"adm_p", "do_weighted_summation", 0.f, 0, 0},
             {"adm_Si0", "do_weighted_summation", 0.f, 0, 0},
@@ -556,17 +556,17 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     cl::copy(cqueue, p_data[0].mass, p_data[2].mass);
     cl::copy(cqueue, p_data[0].lorentz, p_data[2].lorentz);
 
-    to_init.lookup("adm_p").buf.set_to_zero(cqueue);
-    to_init.lookup("adm_Si0").buf.set_to_zero(cqueue);
-    to_init.lookup("adm_Si1").buf.set_to_zero(cqueue);
-    to_init.lookup("adm_Si2").buf.set_to_zero(cqueue);
-    to_init.lookup("adm_Sij0").buf.set_to_zero(cqueue);
-    to_init.lookup("adm_Sij1").buf.set_to_zero(cqueue);
-    to_init.lookup("adm_Sij2").buf.set_to_zero(cqueue);
-    to_init.lookup("adm_Sij3").buf.set_to_zero(cqueue);
-    to_init.lookup("adm_Sij4").buf.set_to_zero(cqueue);
-    to_init.lookup("adm_Sij5").buf.set_to_zero(cqueue);
-    to_init.lookup("adm_S").buf.set_to_zero(cqueue);
+    mesh.utility_data.lookup("adm_p").buf.set_to_zero(cqueue);
+    mesh.utility_data.lookup("adm_Si0").buf.set_to_zero(cqueue);
+    mesh.utility_data.lookup("adm_Si1").buf.set_to_zero(cqueue);
+    mesh.utility_data.lookup("adm_Si2").buf.set_to_zero(cqueue);
+    mesh.utility_data.lookup("adm_Sij0").buf.set_to_zero(cqueue);
+    mesh.utility_data.lookup("adm_Sij1").buf.set_to_zero(cqueue);
+    mesh.utility_data.lookup("adm_Sij2").buf.set_to_zero(cqueue);
+    mesh.utility_data.lookup("adm_Sij3").buf.set_to_zero(cqueue);
+    mesh.utility_data.lookup("adm_Sij4").buf.set_to_zero(cqueue);
+    mesh.utility_data.lookup("adm_Sij5").buf.set_to_zero(cqueue);
+    mesh.utility_data.lookup("adm_S").buf.set_to_zero(cqueue);
 }
 
 void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration)
@@ -866,7 +866,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
                 args.push_back(i.buf.as_device_read_only());
         }
 
-        mesh.append_utility_buffers(args);
+        mesh.append_utility_buffers("do_weighted_summation", args);
 
         args.push_back(scale);
         args.push_back(clsize);
