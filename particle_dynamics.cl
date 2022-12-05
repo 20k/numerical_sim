@@ -728,7 +728,7 @@ void do_weighted_summation(__global float* positions, __global float* velocities
         float base_radius = get_particle_radius(scale);
         float current_radius = modify_radius(base_radius, gA_val);
 
-        float to_centre_distance = fast_length(cell_wp - world_pos);
+        float to_centre_distance = length(cell_wp - world_pos);
 
         float f_sp = dirac_disc(to_centre_distance, current_radius);
 
