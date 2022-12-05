@@ -2023,6 +2023,9 @@ struct initial_conditions
 
     std::vector<compact_object::data> objs;
     particle_data particles;
+
+    ///absolute, used for rendering
+    float minimum_mass = 0;
 };
 
 inline
@@ -3351,6 +3354,15 @@ initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_q
     {
         ret.use_particles = true;
         ret.particles = std::move(p_data_opt.value());
+
+        float min_mass = FLT_MAX;
+
+        for(float m : ret.particles.masses)
+        {
+            min_mass = std::min(fabs(m), min_mass);
+        }
+
+        ret.minimum_mass = min_mass;
     }
 
     return ret;
