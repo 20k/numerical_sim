@@ -599,6 +599,11 @@ void memory_allocate(__global ITYPE* counts, __global ITYPE* memory_ptrs, __glob
     counts[index] = 0;
 }
 
+float length_sq(float3 in)
+{
+    return in.x * in.x + in.y * in.y + in.z * in.z;
+}
+
 __kernel
 void collect_particle_spheres(__global float* positions, __global float* masses, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, STANDARD_ARGS(), float scale, int4 dim, int actually_write)
 {
@@ -631,7 +636,9 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
     float base_radius = get_particle_radius(scale);
     float current_radius = modify_radius(base_radius, gA_val);
 
-    int spread = ceil(current_radius / scale) + 3;
+    float max_dirac = current_radius * 2;
+
+    int spread = ceil(max_dirac / scale) + 3;
 
     for(int zz=-spread; zz <= spread; zz++)
     {
@@ -648,19 +655,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 
                 float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
 
-                float to_centre_distance = fast_length(cell_wp - world_pos);
-
-                ///https://arxiv.org/pdf/1611.07906.pdf 20
-                /*float r_rs = to_centre_distance / rs;
-
-                float f_sp = get_f_sp(r_rs);
-
-                if(f_sp == 0)
-                    continue;*/
-
-                float f_sp = dirac_disc(to_centre_distance, current_radius);
-
-                if(f_sp == 0)
+                if(length_sq(cell_wp - world_pos) > (max_dirac*max_dirac))
                     continue;
 
                 ITYPE my_index = AINC(&collected_counts[IDX(ix,iy,iz)]);
