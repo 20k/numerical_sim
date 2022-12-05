@@ -730,17 +730,10 @@ void do_weighted_summation(__global float* positions, __global float* velocities
 
         float to_centre_distance = length(cell_wp - world_pos);
 
-        float f_sp = dirac_disc(to_centre_distance, current_radius);
+        float weight = dirac_disc(to_centre_distance, current_radius);
 
-        if(f_sp == 0)
+        if(weight == 0)
             continue;
-
-        float weight = f_sp;
-
-        ///should fx, fy, and fz be cell_wp?
-        float fx = voxel_pos.x;
-        float fy = voxel_pos.y;
-        float fz = voxel_pos.z;
 
         int ix = kix;
         int iy = kiy;
