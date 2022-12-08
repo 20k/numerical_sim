@@ -1409,7 +1409,7 @@ struct lightray_simple
     int hit_type;
     //float density;
 
-    float R, G, B;
+    float R, G, B, A;
     float zp1;
     float ku_uobsu;
     float E;
@@ -1646,11 +1646,6 @@ void init_rays(__global struct lightray_simple* rays, __global int* ray_count0,
         ku_uobsu = GET_KU_UOBSU;
 
         E = GET_E_START;
-
-        if(x == width/2 && y == height/2)
-        {
-            printf("Real t %f\n", REAL_T);
-        }
     }
 
     struct lightray_simple out;
@@ -1934,11 +1929,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
     float4 start_4vel = get_4_momentum(Xpos, ray_in.E, vel, scale, dim, GET_STANDARD_ARGS());
 
-    if(x == width/2 && y == height/2)
-    {
-        printf("Calc t %f\n", start_4vel.x);
-    }
-
     int hit_type = 1;
 
     float u_sq = (universe_size * RENDERING_CUTOFF_MULT) * (universe_size * RENDERING_CUTOFF_MULT);
@@ -1975,6 +1965,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     float accum_R = 0;
     float accum_G = 0;
     float accum_B = 0;
+    float accum_A = 0;
 
     int max_iterations = 512;
 
@@ -2041,10 +2032,18 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         if(length_sq(Xpos) >= u_sq)
         {
             #ifdef REDSHIFT
-            float VaUem = get_VaUem(Xpos, (float3)(0,0,0), vel, scale, dim, GET_STANDARD_ARGS());
-            float UemUem = get_UemUem(Xpos, (float3)(0,0,0), scale, dim, GET_STANDARD_ARGS());
+            float3 uemit_lower = {0,0,0};
 
-            final_zp1 = (E_accum / E_receiver) * (VaUem / source_rec_left) * sqrt(source_rec_right/UemUem);
+            float bottom = ray_in.ku_uobsu;
+
+            float4 particle4 = get_4_velocity(Xpos, uemit_lower, scale, dim, GET_STANDARD_ARGS());
+            float4 photon4 = get_4_momentum(Xpos, E_accum, vel, scale, dim, GET_STANDARD_ARGS());
+
+            float4 photon4_lowered = lower4(Xpos, photon4, scale, dim, GET_STANDARD_ARGS());
+
+            float top = dot(photon4_lowered, particle4);
+
+            final_zp1 = bottom / top;
             #endif
 
             hit_type = 0;
