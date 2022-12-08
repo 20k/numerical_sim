@@ -1646,6 +1646,11 @@ void init_rays(__global struct lightray_simple* rays, __global int* ray_count0,
         ku_uobsu = GET_KU_UOBSU;
 
         E = GET_E_START;
+
+        if(x == width/2 && y == height/2)
+        {
+            printf("Real t %f\n", REAL_T);
+        }
     }
 
     struct lightray_simple out;
@@ -1926,6 +1931,13 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     float3 Xpos = {ray_in.lp1, ray_in.lp2, ray_in.lp3};
     float3 vel = {ray_in.V0, ray_in.V1, ray_in.V2};
     float3 Xpos_last = Xpos;
+
+    float4 start_4vel = get_4_momentum(Xpos, ray_in.E, vel, scale, dim, GET_STANDARD_ARGS());
+
+    if(x == width/2 && y == height/2)
+    {
+        printf("Calc t %f\n", start_4vel.x);
+    }
 
     int hit_type = 1;
 

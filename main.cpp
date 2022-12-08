@@ -5207,6 +5207,8 @@ void process_geodesics(equation_context& ctx)
 
     //tensor<value, 4> adm_velocity = (tensor_velocity / tensor_velocity.idx(0)) - get_adm_hypersurface_normal_raised(args.gA, args.gB);
 
+    ctx.add("REAL_T", tensor_velocity.idx(0));
+
     ctx.add("V0_d", adm_velocity.idx(1));
     ctx.add("V1_d", adm_velocity.idx(2));
     ctx.add("V2_d", adm_velocity.idx(3));
