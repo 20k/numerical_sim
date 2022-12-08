@@ -1522,6 +1522,28 @@ void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, 
     *out = (float3){d0, d1, d2};
 }
 
+float calculate_E_derivative(float* out, float3 Xpos, float3 vel, float E_in, float scale, int4 dim, STANDARD_ARGS())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+
+    ///isn't this already handled internally?
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float V0 = vel.x;
+    float V1 = vel.y;
+    float V2 = vel.z;
+
+    float TEMPORARIES6;
+
+    float d0 = EDiff;
+
+    *out = d0;
+}
+
 __kernel
 void calculate_adm_texture_coordinates(__global struct lightray_simple* finished_rays, __global float2* texture_coordinates, int width, int height,
                                        float3 camera_pos, float4 camera_quat,
