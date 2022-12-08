@@ -5210,7 +5210,7 @@ void process_geodesics(equation_context& ctx)
         ku_uobsu += velocity_lower.idx(i) * oriented.e[0][i];
     }
 
-    ctx.add("GET_KU_UOBSU", ku_uobsu);
+    ctx.add("GET_KU_UOBSU", -ku_uobsu);
 
     /*vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
     vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
