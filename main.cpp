@@ -5476,7 +5476,7 @@ void calculate_redshift(equation_context& ctx)
 
         tensor<value, 3> vel = raise_index(vel_lower, args.iYij, 0);
 
-        value G = sqrt(1 - apply_metric(args.Yij, vel, vel));
+        value G = 1/sqrt(1 - apply_metric(args.Yij, vel, vel));
 
         tensor<value, 4> velocity4;
 
