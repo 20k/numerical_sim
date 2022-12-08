@@ -1745,6 +1745,10 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     }
     #endif // VERLET_2
 
+    ///only the quanity start_E/current_E is used, and dtE is homogeneous in E
+    float start_E = 1;
+    float current_E = start_E;
+
     float accum_R = 0;
     float accum_G = 0;
     float accum_B = 0;
@@ -1797,6 +1801,15 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
             break;
         }
 
+        #if defined(TRACE_MATTER_P) || defined(RENDER_MATTER)
+        #define ANY_MATTER
+        #endif // defined
+
+        #ifdef ANY_MATTER
+        float next_R = 0;
+        float next_G = 0;
+        float next_B = 0;
+
         #ifdef TRACE_MATTER_P
         {
             float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
@@ -1806,12 +1819,9 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
             float voxels_intersected = fast_length(XDiff) * ds;
 
-            accum_R += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
-            accum_G += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
-            accum_B += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
-
-            if(accum_R > 1 && accum_G > 1 && accum_G > 1)
-                break;
+            next_R += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
+            next_G += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
+            next_B += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
         }
         #endif
 
@@ -1831,16 +1841,16 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
             if(!use_colour)
             {
-                accum_R += pstar_val;
-                accum_G += pstar_val;
-                accum_B += pstar_val;
+                next_R += pstar_val;
+                next_G += pstar_val;
+                next_B += pstar_val;
             }
             else
             {
                 #ifdef HAS_COLOUR
-                accum_R += buffer_read_linear(dRed, voxel_pos, dim) * 1;
-                accum_G += buffer_read_linear(dGreen, voxel_pos, dim) * 1;
-                accum_B += buffer_read_linear(dBlue, voxel_pos, dim) * 1;
+                next_R += buffer_read_linear(dRed, voxel_pos, dim) * 1;
+                next_G += buffer_read_linear(dGreen, voxel_pos, dim) * 1;
+                next_B += buffer_read_linear(dBlue, voxel_pos, dim) * 1;
                 #endif
             }
 
@@ -1852,6 +1862,14 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
             }*/
         }
         #endif // RENDER_MATTER
+
+        accum_R += next_R;
+        accum_G += next_G;
+        accum_B += next_B;
+
+        if(accum_R > 1 && accum_G > 1 && accum_G > 1)
+            break;
+        #endif
 
         #endif // VERLET_2
 
