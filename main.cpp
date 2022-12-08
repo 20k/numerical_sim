@@ -5195,9 +5195,15 @@ void process_geodesics(equation_context& ctx)
 
     tensor<value, 4> velocity_lower = lower_index(tensor_velocity, real_metric, 0);
 
+    /*
+
     tensor<value, 3> adm_V_lower = {velocity_lower.idx(1), velocity_lower.idx(2), velocity_lower.idx(3)};
 
-    tensor<value, 3> adm_V_higher = raise_index(adm_V_lower, args.Yij.invert(), 0);
+    tensor<value, 3> adm_V_higher = raise_index(adm_V_lower, args.Yij.invert(), 0);*/
+
+    value E = -sum_multiply(velocity_lower, get_adm_hypersurface_normal_raised(args.gA, args.gB));
+
+    tensor<value, 4> adm_velocity = (tensor_velocity / E) - get_adm_hypersurface_normal_raised(args.gA, args.gB);
 
     //tensor<value, 4> adm_velocity = (tensor_velocity / tensor_velocity.idx(0)) - get_adm_hypersurface_normal_raised(args.gA, args.gB);
 
@@ -5212,7 +5218,9 @@ void process_geodesics(equation_context& ctx)
         ku_uobsu += velocity_lower.idx(i) * oriented.e[0][i];
     }
 
-    ctx.add("GET_KU_UOBSU", -ku_uobsu);
+    ctx.add("GET_KU_UOBSU", ku_uobsu);
+
+    ctx.add("GET_E_START", E);
 
     /*vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
     vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};

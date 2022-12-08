@@ -1412,6 +1412,7 @@ struct lightray_simple
     float R, G, B;
     float zp1;
     float ku_uobsu;
+    float E;
 };
 
 enum ds_result
@@ -1618,6 +1619,8 @@ void init_rays(__global struct lightray_simple* rays, __global int* ray_count0,
     float V1;
     float V2;
 
+    float E;
+
     float ku_uobsu = 1;
 
     {
@@ -1641,6 +1644,8 @@ void init_rays(__global struct lightray_simple* rays, __global int* ray_count0,
         V2 = V2_d;
 
         ku_uobsu = GET_KU_UOBSU;
+
+        E = GET_E_START;
     }
 
     struct lightray_simple out;
@@ -1658,6 +1663,7 @@ void init_rays(__global struct lightray_simple* rays, __global int* ray_count0,
     out.hit_type = 0;
     out.zp1 = 1;
     out.ku_uobsu = ku_uobsu;
+    out.E = E;
 
     rays[y * width + x] = out;
 
@@ -1969,7 +1975,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     #ifdef REDSHIFT
     float3 V_upper_at_a = vel;
     ///only the quanity E_a/E_b is used, and dtE is homogeneous in E
-    float E_receiver = 1;
+    float E_receiver = ray_in.E;
     float E_accum = E_receiver;
 
     float source_rec_left = get_VbUrec(Xpos, (float3)(0,0,0), vel, scale, dim, GET_STANDARD_ARGS());
