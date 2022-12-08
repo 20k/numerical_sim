@@ -1411,6 +1411,7 @@ struct lightray_simple
 
     float R, G, B;
     float zp1;
+    float ku_uobsu;
 };
 
 enum ds_result
@@ -1617,6 +1618,8 @@ void init_rays(__global struct lightray_simple* rays, __global int* ray_count0,
     float V1;
     float V2;
 
+    float ku_uobsu = 1;
+
     {
         float3 world_pos = camera_pos;
 
@@ -1636,6 +1639,8 @@ void init_rays(__global struct lightray_simple* rays, __global int* ray_count0,
         V0 = V0_d;
         V1 = V1_d;
         V2 = V2_d;
+
+        ku_uobsu = GET_KU_UOBSU;
     }
 
     struct lightray_simple out;
@@ -1652,6 +1657,7 @@ void init_rays(__global struct lightray_simple* rays, __global int* ray_count0,
     out.iter_frac = 0;
     out.hit_type = 0;
     out.zp1 = 1;
+    out.ku_uobsu = ku_uobsu;
 
     rays[y * width + x] = out;
 
@@ -1847,6 +1853,55 @@ float get_UemUem(float3 Xpos, float3 U_em_lower, float scale, int4 dim, STANDARD
     return GET_UEMUEM;
 }
 
+float4 get_4_momentum(float3 Xpos, float E, float3 vel, float scale, int4 dim, STANDARD_ARGS())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float TEMPORARIESredshift;
+
+    return (float4){GET_MOMENTUM_4_0, GET_MOMENTUM_4_1, GET_MOMENTUM_4_2, GET_MOMENTUM_4_3};
+}
+
+float4 get_4_velocity(float3 Xpos, float3 vel_lower, float scale, int4 dim, STANDARD_ARGS())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float TEMPORARIESredshift;
+
+    return (float4){GET_VELOCITY_4_0, GET_VELOCITY_4_1, GET_VELOCITY_4_2, GET_VELOCITY_4_3};
+}
+
+float4 lower4(float3 Xpos, float4 upper, float scale, int4 dim, STANDARD_ARGS())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float TEMPORARIESredshift;
+
+    return (float4){LOWER40, LOWER41, LOWER42, LOWER43};
+}
+
+float metric_len4(float3 Xpos, float4 upper, float scale, int4 dim, STANDARD_ARGS())
+{
+    float4 lowered = lower4(Xpos, upper, scale, dim, GET_STANDARD_ARGS());
+
+    return dot(lowered, upper);
+}
+
 __kernel
 void trace_rays(__global struct lightray_simple* rays_in, __global struct lightray_simple* rays_terminated,
                 STANDARD_ARGS(),
@@ -1898,7 +1953,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         Xpos = XFull;
     }
     #endif // VERLET_2
-
 
     float accum_R = 0;
     float accum_G = 0;
@@ -2030,10 +2084,36 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
                 ///B: Receiver
                 float zp1 = calculate_1pz(Xpos, E_emitter, E_receiver, urec_upper, uemit_lower, V_at_emitter, V_at_receiver, scale, dim, GET_STANDARD_ARGS());*/
 
-                float VaUem = get_VaUem(Xpos, uemit_lower, vel, scale, dim, GET_STANDARD_ARGS());
+                /*float VaUem = get_VaUem(Xpos, uemit_lower, vel, scale, dim, GET_STANDARD_ARGS());
                 float UemUem = get_UemUem(Xpos, uemit_lower, scale, dim, GET_STANDARD_ARGS());
 
-                float zp1 = (E_accum / E_receiver) * (VaUem / source_rec_left) * sqrt(source_rec_right/UemUem);
+                float zp1 = (E_accum / E_receiver) * (VaUem / source_rec_left) * sqrt(source_rec_right/UemUem);*/
+
+                float bottom = ray_in.ku_uobsu;
+
+                float4 particle4 = get_4_velocity(Xpos, uemit_lower, scale, dim, GET_STANDARD_ARGS());
+                float4 photon4 = get_4_momentum(Xpos, E_accum, vel, scale, dim, GET_STANDARD_ARGS());
+
+                float4 photon4_lowered = lower4(Xpos, photon4, scale, dim, GET_STANDARD_ARGS());
+
+                float top = dot(photon4_lowered, particle4);
+
+                if(x == width/2 && y == height/2)
+                {
+                    float photon_len = metric_len4(Xpos, photon4, scale, dim, GET_STANDARD_ARGS());
+                    float particle_len = metric_len4(Xpos, particle4, scale, dim, GET_STANDARD_ARGS());
+
+                    printf("Top %f bot %f photon4 %f %f %f %f particle4 %f %f %f %f photonlen %f particlelen %f\n", top, bottom, photon4.x, photon4.y, photon4.z, photon4.w, particle4.x, particle4.y, particle4.z, particle4.w, photon_len, particle_len);
+                }
+
+                float zp1 = top / bottom;
+
+                /*if(x == width/2 && y == height/2)
+                {
+                    float dot_angle_m1 = VaUem;
+
+                    printf("Uemit %f %f %f Mine %f %f %f zp1 %f Eemit %f Erecv %f Vauem %f\n", uemit_lower.x, uemit_lower.y, uemit_lower.z, vel.x, vel.y, vel.z, zp1, E_accum, E_receiver, VaUem);
+                }*/
 
                 float3 next_col = redshift_with_intensity((float3)(local_R, local_G, local_B), zp1-1.f);
 

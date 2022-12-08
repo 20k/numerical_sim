@@ -3821,7 +3821,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #ifdef ACCRETION_DISK
 
     {
-        compact_object::data h1;
+        /*compact_object::data h1;
         h1.t = compact_object::BLACK_HOLE;
 
         h1.bare_mass = 0.483;
@@ -3830,7 +3830,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
         //h1.bare_mass = 0.1764;
         //h1.angular_momentum = {0, 0, 0.225};
 
-        objects = {h1};
+        objects = {h1};*/
 
         xoshiro256ss_state st = xoshiro256ss_init(1234);
 
@@ -3841,7 +3841,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
         particle_data data;
 
-        float M = 0.1;
+        float M = 0.001;
         int N = 100000;
 
         #ifdef ACCRETE_FULLYRANDOM
@@ -5171,9 +5171,9 @@ void process_geodesics(equation_context& ctx)
     vec<4, value> pixel_x = pixel_direction.x() * oriented.e[1];
     vec<4, value> pixel_y = pixel_direction.y() * oriented.e[2];
     vec<4, value> pixel_z = pixel_direction.z() * oriented.e[3];
-    vec<4, value> pixel_t = oriented.e[0];
+    vec<4, value> pixel_t = -oriented.e[0];
 
-    #define INVERT_TIME
+    //#define INVERT_TIME
     #ifdef INVERT_TIME
     pixel_t = -pixel_t;
     #endif // INVERT_TIME
@@ -5202,6 +5202,15 @@ void process_geodesics(equation_context& ctx)
     ctx.add("V0_d", adm_V_higher.idx(0));
     ctx.add("V1_d", adm_V_higher.idx(1));
     ctx.add("V2_d", adm_V_higher.idx(2));
+
+    value ku_uobsu = 0;
+
+    for(int i=0; i < 4; i++)
+    {
+        ku_uobsu += velocity_lower.idx(i) * oriented.e[0][i];
+    }
+
+    ctx.add("GET_KU_UOBSU", ku_uobsu);
 
     /*vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
     vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
@@ -5444,6 +5453,63 @@ void calculate_redshift(equation_context& ctx)
 
         ctx.add("GET_URECUREC", 1 - apply_metric(args.Yij, U_recv_upper, U_recv_upper));
         ctx.add("GET_UEMUEM", 1 - apply_metric(args.Yij, U_em_upper, U_em_upper));
+    }
+
+    tensor<value, 4> N = get_adm_hypersurface_normal_raised(args.gA, args.gB);
+    metric<value, 4, 4> real_metric = calculate_real_metric(args.Yij, args.gA, args.gB);
+
+    {
+
+        tensor<value, 3> vel_lower = {"vel_lower.x", "vel_lower.y", "vel_lower.z"};
+
+        tensor<value, 3> vel = raise_index(vel_lower, args.iYij, 0);
+
+        value G = sqrt(1 - apply_metric(args.Yij, vel, vel));
+
+        tensor<value, 4> velocity4;
+
+        velocity4.idx(0) = G * N.idx(0);
+
+        for(int i=1; i < 4; i++)
+        {
+            velocity4.idx(i) = G * (N.idx(i) + vel.idx(i - 1));
+        }
+
+        for(int i=0; i < 4; i++)
+        {
+            ctx.add("GET_VELOCITY_4_" + std::to_string(i), velocity4.idx(i));
+        }
+    }
+
+    {
+        tensor<value, 3> vel = {"vel.x", "vel.y", "vel.z"};
+
+        value E = "E";
+
+        tensor<value, 4> momentum4;
+
+        momentum4.idx(0) = E * N.idx(0);
+
+        for(int i=1; i < 4; i++)
+        {
+            momentum4.idx(i) = E * (N.idx(i) + vel.idx(i - 1));
+        }
+
+        for(int i=0; i < 4; i++)
+        {
+            ctx.add("GET_MOMENTUM_4_" + std::to_string(i), momentum4.idx(i));
+        }
+    }
+
+    {
+        tensor<value, 4> vel = {"upper.x", "upper.y", "upper.z", "upper.w"};
+
+        tensor<value, 4> lowered = lower_index(vel, real_metric, 0);
+
+        for(int i=0; i < 4; i++)
+        {
+            ctx.add("LOWER4" + std::to_string(i), lowered.idx(i));
+        }
     }
 }
 
