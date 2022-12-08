@@ -2124,7 +2124,9 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
                     printf("Top %f bot %f photon4 %f %f %f %f particle4 %f %f %f %f photonlen %f particlelen %f out_E %f\n", top, bottom, photon4.x, photon4.y, photon4.z, photon4.w, particle4.x, particle4.y, particle4.z, particle4.w, photon_len, particle_len, E_accum);
                 }
 
-                float zp1 = top / bottom;
+                //float zp1 = top / bottom;
+
+                float zp1 = bottom / top;
 
                 /*if(x == width/2 && y == height/2)
                 {

@@ -3821,7 +3821,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #ifdef ACCRETION_DISK
 
     {
-        /*compact_object::data h1;
+        compact_object::data h1;
         h1.t = compact_object::BLACK_HOLE;
 
         h1.bare_mass = 0.483;
@@ -3830,7 +3830,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
         //h1.bare_mass = 0.1764;
         //h1.angular_momentum = {0, 0, 0.225};
 
-        objects = {h1};*/
+        objects = {h1};
 
         xoshiro256ss_state st = xoshiro256ss_init(1234);
 
