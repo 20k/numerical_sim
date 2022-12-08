@@ -5171,7 +5171,7 @@ void process_geodesics(equation_context& ctx)
     vec<4, value> pixel_x = pixel_direction.x() * oriented.e[1];
     vec<4, value> pixel_y = pixel_direction.y() * oriented.e[2];
     vec<4, value> pixel_z = pixel_direction.z() * oriented.e[3];
-    vec<4, value> pixel_t = -oriented.e[0];
+    vec<4, value> pixel_t = oriented.e[0];
 
     #define INVERT_TIME
     #ifdef INVERT_TIME
