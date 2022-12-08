@@ -3904,7 +3904,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
         }
         #endif
 
-        data.particle_brightness = 0.0001f;
+        data.particle_brightness = 0.001f;
 
         data_opt = std::move(data);
     }

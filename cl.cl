@@ -2072,6 +2072,8 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
             float local_G = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
             float local_B = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
 
+            accum_A += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
+
             ///I am the receiver, they are the emitter
             ///emitter is the object we're sampling at this point, the receiver is the camera
             ///assuming the camera velocity is 0
@@ -2115,13 +2117,13 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
                 float top = dot(photon4_lowered, particle4);
 
-                if(x == width/2 && y == height/2)
+                /*if(x == width/2 && y == height/2)
                 {
                     float photon_len = metric_len4(Xpos, photon4, scale, dim, GET_STANDARD_ARGS());
                     float particle_len = metric_len4(Xpos, particle4, scale, dim, GET_STANDARD_ARGS());
 
                     printf("Top %f bot %f photon4 %f %f %f %f particle4 %f %f %f %f photonlen %f particlelen %f out_E %f\n", top, bottom, photon4.x, photon4.y, photon4.z, photon4.w, particle4.x, particle4.y, particle4.z, particle4.w, photon_len, particle_len, E_accum);
-                }
+                }*/
 
                 //float zp1 = top / bottom;
 
@@ -2163,6 +2165,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
                 next_R += pstar_val;
                 next_G += pstar_val;
                 next_B += pstar_val;
+                accum_A += pstar_val;
             }
             else
             {
@@ -2170,6 +2173,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
                 next_R += buffer_read_linear(dRed, voxel_pos, dim) * 1;
                 next_G += buffer_read_linear(dGreen, voxel_pos, dim) * 1;
                 next_B += buffer_read_linear(dBlue, voxel_pos, dim) * 1;
+                accum_A += buffer_read_linear(dBlue, voxel_pos, dim) * 1;
                 #endif
             }
 
@@ -2186,7 +2190,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         accum_G += next_G;
         accum_B += next_B;
 
-        if(accum_R > 1 && accum_G > 1 && accum_G > 1)
+        if(accum_A > 1)
             break;
         #endif
 
@@ -2245,6 +2249,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     ray_out.R = accum_R;
     ray_out.G = accum_G;
     ray_out.B = accum_B;
+    ray_out.A = accum_A;
     ray_out.zp1 = final_zp1;
 
     rays_terminated[y * width + x] = ray_out;
@@ -2307,9 +2312,11 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
 
     float3 density_col = (float3)(1,1,1) * density_frac;*/
 
-    float3 density_col = {ray_in.R, ray_in.G, ray_in.B};
+    float opacity = ray_in.A;
 
-    density_col *= 10.f;
+    opacity = clamp(opacity, 0.f, 1.f);
+
+    float3 density_col = {ray_in.R, ray_in.G, ray_in.B};
 
     #ifndef TRACE_MATTER_P
     if(any(density_col > 1))
@@ -2550,7 +2557,7 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
         linear_texture_result = redshift_with_intensity(linear_texture_result, ray_in.zp1-1.f);
         #endif // REDSHIFT
 
-        float3 with_density = clamp(linear_texture_result + density_col, 0.f, 1.f);
+        float3 with_density = clamp(mix(linear_texture_result, density_col, opacity), 0.f, 1.f);
 
         write_imagef(screen, (int2){x, y}, (float4)(with_density, 1.f));
     }
