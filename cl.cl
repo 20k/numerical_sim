@@ -1857,8 +1857,8 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     #ifdef REDSHIFT
     float3 V_upper_at_a = vel;
     ///only the quanity E_a/E_b is used, and dtE is homogeneous in E
-    float E_a = 1;
-    float E_b = E_a;
+    float E_receiver = 1;
+    float E_accum = E_receiver;
     #endif // REDSHIFT
 
     //#pragma unroll(16)
@@ -1898,9 +1898,9 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         #ifdef REDSHIFT
         float E_dt;
-        calculate_E_derivative(&E_dt, Xpos, vel, E_b, scale, dim, GET_STANDARD_ARGS());
+        calculate_E_derivative(&E_dt, Xpos, vel, E_accum, scale, dim, GET_STANDARD_ARGS());
 
-        E_b += E_dt * ds;
+        E_accum += E_dt * ds;
         #endif
 
         if(length_sq(Xpos) >= u_sq)
@@ -1949,10 +1949,18 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
             if(matter_p != 0)
             {
-                float3 uemit_lower = {matter_Si0/matter_p, matter_Si1/matter_p, matter_Si2/matter_p};
-                float3 V_upper_at_b = vel;
+                float3 V_at_receiver = V_upper_at_a;
+                float3 V_at_emitter = vel;
 
-                float zp1 = calculate_1pz(Xpos, E_a, E_b, urec_upper, uemit_lower, V_upper_at_a, V_upper_at_b, scale, dim, GET_STANDARD_ARGS());
+                float E_emitter = E_accum;
+
+                float3 uemit_lower = {matter_Si0/matter_p, matter_Si1/matter_p, matter_Si2/matter_p};
+
+                ///their B is at the *receiver* ie camera, and their A is at the *emitter* ie source
+
+                ///A: Emitter
+                ///B: Receiver
+                float zp1 = calculate_1pz(Xpos, E_emitter, E_receiver, urec_upper, uemit_lower, V_at_emitter, V_at_receiver, scale, dim, GET_STANDARD_ARGS());
 
                 float3 next_col = redshift_with_intensity((float3)(local_R, local_G, local_B), zp1-1.f);
 
