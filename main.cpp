@@ -5220,7 +5220,7 @@ void process_geodesics(equation_context& ctx)
         ku_uobsu += velocity_lower.idx(i) * oriented.e[0][i];
     }
 
-    ctx.add("GET_KU_UOBSU", -ku_uobsu);
+    ctx.add("GET_KU_UOBSU", ku_uobsu);
 
     ctx.add("GET_E_START", E);
 
@@ -5500,7 +5500,7 @@ void calculate_redshift(equation_context& ctx)
 
         tensor<value, 4> momentum4;
 
-        momentum4.idx(0) = -E * N.idx(0);
+        momentum4.idx(0) = E * N.idx(0);
 
         for(int i=1; i < 4; i++)
         {
