@@ -2565,7 +2565,7 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
     {
         float3 val = (float3)(0,0,0);
 
-        val = density_col;
+        val = density_col * opacity;
 
         //val.xyz = clamp(ray_in.iter_frac, 0.f, 1.f);
 
