@@ -5436,6 +5436,15 @@ void calculate_redshift(equation_context& ctx)
     value p3 = sqrt((1 - apply_metric(args.Yij, U_recv_upper, U_recv_upper)) / (1 - apply_metric(args.Yij, U_em_upper, U_em_upper)));
 
     ctx.add("CALC_1PZ", p1 * p2 * p3);
+
+
+    {
+        ctx.add("GET_VAUEM", 1 - apply_metric(args.Yij, V_upper_a, U_em_upper));
+        ctx.add("GET_VBUREC", 1 - apply_metric(args.Yij, V_upper_b, U_recv_upper));
+
+        ctx.add("GET_URECUREC", 1 - apply_metric(args.Yij, U_recv_upper, U_recv_upper));
+        ctx.add("GET_UEMUEM", 1 - apply_metric(args.Yij, U_em_upper, U_em_upper));
+    }
 }
 
 /*void build_hamiltonian_constraint(equation_context& ctx)

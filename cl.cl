@@ -1410,6 +1410,7 @@ struct lightray_simple
     //float density;
 
     float R, G, B;
+    float zp1;
 };
 
 enum ds_result
@@ -1650,6 +1651,7 @@ void init_rays(__global struct lightray_simple* rays, __global int* ray_count0,
     out.y = y;
     out.iter_frac = 0;
     out.hit_type = 0;
+    out.zp1 = 1;
 
     rays[y * width + x] = out;
 
@@ -1789,6 +1791,62 @@ float3 redshift_with_intensity(float3 lin_result, float z_shift)
 
 #define SOLID_DENSITY 0.1
 
+float get_VaUem(float3 Xpos, float3 U_em_lower, float3 V_upper_a, float scale, int4 dim, STANDARD_ARGS())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float TEMPORARIESredshift;
+
+    return GET_VAUEM;
+}
+
+float get_VbUrec(float3 Xpos, float3 U_recv_upper, float3 V_upper_b, float scale, int4 dim, STANDARD_ARGS())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float TEMPORARIESredshift;
+
+    return GET_VBUREC;
+}
+
+float get_UrecUrec(float3 Xpos, float3 U_recv_upper, float scale, int4 dim, STANDARD_ARGS())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float TEMPORARIESredshift;
+
+    return GET_URECUREC;
+}
+
+float get_UemUem(float3 Xpos, float3 U_em_lower, float scale, int4 dim, STANDARD_ARGS())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float TEMPORARIESredshift;
+
+    return GET_UEMUEM;
+}
+
 __kernel
 void trace_rays(__global struct lightray_simple* rays_in, __global struct lightray_simple* rays_terminated,
                 STANDARD_ARGS(),
@@ -1859,7 +1917,12 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     ///only the quanity E_a/E_b is used, and dtE is homogeneous in E
     float E_receiver = 1;
     float E_accum = E_receiver;
+
+    float source_rec_left = get_VbUrec(Xpos, (float3)(0,0,0), vel, scale, dim, GET_STANDARD_ARGS());
+    float source_rec_right = get_UrecUrec(Xpos, (float3)(0,0,0), scale, dim, GET_STANDARD_ARGS());
     #endif // REDSHIFT
+
+    float final_zp1 = 1;
 
     //#pragma unroll(16)
     for(int iteration=0; iteration < max_iterations; iteration++)
@@ -1905,6 +1968,13 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
         if(length_sq(Xpos) >= u_sq)
         {
+            #ifdef REDSHIFT
+            float VaUem = get_VaUem(Xpos, (float3)(0,0,0), vel, scale, dim, GET_STANDARD_ARGS());
+            float UemUem = get_UemUem(Xpos, (float3)(0,0,0), scale, dim, GET_STANDARD_ARGS());
+
+            final_zp1 = (E_accum / E_receiver) * (VaUem / source_rec_left) * sqrt(source_rec_right/UemUem);
+            #endif
+
             hit_type = 0;
             break;
         }
@@ -1938,8 +2008,6 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
             ///mumble mumble adm slice
 
             #ifdef REDSHIFT
-            float3 urec_upper = {0,0,0};
-
             ///> 0 except at singularity where there is matter
             float matter_p = buffer_read_linear(adm_p, voxel_pos, dim);
 
@@ -1949,18 +2017,23 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
             if(matter_p != 0)
             {
-                float3 V_at_receiver = V_upper_at_a;
+                float3 uemit_lower = {matter_Si0/matter_p, matter_Si1/matter_p, matter_Si2/matter_p};
+
+                /*float3 V_at_receiver = V_upper_at_a;
                 float3 V_at_emitter = vel;
 
                 float E_emitter = E_accum;
-
-                float3 uemit_lower = {matter_Si0/matter_p, matter_Si1/matter_p, matter_Si2/matter_p};
 
                 ///their B is at the *receiver* ie camera, and their A is at the *emitter* ie source
 
                 ///A: Emitter
                 ///B: Receiver
-                float zp1 = calculate_1pz(Xpos, E_emitter, E_receiver, urec_upper, uemit_lower, V_at_emitter, V_at_receiver, scale, dim, GET_STANDARD_ARGS());
+                float zp1 = calculate_1pz(Xpos, E_emitter, E_receiver, urec_upper, uemit_lower, V_at_emitter, V_at_receiver, scale, dim, GET_STANDARD_ARGS());*/
+
+                float VaUem = get_VaUem(Xpos, uemit_lower, vel, scale, dim, GET_STANDARD_ARGS());
+                float UemUem = get_UemUem(Xpos, uemit_lower, scale, dim, GET_STANDARD_ARGS());
+
+                float zp1 = (E_accum / E_receiver) * (VaUem / source_rec_left) * sqrt(source_rec_right/UemUem);
 
                 float3 next_col = redshift_with_intensity((float3)(local_R, local_G, local_B), zp1-1.f);
 
@@ -2073,6 +2146,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     ray_out.R = accum_R;
     ray_out.G = accum_G;
     ray_out.B = accum_B;
+    ray_out.zp1 = final_zp1;
 
     rays_terminated[y * width + x] = ray_out;
 }
@@ -2371,7 +2445,13 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
         #endif // TRILINEAR
         #endif // MIPMAPPING
 
-        float3 with_density = clamp(srgb_to_lin(end_result.xyz) + density_col, 0.f, 1.f);
+        float3 linear_texture_result = srgb_to_lin(end_result.xyz);
+
+        #ifdef REDSHIFT
+        linear_texture_result = redshift_with_intensity(linear_texture_result, ray_in.zp1-1.f);
+        #endif // REDSHIFT
+
+        float3 with_density = clamp(linear_texture_result + density_col, 0.f, 1.f);
 
         write_imagef(screen, (int2){x, y}, (float4)(with_density, 1.f));
     }
