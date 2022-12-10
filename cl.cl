@@ -1410,6 +1410,7 @@ struct lightray_simple
     //float density;
 
     float R, G, B;
+    float zp1;
 };
 
 enum ds_result
@@ -1733,7 +1734,7 @@ void init_rays(__global struct lightray_simple* rays, __global int* ray_count0,
         V2 = V2_d;
     }
 
-    struct lightray_simple out;
+    struct lightray_simple out = {};;
     out.lp1 = lp1;
     out.lp2 = lp2;
     out.lp3 = lp3;
@@ -2032,7 +2033,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         #endif
     }
 
-    struct lightray_simple ray_out;
+    struct lightray_simple ray_out = {};;
     ray_out.x = x;
     ray_out.y = y;
 
@@ -2050,6 +2051,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     ray_out.R = accum_R;
     ray_out.G = accum_G;
     ray_out.B = accum_B;
+    ray_out.zp1 = calculate_1pz(Xpos, E_a, E_b, (float3)(0,0,0), (float3)(0,0,0), V_upper_at_a, vel, scale, dim, GET_STANDARD_ARGS());
 
     rays_terminated[y * width + x] = ray_out;
 }
@@ -2348,7 +2350,11 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
         #endif // TRILINEAR
         #endif // MIPMAPPING
 
-        float3 with_density = clamp(srgb_to_lin(end_result.xyz) + density_col, 0.f, 1.f);
+        float3 linear_end_result = srgb_to_lin(end_result.xyz);
+
+        linear_end_result = redshift_with_intensity(linear_end_result, ray_in.zp1 - 1);
+
+        float3 with_density = clamp(linear_end_result + density_col, 0.f, 1.f);
 
         write_imagef(screen, (int2){x, y}, (float4)(with_density, 1.f));
     }
