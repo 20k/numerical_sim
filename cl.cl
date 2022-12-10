@@ -1625,6 +1625,21 @@ float3 redshift_with_intensity(float3 lin_result, float z_shift)
     return lin_result;
 }
 
+///u_em_lower is purely for practical reasons, because u_em_upper is annoying to calculate in C
+float calculate_1pz(float3 Xpos, float E_a, float E_b, float3 U_recv_upper, float3 U_em_lower, float3 V_upper_a, float3 V_upper_b, float scale, int4 dim, STANDARD_ARGS())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float TEMPORARIESredshift;
+
+    return CALC_1PZ;
+}
+
 __kernel
 void calculate_adm_texture_coordinates(__global struct lightray_simple* finished_rays, __global float2* texture_coordinates, int width, int height,
                                        float3 camera_pos, float4 camera_quat,
@@ -1830,6 +1845,14 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
     float accum_G = 0;
     float accum_B = 0;
 
+    #define REDSHIFT
+    #ifdef REDSHIFT
+    float3 V_upper_at_a = vel;
+    ///only the quanity E_a/E_b is used, and dtE is homogeneous in E
+    float E_a = 1;
+    float E_b = E_a;
+    #endif // REDSHIFT
+
     int max_iterations = 512;
 
     //#define NO_HORIZON_DETECTION
@@ -1872,6 +1895,13 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
             Xpos = XFull;
         }
 
+        #ifdef REDSHIFT
+        float E_dt;
+        calculate_E_derivative(&E_dt, Xpos, vel, E_b, scale, dim, GET_STANDARD_ARGS());
+
+        E_b += E_dt * ds;
+        #endif
+
         if(length_sq(Xpos) >= u_sq)
         {
             hit_type = 0;
@@ -1887,9 +1917,32 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
             float voxels_intersected = fast_length(XDiff) * ds;
 
-            accum_R += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
-            accum_G += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
-            accum_B += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
+            float next_R = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
+            float next_G = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
+            float next_B = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
+
+            #ifdef REDSHIFT
+            float3 urec_upper = {0,0,0};
+
+            ///> 0 except at singularity where there is matter
+            float matter_p = buffer_read_linear(adm_p, voxel_pos, dim);
+
+            float matter_Si0 = buffer_read_linear(adm_Si0, voxel_pos, dim);
+            float matter_Si1 = buffer_read_linear(adm_Si1, voxel_pos, dim);
+            float matter_Si2 = buffer_read_linear(adm_Si2, voxel_pos, dim);
+
+            if(matter_p != 0)
+            {
+                float3 uemit_lower = {matter_Si0/matter_p, matter_Si1/matter_p, matter_Si2/matter_p};
+                float3 V_upper_at_b = vel;
+
+                float zp1 = calculate_1pz(Xpos, E_a, E_b, urec_upper, uemit_lower, V_upper_at_a, V_upper_at_b, scale, dim, GET_STANDARD_ARGS());
+            }
+            #endif
+
+            accum_R += next_R;
+            accum_G += next_G;
+            accum_B += next_B;
 
             if(accum_R > 1 && accum_G > 1 && accum_G > 1)
                 break;

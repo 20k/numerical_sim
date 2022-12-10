@@ -5417,6 +5417,47 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.81
 }
 
+value apply_metric(const metric<value, 3, 3>& met, const tensor<value, 3>& v1, const tensor<value, 3>& v2)
+{
+    value sum = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            sum += met.idx(i, j) * v1.idx(i) * v2.idx(j);
+        }
+    }
+
+    return sum;
+}
+
+///https://arxiv.org/pdf/1208.3927.pdf (35)
+void calculate_redshift(equation_context& ctx)
+{
+    standard_arguments args(ctx);
+
+    value E_a = "E_a";
+    value E_b = "E_b";
+
+    tensor<value, 3> V_upper_a = {"V_upper_a.x", "V_upper_a.y", "V_upper_a.z"};
+    tensor<value, 3> V_upper_b = {"V_upper_b.x", "V_upper_b.y", "V_upper_b.z"};
+
+    tensor<value, 3> U_recv_upper = {"U_recv_upper.x", "U_recv_upper.y", "U_recv_upper.z"};
+    tensor<value, 3> U_em_lower = {"U_em_lower.x", "U_em_lower.y", "U_em_lower.z"};
+
+    ///todo: I don't actually need this
+    tensor<value, 3> U_em_upper = raise_index(U_em_lower, args.iYij, 0);
+
+    value p1 = E_a/E_b;
+
+    value p2 = (1 - apply_metric(args.Yij, V_upper_a, U_em_upper)) / (1 - apply_metric(args.Yij, V_upper_b, U_recv_upper));
+
+    value p3 = sqrt((1 - apply_metric(args.Yij, U_recv_upper, U_recv_upper)) / (1 - apply_metric(args.Yij, U_em_upper, U_em_upper)));
+
+    ctx.add("CALC_1PZ", p1 * p2 * p3);
+}
+
 /*void build_hamiltonian_constraint(equation_context& ctx)
 {
     standard_arguments args(ctx);
@@ -5721,6 +5762,10 @@ int main()
     ctx7.uses_linear = true;
     loop_geodesics(ctx7, {size.x(), size.y(), size.z()});
 
+    equation_context ctxredshift;
+    ctxredshift.uses_linear = true;
+    calculate_redshift(ctxredshift);
+
     equation_context ctx10;
     build_kreiss_oliger_dissipate_singular(ctx10);
 
@@ -5747,6 +5792,7 @@ int main()
     ctx5.build(argument_string, 4);
     ctx6.build(argument_string, 5);
     ctx7.build(argument_string, 6);
+    ctxredshift.build(argument_string, "redshift");
     ctx10.build(argument_string, 9);
     ctx11.build(argument_string, 10);
     ctx12.build(argument_string, 11);
