@@ -1741,6 +1741,16 @@ float get_static_verlet_ds(float3 Xpos, __global float* X, float scale, int4 dim
 #define SOLID_DENSITY 0.1
 
 __kernel
+void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_info* rays_terminated,
+                STANDARD_ARGS(),
+                STANDARD_UTILITY(),
+                int use_colour,
+                float scale, int4 dim, int width, int height, float err_in)
+{
+
+}
+
+__kernel
 void trace_rays(__global struct lightray_simple* rays_in, __global struct render_ray_info* rays_terminated,
                 STANDARD_ARGS(),
                 STANDARD_UTILITY(),

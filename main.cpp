@@ -5379,6 +5379,114 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.81
 }
 
+void loop_geodesics4(equation_context& ctx)
+{
+    ctx.uses_linear = true;
+    ctx.order = 1;
+    ctx.use_precise_differentiation = false;
+
+    standard_arguments args(ctx);
+
+    value scale = "scale";
+
+    metric<value, 4, 4> met = calculate_real_metric(args.Yij, args.gA, args.gB);
+
+    inverse_metric<value, 4, 4> inv = met.invert();
+
+    auto diff4 = [&](const value& in, int idx)
+    {
+        if(idx == 0)
+            return value{0};
+
+        return diff1(ctx, in, idx - 1);
+    };
+
+    tensor<value, 4> position = {"px", "py", "pz", "pw"};
+    tensor<value, 4> velocity = {"vx", "vy", "vz", "vw"};
+
+    tensor<value, 4, 4, 4> christoff2;
+
+    for(int i=0; i < 4; i++)
+    {
+        for(int k=0; k < 4; k++)
+        {
+            for(int l=0; l < 4; l++)
+            {
+                value sum = 0;
+
+                for(int m=0; m < 4; m++)
+                {
+                    sum += inv.idx(i, m) * diff4(met.idx(m, k), l);
+                    sum += inv.idx(i, m) * diff4(met.idx(m, l), k);
+                    sum += -inv.idx(i, m) * diff4(met.idx(k, l), m);
+                }
+
+                christoff2.idx(i, k, l) = 0.5f * sum;
+            }
+        }
+    }
+
+    tensor<value, 4> accel;
+
+    for(int uu=0; uu < 4; uu++)
+    {
+        value sum = 0;
+
+        for(int aa = 0; aa < 4; aa++)
+        {
+            for(int bb = 0; bb < 4; bb++)
+            {
+                sum += velocity.idx(aa) * velocity.idx(bb) * christoff2.idx(uu, aa, bb);
+            }
+        }
+
+        accel.idx(uu) = -sum;
+    }
+
+    /*inverse_metric<value, 4, 4> inv = inf.met.invert();
+
+    tensor<value, 4, 4, 4> christoff2;
+
+    for(int i=0; i < 4; i++)
+    {
+        for(int k=0; k < 4; k++)
+        {
+            for(int l=0; l < 4; l++)
+            {
+                value sum = 0;
+
+                for(int m=0; m < 4; m++)
+                {
+                    sum += inv.idx(i, m) * inf.partials.idx(l, m, k);
+                    sum += inv.idx(i, m) * inf.partials.idx(k, m, l);
+                    sum += -inv.idx(i, m) * inf.partials.idx(m, k, l);
+                }
+
+                christoff2.idx(i, k, l) = 0.5f * sum;
+            }
+        }
+    }
+
+    tensor<value, 4> accel;
+
+    for(int uu=0; uu < 4; uu++)
+    {
+        value sum = 0;
+
+        for(int aa = 0; aa < 4; aa++)
+        {
+            for(int bb = 0; bb < 4; bb++)
+            {
+                sum += velocity[aa] * velocity[bb] * christoff2.idx(uu, aa, bb);
+            }
+        }
+
+        accel.idx(uu) = -sum;
+    }
+
+    return accel;*/
+}
+
 /*void build_hamiltonian_constraint(equation_context& ctx)
 {
     standard_arguments args(ctx);
