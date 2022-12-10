@@ -3908,7 +3908,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
         data.velocities.push_back({0,0,0});
         data.masses.push_back(M);
 
-        data.particle_brightness = 0.0001f;
+        data.particle_brightness = 0.1f;
 
         data_opt = std::move(data);
     }
@@ -5403,6 +5403,49 @@ void loop_geodesics4(equation_context& ctx)
         for(int i=0; i < 4; i++)
         {
             ctx.add("LOWER4" + std::to_string(i), lowered.idx(i));
+        }
+    }
+
+    {
+        tensor<value, 3> vel = {"lower.x", "lower.y", "lower.z"};
+
+        tensor<value, 3> raised = raise_index(vel, args.iYij, 0);
+
+        for(int i=0; i < 3; i++)
+        {
+            ctx.add("RAISE3" + std::to_string(i), raised.idx(i));
+        }
+    }
+
+    {
+        tensor<value, 3> vel = {"upper.x", "upper.y", "upper.z"};
+
+        tensor<value, 4> N = get_adm_hypersurface_normal_raised(args.gA, args.gB);
+
+        value sum = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                sum += args.Yij.idx(i, j) * vel.idx(i) * vel.idx(j);
+            }
+        }
+
+        value lorentz = 1/sqrt(1 - sum);
+
+        tensor<value, 4> result;
+
+        result.idx(0) = lorentz * N.idx(0);
+
+        for(int i=1; i < 3; i++)
+        {
+            result.idx(i) = lorentz * (N.idx(i) + vel.idx(i - 1));
+        }
+
+        for(int i=0; i < 4; i++)
+        {
+            ctx.add("ADMFULL" + std::to_string(i), result.idx(i));
         }
     }
 
