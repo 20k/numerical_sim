@@ -1529,7 +1529,7 @@ struct render_ray_info
 
     int hit_type;
 
-    float R, G, B;
+    float R, G, B, A;
 
     int x, y;
     float zp1;
@@ -1914,6 +1914,7 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
     float accum_R = 0;
     float accum_G = 0;
     float accum_B = 0;
+    float accum_A = 0;
 
     int hit_type = 1;
 
@@ -1973,6 +1974,7 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
             float next_R = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
             float next_G = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
             float next_B = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
+            float next_A = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
 
             ///> 0 except at singularity where there is matter
             float matter_p = buffer_read_linear(adm_p, voxel_pos, dim);
@@ -2000,8 +2002,9 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
                 accum_R += shifted.x;
                 accum_G += shifted.y;
                 accum_B += shifted.z;
+                accum_A += next_A;
 
-                if(accum_R > 1 && accum_G > 1 && accum_G > 1)
+                if(accum_A >= 1)
                     break;
             }
         }
@@ -2028,6 +2031,7 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
     ray_out.R = accum_R;
     ray_out.G = accum_G;
     ray_out.B = accum_B;
+    ray_out.A = clamp(accum_A, 0.f, 1.f);
 
     ///float z_shift = (velocity.x / -ray->ku_uobsu) - 1;
 
@@ -2253,6 +2257,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct render
     ray_out.R = accum_R;
     ray_out.G = accum_G;
     ray_out.B = accum_B;
+    ray_out.A = 0;
     ray_out.zp1 = 1;
 
     rays_terminated[y * width + x] = ray_out;
@@ -2551,7 +2556,7 @@ __kernel void render_rays(__global struct render_ray_info* rays_in, __write_only
 
         linear_col = redshift_with_intensity(linear_col, ray_in.zp1 - 1);
 
-        float3 with_density = clamp(linear_col + density_col, 0.f, 1.f);
+        float3 with_density = clamp(mix(linear_col + density_col, ray_in.A), 0.f, 1.f);
 
         write_imagef(screen, (int2){x, y}, (float4)(with_density, 1.f));
     }
