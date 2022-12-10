@@ -1841,6 +1841,20 @@ float4 get_accel4(float4 pos, float4 vel, float scale, int4 dim, STANDARD_ARGS()
     return out;
 }
 
+float4 lower4(float3 Xpos, float4 upper, float scale, int4 dim, STANDARD_ARGS())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float TEMPORARIESredshift;
+
+    return (float4){LOWER40, LOWER41, LOWER42, LOWER43};
+}
+
 __kernel
 void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_info* rays_terminated,
                 STANDARD_ARGS(),
@@ -1914,9 +1928,11 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
 
             float voxels_intersected = fast_length(vel.yzw) * ds;
 
-            accum_R += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
-            accum_G += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
-            accum_B += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
+            float next_R = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
+            float next_G = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
+            float next_B = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
+
+
 
             if(accum_R > 1 && accum_G > 1 && accum_G > 1)
                 break;

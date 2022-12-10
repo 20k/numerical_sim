@@ -3904,7 +3904,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
         }
         #endif
 
-        data.position.push_back({-5, 0, 0});
+        data.positions.push_back({-5, 0, 0});
         data.velocities.push_back({0,0,0});
         data.masses.push_back(M);
 
@@ -5394,6 +5394,17 @@ void loop_geodesics4(equation_context& ctx)
     value scale = "scale";
 
     metric<value, 4, 4> met = calculate_real_metric(args.Yij, args.gA, args.gB);
+
+    {
+        tensor<value, 4> vel = {"upper.x", "upper.y", "upper.z", "upper.w"};
+
+        tensor<value, 4> lowered = lower_index(vel, met, 0);
+
+        for(int i=0; i < 4; i++)
+        {
+            ctx.add("LOWER4" + std::to_string(i), lowered.idx(i));
+        }
+    }
 
     inverse_metric<value, 4, 4> inv = met.invert();
 
