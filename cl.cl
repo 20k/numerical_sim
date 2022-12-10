@@ -2564,7 +2564,7 @@ __kernel void render_rays(__global struct render_ray_info* rays_in, __write_only
     {
         float3 val = (float3)(0,0,0);
 
-        val = density_col;
+        val = density_col * ray_in.A;
 
         //val.xyz = clamp(ray_in.iter_frac, 0.f, 1.f);
 
