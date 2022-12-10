@@ -1532,7 +1532,91 @@ struct render_ray_info
     float R, G, B;
 
     int x, y;
+    float zp1;
 };
+
+
+///takes a linear colour
+float3 redshift(float3 v, float z)
+{
+    ///1 + z = gtt(recv) / gtt(src)
+    ///1 + z = lnow / lthen
+    ///1 + z = wsrc / wobs
+
+    float radiant_energy = v.x*0.2125f + v.y*0.7154f + v.z*0.0721f;
+
+    float3 red = (float3){1/0.2125f, 0.f, 0.f};
+    float3 blue = (float3){0.f, 0.f, 1/0.0721};
+
+    float3 result;
+
+    if(z > 0)
+    {
+        result = mix(v, radiant_energy * red, tanh(z));
+    }
+    else
+    {
+        float iv1pz = (1/(1 + z)) - 1;
+
+        result = mix(v, radiant_energy * blue, tanh(iv1pz));
+    }
+
+    result = clamp(result, 0.f, 1.f);
+
+    return result;
+}
+
+float3 redshift_with_intensity(float3 lin_result, float z_shift)
+{
+    z_shift = max(z_shift, -0.999f);
+
+    ///linf / le = z + 1
+    ///le =  linf / (z + 1)
+
+    ///So, this is an incredibly, incredibly gross approximation
+    ///there are several problems here
+    ///1. Fundamentally I do not have a spectrographic map of the surrounding universe, which means any data is very approximate
+    ///EG blueshifting of infrared into visible light is therefore impossible
+    ///2. Converting sRGB information into wavelengths is possible, but also unphysical
+    ///This might be a worthwhile approximation as it might correctly bunch frequencies together
+    ///3. Its not possible to correctly render red/blueshifting, so it maps the range [-1, +inf] to [red, blue], mixing the colours with parameter [x <= 0 -> abs(x), x > 0 -> tanh(x)]]
+    ///this means that even if I did all the above correctly, its still a mess
+
+    ///This estimates luminance from the rgb value, which should be pretty ok at least!
+    float real_sol = 299792458;
+
+    ///Pick an arbitrary wavelength, the peak of human vision
+    float test_wavelength = 555 / real_sol;
+
+    float local_wavelength = test_wavelength / (z_shift + 1);
+
+    ///this is relative luminance instead of absolute specific intensity, but relative_luminance / wavelength^3 should still be lorenz invariant (?)
+    float relative_luminance = 0.2126f * lin_result.x + 0.7152f * lin_result.y + 0.0722f * lin_result.z;
+
+    ///Iv = I1 / v1^3, where Iv is lorenz invariant
+    ///Iv = I2 / v2^3 in our new frame of reference
+    ///therefore we can calculate the new intensity in our new frame of reference as...
+    ///I1/v1^3 = I2 / v2^3
+    ///I2 = v2^3 * I1/v1^3
+
+    float new_relative_luminance = pow(local_wavelength, 3) * relative_luminance / pow(test_wavelength, 3);
+
+    new_relative_luminance = clamp(new_relative_luminance, 0.f, 1.f);
+
+    if(relative_luminance > 0.00001)
+    {
+        lin_result = (new_relative_luminance / relative_luminance) * lin_result;
+
+        lin_result = clamp(lin_result, 0.f, 1.f);
+    }
+
+    lin_result = redshift(lin_result, z_shift);
+
+    lin_result = clamp(lin_result, 0.f, 1.f);
+
+    return lin_result;
+}
+
 
 __kernel
 void calculate_adm_texture_coordinates(__global struct render_ray_info* finished_rays, __global float2* texture_coordinates, int width, int height,
@@ -1844,6 +1928,7 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
     ray_out.R = accum_R;
     ray_out.G = accum_G;
     ray_out.B = accum_B;
+    ray_out.zp1 = 1;
 
     rays_terminated[y * width + x] = ray_out;
 }
@@ -2064,6 +2149,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct render
     ray_out.R = accum_R;
     ray_out.G = accum_G;
     ray_out.B = accum_B;
+    ray_out.zp1 = 1;
 
     rays_terminated[y * width + x] = ray_out;
 }
@@ -2359,7 +2445,11 @@ __kernel void render_rays(__global struct render_ray_info* rays_in, __write_only
         #endif // TRILINEAR
         #endif // MIPMAPPING
 
-        float3 with_density = clamp(srgb_to_lin(end_result.xyz) + density_col, 0.f, 1.f);
+        float3 linear_col = srgb_to_lin(end_result.xyz);
+
+        linear_col = redshift_with_intensity(linear_col, ray_in.zp1 - 1);
+
+        float3 with_density = clamp(linear_col + density_col, 0.f, 1.f);
 
         write_imagef(screen, (int2){x, y}, (float4)(with_density, 1.f));
     }
