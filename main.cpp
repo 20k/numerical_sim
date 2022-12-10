@@ -5182,7 +5182,7 @@ void process_geodesics(equation_context& ctx)
     vec<4, value> pixel_z = pixel_direction.z() * oriented.e[3];
     vec<4, value> pixel_t = -oriented.e[0];
 
-    #define INVERT_TIME
+    //#define INVERT_TIME
     #ifdef INVERT_TIME
     pixel_t = -pixel_t;
     #endif // INVERT_TIME
@@ -5200,17 +5200,19 @@ void process_geodesics(equation_context& ctx)
     ctx.add("lp2_d", lightray_position.z());
     ctx.add("lp3_d", lightray_position.w());
 
-    tensor<value, 4> lightray_velocity_t = {lightray_velocity.x(), lightray_velocity.y(), lightray_velocity.z(), lightray_velocity.w()};
+    tensor<value, 4> tensor_velocity = {lightray_velocity.x(), lightray_velocity.y(), lightray_velocity.z(), lightray_velocity.w()};
 
-    tensor<value, 4> velocity_lower = lower_index(lightray_velocity_t, real_metric, 0);
+    /*tensor<value, 4> velocity_lower = lower_index(lightray_velocity_t, real_metric, 0);
 
     tensor<value, 3> adm_V_lower = {velocity_lower.idx(1), velocity_lower.idx(2), velocity_lower.idx(3)};
 
-    tensor<value, 3> adm_V_higher = raise_index(adm_V_lower, args.Yij.invert(), 0);
+    tensor<value, 3> adm_V_higher = raise_index(adm_V_lower, args.Yij.invert(), 0);*/
 
-    ctx.add("V0_d", adm_V_higher.idx(0));
-    ctx.add("V1_d", adm_V_higher.idx(1));
-    ctx.add("V2_d", adm_V_higher.idx(2));
+    tensor<value, 4> adm_velocity = (tensor_velocity / tensor_velocity.idx(0)) - get_adm_hypersurface_normal_raised(args.gA, args.gB);
+
+    ctx.add("V0_d", adm_velocity.idx(1));
+    ctx.add("V1_d", adm_velocity.idx(2));
+    ctx.add("V2_d", adm_velocity.idx(3));
 
     /*vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
     vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
