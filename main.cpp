@@ -5401,8 +5401,8 @@ void loop_geodesics4(equation_context& ctx)
         return diff1(ctx, in, idx - 1);
     };
 
-    tensor<value, 4> position = {"px", "py", "pz", "pw"};
-    tensor<value, 4> velocity = {"vx", "vy", "vz", "vw"};
+    //tensor<value, 4> position = {"px", "py", "pz", "pw"};
+    tensor<value, 4> velocity = {"vel.x", "vel.y", "vel.z", "vel.w"};
 
     tensor<value, 4, 4, 4> christoff2;
 
@@ -5441,6 +5441,11 @@ void loop_geodesics4(equation_context& ctx)
         }
 
         accel.idx(uu) = -sum;
+    }
+
+    for(int i=0; i < 4; i++)
+    {
+        ctx.add("ACCEL4" + std::to_string(i), accel.idx(i));
     }
 
     /*inverse_metric<value, 4, 4> inv = inf.met.invert();
@@ -5791,6 +5796,9 @@ int main()
     ctx7.uses_linear = true;
     loop_geodesics(ctx7, {size.x(), size.y(), size.z()});
 
+    equation_context ctxgeo4;
+    loop_geodesics4(ctxgeo4);
+
     equation_context ctx10;
     build_kreiss_oliger_dissipate_singular(ctx10);
 
@@ -5817,6 +5825,7 @@ int main()
     ctx5.build(argument_string, 4);
     ctx6.build(argument_string, 5);
     ctx7.build(argument_string, 6);
+    ctxgeo4.build(argument_string, "geo4");
     ctx10.build(argument_string, 9);
     ctx11.build(argument_string, 10);
     ctx12.build(argument_string, 11);

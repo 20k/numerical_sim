@@ -1583,7 +1583,6 @@ struct lightray4
 {
     float4 pos;
     float4 vel;
-    int x, y;
 };
 
 __kernel
@@ -1636,8 +1635,6 @@ void init_ray4(__global struct lightray4* rays,
     struct lightray4 ray = {};
     ray.pos = (float4){pX, pY, pZ, pW};
     ray.vel = (float4){dX, dY, dZ, dW};
-    ray.x = x;
-    ray.y = y;
 
     rays[y * width + x] = ray;
 }
@@ -1740,6 +1737,26 @@ float get_static_verlet_ds(float3 Xpos, __global float* X, float scale, int4 dim
 
 #define SOLID_DENSITY 0.1
 
+float4 get_accel4(float4 pos, float4 vel, float scale, int4 dim, STANDARD_ARGS())
+{
+    float3 voxel_pos = world_to_voxel(pos.yzw, dim, scale);
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float TEMPORARIESgeo4;
+
+    float4 out;
+    out.x = ACCEL40;
+    out.y = ACCEL41;
+    out.z = ACCEL42;
+    out.w = ACCEL43;
+
+    return out;
+}
+
 __kernel
 void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_info* rays_terminated,
                 STANDARD_ARGS(),
@@ -1747,7 +1764,88 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
                 int use_colour,
                 float scale, int4 dim, int width, int height, float err_in)
 {
+    int x = get_global_id(0);
+    int y = get_global_id(1);
 
+    if(x >= width || y >= height)
+        return;
+
+    struct lightray4 ray_in = rays_in[y * width + x];
+
+    float u_sq = (universe_size * RENDERING_CUTOFF_MULT) * (universe_size * RENDERING_CUTOFF_MULT);
+
+    float4 pos = ray_in.pos;
+    float4 vel = ray_in.vel;
+
+    float accum_R = 0;
+    float accum_G = 0;
+    float accum_B = 0;
+
+    int hit_type = 0;
+
+    int max_iterations = 512;
+
+    for(int iteration=0; iteration < max_iterations; iteration++)
+    {
+        float3 Xpos = pos.yzw;
+
+        ///next iteration
+        float ds = get_static_verlet_ds(Xpos, X, scale, dim);
+
+        float4 accel = get_accel4(pos, vel, scale, dim, GET_STANDARD_ARGS());
+
+        vel += accel * ds;
+        pos += vel * ds;
+
+        if(length_sq(Xpos) >= u_sq)
+        {
+            hit_type = 0;
+            break;
+        }
+
+        if(length_sq(XDiff) < 0.2f * 0.2f)
+        {
+            hit_type = 1;
+            break;
+        }
+
+        #ifdef TRACE_MATTER_P
+        {
+            float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+            voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+            float p_val = fabs(buffer_read_linear(adm_p, voxel_pos, dim));
+
+            float voxels_intersected = fast_length(XDiff) * ds;
+
+            accum_R += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
+            accum_G += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
+            accum_B += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
+
+            if(accum_R > 1 && accum_G > 1 && accum_G > 1)
+                break;
+        }
+        #endif
+    }
+
+    struct render_ray_info ray_out;
+    ray_out.x = x;
+    ray_out.y = y;
+
+    ray_out.X = pos.y;
+    ray_out.Y = pos.z;
+    ray_out.Z = pos.w;
+
+    ray_out.dX = vel.y;
+    ray_out.dY = vel.z;
+    ray_out.dZ = vel.w;
+
+    ray_out.hit_type = hit_type;
+    ray_out.R = accum_R;
+    ray_out.G = accum_G;
+    ray_out.B = accum_B;
+
+    rays_terminated[y * width + x] = ray_out;
 }
 
 __kernel
