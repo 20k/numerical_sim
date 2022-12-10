@@ -3871,7 +3871,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
         }
         #endif
 
-        #define ACCRETE_FLATDISK
+        //#define ACCRETE_FLATDISK
         #ifdef ACCRETE_FLATDISK
         //N /= 10;
 
@@ -3905,6 +3905,15 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
         #endif
 
         data.particle_brightness = 0.0001f;
+
+        #define SINGLE_REDSHIFT
+        #ifdef SINGLE_REDSHIFT
+        data.positions.push_back({-5, 0, 0});
+        data.velocities.push_back({0, 0, 0});
+        data.masses.push_back(M);
+
+        data.particle_brightness *= 100;
+        #endif
 
         data_opt = std::move(data);
     }
