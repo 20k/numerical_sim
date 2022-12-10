@@ -1670,7 +1670,7 @@ struct lightray4
 };
 
 __kernel
-void init_ray4(__global struct lightray4* rays,
+void init_rays4(__global struct lightray4* rays,
                STANDARD_ARGS(),
                float scale, float3 camera_pos, float4 camera_quat,
                int4 dim, int width, int height)
@@ -1865,7 +1865,7 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
     float accum_G = 0;
     float accum_B = 0;
 
-    int hit_type = 0;
+    int hit_type = 1;
 
     int max_iterations = 512;
 
@@ -1888,6 +1888,18 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
         }
 
         if(length_sq(vel.yzw) < 0.2f * 0.2f)
+        {
+            hit_type = 1;
+            break;
+        }
+
+        if(fabs(pos.x) > 100)
+        {
+            hit_type = 1;
+            break;
+        }
+
+        if(fabs(vel.x) > 100)
         {
             hit_type = 1;
             break;

@@ -323,7 +323,7 @@ value get_kc()
 }
 
 ///https://arxiv.org/pdf/gr-qc/0401076.pdf
-#define DAMP_HAMILTONIAN
+//#define DAMP_HAMILTONIAN
 
 void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_matter)
 {

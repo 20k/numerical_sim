@@ -3841,7 +3841,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
         particle_data data;
 
-        float M = 0.1;
+        float M = 0.001;
         int N = 100000;
 
         #ifdef ACCRETE_FULLYRANDOM
@@ -3871,7 +3871,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
         }
         #endif
 
-        #define ACCRETE_FLATDISK
+        //#define ACCRETE_FLATDISK
         #ifdef ACCRETE_FLATDISK
         //N /= 10;
 
@@ -3903,6 +3903,10 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
             data.masses.push_back(mass);
         }
         #endif
+
+        data.position.push_back({-5, 0, 0});
+        data.velocities.push_back({0,0,0});
+        data.masses.push_back(M);
 
         data.particle_brightness = 0.0001f;
 
@@ -6458,7 +6462,7 @@ int main()
                     init_args.push_back(width);
                     init_args.push_back(height);
 
-                    clctx.cqueue.exec("init_rays", init_args, {width, height}, {8, 8});
+                    clctx.cqueue.exec("init_rays4", init_args, {width, height}, {8, 8});
                 }
 
                 {
@@ -6484,7 +6488,7 @@ int main()
                     render_args.push_back(height);
                     render_args.push_back(rendering_err);
 
-                    clctx.cqueue.exec("trace_rays", render_args, {width, height}, {8, 8});
+                    clctx.cqueue.exec("trace_rays4", render_args, {width, height}, {8, 8});
                 }
 
                 {
