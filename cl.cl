@@ -1522,8 +1522,20 @@ void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, 
     *out = (float3){d0, d1, d2};
 }
 
+struct render_ray_info
+{
+    float X, Y, Z;
+    float dX, dY, dZ;
+
+    int hit_type;
+
+    float R, G, B;
+
+    int x, y;
+};
+
 __kernel
-void calculate_adm_texture_coordinates(__global struct lightray_simple* finished_rays, __global float2* texture_coordinates, int width, int height,
+void calculate_adm_texture_coordinates(__global struct render_ray_info* finished_rays, __global float2* texture_coordinates, int width, int height,
                                        float3 camera_pos, float4 camera_quat,
                                        STANDARD_ARGS(), float scale, int4 dim)
 {
@@ -1533,17 +1545,14 @@ void calculate_adm_texture_coordinates(__global struct lightray_simple* finished
     if(x >= width || y >= height)
         return;
 
-    __global struct lightray_simple* ray = &finished_rays[y * width + x];
+    __global struct render_ray_info* ray = &finished_rays[y * width + x];
 
-    float3 cpos = {ray->lp1, ray->lp2, ray->lp3};
-    float3 cvel = {ray->V0, ray->V1, ray->V2};
-
-    float3 XDiff;
-    velocity_to_XDiff(&XDiff, cpos, cvel, scale, dim, GET_STANDARD_ARGS());
+    float3 cpos = {ray->X, ray->Y, ray->Z};
+    float3 cvel = {ray->dX, ray->dY, ray->dZ};
 
     float uni_size = universe_size;
 
-    cpos = fix_ray_position(cpos, XDiff, uni_size * RENDERING_CUTOFF_MULT);
+    cpos = fix_ray_position(cpos, cvel, uni_size * RENDERING_CUTOFF_MULT);
 
     float fr = fast_length(cpos);
     float theta = acos(cpos.z / fr);
@@ -1670,18 +1679,6 @@ float get_static_verlet_ds(float3 Xpos, __global float* X, float scale, int4 dim
 }
 
 #define SOLID_DENSITY 0.1
-
-struct render_ray_info
-{
-    float X, Y, Z;
-    float dX, dY, dZ;
-
-    int hit_type;
-
-    float R, G, B;
-
-    int x, y;
-};
 
 __kernel
 void trace_rays(__global struct lightray_simple* rays_in, __global struct render_ray_info* rays_terminated,
@@ -1891,9 +1888,9 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct render
     float3 XDiff;
     velocity_to_XDiff(&XDiff, Xpos_last, vel, scale, dim, GET_STANDARD_ARGS());
 
-    ray_out.dX = vel.x;
-    ray_out.dY = vel.y;
-    ray_out.dZ = vel.z;
+    ray_out.dX = XDiff.x;
+    ray_out.dY = XDiff.y;
+    ray_out.dZ = XDiff.z;
 
     ray_out.hit_type = hit_type;
     ray_out.R = accum_R;
