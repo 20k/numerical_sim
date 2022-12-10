@@ -1671,8 +1671,20 @@ float get_static_verlet_ds(float3 Xpos, __global float* X, float scale, int4 dim
 
 #define SOLID_DENSITY 0.1
 
+struct render_ray_info
+{
+    float X, Y, Z;
+    float dX, dY, dZ;
+
+    int hit_type;
+
+    float R, G, B;
+
+    int x, y;
+};
+
 __kernel
-void trace_rays(__global struct lightray_simple* rays_in, __global struct lightray_simple* rays_terminated,
+void trace_rays(__global struct lightray_simple* rays_in, __global struct render_ray_info* rays_terminated,
                 STANDARD_ARGS(),
                 STANDARD_UTILITY(),
                 int use_colour,
@@ -1868,21 +1880,22 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         #endif
     }
 
-    struct lightray_simple ray_out;
+    struct render_ray_info ray_out;
     ray_out.x = x;
     ray_out.y = y;
 
-    ray_out.lp1 = Xpos_last.x;
-    ray_out.lp2 = Xpos_last.y;
-    ray_out.lp3 = Xpos_last.z;
+    ray_out.X = Xpos_last.x;
+    ray_out.Y = Xpos_last.y;
+    ray_out.Z = Xpos_last.z;
 
-    ray_out.V0 = vel.x;
-    ray_out.V1 = vel.y;
-    ray_out.V2 = vel.z;
+    float3 XDiff;
+    velocity_to_XDiff(&XDiff, Xpos_last, vel, scale, dim, GET_STANDARD_ARGS());
 
-    ray_out.iter_frac = 0;
+    ray_out.dX = vel.x;
+    ray_out.dY = vel.y;
+    ray_out.dZ = vel.z;
+
     ray_out.hit_type = hit_type;
-    //ray_out.density = density;
     ray_out.R = accum_R;
     ray_out.G = accum_G;
     ray_out.B = accum_B;
@@ -1913,7 +1926,7 @@ float2 circular_diff2(float2 f1, float2 f2)
 
 #define MIPMAP_CONDITIONAL(x) (x(mip_background))
 
-__kernel void render_rays(__global struct lightray_simple* rays_in, __global int* ray_count, __write_only image2d_t screen,
+__kernel void render_rays(__global struct render_ray_info* rays_in, __global int* ray_count, __write_only image2d_t screen,
                           STANDARD_ARGS(),
                           float scale, int4 dim, int width, int height,
                           __read_only image2d_t mip_background,
@@ -1924,24 +1937,21 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
     if(idx >= width * height)
         return;
 
-    struct lightray_simple ray_in = rays_in[idx];
+    struct render_ray_info ray_in = rays_in[idx];
 
-    float lp1 = ray_in.lp1;
-    float lp2 = ray_in.lp2;
-    float lp3 = ray_in.lp3;
+    float lp1 = ray_in.X;
+    float lp2 = ray_in.Y;
+    float lp3 = ray_in.Z;
 
-    float V0 = ray_in.V0;
-    float V1 = ray_in.V1;
-    float V2 = ray_in.V2;
+    float V0 = ray_in.dX;
+    float V1 = ray_in.dY;
+    float V2 = ray_in.dZ;
 
     int x = ray_in.x;
     int y = ray_in.y;
 
     float3 cpos = {lp1, lp2, lp3};
     float3 cvel = {V0, V1, V2};
-
-    float3 XDiff;
-    velocity_to_XDiff(&XDiff, cpos, cvel, scale, dim, GET_STANDARD_ARGS());
 
     /*float density_frac = clamp(ray_in.density / SOLID_DENSITY, 0.f, 1.f);
 
@@ -1964,7 +1974,7 @@ __kernel void render_rays(__global struct lightray_simple* rays_in, __global int
 
     if(ray_in.hit_type == 0)
     {
-        cpos = fix_ray_position(cpos, XDiff, uni_size * RENDERING_CUTOFF_MULT);
+        cpos = fix_ray_position(cpos, cvel, uni_size * RENDERING_CUTOFF_MULT);
 
         float sxf = texture_coordinates[y * width + x].x;
         float syf = texture_coordinates[y * width + x].y;
