@@ -1828,14 +1828,14 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         float3 ABase;
         calculate_V_derivatives(&ABase, Xpos, vel, scale, dim, GET_STANDARD_ARGS());
 
-        VHalf = vel + 0.5f * ABase * ds;
+        VHalf = vel + 0.5f * ABase * -ds;
 
-        VFull_approx = vel + ABase * ds;
+        VFull_approx = vel + ABase * -ds;
 
         float3 XDiff;
         velocity_to_XDiff(&XDiff, Xpos, VHalf, scale, dim, GET_STANDARD_ARGS());
 
-        float3 XFull = Xpos + XDiff * ds;
+        float3 XFull = Xpos + XDiff * -ds;
 
         Xpos = XFull;
     }
@@ -1869,7 +1869,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
             float3 AFull_approx;
             calculate_V_derivatives(&AFull_approx, Xpos, VFull_approx, scale, dim, GET_STANDARD_ARGS());
 
-            float3 VFull = VHalf + 0.5f * AFull_approx * ds;
+            float3 VFull = VHalf + 0.5f * AFull_approx * -ds;
 
             vel = VFull;
         }
@@ -1883,13 +1883,13 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
             float3 ABase;
             calculate_V_derivatives(&ABase, Xpos, vel, scale, dim, GET_STANDARD_ARGS());
 
-            VHalf = vel + 0.5f * ABase * ds;
+            VHalf = vel + 0.5f * ABase * -ds;
 
-            VFull_approx = vel + ABase * ds;
+            VFull_approx = vel + ABase * -ds;
 
             velocity_to_XDiff(&XDiff, Xpos, VHalf, scale, dim, GET_STANDARD_ARGS());
 
-            float3 XFull = Xpos + XDiff * ds;
+            float3 XFull = Xpos + XDiff * -ds;
 
             Xpos_last = Xpos;
             Xpos = XFull;
@@ -1899,7 +1899,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
         float E_dt;
         calculate_E_derivative(&E_dt, Xpos, vel, E_b, scale, dim, GET_STANDARD_ARGS());
 
-        E_b += E_dt * ds;
+        E_b += E_dt * -ds;
         #endif
 
         if(length_sq(Xpos) >= u_sq)
