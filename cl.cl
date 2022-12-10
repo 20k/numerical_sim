@@ -1601,6 +1601,45 @@ void init_ray4(__global struct lightray4* rays,
     if(y >= height)
         return;
 
+    float pX;
+    float pY;
+    float pZ;
+    float pW;
+
+    float dX;
+    float dY;
+    float dZ;
+    float dW;
+
+    {
+        float3 world_pos = camera_pos;
+
+        float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
+
+        float fx = voxel_pos.x;
+        float fy = voxel_pos.y;
+        float fz = voxel_pos.z;
+
+        float TEMPORARIES5;
+
+        pX = lp0_d;
+        pY = lp1_d;
+        pZ = lp2_d;
+        pW = lp3_d;
+
+        dX = lv0_d;
+        dY = lv1_d;
+        dZ = lv2_d;
+        dW = lv3_d;
+    }
+
+    struct lightray4 ray = {};
+    ray.pos = (float4){pX, pY, pZ, pW};
+    ray.vel = (float4){dX, dY, dZ, dW};
+    ray.x = x;
+    ray.y = y;
+
+    rays[y * width + x] = ray;
 }
 
 __kernel
@@ -1663,9 +1702,6 @@ void init_rays(__global struct lightray_simple* rays,
     out.hit_type = 0;
 
     rays[y * width + x] = out;
-
-    if(x == 0 && y == 0)
-        *ray_count0 = width * height;
 }
 
 float length_sq(float3 in)
