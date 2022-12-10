@@ -1626,7 +1626,7 @@ float3 redshift_with_intensity(float3 lin_result, float z_shift)
 }
 
 ///u_em_lower is purely for practical reasons, because u_em_upper is annoying to calculate in C
-float calculate_1pz(float3 Xpos, float E_a, float E_b, float3 U_recv_upper, float3 U_em_lower, float3 V_upper_a, float3 V_upper_b, float scale, int4 dim, STANDARD_ARGS())
+float calculate_1pz(float3 Xpos, float E_a, float E_b, float3 U_em_upper, float3 U_recv_lower, float3 V_upper_a, float3 V_upper_b, float scale, int4 dim, STANDARD_ARGS())
 {
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
     voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
@@ -1933,10 +1933,18 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct lightr
 
             if(matter_p != 0)
             {
-                float3 uemit_lower = {matter_Si0/matter_p, matter_Si1/matter_p, matter_Si2/matter_p};
+                float3 urecv_lower = {matter_Si0/matter_p, matter_Si1/matter_p, matter_Si2/matter_p};
                 float3 V_upper_at_b = vel;
 
-                float zp1 = calculate_1pz(Xpos, E_a, E_b, urec_upper, uemit_lower, V_upper_at_a, V_upper_at_b, scale, dim, GET_STANDARD_ARGS());
+                float zp1 = calculate_1pz(Xpos, E_a, E_b, (float3)(0,0,0), urecv_lower, V_upper_at_a, vel, scale, dim, GET_STANDARD_ARGS());
+
+                float3 shifted = redshift_with_intensity((float3)(next_R, next_G, next_B), zp1 - 1);
+
+                next_R = shifted.x;
+                next_G = shifted.y;
+                next_B = shifted.z;
+
+                //float zp1 = calculate_1pz(Xpos, E_a, E_b, urec_upper, uemit_lower, V_upper_at_a, V_upper_at_b, scale, dim, GET_STANDARD_ARGS());
             }
             #endif
 

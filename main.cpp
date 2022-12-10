@@ -5443,11 +5443,15 @@ void calculate_redshift(equation_context& ctx)
     tensor<value, 3> V_upper_a = {"V_upper_a.x", "V_upper_a.y", "V_upper_a.z"};
     tensor<value, 3> V_upper_b = {"V_upper_b.x", "V_upper_b.y", "V_upper_b.z"};
 
-    tensor<value, 3> U_recv_upper = {"U_recv_upper.x", "U_recv_upper.y", "U_recv_upper.z"};
-    tensor<value, 3> U_em_lower = {"U_em_lower.x", "U_em_lower.y", "U_em_lower.z"};
+    tensor<value, 3> U_recv_lower = {"U_recv_lower.x", "U_recv_lower.y", "U_recv_lower.z"};
+    tensor<value, 3> U_recv_upper = raise_index(U_recv_lower, args.iYij, 0);
+
+    /*tensor<value, 3> U_em_lower = {"U_em_lower.x", "U_em_lower.y", "U_em_lower.z"};
 
     ///todo: I don't actually need this
-    tensor<value, 3> U_em_upper = raise_index(U_em_lower, args.iYij, 0);
+    tensor<value, 3> U_em_upper = raise_index(U_em_lower, args.iYij, 0);*/
+
+    tensor<value, 3> U_em_upper = {"U_em_upper.x", "U_em_upper.y", "U_em_upper.z"};
 
     value p1 = E_a/E_b;
 
