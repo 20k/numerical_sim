@@ -3841,7 +3841,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
         particle_data data;
 
-        float M = 0.1;
+        float M = 0.001;
         int N = 100000;
 
         #ifdef ACCRETE_FULLYRANDOM
