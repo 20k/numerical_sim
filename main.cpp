@@ -5202,13 +5202,19 @@ void process_geodesics(equation_context& ctx)
 
     tensor<value, 4> tensor_velocity = {lightray_velocity.x(), lightray_velocity.y(), lightray_velocity.z(), lightray_velocity.w()};
 
+    tensor<value, 4> tensor_velocity_lowered = lower_index(tensor_velocity, real_metric, 0);
+
     /*tensor<value, 4> velocity_lower = lower_index(lightray_velocity_t, real_metric, 0);
 
     tensor<value, 3> adm_V_lower = {velocity_lower.idx(1), velocity_lower.idx(2), velocity_lower.idx(3)};
 
     tensor<value, 3> adm_V_higher = raise_index(adm_V_lower, args.Yij.invert(), 0);*/
 
-    tensor<value, 4> adm_velocity = (tensor_velocity / tensor_velocity.idx(0)) - get_adm_hypersurface_normal_raised(args.gA, args.gB);
+    tensor<value, 4> N = get_adm_hypersurface_normal_raised(args.gA, args.gB);
+
+    value E = -sum_multiply(tensor_velocity_lowered, N);
+
+    tensor<value, 4> adm_velocity = (tensor_velocity / E) - N;
 
     ctx.add("V0_d", adm_velocity.idx(1));
     ctx.add("V1_d", adm_velocity.idx(2));
