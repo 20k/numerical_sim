@@ -1579,8 +1579,32 @@ void calculate_adm_texture_coordinates(__global struct render_ray_info* finished
     texture_coordinates[y * width + x] = (float2)(sxf, syf);
 }
 
+struct lightray4
+{
+    float4 pos;
+    float4 vel;
+    int x, y;
+};
+
 __kernel
-void init_rays(__global struct lightray_simple* rays, __global int* ray_count0,
+void init_ray4(__global struct lightray4* rays,
+               STANDARD_ARGS(),
+               float scale, float3 camera_pos, float4 camera_quat,
+               int4 dim, int width, int height)
+{
+    int x = get_global_id(0);
+    int y = get_global_id(1);
+
+    if(x >= width)
+        return;
+
+    if(y >= height)
+        return;
+
+}
+
+__kernel
+void init_rays(__global struct lightray_simple* rays,
                 STANDARD_ARGS(),
                 float scale, float3 camera_pos, float4 camera_quat,
                 int4 dim, int width, int height)
@@ -1923,7 +1947,7 @@ float2 circular_diff2(float2 f1, float2 f2)
 
 #define MIPMAP_CONDITIONAL(x) (x(mip_background))
 
-__kernel void render_rays(__global struct render_ray_info* rays_in, __global int* ray_count, __write_only image2d_t screen,
+__kernel void render_rays(__global struct render_ray_info* rays_in, __write_only image2d_t screen,
                           STANDARD_ARGS(),
                           float scale, int4 dim, int width, int height,
                           __read_only image2d_t mip_background,
