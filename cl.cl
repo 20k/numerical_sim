@@ -2556,7 +2556,7 @@ __kernel void render_rays(__global struct render_ray_info* rays_in, __write_only
 
         linear_col = redshift_with_intensity(linear_col, ray_in.zp1 - 1);
 
-        float3 with_density = clamp(mix(linear_col + density_col, ray_in.A), 0.f, 1.f);
+        float3 with_density = clamp(mix(linear_col, density_col, ray_in.A), 0.f, 1.f);
 
         write_imagef(screen, (int2){x, y}, (float4)(with_density, 1.f));
     }
