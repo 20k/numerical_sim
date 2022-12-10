@@ -1815,7 +1815,7 @@ float get_static_verlet_ds(float3 Xpos, __global float* X, float scale, int4 dim
     my_fraction = clamp(my_fraction, 0.f, 1.f);
 
     #ifdef TRACE_MATTER_P
-    return scale;
+    return scale * 0.25f;
     #endif // TRACE_MATTER_P
 
     #ifdef RENDER_MATTER
@@ -1917,7 +1917,7 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
 
     int hit_type = 1;
 
-    int max_iterations = 512;
+    int max_iterations = 2048;
 
     float camera_ku = ray_in.ku_uobsu;
 
