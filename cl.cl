@@ -1932,7 +1932,9 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
             float next_G = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
             float next_B = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
 
-
+            accum_R += next_R;
+            accum_G += next_G;
+            accum_B += next_B;
 
             if(accum_R > 1 && accum_G > 1 && accum_G > 1)
                 break;
