@@ -5393,6 +5393,8 @@ void loop_geodesics4(equation_context& ctx)
 
     inverse_metric<value, 4, 4> inv = met.invert();
 
+    ctx.pin(inv);
+
     auto diff4 = [&](const value& in, int idx)
     {
         if(idx == 0)

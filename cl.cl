@@ -1803,7 +1803,7 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
             break;
         }
 
-        if(length_sq(XDiff) < 0.2f * 0.2f)
+        if(length_sq(vel.yzw) < 0.2f * 0.2f)
         {
             hit_type = 1;
             break;
@@ -1816,7 +1816,7 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
 
             float p_val = fabs(buffer_read_linear(adm_p, voxel_pos, dim));
 
-            float voxels_intersected = fast_length(XDiff) * ds;
+            float voxels_intersected = fast_length(vel.yzw) * ds;
 
             accum_R += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
             accum_G += p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
