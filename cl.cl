@@ -1667,6 +1667,7 @@ struct lightray4
 {
     float4 pos;
     float4 vel;
+    float ku_uobsu;
 };
 
 __kernel
@@ -1694,6 +1695,8 @@ void init_rays4(__global struct lightray4* rays,
     float dZ;
     float dW;
 
+    float ku_uobsu;
+
     {
         float3 world_pos = camera_pos;
 
@@ -1714,11 +1717,14 @@ void init_rays4(__global struct lightray4* rays,
         dY = lv1_d;
         dZ = lv2_d;
         dW = lv3_d;
+
+        ku_uobsu = GET_KU_UOBSU;
     }
 
     struct lightray4 ray = {};
     ray.pos = (float4){pX, pY, pZ, pW};
     ray.vel = (float4){dX, dY, dZ, dW};
+    ray.ku_uobsu = ku_uobsu;
 
     rays[y * width + x] = ray;
 }
@@ -1913,7 +1919,9 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
 
     int max_iterations = 512;
 
-    float emitter_ku = dot(lower4(pos.yzw, vel, scale, dim, GET_STANDARD_ARGS()), (float4)(1, 0, 0, 0));
+    float camera_ku = ray_in.ku_uobsu;
+
+    //float emitter_ku = dot(lower4(pos.yzw, vel, scale, dim, GET_STANDARD_ARGS()), (float4)(1, 0, 0, 0));
 
     for(int iteration=0; iteration < max_iterations; iteration++)
     {
@@ -1985,7 +1993,7 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
 
                 float current_ku = dot(current_vel_lower, full_matter_upper);
 
-                float zp1 = current_ku / emitter_ku;
+                float zp1 = current_ku / camera_ku;
 
                 float3 shifted = redshift_with_intensity((float3)(next_R, next_G, next_B), zp1-1);
 
@@ -2024,7 +2032,7 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
     ///float z_shift = (velocity.x / -ray->ku_uobsu) - 1;
 
     //ray_out.zp1 = vel.x / -emitter_ku;
-    ray_out.zp1 = final_dot / emitter_ku;
+    ray_out.zp1 = final_dot / camera_ku;
 
     rays_terminated[y * width + x] = ray_out;
 }

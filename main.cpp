@@ -5172,6 +5172,9 @@ void process_geodesics(equation_context& ctx)
     }
     */
 
+    ///correct for no basis speed
+    tensor<value, 4> observer_velocity = {oriented.e[0][0], oriented.e[0][1], oriented.e[0][2], oriented.e[0][3]};
+
     vec<4, value> pixel_x = pixel_direction.x() * oriented.e[1];
     vec<4, value> pixel_y = pixel_direction.y() * oriented.e[2];
     vec<4, value> pixel_z = pixel_direction.z() * oriented.e[3];
@@ -5198,6 +5201,10 @@ void process_geodesics(equation_context& ctx)
     tensor<value, 4> tensor_velocity = {lightray_velocity.x(), lightray_velocity.y(), lightray_velocity.z(), lightray_velocity.w()};
 
     tensor<value, 4> tensor_velocity_lowered = lower_index(tensor_velocity, real_metric, 0);
+
+    value ku_uobsu = sum_multiply(tensor_velocity_lowered, observer_velocity);
+
+    ctx.add("GET_KU_UOBSU", ku_uobsu);
 
     tensor<value, 4> N = get_adm_hypersurface_normal_raised(args.gA, args.gB);
 
