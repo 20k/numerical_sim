@@ -2008,7 +2008,7 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
         #endif
     }
 
-    float4 final_observer_lowered = lower4(pos.yzw, (float4)(1, 0, 0, 0), scale, dim, GET_STANDARD_ARGS());
+    float4 final_observer_lowered = lower4(last_pos.yzw, (float4)(1, 0, 0, 0), scale, dim, GET_STANDARD_ARGS());
 
     float final_dot = dot(vel, final_observer_lowered);
 
@@ -2016,9 +2016,9 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
     ray_out.x = x;
     ray_out.y = y;
 
-    ray_out.X = pos.y;
-    ray_out.Y = pos.z;
-    ray_out.Z = pos.w;
+    ray_out.X = last_pos.y;
+    ray_out.Y = last_pos.z;
+    ray_out.Z = last_pos.w;
 
     ray_out.dX = vel.y;
     ray_out.dY = vel.z;
