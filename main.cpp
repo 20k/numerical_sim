@@ -5382,6 +5382,26 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     ctx.add("GET_X_DS", args.get_X());
 
+    {
+        value E = "E_in";
+
+        value diff = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            value kij_sum = 0;
+
+            for(int j=0; j < 3; j++)
+            {
+                kij_sum += args.Kij.idx(i, j) * V_upper.idx(j);
+            }
+
+            diff += E * V_upper.idx(i) * (args.gA * kij_sum - diff1(ctx, args.gA, i));
+        }
+
+        ctx.add("EDiff", diff);
+    }
+
     /**
     [tt, tx, ty, tz,
     xt, xx, xy, xz,
