@@ -1539,6 +1539,8 @@ struct render_ray_info
 ///takes a linear colour
 float3 redshift(float3 v, float z)
 {
+    z = max(z, -0.999f);
+
     ///1 + z = gtt(recv) / gtt(src)
     ///1 + z = lnow / lthen
     ///1 + z = wsrc / wobs
@@ -1922,6 +1924,11 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
 
     float camera_ku = ray_in.ku_uobsu;
 
+    ///av is the absorption coefficient
+    ///jv is the emission coefficient
+    float integration_Tv = 0;
+    float integration_intensity = 0;
+
     //float emitter_ku = dot(lower4(pos.yzw, vel, scale, dim, GET_STANDARD_ARGS()), (float4)(1, 0, 0, 0));
 
     for(int iteration=0; iteration < max_iterations; iteration++)
@@ -1971,10 +1978,10 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
 
             float voxels_intersected = fast_length(vel.yzw) * ds;
 
-            float next_R = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
+            /*float next_R = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
             float next_G = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
             float next_B = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
-            float next_A = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
+            float next_A = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;*/
 
             ///> 0 except at singularity where there is matter
             float matter_p = buffer_read_linear(adm_p, voxel_pos, dim);
@@ -1995,14 +2002,26 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
 
                 float current_ku = dot(current_vel_lower, full_matter_upper);
 
+                ///ilorentz
                 float zp1 = current_ku / camera_ku;
 
-                float3 shifted = redshift_with_intensity((float3)(next_R, next_G, next_B), zp1-1);
+                float absorption = (p_val * PARTICLE_BRIGHTNESS)/MINIMUM_MASS;
+                float emission = (p_val * PARTICLE_BRIGHTNESS)/MINIMUM_MASS;
 
-                accum_R += shifted.x;
-                accum_G += shifted.y;
-                accum_B += shifted.z;
-                accum_A += next_A;
+                float3 colour = redshift((float3)(emission, emission, emission), zp1-1);
+                float3 intensity_colour = redshift_with_intensity((float3)(emission, emission, emission), zp1 - 1);
+
+                float dt_ds = zp1 * absorption * ds;
+                float di_ds_unshifted = emission * exp(-integration_Tv) * ds;
+                float di_ds = zp1 * di_ds_unshifted;
+
+                integration_Tv += dt_ds;
+                //integration_intensity +=
+
+                accum_R += di_ds_unshifted * intensity_colour.x * exp(-integration_Tv) * 1.f;
+                accum_G += di_ds_unshifted * intensity_colour.y * exp(-integration_Tv) * 1.f;
+                accum_B += di_ds_unshifted * intensity_colour.z * exp(-integration_Tv) * 1.f;
+                accum_A = integration_Tv;
 
                 if(accum_A >= 1)
                     break;
@@ -2319,14 +2338,19 @@ __kernel void render_rays(__global struct render_ray_info* rays_in, __write_only
 
     float3 density_col = {ray_in.R, ray_in.G, ray_in.B};
 
-    #ifndef TRACE_MATTER_P
+    /*#ifndef TRACE_MATTER_P
     if(any(density_col > 1))
     {
         density_col /= max(density_col.x, max(density_col.y, density_col.z));
     }
     #else
     density_col = clamp(density_col, 0.f, 1.f);
-    #endif
+    #endif*/
+
+    if(any(density_col > 1))
+    {
+        density_col /= max(density_col.x, max(density_col.y, density_col.z));
+    }
 
     float uni_size = universe_size;
 
