@@ -2006,7 +2006,7 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
                 float zp1 = current_ku / camera_ku;
 
                 float absorption = (p_val * PARTICLE_BRIGHTNESS)/MINIMUM_MASS;
-                float emission = (p_val * PARTICLE_BRIGHTNESS)/MINIMUM_MASS;
+                float emission = 2.f * (p_val * PARTICLE_BRIGHTNESS)/MINIMUM_MASS;
 
                 float3 colour = redshift((float3)(emission, emission, emission), zp1-1);
                 float3 intensity_colour = redshift_with_intensity((float3)(emission, emission, emission), zp1 - 1);
@@ -2021,6 +2021,9 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
                 accum_R += di_ds_unshifted * intensity_colour.x * exp(-integration_Tv) * 1.f;
                 accum_G += di_ds_unshifted * intensity_colour.y * exp(-integration_Tv) * 1.f;
                 accum_B += di_ds_unshifted * intensity_colour.z * exp(-integration_Tv) * 1.f;
+                //accum_A += di_ds * emission * exp(-integration_Tv);
+                //accum_A = integration_Tv;
+
                 accum_A = integration_Tv;
 
                 if(accum_A >= 1)
