@@ -1529,7 +1529,8 @@ struct render_ray_info
 
     int hit_type;
 
-    float R, G, B, A;
+    float R, G, B;
+    float background_power;
 
     int x, y;
     float zp1;
@@ -1916,7 +1917,6 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
     float accum_R = 0;
     float accum_G = 0;
     float accum_B = 0;
-    float accum_A = 0;
 
     int hit_type = 1;
 
@@ -1930,6 +1930,8 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
     float integration_intensity = 0;
 
     //float emitter_ku = dot(lower4(pos.yzw, vel, scale, dim, GET_STANDARD_ARGS()), (float4)(1, 0, 0, 0));
+
+    float background_power = 1;
 
     for(int iteration=0; iteration < max_iterations; iteration++)
     {
@@ -2005,6 +2007,7 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
                 ///ilorentz
                 float zp1 = current_ku / camera_ku;
 
+                ///https://arxiv.org/pdf/1207.4234.pdf
                 float absorption = (p_val * PARTICLE_BRIGHTNESS)/MINIMUM_MASS;
                 float emission = 2.f * (p_val * PARTICLE_BRIGHTNESS)/MINIMUM_MASS;
 
@@ -2024,9 +2027,9 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
                 //accum_A += di_ds * emission * exp(-integration_Tv);
                 //accum_A = integration_Tv;
 
-                accum_A = integration_Tv;
+                background_power = exp(-integration_Tv);
 
-                if(accum_A >= 1)
+                if(fabs(background_power) < 0.001f)
                     break;
             }
         }
@@ -2053,7 +2056,7 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
     ray_out.R = accum_R;
     ray_out.G = accum_G;
     ray_out.B = accum_B;
-    ray_out.A = clamp(accum_A, 0.f, 1.f);
+    ray_out.background_power = clamp(background_power, 0.f, 1.f);
 
     ///float z_shift = (velocity.x / -ray->ku_uobsu) - 1;
 
@@ -2279,7 +2282,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct render
     ray_out.R = accum_R;
     ray_out.G = accum_G;
     ray_out.B = accum_B;
-    ray_out.A = 0;
+    ray_out.background_power = 1;
     ray_out.zp1 = 1;
 
     rays_terminated[y * width + x] = ray_out;
@@ -2583,7 +2586,11 @@ __kernel void render_rays(__global struct render_ray_info* rays_in, __write_only
 
         linear_col = redshift_with_intensity(linear_col, ray_in.zp1 - 1);
 
-        float3 with_density = clamp(mix(linear_col, density_col, ray_in.A), 0.f, 1.f);
+        float3 with_density = linear_col * ray_in.background_power + density_col;
+
+        with_density = clamp(with_density, 0.f, 1.f);
+
+        //float3 with_density = clamp(mix(linear_col, density_col, ray_in.A), 0.f, 1.f);
 
         write_imagef(screen, (int2){x, y}, (float4)(with_density, 1.f));
     }
@@ -2591,7 +2598,7 @@ __kernel void render_rays(__global struct render_ray_info* rays_in, __write_only
     {
         float3 val = (float3)(0,0,0);
 
-        val = density_col * ray_in.A;
+        val = density_col;
 
         //val.xyz = clamp(ray_in.iter_frac, 0.f, 1.f);
 
