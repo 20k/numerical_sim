@@ -1999,10 +1999,11 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
             break;
         }
 
-        //#ifdef TRACE_MATTER_P
-
         #if defined(TRACE_MATTER_P) || defined(RENDER_MATTER)
         {
+            float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+            voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
             ///> 0 except at singularity where there is matter
             float matter_p = get_matter_p(pos.yzw, scale, dim, GET_STANDARD_ARGS(), GET_STANDARD_UTILITY());
 
@@ -2010,22 +2011,21 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
 
             ///https://arxiv.org/pdf/1207.4234.pdf
             float absorption = (p_val * PARTICLE_BRIGHTNESS)/MINIMUM_MASS;
-            float emission = 2.f * (p_val * PARTICLE_BRIGHTNESS)/MINIMUM_MASS;
+            //float emission = 2.f * (p_val * PARTICLE_BRIGHTNESS)/MINIMUM_MASS;
 
             float next_R = 0;
             float next_G = 0;
             float next_B = 0;
 
             #ifdef TRACE_MATTER_P
+            float emission = 2.f * fabs(buffer_read_linear(adm_p, voxel_pos, dim)) * PARTICLE_BRIGHTNESS/MINIMUM_MASS;
+
             next_R += emission;
             next_G += emission;
             next_B += emission;
             #endif
 
             #ifdef RENDER_MATTER
-            float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
-            voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
-
             float pstar_val = buffer_read_linear(Dp_star, voxel_pos, dim);
 
             if(!use_colour)
@@ -2060,7 +2060,7 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
                 float3 intensity_colour = redshift_with_intensity((float3)(next_R, next_G, next_B), zp1 - 1);
 
                 float dt_ds = zp1 * absorption * ds;
-                float di_ds_unshifted = emission * exp(-integration_Tv) * ds;
+                float di_ds_unshifted = exp(-integration_Tv) * ds;
                 float di_ds = zp1 * di_ds_unshifted;
 
                 integration_Tv += dt_ds;
