@@ -1992,19 +1992,8 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
 
             float p_val = fabs(buffer_read_linear(adm_p, voxel_pos, dim));
 
-            float voxels_intersected = fast_length(vel.yzw) * ds;
-
-            /*float next_R = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
-            float next_G = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
-            float next_B = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;
-            float next_A = p_val * PARTICLE_BRIGHTNESS * voxels_intersected/MINIMUM_MASS;*/
-
             ///> 0 except at singularity where there is matter
             float matter_p = buffer_read_linear(adm_p, voxel_pos, dim);
-
-            float matter_Si0 = buffer_read_linear(adm_Si0, voxel_pos, dim);
-            float matter_Si1 = buffer_read_linear(adm_Si1, voxel_pos, dim);
-            float matter_Si2 = buffer_read_linear(adm_Si2, voxel_pos, dim);
 
             if(matter_p != 0)
             {
