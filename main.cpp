@@ -3185,6 +3185,23 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
     }
 }
 
+void build_get_matter_3vel(matter_interop& interop, equation_context& ctx)
+{
+    ctx.uses_linear = true;
+    ctx.order = 1;
+    ctx.use_precise_differentiation = false;
+
+    standard_arguments args(ctx);
+
+    tensor<value, 3> u_lower = interop.calculate_adm_Si(ctx, args) / interop.calculate_adm_p(ctx, args);
+
+    tensor<value, 3> u_upper = raise_index(u_lower, args.iYij, 0);
+
+    ctx.add("GET_3VEL_UPPER0", u_upper.idx(0));
+    ctx.add("GET_3VEL_UPPER1", u_upper.idx(1));
+    ctx.add("GET_3VEL_UPPER2", u_upper.idx(2));
+}
+
 #if 0
 sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data<float>>& cpu_holes, float scale, vec3i dim)
 {
@@ -5866,6 +5883,9 @@ int main()
     equation_context ctxgeo4;
     loop_geodesics4(ctxgeo4);
 
+    equation_context ctxget3vel;
+    build_get_matter_3vel(meta_interop, ctxget3vel);
+
     equation_context ctx10;
     build_kreiss_oliger_dissipate_singular(ctx10);
 
@@ -5893,6 +5913,7 @@ int main()
     ctx6.build(argument_string, 5);
     ctx7.build(argument_string, 6);
     ctxgeo4.build(argument_string, "geo4");
+    ctxget3vel.build(argument_string, "get3vel");
     ctx10.build(argument_string, 9);
     ctx11.build(argument_string, 10);
     ctx12.build(argument_string, 11);

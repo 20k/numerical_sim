@@ -1892,6 +1892,20 @@ float4 adm_3velocity_to_full(float3 Xpos, float3 upper, float scale, int4 dim, S
     return (float4){ADMFULL0, ADMFULL1, ADMFULL2, ADMFULL3};
 }
 
+float3 get_3vel_upper(float3 Xpos, float scale, int4 dim, STANDARD_ARGS(), STANDARD_UTILITY())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float TEMPORARIESget3vel;
+
+    return (float3){GET_3VEL_UPPER0, GET_3VEL_UPPER1, GET_3VEL_UPPER2};
+}
+
 __kernel
 void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_info* rays_terminated,
                 STANDARD_ARGS(),
@@ -1935,10 +1949,8 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
 
     for(int iteration=0; iteration < max_iterations; iteration++)
     {
-        float3 Xpos = pos.yzw;
-
         ///next iteration
-        float ds = get_static_verlet_ds(Xpos, X, scale, dim);
+        float ds = get_static_verlet_ds(pos.yzw, X, scale, dim);
 
         float4 accel = get_accel4(pos, vel, scale, dim, GET_STANDARD_ARGS());
 
@@ -1946,6 +1958,8 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
 
         pos += vel * ds;
         vel += accel * ds;
+
+        float3 Xpos = pos.yzw;
 
         if(length_sq(Xpos) >= u_sq)
         {
@@ -1994,9 +2008,7 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
 
             if(matter_p != 0)
             {
-                float3 u_matter_lower = {matter_Si0/matter_p, matter_Si1/matter_p, matter_Si2/matter_p};
-
-                float3 u_matter_upper = raise3(pos.yzw, u_matter_lower, scale, dim, GET_STANDARD_ARGS());
+                float3 u_matter_upper = get_3vel_upper(pos.yzw, scale, dim, GET_STANDARD_ARGS(), GET_STANDARD_UTILITY());
 
                 float4 full_matter_upper = adm_3velocity_to_full(pos.yzw, u_matter_upper, scale, dim, GET_STANDARD_ARGS());
 
@@ -2034,6 +2046,30 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
             }
         }
         #endif
+
+        #ifdef RENDER_MATTER
+        {
+            float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+            voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+            float pstar_val = buffer_read_linear(Dp_star, voxel_pos, dim);
+
+            if(!use_colour)
+            {
+                accum_R += pstar_val;
+                accum_G += pstar_val;
+                accum_B += pstar_val;
+            }
+            else
+            {
+                #ifdef HAS_COLOUR
+                accum_R += buffer_read_linear(dRed, voxel_pos, dim) * 1;
+                accum_G += buffer_read_linear(dGreen, voxel_pos, dim) * 1;
+                accum_B += buffer_read_linear(dBlue, voxel_pos, dim) * 1;
+                #endif
+            }
+        }
+        #endif // RENDER_MATTER
     }
 
     float4 final_observer_lowered = lower4(last_pos.yzw, (float4)(1, 0, 0, 0), scale, dim, GET_STANDARD_ARGS());
