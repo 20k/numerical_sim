@@ -3185,13 +3185,15 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
     }
 }
 
-void build_get_matter_3vel(matter_interop& interop, equation_context& ctx)
+void build_get_matter(matter_interop& interop, equation_context& ctx)
 {
     ctx.uses_linear = true;
     ctx.order = 1;
     ctx.use_precise_differentiation = false;
 
     standard_arguments args(ctx);
+
+    ctx.add("GET_ADM_P", interop.calculate_adm_p(ctx, args));
 
     tensor<value, 3> u_lower = interop.calculate_adm_Si(ctx, args) / interop.calculate_adm_p(ctx, args);
 
@@ -5883,8 +5885,8 @@ int main()
     equation_context ctxgeo4;
     loop_geodesics4(ctxgeo4);
 
-    equation_context ctxget3vel;
-    build_get_matter_3vel(meta_interop, ctxget3vel);
+    equation_context ctxgetmatter;
+    build_get_matter(meta_interop, ctxgetmatter);
 
     equation_context ctx10;
     build_kreiss_oliger_dissipate_singular(ctx10);
@@ -5913,7 +5915,7 @@ int main()
     ctx6.build(argument_string, 5);
     ctx7.build(argument_string, 6);
     ctxgeo4.build(argument_string, "geo4");
-    ctxget3vel.build(argument_string, "get3vel");
+    ctxgetmatter.build(argument_string, "getmatter");
     ctx10.build(argument_string, 9);
     ctx11.build(argument_string, 10);
     ctx12.build(argument_string, 11);

@@ -1901,9 +1901,23 @@ float3 get_3vel_upper(float3 Xpos, float scale, int4 dim, STANDARD_ARGS(), STAND
     float fy = voxel_pos.y;
     float fz = voxel_pos.z;
 
-    float TEMPORARIESget3vel;
+    float TEMPORARIESgetmatter;
 
     return (float3){GET_3VEL_UPPER0, GET_3VEL_UPPER1, GET_3VEL_UPPER2};
+}
+
+float get_matter_p(float3 Xpos, float scale, int4 dim, STANDARD_ARGS(), STANDARD_UTILITY())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float TEMPORARIESgetmatter;
+
+    return GET_ADM_P;
 }
 
 __kernel
@@ -1985,15 +1999,50 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
             break;
         }
 
-        #ifdef TRACE_MATTER_P
+        //#ifdef TRACE_MATTER_P
+
+        #if defined(TRACE_MATTER_P) || defined(RENDER_MATTER)
         {
+            ///> 0 except at singularity where there is matter
+            float matter_p = get_matter_p(pos.yzw, scale, dim, GET_STANDARD_ARGS(), GET_STANDARD_UTILITY());
+
+            float p_val = fabs(matter_p);
+
+            ///https://arxiv.org/pdf/1207.4234.pdf
+            float absorption = (p_val * PARTICLE_BRIGHTNESS)/MINIMUM_MASS;
+            float emission = 2.f * (p_val * PARTICLE_BRIGHTNESS)/MINIMUM_MASS;
+
+            float next_R = 0;
+            float next_G = 0;
+            float next_B = 0;
+
+            #ifdef TRACE_MATTER_P
+            next_R += emission;
+            next_G += emission;
+            next_B += emission;
+            #endif
+
+            #ifdef RENDER_MATTER
             float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
             voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
-            float p_val = fabs(buffer_read_linear(adm_p, voxel_pos, dim));
+            float pstar_val = buffer_read_linear(Dp_star, voxel_pos, dim);
 
-            ///> 0 except at singularity where there is matter
-            float matter_p = buffer_read_linear(adm_p, voxel_pos, dim);
+            if(!use_colour)
+            {
+                next_R += pstar_val;
+                next_G += pstar_val;
+                next_B += pstar_val;
+            }
+            else
+            {
+                #ifdef HAS_COLOUR
+                next_R += buffer_read_linear(dRed, voxel_pos, dim) * 1;
+                next_G += buffer_read_linear(dGreen, voxel_pos, dim) * 1;
+                next_B += buffer_read_linear(dBlue, voxel_pos, dim) * 1;
+                #endif
+            }
+            #endif
 
             if(matter_p != 0)
             {
@@ -2008,19 +2057,13 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
                 ///ilorentz
                 float zp1 = current_ku / camera_ku;
 
-                ///https://arxiv.org/pdf/1207.4234.pdf
-                float absorption = (p_val * PARTICLE_BRIGHTNESS)/MINIMUM_MASS;
-                float emission = 2.f * (p_val * PARTICLE_BRIGHTNESS)/MINIMUM_MASS;
-
-                float3 colour = redshift((float3)(emission, emission, emission), zp1-1);
-                float3 intensity_colour = redshift_with_intensity((float3)(emission, emission, emission), zp1 - 1);
+                float3 intensity_colour = redshift_with_intensity((float3)(next_R, next_G, next_B), zp1 - 1);
 
                 float dt_ds = zp1 * absorption * ds;
                 float di_ds_unshifted = emission * exp(-integration_Tv) * ds;
                 float di_ds = zp1 * di_ds_unshifted;
 
                 integration_Tv += dt_ds;
-                //integration_intensity +=
 
                 accum_R += di_ds_unshifted * intensity_colour.x * exp(-integration_Tv) * 1.f;
                 accum_G += di_ds_unshifted * intensity_colour.y * exp(-integration_Tv) * 1.f;
@@ -2029,36 +2072,12 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
                 //accum_A = integration_Tv;
 
                 background_power = exp(-integration_Tv);
-
-                if(fabs(background_power) < 0.001f)
-                    break;
             }
         }
         #endif
 
-        #ifdef RENDER_MATTER
-        {
-            float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
-            voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
-
-            float pstar_val = buffer_read_linear(Dp_star, voxel_pos, dim);
-
-            if(!use_colour)
-            {
-                accum_R += pstar_val;
-                accum_G += pstar_val;
-                accum_B += pstar_val;
-            }
-            else
-            {
-                #ifdef HAS_COLOUR
-                accum_R += buffer_read_linear(dRed, voxel_pos, dim) * 1;
-                accum_G += buffer_read_linear(dGreen, voxel_pos, dim) * 1;
-                accum_B += buffer_read_linear(dBlue, voxel_pos, dim) * 1;
-                #endif
-            }
-        }
-        #endif // RENDER_MATTER
+        if(fabs(background_power) < 0.001f)
+            break;
     }
 
     float4 final_observer_lowered = lower4(last_pos.yzw, (float4)(1, 0, 0, 0), scale, dim, GET_STANDARD_ARGS());
