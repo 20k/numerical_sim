@@ -305,13 +305,13 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
     ///https://en.wikipedia.org/wiki/Finite_difference_coefficient according to wikipedia, this is the 6th derivative with 2nd order accuracy. I am confused, but at least I know where it came from
     value scale = "scale";
 
-    #define FOURTH
+    //#define FOURTH
     #ifdef FOURTH
     differentiation_context<5> dctx(in, idx);
     value stencil = -(1 / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
     #endif // FOURTH
 
-    //#define SIXTH
+    #define SIXTH
     #ifdef SIXTH
     differentiation_context<7> dctx(in, idx);
     value stencil = (1 / (64.f * scale)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
@@ -3193,9 +3193,11 @@ void build_get_matter(matter_interop& interop, equation_context& ctx)
 
     standard_arguments args(ctx);
 
-    ctx.add("GET_ADM_P", interop.calculate_adm_p(ctx, args));
+    value adm_p = interop.calculate_adm_p(ctx, args);
 
-    tensor<value, 3> u_lower = interop.calculate_adm_Si(ctx, args) / interop.calculate_adm_p(ctx, args);
+    ctx.add("GET_ADM_P", adm_p);
+
+    tensor<value, 3> u_lower = interop.calculate_adm_Si(ctx, args) / adm_p;
 
     tensor<value, 3> u_upper = raise_index(u_lower, args.iYij, 0);
 
@@ -3648,7 +3650,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif
 
-    //#define NEUTRON_BLACK_HOLE_MERGE
+    #define NEUTRON_BLACK_HOLE_MERGE
     #ifdef NEUTRON_BLACK_HOLE_MERGE
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -3836,7 +3838,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     data_opt = build_galaxy();
     #endif
 
-    #define ACCRETION_DISK
+    //#define ACCRETION_DISK
     #ifdef ACCRETION_DISK
 
     {

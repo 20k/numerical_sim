@@ -2010,7 +2010,7 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
             float p_val = fabs(matter_p);
 
             ///https://arxiv.org/pdf/1207.4234.pdf
-            float absorption = (p_val * PARTICLE_BRIGHTNESS)/MINIMUM_MASS;
+            float absorption = 0;
             //float emission = 2.f * (p_val * PARTICLE_BRIGHTNESS)/MINIMUM_MASS;
 
             float next_R = 0;
@@ -2019,6 +2019,7 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
 
             #ifdef TRACE_MATTER_P
             float emission = 2.f * fabs(buffer_read_linear(adm_p, voxel_pos, dim)) * PARTICLE_BRIGHTNESS/MINIMUM_MASS;
+            absorption += (p_val * PARTICLE_BRIGHTNESS)/MINIMUM_MASS;
 
             next_R += emission;
             next_G += emission;
@@ -2027,6 +2028,8 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
 
             #ifdef RENDER_MATTER
             float pstar_val = buffer_read_linear(Dp_star, voxel_pos, dim);
+
+            absorption += pstar_val;
 
             if(!use_colour)
             {
@@ -2044,7 +2047,9 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
             }
             #endif
 
-            if(matter_p != 0)
+            //if(matter_p != 0)
+
+            if(fabs(matter_p) >= 1e-3f)
             {
                 float3 u_matter_upper = get_3vel_upper(pos.yzw, scale, dim, GET_STANDARD_ARGS(), GET_STANDARD_UTILITY());
 
@@ -2650,7 +2655,7 @@ __kernel void render_rays(__global struct render_ray_info* rays_in, __write_only
     }
     else if(ray_in.hit_type == 2)
     {
-        #ifdef RENDER_MATTER
+        /*#ifdef RENDER_MATTER
         float3 val = (float3)(0.5f,0.5f,0.5f);
 
         float3 Xpos = (float3)(ray_in.lp1, ray_in.lp2, ray_in.lp3);
@@ -2695,7 +2700,7 @@ __kernel void render_rays(__global struct render_ray_info* rays_in, __write_only
         //col = fabs(normal);
 
         write_imagef(screen, (int2){x, y}, (float4)(col.xyz, 1));
-        #endif
+        #endif*/
     }
 }
 
