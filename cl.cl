@@ -1817,9 +1817,9 @@ float get_static_verlet_ds(float3 Xpos, __global float* X, float scale, int4 dim
 
     my_fraction = clamp(my_fraction, 0.f, 1.f);
 
-    #ifdef TRACE_MATTER_P
+    //#ifdef TRACE_MATTER_P
     return scale * 0.25f;
-    #endif // TRACE_MATTER_P
+    //#endif // TRACE_MATTER_P
 
     #ifdef RENDER_MATTER
     return mix(0.4f, 4.f, my_fraction) * 0.1f;
@@ -2029,20 +2029,20 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
             #ifdef RENDER_MATTER
             float pstar_val = buffer_read_linear(Dp_star, voxel_pos, dim);
 
-            absorption += pstar_val;
+            absorption += pstar_val * 50.f;
 
             if(!use_colour)
             {
-                next_R += pstar_val;
-                next_G += pstar_val;
-                next_B += pstar_val;
+                next_R += pstar_val * 100;
+                next_G += pstar_val * 100;
+                next_B += pstar_val * 100;
             }
             else
             {
                 #ifdef HAS_COLOUR
-                next_R += buffer_read_linear(dRed, voxel_pos, dim) * 1;
-                next_G += buffer_read_linear(dGreen, voxel_pos, dim) * 1;
-                next_B += buffer_read_linear(dBlue, voxel_pos, dim) * 1;
+                next_R += buffer_read_linear(dRed, voxel_pos, dim) * 100;
+                next_G += buffer_read_linear(dGreen, voxel_pos, dim) * 100;
+                next_B += buffer_read_linear(dBlue, voxel_pos, dim) * 100;
                 #endif
             }
             #endif
