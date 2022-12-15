@@ -2743,7 +2743,7 @@ struct superimposed_gpu_data
         pull(clctx, cqueue, particles, scale, dim);
 
         laplace_data solve = setup_u_laplace(clctx, objs, aij_aIJ, ppw2p, particle_grid_E_without_conformal);
-        u_arg = laplace_solver(clctx, cqueue, solve, scale, dim, 0.0000001f);
+        u_arg = laplace_solver(clctx, cqueue, solve, scale, dim, 0.00001f);
 
         tensor<value, 3> pos = {"ox", "oy", "oz"};
 
