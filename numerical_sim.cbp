@@ -124,6 +124,7 @@
 		</Linker>
 		<Unit filename="bssn.cpp" />
 		<Unit filename="bssn.hpp" />
+		<Unit filename="cache.hpp" />
 		<Unit filename="cl.cl" />
 		<Unit filename="common.cl" />
 		<Unit filename="deps/geodesic/dual_value.hpp" />

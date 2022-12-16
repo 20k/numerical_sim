@@ -1,6 +1,7 @@
 #include "laplace_solver.hpp"
 #include "mesh_manager.hpp"
 #include "equation_context.hpp"
+#include "cache.hpp"
 
 void check_symmetry(const std::string& debug_name, cl::kernel& kern, cl::command_queue& cqueue, cl::buffer& arg, vec<4, cl_int> size)
 {
@@ -218,8 +219,7 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, laplace
 
     ctx.build(local_build_str, "laplacesolve");
 
-    cl::program u_program(clctx, "u_solver.cl");
-    u_program.build(clctx, local_build_str);
+    cl::program u_program = build_program_with_cache(clctx, "u_solver.cl", local_build_str);
 
     cl::kernel setup(u_program, "setup_u_offset");
     cl::kernel iterate(u_program, "iterative_u_solve");

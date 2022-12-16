@@ -4,6 +4,7 @@
 #include "bssn.hpp"
 #include "random.hpp"
 #include "spherical_integration.hpp"
+#include "cache.hpp"
 
 value particle_matter_interop::calculate_adm_p(equation_context& ctx, standard_arguments& bssn_args)
 {
@@ -516,8 +517,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 
-    pd = cl::program(ctx, "particle_dynamics.cl");
-    pd.build(ctx, argument_string);
+    pd = build_program_with_cache(ctx, "particle_dynamics.cl", argument_string);
 
     ctx.register_program(pd);
 
