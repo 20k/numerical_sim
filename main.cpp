@@ -6104,6 +6104,7 @@ int main()
     }
 
     cl::program prog = build_program_with_cache(clctx.ctx, "cl.cl", argument_string);
+    cl::program render_prog = build_program_with_cache(clctx.ctx, "rendering.cl", argument_string);
 
     bool joined = false;
 
@@ -6172,6 +6173,7 @@ int main()
 
     ///this is not thread safe
     clctx.ctx.register_program(prog);
+    clctx.ctx.register_program(render_prog);
 
     texture_settings tsett;
     tsett.width = width;

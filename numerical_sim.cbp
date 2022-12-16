@@ -185,6 +185,7 @@
 		<Unit filename="particle_dynamics_common.cl" />
 		<Unit filename="random.hpp" />
 		<Unit filename="ref_counted.hpp" />
+		<Unit filename="rendering.cl" />
 		<Unit filename="spherical_decomposition.hpp" />
 		<Unit filename="spherical_harmonics.hpp" />
 		<Unit filename="spherical_integration.hpp" />
