@@ -2128,12 +2128,8 @@ inline void hash_combine(std::size_t& seed, const T& v)
     seed ^= hasher(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);
 }
 
-std::pair<cl::program, std::vector<cl::kernel>> build_and_fetch_kernel(cl::context& clctx, equation_context& ctx, const std::string& filename, const std::vector<std::string>& kernel_name, const std::string& temporaries_name)
+cl::program build_program_with_cache(cl::context& clctx, const std::string& filename, const std::string& options)
 {
-    std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
-
-    ctx.build(local_build_str, temporaries_name);
-
     std::string file_data = file::read(filename, file::mode::BINARY);
 
     std::optional<cl::program> prog_opt;
@@ -2142,7 +2138,7 @@ std::pair<cl::program, std::vector<cl::kernel>> build_and_fetch_kernel(cl::conte
 
     std::size_t hsh = 0;
 
-    hash_combine(hsh, local_build_str);
+    hash_combine(hsh, options);
     hash_combine(hsh, file_data);
 
     file::mkdir("cache");
@@ -2164,8 +2160,7 @@ std::pair<cl::program, std::vector<cl::kernel>> build_and_fetch_kernel(cl::conte
 
     cl::program& t_program = prog_opt.value();
 
-    //cl::program t_program(clctx, file_data, false);
-    t_program.build(clctx, local_build_str);
+    t_program.build(clctx, options);
 
     if(needs_cache)
     {
@@ -2173,6 +2168,17 @@ std::pair<cl::program, std::vector<cl::kernel>> build_and_fetch_kernel(cl::conte
 
         file::write("cache/" + name, prog_opt.value().get_binary(), file::mode::BINARY);
     }
+
+    return t_program;
+}
+
+std::pair<cl::program, std::vector<cl::kernel>> build_and_fetch_kernel(cl::context& clctx, equation_context& ctx, const std::string& filename, const std::vector<std::string>& kernel_name, const std::string& temporaries_name)
+{
+    std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
+
+    ctx.build(local_build_str, temporaries_name);
+
+    cl::program t_program = build_program_with_cache(clctx, filename, local_build_str);
 
     std::vector<cl::kernel> kerns;
 
@@ -5826,8 +5832,7 @@ int main()
 
     cl::buffer u_arg(clctx.ctx);
 
-    cl::program evolve_prog(clctx.ctx, "evolve_points.cl");
-    evolve_prog.build(clctx.ctx, argument_string + "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ");
+    cl::program evolve_prog = build_program_with_cache(clctx.ctx, "evolve_points.cl", argument_string + "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ");
 
     clctx.ctx.register_program(evolve_prog);
 
@@ -6148,8 +6153,7 @@ int main()
         file::write("./generated_arglist.cl", generated_arglist, file::mode::TEXT);
     }
 
-    cl::program prog(clctx.ctx, "cl.cl");
-    prog.build(clctx.ctx, argument_string);
+    cl::program prog = build_program_with_cache(clctx.ctx, "cl.cl", argument_string);
 
     bool joined = false;
 
@@ -6188,8 +6192,7 @@ int main()
         hydro_advect.build(hydro_argument_string, "hydroadvect");
         build_hydro_quantities.build(hydro_argument_string, "hydroconvert");
 
-        cl::program hydro_prog(clctx.ctx, "hydrodynamics.cl");
-        hydro_prog.build(clctx.ctx, hydro_argument_string);
+        cl::program hydro_prog = build_program_with_cache(clctx.ctx, "hydrodynamics.cl", hydro_argument_string);
 
         async_u.join();
         joined = true;
