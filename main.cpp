@@ -2121,6 +2121,13 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     return solve;
 }
 
+template<typename T>
+inline void hash_combine(std::size_t& seed, const T& v)
+{
+    std::hash<T> hasher;
+    seed ^= hasher(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+}
+
 std::pair<cl::program, std::vector<cl::kernel>> build_and_fetch_kernel(cl::context& clctx, equation_context& ctx, const std::string& filename, const std::vector<std::string>& kernel_name, const std::string& temporaries_name)
 {
     std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
@@ -2129,8 +2136,43 @@ std::pair<cl::program, std::vector<cl::kernel>> build_and_fetch_kernel(cl::conte
 
     std::string file_data = file::read(filename, file::mode::BINARY);
 
-    cl::program t_program(clctx, file_data, false);
+    std::optional<cl::program> prog_opt;
+
+    bool needs_cache = false;
+
+    std::size_t hsh = 0;
+
+    hash_combine(hsh, local_build_str);
+    hash_combine(hsh, file_data);
+
+    file::mkdir("cache");
+
+    std::string name = filename + "_" + std::to_string(hsh);
+
+    if(file::exists("cache/" + name))
+    {
+        std::string bin = file::read("cache/" + name, file::mode::BINARY);
+
+        prog_opt.emplace(clctx, bin, cl::program::binary_tag{});
+    }
+    else
+    {
+        prog_opt.emplace(clctx, file_data, false);
+
+        needs_cache = true;
+    }
+
+    cl::program& t_program = prog_opt.value();
+
+    //cl::program t_program(clctx, file_data, false);
     t_program.build(clctx, local_build_str);
+
+    if(needs_cache)
+    {
+        t_program.ensure_built();
+
+        file::write("cache/" + name, prog_opt.value().get_binary(), file::mode::BINARY);
+    }
 
     std::vector<cl::kernel> kerns;
 
