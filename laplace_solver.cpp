@@ -228,8 +228,6 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, laplace
 
     vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
 
-    printf("hello %i\n", data.aij_aIJ.alloc_size);
-
     cl::buffer cached_aij_aIJ = data.aij_aIJ;
     cl::buffer cached_ppw2p = data.ppw2p;
     cl::buffer nonconformal_pH = data.nonconformal_pH;
