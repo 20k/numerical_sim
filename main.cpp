@@ -2127,7 +2127,9 @@ std::pair<cl::program, std::vector<cl::kernel>> build_and_fetch_kernel(cl::conte
 
     ctx.build(local_build_str, temporaries_name);
 
-    cl::program t_program(clctx, filename);
+    std::string file_data = file::read(filename, file::mode::BINARY);
+
+    cl::program t_program(clctx, file_data, true);
     t_program.build(clctx, local_build_str);
 
     std::vector<cl::kernel> kerns;
