@@ -253,7 +253,6 @@ tensor<T, N, N> covariant_derivative_low_vec(differentiator& ctx, const tensor<T
 template<typename T, int N>
 inline
 tensor<T, N, N> double_covariant_derivative(differentiator& ctx, const T& in, const tensor<T, N>& first_derivatives,
-                                            const metric<T, N, N>& met, const inverse_metric<T, N, N>& inverse,
                                             const tensor<T, N, N, N>& christoff2)
 {
     tensor<T, N, N> lac;

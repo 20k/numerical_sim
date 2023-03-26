@@ -488,7 +488,7 @@ tensor<value, 3, 3> bssn::calculate_xgARij(equation_context& ctx, standard_argum
         for(int j=0; j < 3; j++)
         {
             ///dcd uses the notation i;j
-            didjW.idx(i, j) = double_covariant_derivative(ctx, args.W_impl, args.dW_impl, args.cY, icY, christoff2).idx(j, i);
+            didjW.idx(i, j) = double_covariant_derivative(ctx, args.W_impl, args.dW_impl, christoff2).idx(j, i);
         }
     }
 
@@ -636,7 +636,7 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
     {
         for(int j=0; j < 3; j++)
         {
-            value Xderiv = X * double_covariant_derivative(ctx, args.gA, args.digA, cY, icY, args.christoff2).idx(j, i);
+            value Xderiv = X * double_covariant_derivative(ctx, args.gA, args.digA, args.christoff2).idx(j, i);
             //value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, args.digA, cY, icY).idx(j, i);
 
             value s2 = 0.5f * (dX.idx(i) * diff1(ctx, gA, j) + dX.idx(j) * diff1(ctx, gA, i));
@@ -1074,7 +1074,7 @@ void bssn::build_K(matter_interop& interop, equation_context& ctx, bool use_matt
     {
         for(int j=0; j < 3; j++)
         {
-            value Xderiv = X * double_covariant_derivative(ctx, args.gA, args.digA, cY, icY, args.christoff2).idx(j, i);
+            value Xderiv = X * double_covariant_derivative(ctx, args.gA, args.digA, args.christoff2).idx(j, i);
             //value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, args.digA, cY, icY).idx(j, i);
 
             value s2 = 0.5f * (dX.idx(i) * diff1(ctx, gA, j) + dX.idx(j) * diff1(ctx, gA, i));
