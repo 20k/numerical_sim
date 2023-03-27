@@ -3185,25 +3185,36 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
     }
 }
 
-void build_get_matter(matter_interop& interop, equation_context& ctx)
+void build_get_matter(matter_interop& interop, equation_context& ctx, bool use_matter)
 {
     ctx.uses_linear = true;
     ctx.order = 1;
     ctx.use_precise_differentiation = false;
 
-    standard_arguments args(ctx);
+    if(use_matter)
+    {
+        standard_arguments args(ctx);
 
-    value adm_p = interop.calculate_adm_p(ctx, args);
+        value adm_p = interop.calculate_adm_p(ctx, args);
 
-    ctx.add("GET_ADM_P", adm_p);
+        ctx.add("GET_ADM_P", adm_p);
 
-    tensor<value, 3> u_lower = interop.calculate_adm_Si(ctx, args) / adm_p;
+        tensor<value, 3> u_lower = interop.calculate_adm_Si(ctx, args) / adm_p;
 
-    tensor<value, 3> u_upper = raise_index(u_lower, args.iYij, 0);
+        tensor<value, 3> u_upper = raise_index(u_lower, args.iYij, 0);
 
-    ctx.add("GET_3VEL_UPPER0", u_upper.idx(0));
-    ctx.add("GET_3VEL_UPPER1", u_upper.idx(1));
-    ctx.add("GET_3VEL_UPPER2", u_upper.idx(2));
+        ctx.add("GET_3VEL_UPPER0", u_upper.idx(0));
+        ctx.add("GET_3VEL_UPPER1", u_upper.idx(1));
+        ctx.add("GET_3VEL_UPPER2", u_upper.idx(2));
+    }
+    else
+    {
+        ctx.add("GET_ADM_P", 0);
+
+        ctx.add("GET_3VEL_UPPER0", 0);
+        ctx.add("GET_3VEL_UPPER1", 0);
+        ctx.add("GET_3VEL_UPPER2", 0);
+    }
 }
 
 #if 0
@@ -3515,18 +3526,18 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    //#define PAPER_0610128
+    #define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133, 0};
+    h1.momentum = {0, 0.133 * 0.7, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     compact_object::data h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133, 0};
+    h2.momentum = {0, -0.133 * 0.7, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     objects = {h1, h2};
@@ -3650,7 +3661,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif
 
-    #define NEUTRON_BLACK_HOLE_MERGE
+    //#define NEUTRON_BLACK_HOLE_MERGE
     #ifdef NEUTRON_BLACK_HOLE_MERGE
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -5887,7 +5898,7 @@ int main()
     loop_geodesics4(ctxgeo4);
 
     equation_context ctxgetmatter;
-    build_get_matter(meta_interop, ctxgetmatter);
+    build_get_matter(meta_interop, ctxgetmatter, holes.use_matter || holes.use_particles);
 
     equation_context ctx10;
     build_kreiss_oliger_dissipate_singular(ctx10);
