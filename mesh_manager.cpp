@@ -738,10 +738,10 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     diff_to_input(generic_data[(which_data + 1) % 2].buffers, timestep);
     #endif
 
-    /*{
+    {
         dissipate_unidir(data[0], data[1]);
         std::swap(data[0], data[1]);
-    }*/
+    }
 
     ///so
     ///each tick we do buffer -> base + dt * dx. Then we dissipate result. That dissipated result is used to calculate derivatives
@@ -777,7 +777,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             dissipate_unidir(b2, scratch);
             enforce_constraints(scratch);
             #else
-            dissipate_set(mqueue, data[0], data[1], points_set, timestep, dim, scale);
+            //dissipate_set(mqueue, data[0], data[1], points_set, timestep, dim, scale);
             enforce_constraints(data[1]);
 
             std::swap(data[1], data[2]);
@@ -942,7 +942,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     std::swap(b2, scratch);
     #else
-    dissipate_set(mqueue, data[0], data[1], points_set, timestep, dim, scale);
+    //dissipate_set(mqueue, data[0], data[1], points_set, timestep, dim, scale);
     #endif
 
     //dissipate(get_input().buffers, get_output().buffers);
