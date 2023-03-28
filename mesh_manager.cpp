@@ -624,7 +624,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             diss.push_back(points_set.all_count);
 
             diss.push_back(in.buffers[i].buf.as_device_read_only());
-            diss.push_back(out.buffers[i].buf);
+            diss.push_back(out.buffers[i].buf.as_device_write_only());
 
             float coeff = in.buffers[i].desc.dissipation_coeff;
 
