@@ -446,7 +446,9 @@ float get_static_verlet_ds(float3 Xpos, __global float* X, float scale, int4 dim
     my_fraction = clamp(my_fraction, 0.f, 1.f);
 
     //#ifdef TRACE_MATTER_P
+    #ifdef USE_REDSHIFT
     return scale * 0.25f;
+    #endif
     //#endif // TRACE_MATTER_P
 
     #ifdef RENDER_MATTER

@@ -5212,7 +5212,7 @@ void process_geodesics(equation_context& ctx)
     vec<4, value> pixel_z = pixel_direction.z() * oriented.e[3];
     vec<4, value> pixel_t = -oriented.e[0];
 
-    //#define INVERT_TIME
+    #define INVERT_TIME
     #ifdef INVERT_TIME
     pixel_t = -pixel_t;
     #endif // INVERT_TIME
@@ -5960,6 +5960,13 @@ int main()
         argument_string += "-DTRACE_MATTER_P -DRENDER_MATTER_P ";
     }
 
+    bool use_redshift = false;
+
+    if(use_redshift)
+    {
+        argument_string += "-DUSE_REDSHIFT ";
+    }
+
     #ifdef USE_GBB
     argument_string += "-DUSE_GBB ";
     #endif // USE_GBB
@@ -6558,7 +6565,10 @@ int main()
                     init_args.push_back(width);
                     init_args.push_back(height);
 
-                    clctx.cqueue.exec("init_rays4", init_args, {width, height}, {8, 8});
+                    if(use_redshift)
+                        clctx.cqueue.exec("init_rays4", init_args, {width, height}, {8, 8});
+                    else
+                        clctx.cqueue.exec("init_rays", init_args, {width, height}, {8, 8});
                 }
 
                 {
@@ -6584,7 +6594,10 @@ int main()
                     render_args.push_back(height);
                     render_args.push_back(rendering_err);
 
-                    clctx.cqueue.exec("trace_rays4", render_args, {width, height}, {8, 8});
+                    if(use_redshift)
+                        clctx.cqueue.exec("trace_rays4", render_args, {width, height}, {8, 8});
+                    else
+                        clctx.cqueue.exec("trace_rays", render_args, {width, height}, {8, 8});
                 }
 
                 {

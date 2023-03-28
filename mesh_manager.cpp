@@ -27,6 +27,8 @@ named_buffer& buffer_set::lookup(const std::string& name)
     assert(false);
 }
 
+///:O ok so, SO the factor that we add to these buffers is constant
+///might be able to add it to base just once
 template<typename T>
 void dissipate_set(cl::managed_command_queue& mqueue, T& base_reference, T& inout, evolution_points& points_set, float timestep, vec3i dim, float scale)
 {
@@ -607,7 +609,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
         for(int i=0; i < (int)in.buffers.size(); i++)
         {
-            if(in.buffers[i].buf.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z() || in.buffers[i].dissipation_coeff == 0.f)
+            if(in.buffers[i].buf.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z() || in.buffers[i].desc.dissipation_coeff == 0.f)
             {
                 //assert(false);
                 //printf("hi\n");
@@ -624,7 +626,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             diss.push_back(in.buffers[i].buf.as_device_read_only());
             diss.push_back(out.buffers[i].buf);
 
-            float coeff = in.buffers[i].dissipation_coeff;
+            float coeff = in.buffers[i].desc.dissipation_coeff;
 
             diss.push_back(coeff);
             diss.push_back(scale);
@@ -637,7 +639,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
             mqueue.exec("dissipate_single_unidir", diss, {points_set.all_count}, {128});
 
-            check_for_nans(in.buffers[i].name + "_diss", out.buffers[i].buf);
+            //check_for_nans(in.buffers[i].name + "_diss", out.buffers[i].buf);
         }
     };
     ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
@@ -736,6 +738,17 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     diff_to_input(generic_data[(which_data + 1) % 2].buffers, timestep);
     #endif
 
+    /*{
+        dissipate_unidir(data[0], data[1]);
+        std::swap(data[0], data[1]);
+    }*/
+
+    ///so
+    ///each tick we do buffer -> base + dt * dx. Then we dissipate result. That dissipated result is used to calculate derivatives
+    ///for the next tick, and is also used as the values of the inputs et
+    ///buffer has kreiss oliger applied, which is of the form buffer -> buffer + f(base)
+    ///so. Buffer -> base + dt * dx + f(base)
+    ///this implies that I can redefine base to be base + f(base) and get the same effect
     #define BACKWARD_EULER
     #ifdef BACKWARD_EULER
     int iterations = 2;
