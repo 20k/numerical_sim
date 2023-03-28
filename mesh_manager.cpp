@@ -738,9 +738,11 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     diff_to_input(generic_data[(which_data + 1) % 2].buffers, timestep);
     #endif
 
+    ///so. data[0] is current data, data[1] is old data
+
     {
-        dissipate_unidir(data[0], data[1]);
-        std::swap(data[0], data[1]);
+        dissipate_unidir(data[0], data[2]);
+        std::swap(data[0], data[2]);
     }
 
     ///so
@@ -785,6 +787,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         }
     }
     #endif
+
+    ///so ok: at the end of these iterations, data[0] is the original data, data[1] is the output data
 
     #ifdef RK4_2
     auto post_step = [&](auto& buf, float step)
@@ -959,6 +963,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     mqueue.end_splice(main_queue);
 
     std::swap(data[1], data[0]);
+    ///data[0] is now the new output data, data[1] is the old data, data[2] is the old intermediate data
 }
 
 void cpu_mesh::append_utility_buffers(const std::string& kernel_name, cl::args& args)
