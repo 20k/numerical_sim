@@ -966,6 +966,26 @@ void evolve_gB(__global ushort4* points, int point_count,
 }
 
 __kernel
+void do_sum(__global ushort4* points, int point_count,
+            __global float* ynp1, __global float* yn_inout,
+            int4 dim
+            )
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    int index = IDX(ix, iy, iz);
+
+    yn_inout[index] = (4.f/3.f) * ynp1[index] - (1.f/3.f) * yn_inout[index];
+}
+
+__kernel
 void dissipate_single_unidir(__global ushort4* points, int point_count,
                              __global float* buffer, __global float* obuffer,
                              float coefficient,

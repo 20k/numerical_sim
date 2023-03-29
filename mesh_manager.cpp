@@ -194,7 +194,7 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::manage
 }
 
 cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& buffers, const std::vector<buffer_descriptor>& utility_buffers, std::vector<plugin*> _plugins) :
-        data{buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers)},
+        data{buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers)},
         utility_data{buffer_set(ctx, _dim, utility_buffers)},
         points_set{ctx},
         momentum_constraint{ctx, ctx, ctx},
@@ -254,8 +254,11 @@ void cpu_mesh::init(cl::context& ctx, cl::command_queue& cqueue, thin_intermedia
 
     for(int i=0; i < (int)data[0].buffers.size(); i++)
     {
-        cl::copy(cqueue, data[0].buffers[i].buf, data[1].buffers[i].buf);
-        cl::copy(cqueue, data[0].buffers[i].buf, data[2].buffers[i].buf);
+        for(int kk=1; kk < data.size(); kk++)
+        {
+            cl::copy(cqueue, data[0].buffers[i].buf, data[kk].buffers[i].buf);
+        }
+
     }
 }
 
@@ -387,6 +390,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         clean_buffer(mqueue, in_buf.buf, out_buf.buf, base_buf.buf, in_buf.desc.asymptotic_value, in_buf.desc.wave_speed, current_timestep);
     };
 
+    float step_multiplier = 1.f;
+
     auto step = [&](int generic_in_index, int generic_out_index, float current_timestep, bool trigger_callbacks, int iteration, int max_iteration)
     {
         auto& generic_in = data[generic_in_index];
@@ -479,7 +484,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
             a1.push_back(scale);
             a1.push_back(clsize);
-            a1.push_back(current_timestep);
+            a1.push_back(current_timestep * step_multiplier);
             a1.push_back(points_set.order);
 
             mqueue.exec(name, a1, {points_set.all_count}, {128});
@@ -503,7 +508,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
                 if(buf_in.desc.modified_by != name)
                     continue;
 
-                clean_thin(buf_in, buf_out, buf_base, current_timestep);
+                clean_thin(buf_in, buf_out, buf_base, current_timestep * step_multiplier);
             }
         };
 
@@ -642,6 +647,31 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             //check_for_nans(in.buffers[i].name + "_diss", out.buffers[i].buf);
         }
     };
+
+    auto sum_buffers = [&](auto& ynp1, auto& yn)
+    {
+        for(int i=0; i < (int)ynp1.buffers.size(); i++)
+        {
+            if(ynp1.buffers[i].buf.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z())
+            {
+                assert(false);
+            }
+
+            cl::args args;
+
+            args.push_back(points_set.all_points);
+            args.push_back(points_set.all_count);
+
+            args.push_back(ynp1.buffers[i].buf.as_device_read_only());
+            args.push_back(yn.buffers[i].buf);
+            //args.push_back(out.buffers[i].buf.as_device_write_only());
+
+            args.push_back(clsize);
+
+            mqueue.exec("do_sum", args, {points_set.all_count}, {128});
+        }
+    };
+
     ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
     //#define RK4
     #ifdef RK4
@@ -740,9 +770,28 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     ///so. data[0] is current data, data[1] is old data
 
+    /*
     {
         dissipate_unidir(data[0], data[2]);
         std::swap(data[0], data[2]);
+    }*/
+
+    {
+        ///bk2
+        step_multiplier = (2.f/3.f);
+
+        sum_buffers(data[0], data[1]);
+
+        std::swap(data[0], data[3]);
+
+        std::swap(data[1], data[0]);
+
+        ///add dissipation to base
+        dissipate_set(mqueue, data[3], data[0], points_set, timestep, dim, scale);
+
+        ///buffer state
+        ///data[0] == 4/3 ynp1 - 1/3 yn
+        ///data[3] == ynp1
     }
 
     ///so
@@ -753,7 +802,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     ///this implies that I can redefine base to be base + f(base) and get the same effect
     #define BACKWARD_EULER
     #ifdef BACKWARD_EULER
-    int iterations = 2;
+    int iterations = 3;
 
     if(iterations == 1)
     {
@@ -779,7 +828,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             dissipate_unidir(b2, scratch);
             enforce_constraints(scratch);
             #else
-            //dissipate_set(mqueue, data[0], data[1], points_set, timestep, dim, scale);
+            //dissipate_set(mqueue, data[3], data[1], points_set, timestep, dim, scale);
             enforce_constraints(data[1]);
 
             std::swap(data[1], data[2]);
@@ -787,6 +836,9 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         }
     }
     #endif
+
+    ///swap back ynp1 to data[0]
+    std::swap(data[3], data[0]);
 
     ///so ok: at the end of these iterations, data[0] is the original data, data[1] is the output data
 
