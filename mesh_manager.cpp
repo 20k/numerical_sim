@@ -776,6 +776,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         std::swap(data[0], data[2]);
     }*/
 
+    if(has_first_step)
     {
         ///bk2
         step_multiplier = (2.f/3.f);
@@ -787,7 +788,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         std::swap(data[1], data[0]);
 
         ///add dissipation to base
-        dissipate_set(mqueue, data[3], data[0], points_set, timestep, dim, scale);
+        dissipate_set(mqueue, data[3], data[0], points_set, timestep * step_multiplier, dim, scale);
 
         ///buffer state
         ///data[0] == 4/3 ynp1 - 1/3 yn
@@ -837,8 +838,13 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     }
     #endif
 
-    ///swap back ynp1 to data[0]
-    std::swap(data[3], data[0]);
+    if(has_first_step)
+    {
+        ///swap back ynp1 to data[0]
+        std::swap(data[3], data[0]);
+    }
+
+    has_first_step = true;
 
     ///so ok: at the end of these iterations, data[0] is the original data, data[1] is the output data
 
