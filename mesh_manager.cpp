@@ -788,7 +788,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         std::swap(data[1], data[0]);
 
         ///add dissipation to base
-        dissipate_set(mqueue, data[3], data[0], points_set, timestep * step_multiplier, dim, scale);
+        dissipate_set(mqueue, data[3], data[0], points_set, timestep, dim, scale);
 
         ///buffer state
         ///data[0] == 4/3 ynp1 - 1/3 yn
@@ -803,7 +803,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     ///this implies that I can redefine base to be base + f(base) and get the same effect
     #define BACKWARD_EULER
     #ifdef BACKWARD_EULER
-    int iterations = 3;
+    int iterations = 5;
 
     if(iterations == 1)
     {
