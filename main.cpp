@@ -3095,12 +3095,6 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
     value W2 = if_v(is_degenerate, 1.f, ((rhoH + pressure) / (rho + pressure)));
 
     ///https://arxiv.org/pdf/1606.04881.pdf (70)
-    tensor<value, 3> u_upper;
-
-    for(int k=0; k < 3; k++)
-    {
-        u_upper.idx(k) = divide_with_limit(Si.idx(k), rho + pressure, 0.f) * sqrt(W2);
-    }
 
     ///conformal hydrodynamical quantities
     {
@@ -3111,8 +3105,6 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
         value X = args.get_X();
 
         tensor<value, 3> Si_lower = lower_index(Si, args.Yij, 0);
-
-        tensor<value, 3> u_lower = lower_index(u_upper, args.Yij, 0);
 
         ///https://arxiv.org/pdf/2012.13954.pdf (7)
 
