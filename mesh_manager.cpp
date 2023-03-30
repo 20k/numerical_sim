@@ -440,7 +440,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             mqueue.exec("calculate_momentum_constraint", momentum_args, {points_set.all_count}, {128});
         }
 
-        auto step_kernel = [&](const std::string& name)
+        auto step_kernel = [&](const std::string& name, std::string name2)
         {
             cl::args a1;
 
@@ -454,7 +454,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
             for(named_buffer& i : generic_out.buffers)
             {
-                if(i.desc.modified_by == name)
+                if(i.desc.modified_by == name2)
                     a1.push_back(i.buf);
                 else
                     a1.push_back(i.buf.as_device_inaccessible());
@@ -475,7 +475,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
                 a1.push_back(i.as_device_read_only());
             }
 
-            append_utility_buffers(name, a1);
+            append_utility_buffers(name2, a1);
 
             a1.push_back(scale);
             a1.push_back(clsize);
@@ -487,13 +487,37 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
             for(auto& i : generic_out.buffers)
             {
-                if(i.desc.modified_by != name)
+                if(i.desc.modified_by != name2)
                     continue;
 
                 check_for_nans(i.desc.name + "_step", i.buf);
             }
 
             ///clean
+            /*for(int i=0; i < (int)generic_in.buffers.size(); i++)
+            {
+                named_buffer& buf_in = generic_in.buffers[i];
+                named_buffer& buf_base = base_yn.buffers[i];
+                named_buffer& buf_out = generic_out.buffers[i];
+
+                if(buf_in.desc.modified_by != name2)
+                    continue;
+
+                clean_thin(buf_in, buf_out, buf_base, current_timestep);
+            }*/
+        };
+
+        step_kernel("evolve_cY", "evolve_cY");
+        step_kernel("evolve_cA1", "evolve_cA");
+        step_kernel("evolve_cA2", "evolve_cA");
+        step_kernel("evolve_cGi", "evolve_cGi");
+        step_kernel("evolve_K", "evolve_K");
+        step_kernel("evolve_X", "evolve_X");
+        step_kernel("evolve_gA", "evolve_gA");
+        step_kernel("evolve_gB", "evolve_gB");
+
+        auto do_clean = [&](std::string name)
+        {
             for(int i=0; i < (int)generic_in.buffers.size(); i++)
             {
                 named_buffer& buf_in = generic_in.buffers[i];
@@ -507,13 +531,13 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             }
         };
 
-        step_kernel("evolve_cY");
-        step_kernel("evolve_cA");
-        step_kernel("evolve_cGi");
-        step_kernel("evolve_K");
-        step_kernel("evolve_X");
-        step_kernel("evolve_gA");
-        step_kernel("evolve_gB");
+        do_clean("evolve_cY");
+        do_clean("evolve_cA");
+        do_clean("evolve_cGi");
+        do_clean("evolve_K");
+        do_clean("evolve_X");
+        do_clean("evolve_gA");
+        do_clean("evolve_gB");
 
         //copy_border(generic_in, generic_out);
     };

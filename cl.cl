@@ -626,7 +626,7 @@ void evolve_cY(__global ushort4* points, int point_count,
 }
 
 __kernel
-void evolve_cA(__global ushort4* points, int point_count,
+void evolve_cA1(__global ushort4* points, int point_count,
             STANDARD_ARGS(),
             STANDARD_ARGS(o),
             STANDARD_ARGS(base_),
@@ -652,9 +652,6 @@ void evolve_cA(__global ushort4* points, int point_count,
         ocA0[index] = cA0[index];
         ocA1[index] = cA1[index];
         ocA2[index] = cA2[index];
-        ocA3[index] = cA3[index];
-        ocA4[index] = cA4[index];
-        ocA5[index] = cA5[index];
         return;
     }
 
@@ -663,20 +660,77 @@ void evolve_cA(__global ushort4* points, int point_count,
     float f_dtcAij0 = dtcAij0;
     float f_dtcAij1 = dtcAij1;
     float f_dtcAij2 = dtcAij2;
-    float f_dtcAij3 = dtcAij3;
-    float f_dtcAij4 = dtcAij4;
-    float f_dtcAij5 = dtcAij5;
 
     float b0 = base_cA0[index];
     float b1 = base_cA1[index];
     float b2 = base_cA2[index];
-    float b3 = base_cA3[index];
-    float b4 = base_cA4[index];
-    float b5 = base_cA5[index];
 
     ocA0[index] = f_dtcAij0 * timestep + b0;
     ocA1[index] = f_dtcAij1 * timestep + b1;
     ocA2[index] = f_dtcAij2 * timestep + b2;
+
+    ///NAN ocA0 107 125 125
+
+    /*if(X[index] < DISSB)
+    {
+        ocA0[index] += (0 - ocA0[index]) * timestep;
+        ocA1[index] += (0 - ocA1[index]) * timestep;
+        ocA2[index] += (0 - ocA2[index]) * timestep;
+        ocA3[index] += (0 - ocA3[index]) * timestep;
+        ocA4[index] += (0 - ocA4[index]) * timestep;
+        ocA5[index] += (0 - ocA5[index]) * timestep;
+    }*/
+
+    NANCHECK(ocA0);
+    NANCHECK(ocA1);
+    NANCHECK(ocA2);
+
+    /*if(ix == 97 && iy == 124 && iz == 124)
+    {
+        printf("Here we go again xsij %f %f %f cS0 %f\n", DBGXGA, cA0[index], cY0[index], Debug_cS0);
+    }*/
+}
+
+__kernel
+void evolve_cA2(__global ushort4* points, int point_count,
+            STANDARD_ARGS(),
+            STANDARD_ARGS(o),
+            STANDARD_ARGS(base_),
+            __global float* momentum0, __global float* momentum1, __global float* momentum2,
+            STANDARD_DERIVS(),
+            STANDARD_UTILITY(),
+            float scale, int4 dim, float timestep, __global ushort* order_ptr)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    int index = IDX(ix, iy, iz);
+    int order = order_ptr[index];
+
+    if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
+    {
+        ocA3[index] = cA3[index];
+        ocA4[index] = cA4[index];
+        ocA5[index] = cA5[index];
+        return;
+    }
+
+    float TEMPORARIEStca;
+
+    float f_dtcAij3 = dtcAij3;
+    float f_dtcAij4 = dtcAij4;
+    float f_dtcAij5 = dtcAij5;
+
+    float b3 = base_cA3[index];
+    float b4 = base_cA4[index];
+    float b5 = base_cA5[index];
+
     #ifndef NO_CAIJYY
     ocA3[index] = f_dtcAij3 * timestep + b3;
     #endif // NO_CAIJYY
@@ -695,9 +749,6 @@ void evolve_cA(__global ushort4* points, int point_count,
         ocA5[index] += (0 - ocA5[index]) * timestep;
     }*/
 
-    NANCHECK(ocA0);
-    NANCHECK(ocA1);
-    NANCHECK(ocA2);
     NANCHECK(ocA3);
     NANCHECK(ocA4);
     NANCHECK(ocA5);
