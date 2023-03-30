@@ -206,7 +206,6 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, laplace
 {
     equation_context ctx = data.ectx;
 
-    ctx.add("U_BASE", dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim"));
     ctx.add("U_RHS", data.rhs);
     ctx.add("U_BOUNDARY", data.boundary);
 
