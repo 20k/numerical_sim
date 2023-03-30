@@ -3104,8 +3104,6 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
     ///conformal hydrodynamical quantities
     {
-        auto flat = get_flat_metric<value, 3>();
-
         float Gamma = 2;
 
         standard_arguments args(ctx);
