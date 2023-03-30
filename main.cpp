@@ -3064,20 +3064,12 @@ struct superimposed_gpu_data
 };
 
 ///this I suspect is very slow
+///the standard arguments have been constructed when this is called
 void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<compact_object::data>& cpu_holes)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
     value gA = bidx("gA", ctx.uses_linear, false);
-
-    /*
-    //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
-    value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
-
-    value u_value = dual_types::apply("buffer_index", "u_value", "ix", "iy", "iz", "dim");
-
-    ///https://arxiv.org/pdf/1606.04881.pdf 74
-    value phi = BL_s_dyn + u_value + 1;*/
 
     value pressure = bidx("pressure_in", ctx.uses_linear, false);
     value rho = bidx("rho_in", ctx.uses_linear, false);
@@ -3116,29 +3108,20 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
         float Gamma = 2;
 
-        /// https://arxiv.org/pdf/1606.04881.pdf (8), Yij = phi^4 * cYij
-        ///in bssn, the conformal decomposition is chi * Yij = cYij
-        ///or see initial conditions, its 1/12th Yij.det()
-        /*metric<value, 3, 3> Yij = pow(phi, 4) * flat;
-        value X = pow(Yij.det(), -1.f/3.f);
-        metric<value, 3, 3> cY = X * Yij;*/
-
         standard_arguments args(ctx);
 
         value X = args.get_X();
 
         tensor<value, 3> Si_lower = lower_index(Si, args.Yij, 0);
 
-        //tensor<value, 3> cSi_lower = Si_lower * chi_to_e_6phi(X);
-
         tensor<value, 3> u_lower = lower_index(u_upper, args.Yij, 0);
 
         ///https://arxiv.org/pdf/2012.13954.pdf (7)
 
         value u0 = sqrt(W2);
-        value gA_u0 = gA * u0;
 
-        gA_u0 = if_v(is_degenerate, 0.f, gA_u0);
+        //value gA_u0 = gA * u0;
+        //gA_u0 = if_v(is_degenerate, 0.f, gA_u0);
 
         value p_star = p0 * gA * u0 * chi_to_e_6phi(X);
 
@@ -3147,7 +3130,6 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
         ctx.add("D_u0", u0);
         ctx.add("D_chip", chi_to_e_6phi(X));
         ctx.add("D_X", X);
-        ctx.add("D_phi", phi);
         ctx.add("D_u", u_value);
         ctx.add("D_DYN", BL_s_dyn);*/
 
@@ -3169,7 +3151,6 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
         ctx.add("D_h", h);
         ctx.add("D_pressure", pressure);
         ctx.add("D_gA_u0", gA_u0);
-        ctx.add("D_phi", phi);
         ctx.add("D_W2", W2);
         ctx.add("D_littlee", unused_littlee);
         ctx.add("D_eps", eps);*/
