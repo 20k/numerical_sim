@@ -1,11 +1,10 @@
 #include "hydrodynamics.hpp"
 
-eularian_hydrodynamics::eularian_hydrodynamics(cl::context& ctx) : hydro_st(ctx), vars(ctx), u_arg(ctx){}
+eularian_hydrodynamics::eularian_hydrodynamics(cl::context& ctx) : hydro_st(ctx), vars(ctx){}
 
-void eularian_hydrodynamics::grab_resources(matter_initial_vars _vars, cl::buffer _u_arg)
+void eularian_hydrodynamics::grab_resources(matter_initial_vars _vars)
 {
     vars = _vars;
-    u_arg = _u_arg;
 }
 
 std::vector<buffer_descriptor> eularian_hydrodynamics::get_buffers()
@@ -58,7 +57,6 @@ void eularian_hydrodynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_
     hydro_init.push_back(vars.colour_buf[1]);
     hydro_init.push_back(vars.colour_buf[2]);
 
-    hydro_init.push_back(u_arg);
     hydro_init.push_back(vars.superimposed_tov_phi);
     hydro_init.push_back(scale);
     hydro_init.push_back(clsize);
@@ -70,7 +68,6 @@ void eularian_hydrodynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_
     cqueue.exec("calculate_hydrodynamic_initial_conditions", hydro_init, {dim.x(), dim.y(), dim.z()}, {8, 8, 1});
 
     vars = matter_initial_vars(ctx);
-    u_arg = cl::buffer(ctx);
 }
 
 void eularian_hydrodynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration)

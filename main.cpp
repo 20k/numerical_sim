@@ -2101,7 +2101,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
 
     ///https://arxiv.org/pdf/1606.04881.pdf 74
-    value phi = BL_s_dyn + u_value;
+    value phi = BL_s_dyn + u_value + 1;
 
     value cached_aij_aIJ = bidx("cached_aij_aIJ", false, false);
     value cached_ppw2p = bidx("cached_ppw2p", false, false);
@@ -2116,7 +2116,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     laplace_data solve(aij_aIJ_buf, ppw2p_buf, nonconformal_pH);
 
     solve.rhs = U_RHS;
-    solve.boundary = 1;
+    solve.boundary = 0;
     solve.ectx = eqs;
 
     return solve;
@@ -2590,7 +2590,7 @@ struct superimposed_gpu_data
         value u_value = dual_types::apply("buffer_index", "u_value", "ix", "iy", "iz", "dim");
 
         ///https://arxiv.org/pdf/1606.04881.pdf 74
-        value phi = conformal_guess + u_value;
+        value phi = conformal_guess + u_value + 1;
 
         ///we need respectively
         ///(rhoH, Si, Sij), all lower indices
@@ -3070,13 +3070,14 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
 
     value gA = bidx("gA", ctx.uses_linear, false);
 
+    /*
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
 
     value u_value = dual_types::apply("buffer_index", "u_value", "ix", "iy", "iz", "dim");
 
     ///https://arxiv.org/pdf/1606.04881.pdf 74
-    value phi = BL_s_dyn + u_value;
+    value phi = BL_s_dyn + u_value + 1;*/
 
     value pressure = bidx("pressure_in", ctx.uses_linear, false);
     value rho = bidx("rho_in", ctx.uses_linear, false);
@@ -3118,17 +3119,19 @@ void construct_hydrodynamic_quantities(equation_context& ctx, const std::vector<
         /// https://arxiv.org/pdf/1606.04881.pdf (8), Yij = phi^4 * cYij
         ///in bssn, the conformal decomposition is chi * Yij = cYij
         ///or see initial conditions, its 1/12th Yij.det()
-        metric<value, 3, 3> Yij = pow(phi, 4) * flat;
-
+        /*metric<value, 3, 3> Yij = pow(phi, 4) * flat;
         value X = pow(Yij.det(), -1.f/3.f);
+        metric<value, 3, 3> cY = X * Yij;*/
 
-        metric<value, 3, 3> cY = X * Yij;
+        standard_arguments args(ctx);
 
-        tensor<value, 3> Si_lower = lower_index(Si, Yij, 0);
+        value X = args.get_X();
 
-        tensor<value, 3> cSi_lower = Si_lower * chi_to_e_6phi(X);
+        tensor<value, 3> Si_lower = lower_index(Si, args.Yij, 0);
 
-        tensor<value, 3> u_lower = lower_index(u_upper, Yij, 0);
+        //tensor<value, 3> cSi_lower = Si_lower * chi_to_e_6phi(X);
+
+        tensor<value, 3> u_lower = lower_index(u_upper, args.Yij, 0);
 
         ///https://arxiv.org/pdf/2012.13954.pdf (7)
 
@@ -3526,7 +3529,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    #define PAPER_0610128
+    //#define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -3755,7 +3758,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     #endif // N_BODY
 
-    //#define REGULAR_MERGE
+    #define REGULAR_MERGE
     #ifdef REGULAR_MERGE
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
@@ -4109,6 +4112,7 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
 
     value bl_conformal = calculate_conformal_guess(pos, holes);
     value u = dual_types::apply("buffer_index", "u_value", "ix", "iy", "iz", "dim");
+    value phi = u + bl_conformal + 1;
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
@@ -4131,7 +4135,7 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
         }
     }
 
-    metric<value, 3, 3> Yij = pow(bl_conformal + u, 4) * get_flat_metric<value, 3>();
+    metric<value, 3, 3> Yij = pow(phi, 4) * get_flat_metric<value, 3>();
 
     value Y = Yij.det();
 
@@ -4143,7 +4147,7 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     ctx.pin(conformal_factor);
 
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf the york-lichnerowicz split
-    tensor<value, 3, 3> Aij = pow(bl_conformal + u, -2) * bcAij;
+    tensor<value, 3, 3> Aij = pow(phi, -2) * bcAij;
 
     value gA = 1;
     //value gA = 1/(pow(bl_conformal + u, 2));
@@ -6179,7 +6183,7 @@ int main()
         if(ptr == nullptr)
             continue;
 
-        ptr->grab_resources(matter_vars, u_arg);
+        ptr->grab_resources(matter_vars);
     }
 
     #if 0

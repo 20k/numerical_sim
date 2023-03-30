@@ -379,7 +379,6 @@ void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
                                                __global float* colour0_in,
                                                __global float* colour1_in,
                                                __global float* colour2_in,
-                                               __global float* u_value,
                                                __global float* tov_phi,
                                                float scale, int4 dim,
                                                int use_colour)

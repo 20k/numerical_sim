@@ -34,12 +34,11 @@ struct eularian_hydrodynamics : plugin
 {
     hydro_state hydro_st;
     matter_initial_vars vars;
-    cl::buffer u_arg;
     bool use_colour = false;
 
     eularian_hydrodynamics(cl::context& ctx);
 
-    void grab_resources(matter_initial_vars _vars, cl::buffer _u_arg);
+    void grab_resources(matter_initial_vars _vars);
 
     virtual std::vector<buffer_descriptor> get_buffers() override;
     virtual void init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue,         thin_intermediates_pool& pool, buffer_set& to_init) override;
