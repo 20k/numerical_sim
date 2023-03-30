@@ -440,7 +440,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             mqueue.exec("calculate_momentum_constraint", momentum_args, {points_set.all_count}, {128});
         }
 
-        auto step_kernel = [&](const std::string& name)
+        /*auto step_kernel = [&](const std::string& name)
         {
             cl::args a1;
 
@@ -513,9 +513,82 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         step_kernel("evolve_K");
         step_kernel("evolve_X");
         step_kernel("evolve_gA");
-        step_kernel("evolve_gB");
+        step_kernel("evolve_gB");*/
+
+        cl::args a1;
+
+        a1.push_back(points_set.all_points);
+        a1.push_back(points_set.all_count);
+
+        for(auto& i : generic_in.buffers)
+        {
+            a1.push_back(i.buf.as_device_read_only());
+        }
+
+        for(named_buffer& i : generic_out.buffers)
+        {
+            a1.push_back(i.buf);
+        }
+
+        for(auto& i : base_yn.buffers)
+        {
+            a1.push_back(i.buf.as_device_read_only());
+        }
+
+        for(auto& i : momentum_constraint)
+        {
+            a1.push_back(i.as_device_read_only());
+        }
+
+        for(auto& i : intermediates)
+        {
+            a1.push_back(i.as_device_read_only());
+        }
+
+        if(utility_data.buffers.size() == 0)
+            a1.push_back(nullptr);
+        else
+        {
+            for(named_buffer& buf : utility_data.buffers)
+            {
+                a1.push_back(buf.buf);
+            }
+        }
+
+        //append_utility_buffers(name, a1);
+
+        a1.push_back(scale);
+        a1.push_back(clsize);
+        a1.push_back(current_timestep);
+        a1.push_back(points_set.order);
+
+        mqueue.exec("evolve_all", a1, {points_set.all_count}, {128});
 
         //copy_border(generic_in, generic_out);
+
+        auto clean_kernel = [&](const std::string& name)
+        {
+            ///clean
+            for(int i=0; i < (int)generic_in.buffers.size(); i++)
+            {
+                named_buffer& buf_in = generic_in.buffers[i];
+                named_buffer& buf_base = base_yn.buffers[i];
+                named_buffer& buf_out = generic_out.buffers[i];
+
+                if(buf_in.desc.modified_by != name)
+                    continue;
+
+                clean_thin(buf_in, buf_out, buf_base, current_timestep);
+            }
+        };
+
+        clean_kernel("evolve_cY");
+        clean_kernel("evolve_cA");
+        clean_kernel("evolve_cGi");
+        clean_kernel("evolve_K");
+        clean_kernel("evolve_X");
+        clean_kernel("evolve_gA");
+        clean_kernel("evolve_gB");
     };
 
     auto enforce_constraints = [&](auto& generic_out)

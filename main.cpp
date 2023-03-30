@@ -6254,6 +6254,8 @@ int main()
 
     std::cout << "Init time " << time_to_main.get_elapsed_time_s() << std::endl;
 
+    cl::device_command_queue dqueue(clctx.ctx);
+
     mqueue.block();
 
     float rendering_err = 0.01f;

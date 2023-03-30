@@ -1063,6 +1063,59 @@ void dissipate_single(__global ushort4* points, int point_count,
 }
 
 __kernel
+void evolve_all(__global ushort4* points, int point_count,
+            STANDARD_ARGS(),
+            STANDARD_ARGS(o),
+            STANDARD_ARGS(base_),
+            __global float* momentum0, __global float* momentum1, __global float* momentum2,
+            STANDARD_DERIVS(),
+            STANDARD_UTILITY(),
+            float scale, int4 dim, float timestep, __global ushort* order_ptr)
+{
+    /*#define EVOLVE_BLOCK(prefix) void ^(block_##prefix)(void) = ^{ \
+        evolve_##prefix(points, point_count, GET_STANDARD_ARGS(), GET_STANDARD_ARGS(o), GET_STANDARD_ARGS(base_), \
+                  momentum0, momentum1, momentum2, \
+                  GET_DERIVLIST(,), \
+                  GET_STANDARD_UTILITY(), \
+                  scale, dim, timestep,order_ptr); \
+    };
+
+    EVOLVE_BLOCK(cY);*/
+
+    /*void ^(block_cY)(void) = ^{
+        evolve_cY(points, point_count, GET_STANDARD_ARGS(), GET_STANDARD_ARGS(o), GET_STANDARD_ARGS(base_),
+                  momentum0, momentum1, momentum2,
+                  GET_DERIVLIST(,),
+                  GET_STANDARD_UTILITY(),
+                  scale, dim, timestep,order_ptr);
+    };*/
+
+    #define EVOLVE_BLOCK(prefix) ^{ \
+        evolve_##prefix(points, point_count, GET_STANDARD_ARGS(), GET_STANDARD_ARGS(o), GET_STANDARD_ARGS(base_), \
+                  momentum0, momentum1, momentum2, \
+                  GET_DERIVLIST(,), \
+                  GET_STANDARD_UTILITY(), \
+                  scale, dim, timestep,order_ptr); \
+    }
+
+    if((point_count % 128) != 0)
+    {
+        point_count -= (point_count % 128);
+        point_count += 128;
+    }
+
+    ndrange_t ndrange = ndrange_1D(point_count, 128);
+
+    //enqueue_kernel(get_default_queue(), CLK_ENQUEUE_FLAGS_NO_WAIT, ndrange, EVOLVE_BLOCK(cY));
+    //enqueue_kernel(get_default_queue(), CLK_ENQUEUE_FLAGS_NO_WAIT, ndrange, EVOLVE_BLOCK(cA));
+    //enqueue_kernel(get_default_queue(), CLK_ENQUEUE_FLAGS_NO_WAIT, ndrange, EVOLVE_BLOCK(cGi));
+    //enqueue_kernel(get_default_queue(), CLK_ENQUEUE_FLAGS_NO_WAIT, ndrange, EVOLVE_BLOCK(K));
+    //enqueue_kernel(get_default_queue(), CLK_ENQUEUE_FLAGS_NO_WAIT, ndrange, EVOLVE_BLOCK(X));
+    //enqueue_kernel(get_default_queue(), CLK_ENQUEUE_FLAGS_NO_WAIT, ndrange, EVOLVE_BLOCK(gA));
+    //enqueue_kernel(get_default_queue(), CLK_ENQUEUE_FLAGS_NO_WAIT, ndrange, EVOLVE_BLOCK(gB));
+}
+
+__kernel
 void render(STANDARD_ARGS(),
             STANDARD_DERIVS(),
             STANDARD_UTILITY(),
