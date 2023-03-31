@@ -143,6 +143,7 @@ struct cpu_mesh
     float scale = 1;
 
     std::array<buffer_set, 3> data;
+    buffer_set zero;
     buffer_set utility_data;
 
     basic_pool<buffer_set> free_data;

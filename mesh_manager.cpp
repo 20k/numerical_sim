@@ -195,6 +195,7 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::manage
 
 cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& buffers, const std::vector<buffer_descriptor>& utility_buffers, std::vector<plugin*> _plugins) :
         data{buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers)},
+        zero({buffer_set(ctx, _dim, buffers)}),
         utility_data{buffer_set(ctx, _dim, utility_buffers)},
         points_set{ctx},
         momentum_constraint{ctx, ctx, ctx},
@@ -256,6 +257,8 @@ void cpu_mesh::init(cl::context& ctx, cl::command_queue& cqueue, thin_intermedia
     {
         cl::copy(cqueue, data[0].buffers[i].buf, data[1].buffers[i].buf);
         cl::copy(cqueue, data[0].buffers[i].buf, data[2].buffers[i].buf);
+
+        zero.buffers[i].buf.fill(cqueue, cl_float{0.f});
     }
 }
 
@@ -764,6 +767,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     ///so
     ///ynp1 = yn + dt f(yn+1)
     ///F(x) = yn - x + dt f(x) = 0
+
+    #ifdef FIXED_POINT
     for(int i=0; i < iterations; i++)
     {
         if(i != 0)
@@ -789,6 +794,17 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             #endif // DISS_UNIDIR
         }
     }
+    #endif
+
+    #define STEFFEN
+    #ifdef STEFFEN
+    ///So
+    ///xn+1 == xn - f(xn)/ g(xn)
+    ///g(xn) == (f(x + h) - f(x)) / h
+
+    #endif
+
+
     #endif
 
     ///so ok: at the end of these iterations, data[0] is the original data, data[1] is the output data
