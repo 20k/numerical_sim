@@ -346,7 +346,11 @@ void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_mat
     ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.66
     tensor<value, 3, 3> dtcYij = -2 * args.gA * trace_free(args.cA, args.cY, args.cY.invert()) + lie_cYij;
 
-    dtcYij += -(get_kc()/3.f) * args.gA * args.cY.to_tensor() * log(args.cY.det());
+    value damp_factor = get_kc()/3.f;
+
+    damp_factor = min(damp_factor, 1/value{"timestep"});
+
+    dtcYij += -damp_factor * args.gA * args.cY.to_tensor() * log(args.cY.det());
 
     ///this specifically is incredibly low
     #ifdef DAMP_HAMILTONIAN
