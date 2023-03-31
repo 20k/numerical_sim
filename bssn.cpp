@@ -52,11 +52,14 @@ void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
 {
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
+
+    ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 10
+    ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
+    ///phi
+
     value Y = Yij.det();
-
-    value conformal_factor = (1/12.f) * log(Y);
-
-    ctx.pin(conformal_factor);
+    //value conformal_factor = (1/12.f) * log(Y);
+    //ctx.pin(conformal_factor);
 
     value gB0 = 0;
     value gB1 = 0;

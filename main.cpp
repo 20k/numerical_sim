@@ -4108,15 +4108,6 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
 
     metric<value, 3, 3> Yij = pow(phi, 4) * get_flat_metric<value, 3>();
 
-    value Y = Yij.det();
-
-    ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 10
-    ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
-    ///phi
-    value conformal_factor = (1/12.f) * log(Y);
-
-    ctx.pin(conformal_factor);
-
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf the york-lichnerowicz split
     tensor<value, 3, 3> Aij = pow(phi, -2) * bcAij;
 
