@@ -815,7 +815,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         if(i != 0)
             step(2, 1, timestep, false, i, iterations);
         else
-            step(0, 1, timestep, true, i, iterations);
+            step(3, 1, timestep, true, i, iterations);
 
         if(i != iterations - 1)
         {
