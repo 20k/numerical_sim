@@ -385,6 +385,31 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         clean_buffer(mqueue, in_buf.buf, out_buf.buf, base_buf.buf, in_buf.desc.asymptotic_value, in_buf.desc.wave_speed, current_timestep);
     };
 
+    auto enforce_constraints = [&](auto& generic_out)
+    {
+        cl::args constraints;
+
+        ///technically this function could work anywhere as it does not need derivatives
+        ///but only the valid second derivative points are used
+        constraints.push_back(points_set.all_points);
+        constraints.push_back(points_set.all_count);
+
+        for(auto& i : generic_out.buffers)
+        {
+            constraints.push_back(i.buf);
+        }
+
+        constraints.push_back(scale);
+        constraints.push_back(clsize);
+
+        mqueue.exec("enforce_algebraic_constraints", constraints, {points_set.all_count}, {128});
+
+        for(auto& i : generic_out.buffers)
+        {
+            check_for_nans(i.desc.name + "_constrain", i.buf);
+        }
+    };
+
     auto step = [&](int root_index, int generic_in_index, int generic_out_index, float current_timestep, bool trigger_callbacks, int iteration, int max_iteration)
     {
         auto& generic_in = data[generic_in_index];
@@ -514,32 +539,9 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         step_kernel("evolve_gA");
         step_kernel("evolve_gB");
 
+        enforce_constraints(generic_out);
+
         //copy_border(generic_in, generic_out);
-    };
-
-    auto enforce_constraints = [&](auto& generic_out)
-    {
-        cl::args constraints;
-
-        ///technically this function could work anywhere as it does not need derivatives
-        ///but only the valid second derivative points are used
-        constraints.push_back(points_set.all_points);
-        constraints.push_back(points_set.all_count);
-
-        for(auto& i : generic_out.buffers)
-        {
-            constraints.push_back(i.buf);
-        }
-
-        constraints.push_back(scale);
-        constraints.push_back(clsize);
-
-        mqueue.exec("enforce_algebraic_constraints", constraints, {points_set.all_count}, {128});
-
-        for(auto& i : generic_out.buffers)
-        {
-            check_for_nans(i.desc.name + "_constrain", i.buf);
-        }
     };
 
     #if 0
@@ -759,6 +761,9 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         printf("You're going to forget every single time when you change this for debugging reasons, this will cause everything to break\n");
     }
 
+    ///so
+    ///ynp1 = yn + dt f(yn+1)
+    ///F(x) = yn - x + dt f(x) = 0
     for(int i=0; i < iterations; i++)
     {
         if(i != 0)
@@ -779,7 +784,6 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             enforce_constraints(scratch);
             #else
             //dissipate_set(mqueue, data[0], data[1], points_set, timestep, dim, scale);
-            enforce_constraints(data[1]);
 
             std::swap(data[1], data[2]);
             #endif // DISS_UNIDIR
@@ -951,8 +955,6 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     //dissipate(get_input().buffers, get_output().buffers);
 
     //clean(scratch.buffers, b2.buffers);
-
-    enforce_constraints(data[1]);
 
     for(plugin* p : plugins)
     {
