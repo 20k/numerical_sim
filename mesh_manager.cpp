@@ -340,8 +340,6 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 {
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
-    auto& base_yn = data[0];
-
     mqueue.begin_splice(main_queue);
 
     ///need to size check the buffers
@@ -387,12 +385,13 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         clean_buffer(mqueue, in_buf.buf, out_buf.buf, base_buf.buf, in_buf.desc.asymptotic_value, in_buf.desc.wave_speed, current_timestep);
     };
 
-    auto step = [&](int generic_in_index, int generic_out_index, float current_timestep, bool trigger_callbacks, int iteration, int max_iteration)
+    auto step = [&](int root_index, int generic_in_index, int generic_out_index, float current_timestep, bool trigger_callbacks, int iteration, int max_iteration)
     {
         auto& generic_in = data[generic_in_index];
         auto& generic_out = data[generic_out_index];
+        auto& generic_base = data[root_index];
 
-        buffer_pack pack(generic_in, generic_out, data[0], generic_in_index, generic_out_index, 0);
+        buffer_pack pack(generic_in, generic_out, generic_base, generic_in_index, generic_out_index, root_index);
 
         for(plugin* p : plugins)
         {
@@ -460,7 +459,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
                     a1.push_back(i.buf.as_device_inaccessible());
             }
 
-            for(auto& i : base_yn.buffers)
+            for(auto& i : generic_base.buffers)
             {
                 a1.push_back(i.buf.as_device_read_only());
             }
@@ -497,7 +496,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             for(int i=0; i < (int)generic_in.buffers.size(); i++)
             {
                 named_buffer& buf_in = generic_in.buffers[i];
-                named_buffer& buf_base = base_yn.buffers[i];
+                named_buffer& buf_base = generic_base.buffers[i];
                 named_buffer& buf_out = generic_out.buffers[i];
 
                 if(buf_in.desc.modified_by != name)
@@ -763,9 +762,9 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     for(int i=0; i < iterations; i++)
     {
         if(i != 0)
-            step(2, 1, timestep, false, i, iterations);
+            step(0, 2, 1, timestep, false, i, iterations);
         else
-            step(0, 1, timestep, true, i, iterations);
+            step(0, 0, 1, timestep, true, i, iterations);
 
         if(i != iterations - 1)
         {
