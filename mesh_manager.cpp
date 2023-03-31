@@ -340,7 +340,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 {
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
-    auto& base_yn = data[0];
+    //auto& base_yn = data[0];
 
     mqueue.begin_splice(main_queue);
 
@@ -387,10 +387,11 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         clean_buffer(mqueue, in_buf.buf, out_buf.buf, base_buf.buf, in_buf.desc.asymptotic_value, in_buf.desc.wave_speed, current_timestep);
     };
 
-    auto step = [&](int generic_in_index, int generic_out_index, float current_timestep, bool trigger_callbacks, int iteration, int max_iteration)
+    auto step = [&](int root_index, int generic_in_index, int generic_out_index, float current_timestep, bool trigger_callbacks, int iteration, int max_iteration)
     {
         auto& generic_in = data[generic_in_index];
         auto& generic_out = data[generic_out_index];
+        auto& generic_base = data[root_index];
 
         buffer_pack pack(generic_in, generic_out, data[0], generic_in_index, generic_out_index, 0);
 
@@ -460,7 +461,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
                     a1.push_back(i.buf.as_device_inaccessible());
             }
 
-            for(auto& i : base_yn.buffers)
+            for(auto& i : generic_base.buffers)
             {
                 a1.push_back(i.buf.as_device_read_only());
             }
@@ -497,7 +498,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             for(int i=0; i < (int)generic_in.buffers.size(); i++)
             {
                 named_buffer& buf_in = generic_in.buffers[i];
-                named_buffer& buf_base = base_yn.buffers[i];
+                named_buffer& buf_base = generic_base.buffers[i];
                 named_buffer& buf_out = generic_out.buffers[i];
 
                 if(buf_in.desc.modified_by != name)
@@ -751,7 +752,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     ///buffer has kreiss oliger applied, which is of the form buffer -> buffer + f(base)
     ///so. Buffer -> base + dt * dx + f(base)
     ///this implies that I can redefine base to be base + f(base) and get the same effect
-    #define BACKWARD_EULER
+    //#define BACKWARD_EULER
     #ifdef BACKWARD_EULER
     int iterations = 2;
 
@@ -786,9 +787,50 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             #endif // DISS_UNIDIR
         }
     }
+    ///so ok: at the end of these iterations, data[0] is the original data, data[1] is the output data
     #endif
 
-    ///so ok: at the end of these iterations, data[0] is the original data, data[1] is the output data
+    ///SOOOOO
+    ///data[0] is yi
+    ///data[1] is going to be yip1, initialised to yi
+    ///data[2] is intermediate. Might need data[3], will see
+
+
+    ///so, yip1 == yi as init, so the root buffer is 0
+    ///https://assets.researchsquare.com/files/rs-1517205/v1_covered.pdf?c=1649867432
+    ///CALCULATE (a = hf(yi+1)) * -0.5f + yi+1
+
+    ///so a = hf(y+1)
+    ///b = hf(yi+1 - 0.5f a)
+    ///yi+1 = yi + b
+
+    ///more sane rewriting
+    ///S = yi+1 - 0.5hf(y+1)
+    ///yi+1 = yi + hf(S)
+
+    int iterations = 2;
+
+    step(0, 0, 1, timestep * -0.5f, true, 0, iterations);
+    enforce_constraints(data[1]);
+    ///1 now contains S
+    step(0, 1, 2, timestep, false, 0, iterations);
+    enforce_constraints(data[2]);
+    ///2 now contains the output buffer
+
+    ///current buffer state: 0 == yi, 1 == S, 2 == yi+1
+    step(2, 2, 1, timestep * -0.5f, false, 1, iterations);
+    enforce_constraints(data[1]);
+    ///current buffer state: 0 == yi, 1 == S, 2 == y+1
+    ///need to recalculate yi+1
+    step(0, 1, 2, timestep, false, 1, iterations);
+    enforce_constraints(data[2]);
+
+    std::swap(data[2], data[1]);
+
+
+    ///data[1] needs to be output data at the end of this
+
+
 
     #ifdef RK4_2
     auto post_step = [&](auto& buf, float step)
