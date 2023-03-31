@@ -886,6 +886,11 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     handle_newt(data[0], data[2], data[1], data[3]);
 
+    /*for(int i=0; i < (int)data[3].buffers.size(); i++)
+    {
+        data[3].buffers[i].buf.fill(mqueue, cl_float{0.5f});
+    }*/
+
     for(int i=0; i < 8; i++)
     {
         ///0 contains yn
