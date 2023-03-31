@@ -1275,7 +1275,7 @@ void render(STANDARD_ARGS(),
 
     float real = 0;
 
-    //#define RENDER_WAVES
+    #define RENDER_WAVES
     #ifdef RENDER_WAVES
     {
         float TEMPORARIES4;

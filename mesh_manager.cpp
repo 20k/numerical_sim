@@ -808,7 +808,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     ///S = yi+1 - 0.5hf(y+1)
     ///yi+1 = yi + hf(S)
 
-    int iterations = 2;
+    int iterations = 4;
 
     step(0, 0, 1, timestep * -0.5f, true, 0, iterations);
     enforce_constraints(data[1]);
@@ -817,13 +817,16 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     enforce_constraints(data[2]);
     ///2 now contains the output buffer
 
-    ///current buffer state: 0 == yi, 1 == S, 2 == yi+1
-    step(2, 2, 1, timestep * -0.5f, false, 1, iterations);
-    enforce_constraints(data[1]);
-    ///current buffer state: 0 == yi, 1 == S, 2 == y+1
-    ///need to recalculate yi+1
-    step(0, 1, 2, timestep, false, 1, iterations);
-    enforce_constraints(data[2]);
+    for(int i=0; i < iterations; i++)
+    {
+        ///current buffer state: 0 == yi, 1 == S, 2 == yi+1
+        step(2, 2, 1, timestep * -0.5f, false, 1, iterations);
+        enforce_constraints(data[1]);
+        ///current buffer state: 0 == yi, 1 == S, 2 == y+1
+        ///need to recalculate yi+1
+        step(0, 1, 2, timestep, false, 1, iterations);
+        enforce_constraints(data[2]);
+    }
 
     std::swap(data[2], data[1]);
 
