@@ -966,6 +966,63 @@ void evolve_gB(__global ushort4* points, int point_count,
 }
 
 __kernel
+void do_sum(__global ushort4* points, int point_count,
+            __global float* ynp1, __global float* yn,
+            __global float* y_out,
+            float c1, float c2,
+            int4 dim
+            )
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    int index = IDX(ix, iy, iz);
+
+    y_out[index] = c1 * ynp1[index] + c2 * yn[index];
+}
+
+__kernel
+void do_newt(__global ushort4* points, int point_count,
+                 __global float* X, __global float* F_X, __global float* F_XpFX,
+                 __global float* out,
+                 int4 dim)
+{
+     int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    int index = IDX(ix, iy, iz);
+
+    float bottom = (F_X[index] - F_XpFX[index]);
+
+    if(fabs(bottom) < 0.00001f)
+    {
+        out[index] = X[index];
+        return;
+    }
+
+    float val = X[index] + (pow(F_X[index], 2.f) / bottom);
+
+    if(ix == 128 && iy == 128 && iz == 128)
+    {
+        printf("Val %f X %f F_X %f F_XpFX %f\n", val, X[index], F_X[index], F_XpFX[index]);
+    }
+
+    out[index] = val;
+}
+
+__kernel
 void dissipate_single_unidir(__global ushort4* points, int point_count,
                              __global float* buffer, __global float* obuffer,
                              float coefficient,
@@ -1275,7 +1332,7 @@ void render(STANDARD_ARGS(),
 
     float real = 0;
 
-    //#define RENDER_WAVES
+    #define RENDER_WAVES
     #ifdef RENDER_WAVES
     {
         float TEMPORARIES4;

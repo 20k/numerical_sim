@@ -194,8 +194,7 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::manage
 }
 
 cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& buffers, const std::vector<buffer_descriptor>& utility_buffers, std::vector<plugin*> _plugins) :
-        data{buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers)},
-        zero({buffer_set(ctx, _dim, buffers)}),
+        data{buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers)},
         utility_data{buffer_set(ctx, _dim, utility_buffers)},
         points_set{ctx},
         momentum_constraint{ctx, ctx, ctx},
@@ -257,8 +256,7 @@ void cpu_mesh::init(cl::context& ctx, cl::command_queue& cqueue, thin_intermedia
     {
         cl::copy(cqueue, data[0].buffers[i].buf, data[1].buffers[i].buf);
         cl::copy(cqueue, data[0].buffers[i].buf, data[2].buffers[i].buf);
-
-        zero.buffers[i].buf.fill(cqueue, cl_float{0.f});
+        cl::copy(cqueue, data[0].buffers[i].buf, data[3].buffers[i].buf);
     }
 }
 
@@ -476,7 +474,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
             for(auto& i : generic_in.buffers)
             {
-                a1.push_back(i.buf.as_device_read_only());
+                a1.push_back(i.buf);
             }
 
             for(named_buffer& i : generic_out.buffers)
@@ -489,7 +487,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
             for(auto& i : generic_base.buffers)
             {
-                a1.push_back(i.buf.as_device_read_only());
+                a1.push_back(i.buf);
+                //a1.push_back(i.buf.as_device_read_only());
             }
 
             for(auto& i : momentum_constraint)
@@ -796,15 +795,93 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     }
     #endif
 
+    auto handle_sum = [&](auto& s1, auto& s2, auto& sout, float c1, float c2)
+    {
+        for(int i=0; i < (int)s1.buffers.size(); i++)
+        {
+            if(s1.buffers[i].buf.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z())
+                assert(false);
+
+            cl::args args;
+            args.push_back(points_set.all_points);
+            args.push_back(points_set.all_count);
+            args.push_back(s1.buffers[i].buf);
+            args.push_back(s2.buffers[i].buf);
+            args.push_back(sout.buffers[i].buf);
+            args.push_back(c1);
+            args.push_back(c2);
+            args.push_back(clsize);
+
+            mqueue.exec("do_sum", args, {points_set.all_count}, {128});
+        }
+    };
+
+    auto handle_newt = [&](auto& X, auto& F_X, auto& F_XpFX, auto& out)
+    {
+        for(int i=0; i < (int)X.buffers.size(); i++)
+        {
+            if(X.buffers[i].buf.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z())
+                assert(false);
+
+            cl::args args;
+            args.push_back(points_set.all_points);
+            args.push_back(points_set.all_count);
+            args.push_back(X.buffers[i].buf);
+            args.push_back(F_X.buffers[i].buf);
+            args.push_back(F_XpFX.buffers[i].buf);
+            args.push_back(out.buffers[i].buf);
+            args.push_back(clsize);
+
+            mqueue.exec("do_newt", args, {points_set.all_count}, {128});
+        }
+    };
+
     #define STEFFEN
     #ifdef STEFFEN
     ///So
     ///xn+1 == xn - f(xn)/ g(xn)
     ///g(xn) == (f(x + h) - f(x)) / h
 
+    ///x0 = yn == data[0]
+
+    ///x + f(x^2) / (f(x) - f(x + f(x))
+    ///f(x) = yn - x + dt * func(x)
+
+    ///yn = data[0]
+    ///x = data[0] initially
+
+    ///want f(x), ie f(xn), ie f(data[0])
+
+    auto& yn = data[0];
+
+    auto calculate_F_X = [&](int iX, int iIntermediate, int iOut)
+    {
+        assert(iIntermediate != 0);
+        assert(iOut != 0);
+
+        ///yn - x
+        handle_sum(yn, data[iX], data[iIntermediate], 1.f, -1.f);
+        step(iIntermediate, iX, iOut, timestep, false, 0, iterations);
+    };
+
+    calculate_F_X(0, 1, 2);
+    ///0 contains X, and yn
+    ///1 is junk
+    ///2 now contains F(x)
+
+    handle_sum(data[0], data[2], data[3], 1, 1);
+    ///data[3] now contains X + f(X)
+
+    calculate_F_X(3, 1, 1);
+    ///1 now contains F(x + F(x))
+
+    handle_newt(data[0], data[2], data[1], data[3]);
+
+    ///3 now contains the next iteration
+
+    std::swap(data[3], data[1]);
+
     #endif
-
-
     #endif
 
     ///so ok: at the end of these iterations, data[0] is the original data, data[1] is the output data
