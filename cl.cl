@@ -339,6 +339,10 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
     if(found_det <= 1 + tol && found_det >= 1 - tol)
         return;
 
+    #ifdef USE_FIX_X
+    float fixed_X = fix_X;
+    #endif
+
     #ifndef DAMPED_CONSTRAINTS
     ///if this fires, its probably matter falling into a black hole
     NNANCHECK(CY_DET, "CY_DET");
@@ -375,6 +379,14 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
 
     cA3[index] = fixed_cA3;
     #endif // NO_CAIJYY
+    #endif
+
+    #ifdef USE_FIX_X
+    #ifdef X_IS_ACTUALLY_W
+    X[index] = sqrt(fixed_X);
+    #else
+    X[index] = fixed_X;
+    #endif
     #endif
 }
 

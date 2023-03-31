@@ -3500,7 +3500,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    //#define PAPER_0610128
+    #define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -3729,7 +3729,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     #endif // N_BODY
 
-    #define REGULAR_MERGE
+    //#define REGULAR_MERGE
     #ifdef REGULAR_MERGE
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
@@ -4108,15 +4108,6 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
 
     metric<value, 3, 3> Yij = pow(phi, 4) * get_flat_metric<value, 3>();
 
-    value Y = Yij.det();
-
-    ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 10
-    ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
-    ///phi
-    value conformal_factor = (1/12.f) * log(Y);
-
-    ctx.pin(conformal_factor);
-
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf the york-lichnerowicz split
     tensor<value, 3, 3> Aij = pow(phi, -2) * bcAij;
 
@@ -4483,6 +4474,30 @@ void build_constraints(equation_context& ctx)
         ctx.add("fix_cY" + std::to_string(i), fixed_cY.idx(idx.x(), idx.y()));
         ctx.add("fix_cA" + std::to_string(i), fixed_cA.idx(idx.x(), idx.y()));
     }
+
+    /*cY = Yij * pow(Yij.det(), -1.f/3.f)
+    X = pow(Yij.det(), -1.f/3.f)
+
+    Yij = ncY / X
+
+    Det(Yij) = ((1/X)^n)) * det(ncY)
+    Det(Yij) = X^-n * det(ncY)
+
+    cY = (ncY/X) * pow(X^-n * det(ncY), -1.f/3.f)
+    next_X = pow(X^-n * det(ncY), -1.f/3.f)
+
+    cY = ncY * x^-1 * x^-3 ^ (-1/3) * det(ncY)^-1/3
+    cY = ncY * det(ncY)^(-1/3)
+
+    X^-3 ^(-1/3) * det(ncY)^(-1/3)
+
+    next_X = X * det(ncY)^(-1/3)*/
+
+    #define FIX_X
+    #ifdef FIX_X
+    ctx.add("fix_X", args.get_X() / det_cY_pow);
+    ctx.add("USE_FIX_X", 1);
+    #endif
 
     ctx.add("CY_DET", det_cY_pow);
 }
