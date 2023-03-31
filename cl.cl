@@ -1015,7 +1015,14 @@ void do_newt(__global ushort4* points, int point_count,
         return;
     }
 
-    float val = X[index] + 0.5f * (pow(F_X[index], 2.f) / bottom);
+    float frac = 0.1f * pow(F_X[index], 2.f) / bottom;
+
+    /*if(fabs(frac) > (fabs(X[index]) + 0.001f) * 0.25f)
+    {
+        frac = sign(frac) * (fabs(X[index]) + 0.001f) * 0.25f;
+    }*/
+
+    float val = X[index] + frac;
 
     /*if(ix == 128 && iy == 128 && iz == 128)
     {

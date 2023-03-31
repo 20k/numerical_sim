@@ -891,7 +891,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         data[3].buffers[i].buf.fill(mqueue, cl_float{0.5f});
     }*/
 
-    for(int i=0; i < 8; i++)
+    for(int i=0; i < 16; i++)
     {
         ///0 contains yn
         ///3 now contains X
