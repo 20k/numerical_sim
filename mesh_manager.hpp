@@ -142,7 +142,7 @@ struct cpu_mesh
     int resolution_scale = 1;
     float scale = 1;
 
-    std::array<buffer_set, 4> data;
+    std::array<buffer_set, 6> data;
     buffer_set utility_data;
 
     basic_pool<buffer_set> free_data;

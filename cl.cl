@@ -1008,6 +1008,8 @@ void do_newt(__global ushort4* points, int point_count,
 
     if(fabs(bottom) < 0.00001f)
     {
+        //printf("EVal X %f F_X %f F_XpFX %f\n", X[index], F_X[index], F_XpFX[index]);
+
         out[index] = X[index];
         return;
     }
@@ -1016,7 +1018,7 @@ void do_newt(__global ushort4* points, int point_count,
 
     if(ix == 128 && iy == 128 && iz == 128)
     {
-        printf("Val %f X %f F_X %f F_XpFX %f\n", val, X[index], F_X[index], F_XpFX[index]);
+        //printf("Val %f X %f F_X %f F_XpFX %f\n", val, X[index], F_X[index], F_XpFX[index]);
     }
 
     out[index] = val;

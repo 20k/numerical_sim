@@ -194,7 +194,7 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::manage
 }
 
 cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& buffers, const std::vector<buffer_descriptor>& utility_buffers, std::vector<plugin*> _plugins) :
-        data{buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers)},
+        data{buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers)},
         utility_data{buffer_set(ctx, _dim, utility_buffers)},
         points_set{ctx},
         momentum_constraint{ctx, ctx, ctx},
@@ -257,6 +257,8 @@ void cpu_mesh::init(cl::context& ctx, cl::command_queue& cqueue, thin_intermedia
         cl::copy(cqueue, data[0].buffers[i].buf, data[1].buffers[i].buf);
         cl::copy(cqueue, data[0].buffers[i].buf, data[2].buffers[i].buf);
         cl::copy(cqueue, data[0].buffers[i].buf, data[3].buffers[i].buf);
+        cl::copy(cqueue, data[0].buffers[i].buf, data[4].buffers[i].buf);
+        cl::copy(cqueue, data[0].buffers[i].buf, data[5].buffers[i].buf);
     }
 }
 
@@ -743,10 +745,10 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     ///so. data[0] is current data, data[1] is old data
 
-    {
+    /*{
         dissipate_unidir(data[0], data[2]);
         std::swap(data[0], data[2]);
-    }
+    }*/
 
     ///so
     ///each tick we do buffer -> base + dt * dx. Then we dissipate result. That dissipated result is used to calculate derivatives
@@ -854,17 +856,24 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     auto& yn = data[0];
 
-    auto calculate_F_X = [&](int iX, int iIntermediate, int iOut)
+    bool first = true;
+
+    auto calculate_F_X = [&](int iX, int iOut)
     {
-        assert(iIntermediate != 0);
         assert(iOut != 0);
 
         ///yn - x
-        handle_sum(yn, data[iX], data[iIntermediate], 1.f, -1.f);
-        step(iIntermediate, iX, iOut, timestep, false, 0, iterations);
+        handle_sum(yn, data[iX], data[5], 1.f, -1.f);
+        step(5, iX, iOut, timestep, first, 0, iterations);
+
+        dissipate_set(mqueue, data[0], data[iOut], points_set, timestep, dim, scale);
+
+        //dissipate_unidir(data[0], data[iOut]);
+
+        first = false;
     };
 
-    calculate_F_X(0, 1, 2);
+    calculate_F_X(0, 2);
     ///0 contains X, and yn
     ///1 is junk
     ///2 now contains F(x)
@@ -872,14 +881,33 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     handle_sum(data[0], data[2], data[3], 1, 1);
     ///data[3] now contains X + f(X)
 
-    calculate_F_X(3, 1, 1);
+    calculate_F_X(3, 1);
     ///1 now contains F(x + F(x))
 
     handle_newt(data[0], data[2], data[1], data[3]);
 
-    ///3 now contains the next iteration
+    for(int i=0; i < 8; i++)
+    {
+        ///0 contains yn
+        ///3 now contains X
+
+        calculate_F_X(3, 1);
+
+        ///1 now contains F(X)
+        handle_sum(data[3], data[1], data[2], 1, 1);
+        ///2 now contains X + F(X)
+
+        ///4 contains F(X + F(X))
+        calculate_F_X(2, 4);
+
+        handle_newt(data[3], data[1], data[4], data[2]);
+
+        std::swap(data[2], data[3]);
+    }
 
     std::swap(data[3], data[1]);
+
+    //std::swap(data[3], data[1]);
 
     #endif
     #endif
