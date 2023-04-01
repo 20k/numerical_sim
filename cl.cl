@@ -869,7 +869,7 @@ void evolve_X(__global ushort4* points, int point_count,
 
     float b0 = base_X[index];
 
-    oX[index] = max(f_dtX * timestep + b0, 0.f);
+    oX[index] = f_dtX * timestep + b0;
 
     /**/
 
@@ -910,7 +910,7 @@ void evolve_gA(__global ushort4* points, int point_count,
 
     float b0 = base_gA[index];
 
-    ogA[index] = max(f_dtgA * timestep + b0, 0.f);
+    ogA[index] = f_dtgA * timestep + b0;
 
     NANCHECK(ogA);
 }
