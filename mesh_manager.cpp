@@ -746,13 +746,87 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         std::swap(data[0], data[2]);
     }
 
+    auto finish_midpoint = [&](auto& summed, auto& znm1, auto& out)
+    {
+        for(int i=0; i < (int)summed.buffers.size(); i++)
+        {
+            cl::args args;
+
+            args.push_back(points_set.all_points);
+            args.push_back(points_set.all_count);
+            args.push_back(summed.buffers[i].buf);
+            args.push_back(znm1.buffers[i].buf);
+            args.push_back(out.buffers[i].buf);
+            args.push_back(clsize);
+
+            mqueue.exec("finish_midpoint_impl", args, {points_set.all_count}, {128});
+        }
+    };
+
+    {
+        int N = 5;
+        float littleh = timestep / N;
+
+        ///z0 == data[0]
+
+        step(0, 0, 1, littleh, true, 0, 1); ///produces z1
+        ///data[1] == z1
+
+        auto& zm1 = data[0];
+        auto& zm = data[1];
+
+        ///zm+1 = zm-1 + 2 h f(zm), where m = 1
+        step(0, 1, 2, 2 * littleh, false, 0, 1);
+        ///data[2] == zm+1
+        ///data[1] == zm
+        ///data[0] == zm-1
+
+        ///m = 2
+        step(1, 2, 0, 2 * littleh, false, 0, 1);
+
+        ///data[0] == zm+1
+        ///data[2] == zm
+        ///data[1] == zm-1
+
+        ///m = 3
+        step(2, 0, 1, 2 * littleh, false, 0, 1);
+
+        ///data[1] == zm+1
+        ///data[0] == zm
+        ///data[2] == zm-1
+
+        ///m = 4
+        step(0, 1, 2, 2 * littleh, false, 0, 1);
+
+
+        ///data[2] == zn
+        ///data[1] == zn-1
+
+        step(2, 2, 0, littleh, false, 0, 1);
+        ///0 contains zn + h f zn
+
+        finish_midpoint(data[0], data[1], data[2]);
+
+        std::swap(data[2], data[1]);
+    }
+
+    //#define MIDPOINT
+    #ifdef MIDPOINT
+    {
+        step(0, 0, 1, timestep * 0.5f, true, 0, 2);
+        step(0, 1, 2, timestep, false, 1, 2);
+
+        std::swap(data[2], data[1]);
+    }
+    #endif
+
     ///so
     ///each tick we do buffer -> base + dt * dx. Then we dissipate result. That dissipated result is used to calculate derivatives
     ///for the next tick, and is also used as the values of the inputs et
     ///buffer has kreiss oliger applied, which is of the form buffer -> buffer + f(base)
     ///so. Buffer -> base + dt * dx + f(base)
     ///this implies that I can redefine base to be base + f(base) and get the same effect
-    #define BACKWARD_EULER
+    //#define BACKWARD_EULER
     #ifdef BACKWARD_EULER
     int iterations = 2;
 
