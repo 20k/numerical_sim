@@ -194,7 +194,7 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::manage
 }
 
 cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& buffers, const std::vector<buffer_descriptor>& utility_buffers, std::vector<plugin*> _plugins) :
-        data{buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers)},
+        data{buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers)},
         utility_data{buffer_set(ctx, _dim, utility_buffers)},
         points_set{ctx},
         momentum_constraint{ctx, ctx, ctx},
@@ -256,6 +256,8 @@ void cpu_mesh::init(cl::context& ctx, cl::command_queue& cqueue, thin_intermedia
     {
         cl::copy(cqueue, data[0].buffers[i].buf, data[1].buffers[i].buf);
         cl::copy(cqueue, data[0].buffers[i].buf, data[2].buffers[i].buf);
+        cl::copy(cqueue, data[0].buffers[i].buf, data[3].buffers[i].buf);
+        cl::copy(cqueue, data[0].buffers[i].buf, data[4].buffers[i].buf);
     }
 }
 
@@ -764,6 +766,20 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     ///so
     ///ynp1 = yn + dt f(yn+1)
     ///F(x) = yn - x + dt f(x) = 0
+
+    ///ok but, what if I didn't?
+
+    ///-yn = -x + dt f(x)
+    ///yn = x - dt f(x)
+
+
+    ///secant would be:
+    ///xnm1 - f(xnm1) * (xnm1 - xnm2) / (f(xnm1) - f(xnm2))
+    ///= xnm1 - (yn - xnm1 + dt f(xnm1)) * (xnm1 - xnm2) / ((yn - xnm1 + dt f(xnm1)) - (yn - xnm2 + dt f(xnm2)))
+    ///= xnm1 - (yn - xnm1 + dt f(xnm1)) * (xnm1 - xnm2) / (-xnm1 + dt f (xnm1) + xnm2 - dt f (xnm2))
+    ///= xnm1 - (yn - xnm1 + dt f(xnm1)) * (xnm1 - xnm2) / (dt f(xnm1) - dt f(xnm2) + xnm2 - xnm1)
+
+    #ifdef FIXED_POINT
     for(int i=0; i < iterations; i++)
     {
         if(i != 0)
@@ -789,6 +805,58 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             #endif // DISS_UNIDIR
         }
     }
+    #endif
+
+    //result is stord in s_xnm2_inout
+    auto evaluate_secant = [&](auto& yn, auto& xnm1, auto& xnm2, auto& s_xnm1, auto& s_xnm2_inout)
+    {
+        for(int i=0; i < (int)yn.buffers.size(); i++)
+        {
+            if(yn.buffers[i].buf.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z())
+            {
+                assert(false);
+            }
+
+            cl::args args;
+            args.push_back(points_set.all_points);
+            args.push_back(points_set.all_count);
+            args.push_back(yn.buffers[i].buf);
+            args.push_back(xnm1.buffers[i].buf);
+            args.push_back(xnm2.buffers[i].buf);
+            args.push_back(s_xnm1.buffers[i].buf);
+            args.push_back(s_xnm2_inout.buffers[i].buf);
+            args.push_back(clsize);
+
+            mqueue.exec("evaluate_secant_impl", args, {points_set.all_count}, {128});
+        }
+    };
+
+    ///xnm1 is in data[1]
+    ///xnm2 is currently in data[0]
+    ///yn is in data[0]
+    step(0, 0, 1, timestep, true, 0, iterations);
+
+    ///calculate xnm2 - dt f xnm2
+    ///then xnm1 - xnm2, and then xnm2 is free
+    ///calculate -xnm1 + df f xnm1, as that's reused twice
+    ///then calculate the top/bottom. Do this in a kernel actually
+    ///we COULD store -xnm1 + dt f(xnm1) and reuse it next iteration, by flipping the sign. Consider that later if this works
+    ///then should be able to dedicated kernel everything else
+
+    ///so, lets evaluate xnm1 - dt f(xnm1), so we can unary - it later
+    step(1, 1, 2, -timestep, false, 0, iterations);
+    ///data[2] contains xnm1 - dt f(xnm1)
+
+    ///evaluate xnm2 - dt f(xnm2)
+    step(0, 0, 3, -timestep, false, 0, iterations);
+    ///data[3] contains xnm2 - dt f (xnm2)
+
+    evaluate_secant(data[0], data[1], data[0], data[2], data[3]);
+
+    ///data[3] contains xn
+
+    std::swap(data[3], data[1]);
+
     #endif
 
     ///so ok: at the end of these iterations, data[0] is the original data, data[1] is the output data

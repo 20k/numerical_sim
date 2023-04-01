@@ -1062,6 +1062,27 @@ void dissipate_single(__global ushort4* points, int point_count,
     obuffer[index] += damp * dissipate_single * timestep;
 }
 
+__kernel void evaluate_secant_impl(__global ushort4* points, int point_count,
+                                   __global float* yn, __global float* xnm1, __global float* xnm2,
+                                   __global float* s_xnm1, __global float* s_xnm2,
+                                   int4 dim)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    int index = IDX(ix, iy, iz);
+
+    float next = xnm1[index] - (yn[index] - s_xnm1[index]) * (xnm1[index] - xnm2[index]) / (-s_xnm1[index] + s_xnm2[index]);
+
+    s_xnm2[index] = next;
+}
+
 __kernel
 void render(STANDARD_ARGS(),
             STANDARD_DERIVS(),
