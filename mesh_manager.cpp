@@ -541,7 +541,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         step_kernel("evolve_gA");
         step_kernel("evolve_gB");
 
-        enforce_constraints(generic_out);
+        //enforce_constraints(generic_out);
 
         //copy_border(generic_in, generic_out);
     };
@@ -835,6 +835,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     ///xnm2 is currently in data[0]
     ///yn is in data[0]
     step(0, 0, 1, timestep * 0.25f, true, 0, iterations);
+    enforce_constraints(data[1]);
 
     ///calculate xnm2 - dt f xnm2
     ///then xnm1 - xnm2, and then xnm2 is free
@@ -869,6 +870,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
         evaluate_secant(data[0], data[3], data[1], data[4], data[2]);
 
+        enforce_constraints(data[2]);
+
         ///data[2] now contains xn
         ///data[3] contains xnm1
         ///data[1] contains xnm2
@@ -887,6 +890,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     }
 
     std::swap(data[3], data[1]);
+
+    enforce_constraints(data[1]);
 
     #endif
 
