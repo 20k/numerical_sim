@@ -1080,17 +1080,78 @@ __kernel void evaluate_secant_impl(__global ushort4* points, int point_count,
 
     float bottom = (-s_xnm1[index] + s_xnm2[index]);
 
-    if(fabs(bottom) < 0.0000001f)
+    if(!isfinite(s_xnm1[index]) || !isfinite(s_xnm2[index]))
     {
+        if(isfinite(xnm1[index]))
+        {
+            s_xnm2[index] = xnm1[index];
+            return;
+        }
+
+        if(isfinite(xnm2[index]))
+        {
+            s_xnm2[index] = xnm2[index];
+            return;
+        }
+
+        s_xnm2[index] = 0.5;
+        return;
+    }
+
+    if(fabs(bottom) < 0.000001f)
+    {
+        /*if(!isfinite(s_xnm1[index]))
+        {
+            printf("Bad 1\n");
+            return;
+        }*/
+
+        /*if(!isfinite(s_xnm2[index]))
+            s_xnm2[index] = xnm1[index];
+
+        if(!isfinite(s_xnm1[index]))
+            s_xnm2[index] = xnm2[index];
+
+        if(!isfinite(s_xnm2[index]) && !isfinite(s_xnm1[index]))
+        {
+            printf("Double infinite\n");
+            return;
+        }*/
+
         s_xnm2[index] = xnm1[index];
         return;
     }
 
-    float next = xnm1[index] - 0.5f * (yn[index] - s_xnm1[index]) * (xnm1[index] - xnm2[index]) / bottom;
+    float next = xnm1[index] - (yn[index] - s_xnm1[index]) * (xnm1[index] - xnm2[index]) / bottom;
 
     if(ix == 128 && iy == 128 && iz == 120 && which_buffer == 5)
     {
+        //printf("Next %.16f %i Error %f xnm1 %.16f xnm2 %.16f s_xnm1 %.8f s_xnm2 %.8f\n", next, which_buffer, yn[index] - s_xnm1[index], xnm1[index], xnm2[index], s_xnm1[index], s_xnm2[index]);
+    }
+
+    if(!isfinite(next))
+    {
         printf("Next %.16f %i Error %f xnm1 %.16f xnm2 %.16f s_xnm1 %.8f s_xnm2 %.8f\n", next, which_buffer, yn[index] - s_xnm1[index], xnm1[index], xnm2[index], s_xnm1[index], s_xnm2[index]);
+        s_xnm2[index] = xnm1[index];
+        return;
+    }
+
+    if(!isfinite(xnm1[index]))
+    {
+        printf("Non finitexnm1\n");
+        return;
+    }
+
+    if(!isfinite(xnm2[index]))
+    {
+        printf("Non finitexnm2\n");
+        return;
+    }
+
+    if(!isfinite(s_xnm2[index]))
+    {
+        printf("Non finite xnm2\n");
+        return;
     }
 
     s_xnm2[index] = next;

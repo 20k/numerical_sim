@@ -743,10 +743,10 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     ///so. data[0] is current data, data[1] is old data
 
-    {
+    /*{
         dissipate_unidir(data[0], data[2]);
         std::swap(data[0], data[2]);
-    }
+    }*/
 
     ///so
     ///each tick we do buffer -> base + dt * dx. Then we dissipate result. That dissipated result is used to calculate derivatives
@@ -835,8 +835,10 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     ///xnm1 is in data[1]
     ///xnm2 is currently in data[0]
     ///yn is in data[0]
-    step(0, 0, 1, timestep, true, 0, iterations);
+    step(0, 0, 1, timestep * 0.25f, true, 0, iterations);
     enforce_constraints(data[1]);
+
+    //dissipate_set(mqueue, data[0], data[1], points_set, timestep, dim, scale);
 
     ///calculate xnm2 - dt f xnm2
     ///then xnm1 - xnm2, and then xnm2 is free
@@ -854,6 +856,9 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     ///data[3] contains xnm2 - dt f (xnm2)
 
     evaluate_secant(data[0], data[1], data[0], data[2], data[3]);
+    enforce_constraints(data[3]);
+
+    //dissipate_set(mqueue, data[0], data[3], points_set, timestep, dim, scale);
 
     ///data[3] contains xn
 
@@ -870,6 +875,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         step(3, 3, 4, -timestep, false, i, iterations);
 
         evaluate_secant(data[0], data[3], data[1], data[4], data[2]);
+        //dissipate_set(mqueue, data[0], data[2], points_set, timestep, dim, scale);
 
         enforce_constraints(data[2]);
 
@@ -891,6 +897,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     }
 
     std::swap(data[3], data[1]);
+
+    dissipate_set(mqueue, data[0], data[1], points_set, timestep, dim, scale);
 
     enforce_constraints(data[1]);
 
