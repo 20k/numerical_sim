@@ -871,6 +871,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     ///the function we're solving is yn = x - dt f(x), because its easy to treat that akin to a zero and saves some memory checks
     step(0, 0, 2, timestep, true, 0, iterations);
 
+    dissipate_set(mqueue, data[0], data[2], points_set, timestep, dim, scale);
+
     copy_buf(data[0], data[1]);
 
     ///so, need to generate x - f(x)
@@ -883,7 +885,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     ///brackets are sorted now
     generate_brackets(data[1], data[2], data[3], data[4]);
 
-    int max_expansions = 16;
+    int max_expansions = 6;
 
     for(int i=0; i < max_expansions; i++)
     {
@@ -906,12 +908,16 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         std::swap(data[2], data[1]);
     }
 
-    ///refine guess with fixed point
-    for(int i=0; i < 0; i++)
-    {
-        step(0, 2, 1, timestep, false, i, iterations);
+    //std::swap(data[1], data[2]);
 
-        if(i != iterations - 1)
+    /*int b_it = 8;
+
+    ///refine guess with fixed point
+    for(int i=0; i < b_it; i++)
+    {
+        step(0, 2, 1, timestep, false, i, b_it);
+
+        if(i != b_it - 1)
         {
             //#define INTERMEDIATE_DISSIPATE
             #ifdef INTERMEDIATE_DISSIPATE
@@ -929,7 +935,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             std::swap(data[1], data[2]);
             #endif // DISS_UNIDIR
         }
-    }
+    }*/
 
     enforce_constraints(data[1]);
 

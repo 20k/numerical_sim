@@ -1287,7 +1287,7 @@ void expand_brackets_impl(__global ushort4* points, int point_count,
         return;
     }
 
-    if(fabs(left[index] - right[index]) < 0.000001f)
+    /*if(fabs(left[index] - right[index]) < 0.000001f)
     {
         float mid = (left[index] - right[index]) / 2.f;
 
@@ -1299,9 +1299,14 @@ void expand_brackets_impl(__global ushort4* points, int point_count,
         left[index] = l + sign(l - mid) * min_sep;
         right[index] = r + sign(r - mid) * min_sep;
         return;
-    }
+    }*/
 
-    if(error_1 * error_2 > 0)
+    float tol = 0.0000001f;
+
+    if(fabs(error_1) <= tol || fabs(error_2) <= tol)
+        return;
+
+    //if(error_1 * error_2 > 0)
     {
         float old_left = left[index];
         float old_right = right[index];
@@ -1313,7 +1318,7 @@ void expand_brackets_impl(__global ushort4* points, int point_count,
         float rightwards = old_right - old_left;
         float rightwards_error_differential = error_2 - error_1;
 
-        float sign_to_move_positive = 0;
+        float sign_to_move_positive = 1;
 
         if(rightwards_error_differential > 0)
             sign_to_move_positive = sign(rightwards);
@@ -1321,33 +1326,61 @@ void expand_brackets_impl(__global ushort4* points, int point_count,
         if(rightwards_error_differential < 0)
             sign_to_move_positive = -sign(rightwards);
 
-        if(fabs(rightwards) > 0.00001f && fabs(rightwards_error_differential) > 0.00001f)
+        if(fabs(rightwards_error_differential) > 0.000001f)
         {
             //from_middle_absolute = fabs(rightwards_error_differential) / fabs(rightwards);
 
             float movewards = fabs(rightwards) / fabs(rightwards_error_differential);
 
-            if(error_1 > 0)
+            if(fabs(error_1) > fabs(error_2))
             {
-                float target_error = -0.000001f;
+                float target_error = 0.00000f;
 
-                float next_left = -sign_to_move_positive * movewards * fabs(target_error - error_1) * 1.1f + old_left;
+                float my_sign = sign(error_1);
+
+                float next_left = -my_sign * sign_to_move_positive * movewards * fabs(target_error - error_1) * 0.5f + old_left;
 
                 left[index] = next_left;
             }
 
-            if(error_2 < 0)
+            if(fabs(error_2) > fabs(error_1))
             {
-                float target_error = 0.000001f;
+                float target_error = 0.00000f;
 
-                float next_right = sign_to_move_positive * movewards * fabs(target_error - error_2) * 1.1f + old_left;
+                float my_sign = sign(error_2);
+
+                float next_right = -my_sign * sign_to_move_positive * movewards * fabs(target_error - error_2) * 0.5f + old_right;
 
                 right[index] = next_right;
             }
         }
         else
         {
-            if(error_1 > 0)
+            float movewards = fabs(old_right - old_left) * 0.1f;
+
+            if(fabs(error_1) > fabs(error_2))
+            {
+                float target_error = 0.00000f;
+
+                float my_sign = sign(error_1);
+
+                float next_left = -my_sign * sign_to_move_positive * movewards + old_left;
+
+                left[index] = next_left;
+            }
+
+            if(fabs(error_2) > fabs(error_1))
+            {
+                float target_error = 0.00000f;
+
+                float my_sign = sign(error_2);
+
+                float next_right = -my_sign * sign_to_move_positive * movewards + old_right;
+
+                right[index] = next_right;
+            }
+
+            /*if(error_1 > 0)
             {
                 ///error_1 is > 0, so we want to move in the opposite direction to the rightwards error differential
                 ///so if rightwards_error_differential > 0, we want to move in the -rightwards direction
@@ -1363,7 +1396,7 @@ void expand_brackets_impl(__global ushort4* points, int point_count,
                 float next_right = sign_to_move_positive * from_middle_absolute + old_right;
 
                 right[index] = next_right;
-            }
+            }*/
         }
 
 

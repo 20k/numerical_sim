@@ -776,8 +776,8 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
             float Ka = 0.0001f;
 
             dtcAij.idx(i, j) += Ka * gA * 0.5f *
-                                                (gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)
-                                                 + gpu_covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(j, i));
+                                                (covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)
+                                                 + covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(j, i));
             #endif // DAMP_DTCAIJ
 
             #ifdef BETTERDAMP_DTCAIJ
