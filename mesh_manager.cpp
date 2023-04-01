@@ -826,6 +826,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             args.push_back(s_xnm1.buffers[i].buf);
             args.push_back(s_xnm2_inout.buffers[i].buf);
             args.push_back(clsize);
+            args.push_back(i);
 
             mqueue.exec("evaluate_secant_impl", args, {points_set.all_count}, {128});
         }
@@ -856,7 +857,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     ///data[3] contains xn
 
-    for(int i=0; i < 8; i++)
+    for(int i=0; i < 16; i++)
     {
         ///so. Next iteration
         ///data[3] contains xnm1
@@ -866,7 +867,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         ///so. calculate xnm1 - dt f xnm1 and we're good?
 
         ///data[4] now contains xnm1 - dt f xnm1
-        step(1, 1, 4, -timestep, false, i, iterations);
+        step(3, 3, 4, -timestep, false, i, iterations);
 
         evaluate_secant(data[0], data[3], data[1], data[4], data[2]);
 

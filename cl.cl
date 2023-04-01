@@ -1065,7 +1065,7 @@ void dissipate_single(__global ushort4* points, int point_count,
 __kernel void evaluate_secant_impl(__global ushort4* points, int point_count,
                                    __global float* yn, __global float* xnm1, __global float* xnm2,
                                    __global float* s_xnm1, __global float* s_xnm2,
-                                   int4 dim)
+                                   int4 dim, int which_buffer)
 {
     int local_idx = get_global_id(0);
 
@@ -1087,6 +1087,11 @@ __kernel void evaluate_secant_impl(__global ushort4* points, int point_count,
     }
 
     float next = xnm1[index] - (yn[index] - s_xnm1[index]) * (xnm1[index] - xnm2[index]) / bottom;
+
+    if(ix == 128 && iy == 128 && iz == 120 && which_buffer == 5)
+    {
+        printf("Next %.8f %i Error %f xnm1 %.8f xnm2 %.8f s_xnm1 %.8f\n", next, which_buffer, yn[index] - s_xnm1[index], xnm1[index], xnm2[index], s_xnm1[index]);
+    }
 
     s_xnm2[index] = next;
 }
