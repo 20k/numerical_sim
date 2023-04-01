@@ -1078,7 +1078,15 @@ __kernel void evaluate_secant_impl(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
 
-    float next = xnm1[index] - (yn[index] - s_xnm1[index]) * (xnm1[index] - xnm2[index]) / (-s_xnm1[index] + s_xnm2[index]);
+    float bottom = (-s_xnm1[index] + s_xnm2[index]);
+
+    if(fabs(bottom) < 0.000001f)
+    {
+        s_xnm2[index] = s_xnm1[index];
+        return;
+    }
+
+    float next = xnm1[index] - (yn[index] - s_xnm1[index]) * (xnm1[index] - xnm2[index]) / bottom;
 
     s_xnm2[index] = next;
 }
@@ -1296,7 +1304,7 @@ void render(STANDARD_ARGS(),
 
     float real = 0;
 
-    //#define RENDER_WAVES
+    #define RENDER_WAVES
     #ifdef RENDER_WAVES
     {
         float TEMPORARIES4;

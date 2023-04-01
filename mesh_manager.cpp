@@ -855,6 +855,37 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     ///data[3] contains xn
 
+    for(int i=0; i < 8; i++)
+    {
+        ///so. Next iteration
+        ///data[3] contains xnm1
+        ///data[1] contains xnm2
+        ///data[2] contains xnm2 - dt f(xnm2)
+        ///data[0] contains yn
+        ///so. calculate xnm1 - dt f xnm1 and we're good?
+
+        ///data[4] now contains xnm1 - dt f xnm1
+        step(1, 1, 4, -timestep, false, i, iterations);
+
+        evaluate_secant(data[0], data[3], data[1], data[4], data[2]);
+
+        ///data[2] now contains xn
+        ///data[3] contains xnm1
+        ///data[1] contains xnm2
+        ///data[4] now contains xnm1 - dt f xnm1
+
+        ///so, data[3] needs to contain xn
+        ///data[1] needs to contain xnm1
+        ///data[2] needs to contain xnm1 - dt f xnm1
+
+        std::swap(data[3], data[2]);
+        ///data[2] contains xnm1
+        ///data[3] now contains xn
+        ///data[4] now contains xnm1 - dt f xnm1
+        std::swap(data[2], data[1]);
+        std::swap(data[4], data[2]);
+    }
+
     std::swap(data[3], data[1]);
 
     #endif
