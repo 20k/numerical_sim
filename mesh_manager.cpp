@@ -779,6 +779,162 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     ///= xnm1 - (yn - xnm1 + dt f(xnm1)) * (xnm1 - xnm2) / (-xnm1 + dt f (xnm1) + xnm2 - dt f (xnm2))
     ///= xnm1 - (yn - xnm1 + dt f(xnm1)) * (xnm1 - xnm2) / (dt f(xnm1) - dt f(xnm2) + xnm2 - xnm1)
 
+    #define ROOTFINDER_GENERAL
+    #ifdef ROOTFINDER_GENERAL
+
+    auto generate_brackets = [&](auto& first, auto& second, auto& f_first_bracket, auto& f_second_bracket)
+    {
+        for(int i=0; i < (int)first.buffers.size(); i++)
+        {
+            cl::args args;
+
+            args.push_back(points_set.all_points);
+            args.push_back(points_set.all_count);
+            args.push_back(data[0].buffers[i].buf);
+            args.push_back(first.buffers[i].buf);
+            args.push_back(second.buffers[i].buf);
+            args.push_back(f_first_bracket.buffers[i].buf);
+            args.push_back(f_second_bracket.buffers[i].buf);
+            args.push_back(timestep);
+            args.push_back(clsize);
+
+            mqueue.exec("generate_brackets_impl", args, {points_set.all_count}, {128});
+        }
+    };
+
+    auto copy_buf = [&](auto& from, auto& to)
+    {
+        for(int i=0; i < (int)from.buffers.size(); i++)
+        {
+            cl::args args;
+
+            args.push_back(points_set.all_points);
+            args.push_back(points_set.all_count);
+            args.push_back(from.buffers[i].buf);
+            args.push_back(to.buffers[i].buf);
+            args.push_back(clsize);
+
+            mqueue.exec("copy_impl", args, {points_set.all_count}, {128});
+        }
+    };
+
+    auto expand_brackets = [&](auto& yn, auto& left, auto& right, auto& f_left, auto& f_right, int is_last)
+    {
+        for(int i=0; i < (int)yn.buffers.size(); i++)
+        {
+            cl::args args;
+
+            args.push_back(points_set.all_points);
+            args.push_back(points_set.all_count);
+            args.push_back(yn.buffers[i].buf);
+            args.push_back(left.buffers[i].buf);
+            args.push_back(right.buffers[i].buf);
+            args.push_back(f_left.buffers[i].buf);
+            args.push_back(f_right.buffers[i].buf);
+            args.push_back(clsize);
+            args.push_back(is_last);
+
+            mqueue.exec("expand_brackets_impl", args, {points_set.all_count}, {128});
+        }
+    };
+
+    auto select_best = [&](auto& yn, auto& left, auto& right, auto& f_left, auto& f_right)
+    {
+        for(int i=0; i < (int)yn.buffers.size(); i++)
+        {
+            cl::args args;
+
+            args.push_back(points_set.all_points);
+            args.push_back(points_set.all_count);
+            args.push_back(yn.buffers[i].buf);
+            args.push_back(left.buffers[i].buf);
+            args.push_back(right.buffers[i].buf);
+            args.push_back(f_left.buffers[i].buf);
+            args.push_back(f_right.buffers[i].buf);
+            args.push_back(clsize);
+
+            mqueue.exec("select_best_impl", args, {points_set.all_count}, {128});
+        }
+    };
+
+    ///christ on a bike
+    ///SO the secant method is ALSO unstable in some situations, so need to bracket
+    ///but the problem is, no idea where the brackets are, need to find them!
+    ///!!!!!
+    ///!!!!!!!!!!!!
+    ///!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ///EVERYTHING IS GOING WELL
+
+    ///data[0] is xn, and is our first point
+    ///data[2] is our second guess, and can be used to approximate a derivative
+
+    ///the function we're solving is yn = x - dt f(x), because its easy to treat that akin to a zero and saves some memory checks
+    step(0, 0, 2, timestep, true, 0, iterations);
+
+    copy_buf(data[0], data[1]);
+
+    ///so, need to generate x - f(x)
+
+    step(1, 1, 3, -timestep, false, 0, iterations);
+    step(2, 2, 4, -timestep, false, 0, iterations);
+
+    ///data[3] contains left - dt f(left), data[4] contains right - dt f(right)
+
+    ///brackets are sorted now
+    generate_brackets(data[1], data[2], data[3], data[4]);
+
+    int max_expansions = 16;
+
+    for(int i=0; i < max_expansions; i++)
+    {
+        ///1 is left, 2 is right
+        expand_brackets(data[0], data[1], data[2], data[3], data[4], i == (max_expansions - 1));
+
+        //if(i != max_expansions - 1)
+        {
+            step(1, 1, 3, -timestep, false, 0, iterations);
+            step(2, 2, 4, -timestep, false, 0, iterations);
+        }
+    }
+
+    select_best(data[0], data[1], data[2], data[3], data[4]);
+    ///data[1] contains best guess
+
+    ///push data into 2
+    {
+        dissipate_unidir(data[1], data[2]);
+        std::swap(data[2], data[1]);
+    }
+
+    ///refine guess with fixed point
+    for(int i=0; i < 0; i++)
+    {
+        step(0, 2, 1, timestep, false, i, iterations);
+
+        if(i != iterations - 1)
+        {
+            //#define INTERMEDIATE_DISSIPATE
+            #ifdef INTERMEDIATE_DISSIPATE
+            dissipate(base_yn, b2.buffers);
+            #endif
+
+            ///this is actually fundamentally different from below hmm
+            #ifdef DISS_UNIDIR
+            dissipate_unidir(b2, scratch);
+            enforce_constraints(scratch);
+            #else
+            //dissipate_set(mqueue, data[0], data[1], points_set, timestep, dim, scale);
+            enforce_constraints(data[1]);
+
+            std::swap(data[1], data[2]);
+            #endif // DISS_UNIDIR
+        }
+    }
+
+    enforce_constraints(data[1]);
+
+    #endif // ROOTFINDER_GENERAL
+
     #ifdef FIXED_POINT
     for(int i=0; i < iterations; i++)
     {
@@ -807,6 +963,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     }
     #endif
 
+    #ifdef SECANT
     //result is stord in s_xnm2_inout
     auto evaluate_secant = [&](auto& yn, auto& xnm1, auto& xnm2, auto& s_xnm1, auto& s_xnm2_inout)
     {
@@ -901,6 +1058,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     dissipate_set(mqueue, data[0], data[1], points_set, timestep, dim, scale);
 
     enforce_constraints(data[1]);
+    #endif
 
     #endif
 

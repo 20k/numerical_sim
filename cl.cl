@@ -1158,6 +1158,286 @@ __kernel void evaluate_secant_impl(__global ushort4* points, int point_count,
 }
 
 __kernel
+void generate_brackets_impl(__global ushort4* points, int point_count,
+                            __global float* yn,
+                            __global float* first, __global float* second,
+                            __global float* f_first, __global float* f_second,
+                            float timestep, int4 dim)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    int index = IDX(ix, iy, iz);
+
+    ///f_bracket == x - dt * f(x)
+    ///F(x) == yn - x + dt f(x) = 0
+
+    float error_1 = yn[index] - f_first[index];
+    float error_2 = yn[index] - f_second[index];
+
+    float left = -1;
+    float right = -1;
+
+    float f_left = -1;
+    float f_right = -1;
+
+    if(error_1 < error_2)
+    {
+        left = first[index];
+        right = second[index];
+
+        f_left = f_first[index];
+        f_right = f_second[index];
+    }
+    else
+    {
+        left = second[index];
+        right = first[index];
+
+        f_left = f_second[index];
+        f_right = f_first[index];
+    }
+
+    first[index] = left;
+    second[index] = right;
+
+    f_first[index] = f_left;
+    f_second[index] = f_right;
+}
+
+__kernel
+void select_best_impl(__global ushort4* points, int point_count,
+                          __global float* yn,
+                          __global float* left, __global float* right,
+                          __global float* f_left, __global float* f_right,
+                          int4 dim)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    int index = IDX(ix, iy, iz);
+
+    float error_1 = yn[index] - f_left[index];
+    float error_2 = yn[index] - f_right[index];
+
+    if(fabs(error_1) > fabs(error_2))
+    {
+        left[index] = right[index];
+    }
+}
+
+float swap_floats(float* s1, float* s2)
+{
+    float i = *s1;
+    *s1 = *s2;
+    *s2 = i;
+}
+
+__kernel
+void expand_brackets_impl(__global ushort4* points, int point_count,
+                          __global float* yn,
+                          __global float* left, __global float* right,
+                          __global float* f_left, __global float* f_right,
+                          int4 dim,
+                          int is_last)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    int index = IDX(ix, iy, iz);
+
+    ///f_left = x - dt * f(x)
+    ///-f_left = -x + dt * f(x)
+
+    float error_1 = yn[index] - f_left[index];
+    float error_2 = yn[index] - f_right[index];
+
+    if(error_1 > error_2)
+    {
+        float l = left[index];
+        float r = right[index];
+
+        left[index] = r;
+        right[index] = l;
+        return;
+    }
+
+    if(left[index] == right[index])
+    {
+        left[index] -= 0.00001f;
+        right[index] += 0.00001f;
+        return;
+    }
+
+    if(fabs(left[index] - right[index]) < 0.000001f)
+    {
+        float mid = (left[index] - right[index]) / 2.f;
+
+        float min_sep = 0.000001f;
+
+        float l = left[index];
+        float r = right[index];
+
+        left[index] = l + sign(l - mid) * min_sep;
+        right[index] = r + sign(r - mid) * min_sep;
+        return;
+    }
+
+    if(error_1 * error_2 > 0)
+    {
+        float old_left = left[index];
+        float old_right = right[index];
+
+        float middle = (old_left + old_right)/2.f;
+
+        float from_middle_absolute = fabs(old_left - middle) * 4;
+
+        float rightwards = old_right - old_left;
+        float rightwards_error_differential = error_2 - error_1;
+
+        float sign_to_move_positive = 0;
+
+        if(rightwards_error_differential > 0)
+            sign_to_move_positive = sign(rightwards);
+
+        if(rightwards_error_differential < 0)
+            sign_to_move_positive = -sign(rightwards);
+
+        if(fabs(rightwards) > 0.00001f && fabs(rightwards_error_differential) > 0.00001f)
+        {
+            //from_middle_absolute = fabs(rightwards_error_differential) / fabs(rightwards);
+
+            float movewards = fabs(rightwards) / fabs(rightwards_error_differential);
+
+            if(error_1 > 0)
+            {
+                float target_error = -0.000001f;
+
+                float next_left = -sign_to_move_positive * movewards * fabs(target_error - error_1) * 1.1f + old_left;
+
+                left[index] = next_left;
+            }
+
+            if(error_2 < 0)
+            {
+                float target_error = 0.000001f;
+
+                float next_right = sign_to_move_positive * movewards * fabs(target_error - error_2) * 1.1f + old_left;
+
+                right[index] = next_right;
+            }
+        }
+        else
+        {
+            if(error_1 > 0)
+            {
+                ///error_1 is > 0, so we want to move in the opposite direction to the rightwards error differential
+                ///so if rightwards_error_differential > 0, we want to move in the -rightwards direction
+                ///if rightwards_error_differential < 0, we want to move in the +rightwards direction
+                ///don't want to reinvent secant particularly, but i could here
+                float next_left = -sign_to_move_positive * from_middle_absolute + old_left;
+
+                left[index] = next_left;
+            }
+
+            if(error_2 < 0)
+            {
+                float next_right = sign_to_move_positive * from_middle_absolute + old_right;
+
+                right[index] = next_right;
+            }
+        }
+
+
+        /*float next_left = (old_left - middle) * 4 + middle;
+
+        float next_right = (old_right - middle) * 4 + middle;*/
+
+        if(ix == 128 && iy == 128 && iz == 128)
+        {
+            //printf("Left %f Right %f err1 %f err2 %f\n", left[index], right[index], error_1, error_2);
+            //printf("Left %f Right %f next left %f next right %f\n", left[index], right[index], next_left, next_right);
+        }
+
+        //if(next_left == next_right)
+
+        /*if(fabs(next_right - next_left) < 0.0000001f)
+        {
+            next_left -= 0.001f;
+            next_right += 0.001f;
+        }*/
+
+        /*if(fabs(next_right - next_left) < 0.0000001f)
+        {
+            next_left -= 0.00001f;
+            next_right += 0.00001f;
+        }
+
+        if(error_1 < error_2)
+        {
+            if(error_1 > 0)
+                left[index] = next_left;
+
+            if(error_2 < 0)
+                right[index] = next_right;
+        }
+        else
+        {
+            if(error_2 > 0)
+                left[index] = next_right;
+
+            if(error_1 < 0)
+                right[index] = next_left;
+        }*/
+
+        if(is_last)
+        {
+            //printf("Left %f Right %f error_left %f error_right %f\n", old_left, old_right, error_1, error_2);
+            //printf("Left %f Right %f next left %f next right %f error_left %f error_right %f\n", old_left, old_right, next_left, next_right, error_1, error_2);
+
+            //printf("Error, bracket expansion failed");
+        }
+    }
+}
+
+__kernel
+void copy_impl(__global ushort4* points, int point_count,
+                          __global float* from, __global float* to,
+                          int4 dim)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    int index = IDX(ix, iy, iz);
+
+    to[index] = from[index];
+}
+
+__kernel
 void render(STANDARD_ARGS(),
             STANDARD_DERIVS(),
             STANDARD_UTILITY(),
