@@ -1080,17 +1080,17 @@ __kernel void evaluate_secant_impl(__global ushort4* points, int point_count,
 
     float bottom = (-s_xnm1[index] + s_xnm2[index]);
 
-    if(fabs(bottom) < 0.000001f)
+    if(fabs(bottom) < 0.0000001f)
     {
-        s_xnm2[index] = s_xnm1[index];
+        s_xnm2[index] = xnm1[index];
         return;
     }
 
-    float next = xnm1[index] - (yn[index] - s_xnm1[index]) * (xnm1[index] - xnm2[index]) / bottom;
+    float next = xnm1[index] - 0.5f * (yn[index] - s_xnm1[index]) * (xnm1[index] - xnm2[index]) / bottom;
 
     if(ix == 128 && iy == 128 && iz == 120 && which_buffer == 5)
     {
-        printf("Next %.8f %i Error %f xnm1 %.8f xnm2 %.8f s_xnm1 %.8f\n", next, which_buffer, yn[index] - s_xnm1[index], xnm1[index], xnm2[index], s_xnm1[index]);
+        printf("Next %.16f %i Error %f xnm1 %.16f xnm2 %.16f s_xnm1 %.8f s_xnm2 %.8f\n", next, which_buffer, yn[index] - s_xnm1[index], xnm1[index], xnm2[index], s_xnm1[index], s_xnm2[index]);
     }
 
     s_xnm2[index] = next;
