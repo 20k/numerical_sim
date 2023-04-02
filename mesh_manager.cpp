@@ -839,7 +839,26 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         }
     };
 
-    #define IMPLICIT_MIDPOINT
+
+    auto midpoint_guess = [&](auto& a, auto& b)
+    {
+        for(int i=0; i < (int)a.buffers.size(); i++)
+        {
+            cl::args args;
+
+            args.push_back(points_set.all_points);
+            args.push_back(points_set.all_count);
+            args.push_back(a.buffers[i].buf);
+            args.push_back(b.buffers[i].buf);
+            args.push_back(clsize);
+
+            mqueue.exec("midpoint_guess_impl", args, {points_set.all_count}, {128});
+        }
+    };
+
+
+
+    //#define IMPLICIT_MIDPOINT
     #ifdef IMPLICIT_MIDPOINT
     ///ynp1 = yn + h f (0.5 yn + 0.5 yn+1)
     ///ynp1 == yn
@@ -867,6 +886,23 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     step(0, 2, 1, timestep, false, 0, 1);
 
     #endif // IMPLICIT_MIDPOINT
+
+    #define IMPLICIT_MIDPOINT2
+    #ifdef IMPLICIT_MIDPOINT2
+
+    step(0, 0, 1, timestep * 0.5f, true, 0, 1);
+    step(0, 1, 2, timestep * 0.5f, false, 0, 1);
+    step(0, 2, 1, timestep * 0.5f, false, 0, 1);
+    //step(0, 1, 2, timestep * 0.5f, false, 0, 1);
+
+    std::swap(data[2], data[1]);
+
+    ///data[2] == yn+0.5
+
+    midpoint_guess(data[2], data[0]);
+    std::swap(data[2], data[1]);
+
+    #endif // IMPLICIT_MIDPOINT2
 
     //#define MIDPOINT
     #ifdef MIDPOINT
