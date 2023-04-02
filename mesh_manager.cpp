@@ -876,6 +876,69 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         }
     };
 
+    auto bdf_sum = [&](auto& yp1, auto& yn)
+    {
+        for(int i=0; i < (int)yp1.buffers.size(); i++)
+        {
+            cl::args args;
+
+            args.push_back(points_set.all_points);
+            args.push_back(points_set.all_count);
+            args.push_back(yp1.buffers[i].buf);
+            args.push_back(yn.buffers[i].buf);
+            args.push_back(clsize);
+
+            mqueue.exec("bdf_sum_impl", args, {points_set.all_count}, {128});
+        }
+    };
+
+    #define BACKWARDS2
+    #ifdef BACKWARDS2
+
+    if(first_step)
+    {
+        step(0, 0, 1, timestep * 0.5f, true, 0, 1);
+        step(0, 1, 2, timestep * 0.5f, false, 0, 1);
+        step(0, 2, 1, timestep * 0.5f, false, 0, 1);
+        //step(0, 1, 2, timestep * 0.5f, false, 0, 1);
+
+        std::swap(data[2], data[1]);
+
+        ///data[2] == yn+0.5
+
+        midpoint_guess(data[2], data[0]);
+        std::swap(data[2], data[1]);
+        first_step = false;
+    }
+    else
+    {
+        ///data[1] contains yn
+        ///data[0] contains yn+1
+
+        bdf_sum(data[0], data[1]);
+
+        ///data[1] contains bdf sum
+
+        int iterations = 3;
+
+        for(int i=0; i < iterations; i++)
+        {
+            if(i == 0)
+                step(1, 0, 2, timestep * (2.f/3.f), true, 0, 1);
+            else
+                step(1, 2, 3, timestep * (2.f/3.f), false, 0, 1);
+
+            if(i != 0)
+            {
+                std::swap(data[3], data[2]);
+            }
+        }
+    }
+
+    std::swap(data[2], data[1]);
+
+    #endif // BACKWARDS2
+
     //#define HEUNS
     #ifdef HEUNS
     step(0, 0, 1, timestep, true, 0, 1);

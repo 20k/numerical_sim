@@ -171,6 +171,8 @@ struct cpu_mesh
     void append_utility_buffers(const std::string& kernel_name, cl::args& args);
 
     std::vector<plugin*> plugins;
+
+    bool first_step = true;
 };
 
 #endif // MESH_MANAGER_HPP_INCLUDED
