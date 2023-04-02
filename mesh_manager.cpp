@@ -772,40 +772,28 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         step(0, 0, 1, littleh, true, 0, 1); ///produces z1
         ///data[1] == z1
 
-        auto& zm1 = data[0];
-        auto& zm = data[1];
+        int zmm1 = 0;
+        int zm = 1;
+        int zmp1 = 2;
 
-        ///zm+1 = zm-1 + 2 h f(zm), where m = 1
-        step(0, 1, 2, 2 * littleh, false, 0, 1);
-        ///data[2] == zm+1
-        ///data[1] == zm
-        ///data[0] == zm-1
+        for(int m=1; m <= N - 1; m++)
+        {
+            step(zmm1, zm, zmp1, 2 * littleh, false, 0, 1);
 
-        ///m = 2
-        step(1, 2, 0, 2 * littleh, false, 0, 1);
+            //zm = zmp1
+            //zmp1 = zmm1
+            //zmm1 = zm
 
-        ///data[0] == zm+1
-        ///data[2] == zm
-        ///data[1] == zm-1
+            int old_zm = zm;
+            zm = zmp1;
+            zmp1 = zmm1;
+            zmm1 = old_zm;
+        }
 
-        ///m = 3
-        step(2, 0, 1, 2 * littleh, false, 0, 1);
-
-        ///data[1] == zm+1
-        ///data[0] == zm
-        ///data[2] == zm-1
-
-        ///m = 4
-        step(0, 1, 2, 2 * littleh, false, 0, 1);
-
-
-        ///data[2] == zn
-        ///data[1] == zn-1
-
-        step(2, 2, 0, littleh, false, 0, 1);
+        step(zm, zm, zmp1, littleh, false, 0, 1);
         ///0 contains zn + h f zn
 
-        finish_midpoint(data[0], data[1], data[2]);
+        finish_midpoint(data[zmp1], data[zmm1], data[zm]);
 
         std::swap(data[2], data[1]);
     }
