@@ -795,8 +795,6 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         ///data[3] == ynp1
     }
 
-    int root_buffer = has_first_step ? 3 : 0;
-
     ///so
     ///each tick we do buffer -> base + dt * dx. Then we dissipate result. That dissipated result is used to calculate derivatives
     ///for the next tick, and is also used as the values of the inputs et
@@ -817,7 +815,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         if(i != 0)
             step(2, 1, timestep, false, i, iterations);
         else
-            step(root_buffer, 1, timestep, true, i, iterations);
+            step(0, 1, timestep, true, i, iterations);
 
         if(i != iterations - 1)
         {
