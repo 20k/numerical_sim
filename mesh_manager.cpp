@@ -786,6 +786,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
         step(in, in, intermediate, littleh, true, 0, 1); ///produces z1
 
+        //dissipate_set(mqueue, data[in], data[intermediate], points_set, timestep, dim, scale);
+
         int zmm1 = in;
         int zm = intermediate;
         int zmp1 = out;
@@ -793,6 +795,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         for(int m=1; m <= N - 1; m++)
         {
             step(zmm1, zm, zmp1, 2 * littleh, false, 0, 1);
+
+            //dissipate_set(mqueue, data[zm], data[zmp1], points_set, timestep, dim, scale);
 
             //zm = zmp1
             //zmp1 = zmm1
@@ -811,13 +815,13 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         std::swap(data[zm], data[out]);
     };
 
-    copy_valid(data[0], data[1]);
+    //copy_valid(data[0], data[1]);
 
     int N = 5;
 
-    do_midpoint(1, 2, 3, N);
+    do_midpoint(0, 1, 2, N);
 
-    std::swap(data[3], data[1]);
+    std::swap(data[2], data[1]);
 
     //#define MIDPOINT
     #ifdef MIDPOINT
