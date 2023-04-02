@@ -795,6 +795,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         ///data[3] == ynp1
     }
 
+    int root_buffer = has_first_step ? 3 : 0;
+
     ///so
     ///each tick we do buffer -> base + dt * dx. Then we dissipate result. That dissipated result is used to calculate derivatives
     ///for the next tick, and is also used as the values of the inputs et
@@ -803,7 +805,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     ///this implies that I can redefine base to be base + f(base) and get the same effect
     #define BACKWARD_EULER
     #ifdef BACKWARD_EULER
-    int iterations = 8;
+    int iterations = 3;
 
     if(iterations == 1)
     {
@@ -815,7 +817,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         if(i != 0)
             step(2, 1, timestep, false, i, iterations);
         else
-            step(3, 1, timestep, true, i, iterations);
+            step(root_buffer, 1, timestep, true, i, iterations);
 
         if(i != iterations - 1)
         {
