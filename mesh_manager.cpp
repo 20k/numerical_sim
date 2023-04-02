@@ -194,7 +194,7 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::manage
 }
 
 cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& buffers, const std::vector<buffer_descriptor>& utility_buffers, std::vector<plugin*> _plugins) :
-        data{buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers)},
+        data{buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers)},
         utility_data{buffer_set(ctx, _dim, utility_buffers)},
         points_set{ctx},
         momentum_constraint{ctx, ctx, ctx},
@@ -256,6 +256,7 @@ void cpu_mesh::init(cl::context& ctx, cl::command_queue& cqueue, thin_intermedia
     {
         cl::copy(cqueue, data[0].buffers[i].buf, data[1].buffers[i].buf);
         cl::copy(cqueue, data[0].buffers[i].buf, data[2].buffers[i].buf);
+        cl::copy(cqueue, data[0].buffers[i].buf, data[3].buffers[i].buf);
     }
 }
 
@@ -746,6 +747,21 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         std::swap(data[0], data[2]);
     }
 
+    auto copy_valid = [&](auto& in, auto& out)
+    {
+        for(int i=0; i < (int)in.buffers.size(); i++)
+        {
+            cl::args copy;
+            copy.push_back(points_set.all_points);
+            copy.push_back(points_set.all_count);
+            copy.push_back(in.buffers[i].buf);
+            copy.push_back(out.buffers[i].buf);
+            copy.push_back(clsize);
+
+            mqueue.exec("copy_valid", copy, {points_set.all_count}, {128});
+        }
+    };
+
     auto finish_midpoint = [&](auto& summed, auto& znm1, auto& out)
     {
         for(int i=0; i < (int)summed.buffers.size(); i++)
@@ -763,18 +779,16 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         }
     };
 
+    ///https://www.physics.unlv.edu/~jeffery/astro/computer/numrec/f16-3.pdf
+    auto do_midpoint = [&](int in, int intermediate, int out, int N)
     {
-        int N = 5;
         float littleh = timestep / N;
 
-        ///z0 == data[0]
+        step(in, in, intermediate, littleh, true, 0, 1); ///produces z1
 
-        step(0, 0, 1, littleh, true, 0, 1); ///produces z1
-        ///data[1] == z1
-
-        int zmm1 = 0;
-        int zm = 1;
-        int zmp1 = 2;
+        int zmm1 = in;
+        int zm = intermediate;
+        int zmp1 = out;
 
         for(int m=1; m <= N - 1; m++)
         {
@@ -791,12 +805,19 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         }
 
         step(zm, zm, zmp1, littleh, false, 0, 1);
-        ///0 contains zn + h f zn
 
         finish_midpoint(data[zmp1], data[zmm1], data[zm]);
 
-        std::swap(data[2], data[1]);
-    }
+        std::swap(data[zm], data[out]);
+    };
+
+    copy_valid(data[0], data[1]);
+
+    int N = 5;
+
+    do_midpoint(1, 2, 3, N);
+
+    std::swap(data[3], data[1]);
 
     //#define MIDPOINT
     #ifdef MIDPOINT
