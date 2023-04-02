@@ -780,7 +780,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     };
 
     ///https://www.physics.unlv.edu/~jeffery/astro/computer/numrec/f16-3.pdf
-    auto do_midpoint = [&](int in, int intermediate, int out, int N)
+    /*auto do_midpoint = [&](int in, int intermediate, int out, int N)
     {
         float littleh = timestep / N;
 
@@ -821,7 +821,52 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     do_midpoint(0, 1, 2, N);
 
-    std::swap(data[2], data[1]);
+    std::swap(data[2], data[1]);*/
+
+    auto construct_guess = [&](auto& a, auto& b)
+    {
+        for(int i=0; i < (int)a.buffers.size(); i++)
+        {
+            cl::args args;
+
+            args.push_back(points_set.all_points);
+            args.push_back(points_set.all_count);
+            args.push_back(a.buffers[i].buf);
+            args.push_back(b.buffers[i].buf);
+            args.push_back(clsize);
+
+            mqueue.exec("construct_guess_impl", args, {points_set.all_count}, {128});
+        }
+    };
+
+    #define IMPLICIT_MIDPOINT
+    #ifdef IMPLICIT_MIDPOINT
+    ///ynp1 = yn + h f (0.5 yn + 0.5 yn+1)
+    ///ynp1 == yn
+
+    ///first step == yn + h f 0.5 yn + 0.5 yn == yn + h f yn == euler
+
+    step(0, 0, 1, timestep, true, 0, 1);
+
+    ///data[1] contains guess
+    construct_guess(data[1], data[0]);
+
+    step(0, 1, 2, timestep, false, 0, 1);
+    ///yn+1 is in data[2]
+
+    construct_guess(data[2], data[0]);
+
+    step(0, 2, 1, timestep, false, 0, 1);
+
+    construct_guess(data[1], data[0]);
+
+    step(0, 1, 2, timestep, false, 0, 1);
+
+    construct_guess(data[2], data[0]);
+
+    step(0, 2, 1, timestep, false, 0, 1);
+
+    #endif // IMPLICIT_MIDPOINT
 
     //#define MIDPOINT
     #ifdef MIDPOINT
