@@ -779,6 +779,22 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         }
     };
 
+    auto finish_bs = [&](int high, int low)
+    {
+        for(int i=0; i < (int)data[high].buffers.size(); i++)
+        {
+            cl::args args;
+
+            args.push_back(points_set.all_points);
+            args.push_back(points_set.all_count);
+            args.push_back(data[high].buffers[i].buf);
+            args.push_back(data[low].buffers[i].buf);
+            args.push_back(clsize);
+
+            mqueue.exec("finish_bs_impl", args, {points_set.all_count}, {128});
+        }
+    };
+
     ///https://www.physics.unlv.edu/~jeffery/astro/computer/numrec/f16-3.pdf
     auto do_midpoint = [&](int in, int intermediate, int out, int N)
     {
@@ -813,9 +829,13 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     copy_valid(data[0], data[1]);
 
-    int N = 5;
+    int N = 8;
 
     do_midpoint(1, 2, 3, N);
+
+    do_midpoint(0, 1, 2, N/2);
+
+    finish_bs(3, 2);
 
     std::swap(data[3], data[1]);
 
