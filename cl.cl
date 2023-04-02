@@ -1021,6 +1021,24 @@ void midpoint_guess_impl(__global ushort4* points, int point_count,
 }
 
 __kernel
+void finish_heun_impl(__global ushort4* points, int point_count,
+                      __global float* yip1, __global float* yip2, int4 dim)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    int index = IDX(ix, iy, iz);
+
+    yip2[index] = 0.5f * (yip1[index] + yip2[index]);
+}
+
+__kernel
 void dissipate_single_unidir(__global ushort4* points, int point_count,
                              __global float* buffer, __global float* obuffer,
                              float coefficient,

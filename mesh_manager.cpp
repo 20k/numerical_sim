@@ -856,7 +856,39 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         }
     };
 
+    #ifdef EULER
+    step(0, 0, 1, timestep, true, 0, 1);
+    #endif
 
+    auto finish_heun = [&](auto& yip1, auto& yip2)
+    {
+        for(int i=0; i < (int)yip1.buffers.size(); i++)
+        {
+            cl::args args;
+
+            args.push_back(points_set.all_points);
+            args.push_back(points_set.all_count);
+            args.push_back(yip1.buffers[i].buf);
+            args.push_back(yip2.buffers[i].buf);
+            args.push_back(clsize);
+
+            mqueue.exec("finish_heun_impl", args, {points_set.all_count}, {128});
+        }
+    };
+
+    //#define HEUNS
+    #ifdef HEUNS
+    step(0, 0, 1, timestep, true, 0, 1);
+
+    ///yi + h f(yi+1)
+    step(0, 1, 2, timestep, false, 0, 1);
+
+    ///calculates 2 * yi + h f(yi) + h f(yi+1), then divides by 2
+    ///stores in data[1]
+
+    finish_heun(data[0], data[1]);
+
+    #endif // HEUNS
 
     //#define IMPLICIT_MIDPOINT
     #ifdef IMPLICIT_MIDPOINT
@@ -877,17 +909,17 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     step(0, 2, 1, timestep, false, 0, 1);
 
-    construct_guess(data[1], data[0]);
+    //construct_guess(data[1], data[0]);
 
-    step(0, 1, 2, timestep, false, 0, 1);
+    //step(0, 1, 2, timestep, false, 0, 1);
 
-    construct_guess(data[2], data[0]);
+    //construct_guess(data[2], data[0]);
 
-    step(0, 2, 1, timestep, false, 0, 1);
+    //step(0, 2, 1, timestep, false, 0, 1);
 
     #endif // IMPLICIT_MIDPOINT
 
-    #define IMPLICIT_MIDPOINT2
+    //#define IMPLICIT_MIDPOINT2
     #ifdef IMPLICIT_MIDPOINT2
 
     step(0, 0, 1, timestep * 0.5f, true, 0, 1);

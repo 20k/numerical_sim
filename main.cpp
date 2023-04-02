@@ -6425,7 +6425,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.09f;
+        float timestep = 0.03f;
 
         if(pao && time_elapsed_s > 250)
             step = false;
