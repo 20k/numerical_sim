@@ -417,6 +417,12 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         auto& generic_out = data[generic_out_index];
         auto& generic_base = data[root_index];
 
+        if(!generic_in.currently_physical)
+        {
+            enforce_constraints(generic_in);
+            generic_in.currently_physical = true;
+        }
+
         buffer_pack pack(generic_in, generic_out, generic_base, generic_in_index, generic_out_index, root_index);
 
         for(plugin* p : plugins)
@@ -539,6 +545,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         step_kernel("evolve_X");
         step_kernel("evolve_gA");
         step_kernel("evolve_gB");
+
+        generic_out.currently_physical = false;
 
         //enforce_constraints(generic_out);
 
@@ -745,10 +753,13 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     {
         dissipate_unidir(data[0], data[2]);
         std::swap(data[0], data[2]);
+        data[0].currently_physical = false;
     }
 
     auto copy_valid = [&](auto& in, auto& out)
     {
+        out.currently_physical = in.currently_physical;
+
         for(int i=0; i < (int)in.buffers.size(); i++)
         {
             cl::args copy;
@@ -764,6 +775,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     auto finish_midpoint = [&](auto& summed, auto& znm1, auto& out)
     {
+        summed.currently_physical = false;
+
         for(int i=0; i < (int)summed.buffers.size(); i++)
         {
             cl::args args;
@@ -781,6 +794,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     auto finish_bs = [&](int high, int low)
     {
+        data[high].currently_physical = false;
+
         for(int i=0; i < (int)data[high].buffers.size(); i++)
         {
             cl::args args;
@@ -853,6 +868,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     auto construct_guess = [&](auto& a, auto& b)
     {
+        a.currently_physical = false;
+
         for(int i=0; i < (int)a.buffers.size(); i++)
         {
             cl::args args;
@@ -870,6 +887,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     auto midpoint_guess = [&](auto& a, auto& b)
     {
+        a.currently_physical = false;
+
         for(int i=0; i < (int)a.buffers.size(); i++)
         {
             cl::args args;
@@ -890,6 +909,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     auto finish_heun = [&](auto& yip1, auto& yip2)
     {
+        yip2.currently_physical = false;
+
         for(int i=0; i < (int)yip1.buffers.size(); i++)
         {
             cl::args args;
@@ -906,6 +927,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     auto bdf_sum = [&](auto& yp1, auto& yn)
     {
+        yn.currently_physical = false;
+
         for(int i=0; i < (int)yp1.buffers.size(); i++)
         {
             cl::args args;
@@ -1208,6 +1231,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     auto multiply_add = [&](auto& inout, auto& right, float left_cst, float right_cst)
     {
+        inout.currently_physical = false;
+
         for(int i=0; i < (int)inout.buffers.size(); i++)
         {
             cl::args args;
@@ -1248,8 +1273,6 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     multiply_add(data[0], data[2], -(1.f/3.f), 1.f/3.f);
     std::swap(data[0], data[1]);
-
-    enforce_constraints(data[1]);
 
     #endif // RK4_3
 

@@ -39,6 +39,7 @@ struct named_buffer
 
 struct buffer_set
 {
+    bool currently_physical = false;
     std::vector<named_buffer> buffers;
 
     buffer_set(cl::context& ctx, vec3i size, const std::vector<buffer_descriptor>& in_buffers);
