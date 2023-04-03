@@ -1176,6 +1176,79 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     #endif
 
+    #define RK4_3
+    #ifdef RK4_3
+    ///substantial rearrangement of the rk4 terms to make it implement better
+    /*yn+1 = yn + (1/6) (k1 + 2k2 + 2 k3 + k4) h
+
+    k1 = f(yn)
+    k2 = f(yn + hk1/2)
+    k3 = f(yn + hk2/2)
+    k4 = f(yn + hk3)
+    */
+
+    /*
+    b1 = yn + 0.5 h f(yn)
+    b2 = yn + 0.5 h f(b1)
+    b3 = yn + h f(b2)
+    b4 = yn + 0.5 h f(b3)
+
+    yn+1 = -2/3 yn + 1/3 (b1 + 2b2 + b3 + b4)
+
+    ///b4s left could be any buffer
+
+    bx = G + (1/a) h f(b3)
+
+    yn+1 = -1/3 yn - 1/6 G a + 1/3 (b1 + 2b2 + b3 + 0.5 a bx)
+
+    a = 2, G = b1 + 2b2 + b3
+
+    -1/3 yn + 1/3 bx
+    */
+
+    auto multiply_add = [&](auto& inout, auto& right, float left_cst, float right_cst)
+    {
+        for(int i=0; i < (int)inout.buffers.size(); i++)
+        {
+            cl::args args;
+
+            args.push_back(points_set.all_points);
+            args.push_back(points_set.all_count);
+            args.push_back(inout.buffers[i].buf);
+            args.push_back(right.buffers[i].buf.as_device_read_only());
+            args.push_back(left_cst);
+            args.push_back(right_cst);
+            args.push_back(clsize);
+
+            mqueue.exec("multiply_add_impl", args, {points_set.all_count}, {128});
+        }
+    };
+
+    step(0, 0, 1, 0.5f * timestep, true, 0, 1);
+    ///data[1] contains b1, and will be the starting point for the rk4 additions
+    step(0, 1, 2, 0.5f * timestep, false, 0, 1);
+    ///data[1] contains b1. data[2] contains b2
+
+    multiply_add(data[1], data[2], 1.f, 2.f);
+
+    step(0, 2, 3, timestep, false, 0, 1);
+    ///data[3] now contains b3
+
+    multiply_add(data[1], data[3], 1.f, 1.f);
+
+    ///data[1] == b1 + 2b2 + b3
+
+    ///bx = G + (1/a) h f(b3)
+    ///G = b1 + 2b2 + b3
+    ///a = 2
+
+    step(1, 3, 2, 0.5f * timestep, false, 0, 1);
+    ///data[2] == bx
+
+    multiply_add(data[0], data[2], -(1.f/3.f), 1.f/3.f);
+    std::swap(data[0], data[1]);
+    #endif // RK4_3
+
     //#define TRAPEZOIDAL
     #ifdef TRAPEZOIDAL
     auto& b1 = generic_data[which_data];

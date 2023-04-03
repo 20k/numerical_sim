@@ -1075,6 +1075,24 @@ void finish_bs_impl(__global ushort4* points, int point_count,
 }
 
 __kernel
+void multiply_add_impl(__global ushort4* points, int point_count,
+                       __global float* left, __global float* right, float cst1, float cst2, int4 dim)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    int index = IDX(ix, iy, iz);
+
+    left[index] = left[index] * cst1 + right[index] * cst2;
+}
+
+__kernel
 void dissipate_single_unidir(__global ushort4* points, int point_count,
                              __global float* buffer, __global float* obuffer,
                              float coefficient,
