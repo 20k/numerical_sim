@@ -540,7 +540,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         step_kernel("evolve_gA");
         step_kernel("evolve_gB");
 
-        enforce_constraints(generic_out);
+        //enforce_constraints(generic_out);
 
         //copy_border(generic_in, generic_out);
     };
@@ -1218,6 +1218,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             args.push_back(right.buffers[i].buf.as_device_read_only());
             args.push_back(left_cst);
             args.push_back(right_cst);
+            args.push_back(i);
             args.push_back(clsize);
 
             mqueue.exec("multiply_add_impl", args, {points_set.all_count}, {128});
@@ -1247,6 +1248,9 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     multiply_add(data[0], data[2], -(1.f/3.f), 1.f/3.f);
     std::swap(data[0], data[1]);
+
+    enforce_constraints(data[1]);
+
     #endif // RK4_3
 
     //#define TRAPEZOIDAL
