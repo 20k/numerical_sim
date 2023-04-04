@@ -351,7 +351,7 @@ void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_mat
 
     value damp_factor = get_kc()/3.f;
 
-    damp_factor = min(damp_factor, 0.3f/value{"timestep"});
+    //damp_factor = min(damp_factor, 0.3f/value{"timestep"});
 
     dtcYij += -damp_factor * args.gA * args.cY.to_tensor() * log(args.cY.det());
 
@@ -809,7 +809,7 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
     }
 
     value damp_factor = get_kc()/3.f;
-    damp_factor = min(damp_factor, 0.3f/value{"timestep"});
+    //damp_factor = min(damp_factor, 0.3f/value{"timestep"});
 
     dtcAij += -damp_factor * args.gA * args.cY.to_tensor() * trace(args.cA, args.cY.invert());
 
