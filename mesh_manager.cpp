@@ -553,65 +553,6 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         //copy_border(generic_in, generic_out);
     };
 
-    #if 0
-    auto diff_to_input = [&](auto& buffer_in, cl_float factor)
-    {
-        for(int i=0; i < (int)buffer_in.size(); i++)
-        {
-            cl::args accum;
-            accum.push_back(points_set.second_derivative_points);
-            accum.push_back(points_set.second_count);
-            accum.push_back(clsize);
-            accum.push_back(buffer_in[i]);
-            accum.push_back(base_yn[i]);
-            accum.push_back(factor);
-
-            mqueue.exec("calculate_rk4_val", accum, {points_set.second_count}, {128});
-        }
-    };
-
-    auto copy_valid = [&](auto& in, auto& out)
-    {
-        for(int i=0; i < (int)in.size(); i++)
-        {
-            cl::args copy;
-            copy.push_back(points_set.second_derivative_points);
-            copy.push_back(points_set.second_count);
-            copy.push_back(in[i]);
-            copy.push_back(out[i]);
-            copy.push_back(clsize);
-
-            mqueue.exec("copy_valid", copy, {points_set.second_count}, {128});
-        }
-    };
-
-    auto dissipate = [&](auto& base_reference, auto& inout)
-    {
-        for(int i=0; i < buffer_set::buffer_count; i++)
-        {
-            cl::args diss;
-
-            diss.push_back(points_set.second_derivative_points);
-            diss.push_back(points_set.second_count);
-
-            diss.push_back(base_reference[i].as_device_read_only());
-            diss.push_back(inout[i]);
-
-            float coeff = dissipation_coefficients[i];
-
-            diss.push_back(coeff);
-            diss.push_back(scale);
-            diss.push_back(clsize);
-            diss.push_back(timestep);
-
-            if(coeff == 0)
-                continue;
-
-            mqueue.exec("dissipate_single", diss, {points_set.second_count}, {128});
-            //mqueue.flush();
-        }
-    };
-    #endif // 0
 
     auto dissipate_unidir = [&](auto& in, auto& out)
     {
@@ -649,111 +590,18 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
             mqueue.exec("dissipate_single_unidir", diss, {points_set.all_count}, {128});
 
+
             //check_for_nans(in.buffers[i].name + "_diss", out.buffers[i].buf);
         }
+
+        out.currently_physical = false;
     };
-    ///https://mathworld.wolfram.com/Runge-KuttaMethod.html
-    //#define RK4
-    #ifdef RK4
-    auto& b1 = generic_data[which_data];
-    auto& b2 = generic_data[(which_data + 1) % 2];
-
-    cl_int size_1d = size.x() * size.y() * size.z();
-
-    auto copy_all = [&](auto& in, auto& out)
-    {
-        for(int i=0; i < (int)in.size(); i++)
-        {
-            cl::args copy;
-            copy.push_back(in[i]);
-            copy.push_back(out[i]);
-            copy.push_back(size_1d);
-
-            clctx.cqueue.exec("copy_buffer", copy, {size_1d}, {128});
-        }
-    };
-
-    copy_all(b1.buffers, rk4_intermediate.buffers);
-
-    //copy_all(b1.buffers, rk4_xn.buffers);
-
-    auto accumulate_rk4 = [&](auto& buffers, cl_float factor)
-    {
-        for(int i=0; i < (int)buffers.size(); i++)
-        {
-            cl::args accum;
-            accum.push_back(evolution_positions);
-            accum.push_back(evolution_positions_count);
-            accum.push_back(clsize);
-            accum.push_back(rk4_intermediate.buffers[i]);
-            accum.push_back(buffers[i]);
-            accum.push_back(factor);
-
-            clctx.cqueue.exec("accumulate_rk4", accum, {size_1d}, {128});
-        }
-    };
-
-    ///the issue is scratch buffers not being populatd with initial conditions
-
-    auto& scratch_2 = generic_data[(which_data + 1) % 2];
-
-    ///gives an
-    step(base_yn, rk4_scratch.buffers, 0.f);
-    ///accumulate an
-    accumulate_rk4(rk4_scratch.buffers, timestep/6.f);
-
-    ///gives xn + h/2 an
-    diff_to_input(rk4_scratch.buffers, timestep/2);
-
-    enforce_constraints(rk4_scratch.buffers);
-
-    ///gives bn
-    step(rk4_scratch.buffers, scratch_2.buffers, 0.f);
-
-    ///accumulate bn
-    accumulate_rk4(scratch_2.buffers, timestep * 2.f / 6.f);
-
-    ///gives xn + h/2 bn
-    diff_to_input(scratch_2.buffers, timestep/2);
-
-    enforce_constraints(scratch_2.buffers);
-
-    ///gives cn
-    step(scratch_2.buffers, rk4_scratch.buffers, 0.f);
-
-    ///accumulate cn
-    accumulate_rk4(rk4_scratch.buffers, timestep * 2.f / 6.f);
-
-    ///gives xn + h * cn
-    diff_to_input(rk4_scratch.buffers, timestep);
-
-    enforce_constraints(rk4_scratch.buffers);
-
-    ///gives dn
-    step(rk4_scratch.buffers, scratch_2.buffers, 0.f);
-
-    ///accumulate dn
-    accumulate_rk4(scratch_2.buffers, timestep/6.f);
-
-    //copy_all(base_yn.buffers, generic_data[which_data].buffers);
-    copy_valid(rk4_intermediate.buffers, generic_data[(which_data + 1) % 2].buffers);
-    //copy_all(rk4_intermediate.buffers, generic_data[(which_data + 1) % 2].buffers);
-
-    #endif // RK4
-
-    //#define FORWARD_EULER
-    #ifdef FORWARD_EULER
-    step(generic_data[which_data].buffers, generic_data[(which_data + 1) % 2].buffers, timestep);
-
-    diff_to_input(generic_data[(which_data + 1) % 2].buffers, timestep);
-    #endif
 
     ///so. data[0] is current data, data[1] is old data
 
     {
         dissipate_unidir(data[0], data[2]);
         std::swap(data[0], data[2]);
-        data[0].currently_physical = false;
     }
 
     auto copy_valid = [&](auto& in, auto& out)
@@ -1128,98 +976,6 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     #endif
 
     ///so ok: at the end of these iterations, data[0] is the original data, data[1] is the output data
-
-    #ifdef RK4_2
-    auto post_step = [&](auto& buf, float step)
-    {
-        dissipate_set(mqueue, data[0], buf, points_set, step, dim, scale);
-        enforce_constraints(buf);
-    };
-
-    auto copy_points = [&](auto& in, auto& out)
-    {
-        assert(in.buffers.size() == out.buffers.size());
-
-        for(int i=0; i < (int)in.buffers.size(); i++)
-        {
-            if(in.buffers[i].buf.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z())
-                continue;
-
-            assert(in.buffers[i].buf.alloc_size == out.buffers[i].buf.alloc_size);
-
-            cl::args copy;
-            copy.push_back(points_set.all_points);
-            copy.push_back(points_set.all_count);
-            copy.push_back(in.buffers[i].buf.as_device_read_only());
-            copy.push_back(out.buffers[i].buf.as_device_write_only());
-            copy.push_back(clsize);
-
-            mqueue.exec("copy_valid", copy, {points_set.all_count}, {128});
-        }
-    };
-
-    ///performs accum += (q - base) * factor
-    auto accumulator = [&](auto& q_val, auto& accum, float factor)
-    {
-        for(int i=0; i < (int)q_val.buffers.size(); i++)
-        {
-            if(q_val.buffers[i].buf.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z())
-                continue;
-
-            cl::args acc;
-            acc.push_back(points_set.all_points);
-            acc.push_back(points_set.all_count);
-            acc.push_back(clsize);
-            acc.push_back(accum.buffers[i].buf);
-            acc.push_back(base_yn.buffers[i].buf.as_device_read_only());
-            acc.push_back(q_val.buffers[i].buf.as_device_read_only());
-            acc.push_back(factor);
-
-            mqueue.exec("do_rk4_accumulate", acc, {points_set.all_count}, {128});
-        }
-    };
-
-    auto& accum = data[1];
-
-    copy_points(data[0], accum);
-
-    auto& temp_1 = data[2];
-
-    auto data_get = [&]()
-    {
-        return buffer_set(ctx, dim, get_buffer_cfg(sett));
-    };
-
-    auto& temp_2 = free_data.get_named(data_get, "temp2");
-
-    ///temp_1 == q1
-    step(data[0], temp_1, timestep * 0.5f, true);
-
-    accumulator(temp_1, accum, 2.f/6.f);
-
-    post_step(temp_1, timestep * 0.5f);
-
-    ///temp_2 == q2
-    step(temp_1, temp_2, timestep * 0.5f, false);
-
-    accumulator(temp_2, accum, 4.f/6.f);
-
-    post_step(temp_2, timestep * 0.5f);
-
-    ///temp_1 now == q3
-    step(temp_2, temp_1, timestep, false);
-
-    accumulator(temp_1, accum, 2.f/6.f);
-
-    post_step(temp_1, timestep);
-
-    step(temp_1, temp_2, timestep, false);
-
-    accumulator(temp_2, accum, 1.f/6.f);
-
-    //post_step(temp_2);
-
-    #endif
 
     //#define RK4_3
     #ifdef RK4_3
