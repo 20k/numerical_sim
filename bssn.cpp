@@ -773,7 +773,7 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
             dtcAij.idx(i, j) = p1 + p2 + p3;
 
             #ifdef DAMP_DTCAIJ
-            float Ka = 0.01f;
+            float Ka = 0.001f;
 
             dtcAij.idx(i, j) += Ka * gA * 0.5f *
                                                 (covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)

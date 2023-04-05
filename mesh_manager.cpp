@@ -810,6 +810,28 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         }
     };
 
+    //#define IMPLICIT_SECOND
+    #ifdef IMPLICIT_SECOND
+    ///https://assets.researchsquare.com/files/rs-1517205/v1_covered.pdf?c=1649867432 (3)
+    ///K1 = yi+1 + -0.5 * h f(ti+1, yi+1)
+    ///yi+1 = yi + h f (ti + h/2, k1)
+
+    step(0, 0, 1, -timestep * 0.5f, true, 0, 1);
+    ///data[1] contains k1
+
+    step(1, 0, 2, timestep, false, 0, 1);
+
+    ///data[2] contains yi+1
+    ///data[0] contains yi
+    step(2, 2, 1, -timestep * 0.5f, false, 0, 1);
+
+    ///data[1] contains K1
+    step(0, 1, 2, timestep, false, 0, 1);;
+
+    std::swap(data[2], data[1]);
+
+    #endif // IMPLICIT_SECOND
+
     ///https://www.physics.unlv.edu/~jeffery/astro/computer/numrec/f16-3.pdf
     //#define MODIFIED_MIDPOINT
     #ifdef MODIFIED_MIDPOINT
@@ -1199,7 +1221,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     #endif
 
-    #define RK4_3
+    //#define RK4_3
     #ifdef RK4_3
     ///substantial rearrangement of the rk4 terms to make it implement better
     /*yn+1 = yn + (1/6) (k1 + 2k2 + 2 k3 + k4) h

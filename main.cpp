@@ -115,6 +115,8 @@ https://gwic.ligo.org/assets/docs/theses/Read_Thesis.pdf - 3.4 definition of e. 
 https://arxiv.org/pdf/gr-qc/0403029.pdf - 2.13 definition of e. I don't think they're the same as the other e, but I think this is fixable
 https://arxiv.org/pdf/2101.10252.pdf - another source which uses this bowen-york data with different notation (yay!)
 https://arxiv.org/pdf/gr-qc/9908027.pdf - hydrodynamic paper off which the one I'm implementing is based
+
+https://adamsturge.github.io/Engine-Blog/mydoc_midpoint_method.html - useful reference on integrators
 */
 
 ///notes:
@@ -6425,7 +6427,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.12;
+        float timestep = 0.035;
 
         if(pao && time_elapsed_s > 250)
             step = false;
