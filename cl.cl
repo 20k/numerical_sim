@@ -1089,9 +1089,25 @@ void multiply_add_impl(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
 
-    float in_left = left[index];
-
     left[index] = left[index] * cst1 + right[index] * cst2;
+}
+
+__kernel
+void multiply_add_into_impl(__global ushort4* points, int point_count,
+                       __global float* left, __global float* right, __global float* out, float cst1, float cst2, int which_buf, int4 dim)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    int index = IDX(ix, iy, iz);
+
+    out[index] = left[index] * cst1 + right[index] * cst2;
 }
 
 __kernel

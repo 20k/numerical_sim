@@ -194,7 +194,7 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::manage
 }
 
 cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& buffers, const std::vector<buffer_descriptor>& utility_buffers, std::vector<plugin*> _plugins) :
-        data{buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers)},
+        data{buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers)},
         utility_data{buffer_set(ctx, _dim, utility_buffers)},
         points_set{ctx},
         momentum_constraint{ctx, ctx, ctx},
@@ -257,6 +257,7 @@ void cpu_mesh::init(cl::context& ctx, cl::command_queue& cqueue, thin_intermedia
         cl::copy(cqueue, data[0].buffers[i].buf, data[1].buffers[i].buf);
         cl::copy(cqueue, data[0].buffers[i].buf, data[2].buffers[i].buf);
         cl::copy(cqueue, data[0].buffers[i].buf, data[3].buffers[i].buf);
+        cl::copy(cqueue, data[0].buffers[i].buf, data[4].buffers[i].buf);
     }
 }
 
@@ -553,6 +554,10 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         //copy_border(generic_in, generic_out);
     };
 
+    auto rstep = [&](int root, int in, int out, float m)
+    {
+        return step(root, in, out, m, false, 0, 1);
+    };
 
     auto dissipate_unidir = [&](auto& in, auto& out)
     {
@@ -657,6 +662,147 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             mqueue.exec("finish_bs_impl", args, {points_set.all_count}, {128});
         }
     };
+
+    auto multiply_add = [&](auto& inout, auto& right, float left_cst, float right_cst)
+    {
+        inout.currently_physical = false;
+
+        for(int i=0; i < (int)inout.buffers.size(); i++)
+        {
+            cl::args args;
+
+            args.push_back(points_set.all_points);
+            args.push_back(points_set.all_count);
+            args.push_back(inout.buffers[i].buf);
+            args.push_back(right.buffers[i].buf.as_device_read_only());
+            args.push_back(left_cst);
+            args.push_back(right_cst);
+            args.push_back(i);
+            args.push_back(clsize);
+
+            mqueue.exec("multiply_add_impl", args, {points_set.all_count}, {128});
+        }
+    };
+
+    auto multiply_add_into = [&](auto& left, auto& right, auto& out, float left_cst, float right_cst)
+    {
+        out.currently_physical = false;
+
+        for(int i=0; i < (int)left.buffers.size(); i++)
+        {
+            cl::args args;
+
+            args.push_back(points_set.all_points);
+            args.push_back(points_set.all_count);
+            args.push_back(left.buffers[i].buf.as_device_read_only());
+            args.push_back(right.buffers[i].buf.as_device_read_only());
+            args.push_back(out.buffers[i].buf);
+            args.push_back(left_cst);
+            args.push_back(right_cst);
+            args.push_back(i);
+            args.push_back(clsize);
+
+            mqueue.exec("multiply_add_into_impl", args, {points_set.all_count}, {128});
+        }
+    };
+
+    ///https://core.ac.uk/download/pdf/82682092.pdf (3.9)
+    #define SIMP_4
+    #ifdef SIMP_4
+
+    ///data[0] == yn
+    ///data[0] = yn+2, temporarily
+
+    ///step 1, yn+2 == yn, = yn - h/2 fn+2
+
+    copy_valid(data[0], data[3]);
+
+    ///data[3] == yn+2
+
+    ///1/4 yn + 3/4 yn+2 - h/2 f(yn+2)
+    ///== 1/4 yn + 3/4 (yn+2 - 2/3 h f(yn+2))
+
+    for(int i=0; i < 2; i++)
+    {
+        ///OK
+        ///syn+1 = 1/4 (yn + 3yn+2) - h/2 fn+2
+        ///syn+1 = 1/4 yn + 3/4 yn+2 - h/2 fn+2
+
+        ///calculate yn+2 - 2/3 h f(yn+2)
+        step(3, 3, 1, timestep * (-2.f/3.f), i == 0, 0, 1);
+
+        ///data[1] == 3/4 yn+2 - 0.5 h f(yn+2) + 1/4 yn. Syn+1 is correct!
+        multiply_add(data[1], data[0], (3.f/4.f), 1.f/4.f);
+
+        ///data[1] == syn+1
+        ///data[3] == yn+2
+        ///data[0] == yn
+
+        ///hyn+1 = 1/8 yn + 7/8 yn+2 + h/8 fn - 1/2 h f(sy+1) - 3/8 f(y+2)
+        ///hyn+1 = 1/8 (yn + h f(yn)) + 7/8 yn+2 - 3/8 h f (yn+2) - 1/2 h f (syn+1)
+        ///hyn+1 = 1/8 (yn + h f(yn)) - 1/2 h f (syn+1) + 7/8 (yn+2 - 3/7 h f (yn+2))
+
+        ///hyn+1 = 1/8 (yn + 7yn+2) + 1/8 h (fn - 4sfn+1 - 3 fn+2)
+
+        ///hyn+1 = 1/8 yn + 7/8 yn+2 + 1/8 h fn - 4/8 sfn+1 - 3/8 fn+2
+        ///hyn+1 = 1/8 (yn + hfn - 4 h sfn+1) + 7/8 yn+2 - 3/8 fn+2
+        ///hyn+1 = 1/8 (yn + hfn - 4 h sfn+1) + 7/8 (yn+2 - 3/7 fn+2)
+
+        ///calculate yn + h f yn, store in 2
+        step(0, 0, 2, timestep, false, 0, 1);
+
+        ///calculate ((yn + h f(yn)) - 4 h f(syn+1))
+        step(2, 1, 4, -4 * timestep, false, 0, 1);
+
+        ///data[4] == ((yn + h f(yn)) - 4 h f(syn+1))
+        ///data[3] == yn+2
+        ///data[0] == yn
+
+        ///calculate yn+2 - 3/7 fn+2
+        step(3, 3, 2, -(3.f/7.f) * timestep, false, 0, 1);
+
+        ///data[4] == ((yn + h f(yn)) - 4 h f(syn+1))
+        ///data[2] == yn+2 + -3/7 h f(yn+2)
+        ///data[3] == yn+2
+        ///data[0] == yn
+
+        multiply_add(data[4], data[2], 1.f/8.f, 7.f/8.f);
+
+        ///data[4] == hy+1
+        ///data[3] == yn+2
+        ///data[0] == yn
+
+        ///yn+2 == yn + h/3 f(yn) + (1/3) h f(yn+2) + 4/3 h f (hy+1)
+
+        rstep(0, 0, 1, timestep * 1.f/3.f);
+
+        ///data[4] == hy+1
+        ///data[3] == yn+2
+        ///data[1] == yn + h/3 fn
+        ///data[0] == yn
+
+        rstep(1, 3, 2, timestep * (1.f/3.f));
+        ///data[4] == hy+1
+        ///data[2] == yn + h/3 fn + 1/3 h fn+2
+        ///data[0] == yn
+
+        rstep(2, 4, 3, timestep * 4.f/3.f);
+        ///data[3] == yn+1
+        ///data[0] == yn
+    }
+
+    std::swap(data[3], data[1]);
+
+    ///NO
+    ///evaluate 1/8 (yn + h f(yn)) + 7/8 yn+2, store in data[2]
+    //multiply_add(data[2], data[0], 1.f/8.f, 7.f/8.f);
+
+    ///so, now i need -3/8 h f (yn+2), do i just recalculate yn+2 for the moment? yes
+    ///also need -0.5 h f(sy+1), have y+1 in data[1]
+
+    //step(2, yn_2_index, 3, )
+
+    #endif // SIMP_4
 
     //#define IMPLICIT_SECOND
     #ifdef IMPLICIT_SECOND
@@ -1006,27 +1152,6 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     -1/3 yn + 1/3 bx
     */
-
-    auto multiply_add = [&](auto& inout, auto& right, float left_cst, float right_cst)
-    {
-        inout.currently_physical = false;
-
-        for(int i=0; i < (int)inout.buffers.size(); i++)
-        {
-            cl::args args;
-
-            args.push_back(points_set.all_points);
-            args.push_back(points_set.all_count);
-            args.push_back(inout.buffers[i].buf);
-            args.push_back(right.buffers[i].buf.as_device_read_only());
-            args.push_back(left_cst);
-            args.push_back(right_cst);
-            args.push_back(i);
-            args.push_back(clsize);
-
-            mqueue.exec("multiply_add_impl", args, {points_set.all_count}, {128});
-        }
-    };
 
     step(0, 0, 1, 0.5f * timestep, true, 0, 1);
     ///data[1] contains b1, and will be the starting point for the rk4 additions
