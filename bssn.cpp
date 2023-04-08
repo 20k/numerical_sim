@@ -454,7 +454,7 @@ tensor<value, 3, 3> bssn::calculate_xgARij(equation_context& ctx, standard_argum
     tensor<value, 3> dX = args.get_dX();
 
     ///this needs to be fixed if we're using W
-    tensor<value, 3, 3> cov_div_X = double_covariant_derivative(ctx, args.get_X(), args.dX_impl, args.cY, icY, christoff2);
+    tensor<value, 3, 3> cov_div_X = double_covariant_derivative(ctx, args.get_X(), args.dX_impl, christoff2);
     ctx.pin(cov_div_X);
 
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf
@@ -773,7 +773,7 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
             dtcAij.idx(i, j) = p1 + p2 + p3;
 
             #ifdef DAMP_DTCAIJ
-            float Ka = 0.001f;
+            float Ka = 0.00001f;
 
             dtcAij.idx(i, j) += Ka * gA * 0.5f *
                                                 (covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)
@@ -1047,7 +1047,7 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
 
         //#define YBS
         #ifdef YBS
-        value E = 1;
+        value E = 1.;
 
         {
             value sum = 0;
@@ -1260,6 +1260,7 @@ void bssn::build_gB(equation_context& ctx)
     }
 
 
+    //#define VDAMP_1
     #ifdef VDAMP_1
     ///so
     ///X = (1/12) * log(det)
@@ -1331,7 +1332,7 @@ void bssn::build_gB(equation_context& ctx)
 
     #define STATIC_DAMP
     #ifdef STATIC_DAMP
-    value Ns_r = 1.45f;
+    value Ns_r = 1.f;
     #endif
 
     value N = max(Ns_r, 0.5f);
