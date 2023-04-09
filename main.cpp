@@ -4469,6 +4469,7 @@ void build_constraints(equation_context& ctx)
         }
     }*/
 
+    #ifndef DAMP_C
     for(int i=0; i < 6; i++)
     {
         vec2i idx = linear_indices[i];
@@ -4476,6 +4477,7 @@ void build_constraints(equation_context& ctx)
         ctx.add("fix_cY" + std::to_string(i), fixed_cY.idx(idx.x(), idx.y()));
         ctx.add("fix_cA" + std::to_string(i), fixed_cA.idx(idx.x(), idx.y()));
     }
+    #endif
 
     ctx.add("CY_DET", det_cY_pow);
 }

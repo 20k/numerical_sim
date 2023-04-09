@@ -330,8 +330,6 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
         X[index] = 0;
     #endif
 
-    #ifndef NO_CAIJYY
-
     float found_det = CY_DET;
 
     float tol = 1e-6;
@@ -370,11 +368,6 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
     cA3[index] = fixed_cA3;
     cA4[index] = fixed_cA4;
     cA5[index] = fixed_cA5;
-    #else
-    float fixed_cA3 = fix_cA3;
-
-    cA3[index] = fixed_cA3;
-    #endif // NO_CAIJYY
     #endif
 }
 
