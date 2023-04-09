@@ -46,7 +46,7 @@ value bidx(const std::string& buf, bool interpolate, bool is_derivative)
 //#define BETTERDAMP_DTCAIJ
 //#define DAMP_C
 //#define USE_GBB
-#define DAMP_DTCAIJ
+//#define DAMP_DTCAIJ
 
 struct standard_arguments
 {
@@ -385,44 +385,50 @@ struct standard_arguments
         christoff2 = christoffel_symbols_2(ctx, cY, icY);
         #endif
 
-        /*
-        ///dcgA alias
-        for(int i=0; i < 3; i++)
-        {
-            value v = diff1(ctx, gA, i);
+        #define FORCE_ALIAS
+        #ifdef FORCE_ALIAS
 
-            ctx.alias(v, digA.idx(i));
-        }
-
-        ///dcgB alias
-        for(int i=0; i < 3; i++)
+        if(!ctx.suppress_all_aliasing)
         {
-            for(int j=0; j < 3; j++)
+            ///dcgA alias
+            for(int i=0; i < 3; i++)
             {
-                value v = diff1(ctx, gB.idx(j), i);
+                value v = diff1(ctx, gA, i);
 
-                ctx.alias(v, digB.idx(i, j));
+                ctx.alias(v, digA.idx(i));
             }
-        }
 
-        ///dcYij alias
-        for(int k=0; k < 3; k++)
-        {
+            ///dcgB alias
             for(int i=0; i < 3; i++)
             {
                 for(int j=0; j < 3; j++)
                 {
-                    value v = diff1(ctx, cY.idx(i, j), k);
+                    value v = diff1(ctx, gB.idx(j), i);
 
-                    ctx.alias(v, dcYij.idx(k, i, j));
+                    ctx.alias(v, digB.idx(i, j));
                 }
             }
-        }
 
-        for(int i=0; i < 3; i++)
-        {
-            ctx.alias(diff1(ctx, X, i), dX.idx(i));
-        }*/
+            ///dcYij alias
+            for(int k=0; k < 3; k++)
+            {
+                for(int i=0; i < 3; i++)
+                {
+                    for(int j=0; j < 3; j++)
+                    {
+                        value v = diff1(ctx, cY.idx(i, j), k);
+
+                        ctx.alias(v, dcYij.idx(k, i, j));
+                    }
+                }
+            }
+
+            for(int i=0; i < 3; i++)
+            {
+                ctx.alias(diff1(ctx, W_impl, i), dW_impl.idx(i));
+            }
+        }
+        #endif
     }
 };
 

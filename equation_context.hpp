@@ -23,6 +23,7 @@ struct equation_context : differentiator
     bool use_precise_differentiation = true;
     bool always_directional_derivatives = false;
     bool is_derivative_free = false;
+    bool suppress_all_aliasing = false;
 
     int order = 2;
 

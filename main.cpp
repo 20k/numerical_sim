@@ -4557,11 +4557,15 @@ void build_hamiltonian_constraint(matter_interop& interop, equation_context& ctx
 
 void build_momentum_constraint(matter_interop& interop, equation_context& ctx, bool use_matter)
 {
-    tensor<value, 3> Mi = bssn::calculate_momentum_constraint(interop, ctx, use_matter);
-
     #if defined(BETTERDAMP_DTCAIJ) || defined(DAMP_DTCAIJ) || defined(AIJ_SIGMA)
     #define CALCULATE_MOMENTUM_CONSTRAINT
     #endif // defined
+
+    #ifdef CALCULATE_MOMENTUM_CONSTRAINT
+    tensor<value, 3> Mi = bssn::calculate_momentum_constraint(interop, ctx, use_matter);
+    #else
+    tensor<value, 3> Mi = {0,0,0};
+    #endif
 
     for(int i=0; i < 3; i++)
     {
@@ -5233,6 +5237,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 {
     ctx.order = 1;
     ctx.use_precise_differentiation = false;
+    ctx.suppress_all_aliasing = true;
 
     standard_arguments args(ctx);
 
@@ -5395,6 +5400,7 @@ void loop_geodesics4(equation_context& ctx)
     ctx.uses_linear = true;
     ctx.order = 1;
     ctx.use_precise_differentiation = false;
+    ctx.suppress_all_aliasing = true;
 
     standard_arguments args(ctx);
 
@@ -5813,6 +5819,7 @@ int main()
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
     equation_context ctx1;
+    ctx1.suppress_all_aliasing = true;
     get_initial_conditions_eqs(ctx1, holes.objs);
 
     matter_meta_interop meta_interop;

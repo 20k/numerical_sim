@@ -936,7 +936,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     ///buffer has kreiss oliger applied, which is of the form buffer -> buffer + f(base)
     ///so. Buffer -> base + dt * dx + f(base)
     ///this implies that I can redefine base to be base + f(base) and get the same effect
-    //#define BACKWARD_EULER
+    #define BACKWARD_EULER
     #ifdef BACKWARD_EULER
     int iterations = 2;
 
