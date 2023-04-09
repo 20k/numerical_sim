@@ -249,7 +249,9 @@ struct standard_arguments
             }
         }
 
-        /*tensor<value, 3, 3, 3> lchristoff2 = christoffel_symbols_2(ctx, cY, icY);
+        #define CGIG_VIA_CHRISTOFFEL
+        #ifdef CGIG_VIA_CHRISTOFFEL
+        tensor<value, 3, 3, 3> lchristoff2 = christoffel_symbols_2(ctx, cY, icY);
 
         tensor<value, 3> cGi_G;
 
@@ -261,13 +263,16 @@ struct standard_arguments
             {
                 for(int k=0; k < 3; k++)
                 {
-                    sum += pinned_icY.idx(j, k) * lchristoff2.idx(i, j, k);
+                    sum += icY.idx(j, k) * lchristoff2.idx(i, j, k);
                 }
             }
 
             cGi_G.idx(i) = sum;
-        }*/
+        }
+        #endif
 
+        ///requires compound differentiation
+        #ifdef CGIG_VIA_ICY
         tensor<value, 3> cGi_G;
 
         for(int i=0; i < 3; i++)
@@ -281,6 +286,7 @@ struct standard_arguments
 
             cGi_G.idx(i) = sum;
         }
+        #endif
 
         always_derived_cGi = cGi_G;
 
