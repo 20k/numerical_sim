@@ -290,6 +290,23 @@ std::vector<ref_counted_buffer> cpu_mesh::get_derivatives_of(cl::context& ctx, b
         cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.all_count}, {128});
     };
 
+    ///
+    auto differentiate_cfd = [&](cl::managed_command_queue& cqueue, int direction, int iteration, cl::buffer in_value_buffer, cl::buffer inout_derivatives)
+    {
+        cl::args thin;
+        thin.push_back(points_set.all_points);
+        thin.push_back(points_set.all_count);
+        thin.push_back(direction);
+        thin.push_back(iteration);
+        thin.push_back(in_value_buffer.as_device_read_only());
+        thin.push_back(inout_derivatives);
+        thin.push_back(scale);
+        thin.push_back(clsize);
+        thin.push_back(points_set.order);
+
+        cqueue.exec("calculate_cfd_data_thin", thin, {points_set.all_count}, {128});
+    };
+
     std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
                           "gA", "gB0", "gB1", "gB2", "X"};
 
@@ -302,6 +319,13 @@ std::vector<ref_counted_buffer> cpu_mesh::get_derivatives_of(cl::context& ctx, b
         cl::buffer found = generic_in.lookup(buffers[idx]).buf;
 
         differentiate(mqueue, found, b1, b2, b3);
+
+        for(int it=0; it < 4; it++)
+        {
+            differentiate_cfd(mqueue, 0, it, found, b1);
+            differentiate_cfd(mqueue, 1, it, found, b2);
+            differentiate_cfd(mqueue, 2, it, found, b3);
+        }
 
         intermediates.push_back(b1);
         intermediates.push_back(b2);

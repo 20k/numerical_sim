@@ -412,6 +412,77 @@ void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
     }
 }
 
+///f'i = -1/4 f'i-1 - 1/4 f'i+1 + (3/2 fi+1 - fi-1) / 2 * scale
+__kernel
+void calculate_cfd_data_thin(__global ushort4* points, int point_count,
+                                      int direction, int iteration,
+                                      __global float* buffer, __global DERIV_PRECISION* inout,
+                                      float scale, int4 dim, __global ushort* order_ptr)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    if(direction == 0 && (ix % 2) == (iteration % 2))
+        return;
+
+    if(direction == 1 && (iy % 2) == (iteration % 2))
+        return;
+
+    if(direction == 2 && (iz % 2) == (iteration % 2))
+        return;
+
+    int order = order_ptr[IDX(ix,iy,iz)];
+
+    if((order & D_FULL) > 0 || ((order & D_LOW) > 0))
+    {
+        float left_dash = 0;
+        float right_dash = 0;
+        float left = 0;
+        float right = 0;
+
+        if(direction == 0)
+        {
+            left_dash = inout[IDX(ix-1,iy,iz)];
+            right_dash = inout[IDX(ix+1,iy,iz)];
+
+            left = buffer[IDX(ix-1,iy,iz)];
+            right = buffer[IDX(ix+1,iy,iz)];
+        }
+
+        if(direction == 1)
+        {
+            left_dash = inout[IDX(ix,iy-1,iz)];
+            right_dash = inout[IDX(ix,iy+1,iz)];
+
+            left = buffer[IDX(ix,iy-1,iz)];
+            right = buffer[IDX(ix,iy+1,iz)];
+        }
+
+        if(direction == 2)
+        {
+            left_dash = inout[IDX(ix,iy,iz-1)];
+            right_dash = inout[IDX(ix,iy,iz+1)];
+
+            left = buffer[IDX(ix,iy,iz-1)];
+            right = buffer[IDX(ix,iy,iz+1)];
+        }
+
+        float result = -(1.f/4.f) * left_dash - (1.f/4.f) * right_dash + (3.f/2.f) * (right - left) / (2 * scale);
+
+        inout[IDX(ix,iy,iz)] = result;
+    }
+    else
+    {
+        return;
+    }
+}
+
 #if 0
 __kernel
 void calculate_intermediate_data_thin_cY5(__global ushort4* points, int point_count,
