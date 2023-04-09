@@ -29,6 +29,11 @@ float buffer_indexh(__global const DERIV_PRECISION* const buffer, int x, int y, 
     return buffer[z * dim.x * dim.y + y * dim.x + x];
 }
 
+float buffer_index_local(__local const float* const buffer, int whomst)
+{
+    return buffer[whomst];
+}
+
 __kernel
 void trapezoidal_accumulate(__global ushort4* points, int point_count, int4 dim, __global float* yn, __global float* fn, __global float* fnp1, float timestep)
 {
@@ -544,6 +549,13 @@ void clean_data_thin(__global ushort4* points, int point_count,
 
 #define DISSB 0.1f
 
+float3 diff_1(__global float* buffer, int ix, int iy, int iz, float scale, int4 dim)
+{
+    int order = D_FULL;
+
+    return (float3){DIFF1_GET0, DIFF1_GET1, DIFF1_GET2};
+}
+
 __kernel
 void evolve_cY(__global ushort4* points, int point_count,
             STANDARD_ARGS(),
@@ -576,6 +588,46 @@ void evolve_cY(__global ushort4* points, int point_count,
         ocY5[index] = cY5[index];
         return;
     }
+
+    ///so, no double differentiation. That makes this 128 sized in each direction
+    ///what am I trying to achieve here? Just pure locality of derivatives?
+    __local float local_dcYij0[128];
+    __local float local_dcYij1[128];
+    __local float local_dcYij2[128];
+    __local float local_dcYij3[128];
+    __local float local_dcYij4[128];
+    __local float local_dcYij5[128];
+    __local float local_dcYij6[128];
+    __local float local_dcYij7[128];
+    __local float local_dcYij8[128];
+    __local float local_dcYij9[128];
+    __local float local_dcYij10[128];
+    __local float local_dcYij11[128];
+    __local float local_dcYij12[128];
+    __local float local_dcYij13[128];
+    __local float local_dcYij14[128];
+    __local float local_dcYij15[128];
+    __local float local_dcYij16[128];
+    __local float local_dcYij17[128];
+
+    int lid = get_local_id(0);
+
+    {
+
+        #define DO_THE_THING(n, a, b, c) float3 d##n = diff_1(cY##n, ix, iy, iz, scale, dim); \
+            local_dcYij##a[lid] = d##n.x; \
+            local_dcYij##b[lid] = d##n.y; \
+            local_dcYij##c[lid] = d##n.z;
+
+        DO_THE_THING(0, 0, 1, 2);
+        DO_THE_THING(1, 3, 4, 5);
+        DO_THE_THING(2, 6, 7, 8);
+        DO_THE_THING(3, 9, 10, 11);
+        DO_THE_THING(4, 12, 13, 14);
+        DO_THE_THING(5, 15, 16, 17);
+    }
+
+    barrier(CLK_LOCAL_MEM_FENCE);
 
     float TEMPORARIEStcy;
 

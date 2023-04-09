@@ -328,9 +328,41 @@ value get_kc()
 ///https://arxiv.org/pdf/gr-qc/0401076.pdf
 //#define DAMP_HAMILTONIAN
 
+///only requires first order derivatives
+///good candidate for what we're testing
 void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_matter)
 {
     standard_arguments args(ctx);
+
+    tensor<value, 3, 3, 3> dcYij;
+
+    for(int k=0; k < 3; k++)
+    {
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                int symmetric_index = args.index_table[i][j];
+
+                int final_index = k + symmetric_index * 3;
+
+                dcYij.idx(k, i, j) = dual_types::apply("buffer_index_local", "local_dcYij" + std::to_string(final_index), "lid");
+            }
+        }
+    }
+
+    for(int k=0; k < 3; k++)
+    {
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                value v = diff1(ctx, args.cY.idx(i, j), k);
+
+                ctx.alias(v, dcYij.idx(k, i, j));
+            }
+        }
+    }
 
     metric<value, 3, 3> unpinned_cY = args.cY;
 
@@ -385,6 +417,12 @@ void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_mat
 
         ctx.add(name, dtcYij.idx(idx.x(), idx.y()));
     }
+
+    value v = dual_types::apply("buffer_index", "buffer", "ix", "iy", "iz", "dim");;
+
+    ctx.add("DIFF1_GET0", diff1(ctx, v, 0));
+    ctx.add("DIFF1_GET1", diff1(ctx, v, 1));
+    ctx.add("DIFF1_GET2", diff1(ctx, v, 2));
 }
 
 tensor<value, 3, 3> bssn::calculate_xgARij(equation_context& ctx, standard_arguments& args, const inverse_metric<value, 3, 3>& icY, const tensor<value, 3, 3, 3>& christoff1, const tensor<value, 3, 3, 3>& christoff2)

@@ -175,13 +175,14 @@ struct differentiation_context
             std::string function_name = type_to_string(v.args[0]);
 
             if(function_name != "buffer_index" && function_name != "buffer_indexh" &&
-               function_name != "buffer_read_linear" && function_name != "buffer_read_linearh")
+               function_name != "buffer_read_linear" && function_name != "buffer_read_linearh" &&
+               function_name != "buffer_index_local")
                 return;
 
             if(linear_interpolation)
                 assert(function_name == "buffer_read_linear" || function_name == "buffer_read_linearh");
             else
-                assert(function_name == "buffer_index" || function_name == "buffer_indexh");
+                assert(function_name == "buffer_index" || function_name == "buffer_indexh" || function_name == "buffer_index_local");
 
             #ifdef CHECK_HALF_PRECISION
             std::string vname = type_to_string(v.args[1]);
@@ -212,7 +213,7 @@ struct differentiation_context
             indexed_variables.push_back(v);
         });
 
-        #define DETECT_INCORRECT_DIFFERENTIATION
+        //#define DETECT_INCORRECT_DIFFERENTIATION
         #ifdef DETECT_INCORRECT_DIFFERENTIATION
         std::vector<std::string> variables = in.get_all_variables();
 
@@ -258,7 +259,7 @@ struct differentiation_context
             {
                 value to_sub;
 
-                if(function_name == "buffer_index" || function_name == "buffer_indexh")
+                if(function_name == "buffer_index" || function_name == "buffer_indexh" || function_name == "buffer_index_local")
                 {
                     to_sub = apply(function_name, variables.args[1], xs[kk], ys[kk], zs[kk], "dim");
                 }
