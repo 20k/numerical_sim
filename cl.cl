@@ -475,7 +475,16 @@ void calculate_cfd_data_thin(__global ushort4* points, int point_count,
 
         float result = -(1.f/4.f) * left_dash - (1.f/4.f) * right_dash + (3.f/2.f) * (right - left) / (2 * scale);
 
-        inout[IDX(ix,iy,iz)] = result;
+        /*if((ix == 128 || ix == 129) && iy == 120 && iz == 128 && direction == 0)
+        {
+            printf("Next %.16f old %.16f it %i\n", result, inout[IDX(ix,iy,iz)], iteration);
+        }*/
+
+        float last = inout[IDX(ix,iy,iz)];
+
+        float diff = result - last;
+
+        inout[IDX(ix,iy,iz)] = diff * 0.9f + last;
     }
     else
     {

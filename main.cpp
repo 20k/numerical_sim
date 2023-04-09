@@ -5947,7 +5947,7 @@ int main()
     #endif // USE_GBB
 
     ///seems to make 0 difference to instability time
-    #define USE_HALF_INTERMEDIATE
+    //#define USE_HALF_INTERMEDIATE
     #ifdef USE_HALF_INTERMEDIATE
     int intermediate_data_size = sizeof(cl_half);
     argument_string += "-DDERIV_PRECISION=half ";
@@ -6436,7 +6436,7 @@ int main()
         ///todo: backwards euler test
         float timestep = 0.035;
 
-        if(pao && time_elapsed_s > 250)
+        if(pao && time_elapsed_s > 90)
             step = false;
 
         if(step)

@@ -320,7 +320,7 @@ std::vector<ref_counted_buffer> cpu_mesh::get_derivatives_of(cl::context& ctx, b
 
         differentiate(mqueue, found, b1, b2, b3);
 
-        for(int it=0; it < 4; it++)
+        for(int it=0; it < 16; it++)
         {
             differentiate_cfd(mqueue, 0, it, found, b1);
             differentiate_cfd(mqueue, 1, it, found, b2);
