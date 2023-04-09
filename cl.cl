@@ -612,8 +612,16 @@ void evolve_cY(__global ushort4* points, int point_count,
 
     int lid = get_local_id(0);
 
-    {
+    ///ok so: as a performance tester for CFD, consider only calculating the derivatives for half of these points
+    ///via finite derivatives, and the other half via CFD
 
+    ///I have 3 end goals for this experimentation
+    ///1. Find out if intermediate derivatives can be eliminated entirely with minimal performance cost
+    ///2. Find out if I can bump performance by transferring less memory to calculate the intermediate derivatives, by mixing 4th order
+    ///finite difference coefficients and 4th order compact finite difference coefficients
+    ///3. Find out if I can run multiple high level bssn steps in one work group, entirely bypassing having to bounce back
+    ///to main memory. If possible, may be able to really get somewhere with eg rk4
+    {
         #define DO_THE_THING(n, a, b, c) float3 d##n = diff_1(cY##n, ix, iy, iz, scale, dim); \
             local_dcYij##a[lid] = d##n.x; \
             local_dcYij##b[lid] = d##n.y; \
