@@ -5724,6 +5724,8 @@ int main()
 
     assert(win.clctx);
 
+    printf("MAX LOCAL MEMORY %i\n", cl::get_device_info<cl_ulong>(win.clctx->ctx.selected_device, CL_DEVICE_LOCAL_MEM_SIZE));
+
     ImFontAtlas* atlas = ImGui::GetIO().Fonts;
     atlas->FontBuilderFlags = ImGuiFreeTypeBuilderFlags_LCD | ImGuiFreeTypeBuilderFlags_FILTER_DEFAULT | ImGuiFreeTypeBuilderFlags_LoadColor;
 

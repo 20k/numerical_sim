@@ -334,7 +334,7 @@ void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_mat
 {
     standard_arguments args(ctx);
 
-    tensor<value, 3, 3, 3> dcYij;
+    /*tensor<value, 3, 3, 3> dcYij;
 
     for(int k=0; k < 3; k++)
     {
@@ -362,7 +362,7 @@ void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_mat
                 ctx.alias(v, dcYij.idx(k, i, j));
             }
         }
-    }
+    }*/
 
     metric<value, 3, 3> unpinned_cY = args.cY;
 

@@ -549,10 +549,8 @@ void clean_data_thin(__global ushort4* points, int point_count,
 
 #define DISSB 0.1f
 
-float3 diff_1(__global float* buffer, int ix, int iy, int iz, float scale, int4 dim)
+float3 diff_1(__global float* buffer, int ix, int iy, int iz, float scale, int4 dim, int order)
 {
-    int order = D_FULL;
-
     return (float3){DIFF1_GET0, DIFF1_GET1, DIFF1_GET2};
 }
 
@@ -589,6 +587,7 @@ void evolve_cY(__global ushort4* points, int point_count,
         return;
     }
 
+    /*
     ///so, no double differentiation. That makes this 128 sized in each direction
     ///what am I trying to achieve here? Just pure locality of derivatives?
     __local float local_dcYij0[128];
@@ -622,7 +621,7 @@ void evolve_cY(__global ushort4* points, int point_count,
     ///3. Find out if I can run multiple high level bssn steps in one work group, entirely bypassing having to bounce back
     ///to main memory. If possible, may be able to really get somewhere with eg rk4
     {
-        #define DO_THE_THING(n, a, b, c) float3 d##n = diff_1(cY##n, ix, iy, iz, scale, dim); \
+        #define DO_THE_THING(n, a, b, c) float3 d##n = diff_1(cY##n, ix, iy, iz, scale, dim, order); \
             local_dcYij##a[lid] = d##n.x; \
             local_dcYij##b[lid] = d##n.y; \
             local_dcYij##c[lid] = d##n.z;
@@ -635,7 +634,7 @@ void evolve_cY(__global ushort4* points, int point_count,
         DO_THE_THING(5, 15, 16, 17);
     }
 
-    barrier(CLK_LOCAL_MEM_FENCE);
+    barrier(CLK_LOCAL_MEM_FENCE);*/
 
     float TEMPORARIEStcy;
 
@@ -710,6 +709,70 @@ void evolve_cA(__global ushort4* points, int point_count,
         ocA5[index] = cA5[index];
         return;
     }
+
+    #define LOCAL(x) __local float x[128+4];
+
+    ///I think the differentiation is fine. We use reduced order derivatives where necessary, which means that
+    ///the discontinuities in the x direction at the boundaries aren't a problem
+
+    ///so. We have 18 dcYij terms, and each one of those needs to be additionally differentiated in 3 directions
+    ///producing 54 terms. However we don't need to store 54 terms in local memory, we need to store the ability to create 54 terms
+    ///so. Each term requires -2, -1, 1, 2 = essentially 5 components, which means... 18*5 units of local memory = 90
+    ///so, each unit of local memory is a float of 132 long, which MEANS finally the amount of memory we need is 90 * 132 * sizeof(float)
+    ///=47.5KB. This MIGHT be doable? I additionally may be able to 'phase' the derivatives, and compensate via registers essentially
+    ///but 54 registers is steep. That said I could store the results in local memory heh, which is only 128 * 54 * sizeof(float) == 27.6KB
+    ///Local memory is on the order of ~16kb, and probably ~32kb. CHECK
+    ///our max local memory is 65536 !!!!!!!!!!!!!!!!
+    /*LOCAL(local_dcYij0);
+    LOCAL(local_dcYij1);
+    LOCAL(local_dcYij2);
+    LOCAL(local_dcYij3);
+    LOCAL(local_dcYij4);
+    LOCAL(local_dcYij5);
+    LOCAL(local_dcYij6);
+    LOCAL(local_dcYij7);
+    LOCAL(local_dcYij8);
+    LOCAL(local_dcYij9);
+    LOCAL(local_dcYij10);
+    LOCAL(local_dcYij11);
+    LOCAL(local_dcYij12);
+    LOCAL(local_dcYij13);
+    LOCAL(local_dcYij14);
+    LOCAL(local_dcYij15);
+    LOCAL(local_dcYij16);
+    LOCAL(local_dcYij17);*/
+
+    ///6 being cY0-cY5, 3 being directions
+    ///4 being differentiation_width * 2
+    //__local float local_dcYij[(128+4) * 6 * 3 * 5];
+
+    ///ok lets do it simply atm
+
+    __local float local_dcYij[128 * 18];
+
+    {
+        #define DO_THE_THING(n, a, b, c) float3 d##n = diff_1(cY##n, ix, iy, iz, scale, dim, order); \
+            local_dcYij[lid * 128 + a] = d##n.x; \
+            local_dcYij[lid * 128 + b] = d##n.y; \
+            local_dcYij[lid * 128 + c] = d##n.z;
+
+        DO_THE_THING(0, 0, 1, 2);
+        DO_THE_THING(1, 3, 4, 5);
+        DO_THE_THING(2, 6, 7, 8);
+        DO_THE_THING(3, 9, 10, 11);
+        DO_THE_THING(4, 12, 13, 14);
+        DO_THE_THING(5, 15, 16, 17);
+    }
+
+    ///ok so. local_dcYij is now local_dcYij[lid * 128 + cYindex * 3 + direction]
+    ///aka [lid * 128 + k + symmetric_index * 3], where symmetric index is effectively i,j - the components of cY, ie cY0-5
+    ///so now we need to calculate exactly the same thing at ix-1, ix-2, ix+1, ix+2, iy-2 etc, and then do differentiation on that
+    ///to get the final result. We don't need eg iy-2 for anything else other than this derivative calc, so can ditch it afterwards
+    ///full local memory reuse
+    ///hmm. This isn't great. Each thread is essentially going to be calculating the derivatives the naive way, because there's no way
+    ///to split the work up between threads usefully. The only saving is in the x direction
+    ///that said, with commpact finite derivatives, we potentially need fewer points
+    ///I..... somehow don't think this is going to return good results
 
     float TEMPORARIEStca;
 
