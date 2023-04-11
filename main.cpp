@@ -68,7 +68,7 @@ https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/20
 https://arxiv.org/pdf/gr-qc/0612001.pdf - double kerr initial data, should be solvable via an elliptic solver
 https://arxiv.org/pdf/gr-qc/0610128.pdf - this paper uses psi0 as the initial guess for lapse, not psibl
 https://learn.lboro.ac.uk/archive/olmp/olmp_resources/pages/workbooks_1_50_jan2008/Workbook33/33_2_elliptic_pde.pdf five point stencil
-https://arxiv.org/pdf/2008.12931.pdf - this contains a good set of equations to try for a more stable bssn
+https://arxiv.org/pdf/2008.12931.pdf - this contains a good set of equations to try for a more stable bssn, ccz4
 https://arxiv.org/pdf/gr-qc/0004050.pdf - ISCO explanation
 https://core.ac.uk/download/pdf/144448463.pdf - 7.9 states you can split up trace free variables
 
@@ -117,6 +117,12 @@ https://arxiv.org/pdf/2101.10252.pdf - another source which uses this bowen-york
 https://arxiv.org/pdf/gr-qc/9908027.pdf - hydrodynamic paper off which the one I'm implementing is based
 
 https://adamsturge.github.io/Engine-Blog/mydoc_midpoint_method.html - useful reference on integrators
+https://arxiv.org/pdf/0709.2160.pdf - high spin mergers
+https://arxiv.org/pdf/1106.0996.pdf - alternate newtons method, worth investigating
+https://www.maths.lth.se/na/courses/FMN081/FMN081-06/lecture22.pdf#page=6 - notes on iterating implicit equations
+https://arxiv.org/pdf/1706.01980.pdf - high spin mergers, alt conditions
+https://iopscience.iop.org/article/10.1088/1361-6382/ac7e16/pdf - bssn w. This has both the momentum constraint and hamiltonian constraint in terms of sane variables
+https://arxiv.org/pdf/2203.05149.pdf - has some compatible matter evolution equations
 */
 
 ///notes:
@@ -1503,7 +1509,9 @@ struct matter
         return ::calculate_h_with_gamma_eos(calculate_eps(chi, W));
     }
 
-    tensor<value, 3> get_u_lower(const value& chi, const value& W)
+    ///i know these to be wrong
+    ///https://arxiv.org/pdf/2203.05149.pdf
+    /*tensor<value, 3> get_u_lower(const value& chi, const value& W)
     {
         tensor<value, 3> ret;
 
@@ -1525,7 +1533,7 @@ struct matter
         tensor<value, 3> ui_lower = get_u_lower(chi, W);
 
         return raise_index(ui_lower, chi * icY, 0);
-    }
+    }*/
 
     #if 0
     tensor<value, 3> get_v_upper(const inverse_metric<value, 3, 3>& icY, const value& gA, const value& chi, const value& W)
