@@ -121,7 +121,7 @@ https://arxiv.org/pdf/0709.2160.pdf - high spin mergers
 https://arxiv.org/pdf/1106.0996.pdf - alternate newtons method, worth investigating
 https://www.maths.lth.se/na/courses/FMN081/FMN081-06/lecture22.pdf#page=6 - notes on iterating implicit equations
 https://arxiv.org/pdf/1706.01980.pdf - high spin mergers, alt conditions
-https://iopscience.iop.org/article/10.1088/1361-6382/ac7e16/pdf - bssn w. This has both the momentum constraint and hamiltonian constraint in terms of sane variables
+https://iopscience.iop.org/article/10.1088/1361-6382/ac7e16/pdf - bssn w. This has both the momentum constraint and hamiltonian constraint in terms of sane variables. cGi damping
 https://arxiv.org/pdf/2203.05149.pdf - has some compatible matter evolution equations
 */
 

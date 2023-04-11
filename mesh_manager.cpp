@@ -274,20 +274,18 @@ std::vector<ref_counted_buffer> cpu_mesh::get_derivatives_of(cl::context& ctx, b
 
     std::vector<ref_counted_buffer> intermediates;
 
-    auto differentiate = [&](cl::managed_command_queue& cqueue, cl::buffer in_buffer, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
+    auto differentiate = [&](cl::managed_command_queue& cqueue, cl::buffer in_buffer, cl::buffer& out1, int which)
     {
         cl::args thin;
         thin.push_back(points_set.all_points);
         thin.push_back(points_set.all_count);
         thin.push_back(in_buffer.as_device_read_only());
-        thin.push_back(out1);
-        thin.push_back(out2);
-        thin.push_back(out3);
+        thin.push_back(out1.as_device_write_only());
         thin.push_back(scale);
         thin.push_back(clsize);
         thin.push_back(points_set.order);
 
-        cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.all_count}, {128});
+        cqueue.exec("calculate_intermediate_data_" + std::to_string(which), thin, {points_set.all_count}, {32});
     };
 
     std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
@@ -301,7 +299,9 @@ std::vector<ref_counted_buffer> cpu_mesh::get_derivatives_of(cl::context& ctx, b
 
         cl::buffer found = generic_in.lookup(buffers[idx]).buf;
 
-        differentiate(mqueue, found, b1, b2, b3);
+        differentiate(mqueue, found, b1, 0);
+        differentiate(mqueue, found, b2, 1);
+        differentiate(mqueue, found, b3, 2);
 
         intermediates.push_back(b1);
         intermediates.push_back(b2);
