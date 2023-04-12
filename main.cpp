@@ -123,6 +123,7 @@ https://www.maths.lth.se/na/courses/FMN081/FMN081-06/lecture22.pdf#page=6 - note
 https://arxiv.org/pdf/1706.01980.pdf - high spin mergers, alt conditions
 https://iopscience.iop.org/article/10.1088/1361-6382/ac7e16/pdf - bssn w. This has both the momentum constraint and hamiltonian constraint in terms of sane variables
 https://arxiv.org/pdf/2203.05149.pdf - has some compatible matter evolution equations
+https://arxiv.org/pdf/1109.1707.pdf - some good notes on adm projection
 */
 
 ///notes:
