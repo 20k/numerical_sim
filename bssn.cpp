@@ -360,6 +360,7 @@ void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_mat
     dtcYij += 0.01f * args.gA * args.cY.to_tensor() * -calculate_hamiltonian_constraint(interop, ctx, use_matter);
     #endif
 
+    ///http://eanam6.khu.ac.kr/presentations/7-5.pdf check this
     ///makes it to 50 with this enabled
     #define USE_DTCYIJ_MODIFICATION
     #ifdef USE_DTCYIJ_MODIFICATION

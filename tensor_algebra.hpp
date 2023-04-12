@@ -201,6 +201,40 @@ tensor<T, N, N, N> christoffel_symbols_2(differentiator& ctx, const metric<T, N,
     return christoff;
 }
 
+///derivatives are pass in like dk met ij
+template<typename T, int N>
+inline
+tensor<T, N, N, N> christoffel_symbols_2(const inverse_metric<T, N, N>& inverse, const tensor<value, 3, 3, 3>& derivatives)
+{
+    tensor<T, N, N, N> christoff;
+
+    for(int i=0; i < N; i++)
+    {
+        for(int k=0; k < N; k++)
+        {
+            for(int l=0; l < N; l++)
+            {
+                T sum = 0;
+
+                for(int m=0; m < N; m++)
+                {
+                    value local = 0;
+
+                    local += derivatives.idx(l, m, k);
+                    local += derivatives.idx(k, m, l);
+                    local += -derivatives.idx(m, k, l);
+
+                    sum += local * inverse.idx(i, m);
+                }
+
+                christoff.idx(i, k, l) = 0.5 * sum;
+            }
+        }
+    }
+
+    return christoff;
+}
+
 template<typename T, int N>
 inline
 tensor<T, N, N, N> christoffel_symbols_1(differentiator& ctx, const metric<T, N, N>& met)
