@@ -380,6 +380,7 @@ void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_mat
     }
     #endif // USE_DTCYIJ_MODIFICATION
 
+    ///pretty sure https://arxiv.org/pdf/0711.3575v1.pdf 2.21 is equivalent, and likely a LOT faster
     #define MOD_CY
     #ifdef MOD_CY
     tensor<value, 3, 3> cD = covariant_derivative_low_vec(ctx, bigGi_lower, args.christoff2);
@@ -793,7 +794,7 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
             dtcAij.idx(i, j) = p1 + p2 + p3;
 
             #ifdef DAMP_DTCAIJ
-            float Ka = 0.001f;
+            float Ka = 0.01f;
 
             dtcAij.idx(i, j) += Ka * gA * 0.5f *
                                                 (covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)
@@ -1065,6 +1066,7 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
         dtcGi.idx(i) += -(1 + E) * step(lambdai) * lambdai * args.bigGi.idx(i);
         #endif // EQ_50
 
+        ///todo: test 2.22 https://arxiv.org/pdf/0711.3575.pdf
         //#define YBS
         #ifdef YBS
         value E = 1;
