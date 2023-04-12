@@ -3342,6 +3342,8 @@ initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_q
 
     auto san_pos = [&](const tensor<float, 3>& in)
     {
+        return in;
+
         tensor<float, 3> scaled = round((in / scale) * bulge);
 
         return scaled * scale / bulge;
@@ -3515,13 +3517,13 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.7, 0};
+    h1.momentum = {0, 0.133 * 0.95, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     compact_object::data h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.7, 0};
+    h2.momentum = {0, -0.133 * 0.95, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     objects = {h1, h2};

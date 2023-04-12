@@ -334,13 +334,15 @@ void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_mat
 
     metric<value, 3, 3> unpinned_cY = args.cY;
 
-    ctx.pin(args.cY);
+    //ctx.pin(args.cY);
 
     tensor<value, 3> bigGi_lower = lower_index(args.bigGi, args.cY, 0);
     ///Oh no. These are associated with Y, not cY
     tensor<value, 3> gB_lower = lower_index(args.gB, args.cY, 0);
 
-    ctx.pin(bigGi_lower);
+    ctx.pin(args.cY);
+
+    //ctx.pin(bigGi_lower);
     ctx.pin(gB_lower);
 
     tensor<value, 3, 3> lie_cYij = lie_derivative_weight(ctx, args.gB, unpinned_cY);
@@ -362,7 +364,7 @@ void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_mat
 
     ///http://eanam6.khu.ac.kr/presentations/7-5.pdf check this
     ///makes it to 50 with this enabled
-    #define USE_DTCYIJ_MODIFICATION
+    //#define USE_DTCYIJ_MODIFICATION
     #ifdef USE_DTCYIJ_MODIFICATION
     ///https://arxiv.org/pdf/1205.5111v1.pdf 46
     for(int i=0; i < 3; i++)
@@ -377,6 +379,23 @@ void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_mat
         }
     }
     #endif // USE_DTCYIJ_MODIFICATION
+
+    #define MOD_CY
+    #ifdef MOD_CY
+    tensor<value, 3, 3> cD = covariant_derivative_low_vec(ctx, bigGi_lower, args.christoff2);
+
+    ctx.pin(cD);
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            float cK = -0.1f;
+
+            dtcYij.idx(i, j) += cK * args.gA * 0.5f * (cD.idx(i, j) + cD.idx(j, i));
+        }
+    }
+    #endif
 
     for(int i=0; i < 6; i++)
     {
@@ -1332,7 +1351,7 @@ void bssn::build_gB(equation_context& ctx)
 
     #define STATIC_DAMP
     #ifdef STATIC_DAMP
-    value Ns_r = 1.45f;
+    value Ns_r = 3.f;
     #endif
 
     value N = max(Ns_r, 0.5f);

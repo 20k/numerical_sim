@@ -46,7 +46,7 @@ value bidx(const std::string& buf, bool interpolate, bool is_derivative)
 //#define BETTERDAMP_DTCAIJ
 #define DAMP_C
 //#define USE_GBB
-//#define DAMP_DTCAIJ
+#define DAMP_DTCAIJ
 
 struct standard_arguments
 {
@@ -249,7 +249,7 @@ struct standard_arguments
             }
         }
 
-        //#define CGIG_FROM_DERIVED_CHRISTOFFEL
+        #define CGIG_FROM_DERIVED_CHRISTOFFEL
         #ifdef CGIG_FROM_DERIVED_CHRISTOFFEL
         #ifdef CGIG_RECALC
         tensor<value, 3, 3, 3> lchristoff2 = christoffel_symbols_2(ctx, cY, icY);
@@ -276,7 +276,7 @@ struct standard_arguments
         #endif
 
         ///best performing
-        #define CGIG_FROM_ICY
+        //#define CGIG_FROM_ICY
         #ifdef CGIG_FROM_ICY
         tensor<value, 3> cGi_G;
 
