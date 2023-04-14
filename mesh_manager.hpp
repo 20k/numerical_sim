@@ -143,13 +143,12 @@ struct cpu_mesh
     int resolution_scale = 1;
     float scale = 1;
 
-    std::array<buffer_set, 4> data;
+    std::map<int, buffer_set> data;
     buffer_set utility_data;
-
-    basic_pool<buffer_set> free_data;
 
     evolution_points points_set;
 
+    ///should really be utility buffers
     std::array<cl::buffer, 3> momentum_constraint;
 
     static constexpr float dissipate_low = 0.25;
@@ -169,11 +168,15 @@ struct cpu_mesh
 
     void clean_buffer(cl::managed_command_queue& mqueue, cl::buffer& in, cl::buffer& out, cl::buffer& base, float asym, float speed, float timestep);
 
+    buffer_set& get_buffers(cl::context& ctx, cl::managed_command_queue& mqueue, int index);
     void append_utility_buffers(const std::string& kernel_name, cl::args& args);
 
     std::vector<plugin*> plugins;
 
     bool first_step = true;
+
+private:
+    std::vector<buffer_descriptor> buffers;
 };
 
 #endif // MESH_MANAGER_HPP_INCLUDED

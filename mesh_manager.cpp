@@ -193,13 +193,15 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::manage
     return next;
 }
 
-cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& buffers, const std::vector<buffer_descriptor>& utility_buffers, std::vector<plugin*> _plugins) :
-        data{buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers), buffer_set(ctx, _dim, buffers)},
+cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& _buffers, const std::vector<buffer_descriptor>& utility_buffers, std::vector<plugin*> _plugins) :
         utility_data{buffer_set(ctx, _dim, utility_buffers)},
         points_set{ctx},
         momentum_constraint{ctx, ctx, ctx},
-        plugins(_plugins)
+        plugins(_plugins),
+        buffers(_buffers)
 {
+    data.insert({0, buffer_set(ctx, _dim, buffers)});
+
     centre = _centre;
     dim = _dim;
     sett = _sett;
@@ -229,7 +231,7 @@ void cpu_mesh::init(cl::context& ctx, cl::command_queue& cqueue, thin_intermedia
     {
         cl::args init;
 
-        for(auto& i : data[0].buffers)
+        for(auto& i : data.at(0).buffers)
         {
             init.push_back(i.buf);
         }
@@ -249,14 +251,7 @@ void cpu_mesh::init(cl::context& ctx, cl::command_queue& cqueue, thin_intermedia
 
     for(plugin* p : plugins)
     {
-        p->init(*this, ctx, cqueue, pool, data[0]);
-    }
-
-    for(int i=0; i < (int)data[0].buffers.size(); i++)
-    {
-        cl::copy(cqueue, data[0].buffers[i].buf, data[1].buffers[i].buf);
-        cl::copy(cqueue, data[0].buffers[i].buf, data[2].buffers[i].buf);
-        cl::copy(cqueue, data[0].buffers[i].buf, data[3].buffers[i].buf);
+        p->init(*this, ctx, cqueue, pool, data.at(0));
     }
 }
 
@@ -336,6 +331,25 @@ void cpu_mesh::clean_buffer(cl::managed_command_queue& mqueue, cl::buffer& in, c
     mqueue.exec("clean_data_thin", cleaner, {points_set.border_count}, {256});
 }
 
+buffer_set& cpu_mesh::get_buffers(cl::context& ctx, cl::managed_command_queue& mqueue, int index)
+{
+    auto it = data.find(index);
+
+    if(it != data.end())
+        return it->second;
+
+    data.insert({index, buffer_set(ctx, dim, buffers)});
+
+    assert(data.at(0).buffers.size() == data.at(index).buffers.size());
+
+    for(int i=0; i < (int)data.at(0).buffers.size(); i++)
+    {
+        cl::copy(mqueue, data.at(0).buffers[i].buf, data.at(index).buffers[i].buf);
+    }
+
+    return data.at(index);
+}
+
 ///returns buffers and intermediates
 void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, step_callback callback)
 {
@@ -413,9 +427,9 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     auto step = [&](int root_index, int generic_in_index, int generic_out_index, float current_timestep, bool trigger_callbacks, int iteration, int max_iteration)
     {
-        auto& generic_in = data[generic_in_index];
-        auto& generic_out = data[generic_out_index];
-        auto& generic_base = data[root_index];
+        auto& generic_in = get_buffers(ctx, mqueue, generic_in_index);
+        auto& generic_out = get_buffers(ctx, mqueue, generic_out_index);
+        auto& generic_base = get_buffers(ctx, mqueue, root_index);
 
         if(!generic_in.currently_physical)
         {
@@ -436,7 +450,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         {
             std::vector<cl::buffer> linear_bufs;
 
-            for(auto& i : data[0].buffers)
+            for(auto& i : data.at(0).buffers)
             {
                 linear_bufs.push_back(i.buf);
             }
@@ -554,8 +568,11 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     };
 
 
-    auto dissipate_unidir = [&](auto& in, auto& out)
+    auto dissipate_unidir = [&](int in_index, int out_index)
     {
+        auto& in = get_buffers(ctx, mqueue, in_index);
+        auto& out = get_buffers(ctx, mqueue, out_index);
+
         assert(in.buffers.size() == out.buffers.size());
 
         for(int i=0; i < (int)in.buffers.size(); i++)
@@ -600,8 +617,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     ///so. data[0] is current data, data[1] is old data
 
     {
-        dissipate_unidir(data[0], data[2]);
-        std::swap(data[0], data[2]);
+        dissipate_unidir(0, 2);
+        std::swap(data.at(0), data.at(2));
     }
 
     auto copy_valid = [&](auto& in, auto& out)
@@ -640,7 +657,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         }
     };
 
-    auto finish_bs = [&](int high, int low)
+    /*auto finish_bs = [&](int high, int low)
     {
         data[high].currently_physical = false;
 
@@ -656,7 +673,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
             mqueue.exec("finish_bs_impl", args, {points_set.all_count}, {128});
         }
-    };
+    };*/
 
     //#define IMPLICIT_SECOND
     #ifdef IMPLICIT_SECOND
@@ -969,7 +986,9 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             #else
             //dissipate_set(mqueue, data[0], data[1], points_set, timestep, dim, scale);
 
-            std::swap(data[1], data[2]);
+            ///make sure the 2 buffer actually exists
+            get_buffers(ctx, mqueue, 2);
+            std::swap(data.at(1), data.at(2));
             #endif // DISS_UNIDIR
         }
     }
@@ -1132,7 +1151,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     mqueue.end_splice(main_queue);
 
-    std::swap(data[1], data[0]);
+    std::swap(data.at(1), data.at(0));
     ///data[0] is now the new output data, data[1] is the old data, data[2] is the old intermediate data
 }
 

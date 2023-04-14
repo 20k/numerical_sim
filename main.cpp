@@ -6499,7 +6499,7 @@ int main()
             {
                 cl::args render_args;
 
-                auto buffers = base_mesh.data[0].buffers;
+                auto buffers = base_mesh.data.at(0).buffers;
 
                 for(auto& i : buffers)
                 {
@@ -6534,7 +6534,7 @@ int main()
 
                     init_args.push_back(ray_buffer);
 
-                    for(auto& i : base_mesh.data[0].buffers)
+                    for(auto& i : base_mesh.data.at(0).buffers)
                     {
                         init_args.push_back(i.buf.as_device_read_only());
                     }
@@ -6558,7 +6558,7 @@ int main()
                     render_args.push_back(ray_buffer);
                     render_args.push_back(rays_terminated);
 
-                    for(auto& i : base_mesh.data[0].buffers)
+                    for(auto& i : base_mesh.data.at(0).buffers)
                     {
                         render_args.push_back(i.buf.as_device_read_only());
                     }
@@ -6590,7 +6590,7 @@ int main()
                     texture_args.push_back(ccamera_pos);
                     texture_args.push_back(ccamera_quat);
 
-                    for(auto& i : base_mesh.data[0].buffers)
+                    for(auto& i : base_mesh.data.at(0).buffers)
                     {
                         texture_args.push_back(i.buf.as_device_read_only());
                     }
@@ -6606,7 +6606,7 @@ int main()
                     render_args.push_back(rays_terminated.as_device_read_only());
                     render_args.push_back(rtex);
 
-                    for(auto& i : base_mesh.data[0].buffers)
+                    for(auto& i : base_mesh.data.at(0).buffers)
                     {
                         render_args.push_back(i.buf.as_device_read_only());
                     }
