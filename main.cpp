@@ -5960,7 +5960,7 @@ int main()
         argument_string += "-DTRACE_MATTER_P -DRENDER_MATTER_P ";
     }
 
-    bool use_redshift = true;
+    bool use_redshift = false;
 
     if(use_redshift)
     {
