@@ -64,7 +64,6 @@ void dissipate_set(cl::managed_command_queue& mqueue, T& base_reference, T& inou
     }
 }
 
-
 inline
 std::pair<cl::buffer, int> extract_buffer(cl::context& ctx, cl::command_queue& cqueue, cl::buffer& buf, cl::buffer& count)
 {
@@ -726,18 +725,18 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
         step(zm, zm, zmp1, littleh, false, 0, 1);
 
-        finish_midpoint(data[zmp1], data[zmm1], data[zm]);
+        finish_midpoint(data.at(zmp1), data.at(zmm1), data.at(zm));
 
-        std::swap(data[zm], data[out]);
+        std::swap(data.at(zm), data.at(out));
     };
 
     //#define RICHARDSON
     #ifndef RICHARDSON
-    int N = 3;
+    int N = 6;
 
     do_midpoint(0, 1, 2, N);
 
-    std::swap(data[2], data[1]);
+    std::swap(data.at(2), data.at(1));
     #else
     copy_valid(data[0], data[1]);
 
@@ -770,7 +769,6 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             mqueue.exec("construct_guess_impl", args, {points_set.all_count}, {128});
         }
     };
-
 
     auto midpoint_guess = [&](auto& a, auto& b)
     {

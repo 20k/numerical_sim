@@ -3518,17 +3518,36 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.98, 0};
+    h1.momentum = {0, 0.133 * 0.96, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     compact_object::data h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.98, 0};
+    h2.momentum = {0, -0.133 * 0.96, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     objects = {h1, h2};
     #endif // PAPER_0610128
+
+    //#define REDDIT
+    #ifdef REDDIT
+    compact_object::data h1;
+    h1.t = compact_object::BLACK_HOLE;
+    h1.bare_mass = 0.483;
+    h1.momentum = {0, 0.f, 0};
+    h1.position = {-5.257, 0.f, 0.f};
+
+    compact_object::data h2;
+    h2.t = compact_object::NEUTRON_STAR;
+    h2.bare_mass = 0.1;
+    h2.matter.compactness = 0.02;
+    h2.matter.colour = {1*50, 0.8*50, 0.5*50};
+    h2.momentum = {0, -0.001, 0};
+    h2.position = {5.257, 0.f, 0.f};
+
+    objects = {h1, h2};
+    #endif
 
     ///https://arxiv.org/pdf/1507.00570.pdf
     //#define PAPER_1507
@@ -5941,7 +5960,7 @@ int main()
         argument_string += "-DTRACE_MATTER_P -DRENDER_MATTER_P ";
     }
 
-    bool use_redshift = false;
+    bool use_redshift = true;
 
     if(use_redshift)
     {
@@ -5979,7 +5998,7 @@ int main()
     base_settings.use_half_intermediates = false;
     #endif // USE_HALF_INTERMEDIATE
 
-    bool use_matter_colour = false;
+    bool use_matter_colour = true;
 
     #ifdef CALCULATE_MOMENTUM_CONSTRAINT
     base_settings.calculate_momentum_constraint = true;

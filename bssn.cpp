@@ -391,7 +391,7 @@ void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_mat
     {
         for(int j=0; j < 3; j++)
         {
-            float cK = -0.1f;
+            float cK = -0.035f;
 
             dtcYij.idx(i, j) += cK * args.gA * 0.5f * (cD.idx(i, j) + cD.idx(j, i));
         }
@@ -1238,7 +1238,7 @@ void bssn::build_gA(equation_context& ctx)
     //int m = 4;
     //value dtgA = lie_derivative(ctx, args.gB, args.gA) - 2 * args.gA * args.K * pow(bl, m);
 
-    value dtgA = lie_derivative(ctx, args.gB, args.gA) - 2 * args.gA * args.K;
+    value dtgA = lie_derivative(ctx, args.gB, args.gA) * 0 - 2 * args.gA * args.K;
 
     /*value dibi = 0;
 
@@ -1361,7 +1361,7 @@ void bssn::build_gB(equation_context& ctx)
     #ifndef USE_GBB
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
     ///todo: remove this
-    tensor<value, 3> dtgB = (3.f/4.f) * args.derived_cGi + bjdjbi - N * args.gB;
+    tensor<value, 3> dtgB = (3.f/4.f) * args.derived_cGi + bjdjbi * 0 - N * args.gB;
 
     //dtgB = {0,0,0};
 
