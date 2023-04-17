@@ -808,6 +808,9 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct render
     max_iterations = 4096;
     #endif // NO_HORIZON_DETECTION
 
+    float integration_Tv = 0;
+    float background_power = 1;
+
     //#pragma unroll(16)
     for(int iteration=0; iteration < max_iterations; iteration++)
     {
@@ -849,6 +852,71 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct render
             break;
         }
 
+        #if defined(TRACE_MATTER_P) || defined(RENDER_MATTER)
+        {
+            float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+            voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+            ///> 0 except at singularity where there is matter
+            float matter_p = get_matter_p(Xpos, scale, dim, GET_STANDARD_ARGS(), GET_STANDARD_UTILITY());
+
+            float p_val = fabs(matter_p);
+
+            ///https://arxiv.org/pdf/1207.4234.pdf
+            float absorption = 0;
+            //float emission = 2.f * (p_val * PARTICLE_BRIGHTNESS)/MINIMUM_MASS;
+
+            float next_R = 0;
+            float next_G = 0;
+            float next_B = 0;
+
+            #ifdef TRACE_MATTER_P
+            float emission = 2.f * fabs(buffer_read_linear(adm_p, voxel_pos, dim)) * PARTICLE_BRIGHTNESS/MINIMUM_MASS;
+            absorption += (p_val * PARTICLE_BRIGHTNESS)/MINIMUM_MASS;
+
+            next_R += emission;
+            next_G += emission;
+            next_B += emission;
+            #endif
+
+            #ifdef RENDER_MATTER
+            float pstar_val = buffer_read_linear(Dp_star, voxel_pos, dim);
+
+            absorption += pstar_val * 50.f;
+
+            if(!use_colour)
+            {
+                next_R += pstar_val * 100;
+                next_G += pstar_val * 100;
+                next_B += pstar_val * 100;
+            }
+            else
+            {
+                #ifdef HAS_COLOUR
+                next_R += buffer_read_linear(dRed, voxel_pos, dim) * 100;
+                next_G += buffer_read_linear(dGreen, voxel_pos, dim) * 100;
+                next_B += buffer_read_linear(dBlue, voxel_pos, dim) * 100;
+                #endif
+            }
+            #endif
+
+            float dt_ds = absorption * ds;
+            float di_ds_unshifted = exp(-integration_Tv) * ds;
+
+            integration_Tv += dt_ds;
+
+            accum_R += di_ds_unshifted * next_R * exp(-integration_Tv) * 1.f;
+            accum_G += di_ds_unshifted * next_G * exp(-integration_Tv) * 1.f;
+            accum_B += di_ds_unshifted * next_B * exp(-integration_Tv) * 1.f;
+
+            background_power = exp(-integration_Tv);
+        }
+
+        if(fabs(background_power) < 0.001f)
+            break;
+        #endif
+
+        #if 0
         #ifdef TRACE_MATTER_P
         {
             float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
@@ -904,7 +972,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct render
             }*/
         }
         #endif // RENDER_MATTER
-
+        #endif // 0
         #endif // VERLET_2
 
         //#define EULER
@@ -961,7 +1029,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct render
     ray_out.R = accum_R;
     ray_out.G = accum_G;
     ray_out.B = accum_B;
-    ray_out.background_power = 1;
+    ray_out.background_power = clamp(background_power, 0.f, 1.f);
     ray_out.zp1 = 1;
 
     rays_terminated[y * width + x] = ray_out;
