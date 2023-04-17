@@ -20,7 +20,6 @@ struct gravitational_wave_manager
         cl_float2* read = nullptr;
     };
 
-    int extract_pixel = 50;
     cl_int4 wave_pos;
     vec3i simulation_size;
 
@@ -41,6 +40,8 @@ struct gravitational_wave_manager
 
     void issue_extraction(cl::managed_command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<ref_counted_buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize);
     std::vector<dual_types::complex<float>> process();
+
+    int calculated_extraction_pixel = 0;
 };
 
 #endif // GRAVITATIONAL_WAVES_HPP_INCLUDED

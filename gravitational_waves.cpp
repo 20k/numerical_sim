@@ -59,16 +59,10 @@ vec3f dim_to_centre(vec3i dim)
     return {even.x()/2.f, even.y()/2.f, even.z()/2.f};
 }
 
-float get_harmonic_extraction_radius(int extract_pixel)
-{
-    return extract_pixel;
-}
-
 std::vector<cl_ushort4> get_harmonic_extraction_points(vec3i dim, int extract_pixel)
 {
     std::vector<vec3i> ret_as_int;
 
-    float rad = get_harmonic_extraction_radius(extract_pixel);
     vec3f centre = dim_to_centre(dim);
 
     auto func = [&](vec3f pos)
@@ -91,7 +85,7 @@ std::vector<cl_ushort4> get_harmonic_extraction_points(vec3i dim, int extract_pi
         return dual_types::complex<float>(0.f, 0.f);
     };
 
-    (void)spherical_decompose_complex_cartesian_function(func, -2, 2, 2, centre, rad, INTEGRATION_N);
+    (void)spherical_decompose_complex_cartesian_function(func, -2, 2, 2, centre, (float)extract_pixel, INTEGRATION_N);
 
     std::vector<cl_ushort4> ret;
 
@@ -131,8 +125,6 @@ dual_types::complex<float> get_harmonic(const std::vector<cl_ushort4>& points, c
         imaginary_value_map[point.s[0]][point.s[1]][point.s[2]] = vals[i].imaginary;
     }
 
-    float rad = get_harmonic_extraction_radius(extract_pixel);
-
     vec3f centre = dim_to_centre(dim);
 
     auto to_integrate = [&](const vec3f& pos)
@@ -143,7 +135,7 @@ dual_types::complex<float> get_harmonic(const std::vector<cl_ushort4>& points, c
         return dual_types::complex<float>(real, imaginary);
     };
 
-    return spherical_decompose_complex_cartesian_function(to_integrate, -2, l, m, centre, rad, INTEGRATION_N);
+    return spherical_decompose_complex_cartesian_function(to_integrate, -2, l, m, centre, (float)extract_pixel, INTEGRATION_N);
 }
 
 gravitational_wave_manager::gravitational_wave_manager(cl::context& ctx, vec3i _simulation_size, float c_at_max, float scale) :
@@ -151,9 +143,13 @@ gravitational_wave_manager::gravitational_wave_manager(cl::context& ctx, vec3i _
 {
     simulation_size = _simulation_size;
 
+    calculated_extraction_pixel = floor(simulation_size.x()/2.f) - 20;
+
+    printf("Extracting at pixel %i\n", calculated_extraction_pixel);
+
     float r_extract = c_at_max/3;
 
-    raw_harmonic_points = get_harmonic_extraction_points(simulation_size, extract_pixel);
+    raw_harmonic_points = get_harmonic_extraction_points(simulation_size, calculated_extraction_pixel);
 
     elements = raw_harmonic_points.size();
     harmonic_points.alloc(sizeof(cl_ushort4) * elements);
@@ -243,7 +239,7 @@ std::vector<dual_types::complex<float>> gravitational_wave_manager::process()
             as_vector.push_back({vec[i].s[0], vec[i].s[1]});
         }
 
-        dual_types::complex<float> harmonic = get_harmonic(raw_harmonic_points, as_vector, simulation_size, extract_pixel, 2, 2);
+        dual_types::complex<float> harmonic = get_harmonic(raw_harmonic_points, as_vector, simulation_size, (float)calculated_extraction_pixel, 2, 2);
 
         if(!isnanf(harmonic.real) && !isnanf(harmonic.imaginary))
             complex_harmonics.push_back(harmonic);
