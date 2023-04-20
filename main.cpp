@@ -124,6 +124,7 @@ https://arxiv.org/pdf/1706.01980.pdf - high spin mergers, alt conditions
 https://iopscience.iop.org/article/10.1088/1361-6382/ac7e16/pdf - bssn w. This has both the momentum constraint and hamiltonian constraint in terms of sane variables
 https://arxiv.org/pdf/2203.05149.pdf - has some compatible matter evolution equations
 https://arxiv.org/pdf/1109.1707.pdf - some good notes on adm projection
+https://arxiv.org/pdf/2009.06617.pdf - matter removal, flux conservative hydrodynamics
 */
 
 ///notes:
@@ -671,6 +672,21 @@ tensor<T, N, N> gpu_high_covariant_derivative_vec(equation_context& ctx, const t
     return ret;
 }*/
 
+
+template<typename T>
+inline
+T flush_to_zero(const T&, const T&)
+{
+    return T{0.f};
+}
+
+template<typename T>
+inline
+T divide_to_zero(const T& top, const T& bot)
+{
+    return divide_with_callback(top, bot, flush_to_zero<T>);
+}
+
 template<typename T>
 inline
 T chi_to_e_6phi(const T& chi)
@@ -725,7 +741,9 @@ T w_next_interior(const T& w_in, const T& p_star, const T& chi, const T& constan
     //T non_regular_interior = divisor / (divisor + em6_phi_G * geg * pow(p_star, gamma - 2));
 
     ///I'm not sure this equation tends to 0, but constant_1 tends to 0 because Si = p* h uk
-    T non_regular_interior = dual_types::divide_with_limit(divisor, divisor + em6_phi_G * geg * pow(p_star, gamma - 2), T{0.f}, DIVISION_TOL);
+    //T non_regular_interior = dual_types::divide_with_limit(divisor, divisor + em6_phi_G * geg * pow(p_star, gamma - 2), T{0.f}, DIVISION_TOL);
+
+    T non_regular_interior = divide_to_zero(divisor, divisor + em6_phi_G * geg * pow(p_star, gamma - 2));
 
     return sqrt(p_star * p_star + constant_1 * pow(non_regular_interior, 2));
     //return sqrt(p_star * p_star + constant_1 * pow(1 + em6_phi_G * geg * pow(p_star, gamma - 2) / divisor, -2));
@@ -1466,7 +1484,7 @@ struct matter
 
     value calculate_p0(const value& chi, const value& W)
     {
-        return divide_with_limit(chi_to_e_m6phi(chi) * p_star * p_star, W, 0.f, DIVISION_TOL);
+        return divide_to_zero(chi_to_e_m6phi(chi) * p_star * p_star, W);
     }
 
     value calculate_eps(const value& chi, const value& W)
@@ -1481,7 +1499,7 @@ struct matter
 
         return lhs;*/
 
-        return pow(divide_with_limit(e_m6phi, W, 0.f, DIVISION_TOL), Gamma - 1) * pow(e_star, Gamma) * pow(p_star, Gamma - 2);
+        return pow(divide_to_zero(e_m6phi, W), Gamma - 1) * pow(e_star, Gamma) * pow(p_star, Gamma - 2);
     }
 
     /*value gamma_eos(const value& p0, const value& eps)
@@ -1491,7 +1509,7 @@ struct matter
 
     value calculate_p0e(const value& chi, const value& W)
     {
-        value iv_au0 = divide_with_limit(p_star, W, 0.f, DIVISION_TOL);
+        value iv_au0 = divide_to_zero(p_star, W);
 
         value e_m6phi = chi_to_e_m6phi_unclamped(chi);
 
@@ -1593,7 +1611,7 @@ struct matter
 
             for(int j=0; j < 3; j++)
             {
-                sum += divide_with_limit(gA * icY.idx(i, j) * cS.idx(j) * chi, W * h, 0.f, DIVISION_TOL);
+                sum += divide_to_zero(gA * icY.idx(i, j) * cS.idx(j) * chi, W * h);
             }
 
             ret.idx(i) += sum;
@@ -1666,7 +1684,7 @@ struct matter
         {
             for(int j=0; j < 3; j++)
             {
-                Sij.idx(i, j) = divide_with_limit(em6phi, W * h, 0.f, DIVISION_TOL) * cS.idx(i) * cS.idx(j);
+                Sij.idx(i, j) = divide_to_zero(em6phi, W * h) * cS.idx(i) * cS.idx(j);
             }
         }
 
@@ -1719,7 +1737,7 @@ struct matter
 
         value littledv = dkvk * scale;
 
-        value A = divide_with_limit(pow(e_star, Gamma) * pow(p_star, Gamma - 1) * pow(e_m6phi, Gamma - 1), pow(W, Gamma - 1), 0.f);
+        value A = divide_to_zero(pow(e_star, Gamma) * pow(p_star, Gamma - 1) * pow(e_m6phi, Gamma - 1), pow(W, Gamma - 1));
         //value A = divide_with_limit(pow(e_star, Gamma) * pow(p_star, Gamma - 1), pow(W * e_6phi, Gamma - 1), 0.f);
 
         //ctx.add("DBG_A", A);
@@ -1749,14 +1767,14 @@ struct matter
 
         for(int k=0; k < 3; k++)
         {
-            value to_diff = divide_with_limit(W * vk.idx(k), p_star * e_m6phi, 0.f);
+            value to_diff = divide_to_zero(W * vk.idx(k), p_star * e_m6phi);
 
             sum_interior_rhs += diff1(ctx, to_diff, k);
         }
 
         value p0e = calculate_p0e(chi, W);
 
-        value degenerate = divide_with_limit(value{1}, pow(p0e, 1 - 1/Gamma), 0.f);
+        value degenerate = divide_to_zero(value{1}, pow(p0e, 1 - 1/Gamma));
 
         /*ctx.add("DBG_IRHS", sum_interior_rhs);
 
@@ -1785,7 +1803,7 @@ struct matter
 
         for(int k=0; k < 3; k++)
         {
-            ret.idx(k) += -gA * divide_with_limit(value{1}, chi_to_e_m6phi(chi), 0.f, DIVISION_TOL) * diff1(ctx, P, k);
+            ret.idx(k) += -gA * divide_to_zero(value{1}, chi_to_e_m6phi(chi)) * diff1(ctx, P, k);
 
             ret.idx(k) += -W * h * diff1(ctx, gA, k);
 
@@ -1807,14 +1825,14 @@ struct matter
                 {
                     for(int j=0; j < 3; j++)
                     {
-                        sum += divide_with_limit(gA * chi * cS.idx(i) * cS.idx(j), (2 * W * h), 0.f, DIVISION_TOL) * diff1(ctx, icY.idx(i, j), k);
+                        sum += divide_to_zero(gA * chi * cS.idx(i) * cS.idx(j), (2 * W * h)) * diff1(ctx, icY.idx(i, j), k);
                     }
                 }
 
                 ret.idx(k) += sum;
             }
 
-            ret.idx(k) += -divide_with_limit((2 * gA * h * (W * W - p_star * p_star)), W, 0.f, DIVISION_TOL) * calculate_dPhi(chi, dX).idx(k);
+            ret.idx(k) += -divide_to_zero((2 * gA * h * (W * W - p_star * p_star)), W) * calculate_dPhi(chi, dX).idx(k);
         }
 
         return ret;
@@ -3513,7 +3531,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    #define PAPER_0610128
+    //#define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -3530,7 +3548,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // PAPER_0610128
 
-    //#define REDDIT
+    #define REDDIT
     #ifdef REDDIT
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
