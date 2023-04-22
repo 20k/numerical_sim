@@ -2,6 +2,7 @@
 #define HYDRODYNAMICS_HPP_INCLUDED
 
 #include "mesh_manager.hpp"
+#include "bssn.hpp"
 
 struct matter_initial_vars
 {
@@ -44,5 +45,30 @@ struct eularian_hydrodynamics : plugin
     virtual void init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue,         thin_intermediates_pool& pool, buffer_set& to_init) override;
     virtual void step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration) override;
 };
+
+template<typename T>
+inline
+T chi_to_e_6phi(const T& chi)
+{
+    return pow(1/(max(chi, 0.001f)), (3.f/2.f));
+}
+
+struct eularian_matter : matter_interop
+{
+    virtual value calculate_adm_S(equation_context& ctx, standard_arguments& args) override;
+    virtual value calculate_adm_p(equation_context& ctx, standard_arguments& args) override;
+    virtual tensor<value, 3, 3> calculate_adm_X_Sij(equation_context& ctx, standard_arguments& args) override;
+    virtual tensor<value, 3> calculate_adm_Si(equation_context& ctx, standard_arguments& args) override;
+};
+
+namespace hydrodynamics
+{
+    void build_intermediate_variables_derivatives(equation_context& ctx);
+    void build_artificial_viscosity(equation_context& ctx);
+    void build_equations(equation_context& ctx);
+    void build_advection(equation_context& ctx);
+}
+
+void test_w();
 
 #endif // HYDRODYNAMICS_HPP_INCLUDED
