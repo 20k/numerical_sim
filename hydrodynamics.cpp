@@ -273,6 +273,8 @@ T chi_to_e_m6phi_unclamped(const T& chi)
 
 #define DIVISION_TOL 0.00001f
 
+using mvalue = dual_types::fvalue;
+
 ///https://arxiv.org/pdf/gr-qc/0209102.pdf (29)
 ///constant_1 is chi * icYij * cSi cSj
 template<typename T>
@@ -329,52 +331,25 @@ T w_next(const T& w_in, const T& p_star, const T& chi, const inverse_metric<T, 3
     return w_next_interior(w_in, p_star, chi, constant_1, gamma, e_star);
 }
 
-tensor<value, 3> calculate_dPhi(const value& chi, const tensor<value, 3>& dchi)
+tensor<mvalue, 3> calculate_dPhi(const mvalue& chi, const tensor<mvalue, 3>& dchi)
 {
-    return -dchi/(4 * max(chi, 0.001f));
+    return -dchi/(4 * max(chi, mvalue{0.001f}));
 }
 
 inline
-value matter_X_1(const value& X)
+mvalue matter_X_1(const mvalue& X)
 {
-    return max(X, 0.00f);
-
-    value LX = clamp(X, value{0.f}, value{1.f});
-
-    float cutoff_X = 0.45f;
-    float value_at_min = 0.35f;
-
-    ///when this is 1, X == absolute min
-    ///so eg if X == 0, we get 1
-    ///if X == cutoff, we get 0
-    value X_frac_to_absolute_min = (cutoff_X - LX) / cutoff_X;
-
-    value modified_X_value = X_frac_to_absolute_min * (value_at_min - cutoff_X) + cutoff_X;
-
-    return if_v(X >= cutoff_X,
-         X,
-         modified_X_value);
-
-    /*float min_X = 0.4f;
-    float max_X = 0.2f;
-
-    value extra = max(X, 1.f) - min_X;
-
-    value interpolated = (extra / (1.f - min_X)) * (max_X - min_X) + min_X;
-
-    value interp = dual_types::if_v(extra > 0, interpolated, X);
-
-    return interp;*/
+    return max(X, mvalue{0.00f});
 }
 
 inline
-value matter_X_2(const value& X)
+mvalue matter_X_2(const mvalue& X)
 {
-    return max(X, 0.00f);
+    return max(X, mvalue{0.00f});
 }
 
 inline
-value calculate_h_with_gamma_eos(const value& eps)
+mvalue calculate_h_with_gamma_eos(const mvalue& eps)
 {
     float Gamma = 2;
 
@@ -387,24 +362,24 @@ value calculate_h_with_gamma_eos(const value& eps)
 ///X = e-4phi
 struct matter
 {
-    value p_star;
-    value e_star;
-    tensor<value, 3> cS;
+    mvalue p_star;
+    mvalue e_star;
+    tensor<mvalue, 3> cS;
 
     float Gamma = 2;
 
     matter(equation_context& ctx)
     {
-        p_star = bidx("Dp_star", ctx.uses_linear, false);
-        e_star = bidx("De_star", ctx.uses_linear, false);
+        p_star = mvalue{bidx("Dp_star", ctx.uses_linear, false)};
+        e_star = mvalue{bidx("De_star", ctx.uses_linear, false)};
 
         for(int i=0; i < 3; i++)
         {
-            cS.idx(i) = bidx("DcS" + std::to_string(i), ctx.uses_linear, false);
+            cS.idx(i) = mvalue{bidx("DcS" + std::to_string(i), ctx.uses_linear, false)};
         }
 
-        p_star = max(p_star, 0.f);
-        e_star = max(e_star, 0.f);
+        p_star = max(p_star, mvalue{0.f});
+        e_star = max(e_star, mvalue{0.f});
     }
 
     /*value calculate_W(const inverse_metric<value, 3, 3>& icY, const value& chi)
@@ -422,36 +397,36 @@ struct matter
     }*/
 
     ///??? comes from initial conditions
-    value p_star_max()
+    mvalue p_star_max()
     {
-        return 1;
+        return mvalue{1};
     }
 
-    value p_star_is_degenerate()
+    mvalue p_star_is_degenerate()
     {
         return p_star < 1e-5f * p_star_max();
     }
 
-    value p_star_below_e_star_threshold()
+    mvalue p_star_below_e_star_threshold()
     {
         float e_factor = 1e-4f;
 
         return p_star < e_factor * p_star_max();
     }
 
-    value e_star_clamped()
+    mvalue e_star_clamped()
     {
         return min(e_star, 10 * p_star);
     }
 
-    value calculate_p0(const value& chi, const value& W)
+    mvalue calculate_p0(const mvalue& chi, const mvalue& W)
     {
         return divide_with_limit(chi_to_e_m6phi(chi) * p_star * p_star, W, 0.f, DIVISION_TOL);
     }
 
-    value calculate_eps(const value& chi, const value& W)
+    mvalue calculate_eps(const mvalue& chi, const mvalue& W)
     {
-        value e_m6phi = chi_to_e_m6phi(chi);
+        mvalue e_m6phi = chi_to_e_m6phi(chi);
 
         /*value p0 = calculate_p0(chi, W);
 
@@ -469,23 +444,23 @@ struct matter
         return (Gamma - 1) * p0 * eps;
     }*/
 
-    value calculate_p0e(const value& chi, const value& W)
+    mvalue calculate_p0e(const mvalue& chi, const mvalue& W)
     {
-        value iv_au0 = divide_with_limit(p_star, W, 0.f, DIVISION_TOL);
+        mvalue iv_au0 = divide_with_limit(p_star, W, 0.f, DIVISION_TOL);
 
-        value e_m6phi = chi_to_e_m6phi_unclamped(chi);
+        mvalue e_m6phi = chi_to_e_m6phi_unclamped(chi);
 
-        return pow(max(e_star * e_m6phi * iv_au0, 0.f), Gamma);
+        return pow(max(e_star * e_m6phi * iv_au0, mvalue{0.f}), Gamma);
     }
 
-    value gamma_eos_from_e_star(const value& chi, const value& W)
+    mvalue gamma_eos_from_e_star(const mvalue& chi, const mvalue& W)
     {
-        value p0e = calculate_p0e(chi, W);
+        mvalue p0e = calculate_p0e(chi, W);
 
         return p0e * (Gamma - 1);
     }
 
-    value calculate_h_with_gamma_eos(const value& chi, const value& W)
+    mvalue calculate_h_with_gamma_eos(const mvalue& chi, const mvalue& W)
     {
         return ::calculate_h_with_gamma_eos(calculate_eps(chi, W));
     }
@@ -540,7 +515,7 @@ struct matter
     ///https://arxiv.org/pdf/gr-qc/9908027.pdf 2.12
     ///except sk = p* h uj, and uhatj = h uj
     ///and w = p* a u0 not a u0
-    tensor<value, 3> get_v_upper(const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const value& W)
+    tensor<mvalue, 3> get_v_upper(const inverse_metric<mvalue, 3, 3>& icY, const mvalue& gA, const tensor<mvalue, 3>& gB, const mvalue& chi, const mvalue& W)
     {
         //#define V_UPPER_PRIMARY
         #ifdef V_UPPER_PRIMARY
@@ -563,13 +538,13 @@ struct matter
 
         #define V_UPPER_ALT
         #ifdef V_UPPER_ALT
-        value h = calculate_h_with_gamma_eos(chi, W);
+        mvalue h = calculate_h_with_gamma_eos(chi, W);
 
-        tensor<value, 3> ret = -gB;
+        tensor<mvalue, 3> ret = -gB;
 
         for(int i=0; i < 3; i++)
         {
-            value sum = 0;
+            mvalue sum = 0;
 
             for(int j=0; j < 3; j++)
             {
@@ -583,25 +558,25 @@ struct matter
         #endif // V_UPPER_ALT
     }
 
-    tensor<value, 3> p_star_vi(const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const value& W)
+    tensor<mvalue, 3> p_star_vi(const inverse_metric<mvalue, 3, 3>& icY, const mvalue& gA, const tensor<mvalue, 3>& gB, const mvalue& chi, const mvalue& W)
     {
-        tensor<value, 3> v_upper = get_v_upper(icY, gA, gB, chi, W);
+        tensor<mvalue, 3> v_upper = get_v_upper(icY, gA, gB, chi, W);
 
         return p_star * v_upper;
     }
 
-    tensor<value, 3> e_star_vi(const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const value& W)
+    tensor<mvalue, 3> e_star_vi(const inverse_metric<mvalue, 3, 3>& icY, const mvalue& gA, const tensor<mvalue, 3>& gB, const mvalue& chi, const mvalue& W)
     {
-        tensor<value, 3> v_upper = get_v_upper(icY, gA, gB, chi, W);
+        tensor<mvalue, 3> v_upper = get_v_upper(icY, gA, gB, chi, W);
 
         return e_star * v_upper;
     }
 
-    tensor<value, 3, 3> cSk_vi(const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const value& W)
+    tensor<mvalue, 3, 3> cSk_vi(const inverse_metric<mvalue, 3, 3>& icY, const mvalue& gA, const tensor<mvalue, 3>& gB, const mvalue& chi, const mvalue& W)
     {
-        tensor<value, 3> v_upper = get_v_upper(icY, gA, gB, chi, W);
+        tensor<mvalue, 3> v_upper = get_v_upper(icY, gA, gB, chi, W);
 
-        tensor<value, 3, 3> cSk_vi;
+        tensor<mvalue, 3, 3> cSk_vi;
 
         for(int k=0; k < 3; k++)
         {
@@ -614,33 +589,33 @@ struct matter
         return cSk_vi;
     }
 
-    value calculate_adm_p(const value& chi, const value& W)
+    mvalue calculate_adm_p(const mvalue& chi, const mvalue& W)
     {
         //return {};
 
-        value h = calculate_h_with_gamma_eos(chi, W);
-        value em6phi = chi_to_e_m6phi_unclamped(chi);
+        mvalue h = calculate_h_with_gamma_eos(chi, W);
+        mvalue em6phi = chi_to_e_m6phi_unclamped(chi);
 
-        value p0 = calculate_p0(chi, W);
-        value eps = calculate_eps(chi, W);
+        mvalue p0 = calculate_p0(chi, W);
+        mvalue eps = calculate_eps(chi, W);
 
         return h * W * em6phi - gamma_eos_from_e_star(chi, W);
     }
 
-    tensor<value, 3> calculate_adm_Si(const value& chi)
+    tensor<mvalue, 3> calculate_adm_Si(const mvalue& chi)
     {
-        value em6phi = chi_to_e_m6phi_unclamped(chi);
+        mvalue em6phi = chi_to_e_m6phi_unclamped(chi);
 
         return cS * em6phi;
     }
 
     ///the reason to calculate X_Sij is that its regular in terms of chi
-    tensor<value, 3, 3> calculate_adm_X_Sij(const value& chi, const value& W, const metric<value, 3, 3>& cY)
+    tensor<mvalue, 3, 3> calculate_adm_X_Sij(const mvalue& chi, const mvalue& W, const metric<mvalue, 3, 3>& cY)
     {
-        value em6phi = chi_to_e_m6phi_unclamped(chi);
-        value h = calculate_h_with_gamma_eos(chi, W);
+        mvalue em6phi = chi_to_e_m6phi_unclamped(chi);
+        mvalue h = calculate_h_with_gamma_eos(chi, W);
 
-        tensor<value, 3, 3> Sij;
+        tensor<mvalue, 3, 3> Sij;
 
         for(int i=0; i < 3; i++)
         {
@@ -651,22 +626,22 @@ struct matter
         }
 
         ///this gamma eos is the specific problem
-        tensor<value, 3, 3> X_P_Yij = gamma_eos_from_e_star(chi, W) * cY.to_tensor();
-        //tensor<value, 3, 3> X_P_Yij = gamma_eos(p0, eps) * cY.to_tensor();
+        tensor<mvalue, 3, 3> X_P_Yij = gamma_eos_from_e_star(chi, W) * cY.to_tensor();
+        //tensor<mvalue, 3, 3> X_P_Yij = gamma_eos(p0, eps) * cY.to_tensor();
 
         return Sij * chi + X_P_Yij;
     }
 
-    value calculate_adm_S(const metric<value, 3, 3>& cY, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
+    mvalue calculate_adm_S(const metric<mvalue, 3, 3>& cY, const inverse_metric<mvalue, 3, 3>& icY, const mvalue& chi, const mvalue& W)
     {
         ///so. Raise Sij with iYij, which is X * icY
         ///now I'm actually raising X * Sij which means....... i can use icY?
         ///because iYij * Sjk = X * icYij * Sjk, and icYij * X * Sjk = X * icYij * Sjk
-        tensor<value, 3, 3> XSij = calculate_adm_X_Sij(chi, W, cY);
+        tensor<mvalue, 3, 3> XSij = calculate_adm_X_Sij(chi, W, cY);
 
-        tensor<value, 3, 3> raised = raise_index(XSij, icY, 0);
+        tensor<mvalue, 3, 3> raised = raise_index(XSij, icY, 0);
 
-        value sum = 0;
+        mvalue sum = 0;
 
         for(int i=0; i < 3; i++)
         {
@@ -676,67 +651,67 @@ struct matter
         return sum;
     }
 
-    value calculate_PQvis(equation_context& ctx, const value& gA, const tensor<value, 3>& gB, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
+    mvalue calculate_PQvis(equation_context& ctx, const mvalue& gA, const tensor<mvalue, 3>& gB, const inverse_metric<mvalue, 3, 3>& icY, const mvalue& chi, const mvalue& W)
     {
         #define QUADRATIC_VISCOSITY
         #ifndef QUADRATIC_VISCOSITY
         return 0;
         #endif // QUADRATIC_VISCOSITY
 
-        value e_m6phi = chi_to_e_m6phi_unclamped(chi);
-        value e_6phi = chi_to_e_6phi(chi);
+        mvalue e_m6phi = chi_to_e_m6phi_unclamped(chi);
+        mvalue e_6phi = chi_to_e_6phi(chi);
 
-        tensor<value, 3> vk = get_v_upper(icY, gA, gB, chi, W);
+        tensor<mvalue, 3> vk = get_v_upper(icY, gA, gB, chi, W);
 
-        value scale = "scale";
+        mvalue scale = "scale";
 
-        value dkvk = 0;
+        mvalue dkvk = 0;
 
         for(int k=0; k < 3; k++)
         {
             dkvk += 2 * diff1(ctx, vk.idx(k), k);
         }
 
-        value littledv = dkvk * scale;
+        mvalue littledv = dkvk * scale;
 
-        value A = divide_with_limit(pow(e_star, Gamma) * pow(p_star, Gamma - 1) * pow(e_m6phi, Gamma - 1), pow(W, Gamma - 1), 0.f);
-        //value A = divide_with_limit(pow(e_star, Gamma) * pow(p_star, Gamma - 1), pow(W * e_6phi, Gamma - 1), 0.f);
+        mvalue A = divide_with_limit(pow(e_star, Gamma) * pow(p_star, Gamma - 1) * pow(e_m6phi, Gamma - 1), pow(W, Gamma - 1), 0.f);
+        //mvalue A = divide_with_limit(pow(e_star, Gamma) * pow(p_star, Gamma - 1), pow(W * e_6phi, Gamma - 1), 0.f);
 
         //ctx.add("DBG_A", A);
 
         ///[0.1, 1.0}
-        value CQvis = 1.f;
+        mvalue CQvis = 1.f;
 
-        value PQvis = if_v(littledv < 0, CQvis * A * pow(littledv, 2), 0.f);
+        mvalue PQvis = if_v(littledv < 0, CQvis * A * pow(littledv, 2), 0.f);
 
         return PQvis;
     }
 
     ///I suspect we shouldn't quadratic viscosity near the event horizon, there's an infinite term to_diff
-    value estar_vi_rhs(equation_context& ctx, const value& gA, const tensor<value, 3>& gB, const inverse_metric<value, 3, 3>& icY, const value& chi, const value& W)
+    mvalue estar_vi_rhs(equation_context& ctx, const mvalue& gA, const tensor<mvalue, 3>& gB, const inverse_metric<mvalue, 3, 3>& icY, const mvalue& chi, const mvalue& W)
     {
         #ifndef QUADRATIC_VISCOSITY
         return 0;
         #endif // QUADRATIC_VISCOSITY
 
-        value e_m6phi = chi_to_e_m6phi_unclamped(chi);
+        mvalue e_m6phi = chi_to_e_m6phi_unclamped(chi);
 
-        value PQvis = calculate_PQvis(ctx, gA, gB, icY, chi, W);
+        mvalue PQvis = calculate_PQvis(ctx, gA, gB, icY, chi, W);
 
-        tensor<value, 3> vk = get_v_upper(icY, gA, gB, chi, W);
+        tensor<mvalue, 3> vk = get_v_upper(icY, gA, gB, chi, W);
 
-        value sum_interior_rhs = 0;
+        mvalue sum_interior_rhs = 0;
 
         for(int k=0; k < 3; k++)
         {
-            value to_diff = divide_with_limit(W * vk.idx(k), p_star * e_m6phi, 0.f);
+            mvalue to_diff = divide_with_limit(W * vk.idx(k), p_star * e_m6phi, 0.f);
 
             sum_interior_rhs += diff1(ctx, to_diff, k);
         }
 
-        value p0e = calculate_p0e(chi, W);
+        mvalue p0e = calculate_p0e(chi, W);
 
-        value degenerate = divide_with_limit(value{1}, pow(p0e, 1 - 1/Gamma), 0.f);
+        mvalue degenerate = divide_with_limit(mvalue{1}, pow(p0e, 1 - 1/Gamma), 0.f);
 
         /*ctx.add("DBG_IRHS", sum_interior_rhs);
 
@@ -751,26 +726,26 @@ struct matter
         return -degenerate * (PQvis / Gamma) * sum_interior_rhs;
     }
 
-    tensor<value, 3> cSkvi_rhs(equation_context& ctx, const inverse_metric<value, 3, 3>& icY, const value& gA, const tensor<value, 3>& gB, const value& chi, const tensor<value, 3>& dchi, const value& P, const value& W)
+    tensor<mvalue, 3> cSkvi_rhs(equation_context& ctx, const inverse_metric<mvalue, 3, 3>& icY, const mvalue& gA, const tensor<mvalue, 3>& gB, const mvalue& chi, const tensor<mvalue, 3>& dchi, const mvalue& P, const mvalue& W)
     {
-        tensor<value, 3> dX = dchi;
+        tensor<mvalue, 3> dX = dchi;
 
-        //value PQvis = calculate_PQvis(ctx, gA, gB, icY, chi, W);
+        //mvalue PQvis = calculate_PQvis(ctx, gA, gB, icY, chi, W);
 
         //ctx.pin(PQvis);
 
-        value h = calculate_h_with_gamma_eos(chi, W);
+        mvalue h = calculate_h_with_gamma_eos(chi, W);
 
-        tensor<value, 3> ret;
+        tensor<mvalue, 3> ret;
 
         for(int k=0; k < 3; k++)
         {
-            ret.idx(k) += -gA * divide_with_limit(value{1}, chi_to_e_m6phi(chi), 0.f, DIVISION_TOL) * diff1(ctx, P, k);
+            ret.idx(k) += -gA * divide_with_limit(mvalue{1}, chi_to_e_m6phi(chi), 0.f, DIVISION_TOL) * diff1(ctx, P, k);
 
             ret.idx(k) += -W * h * diff1(ctx, gA, k);
 
             {
-                value sum = 0;
+                mvalue sum = 0;
 
                 for(int j=0; j < 3; j++)
                 {
@@ -781,7 +756,7 @@ struct matter
             }
 
             {
-                value sum = 0;
+                mvalue sum = 0;
 
                 for(int i=0; i < 3; i++)
                 {
@@ -802,11 +777,11 @@ struct matter
 };
 
 inline
-value get_cacheable_W(equation_context& ctx, standard_arguments& args, matter& matt)
+mvalue get_cacheable_W(equation_context& ctx, standard_arguments& args, matter& matt)
 {
-    inverse_metric<value, 3, 3> icY = args.cY.invert();
+    inverse_metric<mvalue, 3, 3> icY = args.cY.invert();
 
-    value W = 0.5f;
+    mvalue W = 0.5f;
     int iterations = 5;
 
     for(int i=0; i < iterations; i++)
@@ -820,40 +795,40 @@ value get_cacheable_W(equation_context& ctx, standard_arguments& args, matter& m
 }
 
 
-value eularian_matter::calculate_adm_S(equation_context& ctx, standard_arguments& args)
+mvalue eularian_matter::calculate_adm_S(equation_context& ctx, standard_arguments& args)
 {
     matter matt(ctx);
 
-    value W = get_cacheable_W(ctx, args, matt);
+    mvalue W = get_cacheable_W(ctx, args, matt);
 
     ctx.pin(W);
 
     return matt.calculate_adm_S(args.cY, args.cY.invert(), args.get_X(), W);
 }
 
-value eularian_matter::calculate_adm_p(equation_context& ctx, standard_arguments& args)
+mvalue eularian_matter::calculate_adm_p(equation_context& ctx, standard_arguments& args)
 {
     matter matt(ctx);
 
-    value W = get_cacheable_W(ctx, args, matt);
+    mvalue W = get_cacheable_W(ctx, args, matt);
 
     ctx.pin(W);
 
     return matt.calculate_adm_p(args.get_X(), W);
 }
 
-tensor<value, 3, 3> eularian_matter::calculate_adm_X_Sij(equation_context& ctx, standard_arguments& args)
+tensor<mvalue, 3, 3> eularian_matter::calculate_adm_X_Sij(equation_context& ctx, standard_arguments& args)
 {
     matter matt(ctx);
 
-    value W = get_cacheable_W(ctx, args, matt);
+    mvalue W = get_cacheable_W(ctx, args, matt);
 
     ctx.pin(W);
 
     return matt.calculate_adm_X_Sij(args.get_X(), W, args.cY);
 }
 
-tensor<value, 3> eularian_matter::calculate_adm_Si(equation_context& ctx, standard_arguments& args)
+tensor<mvalue, 3> eularian_matter::calculate_adm_Si(equation_context& ctx, standard_arguments& args)
 {
     matter matt(ctx);
 
@@ -869,11 +844,11 @@ namespace hydrodynamics
 
         ctx.is_derivative_free = true;
 
-        value sW = get_cacheable_W(ctx, args, matt);
+        mvalue sW = get_cacheable_W(ctx, args, matt);
 
         ctx.pin(sW);
 
-        value pressure = matt.gamma_eos_from_e_star(matter_X_2(args.get_X()), sW);
+        mvalue pressure = matt.gamma_eos_from_e_star(matter_X_2(args.get_X()), sW);
 
         ctx.add("init_pressure", pressure);
         ctx.add("init_W", sW);
@@ -884,11 +859,11 @@ namespace hydrodynamics
         standard_arguments args(ctx);
         matter matt(ctx);
 
-        value sW = bidx("hW", ctx.uses_linear, false);
+        mvalue sW = bidx("hW", ctx.uses_linear, false);
 
-        inverse_metric<value, 3, 3> icY = args.cY.invert();
+        inverse_metric<mvalue, 3, 3> icY = args.cY.invert();
 
-        value PQvis = matt.calculate_PQvis(ctx, args.gA, args.gB, icY, matter_X_2(args.get_X()), sW);
+        mvalue PQvis = matt.calculate_PQvis(ctx, args.gA, args.gB, icY, matter_X_2(args.get_X()), sW);
 
         ctx.add("init_artificial_viscosity", PQvis);
     }
@@ -898,25 +873,25 @@ namespace hydrodynamics
         standard_arguments args(ctx);
         matter matt(ctx);
 
-        inverse_metric<value, 3, 3> icY = args.cY.invert();
+        inverse_metric<mvalue, 3, 3> icY = args.cY.invert();
 
-        value sW = bidx("hW", ctx.uses_linear, false);
+        mvalue sW = bidx("hW", ctx.uses_linear, false);
 
-        tensor<value, 3, 3> cSk_vi = matt.cSk_vi(icY, args.gA, args.gB, matter_X_2(args.get_X()), sW);
+        tensor<mvalue, 3, 3> cSk_vi = matt.cSk_vi(icY, args.gA, args.gB, matter_X_2(args.get_X()), sW);
 
-        tensor<value, 3> p_star_vi = matt.p_star_vi(icY, args.gA, args.gB, matter_X_2(args.get_X()), sW);
-        tensor<value, 3> e_star_vi = matt.e_star_vi(icY, args.gA, args.gB, matter_X_2(args.get_X()), sW);
+        tensor<mvalue, 3> p_star_vi = matt.p_star_vi(icY, args.gA, args.gB, matter_X_2(args.get_X()), sW);
+        tensor<mvalue, 3> e_star_vi = matt.e_star_vi(icY, args.gA, args.gB, matter_X_2(args.get_X()), sW);
 
-        value P = bidx("pressure", ctx.uses_linear, false);
+        mvalue P = bidx("pressure", ctx.uses_linear, false);
 
-        value lhs_dtp_star = 0;
+        mvalue lhs_dtp_star = 0;
 
         for(int i=0; i < 3; i++)
         {
             lhs_dtp_star += diff1(ctx, p_star_vi.idx(i), i);
         }
 
-        value lhs_dte_star = 0;
+        mvalue lhs_dte_star = 0;
 
         for(int i=0; i < 3; i++)
         {
@@ -931,9 +906,9 @@ namespace hydrodynamics
         matter& matt2 = matt;
         #endif
 
-        //value sW = get_cacheable_W(ctx, args, matt2);
+        //mvalue sW = get_cacheable_W(ctx, args, matt2);
 
-        value rhs_dte_star = matt2.estar_vi_rhs(ctx, args.gA, args.gB, icY, matter_X_1(args.get_X()), sW);
+        mvalue rhs_dte_star = matt2.estar_vi_rhs(ctx, args.gA, args.gB, icY, matter_X_1(args.get_X()), sW);
 
         /*ctx.add("DBG_RHS_DTESTAR", rhs_dte_star);
 
@@ -942,11 +917,11 @@ namespace hydrodynamics
         ctx.add("DBG_ESTARVI1", e_star_vi.idx(1));
         ctx.add("DBG_ESTARVI2", e_star_vi.idx(2));*/
 
-        tensor<value, 3> lhs_dtSk;
+        tensor<mvalue, 3> lhs_dtSk;
 
         for(int k=0; k < 3; k++)
         {
-            value sum = 0;
+            mvalue sum = 0;
 
             for(int i=0; i < 3; i++)
             {
@@ -956,15 +931,15 @@ namespace hydrodynamics
             lhs_dtSk.idx(k) = sum;
         }
 
-        tensor<value, 3> rhs_dtSk = matt2.cSkvi_rhs(ctx, icY, args.gA, args.gB, matter_X_2(args.get_X()), args.get_dX(), P, sW);
+        tensor<mvalue, 3> rhs_dtSk = matt2.cSkvi_rhs(ctx, icY, args.gA, args.gB, matter_X_2(args.get_X()), args.get_dX(), P, sW);
 
-        value dtp_star = -lhs_dtp_star;
-        value dte_star = -lhs_dte_star + rhs_dte_star;
+        mvalue dtp_star = -lhs_dtp_star;
+        mvalue dte_star = -lhs_dte_star + rhs_dte_star;
 
         ctx.add("lhs_dtsk0", -lhs_dtSk.idx(0));
         ctx.add("rhs_dtsk0", rhs_dtSk.idx(0));
 
-        tensor<value, 3> dtSk = -lhs_dtSk + rhs_dtSk;
+        tensor<mvalue, 3> dtSk = -lhs_dtSk + rhs_dtSk;
 
         ctx.add("init_dtp_star", dtp_star);
         ctx.add("init_dte_star", dte_star);
@@ -975,7 +950,7 @@ namespace hydrodynamics
         }
 
         //ctx.add("e_star_p_limit", matt.p_star_below_e_star_threshold());
-        //ctx.add("e_star_p_value", matt.e_star_clamped());
+        //ctx.add("e_star_p_mvalue", matt.e_star_clamped());
         ctx.add("p_star_max", matt.p_star_max());
     }
 
@@ -984,24 +959,24 @@ namespace hydrodynamics
         standard_arguments args(ctx);
         matter matt(ctx);
 
-        inverse_metric<value, 3, 3> icY = args.cY.invert();
+        inverse_metric<mvalue, 3, 3> icY = args.cY.invert();
 
-        value sW = bidx("hW", ctx.uses_linear, false);
+        mvalue sW = bidx("hW", ctx.uses_linear, false);
 
-        tensor<value, 3> vi_upper = matt.get_v_upper(icY, args.gA, args.gB, matter_X_2(args.get_X()), sW);
+        tensor<mvalue, 3> vi_upper = matt.get_v_upper(icY, args.gA, args.gB, matter_X_2(args.get_X()), sW);
 
-        value quantity = max(bidx("quantity_in", ctx.uses_linear, false), 0.f);
+        mvalue quantity = max(bidx("quantity_in", ctx.uses_linear, false), 0.f);
 
-        value fin = 0;
+        mvalue fin = 0;
 
         for(int i=0; i < 3; i++)
         {
-            value to_diff = quantity * vi_upper.idx(i);
+            mvalue to_diff = quantity * vi_upper.idx(i);
 
             fin += diff1(ctx, to_diff, i);
         }
 
-        /*value fin = 0;
+        /*mvalue fin = 0;
 
         for(int i=0; i < 3; i++)
         {
