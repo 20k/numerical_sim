@@ -5443,7 +5443,11 @@ int main()
             {
                 if(ImGui::Button("Yes"))
                 {
-                    base_mesh.save(clctx.cqueue, "save");
+                    nlohmann::json misc;
+                    misc["real_w2"] = real_decomp;
+                    misc["imaginary_w2"] = imaginary_decomp;
+
+                    base_mesh.save(clctx.cqueue, "save", misc);
 
                     ImGui::CloseCurrentPopup();
                 }
@@ -5465,7 +5469,10 @@ int main()
             {
                 if(ImGui::Button("Yes"))
                 {
-                    base_mesh.load(clctx.cqueue, "save");
+                    nlohmann::json misc = base_mesh.load(clctx.cqueue, "save");
+
+                    real_decomp = misc["real_w2"].get<std::vector<float>>();
+                    imaginary_decomp = misc["imaginary_w2"].get<std::vector<float>>();
 
                     ImGui::CloseCurrentPopup();
                 }

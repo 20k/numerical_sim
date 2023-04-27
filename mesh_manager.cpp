@@ -3,7 +3,6 @@
 #include <execution>
 #include <iostream>
 #include <toolkit/fs_helpers.hpp>
-#include <nlohmann/json.hpp>
 
 void save_buffer(cl::command_queue& cqueue, cl::buffer& buf, const std::string& where)
 {
@@ -1193,13 +1192,15 @@ void cpu_mesh::append_utility_buffers(const std::string& kernel_name, cl::args& 
 
 
 
-void cpu_mesh::load(cl::command_queue& cqueue, const std::string& directory)
+nlohmann::json cpu_mesh::load(cl::command_queue& cqueue, const std::string& directory)
 {
     file::mkdir(directory);
 
+    nlohmann::json misc;
+
     try
     {
-        nlohmann::json misc = nlohmann::json::parse(file::read(directory + "/misc.json", file::mode::TEXT));
+        misc = nlohmann::json::parse(file::read(directory + "/misc.json", file::mode::TEXT));
 
         elapsed_time = misc["elapsed"];
     }
@@ -1233,13 +1234,15 @@ void cpu_mesh::load(cl::command_queue& cqueue, const std::string& directory)
     {
         p->load(cqueue, directory);
     }
+
+    return misc;
 }
 
-void cpu_mesh::save(cl::command_queue& cqueue, const std::string& directory)
+void cpu_mesh::save(cl::command_queue& cqueue, const std::string& directory, nlohmann::json& extra)
 {
     file::mkdir(directory);
 
-    nlohmann::json misc;
+    nlohmann::json misc = extra;
     misc["elapsed"] = elapsed_time;
 
     file::write(directory + "/misc.json", misc.dump(), file::mode::TEXT);

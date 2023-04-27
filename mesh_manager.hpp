@@ -5,6 +5,7 @@
 #include <vec/vec.hpp>
 #include <toolkit/opencl.hpp>
 #include "ref_counted.hpp"
+#include <nlohmann/json.hpp>
 
 template<typename T>
 inline
@@ -178,8 +179,8 @@ struct cpu_mesh
     buffer_set& get_buffers(cl::context& ctx, cl::managed_command_queue& mqueue, int index);
     void append_utility_buffers(const std::string& kernel_name, cl::args& args);
 
-    void load(cl::command_queue& cqueue, const std::string& directory);
-    void save(cl::command_queue& cqueue, const std::string& directory);
+    nlohmann::json load(cl::command_queue& cqueue, const std::string& directory);
+    void save(cl::command_queue& cqueue, const std::string& directory, nlohmann::json& extra);
 
     std::vector<plugin*> plugins;
 
