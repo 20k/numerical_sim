@@ -156,6 +156,8 @@ struct cpu_mesh
     ///should really be utility buffers
     std::array<cl::buffer, 3> momentum_constraint;
 
+    float elapsed_time = 0;
+
     static constexpr float dissipate_low = 0.25;
     static constexpr float dissipate_high = 0.25;
     static constexpr float dissipate_gauge = 0.25;

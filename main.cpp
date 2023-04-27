@@ -5238,8 +5238,6 @@ int main()
 
     cpu_mesh base_mesh(clctx.ctx, clctx.cqueue, {0,0,0}, size, base_settings, evolve_points, buffers, utility_buffers, plugins);
 
-    cl_float time_elapsed_s = 0;
-
     thin_intermediates_pool thin_pool;
 
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
@@ -5414,7 +5412,7 @@ int main()
             ImGui::Checkbox("Run", &run);
             ImGui::Checkbox("Render", &should_render);
 
-            ImGui::Text("Time: %f\n", time_elapsed_s);
+            ImGui::Text("Time: %f\n", base_mesh.elapsed_time);
 
             bool snap = ImGui::Button("Snapshot");
 
@@ -5527,7 +5525,7 @@ int main()
         ///todo: backwards euler test
         float timestep = 0.035;
 
-        if(pao && time_elapsed_s > 250)
+        if(pao && base_mesh.elapsed_time > 250)
             step = false;
 
         if(step)
@@ -5564,8 +5562,6 @@ int main()
             };
 
             base_mesh.full_step(clctx.ctx, clctx.cqueue, mqueue, timestep, thin_pool, callback);
-
-            time_elapsed_s += timestep;
         }
 
         {

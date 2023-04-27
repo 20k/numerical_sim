@@ -3,6 +3,7 @@
 #include <execution>
 #include <iostream>
 #include <toolkit/fs_helpers.hpp>
+#include <nlohmann/json.hpp>
 
 void save_buffer(cl::command_queue& cqueue, cl::buffer& buf, const std::string& where)
 {
@@ -1168,6 +1169,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
     std::swap(data.at(1), data.at(0));
     ///data[0] is now the new output data, data[1] is the old data, data[2] is the old intermediate data
+
+    elapsed_time += timestep;
 }
 
 void cpu_mesh::append_utility_buffers(const std::string& kernel_name, cl::args& args)
@@ -1188,9 +1191,22 @@ void cpu_mesh::append_utility_buffers(const std::string& kernel_name, cl::args& 
     }
 }
 
+
+
 void cpu_mesh::load(cl::command_queue& cqueue, const std::string& directory)
 {
     file::mkdir(directory);
+
+    try
+    {
+        nlohmann::json misc = nlohmann::json::parse(file::read(directory + "/misc.json", file::mode::TEXT));
+
+        elapsed_time = misc["elapsed"];
+    }
+    catch(...)
+    {
+        std::cout << "Failed to parse misc.json" << std::endl;
+    }
 
     for(named_buffer& name : data.at(0).buffers)
     {
@@ -1222,6 +1238,11 @@ void cpu_mesh::load(cl::command_queue& cqueue, const std::string& directory)
 void cpu_mesh::save(cl::command_queue& cqueue, const std::string& directory)
 {
     file::mkdir(directory);
+
+    nlohmann::json misc;
+    misc["elapsed"] = elapsed_time;
+
+    file::write(directory + "/misc.json", misc.dump(), file::mode::TEXT);
 
     for(named_buffer& name : data.at(0).buffers)
     {
