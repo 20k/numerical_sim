@@ -105,6 +105,8 @@ struct plugin
     virtual void init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue,         thin_intermediates_pool& pool, buffer_set& to_init){assert(false);}
     virtual void step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration){assert(false);}
     virtual void finalise(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, float timestep) {}
+    virtual void save(cl::command_queue& cqueue, const std::string& directory){assert(false);}
+    virtual void load(cl::command_queue& cqueue, const std::string& directory){assert(false);}
 
     virtual ~plugin(){}
 };
@@ -129,6 +131,9 @@ struct basic_pool
         return it->second;
     }
 };
+
+void save_buffer(cl::command_queue& cqueue, cl::buffer& buf, const std::string& where);
+void load_buffer(cl::command_queue& cqueue, cl::buffer& into, const std::string& from);
 
 ///buffer, thin
 using step_callback = std::function<void(cl::managed_command_queue&, std::vector<cl::buffer>&, std::vector<ref_counted_buffer>&)>;
@@ -170,6 +175,9 @@ struct cpu_mesh
 
     buffer_set& get_buffers(cl::context& ctx, cl::managed_command_queue& mqueue, int index);
     void append_utility_buffers(const std::string& kernel_name, cl::args& args);
+
+    void load(cl::command_queue& cqueue, const std::string& directory);
+    void save(cl::command_queue& cqueue, const std::string& directory);
 
     std::vector<plugin*> plugins;
 

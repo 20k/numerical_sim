@@ -546,6 +546,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         cqueue.exec(kern, {particle_count}, {128});
     }
 
+    ///this isn't necessary is it?
+    ///Todo: Remove this if it isn't used next time I'm testing particle code, because its confusing for future me
     cl::copy(cqueue, p_data[0].position, p_data[1].position);
     cl::copy(cqueue, p_data[0].velocity, p_data[1].velocity);
     cl::copy(cqueue, p_data[0].mass, p_data[1].mass);
@@ -897,4 +899,20 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
 void particle_dynamics::finalise(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, float timestep)
 {
 
+}
+
+void particle_dynamics::save(cl::command_queue& cqueue, const std::string& directory)
+{
+    save_buffer(cqueue, p_data[0].position, directory + "/particle_position.bin");
+    save_buffer(cqueue, p_data[0].velocity, directory + "/particle_velocity.bin");
+    save_buffer(cqueue, p_data[0].mass    , directory + "/particle_mass.bin");
+    save_buffer(cqueue, p_data[0].lorentz , directory + "/particle_lorentz.bin");
+}
+
+void particle_dynamics::load(cl::command_queue& cqueue, const std::string& directory)
+{
+    load_buffer(cqueue, p_data[0].position, directory + "/particle_position.bin");
+    load_buffer(cqueue, p_data[0].velocity, directory + "/particle_velocity.bin");
+    load_buffer(cqueue, p_data[0].mass    , directory + "/particle_mass.bin");
+    load_buffer(cqueue, p_data[0].lorentz , directory + "/particle_lorentz.bin");
 }

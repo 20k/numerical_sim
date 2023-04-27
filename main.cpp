@@ -5436,6 +5436,50 @@ int main()
 
             ImGui::Checkbox("pao", &pao);
 
+            if(ImGui::Button("Save"))
+            {
+                ImGui::OpenPopup("Should Save?");
+            }
+
+            if(ImGui::BeginPopup("Should Save?"))
+            {
+                if(ImGui::Button("Yes"))
+                {
+                    base_mesh.save(clctx.cqueue, "save");
+
+                    ImGui::CloseCurrentPopup();
+                }
+
+                if(ImGui::Button("No"))
+                {
+                    ImGui::CloseCurrentPopup();
+                }
+
+                ImGui::EndPopup();
+            }
+
+            if(ImGui::Button("Load"))
+            {
+                ImGui::OpenPopup("Should Load?");
+            }
+
+            if(ImGui::BeginPopup("Should Load?"))
+            {
+                if(ImGui::Button("Yes"))
+                {
+                    base_mesh.load(clctx.cqueue, "save");
+
+                    ImGui::CloseCurrentPopup();
+                }
+
+                if(ImGui::Button("No"))
+                {
+                    ImGui::CloseCurrentPopup();
+                }
+
+                ImGui::EndPopup();
+            }
+
             if(ImGui::Button("Clear Waves"))
             {
                 real_decomp.clear();

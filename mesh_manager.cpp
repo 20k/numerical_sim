@@ -2,6 +2,23 @@
 #include <toolkit/opencl.hpp>
 #include <execution>
 #include <iostream>
+#include <toolkit/fs_helpers.hpp>
+
+void save_buffer(cl::command_queue& cqueue, cl::buffer& buf, const std::string& where)
+{
+    std::vector<uint8_t> data = buf.read<uint8_t>(cqueue);
+
+    file::write(where, std::string(data.begin(), data.end()), file::mode::BINARY);
+}
+
+void load_buffer(cl::command_queue& cqueue, cl::buffer& into, const std::string& from)
+{
+    std::string data = file::read(from, file::mode::BINARY);
+
+    assert(data.size() == into.alloc_size);
+
+    into.write(cqueue, data.data(), data.size());
+}
 
 buffer_set::buffer_set(cl::context& ctx, vec3i size, const std::vector<buffer_descriptor>& in_buffers)
 {
@@ -1168,5 +1185,56 @@ void cpu_mesh::append_utility_buffers(const std::string& kernel_name, cl::args& 
             else
                 args.push_back(buf.buf.as_device_read_only());
         }
+    }
+}
+
+void cpu_mesh::load(cl::command_queue& cqueue, const std::string& directory)
+{
+    file::mkdir(directory);
+
+    for(named_buffer& name : data.at(0).buffers)
+    {
+        load_buffer(cqueue, name.buf, directory + "/buf_" + name.desc.name + ".bin");
+    }
+
+    for(auto& [id, dat] : data)
+    {
+        if(id == 0)
+            continue;
+
+        for(int idx = 0; idx < (int)dat.buffers.size(); idx++)
+        {
+            cl::copy(cqueue, data.at(0).buffers[idx].buf, dat.buffers[idx].buf);
+        }
+    }
+
+    for(named_buffer& name : utility_data.buffers)
+    {
+        load_buffer(cqueue, name.buf, directory + "/util_" + name.desc.name + ".bin");
+    }
+
+    for(plugin* p : plugins)
+    {
+        p->load(cqueue, directory);
+    }
+}
+
+void cpu_mesh::save(cl::command_queue& cqueue, const std::string& directory)
+{
+    file::mkdir(directory);
+
+    for(named_buffer& name : data.at(0).buffers)
+    {
+        save_buffer(cqueue, name.buf, directory + "/buf_" + name.desc.name + ".bin");
+    }
+
+    for(named_buffer& name : utility_data.buffers)
+    {
+        save_buffer(cqueue, name.buf, directory + "/util_" + name.desc.name + ".bin");
+    }
+
+    for(plugin* p : plugins)
+    {
+        p->load(cqueue, directory);
     }
 }
