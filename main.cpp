@@ -2853,7 +2853,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // PAPER_0610128
 
-    #define REDDIT
+    //#define REDDIT
     #ifdef REDDIT
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -3123,7 +3123,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // MERGE_THEN_COLLAPSE
 
-    //#define PARTICLE_TEST
+    #define PARTICLE_TEST
     #ifdef PARTICLE_TEST
 
     {
