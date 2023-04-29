@@ -1259,6 +1259,6 @@ void cpu_mesh::save(cl::command_queue& cqueue, const std::string& directory, nlo
 
     for(plugin* p : plugins)
     {
-        p->load(cqueue, directory);
+        p->save(cqueue, directory);
     }
 }
