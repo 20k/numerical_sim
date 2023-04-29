@@ -2509,6 +2509,7 @@ void build_get_matter(matter_interop& interop, equation_context& ctx, bool use_m
 
         tensor<value, 3> u_lower = interop.calculate_adm_Si(ctx, args) / adm_p;
 
+        ///I'm pretty sure this isn't right
         tensor<value, 3> u_upper = raise_index(u_lower, args.iYij, 0);
 
         ctx.add("GET_3VEL_UPPER0", u_upper.idx(0));
