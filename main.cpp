@@ -3165,27 +3165,45 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
         particle_data data;
 
-        float total_mass = 0.05f;
+        float total_mass = 0.1f;
 
-        int count = 1000 * 60;
+        int count = 1000 * 600;
+
+        auto get_rng = [&](){return uint64_to_double(xoshiro256ss(rng));};
+
+        float grad = 7;
 
         for(int i=0; i < count; i++)
         {
-            double angle = uint64_to_double(xoshiro256ss(rng)) * 2 * M_PI;
-            double rad = uint64_to_double(xoshiro256ss(rng)) * 7;
+            for(int kk=0; kk < 1024; kk++)
+            {
+                float x = (get_rng() * 2 - 1) * grad;
+                float y = (get_rng() * 2 - 1) * grad;
+                float z = (get_rng() * 2 - 1) * grad;
 
-            float vel = uint64_to_double(xoshiro256ss(rng));
+                vec3f pos = {x, y, z};
+                pos.z() *= 0.1f;
 
-            vel *= 0.15f;
+                float angle = atan2(pos.y(), pos.x());
+                float radius = pos.length();
 
-            vec2f vel_2d = (vec2f){vel, 0}.rot(angle + M_PI/2);
+                if(radius >= grad || radius < grad * 0.1f)
+                    continue;
 
-            vec3f pos = {cos(angle) * rad, sin(angle) * rad, 0};
+                float vel = uint64_to_double(xoshiro256ss(rng));
 
-            data.positions.push_back(pos);
-            data.velocities.push_back({vel_2d.x(),vel_2d.y(),0});
-            //data.velocities.push_back(-pos.norm() * 0.4);
-            data.masses.push_back(total_mass / count);
+                vel *= 0.15f;
+
+                vec2f vel_2d = (vec2f){vel, 0}.rot(angle + M_PI/2);
+
+                data.positions.push_back(pos);
+                data.velocities.push_back({vel_2d.x(),vel_2d.y(),0});
+                //data.velocities.push_back(-pos.norm() * 0.4);
+                data.masses.push_back(total_mass / count);
+
+                break;
+            }
+
         }
 
         data.particle_brightness = 0.0001f;
