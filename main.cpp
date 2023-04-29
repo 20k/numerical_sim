@@ -2507,7 +2507,14 @@ void build_get_matter(matter_interop& interop, equation_context& ctx, bool use_m
 
         ctx.add("GET_ADM_P", adm_p);
 
-        tensor<value, 3> u_lower = interop.calculate_adm_Si(ctx, args) / adm_p;
+        tensor<value, 3> Si = interop.calculate_adm_Si(ctx, args);
+
+        tensor<value, 3> u_lower;
+
+        for(int i=0; i < 3; i++)
+        {
+            u_lower.idx(i) = divide_with_limit(Si.idx(i), adm_p, 1e-5f);
+        }
 
         ///I'm pretty sure this isn't right
         tensor<value, 3> u_upper = raise_index(u_lower, args.iYij, 0);

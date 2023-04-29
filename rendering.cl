@@ -947,7 +947,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct render
             }
             #endif
 
-            if(fabs(matter_p) >= 1e-5f)
+            if(fabs(matter_p) > 0.f)
             {
                 float3 u_matter_upper = get_3vel_upper(Xpos, scale, dim, GET_STANDARD_ARGS(), GET_STANDARD_UTILITY());
 
