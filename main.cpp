@@ -2773,8 +2773,6 @@ initial_conditions get_adm_initial_conditions(cl::context& clctx, cl::command_qu
 inline
 initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, vec3f centre, float scale)
 {
-    initial_conditions ret;
-
     #if 0
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
     ///https://arxiv.org/pdf/1205.5111v1.pdf under binary black hole with punctures
@@ -2853,7 +2851,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // PAPER_0610128
 
-    //#define REDDIT
+    #define REDDIT
     #ifdef REDDIT
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -3123,7 +3121,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // MERGE_THEN_COLLAPSE
 
-    #define PARTICLE_TEST
+    //#define PARTICLE_TEST
     #ifdef PARTICLE_TEST
 
     {
@@ -3146,6 +3144,40 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
             data.velocities.push_back({0,0,0});
             //data.velocities.push_back(-pos.norm() * 0.4);
             data.masses.push_back(total_mass / 40);
+        }
+
+        data_opt = std::move(data);
+    }
+    #endif
+
+    //#define SPINNING_PARTICLES
+    #ifdef SPINNING_PARTICLES
+    {
+        xoshiro256ss_state rng = xoshiro256ss_init(2345);
+
+        particle_data data;
+
+        float total_mass = 0.5f;
+
+        int count = 1000 * 60;
+
+        for(int i=0; i < count; i++)
+        {
+            double angle = uint64_to_double(xoshiro256ss(rng)) * 2 * M_PI;
+            double rad = (uint64_to_double(xoshiro256ss(rng)) * 2 - 1) * 7;
+
+            float vel = uint64_to_double(xoshiro256ss(rng));
+
+            vel *= 0.15f;
+
+            vec2f vel_2d = (vec2f){vel, 0}.rot(angle + M_PI/2);
+
+            vec3f pos = {cos(angle) * rad, sin(angle) * rad, 0};
+
+            data.positions.push_back(pos);
+            data.velocities.push_back({vel_2d.x(),vel_2d.y(),0});
+            //data.velocities.push_back(-pos.norm() * 0.4);
+            data.masses.push_back(total_mass / count);
         }
 
         data_opt = std::move(data);
@@ -4317,6 +4349,41 @@ void process_geodesics(equation_context& ctx)
     ctx.add("V1_d", adm_velocity.idx(2));
     ctx.add("V2_d", adm_velocity.idx(3));
 
+    {
+        tensor<value, 3> V_upper = {"vel.x", "vel.y", "vel.z"};
+        value L = value{"in_L"};
+
+        value diff = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            value kij_sum = 0;
+
+            for(int j=0; j < 3; j++)
+            {
+                kij_sum += args.Kij.idx(i, j) * V_upper.idx(j);
+            }
+
+            diff += L * V_upper.idx(i) * (args.gA * kij_sum - diff1(ctx, args.gA, i));
+        }
+
+        ctx.add("LDiff", diff);
+    }
+
+    {
+        tensor<value, 3> V_upper = {"vel.x", "vel.y", "vel.z"};
+        value L = value{"in_L"};
+
+        tensor<value, 4> adm = {0, V_upper.idx(0), V_upper.idx(1), V_upper.idx(2)};
+
+        tensor<value, 4> tv = (adm + N) * L;
+
+        ctx.add("GETADMFULL0", tv.idx(0));
+        ctx.add("GETADMFULL1", tv.idx(1));
+        ctx.add("GETADMFULL2", tv.idx(2));
+        ctx.add("GETADMFULL3", tv.idx(3));
+    }
+
     /*vec<4, value> loop_lightray_velocity = {"lv0", "lv1", "lv2", "lv3"};
     vec<4, value> loop_lightray_position = {"lp0", "lp1", "lp2", "lp3"};
 
@@ -4556,6 +4623,10 @@ void loop_geodesics4(equation_context& ctx)
             ctx.add("ADMFULL" + std::to_string(i), result.idx(i));
         }
     }
+
+    ///ok so
+    ///Guv Vuv = 0 right, its a lightray so it has a length of 0
+    ///that means G
 
     inverse_metric<value, 4, 4> inv = met.invert();
 

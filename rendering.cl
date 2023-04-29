@@ -38,6 +38,7 @@ struct lightray_simple
     //float density;
 
     float R, G, B;
+    float ku_uobsu;
 };
 
 enum ds_result
@@ -384,6 +385,9 @@ void init_rays(__global struct lightray_simple* rays,
     float V1;
     float V2;
 
+    float ku_uobsu;
+
+    ///https://arxiv.org/pdf/1207.4234.pdf (12 for ku_uobsu)
     {
         float3 world_pos = camera_pos;
 
@@ -403,6 +407,8 @@ void init_rays(__global struct lightray_simple* rays,
         V0 = V0_d;
         V1 = V1_d;
         V2 = V2_d;
+
+        ku_uobsu = GET_KU_UOBSU;
     }
 
     struct lightray_simple out;
@@ -418,6 +424,7 @@ void init_rays(__global struct lightray_simple* rays,
     out.y = y;
     out.iter_frac = 0;
     out.hit_type = 0;
+    out.ku_uobsu = ku_uobsu;
 
     rays[y * width + x] = out;
 }
@@ -745,6 +752,37 @@ void trace_rays4(__global struct lightray4* rays_in, __global struct render_ray_
     rays_terminated[y * width + x] = ray_out;
 }
 
+///so, Y = dt/dT, or dt/dlambda
+///so 1/y is dlambda/dt
+///if we multiply an equation by 1/Y, we get the coordinate time parameterisation instead
+float get_dtL(float3 Xpos, float3 vel, float in_L, float scale, int4 dim, STANDARD_ARGS())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float dt_L = LDiff;
+
+    return dt_L;
+}
+
+float4 get_adm_full_geodesic_velocity(float3 Xpos, float3 vel, float in_L, float scale, int4 dim, STANDARD_ARGS())
+{
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float4 result = {GETADMFULL0, GETADMFULL1, GETADMFULL2, GETADMFULL3};
+
+    return result;
+}
+
 __kernel
 void trace_rays(__global struct lightray_simple* rays_in, __global struct render_ray_info* rays_terminated,
                 STANDARD_ARGS(),
@@ -810,6 +848,8 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct render
 
     float integration_Tv = 0;
     float background_power = 1;
+    float camera_ku = ray_in.ku_uobsu;
+    float L = camera_ku;
 
     //#pragma unroll(16)
     for(int iteration=0; iteration < max_iterations; iteration++)
@@ -823,6 +863,11 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct render
             float3 VFull = VHalf + 0.5f * AFull_approx * ds;
 
             vel = VFull;
+        }
+
+        ///only used in the matter case
+        {
+            L += ds * get_dtL(Xpos, vel, L, scale, dim, GET_STANDARD_ARGS());
         }
 
         ///next iteration
@@ -871,7 +916,9 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct render
             float next_B = 0;
 
             #ifdef TRACE_MATTER_P
-            float emission = 2.f * fabs(buffer_read_linear(adm_p, voxel_pos, dim)) * PARTICLE_BRIGHTNESS/MINIMUM_MASS;
+            //float emission = 20.f * fabs(buffer_read_linear(adm_p, voxel_pos, dim)) * PARTICLE_BRIGHTNESS/MINIMUM_MASS;
+
+            float emission = 20.f * p_val * PARTICLE_BRIGHTNESS/MINIMUM_MASS;
             absorption += (p_val * PARTICLE_BRIGHTNESS)/MINIMUM_MASS;
 
             next_R += emission;
@@ -900,16 +947,32 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct render
             }
             #endif
 
-            float dt_ds = absorption * ds;
-            float di_ds_unshifted = exp(-integration_Tv) * ds;
+            if(fabs(matter_p) >= 1e-5f)
+            {
+                float3 u_matter_upper = get_3vel_upper(Xpos, scale, dim, GET_STANDARD_ARGS(), GET_STANDARD_UTILITY());
 
-            integration_Tv += dt_ds;
+                float4 full_matter_upper = adm_3velocity_to_full(Xpos, u_matter_upper, scale, dim, GET_STANDARD_ARGS());
+                float4 full_geodesic_upper = get_adm_full_geodesic_velocity(Xpos, vel, L, scale, dim, GET_STANDARD_ARGS());
 
-            accum_R += di_ds_unshifted * next_R * exp(-integration_Tv) * 1.f;
-            accum_G += di_ds_unshifted * next_G * exp(-integration_Tv) * 1.f;
-            accum_B += di_ds_unshifted * next_B * exp(-integration_Tv) * 1.f;
+                float4 current_vel_lower = lower4(Xpos, full_geodesic_upper, scale, dim, GET_STANDARD_ARGS());
 
-            background_power = exp(-integration_Tv);
+                float current_ku = dot(current_vel_lower, full_matter_upper);
+
+                ///ilorentz
+                float zp1 = current_ku / camera_ku;
+
+                ///division by L reparameterises by coordinate time
+                float dt_ds = zp1 * absorption * ds / L;
+                float di_ds_unshifted = zp1 * exp(-integration_Tv) * ds / L;
+
+                integration_Tv += fabs(dt_ds);
+
+                accum_R += fabs(di_ds_unshifted * next_R);
+                accum_G += fabs(di_ds_unshifted * next_G);
+                accum_B += fabs(di_ds_unshifted * next_B);
+
+                background_power = exp(-integration_Tv);
+            }
         }
 
         if(fabs(background_power) < 0.001f)
