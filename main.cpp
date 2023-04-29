@@ -2859,7 +2859,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // PAPER_0610128
 
-    #define REDDIT
+    //#define REDDIT
     #ifdef REDDIT
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -3158,21 +3158,21 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     }
     #endif
 
-    //#define SPINNING_PARTICLES
+    #define SPINNING_PARTICLES
     #ifdef SPINNING_PARTICLES
     {
         xoshiro256ss_state rng = xoshiro256ss_init(2345);
 
         particle_data data;
 
-        float total_mass = 0.5f;
+        float total_mass = 0.05f;
 
         int count = 1000 * 60;
 
         for(int i=0; i < count; i++)
         {
             double angle = uint64_to_double(xoshiro256ss(rng)) * 2 * M_PI;
-            double rad = (uint64_to_double(xoshiro256ss(rng)) * 2 - 1) * 7;
+            double rad = uint64_to_double(xoshiro256ss(rng)) * 7;
 
             float vel = uint64_to_double(xoshiro256ss(rng));
 
@@ -3187,6 +3187,8 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
             //data.velocities.push_back(-pos.norm() * 0.4);
             data.masses.push_back(total_mass / count);
         }
+
+        data.particle_brightness = 0.0001f;
 
         data_opt = std::move(data);
     }
@@ -5329,6 +5331,7 @@ int main()
     std::vector<float> real_graph;
     std::vector<float> real_decomp;
     std::vector<float> imaginary_decomp;
+    std::vector<float> central_velocities;
 
     int steps = 0;
 
@@ -5481,6 +5484,8 @@ int main()
 
         rtex.acquire(clctx.cqueue);
 
+        bool long_operation = false;
+
         bool step = false;
 
             ImGui::Begin("Test Window", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
@@ -5513,6 +5518,60 @@ int main()
 
             ImGui::Checkbox("pao", &pao);
 
+            if(ImGui::Button("Deconstruct Velocities"))
+            {
+                if(holes.use_particles)
+                {
+                    for(plugin* p : plugins)
+                    {
+                        particle_dynamics* pd = dynamic_cast<particle_dynamics*>(p);
+
+                        if(pd == nullptr)
+                            continue;
+
+                        std::vector<vec3f> positions3 = pd->p_data[0].position.read<vec3f>(clctx.cqueue);
+                        std::vector<vec3f> velocities3 = pd->p_data[0].velocity.read<vec3f>(clctx.cqueue);
+                        std::vector<float> mass = pd->p_data[0].mass.read<float>(clctx.cqueue);
+
+                        int cnt = positions3.size();
+
+                        vec3f centre;
+                        float total_mass = 0;
+
+                        for(int i=0; i < cnt; i++)
+                        {
+                            centre += positions3[i] * mass[i];
+                            total_mass += mass[i];
+                        }
+
+                        centre /= total_mass;
+
+                        ///radius, velocity
+                        std::vector<std::pair<float, float>> debug_vel;
+                        debug_vel.reserve(cnt);
+
+                        for(int i=0; i < cnt; i++)
+                        {
+                            if(mass[i] == 0)
+                                continue;
+
+                            vec3f from_centre = positions3[i] - centre;
+
+                            debug_vel.push_back({from_centre.length(), velocities3[i].length()});
+                        }
+
+                        std::sort(debug_vel.begin(), debug_vel.end(), [&](const auto& i1, const auto& i2){return i1.first < i2.first;});
+
+                        central_velocities.clear();
+
+                        for(const auto& i : debug_vel)
+                        {
+                            central_velocities.push_back(i.second);
+                        }
+                    }
+                }
+            }
+
             if(ImGui::Button("Save"))
             {
                 ImGui::OpenPopup("Should Save?");
@@ -5522,6 +5581,8 @@ int main()
             {
                 if(ImGui::Button("Yes"))
                 {
+                    long_operation = true;
+
                     nlohmann::json misc;
                     misc["real_w2"] = real_decomp;
                     misc["imaginary_w2"] = imaginary_decomp;
@@ -5548,6 +5609,8 @@ int main()
             {
                 if(ImGui::Button("Yes"))
                 {
+                    long_operation = true;
+
                     nlohmann::json misc = base_mesh.load(clctx.cqueue, "save");
 
                     real_decomp = misc["real_w2"].get<std::vector<float>>();
@@ -5568,6 +5631,12 @@ int main()
             {
                 real_decomp.clear();
                 imaginary_decomp.clear();
+            }
+
+
+            if(central_velocities.size() > 0)
+            {
+                ImGui::PlotLines("velocities", central_velocities.data(), central_velocities.size(), 0, nullptr, FLT_MAX, FLT_MAX, ImVec2(400, 100));
             }
 
             if(real_decomp.size() > 0)
@@ -5869,7 +5938,7 @@ int main()
 
         win.display();
 
-        if(frametime.get_elapsed_time_s() > 10)
+        if(frametime.get_elapsed_time_s() > 10 && !long_operation)
             return 0;
 
         printf("Time: %f\n", frametime.restart() * 1000.);
