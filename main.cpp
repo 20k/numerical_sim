@@ -3158,20 +3158,31 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     }
     #endif
 
-    #define SPINNING_PARTICLES
+    #define STATIONARY_PARTICLE
+    #ifdef STATIONARY_PARTICLE
+    particle_data data;
+
+    data.masses.push_back(0.1);
+    data.velocities.push_back({0,0,0});
+    data.positions.push_back({0,0,0});
+
+    data_opt = std::move(data);
+    #endif
+
+    //#define SPINNING_PARTICLES
     #ifdef SPINNING_PARTICLES
     {
         xoshiro256ss_state rng = xoshiro256ss_init(2345);
 
         particle_data data;
 
-        float total_mass = 0.1f;
+        float total_mass = 2.f;
 
-        int count = 1000 * 600;
+        int count = 1000 * 800;
 
         auto get_rng = [&](){return uint64_to_double(xoshiro256ss(rng));};
 
-        float grad = 7;
+        float grad = 0.5f * get_c_at_max()/2.f;
 
         for(int i=0; i < count; i++)
         {
@@ -3190,9 +3201,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
                 if(radius >= grad || radius < grad * 0.1f)
                     continue;
 
-                float vel = uint64_to_double(xoshiro256ss(rng));
-
-                vel *= 0.15f;
+                float vel = 0.3f * pow(radius / grad, 2.f);
 
                 vec2f vel_2d = (vec2f){vel, 0}.rot(angle + M_PI/2);
 
@@ -4896,7 +4905,7 @@ int main()
     std::string hydro_argument_string = argument_string;
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {255, 255, 255};
+    vec3i size = {213, 213, 213};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -5696,7 +5705,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.035;
+        float timestep = 0.1;
 
         if(pao && base_mesh.elapsed_time > 250)
             step = false;
@@ -5959,6 +5968,6 @@ int main()
         if(frametime.get_elapsed_time_s() > 10 && !long_operation)
             return 0;
 
-        printf("Time: %f\n", frametime.restart() * 1000.);
+        //printf("Time: %f\n", frametime.restart() * 1000.);
     }
 }

@@ -110,7 +110,6 @@ void build_lorentz(equation_context& ctx)
     ctx.add("LorentzDiff", diff);
 }
 
-
 void build_adm_geodesic(equation_context& ctx, vec3f dim)
 {
     ctx.uses_linear = true;
@@ -174,10 +173,31 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
 
             value dlog_gA = diff1(ctx, args.gA, j) / max(args.gA, 1e-4f);
 
-            V_upper_diff.idx(i) += args.gA * V_upper.idx(j) * (V_upper.idx(i) * (dlog_gA - kjvk) + 2 * raise_index(args.Kij, iYij, 0).idx(i, j) - christoffel_sum)
+            V_upper_diff.idx(i) += args.gA * V_upper.idx(j) * (V_upper.idx(i) * (dlog_gA * 1 - kjvk) + 2 * raise_index(args.Kij, iYij, 0).idx(i, j) - christoffel_sum)
                                    - iYij.idx(i, j) * diff1(ctx, args.gA, j) - V_upper.idx(j) * diff1(ctx, args.gB.idx(i), j);
         }
     }
+
+    tensor<value, 3> dbg_val;
+
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            sum += iYij.idx(i, j) * diff1(ctx, args.gA, j);
+        }
+
+        dbg_val.idx(i) = sum;
+    }
+
+    ctx.add("DBGA0", dbg_val.idx(0));
+    ctx.add("DBGA1", dbg_val.idx(1));
+    ctx.add("DBGA2", dbg_val.idx(2));
+
+    ctx.add("DIFFK", diff1(ctx, args.K, 0));
+
     #endif
 
     #if 0

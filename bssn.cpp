@@ -381,7 +381,7 @@ void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_mat
     #endif // USE_DTCYIJ_MODIFICATION
 
     ///pretty sure https://arxiv.org/pdf/0711.3575v1.pdf 2.21 is equivalent, and likely a LOT faster
-    #define MOD_CY
+    //#define MOD_CY
     #ifdef MOD_CY
     tensor<value, 3, 3> cD = covariant_derivative_low_vec(ctx, bigGi_lower, args.christoff2);
 
@@ -926,7 +926,7 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
 
     tensor<value, 3> Yij_Kj;
 
-    #define PAPER_1205_5111
+    //#define PAPER_1205_5111
     #ifdef PAPER_1205_5111
     for(int i=0; i < 3; i++)
     {
@@ -1041,7 +1041,7 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
 
         ///https://arxiv.org/pdf/1205.5111v1.pdf 50
         ///made it to 70+ and then i got bored, but the simulation was meaningfully different
-        #define EQ_50
+        //#define EQ_50
         #ifdef EQ_50
         auto step = [](const value& in)
         {
@@ -1067,7 +1067,7 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
         #endif // EQ_50
 
         ///todo: test 2.22 https://arxiv.org/pdf/0711.3575.pdf
-        //#define YBS
+        #define YBS
         #ifdef YBS
         value E = 1;
 

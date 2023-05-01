@@ -278,6 +278,23 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     velocities_out[GET_IDX(idx, 0)] = out_vel.x;
     velocities_out[GET_IDX(idx, 1)] = out_vel.y;
     velocities_out[GET_IDX(idx, 2)] = out_vel.z;
+
+    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+
+    ///isn't this already handled internally?
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
+
+    float V0 = vel.x;
+    float V1 = vel.y;
+    float V2 = vel.z;
+
+    printf("X %.14f %.14f Y %.14f %.14f Z %.14f %.14f\n", out_Xpos.x, out_vel.x, out_Xpos.y, out_vel.y, out_Xpos.z, out_vel.z);
+    //printf("Dbg %.16f %.16f %.16f\n", DBGA0, DBGA1, DBGA2);
+    printf("DIFFK %.14f\n", DIFFK);
 }
 
 __kernel
