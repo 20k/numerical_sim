@@ -292,21 +292,23 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
 
     for(int i=0; i < 3; i++)
     {
+        value sum = 0;
+
         for(int j=0; j < 3; j++)
         {
             for(int k=0; k < 3; k++)
             {
                 for(int l=0; l < 3; l++)
                 {
-                    interior_left.idx(i) += icY.idx(j, l) * args.christoff2.idx(k, i, l) * pi.idx(j) * pi.idx(k);
+                    sum += icY.idx(j, l) * args.christoff2.idx(k, i, l) * pi.idx(j) * pi.idx(k);
                 }
             }
         }
 
-        interior_left = X * interior_left;
+        interior_left.idx(i) = X * sum;
     }
 
-    tensor<value, 3> interior_right = -0.5 * (Ea * Ea + mass * mass) * diff<3>(ctx, X)/max(X, value{1e-4f});
+    tensor<value, 3> interior_right = -0.5 * (Ea * Ea - mass * mass) * diff<3>(ctx, X)/max(X, value{1e-4f});
 
     tensor<value, 3> dp = -Ea * diff<3>(ctx, args.gA) + pjdibj + args.gA * (interior_left + interior_right) / Ea;
 
