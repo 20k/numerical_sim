@@ -3158,7 +3158,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     }
     #endif
 
-    #define SPINNING_PARTICLES
+    //#define SPINNING_PARTICLES
     #ifdef SPINNING_PARTICLES
     {
         xoshiro256ss_state rng = xoshiro256ss_init(2345);
@@ -4896,7 +4896,7 @@ int main()
     std::string hydro_argument_string = argument_string;
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {255, 255, 255};
+    vec3i size = {299, 299, 299};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();

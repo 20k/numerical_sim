@@ -17,7 +17,7 @@ float calculate_scale(float c_at_max, const T& size)
 inline
 float get_c_at_max()
 {
-    return 30.f;
+    return 100.f;
 }
 
 struct buffer_descriptor
@@ -159,9 +159,9 @@ struct cpu_mesh
 
     float elapsed_time = 0;
 
-    static constexpr float dissipate_low = 0.25;
-    static constexpr float dissipate_high = 0.25;
-    static constexpr float dissipate_gauge = 0.25;
+    static constexpr float dissipate_low = 0.35;
+    static constexpr float dissipate_high = 0.35;
+    static constexpr float dissipate_gauge = 0.35;
 
     cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& buffers, const std::vector<buffer_descriptor>& utility_buffers, std::vector<plugin*> _plugins);
 

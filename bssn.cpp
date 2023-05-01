@@ -371,7 +371,7 @@ void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_mat
     {
         for(int j=0; j < 3; j++)
         {
-            value sigma = 4/5.f;
+            value sigma = 1/5.f;
 
             dtcYij.idx(i, j) += sigma * 0.5f * (gB_lower.idx(i) * bigGi_lower.idx(j) + gB_lower.idx(j) * bigGi_lower.idx(i));
 
@@ -381,7 +381,7 @@ void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_mat
     #endif // USE_DTCYIJ_MODIFICATION
 
     ///pretty sure https://arxiv.org/pdf/0711.3575v1.pdf 2.21 is equivalent, and likely a LOT faster
-    #define MOD_CY
+    //#define MOD_CY
     #ifdef MOD_CY
     tensor<value, 3, 3> cD = covariant_derivative_low_vec(ctx, bigGi_lower, args.christoff2);
 

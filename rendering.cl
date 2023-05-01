@@ -461,7 +461,7 @@ float get_static_verlet_ds(float3 Xpos, __global float* X, float scale, int4 dim
     #if defined(RENDER_MATTER) || defined(TRACE_MATTER_P)
     return mix(0.4f, 4.f, my_fraction) * 0.1f;
     #else
-    return mix(0.4f, 4.f, my_fraction);
+    return mix(0.4f, 4.f, my_fraction) * 0.1f;
     #endif
 }
 

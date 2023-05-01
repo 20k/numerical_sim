@@ -196,6 +196,14 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     K[index] = init_K;
     X[index] = init_X;
 
+    int3 hdim = (dim.xyz - 1)/2;
+
+    int3 relpos = (int3)(ix,iy,iz) - hdim;
+
+    float len = relpos.x * relpos.x + relpos.y * relpos.y + relpos.z * relpos.z;
+
+    K[index] = exp(-0.005 * len) * 0.5f;
+
     gA[index] = init_gA;
     gB0[index] = init_gB0;
     gB1[index] = init_gB1;
@@ -1302,7 +1310,7 @@ void render(STANDARD_ARGS(),
         ascalar = fabs(curvature / 1.f);
         #endif // RENDER_AIJ
 
-        //#define RENDER_K
+        #define RENDER_K
         #ifdef RENDER_K
         ascalar = fabs(K[index] * 40);
         #endif // RENDER_K
@@ -1397,7 +1405,7 @@ void render(STANDARD_ARGS(),
 
     float real = 0;
 
-    #define RENDER_WAVES
+    //#define RENDER_WAVES
     #ifdef RENDER_WAVES
     {
         float TEMPORARIES4;
