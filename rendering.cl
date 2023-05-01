@@ -949,6 +949,8 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct render
 
             if(fabs(matter_p) > 0.f)
             {
+                float lapse = buffer_read_linear(gA, voxel_pos, dim);
+
                 float3 u_matter_upper = get_3vel_upper(Xpos, scale, dim, GET_STANDARD_ARGS(), GET_STANDARD_UTILITY());
 
                 float4 full_matter_upper = adm_3velocity_to_full(Xpos, u_matter_upper, scale, dim, GET_STANDARD_ARGS());
@@ -961,9 +963,12 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct render
                 ///ilorentz
                 float zp1 = current_ku / camera_ku;
 
-                ///division by L reparameterises by coordinate time
-                float dt_ds = zp1 * absorption * ds / L;
-                float di_ds_unshifted = zp1 * exp(-integration_Tv) * ds / L;
+                ///u = L(nu + Vu)
+                ///u0 = Lnu = L/a
+
+                ///a/L reparameterises by coordinate time
+                float dt_ds = zp1 * absorption * ds * lapse / L;
+                float di_ds_unshifted = zp1 * exp(-integration_Tv) * ds * lapse / L;
 
                 integration_Tv += fabs(dt_ds);
 
