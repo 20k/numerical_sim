@@ -804,4 +804,124 @@ tensor<value, 4> get_adm_hypersurface_normal_lowered(const value& gA)
     return {-gA, 0, 0, 0};
 }
 
+///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf 28
+inline
+tensor<value, 4, 4> calculate_projector(const value& gA, const tensor<value, 3>& gB)
+{
+    tensor<value, 4> nu_u = get_adm_hypersurface_normal_raised(gA, gB);
+    tensor<value, 4> nu_l = get_adm_hypersurface_normal_lowered(gA);
+
+    tensor<value, 4, 4> proj;
+
+    for(int i=0; i < 4; i++)
+    {
+        for(int j=0; j < 4; j++)
+        {
+            value kronecker = (i == j) ? 1 : 0;
+
+            proj.idx(i, j) = kronecker + nu_u.idx(i) * nu_l.idx(j);
+        }
+    }
+
+    return proj;
+}
+
+template<typename T>
+inline
+tensor<T, 4> tensor_project_lower(const tensor<T, 4>& in, const value& gA, const tensor<value, 3>& gB)
+{
+    tensor<value, 4, 4> projector = calculate_projector(gA, gB);
+
+    tensor<T, 4> full_ret;
+
+    for(int i=0; i < 4; i++)
+    {
+        T sum = 0;
+
+        for(int j=0; j < 4; j++)
+        {
+            sum += projector.idx(j, i) * in.idx(j);
+        }
+
+        full_ret.idx(i) = sum;
+    }
+
+    return full_ret;
+}
+
+template<typename T>
+inline
+tensor<T, 4> tensor_project_upper(const tensor<T, 4>& in, const value& gA, const tensor<value, 3>& gB)
+{
+    tensor<value, 4, 4> projector = calculate_projector(gA, gB);
+
+    tensor<T, 4> full_ret;
+
+    for(int i=0; i < 4; i++)
+    {
+        T sum = 0;
+
+        for(int j=0; j < 4; j++)
+        {
+            sum += projector.idx(i, j) * in.idx(j);
+        }
+
+        full_ret.idx(i) = sum;
+    }
+
+    return full_ret;
+}
+
+template<typename T, int N>
+inline
+tensor<T, N> symmetric_multiply(const tensor<T, N, N>& mat, const tensor<T, N>& vec)
+{
+    tensor<T, N> ret;
+
+    for(int i=0; i < N; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < N; j++)
+        {
+            sum += mat.idx(i, j) * vec.idx(j);
+        }
+
+        ret.idx(i) = sum;
+    }
+
+    return ret;
+}
+
+template<typename T, int N>
+inline
+tensor<T, N, N> outer_product(const tensor<T, N>& v1, const tensor<T, N>& v2)
+{
+    tensor<T, N, N> ret;
+
+    for(int i=0; i < N; i++)
+    {
+        for(int j=0; j < N; j++)
+        {
+            ret.idx(i, j) = v1.idx(i) * v2.idx(j);
+        }
+    }
+
+    return ret;
+}
+
+template<int N, typename T>
+inline
+tensor<T, N> diff(differentiator& ctx, const T& v)
+{
+    tensor<T, N> ret;
+
+    for(int i=0; i < N; i++)
+    {
+        ret.idx(i) = diff1(ctx, v, i);
+    }
+
+    return ret;
+}
+
 #endif // TENSOR_ALGEBRA_HPP_INCLUDED

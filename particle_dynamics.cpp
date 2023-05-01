@@ -125,9 +125,9 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
 
     value scale = "scale";
 
-    #if 1
     ctx.add("universe_size", universe_length * scale);
 
+    #if 0
     tensor<value, 3> V_upper = {"V0", "V1", "V2"};
 
     inverse_metric<value, 3, 3> iYij = args.iYij;
@@ -261,9 +261,58 @@ void build_adm_geodesic(equation_context& ctx, vec3f dim)
     }
     #endif
 
-    ctx.add("V0Diff", V_upper_diff.idx(0));
-    ctx.add("V1Diff", V_upper_diff.idx(1));
-    ctx.add("V2Diff", V_upper_diff.idx(2));
+    tensor<value, 3> pi = {"V0", "V1", "V2"};
+
+    value mass = "mass";
+
+    value X = args.get_X();
+
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+    value Ea = sqrt(mass * mass + X * trace(outer_product(pi, pi), icY));
+
+    tensor<value, 3> dx = -args.gB + args.gA * X * (1/Ea) * symmetric_multiply(icY.to_tensor(), pi);
+
+    ///https://arxiv.org/pdf/1904.07841.pdf 2.27
+    tensor<value, 3> pjdibj;
+
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            sum += pi.idx(j) * diff1(ctx, args.gB.idx(j), i);
+        }
+
+        pjdibj.idx(i) = sum;
+    }
+
+    tensor<value, 3> interior_left;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                for(int l=0; l < 3; l++)
+                {
+                    interior_left.idx(i) += icY.idx(j, l) * args.christoff2.idx(k, i, l) * pi.idx(j) * pi.idx(k);
+                }
+            }
+        }
+
+        interior_left = X * interior_left;
+    }
+
+    tensor<value, 3> interior_right = -0.5 * (Ea * Ea + mass * mass) * diff<3>(ctx, X)/max(X, value{1e-4f});
+
+    tensor<value, 3> dp = -Ea * diff<3>(ctx, args.gA) + pjdibj + args.gA * (interior_left + interior_right) / Ea;
+
+    ctx.add("V0Diff", dp.idx(0));
+    ctx.add("V1Diff", dp.idx(1));
+    ctx.add("V2Diff", dp.idx(2));
 
     ctx.add("X0Diff", dx.idx(0));
     ctx.add("X1Diff", dx.idx(1));
@@ -378,7 +427,6 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     }
 
     {
-
         vec<4, value> position = {0, "px", "py", "pz"};
         vec<3, value> direction = {"dirx", "diry", "dirz"};
 
@@ -411,6 +459,16 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ///4 velocity
         tensor<value, 4> tensor_velocity = {velocity[0], velocity[1], velocity[2], velocity[3]};
 
+        tensor<value, 4> velocity_lowered = lower_index(tensor_velocity, real_metric, 0);
+
+        tensor<value, 4> adm_velocity_lowered = tensor_project_lower(velocity_lowered, args.gA, args.gB);
+
+        tensor<value, 3> adm3_velocity_lowered = {adm_velocity_lowered.idx(1), adm_velocity_lowered.idx(2), adm_velocity_lowered.idx(3)};
+
+        value mass = "mass";
+
+        tensor<value, 3> momentum = mass * adm3_velocity_lowered;
+
         ///https://arxiv.org/pdf/1208.3927.pdf (8)
         ///pa = E(na + va)
         ///ua = G(na + va) (divide by mass)
@@ -419,24 +477,31 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         ///todo. Check nuvu = 0
         ///todo: check vivi = 1 for.. photons?
-        tensor<value, 4> adm_velocity = (tensor_velocity / tensor_velocity.idx(0)) - get_adm_hypersurface_normal_raised(args.gA, args.gB);
+        //tensor<value, 4> adm_velocity = (tensor_velocity / tensor_velocity.idx(0)) - get_adm_hypersurface_normal_raised(args.gA, args.gB);
 
-        value lorentz = tensor_velocity.idx(0);
+        /*value lorentz = tensor_velocity.idx(0);
 
         ectx.add("OUT_lorentz", lorentz);
         ectx.add("OUT_VX", adm_velocity.idx(1));
         ectx.add("OUT_VY", adm_velocity.idx(2));
         ectx.add("OUT_VZ", adm_velocity.idx(3));
 
+        ectx.build(argument_string, "tparticleinit");*/
+
+        ectx.add("OUT_lorentz", 1);
+        ectx.add("OUT_VX", momentum.idx(0));
+        ectx.add("OUT_VY", momentum.idx(1));
+        ectx.add("OUT_VZ", momentum.idx(2));
+
         ectx.build(argument_string, "tparticleinit");
     }
 
-    {
+    /*{
         equation_context ectx;
         build_lorentz(ectx);
 
         ectx.build(argument_string, "lorentz");
-    }
+    }*/
 
     {
         equation_context ectx;
@@ -464,6 +529,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         value mass = "mass";
 
+        #if 0
         /*value sum = 0;
 
         for(int i=0; i < 3; i++)
@@ -515,6 +581,20 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
                 Sij.idx(i, j) = idet * mass * lorentz * v_lower.idx(i) * v_lower.idx(j);
             }
         }
+        #endif // 0
+
+        tensor<value, 3> pi = {"vel.x", "vel.y", "vel.z"};
+
+        value idet = pow(args.get_X(), 3.f/2.f);
+
+        inverse_metric<value, 3, 3> icY = args.cY.invert();
+
+        value Ea = sqrt(mass * mass + args.get_X() * trace(outer_product(pi, pi), icY));
+
+        value out_adm_p = idet * Ea;
+
+        tensor<value, 3> Si = idet * pi;
+        tensor<value, 3, 3> Sij = idet * outer_product(pi, pi) / Ea;
 
         value out_adm_S = trace(Sij, args.iYij);
 
@@ -553,6 +633,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         args.push_back(positions_in);
         args.push_back(initial_dirs);
+        args.push_back(p_data[0].mass);
         args.push_back(p_data[0].position);
         args.push_back(p_data[0].velocity);
         args.push_back(p_data[0].lorentz);
@@ -759,7 +840,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         mqueue.exec("cube_trace_geodesics", args, {dim.x(), dim.y(), dim.z()}, {8,8,1});
     }*/
 
-    {
+    /*{
         cl::args args;
         args.push_back(p_data[in_idx].position.as_device_read_only());
         args.push_back(p_data[in_idx].velocity.as_device_read_only());
@@ -778,7 +859,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(timestep);
 
         mqueue.exec("evolve_lorentz", args, {particle_count}, {128});
-    }
+    }*/
 
     {
         cl::args args;
@@ -874,7 +955,6 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         args.push_back(p_data[in_idx].position.as_device_read_only());
         args.push_back(p_data[in_idx].velocity.as_device_read_only());
         args.push_back(p_data[in_idx].mass.as_device_read_only());
-        args.push_back(p_data[in_idx].lorentz.as_device_read_only());
         args.push_back(particle_count);
         args.push_back(counts_val.as_device_read_only());
         args.push_back(memory_ptrs_val.as_device_read_only());

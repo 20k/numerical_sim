@@ -21,7 +21,7 @@
 #endif
 
 __kernel
-void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global float* initial_dirs3, __global float* positions3_out, __global float* velocities3_out, __global float* lorentz_out, ITYPE geodesic_count, float scale, int4 dim)
+void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global float* initial_dirs3, __global float* masses_in, __global float* positions3_out, __global float* velocities3_out, __global float* lorentz_out, ITYPE geodesic_count, float scale, int4 dim)
 {
     size_t idx = get_global_id(0);
 
@@ -43,6 +43,8 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global flo
     float dirx = initial_dirs3[idx * 3 + 0];
     float diry = initial_dirs3[idx * 3 + 1];
     float dirz = initial_dirs3[idx * 3 + 2];
+
+    float mass = masses_in[idx];
 
     float lorentz = 0;
     float vx = 0;
@@ -75,7 +77,7 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global flo
 ///this returns the change in X, which is not velocity
 ///its unfortunate that position, aka X, and the conformal factor are called the same thing here
 ///the reason why these functions use out parameters is to work around a significant optimisation failure in AMD's opencl compiler
-void velocity_to_XDiff(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS())
+void calculate_X_derivatives(float3* out, float3 Xpos, float3 vel, float mass, float scale, int4 dim, STANDARD_ARGS())
 {
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
 
@@ -99,7 +101,7 @@ void velocity_to_XDiff(float3* out, float3 Xpos, float3 vel, float scale, int4 d
     *out = (float3){d0, d1, d2};
 }
 
-void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS())
+void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float mass, float scale, int4 dim, STANDARD_ARGS())
 {
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
 
@@ -123,7 +125,7 @@ void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, 
     *out = (float3){d0, d1, d2};
 }
 
-
+#if 0
 void calculate_lorentz_derivative(float* out, float3 Xpos, float3 vel, float lorentz_in, float scale, int4 dim, STANDARD_ARGS())
 {
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
@@ -147,6 +149,7 @@ void calculate_lorentz_derivative(float* out, float3 Xpos, float3 vel, float lor
 
     *out = d0;
 }
+#endif
 
 __kernel
 void dissipate_mass(__global float* positions, __global float* mass_in, __global float* mass_out, __global float* mass_base, ITYPE geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
@@ -235,6 +238,8 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     if(masses[idx] == 0)
         return;
 
+    float mass = masses[idx];
+
     float3 Xpos = {positions_in[GET_IDX(idx, 0)], positions_in[GET_IDX(idx, 1)], positions_in[GET_IDX(idx, 2)]};
     float3 vel = {velocities_in[GET_IDX(idx, 0)], velocities_in[GET_IDX(idx, 1)], velocities_in[GET_IDX(idx, 2)]};
 
@@ -249,10 +254,10 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     }
 
     float3 accel;
-    calculate_V_derivatives(&accel, Xpos, vel, scale, dim, GET_STANDARD_ARGS());
+    calculate_V_derivatives(&accel, Xpos, vel, mass, scale, dim, GET_STANDARD_ARGS());
 
     float3 XDiff;
-    velocity_to_XDiff(&XDiff, Xpos, vel, scale, dim, GET_STANDARD_ARGS());
+    calculate_X_derivatives(&XDiff, Xpos, vel, mass, scale, dim, GET_STANDARD_ARGS());
 
     //printf("In vel %f %f %f\n", vel.x, vel.y, vel.z);
     //printf("In accel %f %f %f\n", accel.x, accel.y, accel.z);
@@ -292,11 +297,14 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     float V1 = vel.y;
     float V2 = vel.z;
 
+    printf("VPos %f %f %f\n", fx, fy, fz);
+
     printf("X %.14f %.14f Y %.14f %.14f Z %.14f %.14f\n", out_Xpos.x, out_vel.x, out_Xpos.y, out_vel.y, out_Xpos.z, out_vel.z);
     //printf("Dbg %.16f %.16f %.16f\n", DBGA0, DBGA1, DBGA2);
-    printf("DIFFK %.14f\n", DIFFK);
+    //printf("DIFFK %.14f\n", DIFFK);
 }
 
+#if 0
 __kernel
 void evolve_lorentz(__global float* positions, __global float* velocities,
                     __global float* lorentz_in, __global float* lorentz_out, __global float* lorentz_base,
@@ -323,6 +331,7 @@ void evolve_lorentz(__global float* positions, __global float* velocities,
         //printf("Lorentz %.23f out %.23f Vel %f %f %f diff %.23f step %f\n", current_lorentz, lorentz_out[idx], vel.x, vel.y, vel.z, odiff, timestep);
     }*/
 }
+#endif
 
 #if 0
 __kernel
@@ -520,6 +529,17 @@ float3 voxel_to_world_unrounded(float3 pos, int4 dim, float scale)
     return (pos - centre) * scale;
 }
 
+float3 voxel_to_world_unrounded_i(int3 pos, int4 dim, float scale)
+{
+    int3 centre = {(dim.x - 1)/2, (dim.y - 1)/2, (dim.z - 1)/2};
+
+    int3 rel = pos - centre;
+
+    float3 relf = {rel.x, rel.y, rel.z};
+
+    return relf * scale;
+}
+
 ///https://www.sciencedirect.com/science/article/pii/S259003742100042X
 /*float phi(float r_frac)
 {
@@ -648,12 +668,12 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
     int ocy = floor(voxel_pos.y);
     int ocz = floor(voxel_pos.z);
 
-    float gA_val = buffer_read_linear(gA, voxel_pos, dim);
+    //float gA_val = buffer_read_linear(gA, voxel_pos, dim);
 
     float base_radius = get_particle_radius(scale);
-    float current_radius = modify_radius(base_radius, gA_val);
+    //float current_radius = modify_radius(base_radius, gA_val);
 
-    float max_dirac = current_radius * 2;
+    float max_dirac = base_radius * 2;
 
     int spread = ceil(max_dirac / scale) + 3;
 
@@ -670,7 +690,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
                 if(ix < 0 || iy < 0 || iz < 0 || ix >= dim.x || iy >= dim.y || iz >= dim.z)
                     continue;
 
-                float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
+                float3 cell_wp = voxel_to_world_unrounded_i((int3)(ix, iy, iz), dim, scale);
 
                 if(length_sq(cell_wp - world_pos) > (max_dirac*max_dirac))
                     continue;
@@ -690,7 +710,7 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 
 __kernel
 void do_weighted_summation(__global ushort4* points, int point_count,
-                           __global float* positions, __global float* velocities, __global float* masses, __global float* lorentz_in, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, STANDARD_ARGS(), STANDARD_UTILITY(), float scale, int4 dim)
+                           __global float* positions, __global float* velocities, __global float* masses, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, STANDARD_ARGS(), STANDARD_UTILITY(), float scale, int4 dim)
 {
     int local_idx = get_global_id(0);
 
@@ -732,25 +752,29 @@ void do_weighted_summation(__global ushort4* points, int point_count,
         float3 world_pos = {positions[GET_IDX(geodesic_idx, 0)], positions[GET_IDX(geodesic_idx, 1)], positions[GET_IDX(geodesic_idx, 2)]};
         float3 vel = {velocities[GET_IDX(geodesic_idx, 0)], velocities[GET_IDX(geodesic_idx, 1)], velocities[GET_IDX(geodesic_idx, 2)]};
 
-        float3 cell_wp = voxel_to_world_unrounded((float3)(kix, kiy, kiz), dim, scale);
+        float3 cell_wp = voxel_to_world_unrounded_i((int3)(kix, kiy, kiz), dim, scale);
 
-        float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
+        /*float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
 
         voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
         float gA_val = buffer_read_linear(gA, voxel_pos, dim);
 
-        mass = modify_mass(mass, gA_val);
+        mass = modify_mass(mass, gA_val);*/
 
         if(mass == 0)
             continue;
 
         float base_radius = get_particle_radius(scale);
-        float current_radius = modify_radius(base_radius, gA_val);
+        //float current_radius = modify_radius(base_radius, gA_val);
 
-        float to_centre_distance = length(cell_wp - world_pos);
+        //float to_centre_distance = length(cell_wp - world_pos);
 
-        float weight = dirac_disc(to_centre_distance, current_radius);
+        float3 relative = cell_wp - world_pos;
+
+        float to_centre_distance_sq = dot(relative, relative);
+
+        float weight = dirac_disc(to_centre_distance_sq, base_radius);
 
         if(weight == 0)
             continue;
@@ -759,9 +783,10 @@ void do_weighted_summation(__global ushort4* points, int point_count,
         int iy = kiy;
         int iz = kiz;
 
-        {
-            float lorentz = lorentz_in[geodesic_idx];
+        //if((ix == 105 || ix == 106 || ix == 107) && iy == 106 && iz == 106)
+        //    printf("Ipos %i %i %i weight %.16f\n", ix, iy, iz, weight);
 
+        {
             float TEMPORARIESadmmatter;
 
             vadm_S += OUT_ADM_S * weight;
