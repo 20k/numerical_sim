@@ -823,6 +823,8 @@ float from_fixed(FIXED_T in)
     return (float)in / 100000000.f;
 }
 
+#define EADD(buf, var) if(to_fixed(var) != 0){atomic_add(&buf[memidx], to_fixed(var));}
+
 __kernel
 void fixed_point_summation(__global float* positions, __global float* velocities, __global float* masses, ITYPE geodesic_count, STANDARD_ARGS(),
                            __global FIXED_T* adm_p,
@@ -906,7 +908,7 @@ void fixed_point_summation(__global float* positions, __global float* velocities
                 float vadm_Sij5 = OUT_ADM_SIJ5 * weight;
                 float vadm_p = OUT_ADM_P * weight;
 
-                atomic_add(&adm_S[memidx], to_fixed(vadm_S));
+                /*atomic_add(&adm_S[memidx], to_fixed(vadm_S));
                 atomic_add(&adm_Si0[memidx], to_fixed(vadm_Si0));
                 atomic_add(&adm_Si1[memidx], to_fixed(vadm_Si1));
                 atomic_add(&adm_Si2[memidx], to_fixed(vadm_Si2));
@@ -916,7 +918,19 @@ void fixed_point_summation(__global float* positions, __global float* velocities
                 atomic_add(&adm_Sij3[memidx], to_fixed(vadm_Sij3));
                 atomic_add(&adm_Sij4[memidx], to_fixed(vadm_Sij4));
                 atomic_add(&adm_Sij5[memidx], to_fixed(vadm_Sij5));
-                atomic_add(&adm_p[memidx], to_fixed(vadm_p));
+                atomic_add(&adm_p[memidx], to_fixed(vadm_p));*/
+
+                EADD(adm_S, vadm_S);
+                EADD(adm_Si0, vadm_Si0);
+                EADD(adm_Si1, vadm_Si1);
+                EADD(adm_Si2, vadm_Si2);
+                EADD(adm_Sij0, vadm_Sij0);
+                EADD(adm_Sij1, vadm_Sij1);
+                EADD(adm_Sij2, vadm_Sij2);
+                EADD(adm_Sij3, vadm_Sij3);
+                EADD(adm_Sij4, vadm_Sij4);
+                EADD(adm_Sij5, vadm_Sij5);
+                EADD(adm_p, vadm_p);
             }
         }
     }
