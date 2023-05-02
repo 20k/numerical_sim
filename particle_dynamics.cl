@@ -810,16 +810,16 @@ void do_weighted_summation(__global ushort4* points, int point_count,
     }
 }
 
-#define FIXED_T int32_t
+#define FIXED_T int
 
 FIXED_T to_fixed(float in)
 {
-    return round(in * 1000.f);
+    return round(in * 100000.f);
 }
 
 float from_fixed(FIXED_T in)
 {
-    return (float)in / 1000.f;
+    return (float)in / 100000.f;
 }
 
 __kernel
@@ -847,6 +847,7 @@ void fixed_point_summation(__global float* positions, __global float* velocities
 
     float3 world_pos = {positions[GET_IDX(idx, 0)], positions[GET_IDX(idx, 1)], positions[GET_IDX(idx, 2)]};
     float3 vel = {velocities[GET_IDX(idx, 0)], velocities[GET_IDX(idx, 1)], velocities[GET_IDX(idx, 2)]};
+    float mass = masses[idx];
 
     float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
 
@@ -888,7 +889,7 @@ void fixed_point_summation(__global float* positions, __global float* velocities
                 if(weight == 0)
                     continue;
 
-                size_t memidx = IDX(ix,iy.iz);
+                size_t memidx = IDX(ix,iy,iz);
 
                 float TEMPORARIESadmmatter;
 
@@ -904,24 +905,27 @@ void fixed_point_summation(__global float* positions, __global float* velocities
                 float vadm_Sij5 = OUT_ADM_SIJ5 * weight;
                 float vadm_p = OUT_ADM_P * weight;
 
-                atomic_add(&adm_S[memindex], to_fixed(vadm_S));
-                atomic_add(&adm_Si0[memindex], to_fixed(vadm_Si0));
-                atomic_add(&adm_Si1[memindex], to_fixed(vadm_Si1));
-                atomic_add(&adm_Si2[memindex], to_fixed(vadm_Si2));
-                atomic_add(&adm_Sij0[memindex], to_fixed(vadm_Sij0));
-                atomic_add(&adm_Sij1[memindex], to_fixed(vadm_Sij1));
-                atomic_add(&adm_Sij2[memindex], to_fixed(vadm_Sij2));
-                atomic_add(&adm_Sij3[memindex], to_fixed(vadm_Sij3));
-                atomic_add(&adm_Sij4[memindex], to_fixed(vadm_Sij4));
-                atomic_add(&adm_Sij4[memindex], to_fixed(vadm_Sij5));
-                atomic_add(&adm_p[memindex], to_fixed(vadm_p));
+                if(ix == 128 && iy == 128 && iz == 128)
+                printf("vadm_p %i %i %i %i %f\n", to_fixed(vadm_p), ix, iy, iz, vadm_p);
+
+                atomic_add(&adm_S[memidx], to_fixed(vadm_S));
+                atomic_add(&adm_Si0[memidx], to_fixed(vadm_Si0));
+                atomic_add(&adm_Si1[memidx], to_fixed(vadm_Si1));
+                atomic_add(&adm_Si2[memidx], to_fixed(vadm_Si2));
+                atomic_add(&adm_Sij0[memidx], to_fixed(vadm_Sij0));
+                atomic_add(&adm_Sij1[memidx], to_fixed(vadm_Sij1));
+                atomic_add(&adm_Sij2[memidx], to_fixed(vadm_Sij2));
+                atomic_add(&adm_Sij3[memidx], to_fixed(vadm_Sij3));
+                atomic_add(&adm_Sij4[memidx], to_fixed(vadm_Sij4));
+                atomic_add(&adm_Sij5[memidx], to_fixed(vadm_Sij5));
+                atomic_add(&adm_p[memidx], to_fixed(vadm_p));
             }
         }
     }
 }
 
 __kernel
-void fix_to_float(__global ushort4* points, int point_count, __global FIXED_T* fix, __global float* unfixed)
+void fix_to_float(__global ushort4* points, int point_count, __global FIXED_T* fix, __global float* unfixed, int4 dim)
 {
     int local_idx = get_global_id(0);
 
@@ -935,4 +939,9 @@ void fix_to_float(__global ushort4* points, int point_count, __global FIXED_T* f
     size_t index = IDX(ix,iy,iz);
 
     unfixed[index] = from_fixed(fix[index]);
+
+    if(ix == 128 && iy == 128 && iz == 128)
+    {
+        printf("onFix %f\n", unfixed[index]);
+    }
 }

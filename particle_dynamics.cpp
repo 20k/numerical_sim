@@ -57,7 +57,7 @@ tensor<value, 3, 3> particle_matter_interop::calculate_adm_X_Sij(equation_contex
     return X * Sij;
 }
 
-particle_dynamics::particle_dynamics(cl::context& ctx) : p_data{ctx, ctx, ctx}, pd(ctx),
+particle_dynamics::particle_dynamics(cl::context& ctx) : p_data{ctx, ctx, ctx}, pd(ctx), intermediate(ctx)
 {
 
 }
@@ -312,6 +312,9 @@ void particle_dynamics::add_particles(particle_data&& data)
 void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue, thin_intermediates_pool& pool, buffer_set& to_init)
 {
     vec3i dim = mesh.dim;
+    intermediate.alloc(sizeof(cl_float) * dim.x() * dim.y() * dim.z());
+
+    intermediate.set_to_zero(cqueue);
 
     //memory_ptrs = cl::buffer(ctx);
     //counts = cl::buffer(ctx);
@@ -696,6 +699,56 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         }
     }*/
 
+    auto calculate_adm_quantities = [&](int inputs, buffer_set& who)
+    {
+        std::vector<buffer_descriptor> utility_names = get_utility_buffers();
+
+        {
+            cl::args args;
+            args.push_back(p_data[inputs].position.as_device_read_only());
+            args.push_back(p_data[inputs].velocity.as_device_read_only());
+            args.push_back(p_data[inputs].mass.as_device_read_only());
+            args.push_back(particle_count);
+
+            for(named_buffer& i : who.buffers)
+            {
+                args.push_back(i.buf.as_device_read_only());
+            }
+
+            for(buffer_descriptor& d : utility_names)
+            {
+                cl::buffer buf = mesh.utility_data.lookup(d.name).buf;
+
+                buf.set_to_zero(mqueue);
+
+                args.push_back(buf);
+            }
+
+            args.push_back(scale);
+            args.push_back(clsize);
+
+            mqueue.exec("fixed_point_summation", args, {particle_count}, {128});
+        }
+
+        {
+            for(buffer_descriptor& d : utility_names)
+            {
+                cl::buffer& buf = mesh.utility_data.lookup(d.name).buf;
+
+                cl::args args;
+                args.push_back(mesh.points_set.all_points);
+                args.push_back(mesh.points_set.all_count);
+                args.push_back(buf.as_device_read_only());
+                args.push_back(intermediate);
+                args.push_back(clsize);
+
+                mqueue.exec("fix_to_float", args, {mesh.points_set.all_count}, {128});
+
+                std::swap(buf, intermediate);
+            }
+        }
+    };
+
     if(iteration == 0)
     {
         {
@@ -740,6 +793,12 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
 
             mqueue.exec("trace_geodesics", args, {particle_count}, {128});
         }
+
+        calculate_adm_quantities(0, base);
+    }
+    else if(iteration == 1)
+    {
+        calculate_adm_quantities(1, in);
     }
 
     int in_idx = pack.in_idx;
@@ -892,6 +951,9 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     {
         std::swap(p_data[1], p_data[0]);
     }*/
+
+    if(iteration == max_iteration - 1)
+        std::swap(p_data[1], p_data[0]);
 }
 
 void particle_dynamics::finalise(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, float timestep)
