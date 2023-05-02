@@ -223,6 +223,7 @@ void dissipate_mass(__global float* positions, __global float* mass_in, __global
     }*/
 }
 
+
 __kernel
 void trace_geodesics(__global float* positions_in, __global float* velocities_in,
                      __global float* positions_out, __global float* velocities_out,
@@ -284,7 +285,7 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     velocities_out[GET_IDX(idx, 1)] = out_vel.y;
     velocities_out[GET_IDX(idx, 2)] = out_vel.z;
 
-    float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
+    /*float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
 
     ///isn't this already handled internally?
     voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
@@ -299,7 +300,7 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
 
     printf("VPos %f %f %f\n", fx, fy, fz);
 
-    printf("X %.14f %.14f Y %.14f %.14f Z %.14f %.14f\n", out_Xpos.x, out_vel.x, out_Xpos.y, out_vel.y, out_Xpos.z, out_vel.z);
+    printf("X %.14f %.14f Y %.14f %.14f Z %.14f %.14f\n", out_Xpos.x, out_vel.x, out_Xpos.y, out_vel.y, out_Xpos.z, out_vel.z);*/
     //printf("Dbg %.16f %.16f %.16f\n", DBGA0, DBGA1, DBGA2);
     //printf("DIFFK %.14f\n", DIFFK);
 }

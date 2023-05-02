@@ -600,7 +600,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
 
-    pd = build_program_with_cache(ctx, "particle_dynamics.cl", argument_string);
+    pd = build_program_with_cache(ctx, "particle_dynamics.cl", argument_string, {"particle_dynamics_common.cl"});
 
     ctx.register_program(pd);
 

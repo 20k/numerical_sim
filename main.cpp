@@ -1457,13 +1457,13 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     return solve;
 }
 
-std::pair<cl::program, std::vector<cl::kernel>> build_and_fetch_kernel(cl::context& clctx, equation_context& ctx, const std::string& filename, const std::vector<std::string>& kernel_name, const std::string& temporaries_name)
+std::pair<cl::program, std::vector<cl::kernel>> build_and_fetch_kernel(cl::context& clctx, equation_context& ctx, const std::string& filename, const std::vector<std::string>& kernel_name, const std::string& temporaries_name, const std::vector<std::string>& extra_deps = {})
 {
     std::string local_build_str = "-I ./ -cl-std=CL1.2 -cl-finite-math-only ";
 
     ctx.build(local_build_str, temporaries_name);
 
-    cl::program t_program = build_program_with_cache(clctx, filename, local_build_str);
+    cl::program t_program = build_program_with_cache(clctx, filename, local_build_str, extra_deps);
 
     std::vector<cl::kernel> kerns;
 
@@ -1475,9 +1475,9 @@ std::pair<cl::program, std::vector<cl::kernel>> build_and_fetch_kernel(cl::conte
     return {t_program, kerns};
 }
 
-std::pair<cl::program, cl::kernel> build_and_fetch_kernel(cl::context& clctx, equation_context& ctx, const std::string& filename, const std::string& kernel_name, const std::string& temporaries_name)
+std::pair<cl::program, cl::kernel> build_and_fetch_kernel(cl::context& clctx, equation_context& ctx, const std::string& filename, const std::string& kernel_name, const std::string& temporaries_name, const std::vector<std::string>& extra_deps = {})
 {
-    auto result = build_and_fetch_kernel(clctx, ctx, filename, std::vector<std::string>{kernel_name}, temporaries_name);
+    auto result = build_and_fetch_kernel(clctx, ctx, filename, std::vector<std::string>{kernel_name}, temporaries_name, extra_deps);
 
     return {result.first, result.second[0]};
 }
@@ -2182,7 +2182,7 @@ struct superimposed_gpu_data
 
         ectx.add("INITIAL_PARTICLES", 1);
 
-        auto [prog, kerns] = build_and_fetch_kernel(clctx, ectx, "initial_conditions.cl", {"collect_particles", "memory_allocate", "calculate_E_without_conformal"}, "none");
+        auto [prog, kerns] = build_and_fetch_kernel(clctx, ectx, "initial_conditions.cl", {"collect_particles", "memory_allocate", "calculate_E_without_conformal"}, "none", {"particle_dynamics_common.cl"});
 
         {
             cl_int actually_write = 0;
@@ -3158,7 +3158,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     }
     #endif
 
-    #define STATIONARY_PARTICLE
+    //#define STATIONARY_PARTICLE
     #ifdef STATIONARY_PARTICLE
     particle_data data;
 
@@ -3169,7 +3169,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     data_opt = std::move(data);
     #endif
 
-    //#define SPINNING_PARTICLES
+    #define SPINNING_PARTICLES
     #ifdef SPINNING_PARTICLES
     {
         xoshiro256ss_state rng = xoshiro256ss_init(2345);
@@ -3182,7 +3182,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
         auto get_rng = [&](){return uint64_to_double(xoshiro256ss(rng));};
 
-        float grad = 7;
+        float grad = 0.25f * get_c_at_max();
 
         for(int i=0; i < count; i++)
         {
@@ -4842,7 +4842,7 @@ int main()
     std::string hydro_argument_string = argument_string;
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {213, 213, 213};
+    vec3i size = {255, 255, 255};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();

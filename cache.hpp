@@ -13,9 +13,16 @@ inline void hash_combine(std::size_t& seed, const T& v)
 }
 
 inline
-cl::program build_program_with_cache(cl::context& clctx, const std::string& filename, const std::string& options)
+cl::program build_program_with_cache(cl::context& clctx, const std::string& filename, const std::string& options, const std::vector<std::string>& extra_deps = {})
 {
     std::string file_data = file::read(filename, file::mode::BINARY);
+
+    std::vector<std::string> extra_file_data;
+
+    for(const auto& i : extra_deps)
+    {
+        extra_file_data.push_back(file::read(i, file::mode::BINARY));
+    }
 
     std::optional<cl::program> prog_opt;
 
@@ -25,6 +32,11 @@ cl::program build_program_with_cache(cl::context& clctx, const std::string& file
 
     hash_combine(hsh, options);
     hash_combine(hsh, file_data);
+
+    for(const auto& i : extra_file_data)
+    {
+        hash_combine(hsh, i);
+    }
 
     file::mkdir("cache");
 
