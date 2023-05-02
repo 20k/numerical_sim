@@ -815,12 +815,12 @@ void do_weighted_summation(__global ushort4* points, int point_count,
 
 FIXED_T to_fixed(float in)
 {
-    return round(in * 100000.f);
+    return round(in * 100000000.f);
 }
 
 float from_fixed(FIXED_T in)
 {
-    return (float)in / 100000.f;
+    return (float)in / 100000000.f;
 }
 
 __kernel
