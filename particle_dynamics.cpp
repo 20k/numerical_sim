@@ -738,13 +738,13 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
                 cl::args args;
                 args.push_back(mesh.points_set.all_points);
                 args.push_back(mesh.points_set.all_count);
-                args.push_back(buf.as_device_read_only());
-                args.push_back(intermediate);
+                args.push_back(buf);
+                args.push_back(buf);
                 args.push_back(clsize);
 
                 mqueue.exec("fix_to_float", args, {mesh.points_set.all_count}, {128});
 
-                std::swap(buf, intermediate);
+                //std::swap(buf, intermediate);
             }
         }
     };

@@ -824,7 +824,7 @@ float from_fixed(FIXED_T in)
 
 __kernel
 void fixed_point_summation(__global float* positions, __global float* velocities, __global float* masses, ITYPE geodesic_count, STANDARD_ARGS(),
-                           __global FIXED_T* adm_S,
+                           __global FIXED_T* adm_p,
                            __global FIXED_T* adm_Si0,
                            __global FIXED_T* adm_Si1,
                            __global FIXED_T* adm_Si2,
@@ -834,7 +834,7 @@ void fixed_point_summation(__global float* positions, __global float* velocities
                            __global FIXED_T* adm_Sij3,
                            __global FIXED_T* adm_Sij4,
                            __global FIXED_T* adm_Sij5,
-                           __global FIXED_T* adm_p,
+                           __global FIXED_T* adm_S,
                            float scale, int4 dim)
 {
     size_t idx = get_global_id(0);
@@ -905,9 +905,6 @@ void fixed_point_summation(__global float* positions, __global float* velocities
                 float vadm_Sij5 = OUT_ADM_SIJ5 * weight;
                 float vadm_p = OUT_ADM_P * weight;
 
-                if(ix == 128 && iy == 128 && iz == 128)
-                printf("vadm_p %i %i %i %i %f\n", to_fixed(vadm_p), ix, iy, iz, vadm_p);
-
                 atomic_add(&adm_S[memidx], to_fixed(vadm_S));
                 atomic_add(&adm_Si0[memidx], to_fixed(vadm_Si0));
                 atomic_add(&adm_Si1[memidx], to_fixed(vadm_Si1));
@@ -939,9 +936,4 @@ void fix_to_float(__global ushort4* points, int point_count, __global FIXED_T* f
     size_t index = IDX(ix,iy,iz);
 
     unfixed[index] = from_fixed(fix[index]);
-
-    if(ix == 128 && iy == 128 && iz == 128)
-    {
-        printf("onFix %f\n", unfixed[index]);
-    }
 }
