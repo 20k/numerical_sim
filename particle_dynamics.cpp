@@ -798,7 +798,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     }
     else if(iteration == 1)
     {
-        calculate_adm_quantities(1, in);
+        //calculate_adm_quantities(1, in);
     }
 
     int in_idx = pack.in_idx;
