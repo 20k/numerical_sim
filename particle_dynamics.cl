@@ -642,7 +642,7 @@ float length_sq(float3 in)
 }
 
 __kernel
-void collect_particle_spheres(__global float* positions, __global float* masses, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, STANDARD_ARGS(), float scale, int4 dim, int actually_write)
+void collect_particle_spheres(__global float* positions, __global float* masses, __global float* dirac_buf, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, STANDARD_ARGS(), float scale, int4 dim, int actually_write)
 {
     size_t idx = get_global_id(0);
 
@@ -677,6 +677,10 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 
     int spread = ceil(max_dirac / scale) + 3;
 
+    float actual_dirac = 0;
+
+    ///if we consider the dirac delta function to encompass a volume of space, we might be sampling outside it
+    ///possibly worth considering sub sampling within a box to get the real value
     for(int zz=-spread; zz <= spread; zz++)
     {
         for(int yy=-spread; yy <= spread; yy++)
@@ -702,15 +706,24 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
                     ITYPE my_memory_offset = memory_ptrs[IDX(ix,iy,iz)];
 
                     collected_indices[my_memory_offset + my_index] = idx;
+
+                    actual_dirac += dirac_disc2(cell_wp - world_pos, base_radius);
                 }
             }
         }
+    }
+
+    if(actually_write)
+    {
+        printf("Actual %f rad %f\n", actual_dirac, base_radius);
+
+        dirac_buf[idx] = actual_dirac;
     }
 }
 
 __kernel
 void do_weighted_summation(__global ushort4* points, int point_count,
-                           __global float* positions, __global float* velocities, __global float* masses, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, STANDARD_ARGS(), STANDARD_UTILITY(), float scale, int4 dim)
+                           __global float* positions, __global float* velocities, __global float* masses, __global float* dirac_buf, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, STANDARD_ARGS(), STANDARD_UTILITY(), float scale, int4 dim)
 {
     int local_idx = get_global_id(0);
 
@@ -754,16 +767,16 @@ void do_weighted_summation(__global ushort4* points, int point_count,
 
         float3 cell_wp = voxel_to_world_unrounded_i((int3)(kix, kiy, kiz), dim, scale);
 
-        /*float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
+        float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
 
         voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
-        float gA_val = buffer_read_linear(gA, voxel_pos, dim);
+        /*float gA_val = buffer_read_linear(gA, voxel_pos, dim);
 
         mass = modify_mass(mass, gA_val);*/
 
-        if(mass == 0)
-            continue;
+        //if(mass == 0)
+        //    continue;
 
         float base_radius = get_particle_radius(scale);
         //float current_radius = modify_radius(base_radius, gA_val);
@@ -774,14 +787,32 @@ void do_weighted_summation(__global ushort4* points, int point_count,
 
         float to_centre_distance_sq = dot(relative, relative);
 
-        float weight = dirac_disc(to_centre_distance_sq, base_radius);
+        //float weight = dirac_disc(to_centre_distance_sq, base_radius);
+
+        float weight = dirac_disc2(relative, base_radius);
 
         if(weight == 0)
             continue;
 
+        float dirac_n = dirac_buf[geodesic_idx];
+
+        if(dirac_n == 0)
+            continue;
+
+        weight /= dirac_n;
+
         int ix = kix;
         int iy = kiy;
         int iz = kiz;
+
+        /*if(ix == round(voxel_pos.x) && iy == round(voxel_pos.y) && iz == round(voxel_pos.z))
+        {
+            weight = 1;
+        }
+        else
+        {
+            weight = 0;
+        }*/
 
         //if((ix == 105 || ix == 106 || ix == 107) && iy == 106 && iz == 106)
         //    printf("Ipos %i %i %i weight %.16f\n", ix, iy, iz, weight);

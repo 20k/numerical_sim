@@ -50,6 +50,7 @@ struct particle_dynamics : plugin
 {
     cl_int particle_count = 0;
     std::array<particle_buffer, 3> p_data;
+    cl::buffer dirac_buf;
 
     cl::buffer indices_block;
     cl::buffer memory_alloc_count;
