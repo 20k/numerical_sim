@@ -51,11 +51,11 @@ struct particle_dynamics : plugin
     cl_int particle_count = 0;
     std::array<particle_buffer, 3> p_data;
 
-    cl::buffer indices_block;
-    cl::buffer memory_alloc_count;
+    //cl::buffer indices_block;
+    //cl::buffer memory_alloc_count;
 
-    std::optional<cl::buffer> memory_ptrs;
-    std::optional<cl::buffer> counts;
+    //std::optional<cl::buffer> memory_ptrs;
+    //std::optional<cl::buffer> counts;
 
     particle_data start_data;
 
@@ -64,7 +64,7 @@ struct particle_dynamics : plugin
     std::array<cl::buffer, 6> adm_Sij;
     cl::buffer adm_S;*/
 
-    cl_int max_intermediate_size = int{1024} * 1024 * 400;
+    //cl_int max_intermediate_size = int{1024} * 1024 * 400;
 
     cl::program pd;
 

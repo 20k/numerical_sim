@@ -809,3 +809,130 @@ void do_weighted_summation(__global ushort4* points, int point_count,
         adm_p[index] = vadm_p;
     }
 }
+
+#define FIXED_T int32_t
+
+FIXED_T to_fixed(float in)
+{
+    return round(in * 1000.f);
+}
+
+float from_fixed(FIXED_T in)
+{
+    return (float)in / 1000.f;
+}
+
+__kernel
+void fixed_point_summation(__global float* positions, __global float* velocities, __global float* masses, ITYPE geodesic_count, STANDARD_ARGS(),
+                           __global FIXED_T* adm_S,
+                           __global FIXED_T* adm_Si0,
+                           __global FIXED_T* adm_Si1,
+                           __global FIXED_T* adm_Si2,
+                           __global FIXED_T* adm_Sij0,
+                           __global FIXED_T* adm_Sij1,
+                           __global FIXED_T* adm_Sij2,
+                           __global FIXED_T* adm_Sij3,
+                           __global FIXED_T* adm_Sij4,
+                           __global FIXED_T* adm_Sij5,
+                           __global FIXED_T* adm_p,
+                           float scale, int4 dim)
+{
+    size_t idx = get_global_id(0);
+
+    if(idx >= geodesic_count)
+        return;
+
+    if(masses[idx] == 0)
+        return;
+
+    float3 world_pos = {positions[GET_IDX(idx, 0)], positions[GET_IDX(idx, 1)], positions[GET_IDX(idx, 2)]};
+    float3 vel = {velocities[GET_IDX(idx, 0)], velocities[GET_IDX(idx, 1)], velocities[GET_IDX(idx, 2)]};
+
+    float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
+
+    voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
+
+    if(!all(isfinite(voxel_pos)))
+    {
+        printf("Non finite voxel pos in fixed point sum\n");
+        return;
+    }
+
+    int ocx = floor(voxel_pos.x);
+    int ocy = floor(voxel_pos.y);
+    int ocz = floor(voxel_pos.z);
+
+    float base_radius = get_particle_radius(scale);
+
+    float max_dirac = base_radius * 2;
+
+    int spread = ceil(max_dirac / scale) + 3;
+
+    for(int zz=-spread; zz <= spread; zz++)
+    {
+        for(int yy=-spread; yy <= spread; yy++)
+        {
+            for(int xx=-spread; xx <= spread; xx++)
+            {
+                int ix = xx + ocx;
+                int iy = yy + ocy;
+                int iz = zz + ocz;
+
+                if(ix < 0 || iy < 0 || iz < 0 || ix >= dim.x || iy >= dim.y || iz >= dim.z)
+                    continue;
+
+                float3 cell_wp = voxel_to_world_unrounded_i((int3)(ix, iy, iz), dim, scale);
+
+                float weight = dirac_disc(length(cell_wp - world_pos), base_radius);
+
+                if(weight == 0)
+                    continue;
+
+                size_t memidx = IDX(ix,iy.iz);
+
+                float TEMPORARIESadmmatter;
+
+                float vadm_S = OUT_ADM_S * weight;
+                float vadm_Si0 = OUT_ADM_SI0 * weight;
+                float vadm_Si1 = OUT_ADM_SI1 * weight;
+                float vadm_Si2 = OUT_ADM_SI2 * weight;
+                float vadm_Sij0 = OUT_ADM_SIJ0 * weight;
+                float vadm_Sij1 = OUT_ADM_SIJ1 * weight;
+                float vadm_Sij2 = OUT_ADM_SIJ2 * weight;
+                float vadm_Sij3 = OUT_ADM_SIJ3 * weight;
+                float vadm_Sij4 = OUT_ADM_SIJ4 * weight;
+                float vadm_Sij5 = OUT_ADM_SIJ5 * weight;
+                float vadm_p = OUT_ADM_P * weight;
+
+                atomic_add(&adm_S[memindex], to_fixed(vadm_S));
+                atomic_add(&adm_Si0[memindex], to_fixed(vadm_Si0));
+                atomic_add(&adm_Si1[memindex], to_fixed(vadm_Si1));
+                atomic_add(&adm_Si2[memindex], to_fixed(vadm_Si2));
+                atomic_add(&adm_Sij0[memindex], to_fixed(vadm_Sij0));
+                atomic_add(&adm_Sij1[memindex], to_fixed(vadm_Sij1));
+                atomic_add(&adm_Sij2[memindex], to_fixed(vadm_Sij2));
+                atomic_add(&adm_Sij3[memindex], to_fixed(vadm_Sij3));
+                atomic_add(&adm_Sij4[memindex], to_fixed(vadm_Sij4));
+                atomic_add(&adm_Sij4[memindex], to_fixed(vadm_Sij5));
+                atomic_add(&adm_p[memindex], to_fixed(vadm_p));
+            }
+        }
+    }
+}
+
+__kernel
+void fix_to_float(__global ushort4* points, int point_count, __global FIXED_T* fix, __global float* unfixed)
+{
+    int local_idx = get_global_id(0);
+
+    if(local_idx >= point_count)
+        return;
+
+    int ix = points[local_idx].x;
+    int iy = points[local_idx].y;
+    int iz = points[local_idx].z;
+
+    size_t index = IDX(ix,iy,iz);
+
+    unfixed[index] = from_fixed(fix[index]);
+}

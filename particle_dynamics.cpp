@@ -57,10 +57,9 @@ tensor<value, 3, 3> particle_matter_interop::calculate_adm_X_Sij(equation_contex
     return X * Sij;
 }
 
-particle_dynamics::particle_dynamics(cl::context& ctx) : p_data{ctx, ctx, ctx}, pd(ctx), indices_block(ctx), memory_alloc_count(ctx)
+particle_dynamics::particle_dynamics(cl::context& ctx) : p_data{ctx, ctx, ctx}, pd(ctx),
 {
-    indices_block.alloc(max_intermediate_size * sizeof(cl_ulong));
-    memory_alloc_count.alloc(sizeof(size_t));
+
 }
 
 std::vector<buffer_descriptor> particle_dynamics::get_utility_buffers()
@@ -314,11 +313,11 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 {
     vec3i dim = mesh.dim;
 
-    memory_ptrs = cl::buffer(ctx);
-    counts = cl::buffer(ctx);
+    //memory_ptrs = cl::buffer(ctx);
+    //counts = cl::buffer(ctx);
 
-    memory_ptrs.value().alloc(sizeof(cl_ulong) * dim.x() * dim.y() * dim.z());
-    counts.value().alloc(sizeof(cl_ulong) * dim.x() * dim.y() * dim.z());
+    //memory_ptrs.value().alloc(sizeof(cl_ulong) * dim.x() * dim.y() * dim.z());
+    //counts.value().alloc(sizeof(cl_ulong) * dim.x() * dim.y() * dim.z());
 
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
     float scale = mesh.scale;
@@ -659,8 +658,8 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     buffer_set& out = pack.out;
     buffer_set& base = pack.base;
 
-    cl::buffer& memory_ptrs_val = memory_ptrs.value();
-    cl::buffer& counts_val = counts.value();
+    //cl::buffer& memory_ptrs_val = memory_ptrs.value();
+    //cl::buffer& counts_val = counts.value();
 
     //memory_alloc_count.set_to_zero(mqueue);
 
@@ -697,10 +696,57 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
         }
     }*/
 
+    if(iteration == 0)
+    {
+        {
+            cl::args args;
+            args.push_back(p_data[0].position.as_device_read_only());
+            args.push_back(p_data[0].mass.as_device_read_only());
+            args.push_back(p_data[1].mass);
+            args.push_back(p_data[0].mass.as_device_read_only());
+            args.push_back(particle_count);
+
+            for(named_buffer& i : base.buffers)
+            {
+                args.push_back(i.buf.as_device_read_only());
+            }
+
+            args.push_back(scale);
+            args.push_back(clsize);
+            args.push_back(timestep);
+
+            mqueue.exec("dissipate_mass", args, {particle_count}, {128});
+        }
+
+        {
+            cl::args args;
+            args.push_back(p_data[0].position.as_device_read_only());
+            args.push_back(p_data[0].velocity.as_device_read_only());
+            args.push_back(p_data[1].position);
+            args.push_back(p_data[1].velocity);
+            args.push_back(p_data[0].position.as_device_read_only());
+            args.push_back(p_data[0].velocity.as_device_read_only());
+            args.push_back(p_data[0].mass.as_device_read_only());
+            args.push_back(particle_count);
+
+            for(named_buffer& i : base.buffers)
+            {
+                args.push_back(i.buf.as_device_read_only());
+            }
+
+            args.push_back(scale);
+            args.push_back(clsize);
+            args.push_back(timestep);
+
+            mqueue.exec("trace_geodesics", args, {particle_count}, {128});
+        }
+    }
+
     int in_idx = pack.in_idx;
     int out_idx = pack.out_idx;
     int base_idx = pack.base_idx;
 
+    #if 0
     ///make sure to mark up the particle code!
     {
         cl::args args;
@@ -836,15 +882,16 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
 
         mqueue.exec("do_weighted_summation", args, {mesh.points_set.all_count}, {128});
     }
+    #endif
 
-    if(iteration != max_iteration - 1)
+    /*if(iteration != max_iteration - 1)
     {
         std::swap(p_data[1], p_data[2]);
     }
     else
     {
         std::swap(p_data[1], p_data[0]);
-    }
+    }*/
 }
 
 void particle_dynamics::finalise(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, float timestep)
