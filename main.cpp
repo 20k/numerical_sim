@@ -3158,7 +3158,18 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     }
     #endif
 
-    #define SPINNING_PARTICLES
+    #define STATIONARY_PARTICLE
+    #ifdef STATIONARY_PARTICLE
+    particle_data data;
+
+    data.masses.push_back(0.1);
+    data.velocities.push_back({0,0,0});
+    data.positions.push_back({0,0,0});
+
+    data_opt = std::move(data);
+    #endif
+
+    //#define SPINNING_PARTICLES
     #ifdef SPINNING_PARTICLES
     {
         xoshiro256ss_state rng = xoshiro256ss_init(2345);
@@ -3803,71 +3814,6 @@ metric<value, 4, 4> calculate_induced_metric(const metric<value, 3, 3>& adm, con
     }
 
     return induced;
-}
-
-///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf 28
-tensor<value, 4, 4> calculate_projector(const value& gA, const tensor<value, 3>& gB)
-{
-    tensor<value, 4> nu_u = get_adm_hypersurface_normal_raised(gA, gB);
-    tensor<value, 4> nu_l = get_adm_hypersurface_normal_lowered(gA);
-
-    tensor<value, 4, 4> proj;
-
-    for(int i=0; i < 4; i++)
-    {
-        for(int j=0; j < 4; j++)
-        {
-            value kronecker = (i == j) ? 1 : 0;
-
-            proj.idx(i, j) = kronecker + nu_u.idx(i) * nu_l.idx(j);
-        }
-    }
-
-    return proj;
-}
-
-template<typename T>
-tensor<T, 4> tensor_project_lower(const tensor<T, 4>& in, const value& gA, const tensor<value, 3>& gB)
-{
-    tensor<value, 4, 4> projector = calculate_projector(gA, gB);
-
-    tensor<T, 4> full_ret;
-
-    for(int i=0; i < 4; i++)
-    {
-        T sum = 0;
-
-        for(int j=0; j < 4; j++)
-        {
-            sum += projector.idx(j, i) * in.idx(j);
-        }
-
-        full_ret.idx(i) = sum;
-    }
-
-    return full_ret;
-}
-
-template<typename T>
-tensor<T, 4> tensor_project_upper(const tensor<T, 4>& in, const value& gA, const tensor<value, 3>& gB)
-{
-    tensor<value, 4, 4> projector = calculate_projector(gA, gB);
-
-    tensor<T, 4> full_ret;
-
-    for(int i=0; i < 4; i++)
-    {
-        T sum = 0;
-
-        for(int j=0; j < 4; j++)
-        {
-            sum += projector.idx(i, j) * in.idx(j);
-        }
-
-        full_ret.idx(i) = sum;
-    }
-
-    return full_ret;
 }
 
 ///https://scc.ustc.edu.cn/zlsc/sugon/intel/ipp/ipp_manual/IPPM/ippm_ch9/ch9_SHT.htm this states you can approximate

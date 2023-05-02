@@ -381,7 +381,7 @@ void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_mat
     #endif // USE_DTCYIJ_MODIFICATION
 
     ///pretty sure https://arxiv.org/pdf/0711.3575v1.pdf 2.21 is equivalent, and likely a LOT faster
-    #define MOD_CY
+    //#define MOD_CY
     #ifdef MOD_CY
     tensor<value, 3, 3> cD = covariant_derivative_low_vec(ctx, bigGi_lower, args.christoff2);
 
