@@ -4842,7 +4842,7 @@ int main()
     std::string hydro_argument_string = argument_string;
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {255, 255, 255};
+    vec3i size = {213, 213, 213};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -5642,7 +5642,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.035;
+        float timestep = 0.1;
 
         if(pao && base_mesh.elapsed_time > 250)
             step = false;
