@@ -813,14 +813,14 @@ void do_weighted_summation(__global ushort4* points, int point_count,
 
 #define FIXED_T int
 
-FIXED_T to_fixed(float in)
+FIXED_T to_fixed(double in)
 {
-    return round(in * 100000000.f);
+    return round(in * (double)10000000000);
 }
 
 float from_fixed(FIXED_T in)
 {
-    return (float)in / 100000000.f;
+    return (double)in / (double)10000000000;
 }
 
 #define EADD(buf, var) if(to_fixed(var) != 0){atomic_add(&buf[memidx], to_fixed(var));}

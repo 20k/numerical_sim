@@ -309,10 +309,10 @@ struct numerical_params
 particle_data build_galaxy()
 {
     ///https://arxiv.org/abs/1607.08364
+    double milky_way_mass_kg = 4 * pow(10, 11) * get_solar_mass_kg() * 20;
     //double milky_way_mass_kg = 6.43 * pow(10., 10.) * 1.16 * get_solar_mass_kg();
-    double milky_way_mass_kg = 4 * pow(10, 11) * get_solar_mass_kg();
     //double milky_way_radius_m = 0.5f * pow(10., 21.);
-    double milky_way_radius_m = 0.5 * 8 * pow(10., 20.);
+    double milky_way_radius_m = 0.5 * 8 * pow(10., 20.) * 0.5f;
 
     galaxy_params params;
     params.mass_kg = milky_way_mass_kg;
@@ -329,7 +329,7 @@ particle_data build_galaxy()
 
     xoshiro256ss_state rng = xoshiro256ss_init(2345);
 
-    int test_particle_count = 1000 * 60;
+    int test_particle_count = 1000 * 600;
 
     ///oh crap. So, if we select a radius outside of the galaxy radius, we actually need to discard the particle instead?
     for(int i=0; i < test_particle_count; i++)
@@ -382,6 +382,9 @@ particle_data build_galaxy()
     }
 
     float init_mass = num_params.mass / test_particle_count;
+
+    printf("Mass per particle %f\n", init_mass);
+    printf("Absolute mass %f\n", num_params.mass);
 
     int real_count = positions.size();
 

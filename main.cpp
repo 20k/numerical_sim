@@ -2842,18 +2842,18 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    //#define PAPER_0610128
+    #define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.96, 0};
+    h1.momentum = {0, 0.133 * 0.96 * 0, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     compact_object::data h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.96, 0};
+    h2.momentum = {0, -0.133 * 0.96 * 0, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     objects = {h1, h2};
@@ -3169,14 +3169,14 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     data_opt = std::move(data);
     #endif
 
-    #define SPINNING_PARTICLES
+    //#define SPINNING_PARTICLES
     #ifdef SPINNING_PARTICLES
     {
         xoshiro256ss_state rng = xoshiro256ss_init(2345);
 
         particle_data data;
 
-        float total_mass = 0.1f;
+        float total_mass = 2.f;
 
         int count = 1000 * 600;
 
@@ -3201,9 +3201,11 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
                 if(radius >= grad || radius < grad * 0.1f)
                     continue;
 
-                float vel = uint64_to_double(xoshiro256ss(rng));
+                float vel = 0.3f * pow(radius / grad, 2.f) + 0.01f * (uint64_to_double(xoshiro256ss(rng)) * 2 - 1) * 0;
 
-                vel *= 0.15f;
+                //float vel = uint64_to_double(xoshiro256ss(rng));
+
+                //vel *= 0.15f;
 
                 vec2f vel_2d = (vec2f){vel, 0}.rot(angle + M_PI/2);
 
@@ -4842,7 +4844,7 @@ int main()
     std::string hydro_argument_string = argument_string;
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {255, 255, 255};
+    vec3i size = {299, 299, 299};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -5500,15 +5502,18 @@ int main()
                         int cnt = positions3.size();
 
                         vec3f centre;
+                        vec3f centre_velocity;
                         float total_mass = 0;
 
                         for(int i=0; i < cnt; i++)
                         {
                             centre += positions3[i] * mass[i];
+                            centre_velocity += velocities3[i] * mass[i];
                             total_mass += mass[i];
                         }
 
                         centre /= total_mass;
+                        centre_velocity /= total_mass;
 
                         ///radius, velocity
                         std::vector<std::pair<float, float>> debug_vel;
@@ -5521,16 +5526,44 @@ int main()
 
                             vec3f from_centre = positions3[i] - centre;
 
-                            debug_vel.push_back({from_centre.length(), velocities3[i].length()});
+                            debug_vel.push_back({from_centre.length(), (velocities3[i] - centre_velocity).length()});
                         }
 
                         std::sort(debug_vel.begin(), debug_vel.end(), [&](const auto& i1, const auto& i2){return i1.first < i2.first;});
 
                         central_velocities.clear();
 
-                        for(const auto& i : debug_vel)
+                        /*for(const auto& i : debug_vel)
                         {
                             central_velocities.push_back(i.second);
+                        }*/
+
+                        float bucket_width = 0.1f;
+
+                        std::vector<float> buckets;
+                        std::vector<int> bucket_count;
+
+                        for(auto& [rad, vel] : debug_vel)
+                        {
+                            float bucket = rad / bucket_width;
+                            int ibucket = floor(bucket);
+
+                            if(ibucket >= buckets.size())
+                            {
+                                buckets.resize(ibucket + 1);
+                                bucket_count.resize(ibucket + 1);
+                            }
+
+                            buckets[ibucket] += vel;
+                            bucket_count[ibucket]++;
+                        }
+
+                        for(int i=0; i < (int)buckets.size(); i++)
+                        {
+                            if(bucket_count[i] > 0)
+                                central_velocities.push_back(buckets[i] / bucket_count[i]);
+                            else
+                                central_velocities.push_back(0.f);
                         }
                     }
                 }
