@@ -892,6 +892,7 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
     #ifdef CHRISTOFFEL_49
     //tensor<value, 3, 3> littlekij = unpinned_icY.to_tensor() * K;
 
+    #ifdef DUAL_VERSION
     tensor<dual, 3, 3, 3> dicY;
 
     for(int k=0; k < 3; k++)
@@ -920,7 +921,30 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
             }
         }
     }
+    #endif
 
+    #define CD_VERSION
+    #ifdef CD_VERSION
+    tensor<value, 3, 3, 3> dicY;
+
+    for(int a=0; a < 3; a++)
+    {
+        for(int b=0; b < 3; b++)
+        {
+            for(int c=0; c < 3; c++)
+            {
+                value sum = 0;
+
+                for(int d=0; d < 3; d++)
+                {
+                    sum += args.christoff2.idx(a, c, d) * icY.idx(d, b) + args.christoff2.idx(b, c, d) * icY.idx(a, d);
+                }
+
+                dicY.idx(c, a, b) = -sum;
+            }
+        }
+    }
+    #endif
 
     ///PAPER_12055111_SUBST
 
@@ -934,7 +958,7 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
 
         for(int j=0; j < 3; j++)
         {
-            sum += icY.idx(i, j) * diff1(ctx, K, j) + K * dicY.idx(j, i, j).dual;
+            sum += icY.idx(i, j) * diff1(ctx, K, j) + K * dicY.idx(j, i, j);
             //sum += diff1(ctx, littlekij.idx(i, j), j);
         }
 
