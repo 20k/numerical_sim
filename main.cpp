@@ -1316,41 +1316,67 @@ tensor<float, 3> world_to_voxel(const tensor<float, 3>& world_pos, vec3i dim, fl
     return (world_pos / scale) + centre;
 }
 
-#if 0
-//https://arxiv.org/pdf/gr-qc/0610128.pdf (6)
-float get_nonspinning_adm_mass(cl::command_queue& cqueue, int idx, const std::vector<black_hole<float>>& holes, vec3i dim, float scale, cl::buffer& u_buffer)
+///I am an idiot, the below says it DOES work for spinning mass. Here's to reading comprehension!
+///https://arxiv.org/pdf/gr-qc/0610128.pdf (6)
+///https://www.worldscientific.com/doi/pdf/10.1142/S2010194512004321 22
+///no idea if this works for neutron stars
+std::vector<float> get_adm_masses(cl::context& ctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objects, vec3i dim, float scale, cl::buffer& u_buffer)
 {
-    assert(idx >= 0 && idx < holes.size());
+    cl::program prog = build_program_with_cache(ctx, "fetch_linear.cl", "-I ./ -cl-std=CL1.2");
 
-    const black_hole<float>& my_hole = holes[idx];
+    cl::kernel extract(prog, "fetch_linear_value");
 
-    tensor<float, 3> voxel_pos = world_to_voxel(my_hole.position, dim, scale);
+    std::vector<float> ret;
 
-    int read_idx = (int)voxel_pos.z() * dim.x() * dim.y() + (int)voxel_pos.y() * dim.x() + (int)voxel_pos.x();
+    cl::buffer temp(ctx);
+    temp.alloc(sizeof(cl_float));
 
-    cl_float u_read = 0;
+    std::vector<float> u_values;
 
-    u_buffer.read(cqueue, (char*)&u_read, sizeof(cl_float), read_idx * sizeof(cl_float));
+    cl_int4 clsize = {dim.x(), dim.y(), dim.z()};
 
-    ///should be integer
-    printf("VXP %f %f %f\n", voxel_pos.x(), voxel_pos.y(), voxel_pos.z());
-
-    printf("Got u %f\n", u_read);
-
-    float sum = 0;
-
-    for(int i=0; i < (int)holes.size(); i++)
+    for(int i=0; i < (int)objects.size(); i++)
     {
-        if(i == idx)
-            continue;
+        auto voxel_pos = world_to_voxel(objects[i].position, dim, scale);
 
-        sum += holes[i].bare_mass / (2 * (holes[idx].position - holes[i].position).length());
+        cl_float4 cpos = {voxel_pos.x(), voxel_pos.y(), voxel_pos.z()};
+
+        ///remember, we're using u + 1 + phi nowadays
+        cl::args args;
+        args.push_back(u_buffer);
+        args.push_back(temp);
+        args.push_back(cpos);
+        args.push_back(clsize);
+
+        extract.set_args(args);
+
+        cqueue.exec(extract, {1}, {1});
+
+        u_values.push_back(temp.read<float>(cqueue).at(0));
     }
 
-    ///the reason this isn't 1+ is the differences in definition of u
-    return holes[idx].bare_mass * (u_read + sum);
+    for(int i=0; i < (int)objects.size(); i++)
+    {
+        float interior = 0;
+
+        for(int j=0; j < (int)objects.size(); j++)
+        {
+            if(i == j)
+                continue;
+
+            float D = (objects[i].position - objects[j].position).length();
+
+            interior += objects[j].bare_mass / (2 * D);
+        }
+
+        float m = objects[i].bare_mass;
+        float adm_mass = m * (1 + u_values[i] + interior);
+
+        ret.push_back(adm_mass);
+    }
+
+    return ret;
 }
-#endif // 0
 
 struct initial_conditions
 {
@@ -2645,26 +2671,6 @@ sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cq
 }
 #endif // 0
 
-#if 0
-std::vector<float> calculate_adm_mass(const std::vector<black_hole<float>>& holes, cl::context& ctx, cl::command_queue& cqueue, float err = 0.0001f)
-{
-    std::vector<float> ret;
-
-    vec3i dim = {281, 281, 281};
-
-    laplace_data solve = setup_u_laplace(ctx, holes);
-
-    cl::buffer u_arg = laplace_solver(ctx, cqueue, solve, calculate_scale(get_c_at_max(), dim), dim, err);
-
-    for(int i=0; i < (int)holes.size(); i++)
-    {
-        ret.push_back(get_nonspinning_adm_mass(cqueue, i, holes, dim, calculate_scale(get_c_at_max(), dim), u_arg));
-    }
-
-    return ret;
-}
-#endif // 0
-
 inline
 initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, float scale, std::vector<compact_object::data> objs, std::optional<particle_data>&& p_data_opt)
 {
@@ -2842,7 +2848,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    //#define PAPER_0610128
+    #define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -3158,7 +3164,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     }
     #endif
 
-    #define SPINNING_PARTICLES
+    //#define SPINNING_PARTICLES
     #ifdef SPINNING_PARTICLES
     {
         xoshiro256ss_state rng = xoshiro256ss_init(2345);
@@ -4943,6 +4949,13 @@ int main()
         matter_vars.p0_buf = super.p0_buf;
         matter_vars.Si_buf = super.Si_buf;
         matter_vars.colour_buf = super.colour_buf;
+
+        std::vector<float> masses = get_adm_masses(clctx.ctx, cqueue, holes.objs, size, scale, u_arg);
+
+        for(int i=0; i < (int)masses.size(); i++)
+        {
+            printf("ADM Mass %f\n", masses[i]);
+        }
 
         cqueue.block();
 
