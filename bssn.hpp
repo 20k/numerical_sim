@@ -12,7 +12,7 @@
 inline
 value as_float3(const value& x, const value& y, const value& z)
 {
-    return dual_types::apply("(float3)", x, y, z);
+    return dual_types::apply(value("(float3)"), x, y, z);
 }
 
 inline
@@ -22,22 +22,22 @@ value bidx(const std::string& buf, bool interpolate, bool is_derivative)
     {
         if(is_derivative)
         {
-            return dual_types::apply("buffer_read_linearh", buf, as_float3("fx", "fy", "fz"), "dim");
+            return dual_types::apply(value("buffer_read_linearh"), buf, as_float3("fx", "fy", "fz"), "dim");
         }
         else
         {
-            return dual_types::apply("buffer_read_linear", buf, as_float3("fx", "fy", "fz"), "dim");
+            return dual_types::apply(value("buffer_read_linear"), buf, as_float3("fx", "fy", "fz"), "dim");
         }
     }
     else
     {
         if(is_derivative)
         {
-            return dual_types::apply("buffer_indexh", buf, "ix", "iy", "iz", "dim");
+            return dual_types::apply(value("buffer_indexh"), buf, "ix", "iy", "iz", "dim");
         }
         else
         {
-            return dual_types::apply("buffer_index", buf, "ix", "iy", "iz", "dim");
+            return dual_types::apply(value("buffer_index"), buf, "ix", "iy", "iz", "dim");
         }
     }
 }

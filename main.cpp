@@ -268,11 +268,11 @@ struct differentiation_context
 
                 if(function_name == "buffer_index" || function_name == "buffer_indexh")
                 {
-                    to_sub = apply(function_name, variables.args[1], xs[kk], ys[kk], zs[kk], "dim");
+                    to_sub = apply(value(function_name), variables.args[1], xs[kk], ys[kk], zs[kk], "dim");
                 }
                 else if(function_name == "buffer_read_linear" || function_name == "buffer_read_linearh")
                 {
-                    to_sub = apply(function_name, variables.args[1], as_float3(xs[kk], ys[kk], zs[kk]), "dim");
+                    to_sub = apply(value(function_name), variables.args[1], as_float3(xs[kk], ys[kk], zs[kk]), "dim");
                 }
                 else
                 {
@@ -351,7 +351,7 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
 
 void build_kreiss_oliger_dissipate_singular(equation_context& ctx)
 {
-    value buf = dual_types::apply("buffer_index", "buffer", "ix", "iy", "iz", "dim");
+    value buf = dual_types::apply(value("buffer_index"), "buffer", "ix", "iy", "iz", "dim");
 
     value coeff = "coefficient";
 
@@ -760,10 +760,10 @@ namespace neutron_star
 
         T radius = mass_to_radius(mass, compactness);
 
-        T xi = M_PI * coordinate_radius / radius;
+        T xi = (float)M_PI * coordinate_radius / radius;
 
         ///oh thank god
-        T pc = mass / ((4 / M_PI) * pow(radius, 3.f));
+        T pc = mass / ((4 / (float)M_PI) * pow(radius, 3.f));
 
         float xi_boundary = 0.0001f;
         float value_at_boundary = sin(xi_boundary) / xi_boundary;
@@ -782,7 +782,7 @@ namespace neutron_star
 
         T p_xi = pc * sin_fraction;
 
-        T k = (2 / M_PI) * radius * radius;
+        T k = (2 / (float)M_PI) * radius * radius;
 
         T pressure = k * p_xi * p_xi;
 
@@ -854,12 +854,14 @@ namespace neutron_star
 
         auto integration_func = [&](const T& coordinate_radius)
         {
+            using namespace std;
+
             conformal_data ndata = sample_conformal(coordinate_radius, p, tov_phi_at_coordinate);
 
-            return (ndata.mass_energy_density + ndata.pressure) * pow(coordinate_radius, 2);
+            return (ndata.mass_energy_density + ndata.pressure) * pow(coordinate_radius, 2.f);
         };
 
-        return 4 * M_PI * integrate_1d(integration_func, 32, radius, T{0.f});
+        return 4 * (float)M_PI * integrate_1d(integration_func, 32, radius, T{0.f});
     }
 
     ///squiggly N
@@ -872,12 +874,14 @@ namespace neutron_star
 
         auto integration_func = [&](const T& coordinate_radius)
         {
+            using namespace std;
+
             conformal_data ndata = sample_conformal(coordinate_radius, p, tov_phi_at_coordinate);
 
             return (ndata.mass_energy_density + ndata.pressure) * pow(coordinate_radius, 4.f);
         };
 
-        return (8 * M_PI/3) * integrate_1d(integration_func, 32, radius, T{0.f});
+        return (8 * (float)M_PI/3) * integrate_1d(integration_func, 32, radius, T{0.f});
     }
 
     ///https://arxiv.org/pdf/1606.04881.pdf (57)
@@ -910,7 +914,7 @@ namespace neutron_star
 
         auto integral_func = [&ctx, p, &M_factor, tov_phi_at_coordinate](const value& rp)
         {
-            return 4 * M_PI * calculate_sigma(rp, p, M_factor, tov_phi_at_coordinate) * pow(rp, 2.f);
+            return 4 * (float)M_PI * calculate_sigma(rp, p, M_factor, tov_phi_at_coordinate) * pow(rp, 2.f);
         };
 
         value integrated = integrate_1d(integral_func, 16, coordinate_radius, value{0.f});
@@ -930,7 +934,7 @@ namespace neutron_star
 
         auto integral_func = [p, &M_factor, tov_phi_at_coordinate](const value& rp)
         {
-            return (2.f/3.f) * M_PI * calculate_sigma(rp, p, M_factor, tov_phi_at_coordinate) * pow(rp, 4.f);
+            return (2.f/3.f) * (float)M_PI * calculate_sigma(rp, p, M_factor, tov_phi_at_coordinate) * pow(rp, 4.f);
         };
 
         value integrated = integrate_1d(integral_func, 16, coordinate_radius, value{0.f});
@@ -951,7 +955,7 @@ namespace neutron_star
 
         auto integral_func = [p, &squiggly_N_factor, tov_phi_at_coordinate](const value& rp)
         {
-            return (8.f/3.f) * M_PI * calculate_kappa(rp, p, squiggly_N_factor, tov_phi_at_coordinate) * pow(rp, 4.f);
+            return (8.f/3.f) * (float)M_PI * calculate_kappa(rp, p, squiggly_N_factor, tov_phi_at_coordinate) * pow(rp, 4.f);
         };
 
         value integrated = integrate_1d(integral_func, 16, coordinate_radius, value{0.f});
@@ -990,7 +994,7 @@ namespace neutron_star
 
         value r = relative_pos.length();
 
-        r = max(r, value{1e-3});
+        r = max(r, 1e-3f);
 
         ///angular momentum is J, with upper index. Also called S in other papers
         ///https://arxiv.org/pdf/1606.04881.pdf (65)
@@ -1008,7 +1012,7 @@ namespace neutron_star
 
         tensor<value, 3> lowered = lower_index(li, flat, 0);
 
-        value cos_angle = dot(angular_momentum / max(angular_momentum.length(), value{1e-6}), lowered / max(lowered.length(), value{1e-5}));
+        value cos_angle = dot(angular_momentum / max(angular_momentum.length(), 1e-6f), lowered / max(lowered.length(), 1e-5f));
 
         value sin2 = 1 - cos_angle * cos_angle;
 
@@ -1156,7 +1160,7 @@ namespace compact_object
     template<typename T>
     struct base_matter_data
     {
-        T compactness = 0.06;
+        T compactness = 0.06f;
         tensor<T, 3> colour = {1,1,1};
     };
 
@@ -1241,7 +1245,7 @@ namespace black_hole
 
                 value ra = (pos - vri).length();
 
-                ra = max(ra, 1e-6);
+                ra = max(ra, 1e-6f);
 
                 tensor<value, 3> nia = (pos - vri) / ra;
 
@@ -1423,7 +1427,7 @@ value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<c
 
         ///I'm not sure this is correct to do for neutron stars
         //if(hole.t == compact_object::BLACK_HOLE)
-            dist = max(dist, 1e-3);
+            dist = max(dist, 1e-3f);
         //else
         //    dist = max(dist, 1e-1);
 
@@ -1441,9 +1445,9 @@ value tov_phi_at_coordinate_general(const tensor<value, 3>& world_position)
     value vy = dual_types::apply("world_to_voxel_y", fl3, "dim", "scale");
     value vz = dual_types::apply("world_to_voxel_z", fl3, "dim", "scale");*/
 
-    value v = dual_types::apply("world_to_voxel", fl3, "dim", "scale");
+    value v = dual_types::apply(value("world_to_voxel"), fl3, "dim", "scale");
 
-    return dual_types::apply("buffer_read_linear", "tov_phi", v, "dim");
+    return dual_types::apply(value("buffer_read_linear"), "tov_phi", v, "dim");
 
     //return dual_types::apply("tov_phi", as_float3(vx, vy, vz), "dim");
 }
@@ -1453,7 +1457,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
-    value u_value = dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim");
+    value u_value = dual_types::apply(value("buffer_index"), "u_offset_in", "ix", "iy", "iz", "dim");
 
     equation_context eqs;
 
@@ -1472,7 +1476,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     ///ok no: I think what it is is that they're solving for ph in ToV, which uses tov's conformally flat variable
     ///whereas I'm getting values directly out of an analytic solution
     ///the latter term comes from phi^5 * X^(3/2) == phi^5 * phi^-6, == phi^-1
-    value U_RHS = (-1.f/8.f) * cached_aij_aIJ * pow(phi, -7) - 2 * M_PI * pow(phi, -3) * cached_ppw2p - 2 * M_PI * pow(phi, -1) * cached_non_conformal_pH;
+    value U_RHS = (-1.f/8.f) * cached_aij_aIJ * pow(phi, -7) - 2 * (float)M_PI * pow(phi, -3) * cached_ppw2p - 2 * (float)M_PI * pow(phi, -1) * cached_non_conformal_pH;
 
     laplace_data solve(aij_aIJ_buf, ppw2p_buf, nonconformal_pH);
 
@@ -1636,9 +1640,9 @@ private:
 
         value rho = dat.mass_energy_density;
 
-        value u_value = dual_types::apply("buffer_index", "u_offset_in", "ix", "iy", "iz", "dim");
+        value u_value = dual_types::apply(value("buffer_index"), "u_offset_in", "ix", "iy", "iz", "dim");
         value phi = u_value;
-        value phi_rhs = -2 * M_PI * pow(phi, 5) * rho;
+        value phi_rhs = -2 * (float)M_PI * pow(phi, 5) * rho;
 
         equation_context ctx;
         ctx.add("B_PHI_RHS", phi_rhs);
@@ -1647,7 +1651,7 @@ private:
 
         value cst = 1 + obj.bare_mass / (2 * max(coordinate_radius, 1e-3f));
 
-        value integration_constant = if_v(coordinate_radius > radius, cst, 0);
+        value integration_constant = if_v(coordinate_radius > radius, cst, 0.f);
         value within_star = if_v(coordinate_radius <= radius, value{1.f}, value{0.f});
 
         ctx.add("SHOULD_NOT_USE_INTEGRATION_CONSTANT", within_star);
@@ -1948,7 +1952,7 @@ struct superimposed_gpu_data
             return v;
         };
 
-        value u_value = dual_types::apply("buffer_index", "u_value", "ix", "iy", "iz", "dim");
+        value u_value = dual_types::apply(value("buffer_index"), "u_value", "ix", "iy", "iz", "dim");
 
         ///https://arxiv.org/pdf/1606.04881.pdf 74
         value phi = conformal_guess + u_value + 1;
@@ -3503,7 +3507,7 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
     value bl_conformal = calculate_conformal_guess(pos, holes);
-    value u = dual_types::apply("buffer_index", "u_value", "ix", "iy", "iz", "dim");
+    value u = dual_types::apply(value("buffer_index"), "u_value", "ix", "iy", "iz", "dim");
     value phi = u + bl_conformal + 1;
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
@@ -3651,7 +3655,7 @@ void build_intermediate_thin(equation_context& ctx)
 {
     standard_arguments args(ctx);
 
-    value buffer = dual_types::apply("buffer_index", "buffer", "ix", "iy", "iz", "dim");
+    value buffer = dual_types::apply(value("buffer_index"), "buffer", "ix", "iy", "iz", "dim");
 
     value v1 = diff1(ctx, buffer, 0);
     value v2 = diff1(ctx, buffer, 1);
@@ -3669,7 +3673,7 @@ void build_intermediate_thin_directional(equation_context& ctx)
 
     standard_arguments args(ctx);
 
-    value buffer = dual_types::apply("buffer_index", "buffer", "ix", "iy", "iz", "dim");
+    value buffer = dual_types::apply(value("buffer_index"), "buffer", "ix", "iy", "iz", "dim");
 
     value v1 = diff1(ctx, buffer, 0);
     value v2 = diff1(ctx, buffer, 1);
@@ -4172,7 +4176,7 @@ void extract_waveforms(equation_context& ctx)
     value length = pos.length();
 
     ///this... seems like I'm missing something
-    value R = sqrt((4 * M_PI * length * length) / (4 * M_PI));
+    value R = sqrt((4 * (float)M_PI * length * length) / (4 * (float)M_PI));
 
     w4 = R * w4;
 

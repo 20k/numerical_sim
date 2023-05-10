@@ -33,7 +33,7 @@ struct equation_context : differentiator
     {
         for(auto& i : temporaries)
         {
-            if(dual_types::equivalent(v, i.first) || dual_types::equivalent(v, i.second))
+            if(dual_types::equivalent<float>(v, i.first) || dual_types::equivalent<float>(v, i.second))
             {
                 value facade;
                 facade.make_value(i.first);

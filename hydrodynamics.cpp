@@ -261,14 +261,18 @@ template<typename T>
 inline
 T chi_to_e_6phi_unclamped(const T& chi)
 {
-    return pow(1/(max(chi, T{0.f})), (3.f/2.f));
+    using namespace std;
+
+    return pow(1/(max(chi, 0.f)), (3.f/2.f));
 }
 
 template<typename T>
 inline
 T chi_to_e_m6phi_unclamped(const T& chi)
 {
-    return pow(max(chi, T{0.f}), (3.f/2.f));
+    using namespace std;
+
+    return pow(max(chi, 0.f), (3.f/2.f));
 }
 
 #define DIVISION_TOL 0.00001f

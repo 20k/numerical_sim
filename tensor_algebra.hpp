@@ -193,7 +193,7 @@ tensor<T, N, N, N> christoffel_symbols_2(differentiator& ctx, const metric<T, N,
                     sum = sum + local * inverse.idx(i, m);
                 }
 
-                christoff.idx(i, k, l) = 0.5 * sum;
+                christoff.idx(i, k, l) = 0.5f * sum;
             }
         }
     }
@@ -227,7 +227,7 @@ tensor<T, N, N, N> christoffel_symbols_2(const inverse_metric<T, N, N>& inverse,
                     sum += local * inverse.idx(i, m);
                 }
 
-                christoff.idx(i, k, l) = 0.5 * sum;
+                christoff.idx(i, k, l) = 0.5f * sum;
             }
         }
     }
@@ -450,10 +450,10 @@ struct frame_basis
 inline
 frame_basis calculate_frame_basis(equation_context& ctx, const metric<value, 4, 4>& met)
 {
-    vec<4, value> i1 = {1, 0, 0, 0};
-    vec<4, value> i2 = {0, 1, 0, 0};
-    vec<4, value> i3 = {0, 0, 1, 0};
-    vec<4, value> i4 = {0, 0, 0, 1};
+    vec<4, value> i1 = {1.f, 0.f, 0.f, 0.f};
+    vec<4, value> i2 = {0.f, 1.f, 0.f, 0.f};
+    vec<4, value> i3 = {0.f, 0.f, 1.f, 0.f};
+    vec<4, value> i4 = {0.f, 0.f, 0.f, 1.f};
 
     vec<4, value> u1 = i1;
 
@@ -647,7 +647,7 @@ void matrix_inverse(const T m[16], T invOut[16])
 
     det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
 
-    det = 1.0 / det;
+    det = T(1.0f) / det;
 
     for(int i = 0; i < 16; i++)
         invOut[i] = inv[i] * det;

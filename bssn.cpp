@@ -273,7 +273,7 @@ tensor<value, 3> bssn::calculate_momentum_constraint(matter_interop& interop, eq
         {
             tensor<value, 3> ji_lower = interop.calculate_adm_Si(ctx, args);
 
-            Mi.idx(i) += -8 * M_PI * ji_lower.idx(i);
+            Mi.idx(i) += -8 * (float)M_PI * ji_lower.idx(i);
         }
     }
 
@@ -310,7 +310,7 @@ value bssn::calculate_hamiltonian_constraint(matter_interop& interop, equation_c
 
     if(use_matter)
     {
-        ret += -16.f * M_PI * interop.calculate_adm_p(ctx, args);
+        ret += -16.f * (float)M_PI * interop.calculate_adm_p(ctx, args);
     }
 
     return ret;
@@ -819,7 +819,7 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
             {
                 tensor<value, 3, 3> xSij = interop.calculate_adm_X_Sij(ctx, args);
 
-                tensor<value, 3, 3> xgASij = trace_free(-8 * M_PI * gA * xSij, cY, icY);
+                tensor<value, 3, 3> xgASij = trace_free(-8 * (float)M_PI * gA * xSij, cY, icY);
 
                 //ctx.add("DBGXGA", xgASij.idx(0, 0));
                 //ctx.add("Debug_cS0", args.matt.cS.idx(0));
@@ -1043,13 +1043,12 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
         ///made it to 70+ and then i got bored, but the simulation was meaningfully different
         #define EQ_50
         #ifdef EQ_50
+
         auto step = [](const value& in)
         {
-            return dual_if(in >= 0,
-            [](){return 1;},
-            [](){return 0;});
-
+            return if_v(in >= 0.f, 1.f, 0.f);
         };
+
         value bkk = 0;
 
         for(int k=0; k < 3; k++)
@@ -1094,7 +1093,7 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
                 sum += icY.idx(i, j) * ji_lower.idx(j);
             }
 
-            dtcGi.idx(i) += gA * -2 * 8 * M_PI * sum;
+            dtcGi.idx(i) += gA * -2 * 8 * (float)M_PI * sum;
         }
     }
     #endif // CHRISTOFFEL_49
@@ -1166,7 +1165,7 @@ void bssn::build_K(matter_interop& interop, equation_context& ctx, bool use_matt
         value matter_s = interop.calculate_adm_S(ctx, args);
         value matter_p = interop.calculate_adm_p(ctx, args);
 
-        dtK += (8 * M_PI / 2) * gA * (matter_s + matter_p);
+        dtK += (8 * (float)M_PI / 2) * gA * (matter_s + matter_p);
 
         /*value h = calculate_h_with_gamma_eos(chi, W);
         value em6phi = chi_to_e_m6phi(chi);
