@@ -17,6 +17,7 @@ struct equation_context : differentiator
 {
     std::vector<std::pair<std::string, value>> values;
     std::vector<std::pair<std::string, value>> temporaries;
+    std::vector<std::pair<std::string, value>> sequenced;
     std::vector<std::pair<value, value>> aliases;
     bool uses_linear = false;
     bool debug = false;
@@ -49,6 +50,7 @@ struct equation_context : differentiator
         value old = v;
 
         temporaries.push_back({name, old});
+        sequenced.push_back({name, old});
 
         value facade;
         facade.make_value(name);
@@ -151,6 +153,7 @@ struct equation_context : differentiator
     void add(const std::string& name, const value& v)
     {
         values.push_back({name, v});
+        sequenced.push_back({name, v});
     }
 
     void strip_unused()
@@ -224,7 +227,7 @@ struct equation_context : differentiator
         }
     }
 
-    void substutite_aliases()
+    void substitute_aliases()
     {
         for(auto& [name, v] : values)
         {
@@ -235,12 +238,17 @@ struct equation_context : differentiator
         {
             v.substitute(aliases);
         }
+
+        for(auto& [name, v] : sequenced)
+        {
+            v.substitute(aliases);
+        }
     }
 
     void build_impl(std::string& argument_string, const std::string& str)
     {
         strip_unused();
-        substutite_aliases();
+        substitute_aliases();
 
         for(auto& i : values)
         {

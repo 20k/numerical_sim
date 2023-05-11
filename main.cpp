@@ -26,6 +26,7 @@
 #include "random.hpp"
 #include "galaxy_model.hpp"
 #include "cache.hpp"
+#include <stdfloat>
 
 /**
 current paper set
@@ -4852,17 +4853,263 @@ cl::image_with_mipmaps load_mipped_image(const std::string& fname, opencl_contex
     return image_mipped;
 }
 
-struct lightray
+template<typename T>
+std::string name_type()
 {
-    cl_float4 pos;
-    cl_float4 vel;
-    cl_int x, y;
+    if constexpr(std::is_same_v<T, float>)
+    {
+        return "float";
+    }
+
+    else if constexpr(std::is_same_v<T, double>)
+    {
+        return "double";
+    }
+
+    else if constexpr(std::is_same_v<T, std::float16_t>)
+    {
+        return "half";
+    }
+
+    else if constexpr(std::is_same_v<T, int>)
+    {
+        return "int";
+    }
+
+    else if constexpr(std::is_same_v<T, short>)
+    {
+        return "short";
+    }
+}
+
+struct input
+{
+    std::string type;
+    bool pointer = false;
+    std::string name;
+
+    std::string format()
+    {
+        if(pointer)
+        {
+            return "__global " + type + "* " + name;
+        }
+        else
+        {
+            return type + " " + name;
+        }
+    }
+
+    friend bool operator==(const input& i1, const input& i2)
+    {
+        return i1.name == i2.name && i1.pointer == i2.pointer && i1.type == i2.type;
+    }
 };
+
+template<typename T, int N>
+void add(const buffer<T, N>& buf, std::vector<input>& result);
+
+template<typename T>
+void add(const literal<T>& lit, std::vector<input>& result);
+
+template<typename T, int N>
+void add(const tensor<T, N>& ten, std::vector<input>& result);
+
+template<typename T, int N>
+void add(const buffer<T, N>& buf, std::vector<input>& result)
+{
+    add(buf.size, result);
+
+    input in;
+    in.type = name_type<typename T::value_type>();
+    in.pointer = true;
+    in.name = buf.name;
+
+    for(input& check : result)
+    {
+        if(check == in)
+            return;
+    }
+
+    result.push_back(in);
+}
+
+template<typename T>
+void add(const literal<T>& lit, std::vector<input>& result)
+{
+    input in;
+    in.type = name_type<typename T::value_type>();
+    in.pointer = false;
+    in.name = lit.name;
+
+    for(input& check : result)
+    {
+        if(check == in)
+            return;
+    }
+
+    result.push_back(in);
+}
+
+template<typename T, int N>
+void add(const tensor<T, N>& ten, std::vector<input>& result)
+{
+    for(const auto& i : ten)
+    {
+        if(i.is_constant())
+            continue;
+
+        input in;
+        in.type = name_type<typename T::value_type>();
+        in.pointer = false;
+        in.name = type_to_string(i);
+
+        for(input& check : result)
+        {
+            if(check == in)
+                return;
+        }
+
+        result.push_back(in);
+    }
+}
+
+template<typename T>
+void add(const T&, std::vector<input>& result)
+{
+
+}
+
+struct kernel_context
+{
+    std::string name;
+    std::vector<input> inputs;
+
+    template<typename T>
+    void add(const T& t)
+    {
+        ::add(t, inputs);
+    }
+};
+
+template<typename T>
+void split_args(std::vector<input>& result)
+{
+    add(T(), result);
+}
+
+template<typename T, typename... U>
+void split_args(std::vector<input>& result)
+{
+    add(T(), result);
+
+    split_args<U...>();
+}
+
+template<typename R, typename... Args>
+std::vector<input> get_args(R(*func)(Args...))
+{
+    std::vector<input> args;
+
+    split_args<Args...>(args);
+
+    return args;
+}
+
+void test_kernel(kernel_context& kctx, equation_context& ctx, buffer<value, 3> test_input, buffer<value, 3> test_output, literal<value> val)
+{
+    kctx.add(test_input);
+    kctx.add(test_output);
+    kctx.add(val);
+
+    valuei ix = "get_global_id(0)";
+    valuei iy = "get_global_id(1)";
+    valuei iz = "get_global_id(2)";
+
+    value test = test_input[ix, iy, iz];
+
+    test += 1;
+
+    test += val.get();
+
+    value result_expr = test_output.assign(test_output[ix, iy, iz], test);
+
+    ctx.add("SE0", result_expr);
+}
+
+std::string generate_kernel_string(kernel_context& kctx, equation_context& ctx)
+{
+    std::string base = "__kernel void " + kctx.name + "(";
+
+    for(int i=0; i < (int)kctx.inputs.size(); i++)
+    {
+        base += kctx.inputs[i].format();
+
+        if(i != (int)kctx.inputs.size() - 1)
+            base += ",";
+    }
+
+    base += ")\n{\n";
+
+    ctx.strip_unused();
+    ctx.substitute_aliases();
+
+    for(auto& [name, value] : ctx.sequenced)
+    {
+        std::string type = name_type<decltype(value)::value_type>();
+
+        base += type + " " + name + " = " + type_to_string(value) + "\n";
+    }
+
+    base += "\n}";
+
+    return base;
+}
+
+cl::kernel generate_kernel(cl::context& clctx, kernel_context& kctx, equation_context& ctx)
+{
+    std::string str = generate_kernel_string(kctx, ctx);
+
+    file::mkdir("generated");
+
+    std::string name = "generated/" + kctx.name + ".cl";
+
+    file::write(name, str, file::mode::BINARY);
+
+    cl::program prog = build_program_with_cache(clctx, name, "-cl-std=CL1.2");
+
+    return cl::kernel(prog, kctx.name);
+}
+
+void test_kernel_generation()
+{
+    kernel_context kctx;
+    kctx.name = "test_kernel";
+
+    equation_context ectx;
+
+    buffer<value, 3> hello;
+    hello.size = {"dx", "dy", "dz"};
+    hello.name = "hello";
+
+    buffer<value, 3> out;
+    out.size = {"dx", "dy", "dz"};
+    out.name = "out";
+
+    literal<value> lit;
+    lit.name = "lit";
+
+    test_kernel(kctx, ectx, hello, out, lit);
+
+    std::cout << "KERN " << generate_kernel_string(kctx, ectx) << std::endl;
+}
 
 ///it seems like basically i need numerical dissipation of some form
 ///if i didn't evolve where sponge = 1, would be massively faster
 int main()
 {
+    test_kernel_generation();
+
     test_w();
 
     steady_timer time_to_main;
