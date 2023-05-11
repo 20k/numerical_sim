@@ -4918,8 +4918,6 @@ void add(const tensor<T, N>& ten, std::vector<input>& result);
 template<typename T, int N>
 void add(const buffer<T, N>& buf, std::vector<input>& result)
 {
-    add(buf.size, result);
-
     input in;
     in.type = name_type<typename T::value_type>();
     in.pointer = true;
@@ -5016,11 +5014,14 @@ std::vector<input> get_args(R(*func)(Args...))
     return args;
 }
 
-void test_kernel(kernel_context& kctx, equation_context& ctx, buffer<value, 3> test_input, buffer<value, 3> test_output, literal<value> val)
+void test_kernel(kernel_context& kctx, equation_context& ctx, buffer<value, 3> test_input, buffer<value, 3> test_output, literal<value> val, literal<valuei> dx, literal<valuei> dy, literal<valuei> dz)
 {
     kctx.add(test_input);
     kctx.add(test_output);
     kctx.add(val);
+    kctx.add(dx);
+    kctx.add(dy);
+    kctx.add(dz);
 
     valuei ix = "get_global_id(0)";
     valuei iy = "get_global_id(1)";
@@ -5058,7 +5059,7 @@ std::string generate_kernel_string(kernel_context& kctx, equation_context& ctx)
     {
         std::string type = name_type<decltype(value)::value_type>();
 
-        base += type + " " + name + " = " + type_to_string(value) + "\n";
+        base += type + " " + name + " = " + type_to_string(value) + ";\n";
     }
 
     base += "\n}";
@@ -5081,7 +5082,18 @@ cl::kernel generate_kernel(cl::context& clctx, kernel_context& kctx, equation_co
     return cl::kernel(prog, kctx.name);
 }
 
-void test_kernel_generation()
+template<typename Q, typename... T>
+void run_kernel(cl::kernel kern, Q& cqueue, std::vector<size_t> global_ws, std::vector<size_t> local_ws, T&&... args)
+{
+    cl::args argsp;
+    argsp.push_back(std::forward<T>(args)...);
+
+    kern.set_args(argsp);
+
+    cqueue.exec(kern, global_ws, local_ws);
+}
+
+void test_kernel_generation(cl::context& clctx, cl::command_queue& cqueue)
 {
     kernel_context kctx;
     kctx.name = "test_kernel";
@@ -5096,10 +5108,21 @@ void test_kernel_generation()
     out.size = {"dx", "dy", "dz"};
     out.name = "out";
 
-    literal<value> lit;
-    lit.name = "lit";
+    test_kernel(kctx, ectx, hello, out, "lit", "dx", "dy", "dz");
 
-    test_kernel(kctx, ectx, hello, out, lit);
+    cl::kernel kern = generate_kernel(clctx, kctx, ectx);
+
+    cl::buffer b_in(clctx);
+    b_in.alloc(sizeof(cl_float) * 128 * 128 * 128);
+    b_in.set_to_zero(cqueue);
+
+    cl::buffer b_out(clctx);
+    b_out.alloc(sizeof(cl_float) * 128 * 128 * 128);
+    b_out.set_to_zero(cqueue);
+
+    cl_float lit = 2.f;
+
+    run_kernel(kern, cqueue, {128, 128, 128}, {8,8,1}, b_in, b_out, lit, 128, 128, 128);
 
     std::cout << "KERN " << generate_kernel_string(kctx, ectx) << std::endl;
 }
@@ -5108,8 +5131,6 @@ void test_kernel_generation()
 ///if i didn't evolve where sponge = 1, would be massively faster
 int main()
 {
-    test_kernel_generation();
-
     test_w();
 
     steady_timer time_to_main;
@@ -5168,6 +5189,8 @@ int main()
 
         printf("Voxel pos %f %f %f\n", pos.x(), pos.y(), pos.z());
     }
+
+    test_kernel_generation(clctx.ctx, clctx.cqueue);
 
     cl::buffer u_arg(clctx.ctx);
 
