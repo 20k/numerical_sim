@@ -4916,12 +4916,16 @@ template<typename T, int N>
 void add(const tensor<T, N>& ten, std::vector<input>& result);
 
 template<typename T, int N>
-void add(const buffer<T, N>& buf, std::vector<input>& result)
+void add(buffer<T, N>& buf, std::vector<input>& result)
 {
     input in;
     in.type = name_type<typename T::value_type>();
     in.pointer = true;
-    in.name = buf.name;
+
+    std::string name = "buf" + std::to_string(result.size());
+
+    in.name = name;
+    buf.name = name;
 
     for(input& check : result)
     {
@@ -4933,12 +4937,16 @@ void add(const buffer<T, N>& buf, std::vector<input>& result)
 }
 
 template<typename T>
-void add(const literal<T>& lit, std::vector<input>& result)
+void add(literal<T>& lit, std::vector<input>& result)
 {
     input in;
     in.type = name_type<typename T::value_type>();
     in.pointer = false;
-    in.name = lit.name;
+
+    std::string name = "lit" + std::to_string(result.size());
+
+    in.name = name;
+    lit.name = name;
 
     for(input& check : result)
     {
@@ -4950,9 +4958,9 @@ void add(const literal<T>& lit, std::vector<input>& result)
 }
 
 template<typename T, int N>
-void add(const tensor<T, N>& ten, std::vector<input>& result)
+void add(tensor<T, N>& ten, std::vector<input>& result)
 {
-    for(const auto& i : ten)
+    for(auto& i : ten)
     {
         if(i.is_constant())
             continue;
@@ -4960,7 +4968,11 @@ void add(const tensor<T, N>& ten, std::vector<input>& result)
         input in;
         in.type = name_type<typename T::value_type>();
         in.pointer = false;
-        in.name = type_to_string(i);
+
+        std::string name = "ten" + std::to_string(result.size());
+
+        in.name = name;
+        i.name = name;
 
         for(input& check : result)
         {
@@ -4984,7 +4996,7 @@ struct kernel_context
     std::vector<input> inputs;
 
     template<typename T>
-    void add(const T& t)
+    void add(T& t)
     {
         ::add(t, inputs);
     }
@@ -5014,14 +5026,14 @@ std::vector<input> get_args(R(*func)(Args...))
     return args;
 }
 
-void test_kernel(kernel_context& kctx, equation_context& ctx, buffer<value, 3> test_input, buffer<value, 3> test_output, literal<value> val, literal<valuei> dx, literal<valuei> dy, literal<valuei> dz)
+///so, workflow
+///want to declare a kernel in one step like this, and then immediately run it in the second step with a bunch of buffers without any messing around
+///buffer names need to be dynamic
+///buffer *sizes* may need to be manually associated within this function
+void test_kernel(equation_context& ctx, buffer<value, 3> test_input, buffer<value, 3> test_output, literal<value> val, literal<valuei> dx, literal<valuei> dy, literal<valuei> dz)
 {
-    kctx.add(test_input);
-    kctx.add(test_output);
-    kctx.add(val);
-    kctx.add(dx);
-    kctx.add(dy);
-    kctx.add(dz);
+    test_input.size = {dx.get(), dy.get(), dz.get()};
+    test_output.size = {dx.get(), dy.get(), dz.get()};
 
     valuei ix = "get_global_id(0)";
     valuei iy = "get_global_id(1)";
@@ -5093,6 +5105,19 @@ void run_kernel(cl::kernel kern, Q& cqueue, std::vector<size_t> global_ws, std::
     cqueue.exec(kern, global_ws, local_ws);
 }
 
+template<typename R, typename... Args>
+void setup_kernel(kernel_context& kctx, equation_context& ectx, R(*func)(equation_context&, Args...))
+{
+    std::tuple<equation_context&> a1 = {ectx};
+    std::tuple<Args...> a2;
+
+    std::apply([&](auto&&... args){
+        (kctx.add(args), ...);
+    }, a2);
+
+    std::apply(func, std::tuple_cat(a1, a2));
+}
+
 void test_kernel_generation(cl::context& clctx, cl::command_queue& cqueue)
 {
     kernel_context kctx;
@@ -5101,14 +5126,10 @@ void test_kernel_generation(cl::context& clctx, cl::command_queue& cqueue)
     equation_context ectx;
 
     buffer<value, 3> hello;
-    hello.size = {"dx", "dy", "dz"};
-    hello.name = "hello";
 
     buffer<value, 3> out;
-    out.size = {"dx", "dy", "dz"};
-    out.name = "out";
 
-    test_kernel(kctx, ectx, hello, out, "lit", "dx", "dy", "dz");
+    setup_kernel(kctx, ectx, test_kernel);
 
     cl::kernel kern = generate_kernel(clctx, kctx, ectx);
 
