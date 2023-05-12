@@ -4992,7 +4992,6 @@ void add(const T&, std::vector<input>& result)
 
 struct kernel_context
 {
-    std::string name;
     std::vector<input> inputs;
 
     template<typename T>
@@ -5052,7 +5051,7 @@ void test_kernel(equation_context& ctx, buffer<value, 3> test_input, buffer<valu
 
 std::string generate_kernel_string(kernel_context& kctx, equation_context& ctx)
 {
-    std::string base = "__kernel void " + kctx.name + "(";
+    std::string base = "__kernel void kernel_name(";
 
     for(int i=0; i < (int)kctx.inputs.size(); i++)
     {
@@ -5069,9 +5068,16 @@ std::string generate_kernel_string(kernel_context& kctx, equation_context& ctx)
 
     for(auto& [name, value] : ctx.sequenced)
     {
-        std::string type = name_type<decltype(value)::value_type>();
+        if(name == "")
+        {
+            base += type_to_string(value) + ";\n";
+        }
+        else
+        {
+            std::string type = name_type<decltype(value)::value_type>();
 
-        base += type + " " + name + " = " + type_to_string(value) + ";\n";
+            base += type + " " + name + " = " + type_to_string(value) + ";\n";
+        }
     }
 
     base += "\n}";
@@ -5085,13 +5091,13 @@ cl::kernel generate_kernel(cl::context& clctx, kernel_context& kctx, equation_co
 
     file::mkdir("generated");
 
-    std::string name = "generated/" + kctx.name + ".cl";
+    std::string name = "generated/" + std::to_string(std::hash<std::string>()(str)) + ".cl";
 
     file::write(name, str, file::mode::BINARY);
 
     cl::program prog = build_program_with_cache(clctx, name, "-cl-std=CL1.2");
 
-    return cl::kernel(prog, kctx.name);
+    return cl::kernel(prog, "kernel_name");
 }
 
 template<typename Q, typename... T>
@@ -5121,13 +5127,7 @@ void setup_kernel(kernel_context& kctx, equation_context& ectx, R(*func)(equatio
 void test_kernel_generation(cl::context& clctx, cl::command_queue& cqueue)
 {
     kernel_context kctx;
-    kctx.name = "test_kernel";
-
     equation_context ectx;
-
-    buffer<value, 3> hello;
-
-    buffer<value, 3> out;
 
     setup_kernel(kctx, ectx, test_kernel);
 

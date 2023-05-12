@@ -30,6 +30,11 @@ struct equation_context : differentiator
     virtual value diff1(const value& in, int idx){return ::diff1(*this, in, idx);};
     virtual value diff2(const value& in, int idx, int idy, const value& dx, const value& dy){return ::diff2(*this, in, idx, idy, dx, dy);};
 
+    void exec(value& v)
+    {
+        sequenced.push_back({"", v});
+    }
+
     void pin(value& v)
     {
         for(auto& i : temporaries)
