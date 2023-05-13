@@ -27,6 +27,7 @@
 #include "galaxy_model.hpp"
 #include "cache.hpp"
 #include <stdfloat>
+#include "single_source.hpp"
 
 /**
 current paper set
@@ -4853,155 +4854,6 @@ cl::image_with_mipmaps load_mipped_image(const std::string& fname, opencl_contex
     return image_mipped;
 }
 
-template<typename T>
-std::string name_type()
-{
-    if constexpr(std::is_same_v<T, float>)
-    {
-        return "float";
-    }
-
-    else if constexpr(std::is_same_v<T, double>)
-    {
-        return "double";
-    }
-
-    else if constexpr(std::is_same_v<T, std::float16_t>)
-    {
-        return "half";
-    }
-
-    else if constexpr(std::is_same_v<T, int>)
-    {
-        return "int";
-    }
-
-    else if constexpr(std::is_same_v<T, short>)
-    {
-        return "short";
-    }
-}
-
-struct input
-{
-    std::string type;
-    bool pointer = false;
-    std::string name;
-
-    std::string format()
-    {
-        if(pointer)
-        {
-            return "__global " + type + "* " + name;
-        }
-        else
-        {
-            return type + " " + name;
-        }
-    }
-};
-
-template<typename T, int N>
-void add(const buffer<T, N>& buf, std::vector<input>& result);
-
-template<typename T>
-void add(const literal<T>& lit, std::vector<input>& result);
-
-template<typename T, int N>
-void add(const tensor<T, N>& ten, std::vector<input>& result);
-
-template<typename T, int N>
-void add(buffer<T, N>& buf, std::vector<input>& result)
-{
-    input in;
-    in.type = name_type<typename T::value_type>();
-    in.pointer = true;
-
-    std::string name = "buf" + std::to_string(result.size());
-
-    in.name = name;
-    buf.name = name;
-
-    result.push_back(in);
-}
-
-template<typename T>
-void add(literal<T>& lit, std::vector<input>& result)
-{
-    input in;
-    in.type = name_type<typename T::value_type>();
-    in.pointer = false;
-
-    std::string name = "lit" + std::to_string(result.size());
-
-    in.name = name;
-    lit.name = name;
-
-    result.push_back(in);
-}
-
-template<typename T, int N>
-void add(tensor<T, N>& ten, std::vector<input>& result)
-{
-    for(auto& i : ten)
-    {
-        if(i.is_constant())
-            continue;
-
-        input in;
-        in.type = name_type<typename T::value_type>();
-        in.pointer = false;
-
-        std::string name = "ten" + std::to_string(result.size());
-
-        in.name = name;
-        i.name = name;
-
-        result.push_back(in);
-    }
-}
-
-template<typename T>
-void add(const T&, std::vector<input>& result)
-{
-
-}
-
-struct kernel_context
-{
-    std::vector<input> inputs;
-
-    template<typename T>
-    void add(T& t)
-    {
-        ::add(t, inputs);
-    }
-};
-
-template<typename T>
-void split_args(std::vector<input>& result)
-{
-    add(T(), result);
-}
-
-template<typename T, typename... U>
-void split_args(std::vector<input>& result)
-{
-    add(T(), result);
-
-    split_args<U...>();
-}
-
-template<typename R, typename... Args>
-std::vector<input> get_args(R(*func)(Args...))
-{
-    std::vector<input> args;
-
-    split_args<Args...>(args);
-
-    return args;
-}
-
 ///so, workflow
 ///want to declare a kernel in one step like this, and then immediately run it in the second step with a bunch of buffers without any messing around
 ///buffer names need to be dynamic
@@ -5026,89 +4878,11 @@ void test_kernel(equation_context& ctx, buffer<value, 3> test_input, buffer<valu
     ctx.add("SE0", result_expr);
 }
 
-std::string generate_kernel_string(kernel_context& kctx, equation_context& ctx)
-{
-    std::string base = "__kernel void kernel_name(";
-
-    for(int i=0; i < (int)kctx.inputs.size(); i++)
-    {
-        base += kctx.inputs[i].format();
-
-        if(i != (int)kctx.inputs.size() - 1)
-            base += ",";
-    }
-
-    base += ")\n{\n";
-
-    ctx.strip_unused();
-    ctx.substitute_aliases();
-
-    for(auto& [name, value] : ctx.sequenced)
-    {
-        if(name == "")
-        {
-            base += type_to_string(value) + ";\n";
-        }
-        else
-        {
-            std::string type = name_type<decltype(value)::value_type>();
-
-            base += type + " " + name + " = " + type_to_string(value) + ";\n";
-        }
-    }
-
-    base += "\n}";
-
-    return base;
-}
-
-cl::kernel generate_kernel(cl::context& clctx, kernel_context& kctx, equation_context& ctx)
-{
-    std::string str = generate_kernel_string(kctx, ctx);
-
-    file::mkdir("generated");
-
-    std::string name = "generated/" + std::to_string(std::hash<std::string>()(str)) + ".cl";
-
-    file::write(name, str, file::mode::BINARY);
-
-    cl::program prog = build_program_with_cache(clctx, name, "-cl-std=CL1.2");
-
-    return cl::kernel(prog, "kernel_name");
-}
-
-template<typename Q, typename... T>
-void run_kernel(cl::kernel kern, Q& cqueue, std::vector<size_t> global_ws, std::vector<size_t> local_ws, T&&... args)
-{
-    cl::args argsp;
-    argsp.push_back(std::forward<T>(args)...);
-
-    kern.set_args(argsp);
-
-    cqueue.exec(kern, global_ws, local_ws);
-}
-
-template<typename R, typename... Args>
-void setup_kernel(kernel_context& kctx, equation_context& ectx, R(*func)(equation_context&, Args...))
-{
-    std::tuple<equation_context&> a1 = {ectx};
-    std::tuple<Args...> a2;
-
-    std::apply([&](auto&&... args){
-        (kctx.add(args), ...);
-    }, a2);
-
-    std::apply(func, std::tuple_cat(a1, a2));
-}
-
 void test_kernel_generation(cl::context& clctx, cl::command_queue& cqueue)
 {
-    kernel_context kctx;
     equation_context ectx;
 
-    setup_kernel(kctx, ectx, test_kernel);
-
-    cl::kernel kern = generate_kernel(clctx, kctx, ectx);
+    cl::kernel kern = single_source::make_kernel_for(clctx, ectx, test_kernel);
 
     cl::buffer b_in(clctx);
     b_in.alloc(sizeof(cl_float) * 128 * 128 * 128);
@@ -5120,19 +4894,10 @@ void test_kernel_generation(cl::context& clctx, cl::command_queue& cqueue)
 
     cl_float lit = 2.f;
 
-    run_kernel(kern, cqueue, {128, 128, 128}, {8,8,1}, b_in, b_out, lit, 128, 128, 128);
+    cl::args args;
+    args.push_back(b_in, b_out, lit, 128, 128, 128);
 
-    std::cout << "KERN " << generate_kernel_string(kctx, ectx) << std::endl;
-}
-
-template<typename T>
-inline
-cl::kernel make_kernel_for(cl::context& clctx, equation_context& ectx, T&& func)
-{
-    kernel_context kctx;
-    setup_kernel(kctx, ectx, func);
-
-    return generate_kernel(clctx, kctx, ectx);
+    cqueue.exec(kern, {128, 128, 128}, {8,8,1});
 }
 
 ///it seems like basically i need numerical dissipation of some form

@@ -186,6 +186,7 @@
 		<Unit filename="random.hpp" />
 		<Unit filename="ref_counted.hpp" />
 		<Unit filename="rendering.cl" />
+		<Unit filename="single_source.hpp" />
 		<Unit filename="spherical_decomposition.hpp" />
 		<Unit filename="spherical_harmonics.hpp" />
 		<Unit filename="spherical_integration.hpp" />
