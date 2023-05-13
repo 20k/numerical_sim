@@ -4899,11 +4899,6 @@ struct input
             return type + " " + name;
         }
     }
-
-    friend bool operator==(const input& i1, const input& i2)
-    {
-        return i1.name == i2.name && i1.pointer == i2.pointer && i1.type == i2.type;
-    }
 };
 
 template<typename T, int N>
@@ -4927,12 +4922,6 @@ void add(buffer<T, N>& buf, std::vector<input>& result)
     in.name = name;
     buf.name = name;
 
-    for(input& check : result)
-    {
-        if(check == in)
-            return;
-    }
-
     result.push_back(in);
 }
 
@@ -4947,12 +4936,6 @@ void add(literal<T>& lit, std::vector<input>& result)
 
     in.name = name;
     lit.name = name;
-
-    for(input& check : result)
-    {
-        if(check == in)
-            return;
-    }
 
     result.push_back(in);
 }
@@ -4973,12 +4956,6 @@ void add(tensor<T, N>& ten, std::vector<input>& result)
 
         in.name = name;
         i.name = name;
-
-        for(input& check : result)
-        {
-            if(check == in)
-                return;
-        }
 
         result.push_back(in);
     }
@@ -5146,6 +5123,16 @@ void test_kernel_generation(cl::context& clctx, cl::command_queue& cqueue)
     run_kernel(kern, cqueue, {128, 128, 128}, {8,8,1}, b_in, b_out, lit, 128, 128, 128);
 
     std::cout << "KERN " << generate_kernel_string(kctx, ectx) << std::endl;
+}
+
+template<typename T>
+inline
+cl::kernel make_kernel_for(cl::context& clctx, equation_context& ectx, T&& func)
+{
+    kernel_context kctx;
+    setup_kernel(kctx, ectx, func);
+
+    return generate_kernel(clctx, kctx, ectx);
 }
 
 ///it seems like basically i need numerical dissipation of some form
