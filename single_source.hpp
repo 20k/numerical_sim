@@ -4,42 +4,13 @@
 #include <string>
 #include "equation_context.hpp"
 #include <geodesic/dual_value.hpp>
+#include <stdfloat>
+#include "cache.hpp"
 
 namespace single_source
 {
     namespace impl
     {
-        template<typename T>
-        inline
-        std::string name_type()
-        {
-            if constexpr(std::is_same_v<T, float>)
-            {
-                return "float";
-            }
-
-            else if constexpr(std::is_same_v<T, double>)
-            {
-                return "double";
-            }
-
-            else if constexpr(std::is_same_v<T, std::float16_t>)
-            {
-                return "half";
-            }
-
-            else if constexpr(std::is_same_v<T, int>)
-            {
-                return "int";
-            }
-
-            else if constexpr(std::is_same_v<T, short>)
-            {
-                return "short";
-            }
-        }
-
-
         struct input
         {
             std::string type;
@@ -76,7 +47,7 @@ namespace single_source
         void add(buffer<T, N>& buf, std::vector<input>& result)
         {
             input in;
-            in.type = name_type<typename T::value_type>();
+            in.type = dual_types::name_type(T());
             in.pointer = true;
 
             std::string name = "buf" + std::to_string(result.size());
@@ -92,7 +63,7 @@ namespace single_source
         void add(literal<T>& lit, std::vector<input>& result)
         {
             input in;
-            in.type = name_type<typename T::value_type>();
+            in.type = dual_types::name_type(T());
             in.pointer = false;
 
             std::string name = "lit" + std::to_string(result.size());
@@ -113,7 +84,7 @@ namespace single_source
                     continue;
 
                 input in;
-                in.type = name_type<typename T::value_type>();
+                in.type = dual_types::name_type(T());
                 in.pointer = false;
 
                 std::string name = "ten" + std::to_string(result.size());
@@ -169,7 +140,7 @@ namespace single_source
                 }
                 else
                 {
-                    std::string type = name_type<decltype(value)::value_type>();
+                    std::string type = dual_types::name_type(decltype(value)());
 
                     base += type + " " + name + " = " + type_to_string(value) + ";\n";
                 }

@@ -3,6 +3,8 @@
 #include <execution>
 #include <iostream>
 #include <toolkit/fs_helpers.hpp>
+#include "equation_context.hpp"
+#include "single_source.hpp"
 
 void save_buffer(cl::command_queue& cqueue, cl::buffer& buf, const std::string& where)
 {
@@ -366,9 +368,27 @@ buffer_set& cpu_mesh::get_buffers(cl::context& ctx, cl::managed_command_queue& m
     return data.at(index);
 }
 
+void dissipate_single_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 1> points, literal<value_i> point_count,
+                             buffer<value, 3> in_buffer, buffer<value, 3> out_buffer, literal<value> coefficient, literal<value> scale, literal<value_base<cl_int4>> dim, literal<value> timestep, buffer<value_us, 3> order_ptr)
+{
+    value_i lidx = "get_global_id(0)";
+
+    tensor<value_us, 4> point = points[lidx];
+
+    std::cout << type_to_string(point.x()) << std::endl;
+
+    /*value_base<unsigned short> px = point.x<unsigned short>();
+    value_base<unsigned short> py = point.y<unsigned short>();
+    value_base<unsigned short> pz = point.z<unsigned short>();*/
+}
+
 ///returns buffers and intermediates
 void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, step_callback callback)
 {
+    equation_context ectx;
+
+    single_source::make_kernel_for(ctx, ectx, dissipate_single_unidir);
+
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
     mqueue.begin_splice(main_queue);

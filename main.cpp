@@ -4858,14 +4858,14 @@ cl::image_with_mipmaps load_mipped_image(const std::string& fname, opencl_contex
 ///want to declare a kernel in one step like this, and then immediately run it in the second step with a bunch of buffers without any messing around
 ///buffer names need to be dynamic
 ///buffer *sizes* may need to be manually associated within this function
-void test_kernel(equation_context& ctx, buffer<value, 3> test_input, buffer<value, 3> test_output, literal<value> val, literal<valuei> dx, literal<valuei> dy, literal<valuei> dz)
+void test_kernel(equation_context& ctx, buffer<value, 3> test_input, buffer<value, 3> test_output, literal<value> val, literal<value_i> dx, literal<value_i> dy, literal<value_i> dz)
 {
     test_input.size = {dx.get(), dy.get(), dz.get()};
     test_output.size = {dx.get(), dy.get(), dz.get()};
 
-    valuei ix = "get_global_id(0)";
-    valuei iy = "get_global_id(1)";
-    valuei iz = "get_global_id(2)";
+    value_i ix = "get_global_id(0)";
+    value_i iy = "get_global_id(1)";
+    value_i iz = "get_global_id(2)";
 
     ctx.exec(if_s(ix >= dx || iy >= dy || iz >= dz, dual_types::return_s<float>()));
 
