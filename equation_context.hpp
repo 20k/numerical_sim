@@ -30,9 +30,16 @@ struct equation_context : differentiator
     virtual value diff1(const value& in, int idx){return ::diff1(*this, in, idx);};
     virtual value diff2(const value& in, int idx, int idy, const value& dx, const value& dy){return ::diff2(*this, in, idx, idy, dx, dy);};
 
-    void exec(value& v)
+    void exec(const value& v)
     {
         sequenced.push_back({"", v});
+    }
+
+    ////errrr this is starting to become a real type mess
+    template<typename T>
+    void exec(const value_base<T>& v)
+    {
+        return exec(v.template as<float>());
     }
 
     void pin(value& v)
