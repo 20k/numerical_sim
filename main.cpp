@@ -4873,11 +4873,11 @@ void test_kernel(equation_context& ctx, buffer<value, 3> test_input, buffer<valu
 
     test += 1;
 
-    test += val.get();
+    test += val;
 
     value result_expr = test_output.assign(test_output[ix, iy, iz], test);
 
-    ctx.add("SE0", result_expr);
+    ctx.exec(result_expr);
 }
 
 void test_kernel_generation(cl::context& clctx, cl::command_queue& cqueue)
