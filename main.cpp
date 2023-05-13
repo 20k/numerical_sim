@@ -4894,8 +4894,7 @@ void test_kernel_generation(cl::context& clctx, cl::command_queue& cqueue)
 
     cl_float lit = 2.f;
 
-    cl::args args;
-    args.push_back(b_in, b_out, lit, 128, 128, 128);
+    kern.set_args(b_in, b_out, lit, 128, 128, 128);
 
     cqueue.exec(kern, {128, 128, 128}, {8,8,1});
 }
