@@ -392,8 +392,8 @@ void dissipate_single_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 
     ///D_FULL
     value_us full = 2;
 
-    value on_exit = (assign(out_buffer[ix,iy,iz], in_value),
-                     dual_types::return_s<float>());
+    value_v on_exit = (assign(out_buffer[ix,iy,iz], in_value),
+                       dual_types::return_s());
 
     ctx.exec(if_s(((order & full) == 0),
              on_exit
@@ -409,7 +409,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 {
     equation_context ectx;
 
-    single_source::make_kernel_for(ctx, ectx, dissipate_single_unidir);
+    //single_source::make_kernel_for(ctx, ectx, dissipate_single_unidir);
 
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 

@@ -475,7 +475,7 @@ tensor<value, 3, 3> bssn::calculate_xgARij(equation_context& ctx, standard_argum
     tensor<value, 3> dX = args.get_dX();
 
     ///this needs to be fixed if we're using W
-    tensor<value, 3, 3> cov_div_X = double_covariant_derivative(ctx, args.get_X(), args.dX_impl, args.cY, icY, christoff2);
+    tensor<value, 3, 3> cov_div_X = double_covariant_derivative(ctx, args.get_X(), args.dX_impl, christoff2);
     ctx.pin(cov_div_X);
 
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf
