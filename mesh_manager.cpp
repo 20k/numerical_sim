@@ -369,11 +369,21 @@ buffer_set& cpu_mesh::get_buffers(cl::context& ctx, cl::managed_command_queue& m
 }
 
 void dissipate_single_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 1> points, literal<value_i> point_count,
-                             buffer<value, 3> in_buffer, buffer<value, 3> out_buffer, literal<value> coefficient, literal<value> scale, literal<value_base<cl_int4>> dim, literal<value> timestep, buffer<value_us, 3> order_ptr)
+                             buffer<value, 3> in_buffer, buffer<value, 3> out_buffer, literal<value> coefficient, literal<value> scale, literal<tensor<value_i, 4>> dim, literal<value> timestep, buffer<value_us, 3> order_ptr)
 {
+    tensor<value_i, 3> ldim = {dim.get().x(), dim.get().y(), dim.get().y()};
+
+    in_buffer.size = ldim;
+    out_buffer.size = ldim;
+    order_ptr.size = ldim;
+
     value_i lidx = "get_global_id(0)";
 
     tensor<value_us, 4> point = points[lidx];
+
+    value_i ix = (value_i)point.x();
+    value_i iy = (value_i)point.y();
+    value_i iz = (value_i)point.z();
 
     std::cout << type_to_string(point.x()) << std::endl;
 
