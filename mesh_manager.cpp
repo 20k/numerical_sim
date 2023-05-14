@@ -392,14 +392,12 @@ void dissipate_single_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 
     ///D_FULL
     value_us full = 2;
 
-    value on_exit = (out_buffer.assign(out_buffer[ix,iy,iz], in_value),
+    value on_exit = (assign(out_buffer[ix,iy,iz], in_value),
                      dual_types::return_s<float>());
 
     ctx.exec(if_s(((order & full) == 0),
              on_exit
              ));
-
-    std::cout << type_to_string(on_exit) << std::endl;
 
     /*value_base<unsigned short> px = point.x<unsigned short>();
     value_base<unsigned short> py = point.y<unsigned short>();
