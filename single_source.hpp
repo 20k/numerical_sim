@@ -152,7 +152,7 @@ namespace single_source
         }
 
         inline
-        cl::kernel generate_kernel(cl::context& clctx, kernel_context& kctx, equation_context& ctx, const std::string& extra_args)
+        cl::kernel generate_kernel(cl::context& clctx, kernel_context& kctx, equation_context& ctx, const std::string& kernel_name, const std::string& extra_args)
         {
             std::string str = generate_kernel_string(kctx, ctx);
 
@@ -164,7 +164,7 @@ namespace single_source
 
             cl::program prog = build_program_with_cache(clctx, name, "-cl-std=CL1.2 " + extra_args);
 
-            return cl::kernel(prog, "kernel_name");
+            return cl::kernel(prog, kernel_name);
         }
 
         template<typename R, typename... Args>
@@ -184,12 +184,12 @@ namespace single_source
 
     template<typename T>
     inline
-    cl::kernel make_kernel_for(cl::context& clctx, equation_context& ectx, T&& func, const std::string& extra_args = "")
+    cl::kernel make_kernel_for(cl::context& clctx, equation_context& ectx, T&& func, const std::string& kernel_name = "kernel_name", const std::string& extra_args = "")
     {
         impl::kernel_context kctx;
         impl::setup_kernel(kctx, ectx, func);
 
-        return impl::generate_kernel(clctx, kctx, ectx, extra_args);
+        return impl::generate_kernel(clctx, kctx, ectx, kernel_name, extra_args);
     }
 
 }
