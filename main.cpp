@@ -4867,7 +4867,7 @@ void test_kernel(equation_context& ctx, buffer<value, 3> test_input, buffer<valu
     value_i iy = "get_global_id(1)";
     value_i iz = "get_global_id(2)";
 
-    ctx.exec(if_s(ix >= dx || iy >= dy || iz >= dz, dual_types::return_s()));
+    ctx.exec(if_s(ix >= dx || iy >= dy || iz >= dz, return_s));
 
     value test = test_input[ix, iy, iz];
 

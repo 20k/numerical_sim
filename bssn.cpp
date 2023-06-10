@@ -838,6 +838,8 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
     dtcAij += -0.5f * args.gA * args.cA * -calculate_hamiltonian_constraint(interop, ctx, use_matter);
     #endif
 
+    ///https://arxiv.org/pdf/gr-qc/0204002.pdf todo: 4.3
+
     for(int i=0; i < 6; i++)
     {
         std::string name = "dtcAij" + std::to_string(i);

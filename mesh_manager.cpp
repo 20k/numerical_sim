@@ -393,7 +393,7 @@ void dissipate_single_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 
     value_us full = 2;
 
     value_v on_exit = (assign(out_buffer[ix,iy,iz], in_value),
-                       dual_types::return_s());
+                       return_s);
 
     ctx.exec(if_s(((order & full) == 0),
              on_exit
