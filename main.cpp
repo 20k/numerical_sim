@@ -4858,16 +4858,16 @@ cl::image_with_mipmaps load_mipped_image(const std::string& fname, opencl_contex
 ///want to declare a kernel in one step like this, and then immediately run it in the second step with a bunch of buffers without any messing around
 ///buffer names need to be dynamic
 ///buffer *sizes* may need to be manually associated within this function
-void test_kernel(equation_context& ctx, buffer<value, 3> test_input, buffer<value, 3> test_output, literal<value> val, literal<value_i> dx, literal<value_i> dy, literal<value_i> dz)
+void test_kernel(equation_context& ctx, buffer<value, 3> test_input, buffer<value, 3> test_output, literal<value> val, literal<tensor<value_i, 3>> dim)
 {
-    test_input.size = {dx.get(), dy.get(), dz.get()};
-    test_output.size = {dx.get(), dy.get(), dz.get()};
+    test_input.size = dim.get();
+    test_output.size = dim.get();
 
     value_i ix = "get_global_id(0)";
     value_i iy = "get_global_id(1)";
     value_i iz = "get_global_id(2)";
 
-    ctx.exec(if_s(ix >= dx || iy >= dy || iz >= dz, return_s));
+    ctx.exec(if_s(ix >= dim.get().x() || iy >= dim.get().y() || iz >= dim.get().z(), return_s));
 
     value test = test_input[ix, iy, iz];
 
@@ -4896,7 +4896,7 @@ void test_kernel_generation(cl::context& clctx, cl::command_queue& cqueue)
 
     cl_float lit = 2.f;
 
-    kern.set_args(b_in, b_out, lit, 128, 128, 128);
+    kern.set_args(b_in, b_out, lit, cl_int3{128, 128, 128});
 
     cqueue.exec(kern, {128, 128, 128}, {8,8,1});
 }
