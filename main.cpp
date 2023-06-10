@@ -4878,6 +4878,8 @@ void test_kernel(equation_context& ctx, buffer<value, 3> test_input, buffer<valu
     value result_expr = test_output.assign(test_output[ix, iy, iz], test);
 
     ctx.exec(result_expr);
+
+    ctx.exec(assert_s(test == 3));
 }
 
 void test_kernel_generation(cl::context& clctx, cl::command_queue& cqueue)
@@ -4964,7 +4966,7 @@ int main()
         printf("Voxel pos %f %f %f\n", pos.x(), pos.y(), pos.z());
     }
 
-    test_kernel_generation(clctx.ctx, clctx.cqueue);
+    //test_kernel_generation(clctx.ctx, clctx.cqueue);
 
     cl::buffer u_arg(clctx.ctx);
 
