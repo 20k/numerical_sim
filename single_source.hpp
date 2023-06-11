@@ -50,7 +50,12 @@ namespace single_source
             in.type = dual_types::name_type(T());
             in.pointer = true;
 
-            std::string name = "buf" + std::to_string(result.size());
+            std::string name;
+
+            if(buf.alias.has_value())
+                name = buf.alias.value();
+            else
+                name = "buf" + std::to_string(result.size());
 
             in.name = name;
             buf.name = name;
@@ -66,7 +71,12 @@ namespace single_source
             in.type = dual_types::name_type(T());
             in.pointer = false;
 
-            std::string name = "lit" + std::to_string(result.size());
+            std::string name;
+
+            if(lit.alias.has_value())
+                name = lit.alias.value();
+            else
+                name = "lit" + std::to_string(result.size());
 
             in.name = name;
             lit.name = name;
@@ -96,11 +106,21 @@ namespace single_source
             }
         }
 
+        template<typename T, std::size_t array_N, int buffer_N>
+        inline
+        void add(std::array<buffer<T, buffer_N>, array_N>& lit, std::vector<input>& result)
+        {
+            for(int i=0; i < (int)array_N; i++)
+            {
+                add(lit[i], result);
+            }
+        }
+
         template<typename T>
         inline
         void add(const T&, std::vector<input>& result)
         {
-
+            static_assert(false);
         }
 
         struct kernel_context
@@ -115,9 +135,9 @@ namespace single_source
         };
 
         inline
-        std::string generate_kernel_string(kernel_context& kctx, equation_context& ctx)
+        std::string generate_kernel_string(kernel_context& kctx, equation_context& ctx, const std::string& kernel_name)
         {
-            std::string base = "__kernel void kernel_name(";
+            std::string base = "__kernel void " + kernel_name + "(";
 
             for(int i=0; i < (int)kctx.inputs.size(); i++)
             {
@@ -154,7 +174,7 @@ namespace single_source
         inline
         cl::kernel generate_kernel(cl::context& clctx, kernel_context& kctx, equation_context& ctx, const std::string& kernel_name, const std::string& extra_args)
         {
-            std::string str = generate_kernel_string(kctx, ctx);
+            std::string str = generate_kernel_string(kctx, ctx, kernel_name);
 
             file::mkdir("generated");
 
@@ -171,13 +191,21 @@ namespace single_source
         void setup_kernel(kernel_context& kctx, equation_context& ectx, R(*func)(equation_context&, Args...))
         {
             std::tuple<equation_context&> a1 = {ectx};
-            std::tuple<Args...> a2;
+            std::tuple<typename std::remove_reference<Args>::type...> a2;
 
             std::apply([&](auto&&... args){
                 (kctx.add(args), ...);
             }, a2);
 
-            std::apply(func, std::tuple_cat(a1, a2));
+            std::tuple<Args...> a3 = a2;
+
+            std::apply(func, std::tuple_cat(a1, a3));
+
+            kctx = kernel_context();
+
+            std::apply([&](auto&&... args){
+                (kctx.add(args), ...);
+            }, a3);
         }
     }
 

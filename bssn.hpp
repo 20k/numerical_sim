@@ -5,6 +5,7 @@
 #include <vec/tensor.hpp>
 #include "tensor_algebra.hpp"
 #include "equation_context.hpp"
+#include <toolkit/opencl.hpp>
 
 ///must be 4 because of damping
 #define BORDER_WIDTH 4
@@ -467,7 +468,7 @@ namespace bssn
     tensor<value, 3> calculate_momentum_constraint(matter_interop& interop, equation_context& ctx, bool use_matter);
     value calculate_hamiltonian_constraint(matter_interop& interop, equation_context& ctx, bool use_matter);
 
-    void build_cY(matter_interop& interop, equation_context& ctx, bool use_matter);
+    void build_cY(cl::context& clctx, matter_interop& interop, bool use_matter);
     void build_cA(matter_interop& interop, equation_context& ctx, bool use_matter);
     void build_cGi(matter_interop& interop, equation_context& ctx, bool use_matter);
     void build_K(matter_interop& interop, equation_context& ctx, bool use_matter);

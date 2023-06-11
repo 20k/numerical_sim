@@ -1,4 +1,5 @@
 #include "bssn.hpp"
+#include "single_source.hpp"
 
 value matter_meta_interop::calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args)
 {
@@ -328,7 +329,8 @@ value get_kc()
 ///https://arxiv.org/pdf/gr-qc/0401076.pdf
 //#define DAMP_HAMILTONIAN
 
-void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_matter)
+#if 0
+void build_cY_impl(matter_interop& interop, equation_context& ctx, bool use_matter)
 {
     standard_arguments args(ctx);
 
@@ -406,6 +408,186 @@ void bssn::build_cY(matter_interop& interop, equation_context& ctx, bool use_mat
 
         ctx.add(name, dtcYij.idx(idx.x(), idx.y()));
     }
+}
+#endif
+
+#define STANDARD_ARGS(x) std::array<buffer<value, 3>, 6>& x##cY, \
+                   std::array<buffer<value, 3>, 6>& x##cA, \
+                   std::array<buffer<value, 3>, 3>& x##cGi, buffer<value, 3>& x##K, buffer<value, 3>& x##X, buffer<value, 3>& x##gA, \
+                   std::array<buffer<value, 3>, 3>& x##gB
+
+/*enum derivative_bitflags
+{
+    D_LOW = 1,
+    D_FULL = 2,
+    D_ONLY_PX = 4,
+    D_ONLY_PY = 8,
+    D_ONLY_PZ = 16,
+    D_BOTH_PX = 32,
+    D_BOTH_PY = 64,
+    D_BOTH_PZ = 128,
+};*/
+
+void build_cY_impl(equation_context& ctx,
+                   buffer<tensor<value_us, 4>, 3> points, literal<value_i> point_count,
+                   STANDARD_ARGS(),
+                   STANDARD_ARGS(o),
+                   STANDARD_ARGS(base_),
+                   std::array<buffer<value_h, 3>, 18> dcYij, std::array<buffer<value_h, 3>, 3> digA,
+                   std::array<buffer<value_h, 3>, 9> digB, std::array<buffer<value_h, 3>, 3> dX,
+                   buffer<value, 3> dummy,
+                   literal<value> scale,
+                   literal<tensor<value_i, 4>>& dim,
+                   literal<value> timestep,
+                   buffer<value_us, 3> order_ptr
+                   )
+{
+    for(int i=0; i < 6; i++)
+    {
+        cY[i].set_name("cY" + std::to_string(i));
+        cA[i].set_name("cA" + std::to_string(i));
+    }
+
+    for(int i=0; i < 3; i++)
+    {
+        cGi[i].set_name("cGi" + std::to_string(i));
+        gB[i].set_name("gB" + std::to_string(i));
+    }
+
+    K.set_name("K");
+    X.set_name("X");
+    gA.set_name("gA");
+
+    dim.set_name("dim");
+
+    value_i local_idx = "get_global_id(0)";
+
+    ctx.exec(if_s(local_idx >= point_count.get(), return_s));
+
+    value_i tix = points[local_idx].x().convert<int>();
+    value_i tiy = points[local_idx].y().convert<int>();
+    value_i tiz = points[local_idx].z().convert<int>();
+
+    ctx.exec("int ix = " + type_to_string(tix) + ";");
+    ctx.exec("int iy = " + type_to_string(tiy) + ";");
+    ctx.exec("int iz = " + type_to_string(tiz) + ";");
+
+    value_i ix = "ix";
+    value_i iy = "iy";
+    value_i iz = "iz";
+
+    ///((k) * dim.x * dim.y + (j) * dim.x + (i))
+
+    value_i index = iz * dim.get().x() * dim.get().y() + iy * dim.get().x() + ix;
+    value_i order = order_ptr[index].convert<int>();
+
+    value_i D_FULL = 2;
+    value_i D_LOW = 1;
+
+    value_i is_bad = ((order & D_FULL) == 0) && ((order & D_LOW) == 0);
+
+    ctx.exec(if_s(is_bad,
+                  (
+                    ocY[0].assign(ocY[0][index], cY[0][index]),
+                    ocY[1].assign(ocY[1][index], cY[1][index]),
+                    ocY[2].assign(ocY[2][index], cY[2][index]),
+                    ocY[3].assign(ocY[3][index], cY[3][index]),
+                    ocY[4].assign(ocY[4][index], cY[4][index]),
+                    ocY[5].assign(ocY[5][index], cY[5][index]),
+                    return_s
+                  )
+                  ));
+
+
+
+    standard_arguments args(ctx);
+
+    metric<value, 3, 3> unpinned_cY = args.cY;
+
+    //ctx.pin(args.cY);
+
+    tensor<value, 3> bigGi_lower = lower_index(args.bigGi, args.cY, 0);
+    ///Oh no. These are associated with Y, not cY
+    tensor<value, 3> gB_lower = lower_index(args.gB, args.cY, 0);
+
+    ctx.pin(args.cY);
+
+    //ctx.pin(bigGi_lower);
+    ctx.pin(gB_lower);
+
+    tensor<value, 3, 3> lie_cYij = lie_derivative_weight(ctx, args.gB, unpinned_cY);
+
+    ///https://arxiv.org/pdf/gr-qc/0511048.pdf (1)
+    ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.66
+    tensor<value, 3, 3> dtcYij = -2 * args.gA * trace_free(args.cA, args.cY, args.cY.invert()) + lie_cYij;
+
+    value damp_factor = get_kc()/3.f;
+
+    //damp_factor = min(damp_factor, 0.3f/value{"timestep"});
+
+    dtcYij += -damp_factor * args.gA * args.cY.to_tensor() * log(args.cY.det());
+
+    ///this specifically is incredibly low
+    #ifdef DAMP_HAMILTONIAN
+    dtcYij += 0.01f * args.gA * args.cY.to_tensor() * -calculate_hamiltonian_constraint(interop, ctx, use_matter);
+    #endif
+
+    ///http://eanam6.khu.ac.kr/presentations/7-5.pdf check this
+    ///makes it to 50 with this enabled
+    //#define USE_DTCYIJ_MODIFICATION
+    #ifdef USE_DTCYIJ_MODIFICATION
+    ///https://arxiv.org/pdf/1205.5111v1.pdf 46
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value sigma = 4/5.f;
+
+            dtcYij.idx(i, j) += sigma * 0.5f * (gB_lower.idx(i) * bigGi_lower.idx(j) + gB_lower.idx(j) * bigGi_lower.idx(i));
+
+            dtcYij.idx(i, j) += -(1.f/5.f) * args.cY.idx(i, j) * sum_multiply(args.gB, bigGi_lower);
+        }
+    }
+    #endif // USE_DTCYIJ_MODIFICATION
+
+    ///pretty sure https://arxiv.org/pdf/0711.3575v1.pdf 2.21 is equivalent, and likely a LOT faster
+    #define MOD_CY
+    #ifdef MOD_CY
+    tensor<value, 3, 3> cD = covariant_derivative_low_vec(ctx, bigGi_lower, args.christoff2);
+
+    ctx.pin(cD);
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            float cK = -0.035f;
+
+            dtcYij.idx(i, j) += cK * args.gA * 0.5f * (cD.idx(i, j) + cD.idx(j, i));
+        }
+    }
+    #endif
+
+    tensor<value, 6> dt;
+
+    dt[0] = dtcYij.idx(0, 0);
+    dt[1] = dtcYij.idx(1, 0);
+    dt[2] = dtcYij.idx(2, 0);
+    dt[3] = dtcYij.idx(1, 1);
+    dt[4] = dtcYij.idx(1, 2);
+    dt[5] = dtcYij.idx(2, 2);
+
+    for(int i=0; i < 6; i++)
+        ctx.exec(ocY[i].assign(ocY[i][index], base_cY[i][index] + timestep * dt[i]));
+}
+
+void bssn::build_cY(cl::context& clctx, matter_interop& interop, bool use_matter)
+{
+    equation_context ectx;
+
+    cl::kernel kern = single_source::make_kernel_for(clctx, ectx, build_cY_impl, "evolve_cY");
+
+    clctx.register_kernel("evolve_cY", kern);
 }
 
 tensor<value, 3, 3> bssn::calculate_xgARij(equation_context& ctx, standard_arguments& args, const inverse_metric<value, 3, 3>& icY, const tensor<value, 3, 3, 3>& christoff1, const tensor<value, 3, 3, 3>& christoff2)

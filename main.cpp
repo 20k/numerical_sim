@@ -5043,8 +5043,10 @@ int main()
         meta_interop.sub_interop.push_back(new particle_matter_interop());
     }
 
-    equation_context dtcY;
-    bssn::build_cY(meta_interop, dtcY, holes.use_matter || holes.use_particles);
+    //equation_context dtcY;
+    //bssn::build_cY(meta_interop, dtcY, holes.use_matter || holes.use_particles);
+
+    bssn::build_cY(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles);
 
     equation_context dtcA;
     bssn::build_cA(meta_interop, dtcA, holes.use_matter || holes.use_particles);
@@ -5120,7 +5122,7 @@ int main()
     ctxdirectional.build(argument_string, "directional");
     ctxsommerthin.build(argument_string, "sommerthin");
 
-    dtcY.build(argument_string, "tcy");
+    //dtcY.build(argument_string, "tcy");
     dtcA.build(argument_string, "tca");
     dtcGi.build(argument_string, "tcgi");
     dtK.build(argument_string, "tk");

@@ -544,6 +544,7 @@ void clean_data_thin(__global ushort4* points, int point_count,
 
 #define DISSB 0.1f
 
+#if 0
 __kernel
 void evolve_cY(__global ushort4* points, int point_count,
             STANDARD_ARGS(),
@@ -617,6 +618,7 @@ void evolve_cY(__global ushort4* points, int point_count,
     NANCHECK(ocY4);
     NANCHECK(ocY5);
 }
+#endif
 
 __kernel
 void evolve_cA(__global ushort4* points, int point_count,
