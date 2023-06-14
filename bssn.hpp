@@ -16,8 +16,64 @@ value as_float3(const value& x, const value& y, const value& z)
     return dual_types::apply(value("(float3)"), x, y, z);
 }
 
+struct argument_pack
+{
+    std::array<std::string, 6> cY;
+    std::array<std::string, 6> cA;
+    std::array<std::string, 3> cGi;
+
+    std::string K;
+    std::string X;
+    std::string gA;
+    std::array<std::string, 3> gB;
+    std::array<std::string, 3> gBB;
+
+    std::array<std::string, 3> momentum;
+    std::array<std::string, 3> digA;
+    std::array<std::string, 9> digB;
+    std::array<std::string, 18> dcYij;
+    std::array<std::string, 3> dX;
+
+    std::array<std::string, 3> pos;
+    std::string dim;
+
+    argument_pack()
+    {
+        for(int i=0; i < 6; i++)
+            cY[i] = "cY" + std::to_string(i);
+
+        for(int i=0; i < 6; i++)
+            cA[i] = "cA" + std::to_string(i);
+
+        for(int i=0; i < 3; i++)
+            cGi[i] = "cGi" + std::to_string(i);
+
+        K = "K";
+        X = "X";
+        gA = "gA";
+
+        for(int i=0; i < 3; i++)
+        {
+            gB[i] = "gB" + std::to_string(i);
+            gBB[i] = "gBB" + std::to_string(i);
+            momentum[i] = "momentum" + std::to_string(i);
+            digA[i] = "digA" + std::to_string(i);
+            dX[i] = "dX" + std::to_string(i);
+        }
+
+        for(int i=0; i < 9; i++)
+            digB[i] = "digB" + std::to_string(i);
+
+        for(int i=0; i < 18; i++)
+            dcYij[i] = "dcYij" + std::to_string(i);
+
+        pos = {"ix", "iy", "iz"};
+        dim = "dim";
+    }
+};
+
 inline
-value bidx(const std::string& buf, bool interpolate, bool is_derivative)
+value bidx(const std::string& buf, bool interpolate, bool is_derivative, const argument_pack& pack = argument_pack())
 {
     if(interpolate)
     {
@@ -34,11 +90,11 @@ value bidx(const std::string& buf, bool interpolate, bool is_derivative)
     {
         if(is_derivative)
         {
-            return dual_types::apply(value("buffer_indexh"), buf, "ix", "iy", "iz", "dim");
+            return dual_types::apply(value("buffer_indexh"), buf, pack.pos[0], pack.pos[1], pack.pos[2], pack.dim);
         }
         else
         {
-            return dual_types::apply(value("buffer_index"), buf, "ix", "iy", "iz", "dim");
+            return dual_types::apply(value("buffer_index"), buf, pack.pos[0], pack.pos[1], pack.pos[2], pack.dim);
         }
     }
 }
@@ -120,22 +176,22 @@ struct standard_arguments
         #endif
     }
 
-    standard_arguments(equation_context& ctx)
+    standard_arguments(equation_context& ctx, const argument_pack& pack = argument_pack())
     {
         bool interpolate = ctx.uses_linear;
 
-        gA = bidx("gA", interpolate, false);
+        gA = bidx(pack.gA, interpolate, false);
 
         gA = max(gA, 0.f);
         //gA = max(gA, 0.00001f);
 
-        gB.idx(0) = bidx("gB0", interpolate, false);
-        gB.idx(1) = bidx("gB1", interpolate, false);
-        gB.idx(2) = bidx("gB2", interpolate, false);
+        gB.idx(0) = bidx(pack.gB[0], interpolate, false);
+        gB.idx(1) = bidx(pack.gB[1], interpolate, false);
+        gB.idx(2) = bidx(pack.gB[2], interpolate, false);
 
-        gBB.idx(0) = bidx("gBB0", interpolate, false);
-        gBB.idx(1) = bidx("gBB1", interpolate, false);
-        gBB.idx(2) = bidx("gBB2", interpolate, false);
+        gBB.idx(0) = bidx(pack.gBB[0], interpolate, false);
+        gBB.idx(1) = bidx(pack.gBB[1], interpolate, false);
+        gBB.idx(2) = bidx(pack.gBB[2], interpolate, false);
 
         std::array<int, 9> arg_table
         {
@@ -150,7 +206,7 @@ struct standard_arguments
             {
                 int index = arg_table[i * 3 + j];
 
-                cY.idx(i, j) = bidx("cY" + std::to_string(index), interpolate, false);
+                cY.idx(i, j) = bidx(pack.cY[index], interpolate, false);
             }
         }
 
@@ -162,7 +218,7 @@ struct standard_arguments
             {
                 int index = arg_table[i * 3 + j];
 
-                cA.idx(i, j) = bidx("cA" + std::to_string(index), interpolate, false);
+                cA.idx(i, j) = bidx(pack.cA[index], interpolate, false);
             }
         }
 
@@ -173,20 +229,20 @@ struct standard_arguments
         //cA.idx(1, 1) = -(raised_cAij.idx(0, 0) + raised_cAij.idx(2, 2) + cA.idx(0, 1) * icY.idx(0, 1) + cA.idx(1, 2) * icY.idx(1, 2)) / (icY.idx(1, 1));
 
         #ifndef USE_W
-        X_impl = max(bidx("X", interpolate, false), 0);
+        X_impl = max(bidx(pack.X, interpolate, false), 0);
         #else
-        W_impl = bidx("X", interpolate, false);
+        W_impl = bidx(pack.X, interpolate, false);
         #endif
 
-        K = bidx("K", interpolate, false);
+        K = bidx(pack.K, interpolate, false);
 
         //X = max(X, 0.0001f);
 
         gA_X = gA / max(get_X(), 0.001f);
 
-        cGi.idx(0) = bidx("cGi0", interpolate, false);
-        cGi.idx(1) = bidx("cGi1", interpolate, false);
-        cGi.idx(2) = bidx("cGi2", interpolate, false);
+        cGi.idx(0) = bidx(pack.cGi[0], interpolate, false);
+        cGi.idx(1) = bidx(pack.cGi[1], interpolate, false);
+        cGi.idx(2) = bidx(pack.cGi[2], interpolate, false);
 
         Yij = cY / max(get_X(), 0.001f);
         iYij = get_X() * icY;
@@ -195,9 +251,9 @@ struct standard_arguments
 
         Kij = Aij + Yij.to_tensor() * (K / 3.f);
 
-        momentum_constraint.idx(0) = bidx("momentum0", interpolate, false);
-        momentum_constraint.idx(1) = bidx("momentum1", interpolate, false);
-        momentum_constraint.idx(2) = bidx("momentum2", interpolate, false);
+        momentum_constraint.idx(0) = bidx(pack.momentum[0], interpolate, false);
+        momentum_constraint.idx(1) = bidx(pack.momentum[1], interpolate, false);
+        momentum_constraint.idx(2) = bidx(pack.momentum[2], interpolate, false);
 
         for(int k=0; k < 3; k++)
         {
@@ -214,23 +270,23 @@ struct standard_arguments
             }
         }
 
-        digA.idx(0) = bidx("digA0", interpolate, true);
-        digA.idx(1) = bidx("digA1", interpolate, true);
-        digA.idx(2) = bidx("digA2", interpolate, true);
+        digA.idx(0) = bidx(pack.digA[0], interpolate, true);
+        digA.idx(1) = bidx(pack.digA[1], interpolate, true);
+        digA.idx(2) = bidx(pack.digA[2], interpolate, true);
 
         #ifndef USE_W
-        dX_impl.idx(0) = bidx("dX0", interpolate, true);
-        dX_impl.idx(1) = bidx("dX1", interpolate, true);
-        dX_impl.idx(2) = bidx("dX2", interpolate, true);
+        dX_impl.idx(0) = bidx(pack.dX[0], interpolate, true);
+        dX_impl.idx(1) = bidx(pack.dX[1], interpolate, true);
+        dX_impl.idx(2) = bidx(pack.dX[2], interpolate, true);
 
         for(int i=0; i < 3; i++)
         {
             dX_calc.idx(i) = diff1(ctx, X_impl, i);
         }
         #else
-        dW_impl.idx(0) = bidx("dX0", interpolate, true);
-        dW_impl.idx(1) = bidx("dX1", interpolate, true);
-        dW_impl.idx(2) = bidx("dX2", interpolate, true);
+        dW_impl.idx(0) = bidx(pack.dX[0], interpolate, true);
+        dW_impl.idx(1) = bidx(pack.dX[1], interpolate, true);
+        dW_impl.idx(2) = bidx(pack.dX[2], interpolate, true);
 
         for(int i=0; i < 3; i++)
         {
@@ -246,7 +302,7 @@ struct standard_arguments
             {
                 int idx = i + j * 3;
 
-                digB.idx(i, j)  = bidx("digB" + std::to_string(idx), interpolate, true);
+                digB.idx(i, j)  = bidx(pack.digB[idx], interpolate, true);
             }
         }
 

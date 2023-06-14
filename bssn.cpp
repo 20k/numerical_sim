@@ -411,10 +411,10 @@ void build_cY_impl(matter_interop& interop, equation_context& ctx, bool use_matt
 }
 #endif
 
-#define STANDARD_ARGS(x) std::array<buffer<value, 3>, 6>& x##cY, \
-                   std::array<buffer<value, 3>, 6>& x##cA, \
-                   std::array<buffer<value, 3>, 3>& x##cGi, buffer<value, 3>& x##K, buffer<value, 3>& x##X, buffer<value, 3>& x##gA, \
-                   std::array<buffer<value, 3>, 3>& x##gB
+#define STANDARD_ARGS(x) named_buffer<value, 3, #x"cY0"> x##cY0, named_buffer<value, 3, #x"cY1"> x##cY1, named_buffer<value, 3, #x"cY2"> x##cY2, named_buffer<value, 3, #x"cY3"> x##cY3, named_buffer<value, 3, #x"cY4"> x##cY4, named_buffer<value, 3, #x"cY5"> x##cY5, \
+                   named_buffer<value, 3, #x"cA0"> x##cA0, named_buffer<value, 3, #x"cA1"> x##cA1, named_buffer<value, 3, #x"cA2"> x##cA2, named_buffer<value, 3, #x"cA3"> x##cA3, named_buffer<value, 3, #x"cA4"> x##cA4, named_buffer<value, 3, #x"cA5"> x##cA5, \
+                   named_buffer<value, 3, #x"cGi0"> x##cGi0, named_buffer<value, 3, #x"cGi1"> x##cGi1, named_buffer<value, 3, #x"cGi2"> x##cGi2, named_buffer<value, 3, #x"K"> x##K, named_buffer<value, 3, #x"X"> x##X, named_buffer<value, 3, #x"gA"> x##gA, \
+                   named_buffer<value, 3, #x"gB0"> x##gB0, named_buffer<value, 3, #x"gB1"> x##gB1, named_buffer<value, 3, #x"gB2"> x##gB2
 
 /*enum derivative_bitflags
 {
@@ -428,6 +428,9 @@ void build_cY_impl(matter_interop& interop, equation_context& ctx, bool use_matt
     D_BOTH_PZ = 128,
 };*/
 
+using namespace single_source;
+
+///use named buffers as type system its easier but messier so ok
 void build_cY_impl(equation_context& ctx,
                    buffer<tensor<value_us, 4>, 3> points, literal<value_i> point_count,
                    STANDARD_ARGS(),
@@ -437,29 +440,11 @@ void build_cY_impl(equation_context& ctx,
                    std::array<buffer<value_h, 3>, 9> digB, std::array<buffer<value_h, 3>, 3> dX,
                    buffer<value, 3> dummy,
                    literal<value> scale,
-                   literal<tensor<value_i, 4>>& dim,
+                   named_literal<tensor<value_i, 4>, "dim">& dim,
                    literal<value> timestep,
                    buffer<value_us, 3> order_ptr
                    )
 {
-    for(int i=0; i < 6; i++)
-    {
-        cY[i].set_name("cY" + std::to_string(i));
-        cA[i].set_name("cA" + std::to_string(i));
-    }
-
-    for(int i=0; i < 3; i++)
-    {
-        cGi[i].set_name("cGi" + std::to_string(i));
-        gB[i].set_name("gB" + std::to_string(i));
-    }
-
-    K.set_name("K");
-    X.set_name("X");
-    gA.set_name("gA");
-
-    dim.set_name("dim");
-
     value_i local_idx = "get_global_id(0)";
 
     ctx.exec(if_s(local_idx >= point_count.get(), return_s));
@@ -488,12 +473,12 @@ void build_cY_impl(equation_context& ctx,
 
     ctx.exec(if_s(is_bad,
                   (
-                    ocY[0].assign(ocY[0][index], cY[0][index]),
-                    ocY[1].assign(ocY[1][index], cY[1][index]),
-                    ocY[2].assign(ocY[2][index], cY[2][index]),
-                    ocY[3].assign(ocY[3][index], cY[3][index]),
-                    ocY[4].assign(ocY[4][index], cY[4][index]),
-                    ocY[5].assign(ocY[5][index], cY[5][index]),
+                    ocY0.assign(ocY0[index], cY0[index]),
+                    ocY1.assign(ocY1[index], cY1[index]),
+                    ocY2.assign(ocY2[index], cY2[index]),
+                    ocY3.assign(ocY3[index], cY3[index]),
+                    ocY4.assign(ocY4[index], cY4[index]),
+                    ocY5.assign(ocY5[index], cY5[index]),
                     return_s
                   )
                   ));
@@ -577,8 +562,12 @@ void build_cY_impl(equation_context& ctx,
     dt[4] = dtcYij.idx(1, 2);
     dt[5] = dtcYij.idx(2, 2);
 
-    for(int i=0; i < 6; i++)
-        ctx.exec(ocY[i].assign(ocY[i][index], base_cY[i][index] + timestep * dt[i]));
+    ctx.exec(ocY0.assign(ocY0[index], base_cY0[index] + timestep * dt[0]));
+    ctx.exec(ocY1.assign(ocY1[index], base_cY1[index] + timestep * dt[1]));
+    ctx.exec(ocY2.assign(ocY2[index], base_cY2[index] + timestep * dt[2]));
+    ctx.exec(ocY3.assign(ocY3[index], base_cY3[index] + timestep * dt[3]));
+    ctx.exec(ocY4.assign(ocY4[index], base_cY4[index] + timestep * dt[4]));
+    ctx.exec(ocY5.assign(ocY5[index], base_cY5[index] + timestep * dt[5]));
 }
 
 void bssn::build_cY(cl::context& clctx, matter_interop& interop, bool use_matter)

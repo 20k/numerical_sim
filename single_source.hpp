@@ -11,6 +11,50 @@ namespace single_source
 {
     namespace impl
     {
+        ///https://vector-of-bool.github.io/2021/10/22/string-templates.html
+        template<size_t N>
+        struct fixed_string
+        {
+            char _chars[N+1] = {};
+
+            //std::array<char, N+1> _chars = {};
+
+            std::string get() const
+            {
+                return std::string(_chars, _chars + N);
+            }
+
+            constexpr fixed_string(const char (&arr)[N+1])
+            {
+                std::copy(arr, arr + N, _chars);
+            }
+        };
+
+        template<size_t N>
+        fixed_string(const char (&arr)[N]) -> fixed_string<N-1>;  // Drop the null terminator
+    }
+
+    template<typename T, int dimensions, impl::fixed_string _name>
+    struct named_buffer : buffer<T, dimensions>
+    {
+        named_buffer()
+        {
+            buffer<T, dimensions>::name = _name.get();
+        }
+    };
+
+    template<typename T, impl::fixed_string _name>
+    struct named_literal : literal<T>
+    {
+        named_literal()
+        {
+            literal<T>::name = _name.get();
+        }
+    };
+
+    namespace impl
+    {
+
         struct input
         {
             std::string type;
@@ -50,17 +94,21 @@ namespace single_source
             in.type = dual_types::name_type(T());
             in.pointer = true;
 
-            std::string name;
-
-            if(buf.alias.has_value())
-                name = buf.alias.value();
-            else
-                name = "buf" + std::to_string(result.size());
+            std::string name = "buf" + std::to_string(result.size());
 
             in.name = name;
             buf.name = name;
 
             result.push_back(in);
+        }
+
+        template<typename T, int N, size_t fN, fixed_string<fN> str>
+        inline
+        void add(named_buffer<T, N, str>& buf, std::vector<input>& result)
+        {
+            buffer<T, N>& lbuf = buf;
+
+            add(lbuf, result);
         }
 
         template<typename T>
@@ -71,17 +119,22 @@ namespace single_source
             in.type = dual_types::name_type(T());
             in.pointer = false;
 
-            std::string name;
-
-            if(lit.alias.has_value())
-                name = lit.alias.value();
-            else
-                name = "lit" + std::to_string(result.size());
+            std::string name = "lit" + std::to_string(result.size());
 
             in.name = name;
             lit.name = name;
 
             result.push_back(in);
+        }
+
+
+        template<typename T, size_t fN, fixed_string<fN> str>
+        inline
+        void add(named_literal<T, str>& lit, std::vector<input>& result)
+        {
+            literal<T>& llit = lit;
+
+            add(llit, result);
         }
 
         template<typename T, int N>
@@ -106,11 +159,11 @@ namespace single_source
             }
         }
 
-        template<typename T, std::size_t array_N, int buffer_N>
+        template<typename T, std::size_t N>
         inline
-        void add(std::array<buffer<T, buffer_N>, array_N>& lit, std::vector<input>& result)
+        void add(std::array<T, N>& lit, std::vector<input>& result)
         {
-            for(int i=0; i < (int)array_N; i++)
+            for(int i=0; i < (int)N; i++)
             {
                 add(lit[i], result);
             }
