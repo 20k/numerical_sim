@@ -304,6 +304,48 @@ struct equation_context : differentiator
     {
         build(argument_string, std::to_string(idx));
     }
+
+    void fix_buffers()
+    {
+        auto substitute = [](value& v)
+        {
+            if(v.type != dual_types::ops::UNKNOWN_FUNCTION)
+                return;
+
+            std::string function_name = type_to_string(v.args[0]);
+
+            if(function_name == "buffer_index" || function_name == "buffer_indexh")
+            {
+                buffer<value, 3> buf;
+                buf.name = type_to_string(v.args[1]);
+
+                value_i x = v.args[2].convert<int>();
+                value_i y = v.args[3].convert<int>();
+                value_i z = v.args[4].convert<int>();
+                value_i dim = v.args[5].as<int>();
+
+                ///buffer[z * dim.x * dim.y + y * dim.x + x];
+                value indexed = buf[z * dim.x() * dim.y() + y * dim.x() + x];
+
+                v = indexed;
+            }
+        };
+
+        for(auto& [_, v] : sequenced)
+        {
+            v.recurse_arguments(substitute);
+        }
+
+        for(auto& [_, v] : aliases)
+        {
+            v.recurse_arguments(substitute);
+        }
+
+        for(auto& [_, v] : temporaries)
+        {
+            v.recurse_arguments(substitute);
+        }
+    }
 };
 
 

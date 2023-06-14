@@ -40,6 +40,7 @@ namespace single_source
         named_buffer()
         {
             buffer<T, dimensions>::name = _name.get();
+            buffer<T, dimensions>::permanent_name = true;
         }
     };
 
@@ -49,6 +50,7 @@ namespace single_source
         named_literal()
         {
             literal<T>::name = _name.get();
+            literal<T>::permanent_name = true;
         }
     };
 
@@ -94,7 +96,7 @@ namespace single_source
             in.type = dual_types::name_type(T());
             in.pointer = true;
 
-            std::string name = "buf" + std::to_string(result.size());
+            std::string name = buf.permanent_name ? buf.name : "buf" + std::to_string(result.size());
 
             in.name = name;
             buf.name = name;
@@ -119,7 +121,7 @@ namespace single_source
             in.type = dual_types::name_type(T());
             in.pointer = false;
 
-            std::string name = "lit" + std::to_string(result.size());
+            std::string name = lit.permanent_name ? lit.name : "lit" + std::to_string(result.size());
 
             in.name = name;
             lit.name = name;
@@ -220,6 +222,8 @@ namespace single_source
             }
 
             base += "\n}";
+
+            std::cout << base << std::endl;
 
             return base;
         }

@@ -1,5 +1,6 @@
 #include "bssn.hpp"
 #include "single_source.hpp"
+#include "bitflags.cl"
 
 value matter_meta_interop::calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args)
 {
@@ -439,7 +440,7 @@ void build_cY_impl(equation_context& ctx,
                    std::array<buffer<value_h, 3>, 18> dcYij, std::array<buffer<value_h, 3>, 3> digA,
                    std::array<buffer<value_h, 3>, 9> digB, std::array<buffer<value_h, 3>, 3> dX,
                    buffer<value, 3> dummy,
-                   literal<value> scale,
+                   named_literal<value, "scale"> scale,
                    named_literal<tensor<value_i, 4>, "dim">& dim,
                    literal<value> timestep,
                    buffer<value_us, 3> order_ptr
@@ -464,7 +465,10 @@ void build_cY_impl(equation_context& ctx,
     ///((k) * dim.x * dim.y + (j) * dim.x + (i))
 
     value_i index = iz * dim.get().x() * dim.get().y() + iy * dim.get().x() + ix;
+
     value_i order = order_ptr[index].convert<int>();
+
+    ctx.exec("int order = " + type_to_string(order) + ";");
 
     value_i D_FULL = 2;
     value_i D_LOW = 1;
@@ -536,7 +540,7 @@ void build_cY_impl(equation_context& ctx,
     #endif // USE_DTCYIJ_MODIFICATION
 
     ///pretty sure https://arxiv.org/pdf/0711.3575v1.pdf 2.21 is equivalent, and likely a LOT faster
-    #define MOD_CY
+    //#define MOD_CY
     #ifdef MOD_CY
     tensor<value, 3, 3> cD = covariant_derivative_low_vec(ctx, bigGi_lower, args.christoff2);
 
@@ -568,6 +572,8 @@ void build_cY_impl(equation_context& ctx,
     ctx.exec(ocY3.assign(ocY3[index], base_cY3[index] + timestep * dt[3]));
     ctx.exec(ocY4.assign(ocY4[index], base_cY4[index] + timestep * dt[4]));
     ctx.exec(ocY5.assign(ocY5[index], base_cY5[index] + timestep * dt[5]));
+
+    ctx.fix_buffers();
 }
 
 void bssn::build_cY(cl::context& clctx, matter_interop& interop, bool use_matter)
@@ -1219,7 +1225,7 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
 
         auto step = [](const value& in)
         {
-            return if_v(in >= 0.f, 1.f, 0.f);
+            return if_v(in >= 0.f, value{1.f}, value{0.f});
         };
 
         value bkk = 0;

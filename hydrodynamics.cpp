@@ -711,7 +711,7 @@ struct matter
         ///[0.1, 1.0}
         value CQvis = 1.f;
 
-        value PQvis = if_v(littledv < 0, CQvis * A * pow(littledv, 2), 0.f);
+        value PQvis = if_v(littledv < 0, CQvis * A * pow(littledv, 2), value{0.f});
 
         return PQvis;
     }

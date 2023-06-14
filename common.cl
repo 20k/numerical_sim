@@ -4,6 +4,8 @@
 #define IDX(i, j, k) ((k) * dim.x * dim.y + (j) * dim.x + (i))
 #define IDXD(i, j, k, d) ((k) * (d.x) * (d.y) + (j) * (d.x) + (i))
 
+#include "bitflags.cl"
+
 float buffer_read_nearest(__global const float* const buffer, int3 position, int4 dim)
 {
     return buffer[position.z * dim.x * dim.y + position.y * dim.x + position.x];
@@ -146,18 +148,6 @@ float sponge_damp_coeff(float x, float y, float z, float scale, int4 dim)
     float sigma = (sponge_r1 - sponge_r0) / 3;
     return clamp(native_exp(-pow((r - sponge_r1) / sigma, 2)), 0.f, 1.f);
 }
-
-enum derivative_bitflags
-{
-    D_LOW = 1,
-    D_FULL = 2,
-    D_ONLY_PX = 4,
-    D_ONLY_PY = 8,
-    D_ONLY_PZ = 16,
-    D_BOTH_PX = 32,
-    D_BOTH_PY = 64,
-    D_BOTH_PZ = 128,
-};
 
 __kernel
 void check_z_symmetry(__global float* u_in, int4 dim)

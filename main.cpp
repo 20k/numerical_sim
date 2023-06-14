@@ -28,6 +28,7 @@
 #include "cache.hpp"
 #include <stdfloat>
 #include "single_source.hpp"
+#include "bitflags.cl"
 
 /**
 current paper set
@@ -493,17 +494,17 @@ value diff1(equation_context& ctx, const value& in, int idx)
     }
     else
     {
-        value d_low = "D_LOW";
-        value d_full = "D_FULL";
-        value d_only_px = "D_ONLY_PX";
-        value d_only_py = "D_ONLY_PY";
-        value d_only_pz = "D_ONLY_PZ";
-        value d_both_px = "D_BOTH_PX";
-        value d_both_py = "D_BOTH_PY";
-        value d_both_pz = "D_BOTH_PZ";
+        value_us d_low = (uint16_t)D_LOW;
+        value_us d_full = (uint16_t)D_FULL;
+        value_us d_only_px = (uint16_t)D_ONLY_PX;
+        value_us d_only_py = (uint16_t)D_ONLY_PY;
+        value_us d_only_pz = (uint16_t)D_ONLY_PZ;
+        value_us d_both_px = (uint16_t)D_BOTH_PX;
+        value_us d_both_py = (uint16_t)D_BOTH_PY;
+        value_us d_both_pz = (uint16_t)D_BOTH_PZ;
 
-        value directional_single = 0;
-        value directional_both = 0;
+        value_us directional_single = 0;
+        value_us directional_both = 0;
 
         if(idx == 0)
         {
@@ -521,13 +522,13 @@ value diff1(equation_context& ctx, const value& in, int idx)
             directional_both = d_both_pz;
         }
 
-        value order = "order";
+        value_us order = "order";
 
-        value is_high_order = (order & d_full) > 0;
+        value_us is_high_order = (order & d_full) > 0;
         //value is_low_order = (order & d_low) > 0;
 
-        value is_forward = (order & directional_single) > 0;
-        value is_bidi = (order & directional_both) > 0;
+        value_us is_forward = (order & directional_single) > 0;
+        value_us is_bidi = (order & directional_both) > 0;
 
         value regular_d = diff1_interior(ctx, in, idx, ctx.order, 0);
         value low_d = diff1_interior(ctx, in, idx, 1, 0);
@@ -815,12 +816,11 @@ namespace neutron_star
         ///https://arxiv.org/pdf/1606.04881.pdf (before 6)
         ret.mass_energy_density = ret.rest_mass_density * (1 + ret.specific_energy_density);
 
-
-        ret.pressure = dual_types::if_v(coordinate_radius >= radius, 0.f, ret.pressure);
-        ret.rest_mass_density = dual_types::if_v(coordinate_radius >= radius, 0.f, ret.rest_mass_density);
-        ret.energy_density = dual_types::if_v(coordinate_radius >= radius, 0.f, ret.energy_density);
-        ret.specific_energy_density = dual_types::if_v(coordinate_radius >= radius, 0.f, ret.specific_energy_density);
-        ret.mass_energy_density = dual_types::if_v(coordinate_radius >= radius, 0.f, ret.mass_energy_density);
+        ret.pressure = dual_types::if_v(coordinate_radius >= radius, value{0.f}, ret.pressure);
+        ret.rest_mass_density = dual_types::if_v(coordinate_radius >= radius, value{0.f}, ret.rest_mass_density);
+        ret.energy_density = dual_types::if_v(coordinate_radius >= radius, value{0.f}, ret.energy_density);
+        ret.specific_energy_density = dual_types::if_v(coordinate_radius >= radius, value{0.f}, ret.specific_energy_density);
+        ret.mass_energy_density = dual_types::if_v(coordinate_radius >= radius,value{0.f}, ret.mass_energy_density);
 
         return ret;
     }
@@ -922,7 +922,7 @@ namespace neutron_star
         value integrated = integrate_1d(integral_func, 16, coordinate_radius, value{0.f});
 
         return dual_types::if_v(coordinate_radius > value{p.get_radius()},
-                                1.f,
+                                value{1.f},
                                 integrated);
     }
 
@@ -1653,7 +1653,7 @@ private:
 
         value cst = 1 + obj.bare_mass / (2 * max(coordinate_radius, 1e-3f));
 
-        value integration_constant = if_v(coordinate_radius > radius, cst, 0.f);
+        value integration_constant = if_v(coordinate_radius > radius, cst, value{0.f});
         value within_star = if_v(coordinate_radius <= radius, value{1.f}, value{0.f});
 
         ctx.add("SHOULD_NOT_USE_INTEGRATION_CONSTANT", within_star);
@@ -2314,7 +2314,7 @@ struct superimposed_gpu_data
         p.linear_momentum = obj.momentum;
         p.angular_momentum = obj.angular_momentum;
 
-        value superimposed_tov_phi_eq = dual_types::if_v(coordinate_radius <= radius, pinning_tov_phi(pos), 0.f);
+        value superimposed_tov_phi_eq = dual_types::if_v(coordinate_radius <= radius, pinning_tov_phi(pos), value{0.f});
 
         vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
 
@@ -2458,7 +2458,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx)
 
     value is_degenerate = rho < 0.0001f;
 
-    value W2 = if_v(is_degenerate, 1.f, ((rhoH + pressure) / (rho + pressure)));
+    value W2 = if_v(is_degenerate, value{1.f}, ((rhoH + pressure) / (rho + pressure)));
 
     ///https://arxiv.org/pdf/1606.04881.pdf (70)
 
@@ -2491,7 +2491,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx)
 
         value littleW = p_star * gA * u0;
 
-        value h = if_v(is_degenerate, 0.f, (rhoH + pressure) * chi_to_e_6phi(X) / littleW);
+        value h = if_v(is_degenerate, value{0.f}, (rhoH + pressure) * chi_to_e_6phi(X) / littleW);
 
         value p0e = p0 * h - p0 + pressure;
 
