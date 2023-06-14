@@ -417,18 +417,6 @@ void build_cY_impl(matter_interop& interop, equation_context& ctx, bool use_matt
                    named_buffer<value, 3, #x"cGi0"> x##cGi0, named_buffer<value, 3, #x"cGi1"> x##cGi1, named_buffer<value, 3, #x"cGi2"> x##cGi2, named_buffer<value, 3, #x"K"> x##K, named_buffer<value, 3, #x"X"> x##X, named_buffer<value, 3, #x"gA"> x##gA, \
                    named_buffer<value, 3, #x"gB0"> x##gB0, named_buffer<value, 3, #x"gB1"> x##gB1, named_buffer<value, 3, #x"gB2"> x##gB2
 
-/*enum derivative_bitflags
-{
-    D_LOW = 1,
-    D_FULL = 2,
-    D_ONLY_PX = 4,
-    D_ONLY_PY = 8,
-    D_ONLY_PZ = 16,
-    D_BOTH_PX = 32,
-    D_BOTH_PY = 64,
-    D_BOTH_PZ = 128,
-};*/
-
 using namespace single_source;
 
 ///use named buffers as type system its easier but messier so ok
@@ -437,6 +425,7 @@ void build_cY_impl(equation_context& ctx,
                    STANDARD_ARGS(),
                    STANDARD_ARGS(o),
                    STANDARD_ARGS(base_),
+                   std::array<buffer<value, 3>, 3> momentum,
                    std::array<buffer<value_h, 3>, 18> dcYij, std::array<buffer<value_h, 3>, 3> digA,
                    std::array<buffer<value_h, 3>, 9> digB, std::array<buffer<value_h, 3>, 3> dX,
                    buffer<value, 3> dummy,
@@ -470,10 +459,10 @@ void build_cY_impl(equation_context& ctx,
 
     ctx.exec("int order = " + type_to_string(order) + ";");
 
-    value_i D_FULL = 2;
-    value_i D_LOW = 1;
+    value_i lD_FULL = (int)D_FULL;
+    value_i lD_LOW = (int)D_LOW;
 
-    value_i is_bad = ((order & D_FULL) == 0) && ((order & D_LOW) == 0);
+    value_i is_bad = ((order & lD_FULL) == 0) && ((order & lD_LOW) == 0);
 
     ctx.exec(if_s(is_bad,
                   (
