@@ -417,27 +417,20 @@ void build_cY_impl(matter_interop& interop, equation_context& ctx, bool use_matt
                    named_buffer<value, 3, #x"cGi0"> x##cGi0, named_buffer<value, 3, #x"cGi1"> x##cGi1, named_buffer<value, 3, #x"cGi2"> x##cGi2, named_buffer<value, 3, #x"K"> x##K, named_buffer<value, 3, #x"X"> x##X, named_buffer<value, 3, #x"gA"> x##gA, \
                    named_buffer<value, 3, #x"gB0"> x##gB0, named_buffer<value, 3, #x"gB1"> x##gB1, named_buffer<value, 3, #x"gB2"> x##gB2
 
+#ifdef USE_HALF_INTERMEDIATE
+using half_type = value_h;
+#else
+using half_type = value;
+#endif
+
 using namespace single_source;
 
-///use named buffers as type system its easier but messier so ok
-void build_cY_impl(equation_context& ctx,
-                   buffer<tensor<value_us, 4>, 3> points, literal<value_i> point_count,
-                   STANDARD_ARGS(),
-                   STANDARD_ARGS(o),
-                   STANDARD_ARGS(base_),
-                   std::array<buffer<value, 3>, 3> momentum,
-                   std::array<buffer<value_h, 3>, 18> dcYij, std::array<buffer<value_h, 3>, 3> digA,
-                   std::array<buffer<value_h, 3>, 9> digB, std::array<buffer<value_h, 3>, 3> dX,
-                   buffer<value, 3> dummy,
-                   named_literal<value, "scale"> scale,
-                   named_literal<tensor<value_i, 4>, "dim">& dim,
-                   literal<value> timestep,
-                   buffer<value_us, 3> order_ptr
-                   )
+template<typename T>
+std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, value_i point_count, const tensor<value_i, 4>& dim, const buffer<value_us, 3>& order_ptr, T&& copier)
 {
     value_i local_idx = "get_global_id(0)";
 
-    ctx.exec(if_s(local_idx >= point_count.get(), return_s));
+    ctx.exec(if_s(local_idx >= point_count, return_s));
 
     value_i tix = points[local_idx].x().convert<int>();
     value_i tiy = points[local_idx].y().convert<int>();
@@ -453,7 +446,7 @@ void build_cY_impl(equation_context& ctx,
 
     ///((k) * dim.x * dim.y + (j) * dim.x + (i))
 
-    value_i index = iz * dim.get().x() * dim.get().y() + iy * dim.get().x() + ix;
+    value_i index = iz * dim.x() * dim.y() + iy * dim.x() + ix;
 
     value_i order = order_ptr[index].convert<int>();
 
@@ -464,19 +457,43 @@ void build_cY_impl(equation_context& ctx,
 
     value_i is_bad = ((order & lD_FULL) == 0) && ((order & lD_LOW) == 0);
 
+    auto on_copy = copier(index);
+
     ctx.exec(if_s(is_bad,
                   (
-                    ocY0.assign(ocY0[index], cY0[index]),
-                    ocY1.assign(ocY1[index], cY1[index]),
-                    ocY2.assign(ocY2[index], cY2[index]),
-                    ocY3.assign(ocY3[index], cY3[index]),
-                    ocY4.assign(ocY4[index], cY4[index]),
-                    ocY5.assign(ocY5[index], cY5[index]),
+                    on_copy,
                     return_s
                   )
                   ));
 
+    return {ix, iy, iz, index};
+}
 
+///use named buffers as type system its easier but messier so ok
+void build_cY_impl(equation_context& ctx,
+                   buffer<tensor<value_us, 4>, 3> points, literal<value_i> point_count,
+                   STANDARD_ARGS(),
+                   STANDARD_ARGS(o),
+                   STANDARD_ARGS(base_),
+                   std::array<buffer<value, 3>, 3> momentum,
+                   std::array<buffer<half_type, 3>, 18> dcYij, std::array<buffer<half_type, 3>, 3> digA,
+                   std::array<buffer<half_type, 3>, 9> digB, std::array<buffer<half_type, 3>, 3> dX,
+                   buffer<value, 3> dummy,
+                   named_literal<value, "scale"> scale,
+                   named_literal<tensor<value_i, 4>, "dim">& dim,
+                   literal<value> timestep,
+                   buffer<value_us, 3> order_ptr
+                   )
+{
+    auto [ix, iy, iz, index] = setup(ctx, points, point_count.get(), dim.get(), order_ptr, [&](const value_i& index)
+    {
+        return  ocY0.assign(ocY0[index], cY0[index]),
+                ocY1.assign(ocY1[index], cY1[index]),
+                ocY2.assign(ocY2[index], cY2[index]),
+                ocY3.assign(ocY3[index], cY3[index]),
+                ocY4.assign(ocY4[index], cY4[index]),
+                ocY5.assign(ocY5[index], cY5[index]);
+    });
 
     standard_arguments args(ctx);
 

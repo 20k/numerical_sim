@@ -103,7 +103,9 @@ value bidx(const std::string& buf, bool interpolate, bool is_derivative, const a
 //#define BETTERDAMP_DTCAIJ
 #define DAMP_C
 //#define USE_GBB
-#define DAMP_DTCAIJ
+//#define DAMP_DTCAIJ
+
+#define USE_HALF_INTERMEDIATE
 
 struct standard_arguments
 {
