@@ -563,21 +563,12 @@ void build_cY_impl(equation_context& ctx,
     }
     #endif
 
-    tensor<value, 6> dt;
-
-    dt[0] = dtcYij.idx(0, 0);
-    dt[1] = dtcYij.idx(1, 0);
-    dt[2] = dtcYij.idx(2, 0);
-    dt[3] = dtcYij.idx(1, 1);
-    dt[4] = dtcYij.idx(1, 2);
-    dt[5] = dtcYij.idx(2, 2);
-
-    ctx.exec(ocY0.assign(ocY0[index], base_cY0[index] + timestep * dt[0]));
-    ctx.exec(ocY1.assign(ocY1[index], base_cY1[index] + timestep * dt[1]));
-    ctx.exec(ocY2.assign(ocY2[index], base_cY2[index] + timestep * dt[2]));
-    ctx.exec(ocY3.assign(ocY3[index], base_cY3[index] + timestep * dt[3]));
-    ctx.exec(ocY4.assign(ocY4[index], base_cY4[index] + timestep * dt[4]));
-    ctx.exec(ocY5.assign(ocY5[index], base_cY5[index] + timestep * dt[5]));
+    ctx.exec(ocY0.assign(ocY0[index], base_cY0[index] + timestep * dtcYij.idx(0, 0)));
+    ctx.exec(ocY1.assign(ocY1[index], base_cY1[index] + timestep * dtcYij.idx(1, 0)));
+    ctx.exec(ocY2.assign(ocY2[index], base_cY2[index] + timestep * dtcYij.idx(2, 0)));
+    ctx.exec(ocY3.assign(ocY3[index], base_cY3[index] + timestep * dtcYij.idx(1, 1)));
+    ctx.exec(ocY4.assign(ocY4[index], base_cY4[index] + timestep * dtcYij.idx(1, 2)));
+    ctx.exec(ocY5.assign(ocY5[index], base_cY5[index] + timestep * dtcYij.idx(2, 2)));
 
     ctx.fix_buffers();
 }
