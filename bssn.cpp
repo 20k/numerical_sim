@@ -563,12 +563,12 @@ void build_cY_impl(equation_context& ctx,
     }
     #endif
 
-    ctx.exec(ocY0.assign(ocY0[index], base_cY0[index] + timestep * dtcYij.idx(0, 0)));
-    ctx.exec(ocY1.assign(ocY1[index], base_cY1[index] + timestep * dtcYij.idx(1, 0)));
-    ctx.exec(ocY2.assign(ocY2[index], base_cY2[index] + timestep * dtcYij.idx(2, 0)));
-    ctx.exec(ocY3.assign(ocY3[index], base_cY3[index] + timestep * dtcYij.idx(1, 1)));
-    ctx.exec(ocY4.assign(ocY4[index], base_cY4[index] + timestep * dtcYij.idx(1, 2)));
-    ctx.exec(ocY5.assign(ocY5[index], base_cY5[index] + timestep * dtcYij.idx(2, 2)));
+    ctx.exec(assign(ocY0[index], base_cY0[index] + timestep * dtcYij.idx(0, 0)));
+    ctx.exec(assign(ocY1[index], base_cY1[index] + timestep * dtcYij.idx(1, 0)));
+    ctx.exec(assign(ocY2[index], base_cY2[index] + timestep * dtcYij.idx(2, 0)));
+    ctx.exec(assign(ocY3[index], base_cY3[index] + timestep * dtcYij.idx(1, 1)));
+    ctx.exec(assign(ocY4[index], base_cY4[index] + timestep * dtcYij.idx(1, 2)));
+    ctx.exec(assign(ocY5[index], base_cY5[index] + timestep * dtcYij.idx(2, 2)));
 
     ctx.fix_buffers();
 }
