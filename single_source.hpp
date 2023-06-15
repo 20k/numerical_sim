@@ -264,6 +264,14 @@ namespace single_source
             args.call(result);
         }
 
+        template<typename T>
+        inline
+        void add(std::optional<T>& opt, std::vector<input>& result)
+        {
+            if(opt.has_value())
+                add(opt.value(), result);
+        }
+
         /*template<typename T>
         inline
         void add(const T&, std::vector<input>& result)
