@@ -221,7 +221,7 @@ namespace single_source
         }
 
         ///todo: named buffers
-        template<typename T>
+        /*template<typename T>
         inline
         void add(std::vector<T>& buf, std::vector<input>& result)
         {
@@ -229,7 +229,7 @@ namespace single_source
             {
                 add(buf[i], result);
             }
-        }
+        }*/
 
         template<typename T, int buffer_N, std::size_t array_N, auto str>
         inline
