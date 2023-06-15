@@ -414,6 +414,36 @@ namespace single_source
         {
             kctx.inputs.push_back(in);
         }
+
+        void add(const std::string& prefix, impl::input& in)
+        {
+            auto v = in;
+            v.name = prefix + v.name;
+
+            add(v);
+        }
+
+        void add(std::vector<impl::input>& inputs)
+        {
+            for(auto& i : inputs)
+            {
+                add(i);
+            }
+        }
+
+        void add(const std::string& prefix, std::vector<impl::input>& inputs)
+        {
+            for(auto& i : inputs)
+            {
+                add(prefix, i);
+            }
+        }
+
+        template<typename... T>
+        void add(T&... t)
+        {
+            (add(t), ...);
+        }
     };
 
     struct combined_args : function_args

@@ -523,42 +523,18 @@ void build_cY_impl(argument_generator& arg_gen, equation_context& ctx, base_bssn
     buffer<value_us, 3> order_ptr;
 
     {
-        arg_gen.add(points);
-        arg_gen.add(point_count);
+        arg_gen.add(points, point_count);
 
-        for(int i=0; i < (int)bssn_args.buffers.size(); i++)
-            arg_gen.add(bssn_args.buffers[i]);
-
-        for(int i=0; i < (int)bssn_args.buffers.size(); i++)
-        {
-            impl::input v = bssn_args.buffers[i];
-            v.name = "o" + v.name;
-            arg_gen.add(v);
-        }
-
-        for(int i=0; i < (int)bssn_args.buffers.size(); i++)
-        {
-            impl::input v = bssn_args.buffers[i];
-            v.name = "base_" + v.name;
-            arg_gen.add(v);
-        }
+        arg_gen.add(bssn_args.buffers);
+        arg_gen.add(std::string{"o"}, bssn_args.buffers);
+        arg_gen.add(std::string{"base_"}, bssn_args.buffers);
 
         arg_gen.add(momentum);
-        arg_gen.add(dcYij);
-        arg_gen.add(digA);
-        arg_gen.add(digB);
-        arg_gen.add(dX);
+        arg_gen.add(dcYij, digA, digB, dX);
 
-        for(int i=0; i < (int)utility_args.buffers.size(); i++)
-        {
-            arg_gen.add(utility_args.buffers[i]);
-        }
+        arg_gen.add(utility_args.buffers);
 
-        arg_gen.add(scale);
-        arg_gen.add(dim);
-
-        arg_gen.add(timestep);
-        arg_gen.add(order_ptr);
+        arg_gen.add(scale, dim, timestep, order_ptr);
     }
 
     auto [ix, iy, iz, index] = setup(ctx, points, point_count.get(), dim.get(), order_ptr, [&](const value_i& index)
