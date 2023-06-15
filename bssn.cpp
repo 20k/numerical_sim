@@ -470,7 +470,7 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
 }
 
 template<single_source::impl::fixed_string str>
-struct standard_arg_pack : single_source::function_args
+struct bssn_arg_pack : single_source::function_args
 {
     std::array<named_buffer<value, 3, str + "cY">, 6> cY;
     std::array<named_buffer<value, 3, str + "cA">, 6> cA;
@@ -495,9 +495,9 @@ struct standard_arg_pack : single_source::function_args
 ///use named buffers as type system its easier but messier so ok
 void build_cY_impl(equation_context& ctx,
                    buffer<tensor<value_us, 4>, 3> points, literal<value_i> point_count,
-                   standard_arg_pack<""> in,
-                   standard_arg_pack<"o"> out,
-                   standard_arg_pack<"base_"> base,
+                   bssn_arg_pack<""> in,
+                   bssn_arg_pack<"o"> out,
+                   bssn_arg_pack<"base_"> base,
                    std::array<buffer<value, 3>, 3> momentum,
                    std::array<buffer<half_type, 3>, 18> dcYij, std::array<buffer<half_type, 3>, 3> digA,
                    std::array<buffer<half_type, 3>, 9> digB, std::array<buffer<half_type, 3>, 3> dX,
