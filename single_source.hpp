@@ -212,11 +212,22 @@ namespace single_source
 
         template<typename T, std::size_t N>
         inline
-        void add(std::array<T, N>& lit, std::vector<input>& result)
+        void add(std::array<T, N>& buf, std::vector<input>& result)
         {
             for(int i=0; i < (int)N; i++)
             {
-                add(lit[i], result);
+                add(buf[i], result);
+            }
+        }
+
+        ///todo: named buffers
+        template<typename T>
+        inline
+        void add(std::vector<T>& buf, std::vector<input>& result)
+        {
+            for(int i=0; i < (int)buf.size(); i++)
+            {
+                add(buf[i], result);
             }
         }
 
@@ -271,6 +282,13 @@ namespace single_source
             if(opt.has_value())
                 add(opt.value(), result);
         }
+
+        /*template<typename T>
+        inline
+        void add(T*& val, std::vector<input>& result)
+        {
+            add(*val, result);
+        }*/
 
         /*template<typename T>
         inline
@@ -367,6 +385,18 @@ namespace single_source
         }
     }
 
+    struct combined_args : function_args
+    {
+        std::vector<function_args*> args;
+
+        virtual void call(std::vector<impl::input>& result)
+        {
+            for(int i=0; i < (int)args.size(); i++)
+            {
+                impl::add(*args[i], result);
+            }
+        }
+    };
 
     template<typename T>
     inline
