@@ -487,12 +487,12 @@ void build_cY_impl(equation_context& ctx,
 {
     auto [ix, iy, iz, index] = setup(ctx, points, point_count.get(), dim.get(), order_ptr, [&](const value_i& index)
     {
-        return  ocY0.assign(ocY0[index], cY0[index]),
-                ocY1.assign(ocY1[index], cY1[index]),
-                ocY2.assign(ocY2[index], cY2[index]),
-                ocY3.assign(ocY3[index], cY3[index]),
-                ocY4.assign(ocY4[index], cY4[index]),
-                ocY5.assign(ocY5[index], cY5[index]);
+        return  assign(ocY0[index], cY0[index]),
+                assign(ocY1[index], cY1[index]),
+                assign(ocY2[index], cY2[index]),
+                assign(ocY3[index], cY3[index]),
+                assign(ocY4[index], cY4[index]),
+                assign(ocY5[index], cY5[index]);
     });
 
     standard_arguments args(ctx);
