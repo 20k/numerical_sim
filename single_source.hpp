@@ -125,7 +125,7 @@ namespace single_source
             }
         };
 
-        template<typename T, int N>
+        /*template<typename T, int N>
         inline
         void add(const buffer<T, N>& buf, std::vector<input>& result);
 
@@ -135,7 +135,7 @@ namespace single_source
 
         template<typename T, int N>
         inline
-        void add(const tensor<T, N>& ten, std::vector<input>& result);
+        void add(const tensor<T, N>& ten, std::vector<input>& result);*/
 
         template<typename T, int N>
         inline

@@ -480,6 +480,10 @@ struct bssn_arg_pack : single_source::function_args
     named_buffer<value, 3, str + "gA"> gA;
     std::array<named_buffer<value, 3, str + "gB">, 3> gB;
 
+    #ifdef USE_GBB
+    std::array<named_buffer<value, 3, str + "gBB">, 3> gBB;
+    #endif // USE_GBB
+
     virtual void call(std::vector<impl::input>& result) override
     {
         single_source::impl::add(cY, result);
@@ -489,6 +493,10 @@ struct bssn_arg_pack : single_source::function_args
         single_source::impl::add(X, result);
         single_source::impl::add(gA, result);
         single_source::impl::add(gB, result);
+
+        #ifdef USE_GBB
+        single_source::impl::add(gBB, result);
+        #endif // USE_GBB
     }
 };
 
