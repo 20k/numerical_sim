@@ -470,7 +470,7 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
 }
 
 template<single_source::impl::fixed_string str>
-struct bssn_arg_pack : single_source::function_args
+struct bssn_arg_pack
 {
     std::array<named_buffer<value, 3, str + "cY">, 6> cY;
     std::array<named_buffer<value, 3, str + "cA">, 6> cA;
@@ -484,38 +484,83 @@ struct bssn_arg_pack : single_source::function_args
     std::array<named_buffer<value, 3, str + "gBB">, 3> gBB;
     #endif // USE_GBB
 
-    virtual void call(std::vector<impl::input>& result) override
+    bssn_arg_pack()
     {
-        single_source::impl::add(cY, result);
-        single_source::impl::add(cA, result);
-        single_source::impl::add(cGi, result);
-        single_source::impl::add(K, result);
-        single_source::impl::add(X, result);
-        single_source::impl::add(gA, result);
-        single_source::impl::add(gB, result);
+        for(int i=0; i < 6; i++)
+        {
+            cY[i].name = cY[i].name + std::to_string(i);
+            cA[i].name = cA[i].name + std::to_string(i);
+        }
 
-        #ifdef USE_GBB
-        single_source::impl::add(gBB, result);
-        #endif // USE_GBB
+        for(int i=0; i < 3; i++)
+        {
+            cGi[i].name = cGi[i].name + std::to_string(i);
+            gB[i].name = gB[i].name + std::to_string(i);
+
+            #ifdef USE_GBB
+            gBB[i].name = gBB[i].name + std::to_string(i);
+            #endif // USE_GBB
+        }
     }
 };
 
-///use named buffers as type system its easier but messier so ok
-void build_cY_impl(equation_context& ctx,
-                   buffer<tensor<value_us, 4>, 3> points, literal<value_i> point_count,
-                   bssn_arg_pack<""> in,
-                   bssn_arg_pack<"o"> out,
-                   bssn_arg_pack<"base_"> base,
-                   std::array<buffer<value, 3>, 3> momentum,
-                   std::array<buffer<half_type, 3>, 18> dcYij, std::array<buffer<half_type, 3>, 3> digA,
-                   std::array<buffer<half_type, 3>, 9> digB, std::array<buffer<half_type, 3>, 3> dX,
-                   buffer<value, 3> dummy,
-                   named_literal<value, "scale"> scale,
-                   named_literal<tensor<value_i, 4>, "dim">& dim,
-                   literal<value> timestep,
-                   buffer<value_us, 3> order_ptr
-                   )
+void build_cY_impl(argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
+    buffer<tensor<value_us, 4>, 3> points;
+    literal<value_i> point_count;
+
+    bssn_arg_pack<""> in;
+    bssn_arg_pack<"o"> out;
+    bssn_arg_pack<"base_"> base;
+
+    std::array<buffer<value, 3>, 3> momentum;
+    std::array<buffer<half_type, 3>, 18> dcYij; std::array<buffer<half_type, 3>, 3> digA;
+    std::array<buffer<half_type, 3>, 9> digB; std::array<buffer<half_type, 3>, 3> dX;
+    buffer<value, 3> dummy;
+    named_literal<value, "scale"> scale;
+    named_literal<tensor<value_i, 4>, "dim"> dim;
+    literal<value> timestep;
+    buffer<value_us, 3> order_ptr;
+
+    {
+        arg_gen.add(points);
+        arg_gen.add(point_count);
+
+        for(int i=0; i < (int)bssn_args.buffers.size(); i++)
+            arg_gen.add(bssn_args.buffers[i]);
+
+        for(int i=0; i < (int)bssn_args.buffers.size(); i++)
+        {
+            impl::input v = bssn_args.buffers[i];
+            v.name = "o" + v.name;
+            arg_gen.add(v);
+        }
+
+        for(int i=0; i < (int)bssn_args.buffers.size(); i++)
+        {
+            impl::input v = bssn_args.buffers[i];
+            v.name = "base_" + v.name;
+            arg_gen.add(v);
+        }
+
+        arg_gen.add(momentum);
+        arg_gen.add(dcYij);
+        arg_gen.add(digA);
+        arg_gen.add(digB);
+        arg_gen.add(dX);
+
+        for(int i=0; i < (int)utility_args.buffers.size(); i++)
+        {
+            arg_gen.add(utility_args.buffers[i]);
+        }
+
+        arg_gen.add(scale);
+        arg_gen.add(dim);
+
+        arg_gen.add(timestep);
+        arg_gen.add(order_ptr);
+    }
+
     auto [ix, iy, iz, index] = setup(ctx, points, point_count.get(), dim.get(), order_ptr, [&](const value_i& index)
     {
         return  assign(out.cY[0][index], in.cY[0][index]),
@@ -604,11 +649,11 @@ void build_cY_impl(equation_context& ctx,
     ctx.fix_buffers();
 }
 
-void bssn::build_cY(cl::context& clctx, matter_interop& interop, bool use_matter)
+void bssn::build_cY(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
     equation_context ectx;
 
-    cl::kernel kern = single_source::make_kernel_for(clctx, ectx, build_cY_impl, "evolve_cY");
+    cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_cY_impl, "evolve_cY", "", bssn_args, utility_args);
 
     clctx.register_kernel("evolve_cY", kern);
 }

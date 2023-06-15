@@ -6,6 +6,7 @@
 #include "tensor_algebra.hpp"
 #include "equation_context.hpp"
 #include <toolkit/opencl.hpp>
+#include "single_source.hpp"
 
 ///must be 4 because of damping
 #define BORDER_WIDTH 4
@@ -98,6 +99,16 @@ value bidx(const std::string& buf, bool interpolate, bool is_derivative, const a
         }
     }
 }
+
+struct base_bssn_args
+{
+    std::vector<single_source::impl::input> buffers;
+};
+
+struct base_utility_args
+{
+    std::vector<single_source::impl::input> buffers;
+};
 
 #define USE_W
 //#define BETTERDAMP_DTCAIJ
@@ -526,7 +537,7 @@ namespace bssn
     tensor<value, 3> calculate_momentum_constraint(matter_interop& interop, equation_context& ctx, bool use_matter);
     value calculate_hamiltonian_constraint(matter_interop& interop, equation_context& ctx, bool use_matter);
 
-    void build_cY(cl::context& clctx, matter_interop& interop, bool use_matter);
+    void build_cY(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args);
     void build_cA(matter_interop& interop, equation_context& ctx, bool use_matter);
     void build_cGi(matter_interop& interop, equation_context& ctx, bool use_matter);
     void build_K(matter_interop& interop, equation_context& ctx, bool use_matter);

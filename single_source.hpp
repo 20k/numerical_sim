@@ -296,7 +296,12 @@ namespace single_source
         {
             static_assert(false);
         }*/
+    }
 
+    struct argument_generator;
+
+    namespace impl
+    {
         struct kernel_context
         {
             std::vector<input> inputs;
@@ -385,6 +390,32 @@ namespace single_source
         }
     }
 
+    struct argument_generator
+    {
+        impl::kernel_context kctx;
+
+        template<typename T>
+        T add()
+        {
+            T ret = T{};
+
+            ::single_source::impl::add(ret, kctx.inputs);
+
+            return ret;
+        }
+
+        template<typename T>
+        void add(T& in)
+        {
+            ::single_source::impl::add(in, kctx.inputs);
+        }
+
+        void add(impl::input& in)
+        {
+            kctx.inputs.push_back(in);
+        }
+    };
+
     struct combined_args : function_args
     {
         std::vector<function_args*> args;
@@ -397,6 +428,18 @@ namespace single_source
             }
         }
     };
+
+
+    template<typename T, typename... U>
+    inline
+    cl::kernel make_dynamic_kernel_for(cl::context& clctx, equation_context& ectx, T&& func, const std::string& kernel_name = "kernel_name", const std::string& extra_args = "", U&&... u)
+    {
+        argument_generator args;
+
+        std::invoke(func, args, ectx, std::forward<U>(u)...);
+
+        return impl::generate_kernel(clctx, args.kctx, ectx, kernel_name, extra_args);
+    }
 
     template<typename T>
     inline

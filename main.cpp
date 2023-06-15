@@ -5046,8 +5046,6 @@ int main()
     //equation_context dtcY;
     //bssn::build_cY(meta_interop, dtcY, holes.use_matter || holes.use_particles);
 
-    bssn::build_cY(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles);
-
     equation_context dtcA;
     bssn::build_cA(meta_interop, dtcA, holes.use_matter || holes.use_particles);
 
@@ -5274,6 +5272,41 @@ int main()
         argument_string += "-DHAS_COLOUR ";
         hydro_argument_string += "-DHAS_COLOUR ";
     }
+
+    base_bssn_args bssn_arglist;
+    base_utility_args utility_arglist;
+
+    for(const buffer_descriptor& desc : buffers)
+    {
+        single_source::impl::input in;
+        in.type = "float";
+        in.pointer = true;
+        in.name = desc.name;
+
+        bssn_arglist.buffers.push_back(in);
+    }
+
+    for(const buffer_descriptor& desc : utility_buffers)
+    {
+        single_source::impl::input in;
+        in.type = "float";
+        in.pointer = true;
+        in.name = desc.name;
+
+        utility_arglist.buffers.push_back(in);
+    }
+
+    if(utility_buffers.size() == 0)
+    {
+        single_source::impl::input in;
+        in.type = "float";
+        in.pointer = true;
+        in.name = "dummy";
+
+        utility_arglist.buffers.push_back(in);
+    }
+
+    bssn::build_cY(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
 
     {
         std::string generated_arglist = "#define GET_ARGLIST(a, p) ";
