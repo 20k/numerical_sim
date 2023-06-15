@@ -469,12 +469,35 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
     return {ix, iy, iz, index};
 }
 
+template<single_source::impl::fixed_string str>
+struct standard_arg_pack : single_source::function_args
+{
+    std::array<named_buffer<value, 3, str + "cY">, 6> cY;
+    std::array<named_buffer<value, 3, str + "cA">, 6> cA;
+    std::array<named_buffer<value, 3, str + "cGi">, 3> cGi;
+    named_buffer<value, 3, str + "K"> K;
+    named_buffer<value, 3, str + "X"> X;
+    named_buffer<value, 3, str + "gA"> gA;
+    std::array<named_buffer<value, 3, str + "gB">, 3> gB;
+
+    virtual void call(std::vector<impl::input>& result) override
+    {
+        single_source::impl::add(cY, result);
+        single_source::impl::add(cA, result);
+        single_source::impl::add(cGi, result);
+        single_source::impl::add(K, result);
+        single_source::impl::add(X, result);
+        single_source::impl::add(gA, result);
+        single_source::impl::add(gB, result);
+    }
+};
+
 ///use named buffers as type system its easier but messier so ok
 void build_cY_impl(equation_context& ctx,
                    buffer<tensor<value_us, 4>, 3> points, literal<value_i> point_count,
-                   STANDARD_ARGS(),
-                   STANDARD_ARGS(o),
-                   STANDARD_ARGS(base_),
+                   standard_arg_pack<""> in,
+                   standard_arg_pack<"o"> out,
+                   standard_arg_pack<"base_"> base,
                    std::array<buffer<value, 3>, 3> momentum,
                    std::array<buffer<half_type, 3>, 18> dcYij, std::array<buffer<half_type, 3>, 3> digA,
                    std::array<buffer<half_type, 3>, 9> digB, std::array<buffer<half_type, 3>, 3> dX,
@@ -487,12 +510,12 @@ void build_cY_impl(equation_context& ctx,
 {
     auto [ix, iy, iz, index] = setup(ctx, points, point_count.get(), dim.get(), order_ptr, [&](const value_i& index)
     {
-        return  assign(ocY0[index], cY0[index]),
-                assign(ocY1[index], cY1[index]),
-                assign(ocY2[index], cY2[index]),
-                assign(ocY3[index], cY3[index]),
-                assign(ocY4[index], cY4[index]),
-                assign(ocY5[index], cY5[index]);
+        return  assign(out.cY[0][index], in.cY[0][index]),
+                assign(out.cY[1][index], in.cY[1][index]),
+                assign(out.cY[2][index], in.cY[2][index]),
+                assign(out.cY[3][index], in.cY[3][index]),
+                assign(out.cY[4][index], in.cY[4][index]),
+                assign(out.cY[5][index], in.cY[5][index]);
     });
 
     standard_arguments args(ctx);
@@ -563,12 +586,12 @@ void build_cY_impl(equation_context& ctx,
     }
     #endif
 
-    ctx.exec(assign(ocY0[index], base_cY0[index] + timestep * dtcYij.idx(0, 0)));
-    ctx.exec(assign(ocY1[index], base_cY1[index] + timestep * dtcYij.idx(1, 0)));
-    ctx.exec(assign(ocY2[index], base_cY2[index] + timestep * dtcYij.idx(2, 0)));
-    ctx.exec(assign(ocY3[index], base_cY3[index] + timestep * dtcYij.idx(1, 1)));
-    ctx.exec(assign(ocY4[index], base_cY4[index] + timestep * dtcYij.idx(1, 2)));
-    ctx.exec(assign(ocY5[index], base_cY5[index] + timestep * dtcYij.idx(2, 2)));
+    ctx.exec(assign(out.cY[0][index], base.cY[0][index] + timestep * dtcYij.idx(0, 0)));
+    ctx.exec(assign(out.cY[1][index], base.cY[1][index] + timestep * dtcYij.idx(1, 0)));
+    ctx.exec(assign(out.cY[2][index], base.cY[2][index] + timestep * dtcYij.idx(2, 0)));
+    ctx.exec(assign(out.cY[3][index], base.cY[3][index] + timestep * dtcYij.idx(1, 1)));
+    ctx.exec(assign(out.cY[4][index], base.cY[4][index] + timestep * dtcYij.idx(1, 2)));
+    ctx.exec(assign(out.cY[5][index], base.cY[5][index] + timestep * dtcYij.idx(2, 2)));
 
     ctx.fix_buffers();
 }

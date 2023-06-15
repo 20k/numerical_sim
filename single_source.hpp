@@ -24,14 +24,54 @@ namespace single_source
                 return std::string(_chars, _chars + N);
             }
 
+            constexpr fixed_string(){}
+
             constexpr fixed_string(const char (&arr)[N+1])
             {
                 std::copy(arr, arr + N, _chars);
+            }
+
+            template<size_t M>
+            constexpr fixed_string<N + M> operator+(const fixed_string<M>& other) const
+            {
+                fixed_string<N + M> result;
+
+                for(size_t i=0; i < N; i++)
+                {
+                    result._chars[i] = _chars[i];
+                }
+
+                for(size_t i=0; i < M; i++)
+                {
+                    result._chars[i + N] = other._chars[i];
+                }
+
+                return result;
+            }
+
+            template<size_t M>
+            constexpr fixed_string<N + M - 1> operator+(const char (&arr)[M]) const
+            {
+                fixed_string<N + M - 1> result;
+
+                for(size_t i=0; i < N; i++)
+                {
+                    result._chars[i] = _chars[i];
+                }
+
+                for(size_t i=0; i < M-1; i++)
+                {
+                    result._chars[i + N] = arr[i];
+                }
+
+                return result;
             }
         };
 
         template<size_t N>
         fixed_string(const char (&arr)[N]) -> fixed_string<N-1>;  // Drop the null terminator
+
+        struct input;
     }
 
     template<typename T, int dimensions, impl::fixed_string _name>
@@ -54,9 +94,18 @@ namespace single_source
         }
     };
 
+    struct function_args
+    {
+        virtual void call(std::vector<impl::input>& result)
+        {
+            assert(false);
+        }
+    };
+
+    #define TOUCH_FUNCTION_ARG(x) single_source::impl::add(x, result)
+
     namespace impl
     {
-
         struct input
         {
             std::string type;
@@ -171,12 +220,56 @@ namespace single_source
             }
         }
 
-        template<typename T>
+        template<typename T, int buffer_N, std::size_t array_N, auto str>
+        inline
+        void add(std::array<named_buffer<T, buffer_N, str>, array_N>& named_bufs, std::vector<input>& result)
+        {
+            for(int i=0; i < (int)array_N; i++)
+            {
+                input in;
+                in.type = dual_types::name_type(T());
+                in.pointer = true;
+
+                std::string name = str.get() + std::to_string(i);
+
+                in.name = name;
+                named_bufs[i].name = name;
+
+                result.push_back(in);
+            }
+        }
+
+        template<typename T, std::size_t array_N, auto str>
+        inline
+        void add(std::array<named_literal<T, str>, array_N>& named_bufs, std::vector<input>& result)
+        {
+            for(int i=0; i < (int)array_N; i++)
+            {
+                input in;
+                in.type = dual_types::name_type(T());
+                in.pointer = false;
+
+                std::string name = str.get() + std::to_string(i);
+
+                in.name = name;
+                named_bufs[i].name = name;
+
+                result.push_back(in);
+            }
+        }
+
+        inline
+        void add(function_args& args, std::vector<input>& result)
+        {
+            args.call(result);
+        }
+
+        /*template<typename T>
         inline
         void add(const T&, std::vector<input>& result)
         {
             static_assert(false);
-        }
+        }*/
 
         struct kernel_context
         {
