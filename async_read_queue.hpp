@@ -6,7 +6,7 @@
 template<typename T>
 struct async_read_queue
 {
-    std::vector<std::pair<cl::event, cl_float2*>> gpu_data_in_flight;
+    std::vector<std::pair<cl::event, T*>> gpu_data_in_flight;
     std::vector<T*> pending_unprocessed_data;
     std::vector<cl::buffer> buffers;
     int element_count = 0;

@@ -4903,6 +4903,61 @@ void test_kernel_generation(cl::context& clctx, cl::command_queue& cqueue)
     cqueue.exec(kern, {128, 128, 128}, {8,8,1});
 }
 
+void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, literal<value_i> points_count, std::array<single_source::named_buffer<value, 3, "cY">, 6> cY, single_source::named_buffer<value, 3, "X"> X, single_source::named_literal<tensor<value_i, 4>, "dim"> dim, single_source::named_literal<value, "scale"> scale, buffer<value, 3> out)
+{
+    value_i local_idx = "get_global_id(0)";
+
+    ctx.exec(if_s(local_idx >= points_count.get(), return_s));
+
+    tensor<value_i, 4> centre = (dim.get() - 1)/2;
+
+    tensor<value, 3> centref = {centre.x().convert<float>(), centre.y().convert<float>(), centre.z().convert<float>()};
+
+    value_i ix = points[local_idx].x().convert<int>();
+    value_i iy = points[local_idx].y().convert<int>();
+    value_i iz = points[local_idx].z().convert<int>();
+
+    tensor<value, 3> fpos = {ix.convert<float>(), iy.convert<float>(), iz.convert<float>()};
+
+    tensor<value, 3> from_centre = fpos - centref;
+
+    tensor<value, 3> normal = from_centre / from_centre.length();
+
+    value_i c_index = iz * dim.get().x() * dim.get().y() + iy * dim.get().x() + ix;
+
+    ctx.exec("int index = " + type_to_string(c_index) + ";");
+
+    value_i index = "index";
+
+    standard_arguments args(ctx);
+
+    metric<value, 3, 3> Yij = args.Yij;
+
+    value result = 0;
+
+    for(int m=0; m < 3; m++)
+    {
+        for(int n=0; n < 3; n++)
+        {
+            value inner_sum = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                for(int l=0; l < 3; l++)
+                {
+                    inner_sum += args.iYij[k, l] * (diff1(ctx, args.Yij[m, k], n) - diff1(ctx, args.Yij[m, n], k)) * normal.idx(l);
+                }
+            }
+
+            result += sqrt(args.Yij.det()) * args.iYij[m, n] * inner_sum;
+        }
+    }
+
+    assign(out[index], result);
+
+    ctx.fix_buffers();
+}
+
 ///it seems like basically i need numerical dissipation of some form
 ///if i didn't evolve where sponge = 1, would be massively faster
 int main()

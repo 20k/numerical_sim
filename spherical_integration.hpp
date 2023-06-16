@@ -2,9 +2,12 @@
 #define SPHERICAL_INTEGRATION_HPP_INCLUDED
 
 #include <vector>
+#include <assert.h>
 #include "legendre_nodes.h"
 #include "legendre_weights.h"
 #include <geodesic/dual_value.hpp>
+#include <toolkit/opencl.hpp>
+#include "async_read_queue.hpp"
 
 ///https://pomax.github.io/bezierinfo/legendre-gauss.html
 ///https://cbeentjes.github.io/files/Ramblings/QuadratureSphere.pdf
@@ -74,6 +77,25 @@ auto spherical_integrate(const T& f_theta_phi, int n)
 
     return integrate_1d(outer_integral, n, iupper, ilower);
 }
+
+std::vector<cl_ushort4> get_spherical_integration_points(vec3i dim, int extract_pixel);
+float linear_interpolate(const std::map<int, std::map<int, std::map<int, float>>>& vals_map, vec3f pos, vec3i dim);
+
+struct integrator
+{
+    int extract_pixel = 0;
+
+    std::vector<cl_ushort4> points;
+    async_read_queue<float> arq;
+    cl::buffer gpu_points;
+
+    cl::command_queue read_queue;
+    vec3i dim;
+
+    integrator(cl::context& ctx, vec3i _dim, cl::command_queue _read_queue);
+
+    std::vector<float> integrate();
+};
 
 ///https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.728.5478&rep=rep1&type=pdf
 inline

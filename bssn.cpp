@@ -1,6 +1,7 @@
 #include "bssn.hpp"
 #include "single_source.hpp"
 #include "bitflags.cl"
+#include "spherical_decomposition.hpp"
 
 value matter_meta_interop::calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args)
 {

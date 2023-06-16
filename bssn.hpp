@@ -7,6 +7,7 @@
 #include "equation_context.hpp"
 #include <toolkit/opencl.hpp>
 #include "single_source.hpp"
+#include "async_read_queue.hpp"
 
 ///must be 4 because of damping
 #define BORDER_WIDTH 4
