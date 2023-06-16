@@ -316,7 +316,22 @@ namespace single_source
         inline
         std::string generate_kernel_string(kernel_context& kctx, equation_context& ctx, const std::string& kernel_name)
         {
-            std::string base = "__kernel void " + kernel_name + "(";
+            bool any_half = false;
+
+            for(auto& in : kctx.inputs)
+            {
+                if(in.type == "half")
+                    any_half = true;
+            }
+
+            std::string base;
+
+            if(any_half)
+            {
+                base += "#pragma OPENCL EXTENSION cl_khr_fp16 : enable\n\n";
+            }
+
+            base += "__kernel void " + kernel_name + "(";
 
             for(int i=0; i < (int)kctx.inputs.size(); i++)
             {

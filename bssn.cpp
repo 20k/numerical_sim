@@ -428,7 +428,9 @@ using namespace single_source;
 template<typename T>
 std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, value_i point_count, const tensor<value_i, 4>& dim, const buffer<value_us, 3>& order_ptr, T&& copier)
 {
-    value_i local_idx = "get_global_id(0)";
+    ctx.exec("int lidx = get_global_id(0)");
+
+    value_i local_idx = "lidx";
 
     ctx.exec(if_s(local_idx >= point_count, return_s));
 
@@ -446,7 +448,11 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
 
     ///((k) * dim.x * dim.y + (j) * dim.x + (i))
 
-    value_i index = iz * dim.x() * dim.y() + iy * dim.x() + ix;
+    value_i c_index = iz * dim.x() * dim.y() + iy * dim.x() + ix;
+
+    ctx.exec("int index = " + type_to_string(c_index) + ";");
+
+    value_i index = "index";
 
     value_i order = order_ptr[index].convert<int>();
 
@@ -504,7 +510,7 @@ struct bssn_arg_pack
     }
 };
 
-void build_cY_impl(argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args, base_utility_args& utility_args)
+struct all_args
 {
     buffer<tensor<value_us, 4>, 3> points;
     literal<value_i> point_count;
@@ -513,14 +519,15 @@ void build_cY_impl(argument_generator& arg_gen, equation_context& ctx, base_bssn
     bssn_arg_pack<"o"> out;
     bssn_arg_pack<"base_"> base;
 
-    std::array<buffer<value, 3>, 3> momentum;
-    std::array<buffer<half_type, 3>, 18> dcYij; std::array<buffer<half_type, 3>, 3> digA;
-    std::array<buffer<half_type, 3>, 9> digB; std::array<buffer<half_type, 3>, 3> dX;
+    std::array<named_buffer<value, 3, "momentum">, 3> momentum;
+    std::array<named_buffer<half_type, 3, "dcYij">, 18> dcYij; std::array<named_buffer<half_type, 3, "digA">, 3> digA;
+    std::array<named_buffer<half_type, 3, "digB">, 9> digB; std::array<named_buffer<half_type, 3, "dX">, 3> dX;
     named_literal<value, "scale"> scale;
     named_literal<tensor<value_i, 4>, "dim"> dim;
     literal<value> timestep;
     buffer<value_us, 3> order_ptr;
 
+    all_args(argument_generator& arg_gen, base_bssn_args& bssn_args, base_utility_args& utility_args)
     {
         arg_gen.add(points, point_count);
 
@@ -535,15 +542,20 @@ void build_cY_impl(argument_generator& arg_gen, equation_context& ctx, base_bssn
 
         arg_gen.add(scale, dim, timestep, order_ptr);
     }
+};
 
-    auto [ix, iy, iz, index] = setup(ctx, points, point_count.get(), dim.get(), order_ptr, [&](const value_i& index)
+void build_cY_impl(argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args, base_utility_args& utility_args)
+{
+    all_args all(arg_gen, bssn_args, utility_args);
+
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr, [&](const value_i& index)
     {
-        return  assign(out.cY[0][index], in.cY[0][index]),
-                assign(out.cY[1][index], in.cY[1][index]),
-                assign(out.cY[2][index], in.cY[2][index]),
-                assign(out.cY[3][index], in.cY[3][index]),
-                assign(out.cY[4][index], in.cY[4][index]),
-                assign(out.cY[5][index], in.cY[5][index]);
+        return  assign(all.out.cY[0][index], all.in.cY[0][index]),
+                assign(all.out.cY[1][index], all.in.cY[1][index]),
+                assign(all.out.cY[2][index], all.in.cY[2][index]),
+                assign(all.out.cY[3][index], all.in.cY[3][index]),
+                assign(all.out.cY[4][index], all.in.cY[4][index]),
+                assign(all.out.cY[5][index], all.in.cY[5][index]);
     });
 
     standard_arguments args(ctx);
@@ -614,12 +626,21 @@ void build_cY_impl(argument_generator& arg_gen, equation_context& ctx, base_bssn
     }
     #endif
 
-    ctx.exec(assign(out.cY[0][index], base.cY[0][index] + timestep * dtcYij.idx(0, 0)));
-    ctx.exec(assign(out.cY[1][index], base.cY[1][index] + timestep * dtcYij.idx(1, 0)));
-    ctx.exec(assign(out.cY[2][index], base.cY[2][index] + timestep * dtcYij.idx(2, 0)));
-    ctx.exec(assign(out.cY[3][index], base.cY[3][index] + timestep * dtcYij.idx(1, 1)));
-    ctx.exec(assign(out.cY[4][index], base.cY[4][index] + timestep * dtcYij.idx(1, 2)));
-    ctx.exec(assign(out.cY[5][index], base.cY[5][index] + timestep * dtcYij.idx(2, 2)));
+    ctx.pin(dtcYij);
+
+    std::array<value, 6> dt = {
+        dtcYij.idx(0, 0),
+        dtcYij.idx(1, 0),
+        dtcYij.idx(2, 0),
+        dtcYij.idx(1, 1),
+        dtcYij.idx(1, 2),
+        dtcYij.idx(2, 2)
+    };
+
+    for(int i=0; i < 6; i++)
+    {
+        ctx.exec(assign(all.out.cY[i][index], all.base.cY[i][index] + all.timestep * dt[i]));
+    }
 
     ctx.fix_buffers();
 }
@@ -820,8 +841,20 @@ value calculate_hamiltonian(equation_context& ctx, standard_arguments& args)
     return calculate_hamiltonian(args.cY, icY, args.Yij, args.iYij, (xgARij / (max(args.get_X(), 0.001f) * args.gA)), args.K, args.cA);
 }
 
-void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_matter)
+void build_cA_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
+    all_args all(arg_gen, bssn_args, utility_args);
+
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr, [&](const value_i& index)
+    {
+        return  assign(all.out.cA[0][index], all.in.cA[0][index]),
+                assign(all.out.cA[1][index], all.in.cA[1][index]),
+                assign(all.out.cA[2][index], all.in.cA[2][index]),
+                assign(all.out.cA[3][index], all.in.cA[3][index]),
+                assign(all.out.cA[4][index], all.in.cA[4][index]),
+                assign(all.out.cA[5][index], all.in.cA[5][index]);
+    });
+
     standard_arguments args(ctx);
 
     value scale = "scale";
@@ -1065,14 +1098,25 @@ void bssn::build_cA(matter_interop& interop, equation_context& ctx, bool use_mat
 
     ///https://arxiv.org/pdf/gr-qc/0204002.pdf todo: 4.3
 
+    ctx.pin(dtcAij);
+
     for(int i=0; i < 6; i++)
     {
-        std::string name = "dtcAij" + std::to_string(i);
-
         vec2i idx = args.linear_indices[i];
 
-        ctx.add(name, dtcAij.idx(idx.x(), idx.y()));
+        ctx.exec(assign(all.out.cA[i][index], all.base.cA[i][index] + all.timestep * dtcAij.idx(idx.x(), idx.y())));
     }
+
+    ctx.fix_buffers();
+}
+
+void bssn::build_cA(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+{
+    equation_context ectx;
+
+    cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_cA_impl, "evolve_cA", "", interop, use_matter, bssn_args, utility_args);
+
+    clctx.register_kernel("evolve_cA", kern);
 }
 
 void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_matter)

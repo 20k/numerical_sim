@@ -278,7 +278,7 @@ struct standard_arguments
 
                     int final_index = k + symmetric_index * 3;
 
-                    dcYij.idx(k, i, j) = bidx("dcYij" + std::to_string(final_index), interpolate, true);
+                    dcYij.idx(k, i, j) = bidx(pack.dcYij[final_index], interpolate, true);
                 }
             }
         }
@@ -538,7 +538,7 @@ namespace bssn
     value calculate_hamiltonian_constraint(matter_interop& interop, equation_context& ctx, bool use_matter);
 
     void build_cY(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args);
-    void build_cA(matter_interop& interop, equation_context& ctx, bool use_matter);
+    void build_cA(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args);
     void build_cGi(matter_interop& interop, equation_context& ctx, bool use_matter);
     void build_K(matter_interop& interop, equation_context& ctx, bool use_matter);
     void build_X(equation_context& ctx);

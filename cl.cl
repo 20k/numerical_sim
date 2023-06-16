@@ -620,7 +620,7 @@ void evolve_cY(__global ushort4* points, int point_count,
 }
 #endif
 
-__kernel
+/*__kernel
 void evolve_cA(__global ushort4* points, int point_count,
             STANDARD_ARGS(),
             STANDARD_ARGS(o),
@@ -679,29 +679,7 @@ void evolve_cA(__global ushort4* points, int point_count,
     ocA5[index] = f_dtcAij5 * timestep + b5;
 
     ///NAN ocA0 107 125 125
-
-    /*if(X[index] < DISSB)
-    {
-        ocA0[index] += (0 - ocA0[index]) * timestep;
-        ocA1[index] += (0 - ocA1[index]) * timestep;
-        ocA2[index] += (0 - ocA2[index]) * timestep;
-        ocA3[index] += (0 - ocA3[index]) * timestep;
-        ocA4[index] += (0 - ocA4[index]) * timestep;
-        ocA5[index] += (0 - ocA5[index]) * timestep;
-    }*/
-
-    NANCHECK(ocA0);
-    NANCHECK(ocA1);
-    NANCHECK(ocA2);
-    NANCHECK(ocA3);
-    NANCHECK(ocA4);
-    NANCHECK(ocA5);
-
-    /*if(ix == 97 && iy == 124 && iz == 124)
-    {
-        printf("Here we go again xsij %f %f %f cS0 %f\n", DBGXGA, cA0[index], cY0[index], Debug_cS0);
-    }*/
-}
+}*/
 
 __kernel
 void evolve_cGi(__global ushort4* points, int point_count,

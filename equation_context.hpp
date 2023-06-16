@@ -139,6 +139,15 @@ struct equation_context : differentiator
         }
     }
 
+    template<typename T, std::size_t N>
+    void pin(std::array<T, N>& arr)
+    {
+        for(int i=0; i < (int)N; i++)
+        {
+            pin(arr[i]);
+        }
+    }
+
     /*template<typename T>
     void pin(T& mT)
     {
