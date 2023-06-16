@@ -362,7 +362,7 @@ namespace single_source
 
             base += "\n}";
 
-            std::cout << base << std::endl;
+            //std::cout << base << std::endl;
 
             return base;
         }
