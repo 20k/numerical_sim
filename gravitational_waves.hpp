@@ -9,28 +9,21 @@
 #include <vector>
 #include <vec/vec.hpp>
 #include <geodesic/dual_value.hpp>
+#include "async_read_queue.hpp"
 
 struct ref_counted_buffer;
 
 struct gravitational_wave_manager
 {
-    struct callback_data
-    {
-        gravitational_wave_manager* me = nullptr;
-        cl_float2* read = nullptr;
-    };
-
     cl_int4 wave_pos;
     vec3i simulation_size;
-
-    std::vector<cl::buffer> wave_buffers;
-    std::vector<std::pair<cl::event, cl_float2*>> gpu_data_in_flight;
-    std::vector<cl_float2*> pending_unprocessed_data;
 
     std::vector<cl_ushort4> raw_harmonic_points;
 
     cl::command_queue read_queue;
     cl::buffer harmonic_points;
+
+    async_read_queue<cl_float2> arq;
 
     uint32_t next_buffer = 0;
 

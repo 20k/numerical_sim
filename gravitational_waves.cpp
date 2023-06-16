@@ -139,7 +139,8 @@ dual_types::complex<float> get_harmonic(const std::vector<cl_ushort4>& points, c
 }
 
 gravitational_wave_manager::gravitational_wave_manager(cl::context& ctx, vec3i _simulation_size, float c_at_max, float scale) :
-    read_queue(ctx, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE), harmonic_points{ctx}
+    read_queue(ctx, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE), harmonic_points{ctx},
+    arq(ctx)
 {
     simulation_size = _simulation_size;
 
@@ -151,21 +152,17 @@ gravitational_wave_manager::gravitational_wave_manager(cl::context& ctx, vec3i _
 
     raw_harmonic_points = get_harmonic_extraction_points(simulation_size, calculated_extraction_pixel);
 
-    elements = raw_harmonic_points.size();
-    harmonic_points.alloc(sizeof(cl_ushort4) * elements);
+    harmonic_points.alloc(sizeof(cl_ushort4) * raw_harmonic_points.size());
     harmonic_points.write(read_queue, raw_harmonic_points);
     read_queue.block();
 
-    int num_wave_buffers = 8;
-
-    for(int i=0; i < num_wave_buffers; i++)
-    {
-        wave_buffers.emplace_back(ctx).alloc(sizeof(cl_float2) * elements);
-    }
+    arq.start(ctx, read_queue, raw_harmonic_points.size());
 }
 
 void gravitational_wave_manager::issue_extraction(cl::managed_command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<ref_counted_buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize)
 {
+    cl::buffer next = arq.fetch_next_buffer();
+
     cl::args waveform_args;
 
     cl_int point_count = raw_harmonic_points.size();
@@ -183,9 +180,6 @@ void gravitational_wave_manager::issue_extraction(cl::managed_command_queue& cqu
         waveform_args.push_back(i.as_device_read_only());
     }
 
-    cl::buffer& next = wave_buffers.at((next_buffer % wave_buffers.size()));
-    next_buffer++;
-
     waveform_args.push_back(scale);
     waveform_args.push_back(clsize);
     waveform_args.push_back(next);
@@ -193,58 +187,34 @@ void gravitational_wave_manager::issue_extraction(cl::managed_command_queue& cqu
 
     cl::event kernel_event = cqueue.exec("extract_waveform", waveform_args, {point_count}, {128});
 
-    cl_float2* next_data = new cl_float2[elements];
-
-    cl::event event = next.read_async(read_queue, (char*)next_data, elements * sizeof(cl_float2), {kernel_event});
-    read_queue.flush();
-
-    gpu_data_in_flight.push_back({event, next_data});
+    arq.issue(next, kernel_event);
 }
 
 std::vector<dual_types::complex<float>> gravitational_wave_manager::process()
 {
-    if(gpu_data_in_flight.size() >= wave_buffers.size())
-    {
-        printf("Ran out of hacky extraction buffers\n");
-    }
-
-    for(int i=0; i < (int)gpu_data_in_flight.size(); i++)
-    {
-        auto [event, data_ptr] = gpu_data_in_flight[i];
-
-        if(event.is_finished())
-        {
-            pending_unprocessed_data.push_back(data_ptr);
-
-            gpu_data_in_flight.erase(gpu_data_in_flight.begin() + i);
-            i--;
-            continue;
-        }
-        else
-            break;
-    }
+    std::vector<std::vector<cl_float2>> to_process = arq.process();
 
     std::vector<dual_types::complex<float>> complex_harmonics;
 
-    std::vector<cl_float2*> to_process = std::move(pending_unprocessed_data);
-
-    pending_unprocessed_data.clear();
-
-    for(cl_float2* vec : to_process)
+    for(const std::vector<cl_float2>& data : to_process)
     {
+        std::cout << "Dsize " << (int)data.size() << std::endl;
+
         std::vector<dual_types::complex<float>> as_vector;
 
-        for(int i=0; i < elements; i++)
+        for(cl_float2 d : data)
         {
-            as_vector.push_back({vec[i].s[0], vec[i].s[1]});
+            as_vector.push_back({d.s[0], d.s[1]});
         }
+
+        printf("hi1\n");
 
         dual_types::complex<float> harmonic = get_harmonic(raw_harmonic_points, as_vector, simulation_size, (float)calculated_extraction_pixel, 2, 2);
 
+        printf("hi2\n");
+
         if(!isnanf(harmonic.real) && !isnanf(harmonic.imaginary))
             complex_harmonics.push_back(harmonic);
-
-        delete [] vec;
     }
 
     return complex_harmonics;
