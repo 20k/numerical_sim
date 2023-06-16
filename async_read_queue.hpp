@@ -58,8 +58,6 @@ struct async_read_queue
 
         while(gpu_data_in_flight.size() > 0 && gpu_data_in_flight.front().first.is_finished())
         {
-            printf("hi\n");
-
             T* ptr = gpu_data_in_flight.front().second;
 
             std::vector<T> vals;
@@ -74,8 +72,6 @@ struct async_read_queue
             delete [] ptr;
 
             gpu_data_in_flight.erase(gpu_data_in_flight.begin());
-
-            printf("hi3\n");
         }
 
         return ret;

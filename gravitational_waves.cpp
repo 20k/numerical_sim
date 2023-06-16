@@ -7,7 +7,7 @@
 #include "spherical_decomposition.hpp"
 #include "ref_counted.hpp"
 
-float linear_interpolate(const std::map<std::tuple<int, int, int>, float> vals_map, vec3f pos, vec3i dim)
+float linear_interpolate(const std::map<int, std::map<int, std::map<int, float>>>& vals_map, vec3f pos, vec3i dim)
 {
     vec3f floored = floor(pos);
 
@@ -19,9 +19,7 @@ float linear_interpolate(const std::map<std::tuple<int, int, int>, float> vals_m
 
         //std::cout << "MAPV " << vals_map.at(lpos.x()).at(lpos.y()).at(lpos.z()) << std::endl;
 
-        return vals_map.at(std::tie(lpos.x(), lpos.y(), lpos.z()));
-
-        //return vals[lpos.z() * dim.x() * dim.y() + lpos.y() * dim.x() + lpos.x()];
+        return vals_map.at(lpos.x()).at(lpos.y()).at(lpos.z());
     };
 
     auto c000 = index(ipos + (vec3i){0,0,0});
@@ -112,8 +110,8 @@ std::vector<cl_ushort4> get_harmonic_extraction_points(vec3i dim, int extract_pi
 
 dual_types::complex<float> get_harmonic(const std::vector<cl_ushort4>& points, const std::vector<dual_types::complex<float>>& vals, vec3i dim, int extract_pixel, int l, int m)
 {
-    std::map<std::tuple<int, int, int>, float> real_value_map;
-    std::map<std::tuple<int, int, int>, float> imaginary_value_map;
+    std::map<int, std::map<int, std::map<int, float>>> real_value_map;
+    std::map<int, std::map<int, std::map<int, float>>> imaginary_value_map;
 
     assert(points.size() == vals.size());
 
@@ -121,8 +119,8 @@ dual_types::complex<float> get_harmonic(const std::vector<cl_ushort4>& points, c
     {
         cl_ushort4 point = points[i];
 
-        real_value_map[std::tie(point.s[0], point.s[1], point.s[2])] = vals[i].real;
-        imaginary_value_map[std::tie(point.s[0], point.s[1], point.s[2])] = vals[i].imaginary;
+        real_value_map[point.s[0]][point.s[1]][point.s[2]] = vals[i].real;
+        imaginary_value_map[point.s[0]][point.s[1]][point.s[2]] = vals[i].imaginary;
     }
 
     vec3f centre = dim_to_centre(dim);
@@ -198,8 +196,6 @@ std::vector<dual_types::complex<float>> gravitational_wave_manager::process()
 
     for(const std::vector<cl_float2>& data : to_process)
     {
-        std::cout << "Dsize " << (int)data.size() << std::endl;
-
         std::vector<dual_types::complex<float>> as_vector;
 
         for(cl_float2 d : data)
@@ -207,11 +203,7 @@ std::vector<dual_types::complex<float>> gravitational_wave_manager::process()
             as_vector.push_back({d.s[0], d.s[1]});
         }
 
-        printf("hi1\n");
-
         dual_types::complex<float> harmonic = get_harmonic(raw_harmonic_points, as_vector, simulation_size, (float)calculated_extraction_pixel, 2, 2);
-
-        printf("hi2\n");
 
         if(!isnanf(harmonic.real) && !isnanf(harmonic.imaginary))
             complex_harmonics.push_back(harmonic);
