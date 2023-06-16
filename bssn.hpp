@@ -539,7 +539,7 @@ namespace bssn
 
     void build_cY(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args);
     void build_cA(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args);
-    void build_cGi(matter_interop& interop, equation_context& ctx, bool use_matter);
+    void build_cGi(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args);
     void build_K(matter_interop& interop, equation_context& ctx, bool use_matter);
     void build_X(equation_context& ctx);
     void build_gA(equation_context& ctx);

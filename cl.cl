@@ -681,6 +681,7 @@ void evolve_cA(__global ushort4* points, int point_count,
     ///NAN ocA0 107 125 125
 }*/
 
+#if 0
 __kernel
 void evolve_cGi(__global ushort4* points, int point_count,
             STANDARD_ARGS(),
@@ -756,7 +757,7 @@ void evolve_cGi(__global ushort4* points, int point_count,
     }
     #endif // USE_GBB
 }
-
+#endif
 
 __kernel
 void evolve_K(__global ushort4* points, int point_count,

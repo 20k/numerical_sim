@@ -1119,8 +1119,18 @@ void bssn::build_cA(cl::context& clctx, matter_interop& interop, bool use_matter
     clctx.register_kernel("evolve_cA", kern);
 }
 
-void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_matter)
+
+void build_cGi_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
+    all_args all(arg_gen, bssn_args, utility_args);
+
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr, [&](const value_i& index)
+    {
+        return  assign(all.out.cGi[0][index], all.in.cGi[0][index]),
+                assign(all.out.cGi[1][index], all.in.cGi[1][index]),
+                assign(all.out.cGi[2][index], all.in.cGi[2][index]);
+    });
+
     standard_arguments args(ctx);
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
@@ -1368,12 +1378,32 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
     }
     #endif // CHRISTOFFEL_49
 
-    for(int i=0; i < 3; i++)
+    ctx.pin(dtcGi);
+
+    /*for(int i=0; i < 3; i++)
     {
         std::string name = "dtcGi" + std::to_string(i);
 
         ctx.add(name, dtcGi.idx(i));
+    }*/
+
+    ///todo: gBB
+
+    for(int i=0; i < 3; i++)
+    {
+        ctx.exec(assign(all.out.cGi[i][index], all.base.cGi[i][index] + all.timestep * dtcGi.idx(i)));
     }
+
+    ctx.fix_buffers();
+}
+
+void bssn::build_cGi(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+{
+    equation_context ectx;
+
+    cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_cGi_impl, "evolve_cGi", "", interop, use_matter, bssn_args, utility_args);
+
+    clctx.register_kernel("evolve_cGi", kern);
 }
 
 void bssn::build_K(matter_interop& interop, equation_context& ctx, bool use_matter)

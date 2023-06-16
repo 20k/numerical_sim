@@ -5043,9 +5043,6 @@ int main()
         meta_interop.sub_interop.push_back(new particle_matter_interop());
     }
 
-    equation_context dtcGi;
-    bssn::build_cGi(meta_interop, dtcGi, holes.use_matter || holes.use_particles);
-
     equation_context dtK;
     bssn::build_K(meta_interop, dtK, holes.use_matter || holes.use_particles);
 
@@ -5114,9 +5111,6 @@ int main()
     ctxdirectional.build(argument_string, "directional");
     ctxsommerthin.build(argument_string, "sommerthin");
 
-    //dtcY.build(argument_string, "tcy");
-    //dtcA.build(argument_string, "tca");
-    dtcGi.build(argument_string, "tcgi");
     dtK.build(argument_string, "tk");
     dtX.build(argument_string, "tx");
     dtgA.build(argument_string, "tga");
@@ -5302,7 +5296,7 @@ int main()
 
     bssn::build_cY(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
     bssn::build_cA(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
-
+    bssn::build_cGi(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
 
     {
         std::string generated_arglist = "#define GET_ARGLIST(a, p) ";
