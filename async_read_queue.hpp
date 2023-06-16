@@ -12,13 +12,12 @@ struct async_read_queue
     int element_count = 0;
     uint32_t next_buffer = 0;
 
-    cl::command_queue read_queue;
+    cl::command_queue& read_queue;
 
-    async_read_queue(cl::context& ctx) : read_queue(ctx){}
+    async_read_queue(cl::context& ctx, cl::command_queue& _read_queue) : read_queue(_read_queue){}
 
-    void start(cl::context& ctx, cl::command_queue& _read_queue, int _element_count)
+    void start(cl::context& ctx, int _element_count)
     {
-        read_queue = _read_queue;
         element_count = _element_count;
 
         int N = 8;

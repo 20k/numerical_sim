@@ -4913,10 +4913,17 @@ void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>, 3> poi
 
     tensor<value, 3> centref = {centre.x().convert<float>(), centre.y().convert<float>(), centre.z().convert<float>()};
 
-    value_i ix = points[local_idx].x().convert<int>();
-    value_i iy = points[local_idx].y().convert<int>();
-    value_i iz = points[local_idx].z().convert<int>();
+    value_i tix = points[local_idx].x().convert<int>();
+    value_i tiy = points[local_idx].y().convert<int>();
+    value_i tiz = points[local_idx].z().convert<int>();
 
+    ctx.exec("int ix = " + type_to_string(tix) + ";");
+    ctx.exec("int iy = " + type_to_string(tiy) + ";");
+    ctx.exec("int iz = " + type_to_string(tiz) + ";");
+
+    value_i ix = "ix";
+    value_i iy = "iy";
+    value_i iz = "iz";
     tensor<value, 3> fpos = {ix.convert<float>(), iy.convert<float>(), iz.convert<float>()};
 
     tensor<value, 3> from_centre = fpos - centref;
@@ -4927,11 +4934,15 @@ void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>, 3> poi
 
     ctx.exec("int index = " + type_to_string(c_index) + ";");
 
+    ctx.exec("int order = " + std::to_string(D_FULL) + ";");
+
     value_i index = "index";
 
     standard_arguments args(ctx);
 
     metric<value, 3, 3> Yij = args.Yij;
+
+    ctx.pin(args.iYij);
 
     value result = 0;
 
@@ -4953,7 +4964,13 @@ void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>, 3> poi
         }
     }
 
-    assign(out[local_idx], result);
+    value gamma_3_2 = sqrt(M_PI)/2.f;
+
+    value omega_Dm2 = 2 * pow(M_PI, 3/2.f) / gamma_3_2;
+
+    result = result * (1/(4 * omega_Dm2));
+
+    ctx.exec(assign(out[local_idx], result));
 
     ctx.fix_buffers();
 }
@@ -5341,6 +5358,12 @@ int main()
     bssn::build_gB(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
 
     {
+        equation_context ectx;
+        cl::kernel kern = single_source::make_kernel_for(clctx.ctx, ectx, adm_mass_integral, "adm_mass_integral");
+        clctx.ctx.register_kernel("adm_mass_integral", kern);
+    }
+
+    {
         std::string generated_arglist = "#define GET_ARGLIST(a, p) ";
 
         for(const buffer_descriptor& desc : buffers)
@@ -5470,11 +5493,18 @@ int main()
 
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
 
+    printf("Heres\n");
+
     base_mesh.init(clctx.ctx, clctx.cqueue, thin_pool, u_arg, matter_vars.bcAij);
+
+    printf("Hi there\n");
+
+    integrator adm_mass_integrator(clctx.ctx, size, wave_manager.read_queue);
 
     matter_vars = matter_initial_vars(clctx.ctx);
     u_arg = cl::buffer(clctx.ctx);
 
+    std::vector<float> adm_mass;
     std::vector<float> real_graph;
     std::vector<float> real_decomp;
     std::vector<float> imaginary_decomp;
@@ -5786,6 +5816,11 @@ int main()
                 ImGui::PlotLines("velocities", central_velocities.data(), central_velocities.size(), 0, nullptr, FLT_MAX, FLT_MAX, ImVec2(400, 100));
             }
 
+            if(adm_mass.size() > 0)
+            {
+                ImGui::PlotLines("Adm Mass", adm_mass.data(), adm_mass.size(), 0, nullptr, FLT_MAX, FLT_MAX, ImVec2(400, 50));
+            }
+
             if(real_decomp.size() > 0)
             {
                 ImGui::PlotLines("w4_l2_m2_re", real_decomp.data(), real_decomp.size(), 0, nullptr, FLT_MAX, FLT_MAX, ImVec2(400, 100));
@@ -5860,6 +5895,40 @@ int main()
                     render.push_back(rtex);
 
                     mqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
+                }
+
+                {
+                    int pc = adm_mass_integrator.points.size();
+
+                    cl::args adm_args;
+                    adm_args.push_back(adm_mass_integrator.gpu_points);
+                    adm_args.push_back(pc);
+
+                    adm_args.push_back(base_mesh.data.at(0).lookup("cY0").buf);
+                    adm_args.push_back(base_mesh.data.at(0).lookup("cY1").buf);
+                    adm_args.push_back(base_mesh.data.at(0).lookup("cY2").buf);
+                    adm_args.push_back(base_mesh.data.at(0).lookup("cY3").buf);
+                    adm_args.push_back(base_mesh.data.at(0).lookup("cY4").buf);
+                    adm_args.push_back(base_mesh.data.at(0).lookup("cY5").buf);
+                    adm_args.push_back(base_mesh.data.at(0).lookup("X").buf);
+
+                    adm_args.push_back(clsize);
+                    adm_args.push_back(scale);
+
+                    cl::buffer next = adm_mass_integrator.arq.fetch_next_buffer();
+
+                    adm_args.push_back(next);
+
+                    cl::event dep = mqueue.exec("adm_mass_integral", adm_args, {pc}, {128}, {});
+
+                    adm_mass_integrator.arq.issue(next, dep);
+
+                    auto result = adm_mass_integrator.integrate();
+
+                    for(float i : result)
+                    {
+                        adm_mass.push_back(i);
+                    }
                 }
             };
 

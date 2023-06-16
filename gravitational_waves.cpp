@@ -47,7 +47,7 @@ dual_types::complex<float> get_harmonic(const std::vector<cl_ushort4>& points, c
 
 gravitational_wave_manager::gravitational_wave_manager(cl::context& ctx, vec3i _simulation_size, float c_at_max, float scale) :
     read_queue(ctx, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE), harmonic_points{ctx},
-    arq(ctx)
+    arq(ctx, read_queue)
 {
     simulation_size = _simulation_size;
 
@@ -61,7 +61,7 @@ gravitational_wave_manager::gravitational_wave_manager(cl::context& ctx, vec3i _
     harmonic_points.write(read_queue, raw_harmonic_points);
     read_queue.block();
 
-    arq.start(ctx, read_queue, raw_harmonic_points.size());
+    arq.start(ctx, raw_harmonic_points.size());
 }
 
 void gravitational_wave_manager::issue_extraction(cl::managed_command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<ref_counted_buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize)
