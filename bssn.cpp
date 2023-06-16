@@ -1487,8 +1487,15 @@ void bssn::build_K(cl::context& clctx, matter_interop& interop, bool use_matter,
     clctx.register_kernel("evolve_K", kern);
 }
 
-void bssn::build_X(equation_context& ctx)
+void build_X_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
+    all_args all(arg_gen, bssn_args, utility_args);
+
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr, [&](const value_i& index)
+    {
+        return  assign(all.out.X[index], all.in.X[index]);
+    });
+
     #ifndef USE_W
     standard_arguments args(ctx);
 
@@ -1501,7 +1508,11 @@ void bssn::build_X(equation_context& ctx)
 
     value dtX = (2.f/3.f) * args.get_X() * (args.gA * args.K - sum(linear_dB)) + sum(tensor_upwind(ctx, args.gB, args.get_X()));
 
-    ctx.add("dtX", dtX);
+    ctx.pin(dtX);
+
+    ctx.exec(assign(all.out.X[index], all.base.X[index] + all.timestep * dtX));
+
+    //ctx.add("dtX", dtX);
     #else
     ///https://arxiv.org/pdf/0709.2160.pdf
     standard_arguments args(ctx);
@@ -1515,12 +1526,35 @@ void bssn::build_X(equation_context& ctx)
 
     value dtW = (1.f/3.f) * args.W_impl * (args.gA * args.K - sum(linear_dB)) + sum(tensor_upwind(ctx, args.gB, args.W_impl));
 
-    ctx.add("dtX", dtW);
+    ctx.pin(dtW);
+
+    ctx.exec(assign(all.out.X[index], all.base.X[index] + all.timestep * dtW));
+
+    //ctx.add("dtX", dtW);
     #endif
+
+    ctx.fix_buffers();
 }
 
-void bssn::build_gA(equation_context& ctx)
+
+void bssn::build_X(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
+    equation_context ectx;
+
+    cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_X_impl, "evolve_X", "", interop, use_matter, bssn_args, utility_args);
+
+    clctx.register_kernel("evolve_X", kern);
+}
+
+void build_gA_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+{
+    all_args all(arg_gen, bssn_args, utility_args);
+
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr, [&](const value_i& index)
+    {
+        return  assign(all.out.gA[index], all.in.gA[index]);
+    });
+
     standard_arguments args(ctx);
 
     //value bl_s = "(init_BL_val)";
@@ -1549,11 +1583,35 @@ void bssn::build_gA(equation_context& ctx)
 
     //dtgA = 0;
 
-    ctx.add("dtgA", dtgA);
+    ctx.pin(dtgA);
+
+    ctx.exec(assign(all.out.gA[index], all.base.gA[index] + all.timestep * dtgA));
+
+    ctx.fix_buffers();
+
+    //ctx.add("dtgA", dtgA);
 }
 
-void bssn::build_gB(equation_context& ctx)
+void bssn::build_gA(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
+    equation_context ectx;
+
+    cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_gA_impl, "evolve_gA", "", interop, use_matter, bssn_args, utility_args);
+
+    clctx.register_kernel("evolve_gA", kern);
+}
+
+void build_gB_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+{
+    all_args all(arg_gen, bssn_args, utility_args);
+
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr, [&](const value_i& index)
+    {
+        return  assign(all.out.gB[0][index], all.in.gB[0][index]),
+                assign(all.out.gB[1][index], all.in.gB[1][index]),
+                assign(all.out.gB[2][index], all.in.gB[2][index]);
+    });
+
     standard_arguments args(ctx);
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
@@ -1739,7 +1797,15 @@ void bssn::build_gB(equation_context& ctx)
     //#endif // PAPER_0610128
     #endif // USE_GBB
 
+
+    ctx.pin(dtgB);
+
     for(int i=0; i < 3; i++)
+        ctx.exec(assign(all.out.gB[i][index], all.base.gB[i][index] + all.timestep * dtgB[i]));
+
+    ctx.fix_buffers();
+
+    /*for(int i=0; i < 3; i++)
     {
         std::string name = "dtgB" + std::to_string(i);
 
@@ -1751,6 +1817,15 @@ void bssn::build_gB(equation_context& ctx)
         std::string name = "dtgBB" + std::to_string(i);
 
         ctx.add(name, dtgBB.idx(i));
-    }
+    }*/
 }
 
+
+void bssn::build_gB(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+{
+    equation_context ectx;
+
+    cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_gB_impl, "evolve_gB", "", interop, use_matter, bssn_args, utility_args);
+
+    clctx.register_kernel("evolve_gB", kern);
+}

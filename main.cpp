@@ -5043,15 +5043,6 @@ int main()
         meta_interop.sub_interop.push_back(new particle_matter_interop());
     }
 
-    equation_context dtX;
-    bssn::build_X(dtX);
-
-    equation_context dtgA;
-    bssn::build_gA(dtgA);
-
-    equation_context dtgB;
-    bssn::build_gB(dtgB);
-
     equation_context ctx4;
     build_constraints(ctx4);
 
@@ -5107,10 +5098,6 @@ int main()
     ctx14.build(argument_string, "hamiltonian");
     ctxdirectional.build(argument_string, "directional");
     ctxsommerthin.build(argument_string, "sommerthin");
-
-    dtX.build(argument_string, "tx");
-    dtgA.build(argument_string, "tga");
-    dtgB.build(argument_string, "tgb");
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
     hydro_argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
@@ -5294,6 +5281,9 @@ int main()
     bssn::build_cA(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
     bssn::build_cGi(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
     bssn::build_K(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
+    bssn::build_X(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
+    bssn::build_gA(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
+    bssn::build_gB(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
 
     {
         std::string generated_arglist = "#define GET_ARGLIST(a, p) ";

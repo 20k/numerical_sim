@@ -759,6 +759,7 @@ void evolve_cGi(__global ushort4* points, int point_count,
 }
 #endif
 
+#if 0
 __kernel
 void evolve_X(__global ushort4* points, int point_count,
             STANDARD_ARGS(),
@@ -888,6 +889,7 @@ void evolve_gB(__global ushort4* points, int point_count,
     NANCHECK(ogB1);
     NANCHECK(ogB2);
 }
+#endif
 
 __kernel
 void finish_midpoint_impl(__global ushort4* points, int point_count,
