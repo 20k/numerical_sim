@@ -122,6 +122,7 @@
 			<Add option="-l:libtbb12.dll.a" />
 			<Add option="-ldl" />
 		</Linker>
+		<Unit filename="bitflags.cl" />
 		<Unit filename="bssn.cpp" />
 		<Unit filename="bssn.hpp" />
 		<Unit filename="cache.hpp" />

@@ -760,56 +760,6 @@ void evolve_cGi(__global ushort4* points, int point_count,
 #endif
 
 __kernel
-void evolve_K(__global ushort4* points, int point_count,
-            STANDARD_ARGS(),
-            STANDARD_ARGS(o),
-            STANDARD_ARGS(base_),
-            __global float* momentum0, __global float* momentum1, __global float* momentum2,
-            STANDARD_DERIVS(),
-            STANDARD_UTILITY(),
-            float scale, int4 dim, float timestep, __global ushort* order_ptr)
-{
-    int local_idx = get_global_id(0);
-
-    if(local_idx >= point_count)
-        return;
-
-    int ix = points[local_idx].x;
-    int iy = points[local_idx].y;
-    int iz = points[local_idx].z;
-
-    int index = IDX(ix, iy, iz);
-    int order = order_ptr[index];
-
-    if((order & D_FULL) == 0 && ((order & D_LOW) == 0))
-    {
-        oK[index] = K[index];
-        return;
-    }
-
-    float TEMPORARIEStk;
-
-    float f_dtK = dtK;
-
-    float b0 = base_K[index];
-
-    oK[index] = f_dtK * timestep + b0;
-
-    /*if(X[index] < DISSB)
-    {
-        oK[index] += (0 - oK[index]) * timestep;
-    }*/
-
-    NANCHECK(oK);
-
-    /*if(ix == 109 && iy == 125 && iz == 125)
-    {
-        printf("K s %f p %f h %f em %f p0 %f eps %f %f\n", Dbg_matter_s, Dbg_matter_p, Dbg_h, Dbg_em, Dbg_p0, Dbg_eps, Dbg_X);
-    }*/
-}
-
-
-__kernel
 void evolve_X(__global ushort4* points, int point_count,
             STANDARD_ARGS(),
             STANDARD_ARGS(o),

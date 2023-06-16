@@ -458,6 +458,8 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
 
     ctx.exec("int order = " + type_to_string(order) + ";");
 
+    //value_i order = "order";
+
     value_i lD_FULL = (int)D_FULL;
     value_i lD_LOW = (int)D_LOW;
 
@@ -1380,13 +1382,6 @@ void build_cGi_impl(argument_generator& arg_gen, equation_context& ctx, matter_i
 
     ctx.pin(dtcGi);
 
-    /*for(int i=0; i < 3; i++)
-    {
-        std::string name = "dtcGi" + std::to_string(i);
-
-        ctx.add(name, dtcGi.idx(i));
-    }*/
-
     ///todo: gBB
 
     for(int i=0; i < 3; i++)
@@ -1406,8 +1401,15 @@ void bssn::build_cGi(cl::context& clctx, matter_interop& interop, bool use_matte
     clctx.register_kernel("evolve_cGi", kern);
 }
 
-void bssn::build_K(matter_interop& interop, equation_context& ctx, bool use_matter)
+void build_K_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
+    all_args all(arg_gen, bssn_args, utility_args);
+
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr, [&](const value_i& index)
+    {
+        return  assign(all.out.K[index], all.in.K[index]);
+    });
+
     standard_arguments args(ctx);
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
@@ -1466,31 +1468,23 @@ void bssn::build_K(matter_interop& interop, equation_context& ctx, bool use_matt
         value matter_p = interop.calculate_adm_p(ctx, args);
 
         dtK += (8 * (float)M_PI / 2) * gA * (matter_s + matter_p);
-
-        /*value h = calculate_h_with_gamma_eos(chi, W);
-        value em6phi = chi_to_e_m6phi(chi);
-
-        value p0 = calculate_p0(chi, W);
-        value eps = calculate_eps(chi, W);
-
-        return h * W * em6phi - gamma_eos(p0, eps);*/
-
-        /*value h = args.matt.calculate_h_with_gamma_eos(X, args.matt.stashed_W);
-        value em6phi = chi_to_e_m6phi(X);
-        value p0 = args.matt.calculate_p0(X, args.matt.stashed_W);
-        value eps = args.matt.calculate_eps(X, args.matt.stashed_W);
-
-        ctx.add("Dbg_matter_s", matter_s);
-        ctx.add("Dbg_matter_p", matter_p);
-
-        ctx.add("Dbg_h", h);
-        ctx.add("Dbg_em", em6phi);
-        ctx.add("Dbg_p0", p0);
-        ctx.add("Dbg_eps", eps);
-        ctx.add("Dbg_X", X);*/
     }
 
-    ctx.add("dtK", dtK);
+    ctx.pin(dtK);
+
+    ctx.exec(assign(all.out.K[index], all.base.K[index] + all.timestep * dtK));
+
+    ctx.fix_buffers();
+}
+
+
+void bssn::build_K(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+{
+    equation_context ectx;
+
+    cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_K_impl, "evolve_K", "", interop, use_matter, bssn_args, utility_args);
+
+    clctx.register_kernel("evolve_K", kern);
 }
 
 void bssn::build_X(equation_context& ctx)
