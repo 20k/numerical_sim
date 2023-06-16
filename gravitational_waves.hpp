@@ -25,10 +25,6 @@ struct gravitational_wave_manager
 
     async_read_queue<cl_float2> arq;
 
-    uint32_t next_buffer = 0;
-
-    int elements = 0;
-
     gravitational_wave_manager(cl::context& ctx, vec3i _simulation_size, float c_at_max, float scale);
 
     void issue_extraction(cl::managed_command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<ref_counted_buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize);
