@@ -4953,7 +4953,7 @@ void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>, 3> poi
         }
     }
 
-    assign(out[index], result);
+    assign(out[local_idx], result);
 
     ctx.fix_buffers();
 }
