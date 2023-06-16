@@ -516,7 +516,6 @@ void build_cY_impl(argument_generator& arg_gen, equation_context& ctx, base_bssn
     std::array<buffer<value, 3>, 3> momentum;
     std::array<buffer<half_type, 3>, 18> dcYij; std::array<buffer<half_type, 3>, 3> digA;
     std::array<buffer<half_type, 3>, 9> digB; std::array<buffer<half_type, 3>, 3> dX;
-    buffer<value, 3> dummy;
     named_literal<value, "scale"> scale;
     named_literal<tensor<value_i, 4>, "dim"> dim;
     literal<value> timestep;
