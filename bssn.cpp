@@ -1088,7 +1088,7 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
 
     metric<value, 3, 3> cY = args.cY;
 
-    //inverse_metric<value, 3, 3> unpinned_icY = cY.invert();
+    inverse_metric<value, 3, 3> unpinned_icY = cY.invert();
 
     tensor<value, 3, 3> cA = args.cA;
 
@@ -1118,9 +1118,9 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
     ///made it to 58 with this
     #define CHRISTOFFEL_49
     #ifdef CHRISTOFFEL_49
-    //tensor<value, 3, 3> littlekij = unpinned_icY.to_tensor() * K;
+    tensor<value, 3, 3> littlekij = unpinned_icY.to_tensor() * K;
 
-    tensor<dual, 3, 3, 3> dicY;
+    /*tensor<dual, 3, 3, 3> dicY;
 
     for(int k=0; k < 3; k++)
     {
@@ -1147,8 +1147,7 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
                 dicY.idx(k, i, j) = icYk.idx(i, j);
             }
         }
-    }
-
+    }*/
 
     ///PAPER_12055111_SUBST
 
@@ -1162,8 +1161,8 @@ void bssn::build_cGi(matter_interop& interop, equation_context& ctx, bool use_ma
 
         for(int j=0; j < 3; j++)
         {
-            sum += icY.idx(i, j) * diff1(ctx, K, j) + K * dicY.idx(j, i, j).dual;
-            //sum += diff1(ctx, littlekij.idx(i, j), j);
+            //sum += icY.idx(i, j) * diff1(ctx, K, j) + K * dicY.idx(j, i, j).dual;
+            sum += diff1(ctx, littlekij.idx(i, j), j);
         }
 
         Yij_Kj.idx(i) = sum + args.K * derived_cGi.idx(i);
