@@ -4944,19 +4944,6 @@ void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>, 3> poi
 
     ctx.pin(args.iYij);
 
-    tensor<value, 3, 3, 3> dcYij;
-
-    for(int k=0; k < 3; k++)
-    {
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                dcYij.idx(k, i, j) = (-2 * args.cY[i, j] * args.dW_calc[k] / pow(args.W_impl, 3.f)) + (1/pow(args.W_impl, 2)) * diff1(ctx, args.cY[i, j], k);
-            }
-        }
-    }
-
     value result = 0;
 
     for(int m=0; m < 3; m++)
@@ -4969,12 +4956,7 @@ void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>, 3> poi
             {
                 for(int l=0; l < 3; l++)
                 {
-                    ///Yij = cYij / (W*W)
-                    ///dkYij = u dvdx + v dudx
-                    ///= - cYij 2dW / W^3 + dkcYij / W^2
-
-                    inner_sum += args.iYij[k, l] * (dcYij[n, m, k] - dcYij[k, m, n]) * lower_index(normal, args.Yij, 0).idx(l);
-                    //inner_sum += args.iYij[k, l] * (diff1(ctx, args.Yij[m, k], n) - diff1(ctx, args.Yij[m, n], k)) * lower_index(normal, args.Yij, 0).idx(l);
+                    inner_sum += args.iYij[k, l] * (diff1(ctx, args.Yij[m, k], n) - diff1(ctx, args.Yij[m, n], k)) * lower_index(normal, args.Yij, 0).idx(l);
                 }
             }
 
