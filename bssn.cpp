@@ -426,8 +426,7 @@ using half_type = value;
 
 using namespace single_source;
 
-template<typename T>
-std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, value_i point_count, const tensor<value_i, 4>& dim, const buffer<value_us, 3>& order_ptr, T&& copier)
+std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, value_i point_count, const tensor<value_i, 4>& dim, const buffer<value_us, 3>& order_ptr)
 {
     ctx.exec("int lidx = get_global_id(0)");
 
@@ -455,11 +454,36 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
 
     value_i index = "index";
 
-    value_i order = order_ptr[index].convert<int>();
+    //ctx.exec("prefetch(&order_ptr[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&cY0[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&cY1[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&cY2[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&cY3[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&cY4[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&cY5[" + type_to_string(index) + "], 1)");
 
-    ctx.exec("int order = " + type_to_string(order) + ";");
+    ctx.exec("prefetch(&cA0[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&cA1[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&cA2[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&cA3[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&cA4[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&cA5[" + type_to_string(index) + "], 1)");
 
-    //value_i order = "order";
+    ctx.exec("prefetch(&cGi0[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&cGi1[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&cGi2[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&X[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&K[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&gA[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&gB0[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&gB1[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&gB2[" + type_to_string(index) + "], 1)");
+
+    value_i c_order = order_ptr[index].convert<int>();
+
+    ctx.exec("int order = " + type_to_string(c_order) + ";");
+
+    /*value_i order = "order";
 
     value_i lD_FULL = (int)D_FULL;
     value_i lD_LOW = (int)D_LOW;
@@ -470,10 +494,10 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
 
     ctx.exec(if_s(is_bad,
                   (
-                    on_copy,
+                    //on_copy,
                     return_s
                   )
-                  ));
+                  ));*/
 
     return {ix, iy, iz, index};
 }
@@ -528,7 +552,7 @@ struct all_args
     named_literal<value, "scale"> scale;
     named_literal<tensor<value_i, 4>, "dim"> dim;
     literal<value> timestep;
-    buffer<value_us, 3> order_ptr;
+    named_buffer<value_us, 3, "order_ptr"> order_ptr;
 
     all_args(argument_generator& arg_gen, base_bssn_args& bssn_args, base_utility_args& utility_args)
     {
@@ -551,15 +575,7 @@ void build_cY_impl(argument_generator& arg_gen, equation_context& ctx, base_bssn
 {
     all_args all(arg_gen, bssn_args, utility_args);
 
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr, [&](const value_i& index)
-    {
-        return  assign(all.out.cY[0][index], all.in.cY[0][index]),
-                assign(all.out.cY[1][index], all.in.cY[1][index]),
-                assign(all.out.cY[2][index], all.in.cY[2][index]),
-                assign(all.out.cY[3][index], all.in.cY[3][index]),
-                assign(all.out.cY[4][index], all.in.cY[4][index]),
-                assign(all.out.cY[5][index], all.in.cY[5][index]);
-    });
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
 
     standard_arguments args(ctx);
 
@@ -848,15 +864,7 @@ void build_cA_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
 {
     all_args all(arg_gen, bssn_args, utility_args);
 
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr, [&](const value_i& index)
-    {
-        return  assign(all.out.cA[0][index], all.in.cA[0][index]),
-                assign(all.out.cA[1][index], all.in.cA[1][index]),
-                assign(all.out.cA[2][index], all.in.cA[2][index]),
-                assign(all.out.cA[3][index], all.in.cA[3][index]),
-                assign(all.out.cA[4][index], all.in.cA[4][index]),
-                assign(all.out.cA[5][index], all.in.cA[5][index]);
-    });
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
 
     standard_arguments args(ctx);
 
@@ -1127,12 +1135,7 @@ void build_cGi_impl(argument_generator& arg_gen, equation_context& ctx, matter_i
 {
     all_args all(arg_gen, bssn_args, utility_args);
 
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr, [&](const value_i& index)
-    {
-        return  assign(all.out.cGi[0][index], all.in.cGi[0][index]),
-                assign(all.out.cGi[1][index], all.in.cGi[1][index]),
-                assign(all.out.cGi[2][index], all.in.cGi[2][index]);
-    });
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
 
     standard_arguments args(ctx);
 
@@ -1406,10 +1409,7 @@ void build_K_impl(argument_generator& arg_gen, equation_context& ctx, matter_int
 {
     all_args all(arg_gen, bssn_args, utility_args);
 
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr, [&](const value_i& index)
-    {
-        return  assign(all.out.K[index], all.in.K[index]);
-    });
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
 
     standard_arguments args(ctx);
 
@@ -1492,10 +1492,7 @@ void build_X_impl(argument_generator& arg_gen, equation_context& ctx, matter_int
 {
     all_args all(arg_gen, bssn_args, utility_args);
 
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr, [&](const value_i& index)
-    {
-        return  assign(all.out.X[index], all.in.X[index]);
-    });
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
 
     #ifndef USE_W
     standard_arguments args(ctx);
@@ -1551,10 +1548,7 @@ void build_gA_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
 {
     all_args all(arg_gen, bssn_args, utility_args);
 
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr, [&](const value_i& index)
-    {
-        return  assign(all.out.gA[index], all.in.gA[index]);
-    });
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
 
     standard_arguments args(ctx);
 
@@ -1606,12 +1600,7 @@ void build_gB_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
 {
     all_args all(arg_gen, bssn_args, utility_args);
 
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr, [&](const value_i& index)
-    {
-        return  assign(all.out.gB[0][index], all.in.gB[0][index]),
-                assign(all.out.gB[1][index], all.in.gB[1][index]),
-                assign(all.out.gB[2][index], all.in.gB[2][index]);
-    });
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
 
     standard_arguments args(ctx);
 
