@@ -454,30 +454,30 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
 
     value_i index = "index";
 
-    //ctx.exec("prefetch(&order_ptr[" + type_to_string(index) + "], 1)");
-    ctx.exec("prefetch(&cY0[" + type_to_string(index) + "], 1)");
-    ctx.exec("prefetch(&cY1[" + type_to_string(index) + "], 1)");
-    ctx.exec("prefetch(&cY2[" + type_to_string(index) + "], 1)");
-    ctx.exec("prefetch(&cY3[" + type_to_string(index) + "], 1)");
-    ctx.exec("prefetch(&cY4[" + type_to_string(index) + "], 1)");
-    ctx.exec("prefetch(&cY5[" + type_to_string(index) + "], 1)");
+    //ctx.exec("prefetch(&order_ptr[index], 1)");
+    ctx.exec("prefetch(&cY0[index], 1)");
+    ctx.exec("prefetch(&cY1[index], 1)");
+    ctx.exec("prefetch(&cY2[index], 1)");
+    ctx.exec("prefetch(&cY3[index], 1)");
+    ctx.exec("prefetch(&cY4[index], 1)");
+    ctx.exec("prefetch(&cY5[index], 1)");
 
-    ctx.exec("prefetch(&cA0[" + type_to_string(index) + "], 1)");
-    ctx.exec("prefetch(&cA1[" + type_to_string(index) + "], 1)");
-    ctx.exec("prefetch(&cA2[" + type_to_string(index) + "], 1)");
-    ctx.exec("prefetch(&cA3[" + type_to_string(index) + "], 1)");
-    ctx.exec("prefetch(&cA4[" + type_to_string(index) + "], 1)");
-    ctx.exec("prefetch(&cA5[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&cA0[index], 1)");
+    ctx.exec("prefetch(&cA1[index], 1)");
+    ctx.exec("prefetch(&cA2[index], 1)");
+    ctx.exec("prefetch(&cA3[index], 1)");
+    ctx.exec("prefetch(&cA4[index], 1)");
+    ctx.exec("prefetch(&cA5[index], 1)");
 
-    ctx.exec("prefetch(&cGi0[" + type_to_string(index) + "], 1)");
-    ctx.exec("prefetch(&cGi1[" + type_to_string(index) + "], 1)");
-    ctx.exec("prefetch(&cGi2[" + type_to_string(index) + "], 1)");
-    ctx.exec("prefetch(&X[" + type_to_string(index) + "], 1)");
-    ctx.exec("prefetch(&K[" + type_to_string(index) + "], 1)");
-    ctx.exec("prefetch(&gA[" + type_to_string(index) + "], 1)");
-    ctx.exec("prefetch(&gB0[" + type_to_string(index) + "], 1)");
-    ctx.exec("prefetch(&gB1[" + type_to_string(index) + "], 1)");
-    ctx.exec("prefetch(&gB2[" + type_to_string(index) + "], 1)");
+    ctx.exec("prefetch(&cGi0[index], 1)");
+    ctx.exec("prefetch(&cGi1[index], 1)");
+    ctx.exec("prefetch(&cGi2[index], 1)");
+    ctx.exec("prefetch(&X[index], 1)");
+    ctx.exec("prefetch(&K[index], 1)");
+    ctx.exec("prefetch(&gA[index], 1)");
+    ctx.exec("prefetch(&gB0[index], 1)");
+    ctx.exec("prefetch(&gB1[index], 1)");
+    ctx.exec("prefetch(&gB2[index], 1)");
 
     value_i c_order = order_ptr[index].convert<int>();
 
