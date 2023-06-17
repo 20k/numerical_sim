@@ -51,7 +51,7 @@ gravitational_wave_manager::gravitational_wave_manager(cl::context& ctx, vec3i _
 {
     simulation_size = _simulation_size;
 
-    calculated_extraction_pixel = floor(simulation_size.x()/2.f) - 20;
+    calculated_extraction_pixel = floor((simulation_size.x() - 1)/2.f) - 20;
 
     printf("Extracting at pixel %i\n", calculated_extraction_pixel);
 
