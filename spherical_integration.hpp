@@ -84,6 +84,7 @@ float linear_interpolate(const std::map<int, std::map<int, std::map<int, float>>
 struct integrator
 {
     int extract_pixel = 0;
+    float scale = 0.f;
 
     std::vector<cl_ushort4> points;
 
@@ -92,7 +93,7 @@ struct integrator
     cl::buffer gpu_points;
     vec3i dim;
 
-    integrator(cl::context& ctx, vec3i _dim, cl::command_queue& _read_queue);
+    integrator(cl::context& ctx, vec3i _dim, float scale, cl::command_queue& _read_queue);
 
     std::vector<float> integrate();
 };

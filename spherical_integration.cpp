@@ -104,8 +104,9 @@ std::vector<cl_ushort4> get_spherical_integration_points(vec3i dim, int extract_
     return ret;
 }
 
-integrator::integrator(cl::context& ctx, vec3i _dim, cl::command_queue& _read_queue) : read_queue(_read_queue), arq(ctx, read_queue), gpu_points(ctx)
+integrator::integrator(cl::context& ctx, vec3i _dim, float _scale, cl::command_queue& _read_queue) : read_queue(_read_queue), arq(ctx, read_queue), gpu_points(ctx)
 {
+    scale = _scale;
     dim = _dim;
     extract_pixel = floor((dim.x() - 1)/2.f) - 20;
 
@@ -154,6 +155,8 @@ std::vector<float> integrator::integrate()
 
         float radius = extract_pixel;
 
+        float world_radius = radius * scale;
+
         auto integrate_spherical = [&](float theta, float phi)
         {
             vec<3, float> pos = {radius * cos(phi) * sin(theta), radius * sin(phi) * sin(theta), radius * cos(theta)};
@@ -162,7 +165,7 @@ std::vector<float> integrator::integrate()
             return integrate_cart(pos);
         };
 
-        float integrated = spherical_integrate(integrate_spherical, INTEGRATION_N);
+        float integrated = world_radius * world_radius * spherical_integrate(integrate_spherical, INTEGRATION_N);
 
         ret.push_back(integrated);
     }

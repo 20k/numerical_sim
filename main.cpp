@@ -5493,7 +5493,7 @@ int main()
 
     printf("Hi there\n");
 
-    integrator adm_mass_integrator(clctx.ctx, size, wave_manager.read_queue);
+    integrator adm_mass_integrator(clctx.ctx, size, scale, wave_manager.read_queue);
 
     matter_vars = matter_initial_vars(clctx.ctx);
     u_arg = cl::buffer(clctx.ctx);
