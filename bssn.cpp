@@ -490,7 +490,6 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
 
     value_i is_bad = ((order & lD_FULL) == 0) && ((order & lD_LOW) == 0);
 
-
     ctx.exec(if_s(is_bad, return_s));
 
     return {ix, iy, iz, index};
