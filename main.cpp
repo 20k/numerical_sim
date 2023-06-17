@@ -2859,13 +2859,13 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.96, 0};
+    h1.momentum = {0, 0.133 * 0.6, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     compact_object::data h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.96, 0};
+    h2.momentum = {0, -0.133 * 0.6, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     objects = {h1, h2};
@@ -4936,7 +4936,7 @@ void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>, 3> poi
 
     ctx.exec("int order = " + std::to_string(D_FULL) + ";");
 
-    value_i index = "index";
+    //value_i index = "index";
 
     standard_arguments args(ctx);
 
@@ -4956,7 +4956,7 @@ void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>, 3> poi
             {
                 for(int l=0; l < 3; l++)
                 {
-                    inner_sum += args.iYij[k, l] * (diff1(ctx, args.Yij[m, k], n) - diff1(ctx, args.Yij[m, n], k)) * normal.idx(l);
+                    inner_sum += args.iYij[k, l] * (diff1(ctx, args.Yij[m, k], n) - diff1(ctx, args.Yij[m, n], k)) * lower_index(normal, args.Yij, 0).idx(l);
                 }
             }
 
@@ -4964,13 +4964,7 @@ void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>, 3> poi
         }
     }
 
-    value gamma_3_2 = sqrt(M_PI)/2.f;
-
-    value omega_Dm2 = 2 * pow(M_PI, 3/2.f) / gamma_3_2;
-
-    result = result * (1/(4 * omega_Dm2));
-
-    ctx.exec(assign(out[local_idx], result));
+    ctx.exec(assign(out[local_idx], result * (1/(16 * M_PI))));
 
     ctx.fix_buffers();
 }
@@ -5916,6 +5910,7 @@ int main()
                     adm_args.push_back(scale);
 
                     cl::buffer next = adm_mass_integrator.arq.fetch_next_buffer();
+                    next.set_to_zero(mqueue);
 
                     adm_args.push_back(next);
 
