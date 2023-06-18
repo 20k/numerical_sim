@@ -5241,9 +5241,9 @@ int main()
         {"cA4", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
         {"cA5", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
 
-        {"cGi0", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1},
-        {"cGi1", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1},
-        {"cGi2", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1},
+        {"cGi0", "evolve_cA", cpu_mesh::dissipate_low, 0, 1},
+        {"cGi1", "evolve_cA", cpu_mesh::dissipate_low, 0, 1},
+        {"cGi2", "evolve_cA", cpu_mesh::dissipate_low, 0, 1},
 
         {"K", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
         {"X", "evolve_cA", cpu_mesh::dissipate_low, 1, 1},

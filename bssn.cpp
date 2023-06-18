@@ -861,6 +861,8 @@ void build_cA_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
 
     standard_arguments args(ctx);
 
+    auto unpinned_icY = args.cY.invert();
+
     value scale = "scale";
 
     ctx.pin(args.derived_cGi);
@@ -1214,7 +1216,6 @@ void build_cA_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
 
     ctx.pin(dtcYij);
 
-
     ///the christoffel symbol
     tensor<value, 3> cGi = args.cGi;
 
@@ -1258,6 +1259,231 @@ void build_cA_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
     }
 
     ctx.pin(dtK);
+
+
+    ///https://arxiv.org/pdf/gr-qc/0511048.pdf
+
+    ///https://arxiv.org/pdf/1205.5111v1.pdf 49
+    ///made it to 58 with this
+    #define CHRISTOFFEL_49
+    #ifdef CHRISTOFFEL_49
+    tensor<value, 3, 3> littlekij = unpinned_icY.to_tensor() * K;
+
+    /*tensor<dual, 3, 3, 3> dicY;
+
+    for(int k=0; k < 3; k++)
+    {
+        unit_metric<dual, 3, 3> cYk;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                dual d;
+                d.real = args.cY.idx(i, j);
+                d.dual = diff1(ctx, args.cY.idx(i, j), k);
+
+                cYk.idx(i, j) = d;
+            }
+        }
+
+        inverse_metric<dual, 3, 3> icYk = cYk.invert();
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                dicY.idx(k, i, j) = icYk.idx(i, j);
+            }
+        }
+    }*/
+
+    ///PAPER_12055111_SUBST
+
+    tensor<value, 3> Yij_Kj;
+
+    #define PAPER_1205_5111
+    #ifdef PAPER_1205_5111
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            //sum += icY.idx(i, j) * diff1(ctx, K, j) + K * dicY.idx(j, i, j).dual;
+            sum += diff1(ctx, littlekij.idx(i, j), j);
+        }
+
+        Yij_Kj.idx(i) = sum + args.K * derived_cGi.idx(i);
+    }
+    #else
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            sum += icY.idx(i, j) * diff1(ctx, args.K, j);
+        }
+
+        Yij_Kj.idx(i) = sum;
+    }
+    #endif // PAPER_1205_5111
+
+    tensor<value, 3> dtcGi;
+
+    for(int i=0; i < 3; i++)
+    {
+        value s1 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                s1 += 2 * gA * christoff2.idx(i, j, k) * icAij.idx(j, k);
+            }
+        }
+
+        value s2 = 2 * gA * -(2.f/3.f) * Yij_Kj.idx(i);
+
+        #ifndef USE_W
+        value s3 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s3 += 2 * (-1.f/4.f) * gA_X * 6 * icAij.idx(i, j) * dX.idx(j);
+        }
+        #else
+        value s3 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s3 += 2 * (-1.f/4.f) * gA / max(args.W_impl, 0.0001f) * 6 * icAij.idx(i, j) * 2 * args.dW_calc.idx(j);
+        }
+        #endif
+
+        value s4 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s4 += -2 * icAij.idx(i, j) * diff1(ctx, gA, j);
+        }
+
+        value s5 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s5 += upwind_differentiate(ctx, gB.idx(j), cGi.idx(i), j);
+        }
+
+        value s6 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            s6 += -derived_cGi.idx(j) * args.digB.idx(j, i);
+        }
+
+        value s7 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                //s7 += icY.idx(j, k) * hacky_differentiate(args.digB.idx(k, i), j);
+                s7 += icY.idx(j, k) * diff2(ctx, args.gB.idx(i), k, j, args.digB.idx(k, i), args.digB.idx(j, i));
+            }
+        }
+
+        value s8 = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+            for(int k=0; k < 3; k++)
+            {
+                //s8 += (1.f/3.f) * icY.idx(i, j) * hacky_differentiate(args.digB.idx(k, k), j);
+                s8 += (1.f/3.f) * icY.idx(i, j) * diff2(ctx, args.gB.idx(k), k, j, args.digB.idx(k, k), args.digB.idx(j, k));
+            }
+        }
+
+        value s9 = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            s9 += (2.f/3.f) * args.digB.idx(k, k) * derived_cGi.idx(i);
+        }
+
+        ///this is the only instanced of derived_cGi that might want to be regular cGi
+        //value s10 = (2.f/3.f) * -2 * gA * K * derived_cGi.idx(i);
+
+        dtcGi.idx(i) = s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8 + s9;
+
+        ///https://arxiv.org/pdf/1205.5111v1.pdf 50
+        ///made it to 70+ and then i got bored, but the simulation was meaningfully different
+        #define EQ_50
+        #ifdef EQ_50
+
+        auto step = [](const value& in)
+        {
+            return if_v(in >= 0.f, value{1.f}, value{0.f});
+        };
+
+        value bkk = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            bkk += args.digB.idx(k, k);
+        }
+
+        float E = 1;
+
+        value lambdai = (2.f/3.f) * (bkk - 2 * gA * K)
+                        - args.digB.idx(i, i)
+                        - (2.f/5.f) * gA * raise_index(cA, icY, 1).idx(i, i);
+
+        dtcGi.idx(i) += -(1 + E) * step(lambdai) * lambdai * args.bigGi.idx(i);
+        #endif // EQ_50
+
+        ///todo: test 2.22 https://arxiv.org/pdf/0711.3575.pdf
+        //#define YBS
+        #ifdef YBS
+        value E = 1;
+
+        {
+            value sum = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                sum += diff1(ctx, args.gB.idx(k), k);
+            }
+
+            dtcGi.idx(i) += (-2.f/3.f) * (E + 1) * args.bigGi.idx(i) * sum;
+        }
+        #endif // YBS
+
+        if(use_matter)
+        {
+            tensor<value, 3> ji_lower = interop.calculate_adm_Si(ctx, args);
+
+            value sum = 0;
+
+            for(int j=0; j < 3; j++)
+            {
+                sum += icY.idx(i, j) * ji_lower.idx(j);
+            }
+
+            dtcGi.idx(i) += gA * -2 * 8 * (float)M_PI * sum;
+        }
+    }
+    #endif // CHRISTOFFEL_49
+
+    ctx.pin(dtcGi);
+
+    ///todo: gBB
+
+    for(int i=0; i < 3; i++)
+    {
+        ctx.exec(assign(all.out.cGi[i][index], all.base.cGi[i][index] + all.timestep * dtcGi.idx(i)));
+    }
 
     for(int i=0; i < 6; i++)
     {

@@ -612,7 +612,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
         //step_kernel("evolve_cY");
         step_kernel("evolve_cA");
-        step_kernel("evolve_cGi");
+        //step_kernel("evolve_cGi");
         //step_kernel("evolve_K");
         //step_kernel("evolve_X");
         //step_kernel("evolve_gA");
