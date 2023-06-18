@@ -479,6 +479,18 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
     ctx.exec("prefetch(&gB1[index], 1)");
     ctx.exec("prefetch(&gB2[index], 1)");
 
+    for(int i=0; i < 18; i++)
+        ctx.exec("prefetch(&dcYij" + std::to_string(i) + "[index], 1)");
+
+    for(int i=0; i < 3; i++)
+        ctx.exec("prefetch(&digA" + std::to_string(i) + "[index], 1)");
+
+    for(int i=0; i < 9; i++)
+        ctx.exec("prefetch(&digB" + std::to_string(i) + "[index], 1)");
+
+    for(int i=0; i < 3; i++)
+        ctx.exec("prefetch(&dX" + std::to_string(i) + "[index], 1)");
+
     value_i c_order = order_ptr[index].convert<int>();
 
     ctx.exec("int order = " + type_to_string(c_order) + ";");
