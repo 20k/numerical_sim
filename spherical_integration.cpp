@@ -148,24 +148,16 @@ std::vector<float> integrator::integrate()
             value_map[point.s[0]][point.s[1]][point.s[2]] = vals[i];
         }
 
-        auto integrate_cart = [&](const vec3f& pos)
+        float world_radius = extract_pixel * scale;
+
+        auto to_integrate = [&](vec3f pos)
         {
+            pos += centre;
+
             return linear_interpolate(value_map, pos, dim);
         };
 
-        float radius = extract_pixel;
-
-        float world_radius = radius * scale;
-
-        auto integrate_spherical = [&](float theta, float phi)
-        {
-            vec<3, float> pos = {radius * cos(phi) * sin(theta), radius * sin(phi) * sin(theta), radius * cos(theta)};
-            pos += centre;
-
-            return integrate_cart(pos);
-        };
-
-        float integrated = world_radius * world_radius * spherical_integrate(integrate_spherical, INTEGRATION_N);
+        float integrated = cartesian_integrate(to_integrate, INTEGRATION_N, extract_pixel, world_radius);
 
         ret.push_back(integrated);
     }

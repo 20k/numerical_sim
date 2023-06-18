@@ -58,7 +58,7 @@ auto integrate_1d(const T& func, int n, const U& upper, const U& lower)
 
 template<typename T>
 inline
-auto spherical_integrate(const T& f_theta_phi, int n)
+auto spherical_integrate(const T& f_theta_phi, int n, float radius = 1)
 {
     float iupper = 2 * M_PI;
     float ilower = 0;
@@ -75,7 +75,23 @@ auto spherical_integrate(const T& f_theta_phi, int n)
         return integrate_1d(inner_integral, n, jupper, jlower);
     };
 
-    return integrate_1d(outer_integral, n, iupper, ilower);
+    ///expand sphere area over unit sphere
+    return integrate_1d(outer_integral, n, iupper, ilower) * radius * radius;
+}
+
+///cartesian domain is [-radius, +radius]
+template<typename T>
+inline
+auto cartesian_integrate(const T& f_pos, int n, float cartesian_radius = 1.f, float sphere_radius = 1.f)
+{
+    auto cartesian_function = [&](float theta, float phi)
+    {
+        vec3f pos = {cartesian_radius * cos(phi) * sin(theta), cartesian_radius * sin(phi) * sin(theta), cartesian_radius * cos(theta)};
+
+        return f_pos(pos);
+    };
+
+    return spherical_integrate(cartesian_function, n, sphere_radius);
 }
 
 std::vector<cl_ushort4> get_spherical_integration_points(vec3i dim, int extract_pixel);
