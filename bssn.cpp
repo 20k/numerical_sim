@@ -902,9 +902,6 @@ void build_cA_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
 
     auto unpinned_cA = cA;
 
-    ///the christoffel symbol
-    tensor<value, 3> cGi = args.cGi;
-
     value gA = args.gA;
 
     tensor<value, 3> gB = args.gB;
@@ -1104,12 +1101,192 @@ void build_cA_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
 
     ctx.pin(dtcAij);
 
+    tensor<value, 3> linear_dB;
+
+    for(int i=0; i < 3; i++)
+    {
+        linear_dB.idx(i) = diff1(ctx, args.gB.idx(i), i);
+    }
+
+    value dtW = (1.f/3.f) * args.W_impl * (args.gA * args.K - sum(linear_dB)) + sum(tensor_upwind(ctx, args.gB, args.W_impl));
+
+    ctx.pin(dtW);
+
+
+    value dtgA = lie_derivative(ctx, args.gB, args.gA) * 0 - 2 * args.gA * args.K;
+
+    ctx.pin(dtgA);
+
+    tensor<value, 3> bjdjbi;
+
+    for(int i=0; i < 3; i++)
+    {
+        value v = 0;
+
+        for(int j=0; j < 3; j++)
+        {
+           v += upwind_differentiate(ctx, args.gB.idx(j), args.gB.idx(i), j);
+        }
+
+        bjdjbi.idx(i) = v;
+    }
+
+
+    #define STATIC_DAMP
+    #ifdef STATIC_DAMP
+    value Ns_r = 2.f;
+    #endif
+
+    value N = max(Ns_r, 0.5f);
+
+    ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
+    ///todo: remove this
+    tensor<value, 3> dtgB = (3.f/4.f) * args.derived_cGi + bjdjbi * 0 - N * args.gB;
+
+    ctx.pin(dtgB);
+
+
+    metric<value, 3, 3> unpinned_cY = args.cY;
+
+    //ctx.pin(args.cY);
+
+    tensor<value, 3> bigGi_lower = lower_index(args.bigGi, args.cY, 0);
+    ///Oh no. These are associated with Y, not cY
+    tensor<value, 3> gB_lower = lower_index(args.gB, args.cY, 0);
+
+    ctx.pin(args.cY);
+
+    //ctx.pin(bigGi_lower);
+    ctx.pin(gB_lower);
+
+    tensor<value, 3, 3> lie_cYij = lie_derivative_weight(ctx, args.gB, unpinned_cY);
+
+    ///https://arxiv.org/pdf/gr-qc/0511048.pdf (1)
+    ///https://scholarworks.rit.edu/cgi/viewcontent.cgi?article=11286&context=theses 3.66
+    tensor<value, 3, 3> dtcYij = -2 * args.gA * trace_free(args.cA, args.cY, args.cY.invert()) + lie_cYij;
+
+    value cYdamp_factor = get_kc()/3.f;
+
+    //damp_factor = min(damp_factor, 0.3f/value{"timestep"});
+
+    dtcYij += -cYdamp_factor * args.gA * args.cY.to_tensor() * log(args.cY.det());
+
+    ///this specifically is incredibly low
+    #ifdef DAMP_HAMILTONIAN
+    dtcYij += 0.01f * args.gA * args.cY.to_tensor() * -calculate_hamiltonian_constraint(interop, ctx, use_matter);
+    #endif
+
+    ///http://eanam6.khu.ac.kr/presentations/7-5.pdf check this
+    ///makes it to 50 with this enabled
+    //#define USE_DTCYIJ_MODIFICATION
+    #ifdef USE_DTCYIJ_MODIFICATION
+    ///https://arxiv.org/pdf/1205.5111v1.pdf 46
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value sigma = 4/5.f;
+
+            dtcYij.idx(i, j) += sigma * 0.5f * (gB_lower.idx(i) * bigGi_lower.idx(j) + gB_lower.idx(j) * bigGi_lower.idx(i));
+
+            dtcYij.idx(i, j) += -(1.f/5.f) * args.cY.idx(i, j) * sum_multiply(args.gB, bigGi_lower);
+        }
+    }
+    #endif // USE_DTCYIJ_MODIFICATION
+
+    ///pretty sure https://arxiv.org/pdf/0711.3575v1.pdf 2.21 is equivalent, and likely a LOT faster
+    //#define MOD_CY
+    #ifdef MOD_CY
+    tensor<value, 3, 3> cD = covariant_derivative_low_vec(ctx, bigGi_lower, args.christoff2);
+
+    ctx.pin(cD);
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            float cK = -0.035f;
+
+            dtcYij.idx(i, j) += cK * args.gA * 0.5f * (cD.idx(i, j) + cD.idx(j, i));
+        }
+    }
+    #endif
+
+    ctx.pin(dtcYij);
+
+
+    ///the christoffel symbol
+    tensor<value, 3> cGi = args.cGi;
+
+    /*tensor<value, 3, 3> Xdidja;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value Xderiv = X * double_covariant_derivative(ctx, args.gA, args.digA, args.christoff2).idx(j, i);
+            //value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, args.digA, cY, icY).idx(j, i);
+
+            value s2 = 0.5f * (dX.idx(i) * diff1(ctx, gA, j) + dX.idx(j) * diff1(ctx, gA, i));
+
+            value s3 = 0;
+
+            for(int m=0; m < 3; m++)
+            {
+                for(int n=0; n < 3; n++)
+                {
+                    value v = -0.5f * cY.idx(i, j) * icY.idx(m, n) * dX.idx(m) * diff1(ctx, gA, n);
+
+                    s3 += v;
+                }
+            }
+
+            Xdidja.idx(i, j) = Xderiv + s2 + s3;
+        }
+    }*/
+
+    tensor<value, 3, 3> icAij = raise_both(cA, icY);
+
+    value dtK = sum(tensor_upwind(ctx, gB, K)) - sum_multiply(icY.to_tensor(), Xdidja) + gA * (sum_multiply(icAij, cA) + (1/3.f) * K * K);
+
+    if(use_matter)
+    {
+        value matter_s = interop.calculate_adm_S(ctx, args);
+        value matter_p = interop.calculate_adm_p(ctx, args);
+
+        dtK += (8 * (float)M_PI / 2) * gA * (matter_s + matter_p);
+    }
+
+    ctx.pin(dtK);
+
     for(int i=0; i < 6; i++)
     {
         vec2i idx = args.linear_indices[i];
 
         ctx.exec(assign(all.out.cA[i][index], all.base.cA[i][index] + all.timestep * dtcAij.idx(idx.x(), idx.y())));
     }
+
+    ctx.exec(assign(all.out.X[index], all.base.X[index] + all.timestep * dtW));
+    ctx.exec(assign(all.out.gA[index], all.base.gA[index] + all.timestep * dtgA));
+
+    for(int i=0; i < 3; i++)
+        ctx.exec(assign(all.out.gB[i][index], all.base.gB[i][index] + all.timestep * dtgB[i]));
+
+    std::array<value, 6> dt = {
+        dtcYij.idx(0, 0),
+        dtcYij.idx(1, 0),
+        dtcYij.idx(2, 0),
+        dtcYij.idx(1, 1),
+        dtcYij.idx(1, 2),
+        dtcYij.idx(2, 2)
+    };
+
+    for(int i=0; i < 6; i++)
+    {
+        ctx.exec(assign(all.out.cY[i][index], all.base.cY[i][index] + all.timestep * dt[i]));
+    }
+
+    ctx.exec(assign(all.out.K[index], all.base.K[index] + all.timestep * dtK));
 
     ctx.fix_buffers();
 }
