@@ -853,7 +853,7 @@ value calculate_hamiltonian(equation_context& ctx, standard_arguments& args)
     return calculate_hamiltonian(args.cY, icY, args.Yij, args.iYij, (xgARij / (max(args.get_X(), 0.001f) * args.gA)), args.K, args.cA);
 }
 
-void build_cA_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+void build_cA_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args, bool offdiag)
 {
     all_args all(arg_gen, bssn_args, utility_args);
 
@@ -1108,6 +1108,18 @@ void build_cA_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
     {
         vec2i idx = args.linear_indices[i];
 
+        if(offdiag)
+        {
+            if(i == 0 || i == 3 || i == 5)
+                continue;
+        }
+        else
+        {
+            if(i == 1 || i == 2 || i == 4)
+                continue;
+        }
+
+
         ctx.exec(assign(all.out.cA[i][index], all.base.cA[i][index] + all.timestep * dtcAij.idx(idx.x(), idx.y())));
     }
 
@@ -1118,9 +1130,15 @@ void bssn::build_cA(cl::context& clctx, matter_interop& interop, bool use_matter
 {
     equation_context ectx;
 
-    cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_cA_impl, "evolve_cA", "", interop, use_matter, bssn_args, utility_args);
+    cl::kernel kern1 = single_source::make_dynamic_kernel_for(clctx, ectx, build_cA_impl, "evolve_cA_o1", "", interop, use_matter, bssn_args, utility_args, false);
 
-    clctx.register_kernel("evolve_cA", kern);
+    clctx.register_kernel("evolve_cA_o1", kern1);
+
+    equation_context ectx2;
+
+    cl::kernel kern2 = single_source::make_dynamic_kernel_for(clctx, ectx2, build_cA_impl, "evolve_cA_o2", "", interop, use_matter, bssn_args, utility_args, true);
+
+    clctx.register_kernel("evolve_cA_o2", kern2);
 }
 
 

@@ -5234,12 +5234,12 @@ int main()
         {"cY4", "evolve_cY", cpu_mesh::dissipate_low, 0, 1},
         {"cY5", "evolve_cY", cpu_mesh::dissipate_low, 1, 1},
 
-        {"cA0", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
-        {"cA1", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
-        {"cA2", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
-        {"cA3", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
-        {"cA4", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
-        {"cA5", "evolve_cA", cpu_mesh::dissipate_high, 0, 1},
+        {"cA0", "evolve_cA_o1", cpu_mesh::dissipate_high, 0, 1},
+        {"cA1", "evolve_cA_o2", cpu_mesh::dissipate_high, 0, 1},
+        {"cA2", "evolve_cA_o2", cpu_mesh::dissipate_high, 0, 1},
+        {"cA3", "evolve_cA_o1", cpu_mesh::dissipate_high, 0, 1},
+        {"cA4", "evolve_cA_o2", cpu_mesh::dissipate_high, 0, 1},
+        {"cA5", "evolve_cA_o1", cpu_mesh::dissipate_high, 0, 1},
 
         {"cGi0", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1},
         {"cGi1", "evolve_cGi", cpu_mesh::dissipate_low, 0, 1},
