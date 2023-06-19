@@ -574,7 +574,7 @@ tensor<value, 6> get_dtcYij(equation_context& ctx, matter_interop& interop, bool
     }
     #endif
 
-    return {
+    tensor<value, 6> dt = {
         dtcYij.idx(0, 0),
         dtcYij.idx(1, 0),
         dtcYij.idx(2, 0),
@@ -582,13 +582,17 @@ tensor<value, 6> get_dtcYij(equation_context& ctx, matter_interop& interop, bool
         dtcYij.idx(1, 2),
         dtcYij.idx(2, 2)
     };
+
+    ctx.pin(dt);
+
+    return dt;
 }
 
 void finish_cY(equation_context& ctx, all_args& all, tensor<value, 6>& dtcY)
 {
     value_i index = "index";
 
-    ctx.pin(dtcY);
+    //ctx.pin(dtcY);
 
     for(int i=0; i < 6; i++)
     {
@@ -1048,7 +1052,7 @@ tensor<value, 6> get_dtcAij(equation_context& ctx, matter_interop& interop, bool
 
     ///https://arxiv.org/pdf/gr-qc/0204002.pdf todo: 4.3
 
-    return {
+    tensor<value, 6> dt = {
         dtcAij.idx(0, 0),
         dtcAij.idx(1, 0),
         dtcAij.idx(2, 0),
@@ -1056,13 +1060,17 @@ tensor<value, 6> get_dtcAij(equation_context& ctx, matter_interop& interop, bool
         dtcAij.idx(1, 2),
         dtcAij.idx(2, 2)
     };
+
+    ctx.pin(dt);
+
+    return dt;
 }
 
 void finish_cA(equation_context& ctx, all_args& all, tensor<value, 6>& dtcA)
 {
     value_i index = "index";
 
-    ctx.pin(dtcA);
+    //ctx.pin(dtcA);
 
     for(int i=0; i < 6; i++)
     {
@@ -1339,6 +1347,8 @@ tensor<value, 3> get_dtcGi(equation_context& ctx, matter_interop& interop, bool 
     }
     #endif // CHRISTOFFEL_49
 
+    ctx.pin(dtcGi);
+
     return dtcGi;
 }
 
@@ -1367,7 +1377,7 @@ void finish_cGi(equation_context& ctx, all_args& all, tensor<value, 3>& dtcGi)
 {
     value_i index = "index";
 
-    ctx.pin(dtcGi);
+    //ctx.pin(dtcGi);
 
     for(int i=0; i < 3; i++)
     {
@@ -1439,6 +1449,8 @@ value get_dtK(equation_context& ctx, matter_interop& interop, bool use_matter)
         dtK += (8 * (float)M_PI / 2) * gA * (matter_s + matter_p);
     }
 
+    ctx.pin(dtK);
+
     return dtK;
 }
 
@@ -1462,7 +1474,7 @@ void finish_K(equation_context& ctx, all_args& all, value& dtK)
 {
     value_i index = "index";
 
-    ctx.pin(dtK);
+    //ctx.pin(dtK);
 
     ctx.exec(assign(all.out.K[index], all.base.K[index] + all.timestep * dtK));
 }
@@ -1483,6 +1495,8 @@ value get_dtX(equation_context& ctx, matter_interop& interop, bool use_matter)
 
     value dtX = (2.f/3.f) * args.get_X() * (args.gA * args.K - sum(linear_dB)) + sum(tensor_upwind(ctx, args.gB, args.get_X()));
 
+    ctx.pin(dtX);
+
     return dtX;
     #else
     tensor<value, 3> linear_dB;
@@ -1493,6 +1507,8 @@ value get_dtX(equation_context& ctx, matter_interop& interop, bool use_matter)
     }
 
     value dtW = (1.f/3.f) * args.W_impl * (args.gA * args.K - sum(linear_dB)) + sum(tensor_upwind(ctx, args.gB, args.W_impl));
+
+    ctx.pin(dtW);
 
     return dtW;
     #endif // USE_W
@@ -1517,7 +1533,7 @@ void finish_X(equation_context& ctx, all_args& all, value& dtX)
 {
     value_i index = "index";
 
-    ctx.pin(dtX);
+    //ctx.pin(dtX);
 
     ctx.exec(assign(all.out.X[index], all.base.X[index] + all.timestep * dtX));
 }
@@ -1554,6 +1570,8 @@ value get_dtgA(equation_context& ctx, matter_interop& interop, bool use_matter)
 
     //dtgA = 0;
 
+    ctx.pin(dtgA);
+
     return dtgA;
 }
 
@@ -1576,7 +1594,7 @@ void finish_gA(equation_context& ctx, all_args& all, value& dtgA)
 {
     value_i index = "index";
 
-    ctx.pin(dtgA);
+    //ctx.pin(dtgA);
 
     ctx.exec(assign(all.out.gA[index], all.base.gA[index] + all.timestep * dtgA));
 }
@@ -1770,6 +1788,8 @@ tensor<value, 3> get_dtgB(equation_context& ctx, matter_interop& interop, bool u
     //#endif // PAPER_0610128
     #endif // USE_GBB
 
+    ctx.pin(dtgB);
+
     return dtgB;
 }
 
@@ -1793,7 +1813,7 @@ void finish_gB(equation_context& ctx, all_args& all, tensor<value, 3>& dtgB)
 {
     value_i index = "index";
 
-    ctx.pin(dtgB);
+    //ctx.pin(dtgB);
 
     for(int i=0; i < 3; i++)
     {
@@ -1824,7 +1844,7 @@ void build_kernel(argument_generator& arg_gen, equation_context& ctx, matter_int
 
 void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
-    std::vector<exec_builder_base*> b1 = {&cYexec, &cAexec, &Xexec, &Kexec, &gAexec, &gBexec};
+    std::vector<exec_builder_base*> b1 = {&cAexec, &Xexec, &gAexec, &gBexec, &cYexec, &Kexec};
     std::vector<exec_builder_base*> b2 = {&cGiexec};
 
     {
