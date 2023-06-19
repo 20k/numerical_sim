@@ -246,6 +246,7 @@ struct differentiation_context
             if(!found)
             {
                 std::cout << "Could not find " << v << std::endl;
+                std::cout << "Root expression: " << type_to_string(in) << std::endl;
 
                 assert(false);
             }
@@ -3686,7 +3687,7 @@ void build_intermediate_thin_directional(equation_context& ctx)
     ctx.add("init_buffer_intermediate2_directional", v3);
 }
 
-void build_intermediate_thin_cY5(equation_context& ctx)
+/*void build_intermediate_thin_cY5(equation_context& ctx)
 {
     standard_arguments args(ctx);
 
@@ -3694,7 +3695,7 @@ void build_intermediate_thin_cY5(equation_context& ctx)
     {
         ctx.add("init_cY5_intermediate" + std::to_string(k), diff1(ctx, args.cY.idx(2, 2), k));
     }
-}
+}*/
 
 tensor<value, 3, 3, 3> gpu_covariant_derivative_low_tensor(equation_context& ctx, const tensor<value, 3, 3>& mT, const metric<value, 3, 3>& met, const inverse_metric<value, 3, 3>& inverse)
 {
@@ -3912,8 +3913,8 @@ void extract_waveforms(equation_context& ctx)
     inverse_metric<value, 3, 3> icY = args.cY.invert();
     ctx.pin(icY);
 
-    tensor<value, 3, 3, 3> christoff1 = christoffel_symbols_1(ctx, args.cY);
-    tensor<value, 3, 3, 3> christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
+    tensor<value, 3, 3, 3> christoff1 = christoffel_symbols_1(ctx, args.unpinned_cY);
+    tensor<value, 3, 3, 3> christoff2 = christoffel_symbols_2(ctx, args.unpinned_cY, icY);
 
     ctx.pin(christoff1);
     ctx.pin(christoff2);
@@ -4462,7 +4463,7 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
 
     tensor<value, 3> dX = args.get_dX();
 
-    tensor<value, 3, 3, 3> conformal_christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
+    tensor<value, 3, 3, 3> conformal_christoff2 = christoffel_symbols_2(ctx, args.unpinned_cY, icY);
 
     tensor<value, 3, 3, 3> full_christoffel2 = get_full_christoffel2(args.get_X(), dX, args.cY, icY, conformal_christoff2);
 
@@ -5138,8 +5139,8 @@ int main()
     equation_context ctxdirectional;
     build_intermediate_thin_directional(ctxdirectional);
 
-    equation_context ctx12;
-    build_intermediate_thin_cY5(ctx12);
+    //equation_context ctx12;
+    //build_intermediate_thin_cY5(ctx12);
 
     equation_context ctx13;
     build_momentum_constraint(meta_interop, ctx13, holes.use_matter || holes.use_particles);
@@ -5159,7 +5160,7 @@ int main()
     ctxgetmatter.build(argument_string, "getmatter");
     ctx10.build(argument_string, 9);
     ctx11.build(argument_string, 10);
-    ctx12.build(argument_string, 11);
+    //ctx12.build(argument_string, 11);
     ctx13.build(argument_string, 12);
     ctx14.build(argument_string, "hamiltonian");
     ctxdirectional.build(argument_string, "directional");

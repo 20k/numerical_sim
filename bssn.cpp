@@ -178,7 +178,7 @@ tensor<value, 3> bssn::calculate_momentum_constraint(matter_interop& interop, eq
     standard_arguments args(ctx);
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
-    auto unpinned_icY = icY;
+    auto unpinned_icY = args.unpinned_cY.invert();
     //ctx.pin(icY);
 
     value X_clamped = max(args.get_X(), 0.001f);
@@ -238,7 +238,7 @@ tensor<value, 3> bssn::calculate_momentum_constraint(matter_interop& interop, eq
     value X = args.get_X();
     tensor<value, 3> dX = args.get_dX();
 
-    tensor<value, 3, 3> aij_raised = raise_index(args.cA, icY, 1);
+    tensor<value, 3, 3> aij_raised = raise_index(args.unpinned_cA, unpinned_icY, 1);
 
     tensor<value, 3> dPhi = -dX / (4 * max(X, 0.0001f));
 
@@ -257,7 +257,7 @@ tensor<value, 3> bssn::calculate_momentum_constraint(matter_interop& interop, eq
         {
             for(int k=0; k < 3; k++)
             {
-                s2 += -0.5f * icY.idx(j, k) * diff1(ctx, args.cA.idx(j, k), i);
+                s2 += -0.5f * icY.idx(j, k) * diff1(ctx, args.unpinned_cA.idx(j, k), i);
             }
         }
 
@@ -289,7 +289,7 @@ value bssn::calculate_hamiltonian_constraint(matter_interop& interop, equation_c
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-    tensor<value, 3, 3, 3> christoff1 = christoffel_symbols_1(ctx, args.cY);
+    tensor<value, 3, 3, 3> christoff1 = christoffel_symbols_1(ctx, args.unpinned_cY);
 
     tensor<value, 3, 3> xgARij = calculate_xgARij(ctx, args, icY, christoff1, args.christoff2);
 
@@ -484,8 +484,10 @@ struct all_args
 
 struct exec_builder_base
 {
-    virtual void start(equation_context& ctx, matter_interop& interop, bool use_matter);
-    virtual void execute(equation_context& ctx, all_args& all);
+    virtual void start(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter){}
+    virtual void execute(equation_context& ctx, all_args& all){}
+
+    virtual ~exec_builder_base(){}
 };
 
 template<typename T, auto U, auto V>
@@ -493,22 +495,22 @@ struct exec_builder : exec_builder_base
 {
     T dt;
 
-    void start(equation_context& ctx, matter_interop& interop, bool use_matter) override
+    void start(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter) override
     {
-        dt = U(ctx, interop, use_matter);
+        dt = U(args, ctx, interop, use_matter);
     }
 
     void execute(equation_context& ctx, all_args& all) override
     {
         V(ctx, all, dt);
     }
+
+    virtual ~exec_builder(){}
 };
 
-tensor<value, 6> get_dtcYij(equation_context& ctx, matter_interop& interop, bool use_matter)
+tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter)
 {
-    standard_arguments args(ctx);
-
-    metric<value, 3, 3> unpinned_cY = args.cY;
+    metric<value, 3, 3> unpinned_cY = args.unpinned_cY;
 
     //ctx.pin(args.cY);
 
@@ -638,7 +640,7 @@ tensor<value, 3, 3> bssn::calculate_xgARij(equation_context& ctx, standard_argum
             {
                 for(int m=0; m < 3; m++)
                 {
-                    s1 = s1 + -0.5f * icY.idx(l, m) * diff2(ctx, args.cY.idx(i, j), m, l, args.dcYij.idx(m, i, j), args.dcYij.idx(l, i, j));
+                    s1 = s1 + -0.5f * icY.idx(l, m) * diff2(ctx, args.unpinned_cY.idx(i, j), m, l, args.dcYij.idx(m, i, j), args.dcYij.idx(l, i, j));
                 }
             }
 
@@ -800,17 +802,15 @@ value calculate_hamiltonian(equation_context& ctx, standard_arguments& args)
 {
     auto icY = args.cY.invert();
 
-    tensor<value, 3, 3, 3> christoff1 = christoffel_symbols_1(ctx, args.cY);
+    tensor<value, 3, 3, 3> christoff1 = christoffel_symbols_1(ctx, args.unpinned_cY);
 
     tensor<value, 3, 3> xgARij = bssn::calculate_xgARij(ctx, args, icY, christoff1, args.christoff2);
 
     return calculate_hamiltonian(args.cY, icY, args.Yij, args.iYij, (xgARij / (max(args.get_X(), 0.001f) * args.gA)), args.K, args.cA);
 }
 
-tensor<value, 6> get_dtcAij(equation_context& ctx, matter_interop& interop, bool use_matter)
+tensor<value, 6> get_dtcAij(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter)
 {
-    standard_arguments args(ctx);
-
     value scale = "scale";
 
     ctx.pin(args.derived_cGi);
@@ -850,7 +850,7 @@ tensor<value, 6> get_dtcAij(equation_context& ctx, matter_interop& interop, bool
 
     tensor<value, 3, 3> cA = args.cA;
 
-    auto unpinned_cA = cA;
+    auto unpinned_cA = args.unpinned_cA;
 
     ///the christoffel symbol
     tensor<value, 3> cGi = args.cGi;
@@ -1009,8 +1009,8 @@ tensor<value, 6> get_dtcAij(equation_context& ctx, matter_interop& interop, bool
             float Ka = 0.01f;
 
             dtcAij.idx(i, j) += Ka * gA * 0.5f *
-                                                (covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(i, j)
-                                                 + covariant_derivative_low_vec(ctx, args.momentum_constraint, cY, icY).idx(j, i));
+                                                (covariant_derivative_low_vec(ctx, args.momentum_constraint, args.unpinned_cY, icY).idx(i, j)
+                                                 + covariant_derivative_low_vec(ctx, args.momentum_constraint, args.unpinned_cY, icY).idx(j, i));
             #endif // DAMP_DTCAIJ
 
             #ifdef BETTERDAMP_DTCAIJ
@@ -1098,10 +1098,8 @@ exec_builder<tensor<value, 6>, get_dtcAij, finish_cA> cAexec;
     ctx.fix_buffers();
 }*/
 
-tensor<value, 3> get_dtcGi(equation_context& ctx, matter_interop& interop, bool use_matter)
+tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter)
 {
-    standard_arguments args(ctx);
-
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
     tensor<value, 3, 3, 3> christoff2 = args.christoff2;
@@ -1110,7 +1108,7 @@ tensor<value, 3> get_dtcGi(equation_context& ctx, matter_interop& interop, bool 
 
     metric<value, 3, 3> cY = args.cY;
 
-    inverse_metric<value, 3, 3> unpinned_icY = cY.invert();
+    inverse_metric<value, 3, 3> unpinned_icY = args.unpinned_cY.invert();
 
     tensor<value, 3, 3> cA = args.cA;
 
@@ -1387,10 +1385,8 @@ void finish_cGi(equation_context& ctx, all_args& all, tensor<value, 3>& dtcGi)
 
 exec_builder<tensor<value, 3>, get_dtcGi, finish_cGi> cGiexec;
 
-value get_dtK(equation_context& ctx, matter_interop& interop, bool use_matter)
+value get_dtK(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter)
 {
-    standard_arguments args(ctx);
-
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
     metric<value, 3, 3> cY = args.cY;
@@ -1481,10 +1477,8 @@ void finish_K(equation_context& ctx, all_args& all, value& dtK)
 
 exec_builder<value, get_dtK, finish_K> Kexec;
 
-value get_dtX(equation_context& ctx, matter_interop& interop, bool use_matter)
+value get_dtX(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter)
 {
-    standard_arguments args(ctx);
-
     #ifndef USE_W
     tensor<value, 3> linear_dB;
 
@@ -1540,10 +1534,8 @@ void finish_X(equation_context& ctx, all_args& all, value& dtX)
 
 exec_builder<value, get_dtX, finish_X> Xexec;
 
-value get_dtgA(equation_context& ctx, matter_interop& interop, bool use_matter)
+value get_dtgA(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter)
 {
-    standard_arguments args(ctx);
-
     //value bl_s = "(init_BL_val)";
     //value bl = bl_s + 1;
 
@@ -1601,10 +1593,8 @@ void finish_gA(equation_context& ctx, all_args& all, value& dtgA)
 
 exec_builder<value, get_dtgA, finish_gA> gAexec;
 
-tensor<value, 3> get_dtgB(equation_context& ctx, matter_interop& interop, bool use_matter)
+tensor<value, 3> get_dtgB(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter)
 {
-    standard_arguments args(ctx);
-
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
     value X = args.get_X();
@@ -1829,9 +1819,11 @@ void build_kernel(argument_generator& arg_gen, equation_context& ctx, matter_int
 
     (void)setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
 
+    standard_arguments args(ctx);
+
     for(int i=0; i < (int)execs.size(); i++)
     {
-        execs[i]->start(ctx, interop, use_matter);
+        execs[i]->start(args, ctx, interop, use_matter);
     }
 
     for(int i=0; i < (int)execs.size(); i++)

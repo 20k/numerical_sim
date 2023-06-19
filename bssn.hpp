@@ -127,11 +127,14 @@ struct standard_arguments
 
     #ifndef DAMP_C
     unit_metric<value, 3, 3> cY;
+    unit_metric<value, 3, 3> unpinned_cY;
     #else
     metric<value, 3, 3> cY;
+    metric<value, 3, 3> unpinned_cY;
     #endif
 
     tensor<value, 3, 3> cA;
+    tensor<value, 3, 3> unpinned_cA;
 
     value K;
 
@@ -224,6 +227,9 @@ struct standard_arguments
             }
         }
 
+        unpinned_cY = cY;
+        //ctx.pin(cY);
+
         //cY.idx(2, 2) = (1 + cY.idx(1, 1) * cY.idx(0, 2) * cY.idx(0, 2) - 2 * cY.idx(0, 1) * cY.idx(1, 2) * cY.idx(0, 2) + cY.idx(0, 0) * cY.idx(1, 2) * cY.idx(1, 2)) / (cY.idx(0, 0) * cY.idx(1, 1) - cY.idx(0, 1) * cY.idx(0, 1));
 
         for(int i=0; i < 3; i++)
@@ -236,7 +242,11 @@ struct standard_arguments
             }
         }
 
-        inverse_metric<value, 3, 3> icY = cY.invert();
+        unpinned_cA = cA;
+
+        //ctx.pin(cA);
+
+        inverse_metric<value, 3, 3> icY = unpinned_cY.invert();
 
         //tensor<value, 3, 3> raised_cAij = raise_index(cA, cY, icY);
 
@@ -258,10 +268,10 @@ struct standard_arguments
         cGi.idx(1) = bidx(pack.cGi[1], interpolate, false);
         cGi.idx(2) = bidx(pack.cGi[2], interpolate, false);
 
-        Yij = cY / max(get_X(), 0.001f);
+        Yij = unpinned_cY / max(get_X(), 0.001f);
         iYij = get_X() * icY;
 
-        tensor<value, 3, 3> Aij = cA / max(get_X(), 0.001f);
+        tensor<value, 3, 3> Aij = unpinned_cA / max(get_X(), 0.001f);
 
         Kij = Aij + Yij.to_tensor() * (K / 3.f);
 
@@ -464,7 +474,7 @@ struct standard_arguments
         }
 
         #else
-        christoff2 = christoffel_symbols_2(ctx, cY, icY);
+        christoff2 = christoffel_symbols_2(ctx, unpinned_cY, icY);
         #endif
 
         /*
