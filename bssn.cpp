@@ -482,7 +482,7 @@ struct all_args
     }
 };
 
-tensor<value, 6> get_dtcYij(equation_context& ctx)
+tensor<value, 6> get_dtcYij(equation_context& ctx, matter_interop& interop, bool use_matter)
 {
     standard_arguments args(ctx);
 
@@ -562,13 +562,13 @@ tensor<value, 6> get_dtcYij(equation_context& ctx)
     };
 }
 
-void build_cY_impl(argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args, base_utility_args& utility_args)
+void build_cY_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
     all_args all(arg_gen, bssn_args, utility_args);
 
     auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
 
-    tensor<value, 6> dtcYij = get_dtcYij(ctx);
+    tensor<value, 6> dtcYij = get_dtcYij(ctx, interop, use_matter);
 
     ctx.pin(dtcYij);
 
@@ -1695,7 +1695,7 @@ void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, b
     {
         equation_context ectx;
 
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_cY_impl, "evolve_cY", "", bssn_args, utility_args);
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_cY_impl, "evolve_cY", "", interop, use_matter, bssn_args, utility_args);
 
         clctx.register_kernel("evolve_cY", kern);
     }
