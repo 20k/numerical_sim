@@ -1836,7 +1836,7 @@ void build_kernel(argument_generator& arg_gen, equation_context& ctx, matter_int
 
 void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
-    std::vector<exec_builder_base*> b1 = {&cAexec, &Xexec, &gAexec, &gBexec, &cYexec, &Kexec};
+    /*std::vector<exec_builder_base*> b1 = {&cAexec, &Xexec, &gAexec, &gBexec, &cYexec, &Kexec};
     std::vector<exec_builder_base*> b2 = {&cGiexec};
 
     {
@@ -1853,5 +1853,69 @@ void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, b
         cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_2", "", interop, use_matter, bssn_args, utility_args, b2);
 
         clctx.register_kernel("evolve_2", kern);
+    }*/
+
+    {
+        std::vector<exec_builder_base*> b = {&cYexec};
+
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_cY", "", interop, use_matter, bssn_args, utility_args, b);
+
+        clctx.register_kernel("evolve_cY", kern);
+    }
+    {
+        std::vector<exec_builder_base*> b = {&cAexec};
+
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_cA", "", interop, use_matter, bssn_args, utility_args, b);
+
+        clctx.register_kernel("evolve_cA", kern);
+    }
+    {
+        std::vector<exec_builder_base*> b = {&Kexec};
+
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_K", "", interop, use_matter, bssn_args, utility_args, b);
+
+        clctx.register_kernel("evolve_K", kern);
+    }
+    {
+        std::vector<exec_builder_base*> b = {&Xexec};
+
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_X", "", interop, use_matter, bssn_args, utility_args, b);
+
+        clctx.register_kernel("evolve_X", kern);
+    }
+    {
+        std::vector<exec_builder_base*> b = {&gAexec};
+
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_gA", "", interop, use_matter, bssn_args, utility_args, b);
+
+        clctx.register_kernel("evolve_gA", kern);
+    }
+    {
+        std::vector<exec_builder_base*> b = {&gBexec};
+
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_gB", "", interop, use_matter, bssn_args, utility_args, b);
+
+        clctx.register_kernel("evolve_gB", kern);
+    }
+    {
+        std::vector<exec_builder_base*> b = {&cGiexec};
+
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_cGi", "", interop, use_matter, bssn_args, utility_args, b);
+
+        clctx.register_kernel("evolve_cGi", kern);
     }
 }
