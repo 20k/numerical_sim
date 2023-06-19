@@ -1436,7 +1436,7 @@ void build_X_impl(argument_generator& arg_gen, equation_context& ctx, matter_int
     ctx.fix_buffers();
 }
 
-value get_dtgA(equation_context& ctx)
+value get_dtgA(equation_context& ctx, matter_interop& interop, bool use_matter)
 {
     standard_arguments args(ctx);
 
@@ -1475,7 +1475,7 @@ void build_gA_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
 
     auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
 
-    value dtgA = get_dtgA(ctx);
+    value dtgA = get_dtgA(ctx, interop, use_matter);
 
     ctx.pin(dtgA);
 
@@ -1484,7 +1484,7 @@ void build_gA_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
     ctx.fix_buffers();
 }
 
-tensor<value, 3> get_dtgB(equation_context& ctx)
+tensor<value, 3> get_dtgB(equation_context& ctx, matter_interop& interop, bool use_matter)
 {
     standard_arguments args(ctx);
 
@@ -1680,7 +1680,7 @@ void build_gB_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
 
     auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
 
-    tensor<value, 3> dtgB = get_dtgB(ctx);
+    tensor<value, 3> dtgB = get_dtgB(ctx, interop, use_matter);
 
     ctx.pin(dtgB);
 
