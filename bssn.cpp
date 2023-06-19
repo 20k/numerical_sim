@@ -1688,20 +1688,6 @@ void build_gB_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
         ctx.exec(assign(all.out.gB[i][index], all.base.gB[i][index] + all.timestep * dtgB[i]));
 
     ctx.fix_buffers();
-
-    /*for(int i=0; i < 3; i++)
-    {
-        std::string name = "dtgB" + std::to_string(i);
-
-        ctx.add(name, dtgB.idx(i));
-    }
-
-    for(int i=0; i < 3; i++)
-    {
-        std::string name = "dtgBB" + std::to_string(i);
-
-        ctx.add(name, dtgBB.idx(i));
-    }*/
 }
 
 void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
