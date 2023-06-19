@@ -604,24 +604,6 @@ void finish_cY(equation_context& ctx, all_args& all, tensor<value, 6>& dtcY)
 
 exec_builder<tensor<value, 6>, get_dtcYij, finish_cY> cYexec;
 
-/*void build_cY_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
-{
-    all_args all(arg_gen, bssn_args, utility_args);
-
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
-
-    tensor<value, 6> dtcYij = get_dtcYij(ctx, interop, use_matter);
-
-    ctx.pin(dtcYij);
-
-    for(int i=0; i < 6; i++)
-    {
-        ctx.exec(assign(all.out.cY[i][index], all.base.cY[i][index] + all.timestep * dtcYij[i]));
-    }
-
-    ctx.fix_buffers();
-}*/
-
 tensor<value, 3, 3> bssn::calculate_xgARij(equation_context& ctx, standard_arguments& args, const inverse_metric<value, 3, 3>& icY, const tensor<value, 3, 3, 3>& christoff1, const tensor<value, 3, 3, 3>& christoff2)
 {
     value gA_X = args.gA_X;
@@ -1080,24 +1062,6 @@ void finish_cA(equation_context& ctx, all_args& all, tensor<value, 6>& dtcA)
 
 exec_builder<tensor<value, 6>, get_dtcAij, finish_cA> cAexec;
 
-/*void build_cA_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
-{
-    all_args all(arg_gen, bssn_args, utility_args);
-
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
-
-    tensor<value, 6> dtcAij = get_dtcAij(ctx, interop, use_matter);
-
-    ctx.pin(dtcAij);
-
-    for(int i=0; i < 6; i++)
-    {
-        ctx.exec(assign(all.out.cA[i][index], all.base.cA[i][index] + all.timestep * dtcAij[i]));
-    }
-
-    ctx.fix_buffers();
-}*/
-
 tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter)
 {
     inverse_metric<value, 3, 3> icY = args.cY.invert();
@@ -1350,27 +1314,6 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, matt
     return dtcGi;
 }
 
-/*void build_cGi_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
-{
-    all_args all(arg_gen, bssn_args, utility_args);
-
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
-
-    tensor<value, 3> dtcGi = get_dtcGi(ctx, interop, use_matter);
-
-    ctx.pin(dtcGi);
-
-    ///todo: gBB
-
-    for(int i=0; i < 3; i++)
-    {
-        ctx.exec(assign(all.out.cGi[i][index], all.base.cGi[i][index] + all.timestep * dtcGi.idx(i)));
-    }
-
-    ctx.fix_buffers();
-}*/
-
-
 void finish_cGi(equation_context& ctx, all_args& all, tensor<value, 3>& dtcGi)
 {
     value_i index = "index";
@@ -1450,22 +1393,6 @@ value get_dtK(standard_arguments& args, equation_context& ctx, matter_interop& i
     return dtK;
 }
 
-/*void build_K_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
-{
-    all_args all(arg_gen, bssn_args, utility_args);
-
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
-
-    value dtK = get_dtK(ctx, interop, use_matter);
-
-    ctx.pin(dtK);
-
-    ctx.exec(assign(all.out.K[index], all.base.K[index] + all.timestep * dtK));
-
-    ctx.fix_buffers();
-}*/
-
-
 void finish_K(equation_context& ctx, all_args& all, value& dtK)
 {
     value_i index = "index";
@@ -1507,21 +1434,6 @@ value get_dtX(standard_arguments& args, equation_context& ctx, matter_interop& i
     return dtW;
     #endif // USE_W
 }
-
-/*void build_X_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
-{
-    all_args all(arg_gen, bssn_args, utility_args);
-
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
-
-    value dtX = get_dtX(ctx, interop, use_matter);
-
-    ctx.pin(dtX);
-
-    ctx.exec(assign(all.out.X[index], all.base.X[index] + all.timestep * dtX));
-
-    ctx.fix_buffers();
-}*/
 
 void finish_X(equation_context& ctx, all_args& all, value& dtX)
 {
@@ -1566,21 +1478,6 @@ value get_dtgA(standard_arguments& args, equation_context& ctx, matter_interop& 
 
     return dtgA;
 }
-
-/*void build_gA_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
-{
-    all_args all(arg_gen, bssn_args, utility_args);
-
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
-
-    value dtgA = get_dtgA(ctx, interop, use_matter);
-
-    ctx.pin(dtgA);
-
-    ctx.exec(assign(all.out.gA[index], all.base.gA[index] + all.timestep * dtgA));
-
-    ctx.fix_buffers();
-}*/
 
 void finish_gA(equation_context& ctx, all_args& all, value& dtgA)
 {
@@ -1783,22 +1680,6 @@ tensor<value, 3> get_dtgB(standard_arguments& args, equation_context& ctx, matte
     return dtgB;
 }
 
-/*void build_gB_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
-{
-    all_args all(arg_gen, bssn_args, utility_args);
-
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
-
-    tensor<value, 3> dtgB = get_dtgB(ctx, interop, use_matter);
-
-    ctx.pin(dtgB);
-
-    for(int i=0; i < 3; i++)
-        ctx.exec(assign(all.out.gB[i][index], all.base.gB[i][index] + all.timestep * dtgB[i]));
-
-    ctx.fix_buffers();
-}*/
-
 void finish_gB(equation_context& ctx, all_args& all, tensor<value, 3>& dtgB)
 {
     value_i index = "index";
@@ -1836,86 +1717,23 @@ void build_kernel(argument_generator& arg_gen, equation_context& ctx, matter_int
 
 void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
-    /*std::vector<exec_builder_base*> b1 = {&cAexec, &Xexec, &gAexec, &gBexec, &cYexec, &Kexec};
-    std::vector<exec_builder_base*> b2 = {&cGiexec};
-
     {
+        std::vector<exec_builder_base*> b = {&cAexec, &Kexec, &cYexec, &Xexec};
+
         equation_context ectx;
 
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_1", "", interop, use_matter, bssn_args, utility_args, b1);
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_1", "", interop, use_matter, bssn_args, utility_args, b);
 
         clctx.register_kernel("evolve_1", kern);
     }
 
     {
+        std::vector<exec_builder_base*> b = {&cGiexec, &gAexec, &gBexec};
+
         equation_context ectx;
 
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_2", "", interop, use_matter, bssn_args, utility_args, b2);
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_2", "", interop, use_matter, bssn_args, utility_args, b);
 
         clctx.register_kernel("evolve_2", kern);
-    }*/
-
-    {
-        std::vector<exec_builder_base*> b = {&cYexec};
-
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_cY", "", interop, use_matter, bssn_args, utility_args, b);
-
-        clctx.register_kernel("evolve_cY", kern);
-    }
-    {
-        std::vector<exec_builder_base*> b = {&cAexec};
-
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_cA", "", interop, use_matter, bssn_args, utility_args, b);
-
-        clctx.register_kernel("evolve_cA", kern);
-    }
-    {
-        std::vector<exec_builder_base*> b = {&Kexec};
-
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_K", "", interop, use_matter, bssn_args, utility_args, b);
-
-        clctx.register_kernel("evolve_K", kern);
-    }
-    {
-        std::vector<exec_builder_base*> b = {&Xexec};
-
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_X", "", interop, use_matter, bssn_args, utility_args, b);
-
-        clctx.register_kernel("evolve_X", kern);
-    }
-    {
-        std::vector<exec_builder_base*> b = {&gAexec};
-
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_gA", "", interop, use_matter, bssn_args, utility_args, b);
-
-        clctx.register_kernel("evolve_gA", kern);
-    }
-    {
-        std::vector<exec_builder_base*> b = {&gBexec};
-
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_gB", "", interop, use_matter, bssn_args, utility_args, b);
-
-        clctx.register_kernel("evolve_gB", kern);
-    }
-    {
-        std::vector<exec_builder_base*> b = {&cGiexec};
-
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_cGi", "", interop, use_matter, bssn_args, utility_args, b);
-
-        clctx.register_kernel("evolve_cGi", kern);
     }
 }

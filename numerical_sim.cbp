@@ -191,6 +191,7 @@
 		<Unit filename="single_source.hpp" />
 		<Unit filename="spherical_decomposition.hpp" />
 		<Unit filename="spherical_harmonics.hpp" />
+		<Unit filename="spherical_integration.cpp" />
 		<Unit filename="spherical_integration.hpp" />
 		<Unit filename="tensor_algebra.hpp" />
 		<Unit filename="thin_sandwich.cl" />
