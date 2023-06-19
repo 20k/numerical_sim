@@ -537,7 +537,7 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, mat
 
     ///this specifically is incredibly low
     #ifdef DAMP_HAMILTONIAN
-    dtcYij += 0.01f * args.gA * args.cY.to_tensor() * -calculate_hamiltonian_constraint(interop, ctx, use_matter);
+    dtcYij += 0.01f * args.gA * args.cY.to_tensor() * -bssn::calculate_hamiltonian_constraint(interop, ctx, use_matter);
     #endif
 
     ///http://eanam6.khu.ac.kr/presentations/7-5.pdf check this
@@ -1029,8 +1029,24 @@ tensor<value, 6> get_dtcAij(standard_arguments& args, equation_context& ctx, mat
     dtcAij += -damp_factor * args.gA * args.cY.to_tensor() * trace(args.cA, args.cY.invert());
 
     #ifdef DAMP_HAMILTONIAN
-    dtcAij += -0.5f * args.gA * args.cA * -calculate_hamiltonian_constraint(interop, ctx, use_matter);
+    dtcAij += -0.5f * args.gA * args.cA * -bssn::calculate_hamiltonian_constraint(interop, ctx, use_matter);
     #endif
+
+    //#define MOD_CA
+    #ifdef MOD_CA
+    ///https://arxiv.org/pdf/gr-qc/0204002.pdf 4.3
+    value bigGi_diff = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        bigGi_diff += diff1(ctx, args.bigGi.idx(i), i);
+    }
+
+    float k8 = 1.f;
+
+    dtcAij += -k8 * args.gA * args.get_X() * args.cY.to_tensor() * bigGi_diff;
+
+    #endif // MOD_CA
 
     ///https://arxiv.org/pdf/gr-qc/0204002.pdf todo: 4.3
 
@@ -1309,6 +1325,14 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, matt
     }
     #endif // CHRISTOFFEL_49
 
+    ///https://arxiv.org/pdf/gr-qc/0204002.pdf table 2, think case E2 is incorrectly labelled
+    //#define MOD_CGI
+    #ifdef MOD_CGI
+    float mcGicst = -0.1f;
+
+    dtcGi += mcGicst * gA * args.bigGi;
+    #endif // MOD_CGI
+
     ctx.pin(dtcGi);
 
     return dtcGi;
@@ -1456,7 +1480,7 @@ value get_dtgA(standard_arguments& args, equation_context& ctx, matter_interop& 
     //int m = 4;
     //value dtgA = lie_derivative(ctx, args.gB, args.gA) - 2 * args.gA * args.K * pow(bl, m);
 
-    value dtgA = lie_derivative(ctx, args.gB, args.gA) * 0 - 2 * args.gA * args.K;
+    value dtgA = lie_derivative(ctx, args.gB, args.gA) * 1 - 2 * args.gA * args.K;
 
     /*value dibi = 0;
 
@@ -1590,7 +1614,7 @@ tensor<value, 3> get_dtgB(standard_arguments& args, equation_context& ctx, matte
     #ifndef USE_GBB
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
     ///todo: remove this
-    tensor<value, 3> dtgB = (3.f/4.f) * args.derived_cGi + bjdjbi * 0 - N * args.gB;
+    tensor<value, 3> dtgB = (3.f/4.f) * args.derived_cGi + bjdjbi * 1 - N * args.gB;
 
     //dtgB = {0,0,0};
 
