@@ -482,12 +482,8 @@ struct all_args
     }
 };
 
-void build_cY_impl(argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args, base_utility_args& utility_args)
+tensor<value, 6> get_dtcYij(equation_context& ctx)
 {
-    all_args all(arg_gen, bssn_args, utility_args);
-
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
-
     standard_arguments args(ctx);
 
     metric<value, 3, 3> unpinned_cY = args.cY;
@@ -556,9 +552,7 @@ void build_cY_impl(argument_generator& arg_gen, equation_context& ctx, base_bssn
     }
     #endif
 
-    ctx.pin(dtcYij);
-
-    std::array<value, 6> dt = {
+    return {
         dtcYij.idx(0, 0),
         dtcYij.idx(1, 0),
         dtcYij.idx(2, 0),
@@ -566,10 +560,21 @@ void build_cY_impl(argument_generator& arg_gen, equation_context& ctx, base_bssn
         dtcYij.idx(1, 2),
         dtcYij.idx(2, 2)
     };
+}
+
+void build_cY_impl(argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args, base_utility_args& utility_args)
+{
+    all_args all(arg_gen, bssn_args, utility_args);
+
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
+
+    tensor<value, 6> dtcYij = get_dtcYij(ctx);
+
+    ctx.pin(dtcYij);
 
     for(int i=0; i < 6; i++)
     {
-        ctx.exec(assign(all.out.cY[i][index], all.base.cY[i][index] + all.timestep * dt[i]));
+        ctx.exec(assign(all.out.cY[i][index], all.base.cY[i][index] + all.timestep * dtcYij[i]));
     }
 
     ctx.fix_buffers();
@@ -771,12 +776,8 @@ value calculate_hamiltonian(equation_context& ctx, standard_arguments& args)
     return calculate_hamiltonian(args.cY, icY, args.Yij, args.iYij, (xgARij / (max(args.get_X(), 0.001f) * args.gA)), args.K, args.cA);
 }
 
-void build_cA_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+tensor<value, 6> get_dtcAij(equation_context& ctx, matter_interop& interop, bool use_matter)
 {
-    all_args all(arg_gen, bssn_args, utility_args);
-
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
-
     standard_arguments args(ctx);
 
     value scale = "scale";
@@ -1020,13 +1021,29 @@ void build_cA_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
 
     ///https://arxiv.org/pdf/gr-qc/0204002.pdf todo: 4.3
 
+    return {
+        dtcAij.idx(0, 0),
+        dtcAij.idx(1, 0),
+        dtcAij.idx(2, 0),
+        dtcAij.idx(1, 1),
+        dtcAij.idx(1, 2),
+        dtcAij.idx(2, 2)
+    };
+}
+
+void build_cA_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+{
+    all_args all(arg_gen, bssn_args, utility_args);
+
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
+
+    tensor<value, 6> dtcAij = get_dtcAij(ctx, interop, use_matter);
+
     ctx.pin(dtcAij);
 
     for(int i=0; i < 6; i++)
     {
-        vec2i idx = args.linear_indices[i];
-
-        ctx.exec(assign(all.out.cA[i][index], all.base.cA[i][index] + all.timestep * dtcAij.idx(idx.x(), idx.y())));
+        ctx.exec(assign(all.out.cA[i][index], all.base.cA[i][index] + all.timestep * dtcAij[i]));
     }
 
     ctx.fix_buffers();
@@ -1041,13 +1058,8 @@ void bssn::build_cA(cl::context& clctx, matter_interop& interop, bool use_matter
     clctx.register_kernel("evolve_cA", kern);
 }
 
-
-void build_cGi_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+tensor<value, 3> get_dtcGi(equation_context& ctx, matter_interop& interop, bool use_matter)
 {
-    all_args all(arg_gen, bssn_args, utility_args);
-
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
-
     standard_arguments args(ctx);
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
@@ -1295,6 +1307,17 @@ void build_cGi_impl(argument_generator& arg_gen, equation_context& ctx, matter_i
     }
     #endif // CHRISTOFFEL_49
 
+    return dtcGi;
+}
+
+void build_cGi_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+{
+    all_args all(arg_gen, bssn_args, utility_args);
+
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
+
+    tensor<value, 3> dtcGi = get_dtcGi(ctx, interop, use_matter);
+
     ctx.pin(dtcGi);
 
     ///todo: gBB
@@ -1316,12 +1339,8 @@ void bssn::build_cGi(cl::context& clctx, matter_interop& interop, bool use_matte
     clctx.register_kernel("evolve_cGi", kern);
 }
 
-void build_K_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+value get_dtK(equation_context& ctx, matter_interop& interop, bool use_matter)
 {
-    all_args all(arg_gen, bssn_args, utility_args);
-
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
-
     standard_arguments args(ctx);
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
@@ -1382,13 +1401,23 @@ void build_K_impl(argument_generator& arg_gen, equation_context& ctx, matter_int
         dtK += (8 * (float)M_PI / 2) * gA * (matter_s + matter_p);
     }
 
+    return dtK;
+}
+
+void build_K_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+{
+    all_args all(arg_gen, bssn_args, utility_args);
+
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
+
+    value dtK = get_dtK(ctx, interop, use_matter);
+
     ctx.pin(dtK);
 
     ctx.exec(assign(all.out.K[index], all.base.K[index] + all.timestep * dtK));
 
     ctx.fix_buffers();
 }
-
 
 void bssn::build_K(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
@@ -1399,15 +1428,11 @@ void bssn::build_K(cl::context& clctx, matter_interop& interop, bool use_matter,
     clctx.register_kernel("evolve_K", kern);
 }
 
-void build_X_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+value get_dtX(equation_context& ctx, matter_interop& interop, bool use_matter)
 {
-    all_args all(arg_gen, bssn_args, utility_args);
-
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
-
-    #ifndef USE_W
     standard_arguments args(ctx);
 
+    #ifndef USE_W
     tensor<value, 3> linear_dB;
 
     for(int i=0; i < 3; i++)
@@ -1417,15 +1442,8 @@ void build_X_impl(argument_generator& arg_gen, equation_context& ctx, matter_int
 
     value dtX = (2.f/3.f) * args.get_X() * (args.gA * args.K - sum(linear_dB)) + sum(tensor_upwind(ctx, args.gB, args.get_X()));
 
-    ctx.pin(dtX);
-
-    ctx.exec(assign(all.out.X[index], all.base.X[index] + all.timestep * dtX));
-
-    //ctx.add("dtX", dtX);
+    return dtX;
     #else
-    ///https://arxiv.org/pdf/0709.2160.pdf
-    standard_arguments args(ctx);
-
     tensor<value, 3> linear_dB;
 
     for(int i=0; i < 3; i++)
@@ -1435,16 +1453,24 @@ void build_X_impl(argument_generator& arg_gen, equation_context& ctx, matter_int
 
     value dtW = (1.f/3.f) * args.W_impl * (args.gA * args.K - sum(linear_dB)) + sum(tensor_upwind(ctx, args.gB, args.W_impl));
 
-    ctx.pin(dtW);
+    return dtW;
+    #endif // USE_W
+}
 
-    ctx.exec(assign(all.out.X[index], all.base.X[index] + all.timestep * dtW));
+void build_X_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+{
+    all_args all(arg_gen, bssn_args, utility_args);
 
-    //ctx.add("dtX", dtW);
-    #endif
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
+
+    value dtX = get_dtX(ctx, interop, use_matter);
+
+    ctx.pin(dtX);
+
+    ctx.exec(assign(all.out.X[index], all.base.X[index] + all.timestep * dtX));
 
     ctx.fix_buffers();
 }
-
 
 void bssn::build_X(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
@@ -1455,12 +1481,8 @@ void bssn::build_X(cl::context& clctx, matter_interop& interop, bool use_matter,
     clctx.register_kernel("evolve_X", kern);
 }
 
-void build_gA_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+value get_dtgA(equation_context& ctx)
 {
-    all_args all(arg_gen, bssn_args, utility_args);
-
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
-
     standard_arguments args(ctx);
 
     //value bl_s = "(init_BL_val)";
@@ -1489,13 +1511,22 @@ void build_gA_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
 
     //dtgA = 0;
 
+    return dtgA;
+}
+
+void build_gA_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+{
+    all_args all(arg_gen, bssn_args, utility_args);
+
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
+
+    value dtgA = get_dtgA(ctx);
+
     ctx.pin(dtgA);
 
     ctx.exec(assign(all.out.gA[index], all.base.gA[index] + all.timestep * dtgA));
 
     ctx.fix_buffers();
-
-    //ctx.add("dtgA", dtgA);
 }
 
 void bssn::build_gA(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
@@ -1507,12 +1538,8 @@ void bssn::build_gA(cl::context& clctx, matter_interop& interop, bool use_matter
     clctx.register_kernel("evolve_gA", kern);
 }
 
-void build_gB_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+tensor<value, 3> get_dtgB(equation_context& ctx)
 {
-    all_args all(arg_gen, bssn_args, utility_args);
-
-    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
-
     standard_arguments args(ctx);
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
@@ -1698,6 +1725,16 @@ void build_gB_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
     //#endif // PAPER_0610128
     #endif // USE_GBB
 
+    return dtgB;
+}
+
+void build_gB_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+{
+    all_args all(arg_gen, bssn_args, utility_args);
+
+    auto [ix, iy, iz, index] = setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
+
+    tensor<value, 3> dtgB = get_dtgB(ctx);
 
     ctx.pin(dtgB);
 
