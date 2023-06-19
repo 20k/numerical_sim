@@ -482,6 +482,28 @@ struct all_args
     }
 };
 
+struct exec_builder_base
+{
+    virtual void start(equation_context& ctx, matter_interop& interop, bool use_matter);
+    virtual void execute(equation_context& ctx, all_args& all);
+};
+
+template<typename T, auto U, auto V>
+struct exec_builder : exec_builder_base
+{
+    T dt;
+
+    void start(equation_context& ctx, matter_interop& interop, bool use_matter) override
+    {
+        dt = U(ctx, interop, use_matter);
+    }
+
+    void execute(equation_context& ctx, all_args& all) override
+    {
+        V(ctx, all, dt);
+    }
+};
+
 tensor<value, 6> get_dtcYij(equation_context& ctx, matter_interop& interop, bool use_matter)
 {
     standard_arguments args(ctx);
@@ -562,7 +584,21 @@ tensor<value, 6> get_dtcYij(equation_context& ctx, matter_interop& interop, bool
     };
 }
 
-void build_cY_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+void finish_cY(equation_context& ctx, all_args& all, tensor<value, 6>& dtcY)
+{
+    value_i index = "index";
+
+    ctx.pin(dtcY);
+
+    for(int i=0; i < 6; i++)
+    {
+        ctx.exec(assign(all.out.cY[i][index], all.base.cY[i][index] + all.timestep * dtcY[i]));
+    }
+}
+
+exec_builder<tensor<value, 6>, get_dtcYij, finish_cY> cYexec;
+
+/*void build_cY_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
     all_args all(arg_gen, bssn_args, utility_args);
 
@@ -578,7 +614,7 @@ void build_cY_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
     }
 
     ctx.fix_buffers();
-}
+}*/
 
 tensor<value, 3, 3> bssn::calculate_xgARij(equation_context& ctx, standard_arguments& args, const inverse_metric<value, 3, 3>& icY, const tensor<value, 3, 3, 3>& christoff1, const tensor<value, 3, 3, 3>& christoff2)
 {
@@ -1022,7 +1058,21 @@ tensor<value, 6> get_dtcAij(equation_context& ctx, matter_interop& interop, bool
     };
 }
 
-void build_cA_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+void finish_cA(equation_context& ctx, all_args& all, tensor<value, 6>& dtcA)
+{
+    value_i index = "index";
+
+    ctx.pin(dtcA);
+
+    for(int i=0; i < 6; i++)
+    {
+        ctx.exec(assign(all.out.cA[i][index], all.base.cA[i][index] + all.timestep * dtcA[i]));
+    }
+}
+
+exec_builder<tensor<value, 6>, get_dtcAij, finish_cA> cAexec;
+
+/*void build_cA_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
     all_args all(arg_gen, bssn_args, utility_args);
 
@@ -1038,7 +1088,7 @@ void build_cA_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
     }
 
     ctx.fix_buffers();
-}
+}*/
 
 tensor<value, 3> get_dtcGi(equation_context& ctx, matter_interop& interop, bool use_matter)
 {
@@ -1292,7 +1342,7 @@ tensor<value, 3> get_dtcGi(equation_context& ctx, matter_interop& interop, bool 
     return dtcGi;
 }
 
-void build_cGi_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+/*void build_cGi_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
     all_args all(arg_gen, bssn_args, utility_args);
 
@@ -1310,7 +1360,22 @@ void build_cGi_impl(argument_generator& arg_gen, equation_context& ctx, matter_i
     }
 
     ctx.fix_buffers();
+}*/
+
+
+void finish_cGi(equation_context& ctx, all_args& all, tensor<value, 3>& dtcGi)
+{
+    value_i index = "index";
+
+    ctx.pin(dtcGi);
+
+    for(int i=0; i < 3; i++)
+    {
+        ctx.exec(assign(all.out.cGi[i][index], all.base.cGi[i][index] + all.timestep * dtcGi[i]));
+    }
 }
+
+exec_builder<tensor<value, 3>, get_dtcGi, finish_cGi> cGiexec;
 
 value get_dtK(equation_context& ctx, matter_interop& interop, bool use_matter)
 {
@@ -1377,7 +1442,7 @@ value get_dtK(equation_context& ctx, matter_interop& interop, bool use_matter)
     return dtK;
 }
 
-void build_K_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+/*void build_K_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
     all_args all(arg_gen, bssn_args, utility_args);
 
@@ -1390,7 +1455,19 @@ void build_K_impl(argument_generator& arg_gen, equation_context& ctx, matter_int
     ctx.exec(assign(all.out.K[index], all.base.K[index] + all.timestep * dtK));
 
     ctx.fix_buffers();
+}*/
+
+
+void finish_K(equation_context& ctx, all_args& all, value& dtK)
+{
+    value_i index = "index";
+
+    ctx.pin(dtK);
+
+    ctx.exec(assign(all.out.K[index], all.base.K[index] + all.timestep * dtK));
 }
+
+exec_builder<value, get_dtK, finish_K> Kexec;
 
 value get_dtX(equation_context& ctx, matter_interop& interop, bool use_matter)
 {
@@ -1421,7 +1498,7 @@ value get_dtX(equation_context& ctx, matter_interop& interop, bool use_matter)
     #endif // USE_W
 }
 
-void build_X_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+/*void build_X_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
     all_args all(arg_gen, bssn_args, utility_args);
 
@@ -1434,7 +1511,18 @@ void build_X_impl(argument_generator& arg_gen, equation_context& ctx, matter_int
     ctx.exec(assign(all.out.X[index], all.base.X[index] + all.timestep * dtX));
 
     ctx.fix_buffers();
+}*/
+
+void finish_X(equation_context& ctx, all_args& all, value& dtX)
+{
+    value_i index = "index";
+
+    ctx.pin(dtX);
+
+    ctx.exec(assign(all.out.X[index], all.base.X[index] + all.timestep * dtX));
 }
+
+exec_builder<value, get_dtX, finish_X> Xexec;
 
 value get_dtgA(equation_context& ctx, matter_interop& interop, bool use_matter)
 {
@@ -1469,7 +1557,7 @@ value get_dtgA(equation_context& ctx, matter_interop& interop, bool use_matter)
     return dtgA;
 }
 
-void build_gA_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+/*void build_gA_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
     all_args all(arg_gen, bssn_args, utility_args);
 
@@ -1482,7 +1570,18 @@ void build_gA_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
     ctx.exec(assign(all.out.gA[index], all.base.gA[index] + all.timestep * dtgA));
 
     ctx.fix_buffers();
+}*/
+
+void finish_gA(equation_context& ctx, all_args& all, value& dtgA)
+{
+    value_i index = "index";
+
+    ctx.pin(dtgA);
+
+    ctx.exec(assign(all.out.gA[index], all.base.gA[index] + all.timestep * dtgA));
 }
+
+exec_builder<value, get_dtgA, finish_gA> gAexec;
 
 tensor<value, 3> get_dtgB(equation_context& ctx, matter_interop& interop, bool use_matter)
 {
@@ -1674,7 +1773,7 @@ tensor<value, 3> get_dtgB(equation_context& ctx, matter_interop& interop, bool u
     return dtgB;
 }
 
-void build_gB_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+/*void build_gB_impl(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
     all_args all(arg_gen, bssn_args, utility_args);
 
@@ -1688,63 +1787,59 @@ void build_gB_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
         ctx.exec(assign(all.out.gB[i][index], all.base.gB[i][index] + all.timestep * dtgB[i]));
 
     ctx.fix_buffers();
+}*/
+
+void finish_gB(equation_context& ctx, all_args& all, tensor<value, 3>& dtgB)
+{
+    value_i index = "index";
+
+    ctx.pin(dtgB);
+
+    for(int i=0; i < 3; i++)
+    {
+        ctx.exec(assign(all.out.gB[i][index], all.base.gB[i][index] + all.timestep * dtgB[i]));
+    }
+}
+
+exec_builder<tensor<value, 3>, get_dtgB, finish_gB> gBexec;
+
+void build_kernel(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args, std::vector<exec_builder_base*> execs)
+{
+    all_args all(arg_gen, bssn_args, utility_args);
+
+    (void)setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
+
+    for(int i=0; i < (int)execs.size(); i++)
+    {
+        execs[i]->start(ctx, interop, use_matter);
+    }
+
+    for(int i=0; i < (int)execs.size(); i++)
+    {
+        execs[i]->execute(ctx, all);
+    }
+
+    ctx.fix_buffers();
 }
 
 void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
+    std::vector<exec_builder_base*> b1 = {&cYexec, &cAexec, &Xexec, &Kexec, &gAexec, &gBexec};
+    std::vector<exec_builder_base*> b2 = {&cGiexec};
+
     {
         equation_context ectx;
 
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_cY_impl, "evolve_cY", "", interop, use_matter, bssn_args, utility_args);
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_1", "", interop, use_matter, bssn_args, utility_args, b1);
 
-        clctx.register_kernel("evolve_cY", kern);
+        clctx.register_kernel("evolve_1", kern);
     }
 
     {
         equation_context ectx;
 
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_cA_impl, "evolve_cA", "", interop, use_matter, bssn_args, utility_args);
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_2", "", interop, use_matter, bssn_args, utility_args, b2);
 
-        clctx.register_kernel("evolve_cA", kern);
-    }
-
-    {
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_cGi_impl, "evolve_cGi", "", interop, use_matter, bssn_args, utility_args);
-
-        clctx.register_kernel("evolve_cGi", kern);
-    }
-
-    {
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_K_impl, "evolve_K", "", interop, use_matter, bssn_args, utility_args);
-
-        clctx.register_kernel("evolve_K", kern);
-    }
-
-    {
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_X_impl, "evolve_X", "", interop, use_matter, bssn_args, utility_args);
-
-        clctx.register_kernel("evolve_X", kern);
-    }
-
-    {
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_gA_impl, "evolve_gA", "", interop, use_matter, bssn_args, utility_args);
-
-        clctx.register_kernel("evolve_gA", kern);
-    }
-
-    {
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_gB_impl, "evolve_gB", "", interop, use_matter, bssn_args, utility_args);
-
-        clctx.register_kernel("evolve_gB", kern);
+        clctx.register_kernel("evolve_2", kern);
     }
 }
