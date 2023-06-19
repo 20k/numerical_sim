@@ -580,15 +580,6 @@ void build_cY_impl(argument_generator& arg_gen, equation_context& ctx, base_bssn
     ctx.fix_buffers();
 }
 
-void bssn::build_cY(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
-{
-    equation_context ectx;
-
-    cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_cY_impl, "evolve_cY", "", bssn_args, utility_args);
-
-    clctx.register_kernel("evolve_cY", kern);
-}
-
 tensor<value, 3, 3> bssn::calculate_xgARij(equation_context& ctx, standard_arguments& args, const inverse_metric<value, 3, 3>& icY, const tensor<value, 3, 3, 3>& christoff1, const tensor<value, 3, 3, 3>& christoff2)
 {
     value gA_X = args.gA_X;
@@ -1049,15 +1040,6 @@ void build_cA_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
     ctx.fix_buffers();
 }
 
-void bssn::build_cA(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
-{
-    equation_context ectx;
-
-    cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_cA_impl, "evolve_cA", "", interop, use_matter, bssn_args, utility_args);
-
-    clctx.register_kernel("evolve_cA", kern);
-}
-
 tensor<value, 3> get_dtcGi(equation_context& ctx, matter_interop& interop, bool use_matter)
 {
     standard_arguments args(ctx);
@@ -1330,15 +1312,6 @@ void build_cGi_impl(argument_generator& arg_gen, equation_context& ctx, matter_i
     ctx.fix_buffers();
 }
 
-void bssn::build_cGi(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
-{
-    equation_context ectx;
-
-    cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_cGi_impl, "evolve_cGi", "", interop, use_matter, bssn_args, utility_args);
-
-    clctx.register_kernel("evolve_cGi", kern);
-}
-
 value get_dtK(equation_context& ctx, matter_interop& interop, bool use_matter)
 {
     standard_arguments args(ctx);
@@ -1419,15 +1392,6 @@ void build_K_impl(argument_generator& arg_gen, equation_context& ctx, matter_int
     ctx.fix_buffers();
 }
 
-void bssn::build_K(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
-{
-    equation_context ectx;
-
-    cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_K_impl, "evolve_K", "", interop, use_matter, bssn_args, utility_args);
-
-    clctx.register_kernel("evolve_K", kern);
-}
-
 value get_dtX(equation_context& ctx, matter_interop& interop, bool use_matter)
 {
     standard_arguments args(ctx);
@@ -1470,15 +1434,6 @@ void build_X_impl(argument_generator& arg_gen, equation_context& ctx, matter_int
     ctx.exec(assign(all.out.X[index], all.base.X[index] + all.timestep * dtX));
 
     ctx.fix_buffers();
-}
-
-void bssn::build_X(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
-{
-    equation_context ectx;
-
-    cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_X_impl, "evolve_X", "", interop, use_matter, bssn_args, utility_args);
-
-    clctx.register_kernel("evolve_X", kern);
 }
 
 value get_dtgA(equation_context& ctx)
@@ -1527,15 +1482,6 @@ void build_gA_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
     ctx.exec(assign(all.out.gA[index], all.base.gA[index] + all.timestep * dtgA));
 
     ctx.fix_buffers();
-}
-
-void bssn::build_gA(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
-{
-    equation_context ectx;
-
-    cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_gA_impl, "evolve_gA", "", interop, use_matter, bssn_args, utility_args);
-
-    clctx.register_kernel("evolve_gA", kern);
 }
 
 tensor<value, 3> get_dtgB(equation_context& ctx)
@@ -1758,12 +1704,61 @@ void build_gB_impl(argument_generator& arg_gen, equation_context& ctx, matter_in
     }*/
 }
 
-
-void bssn::build_gB(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
-    equation_context ectx;
+    {
+        equation_context ectx;
 
-    cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_gB_impl, "evolve_gB", "", interop, use_matter, bssn_args, utility_args);
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_cY_impl, "evolve_cY", "", bssn_args, utility_args);
 
-    clctx.register_kernel("evolve_gB", kern);
+        clctx.register_kernel("evolve_cY", kern);
+    }
+
+    {
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_cA_impl, "evolve_cA", "", interop, use_matter, bssn_args, utility_args);
+
+        clctx.register_kernel("evolve_cA", kern);
+    }
+
+    {
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_cGi_impl, "evolve_cGi", "", interop, use_matter, bssn_args, utility_args);
+
+        clctx.register_kernel("evolve_cGi", kern);
+    }
+
+    {
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_K_impl, "evolve_K", "", interop, use_matter, bssn_args, utility_args);
+
+        clctx.register_kernel("evolve_K", kern);
+    }
+
+    {
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_X_impl, "evolve_X", "", interop, use_matter, bssn_args, utility_args);
+
+        clctx.register_kernel("evolve_X", kern);
+    }
+
+    {
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_gA_impl, "evolve_gA", "", interop, use_matter, bssn_args, utility_args);
+
+        clctx.register_kernel("evolve_gA", kern);
+    }
+
+    {
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_gB_impl, "evolve_gB", "", interop, use_matter, bssn_args, utility_args);
+
+        clctx.register_kernel("evolve_gB", kern);
+    }
 }

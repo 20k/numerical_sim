@@ -538,13 +538,7 @@ namespace bssn
     tensor<value, 3> calculate_momentum_constraint(matter_interop& interop, equation_context& ctx, bool use_matter);
     value calculate_hamiltonian_constraint(matter_interop& interop, equation_context& ctx, bool use_matter);
 
-    void build_cY(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args);
-    void build_cA(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args);
-    void build_cGi(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args);
-    void build_K(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args);
-    void build_X(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args);
-    void build_gA(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args);
-    void build_gB(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args);
+    void build(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args);
 }
 
 #endif // BSSN_HPP_INCLUDED

@@ -5343,13 +5343,7 @@ int main()
         utility_arglist.buffers.push_back(in);
     }
 
-    bssn::build_cY(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
-    bssn::build_cA(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
-    bssn::build_cGi(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
-    bssn::build_K(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
-    bssn::build_X(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
-    bssn::build_gA(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
-    bssn::build_gB(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
+    bssn::build(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
 
     {
         equation_context ectx;
