@@ -1148,9 +1148,9 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, matt
     ///made it to 58 with this
     #define CHRISTOFFEL_49
     #ifdef CHRISTOFFEL_49
-    tensor<value, 3, 3> littlekij = unpinned_icY.to_tensor() * K;
+    //tensor<value, 3, 3> littlekij = unpinned_icY.to_tensor() * K;
 
-    /*tensor<dual, 3, 3, 3> dicY;
+    tensor<dual, 3, 3, 3> dicY;
 
     for(int k=0; k < 3; k++)
     {
@@ -1161,8 +1161,8 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, matt
             for(int j=0; j < 3; j++)
             {
                 dual d;
-                d.real = args.cY.idx(i, j);
-                d.dual = diff1(ctx, args.cY.idx(i, j), k);
+                d.real = args.unpinned_cY.idx(i, j);
+                d.dual = diff1(ctx, args.unpinned_cY.idx(i, j), k);
 
                 cYk.idx(i, j) = d;
             }
@@ -1177,7 +1177,7 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, matt
                 dicY.idx(k, i, j) = icYk.idx(i, j);
             }
         }
-    }*/
+    }
 
     ///PAPER_12055111_SUBST
 
@@ -1191,8 +1191,8 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, matt
 
         for(int j=0; j < 3; j++)
         {
-            //sum += icY.idx(i, j) * diff1(ctx, K, j) + K * dicY.idx(j, i, j).dual;
-            sum += diff1(ctx, littlekij.idx(i, j), j);
+            sum += icY.idx(i, j) * diff1(ctx, K, j) + K * dicY.idx(j, i, j).dual;
+            //sum += diff1(ctx, littlekij.idx(i, j), j);
         }
 
         Yij_Kj.idx(i) = sum + args.K * derived_cGi.idx(i);
