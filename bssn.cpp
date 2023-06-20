@@ -594,8 +594,6 @@ void finish_cY(equation_context& ctx, all_args& all, tensor<value, 6>& dtcY)
 {
     value_i index = "index";
 
-    //ctx.pin(dtcY);
-
     for(int i=0; i < 6; i++)
     {
         ctx.exec(assign(all.out.cY[i][index], all.base.cY[i][index] + all.timestep * dtcY[i]));
@@ -1342,8 +1340,6 @@ void finish_cGi(equation_context& ctx, all_args& all, tensor<value, 3>& dtcGi)
 {
     value_i index = "index";
 
-    //ctx.pin(dtcGi);
-
     for(int i=0; i < 3; i++)
     {
         ctx.exec(assign(all.out.cGi[i][index], all.base.cGi[i][index] + all.timestep * dtcGi[i]));
@@ -1421,8 +1417,6 @@ void finish_K(equation_context& ctx, all_args& all, value& dtK)
 {
     value_i index = "index";
 
-    //ctx.pin(dtK);
-
     ctx.exec(assign(all.out.K[index], all.base.K[index] + all.timestep * dtK));
 }
 
@@ -1463,8 +1457,6 @@ void finish_X(equation_context& ctx, all_args& all, value& dtX)
 {
     value_i index = "index";
 
-    //ctx.pin(dtX);
-
     ctx.exec(assign(all.out.X[index], all.base.X[index] + all.timestep * dtX));
 }
 
@@ -1472,14 +1464,7 @@ exec_builder<value, get_dtX, finish_X> Xexec;
 
 value get_dtgA(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter)
 {
-    //value bl_s = "(init_BL_val)";
-    //value bl = bl_s + 1;
-
-    ///https://arxiv.org/pdf/gr-qc/0206072.pdf (94)
-    ///this breaks immediately
-    //int m = 4;
-    //value dtgA = lie_derivative(ctx, args.gB, args.gA) - 2 * args.gA * args.K * pow(bl, m);
-
+    ///https://arxiv.org/pdf/gr-qc/0206072.pdf (94) is bad
     value dtgA = lie_derivative(ctx, args.gB, args.gA) * 1 - 2 * args.gA * args.K;
 
     /*value dibi = 0;
@@ -1506,8 +1491,6 @@ value get_dtgA(standard_arguments& args, equation_context& ctx, matter_interop& 
 void finish_gA(equation_context& ctx, all_args& all, value& dtgA)
 {
     value_i index = "index";
-
-    //ctx.pin(dtgA);
 
     ctx.exec(assign(all.out.gA[index], all.base.gA[index] + all.timestep * dtgA));
 }
@@ -1707,8 +1690,6 @@ tensor<value, 3> get_dtgB(standard_arguments& args, equation_context& ctx, matte
 void finish_gB(equation_context& ctx, all_args& all, tensor<value, 3>& dtgB)
 {
     value_i index = "index";
-
-    //ctx.pin(dtgB);
 
     for(int i=0; i < 3; i++)
     {
