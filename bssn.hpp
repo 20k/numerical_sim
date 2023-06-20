@@ -115,7 +115,7 @@ struct base_utility_args
 //#define BETTERDAMP_DTCAIJ
 #define DAMP_C
 //#define USE_GBB
-#define DAMP_DTCAIJ
+//#define DAMP_DTCAIJ
 
 #define USE_HALF_INTERMEDIATE
 
