@@ -611,7 +611,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         };
 
         step_kernel("evolve_1");
-        step_kernel("evolve_2");
+        //step_kernel("evolve_2");
 
         generic_out.currently_physical = false;
     };

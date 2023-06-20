@@ -116,7 +116,7 @@ namespace single_source
             {
                 if(pointer)
                 {
-                    return "__global " + type + "* " + name;
+                    return "__global " + type + "* __restrict__ " + name;
                 }
                 else
                 {
