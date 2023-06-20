@@ -1706,18 +1706,13 @@ void build_kernel(argument_generator& arg_gen, equation_context& ctx, matter_int
         execs[i]->execute(ctx, all);
     }
 
-    /*for(int i=0; i < (int)execs.size(); i++)
-    {
-        execs[i]->execute(ctx, all);
-    }*/
-
     ctx.fix_buffers();
 }
 
 void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
     {
-        std::vector<exec_builder_base*> b = {&cAexec, &Kexec, &Xexec, &gAexec, &cGiexec, &cYexec, &gBexec};
+        std::vector<exec_builder_base*> b = {&cAexec, &cGiexec, &cYexec, &Kexec, &Xexec, &gAexec, &gBexec};
 
         equation_context ectx;
 
@@ -1725,14 +1720,4 @@ void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, b
 
         clctx.register_kernel("evolve_1", kern);
     }
-
-    /*{
-        std::vector<exec_builder_base*> b = {};
-
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_2", "", interop, use_matter, bssn_args, utility_args, b);
-
-        clctx.register_kernel("evolve_2", kern);
-    }*/
 }
