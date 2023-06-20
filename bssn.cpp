@@ -1712,7 +1712,7 @@ void build_kernel(argument_generator& arg_gen, equation_context& ctx, matter_int
 void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
     {
-        std::vector<exec_builder_base*> b = {&cAexec, &cGiexec, &cYexec, &Kexec, &Xexec, &gAexec, &gBexec};
+        std::vector<exec_builder_base*> b = {&cAexec, &Xexec, &Kexec, &gAexec, &gBexec, &cYexec, &cGiexec};
 
         equation_context ectx;
 
