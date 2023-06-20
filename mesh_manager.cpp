@@ -610,24 +610,11 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
             }
         };
 
-        /*step_kernel("evolve_1");
-        step_kernel("evolve_2");*/
-
         step_kernel("evolve_1");
-        //step_kernel("evolve_cA");
         step_kernel("evolve_2");
-        //step_kernel("evolve_K");
-        //step_kernel("evolve_X");
-        //step_kernel("evolve_gA");
-        //step_kernel("evolve_gB");
 
         generic_out.currently_physical = false;
-
-        //enforce_constraints(generic_out);
-
-        //copy_border(generic_in, generic_out);
     };
-
 
     auto dissipate_unidir = [&](int in_index, int out_index)
     {
