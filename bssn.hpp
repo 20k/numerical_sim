@@ -248,7 +248,7 @@ struct standard_arguments
 
         inverse_metric<value, 3, 3> icY = unpinned_cY.invert();
 
-        //tensor<value, 3, 3> raised_cAij = raise_index(cA, cY, icY);
+        //tensor<value, 3, 3> raised_cAij = raise_index(cA, icY, 0);
 
         //cA.idx(1, 1) = -(raised_cAij.idx(0, 0) + raised_cAij.idx(2, 2) + cA.idx(0, 1) * icY.idx(0, 1) + cA.idx(1, 2) * icY.idx(1, 2)) / (icY.idx(1, 1));
 
