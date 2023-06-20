@@ -1424,7 +1424,6 @@ exec_builder<value, get_dtK, finish_K> Kexec;
 
 value get_dtX(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter)
 {
-    #ifndef USE_W
     tensor<value, 3> linear_dB;
 
     for(int i=0; i < 3; i++)
@@ -1432,19 +1431,13 @@ value get_dtX(standard_arguments& args, equation_context& ctx, matter_interop& i
         linear_dB.idx(i) = diff1(ctx, args.gB.idx(i), i);
     }
 
+    #ifndef USE_W
     value dtX = (2.f/3.f) * args.get_X() * (args.gA * args.K - sum(linear_dB)) + sum(tensor_upwind(ctx, args.gB, args.get_X()));
 
     ctx.pin(dtX);
 
     return dtX;
     #else
-    tensor<value, 3> linear_dB;
-
-    for(int i=0; i < 3; i++)
-    {
-        linear_dB.idx(i) = diff1(ctx, args.gB.idx(i), i);
-    }
-
     value dtW = (1.f/3.f) * args.W_impl * (args.gA * args.K - sum(linear_dB)) + sum(tensor_upwind(ctx, args.gB, args.W_impl));
 
     ctx.pin(dtW);
