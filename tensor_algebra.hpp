@@ -335,6 +335,33 @@ tensor<T, N, N> covariant_derivative_high_vec(differentiator& ctx, const tensor<
     return lab;
 }
 
+///https://en.wikipedia.org/wiki/Covariant_derivative#Covariant_derivative_by_field_type
+///for the tensor DbDa, this returns idx(a, b)
+///derivatives come in in the format derivatives[deriv, root]. Yes this is confusing
+template<typename T, int N>
+inline
+tensor<T, N, N> covariant_derivative_high_vec(differentiator& ctx, const tensor<T, N>& v_in, const tensor<T, N, N>& derivatives, const tensor<T, N, N, N>& christoff2)
+{
+    tensor<T, N, N> lab;
+
+    for(int a=0; a < N; a++)
+    {
+        for(int b=0; b < N; b++)
+        {
+            T sum = 0;
+
+            for(int c=0; c < N; c++)
+            {
+                sum = sum + christoff2.idx(a, b, c) * v_in.idx(c);
+            }
+
+            lab.idx(a, b) = derivatives[b, a] + sum;
+        }
+    }
+
+    return lab;
+}
+
 template<typename T, int N>
 inline
 tensor<T, N, N> double_covariant_derivative(differentiator& ctx, const T& in, const tensor<T, N>& first_derivatives,

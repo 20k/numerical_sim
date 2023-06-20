@@ -576,9 +576,19 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, mat
     }
     #endif
 
-    #define MOD_CY2
+    //#define MOD_CY2
     #ifdef MOD_CY2
-    tensor<value, 3, 3> cD = covariant_derivative_high_vec(ctx, args.bigGi, args.christoff2);
+    tensor<value, 3, 3> derivs;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            derivs[i, j] = diff1(ctx, args.cGi.idx(j), i) - diff1(ctx, args.always_derived_cGi.idx(j), i);
+        }
+    }
+
+    tensor<value, 3, 3> cD = covariant_derivative_high_vec(ctx, args.bigGi, derivs, args.christoff2);
 
     for(int i=0; i < 3; i++)
     {
