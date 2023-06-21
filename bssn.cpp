@@ -558,8 +558,27 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, mat
     }
     #endif // USE_DTCYIJ_MODIFICATION
 
-    tensor<dual, 3, 3, 3, 3> ddcYij;
 
+    ///pretty sure https://arxiv.org/pdf/0711.3575v1.pdf 2.21 is equivalent, and likely a LOT faster
+    //#define MOD_CY
+    #ifdef MOD_CY
+    tensor<value, 3, 3> cD = covariant_derivative_low_vec(ctx, bigGi_lower, args.christoff2);
+
+    ctx.pin(cD);
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            float cK = -0.035f;
+
+            dtcYij.idx(i, j) += cK * args.gA * 0.5f * (cD.idx(i, j) + cD.idx(j, i));
+        }
+    }
+    #endif
+
+    //#define MOD_CY2
+    #ifdef MOD_CY2
     tensor<value, 3, 3> d_cGi;
 
     for(int m=0; m < 3; m++)
@@ -615,37 +634,7 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, mat
         }
     }
 
-    ///pretty sure https://arxiv.org/pdf/0711.3575v1.pdf 2.21 is equivalent, and likely a LOT faster
-    //#define MOD_CY
-    #ifdef MOD_CY
-    tensor<value, 3, 3> cD = covariant_derivative_low_vec(ctx, bigGi_lower, args.christoff2);
-
-    ctx.pin(cD);
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            float cK = -0.035f;
-
-            dtcYij.idx(i, j) += cK * args.gA * 0.5f * (cD.idx(i, j) + cD.idx(j, i));
-        }
-    }
-    #endif
-
-    #define MOD_CY2
-    #ifdef MOD_CY2
-    tensor<value, 3, 3> derivs = d_cGi;
-
-    /*for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            derivs[i, j] = diff1(ctx, args.cGi.idx(j), i) - diff1(ctx, args.always_derived_cGi.idx(j), i);
-        }
-    }*/
-
-    tensor<value, 3, 3> cD = covariant_derivative_high_vec(ctx, args.bigGi, derivs, args.christoff2);
+    tensor<value, 3, 3> cD = covariant_derivative_high_vec(ctx, args.bigGi, d_cGi, args.christoff2);
 
     for(int i=0; i < 3; i++)
     {
