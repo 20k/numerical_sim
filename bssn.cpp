@@ -558,6 +558,63 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, mat
     }
     #endif // USE_DTCYIJ_MODIFICATION
 
+    tensor<dual, 3, 3, 3, 3> ddcYij;
+
+    tensor<value, 3, 3> d_cGi;
+
+    for(int m=0; m < 3; m++)
+    {
+        tensor<dual, 3, 3, 3> d_dcYij;
+        metric<dual, 3, 3> d_cYij;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                d_cYij[i, j].real = args.cY[i, j];
+                d_cYij[i, j].dual = args.dcYij[m, i, j];
+            }
+        }
+
+        auto icY = d_cYij.invert();
+
+        for(int k=0; k < 3; k++)
+        {
+            for(int i=0; i < 3; i++)
+            {
+                for(int j=0; j < 3; j++)
+                {
+                    d_dcYij[k, i, j].real = args.dcYij[k, i, j];
+                    d_dcYij[k, i, j].dual = diff1(ctx, args.dcYij[k, i, j], m);
+                }
+            }
+        }
+
+        auto d_christoff2 = christoffel_symbols_2(icY, d_dcYij);
+
+        tensor<dual, 3> dcGi_G;
+
+        for(int i=0; i < 3; i++)
+        {
+            dual sum = 0;
+
+            for(int j=0; j < 3; j++)
+            {
+                for(int k=0; k < 3; k++)
+                {
+                    sum += icY[j, k] * d_christoff2[i, j, k];
+                }
+            }
+
+            dcGi_G[i] = sum;
+        }
+
+        for(int i=0; i < 3; i++)
+        {
+            d_cGi[m, i] = diff1(ctx, args.cGi[i], m) - dcGi_G[i].dual;
+        }
+    }
+
     ///pretty sure https://arxiv.org/pdf/0711.3575v1.pdf 2.21 is equivalent, and likely a LOT faster
     //#define MOD_CY
     #ifdef MOD_CY
@@ -576,17 +633,17 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, mat
     }
     #endif
 
-    //#define MOD_CY2
+    #define MOD_CY2
     #ifdef MOD_CY2
-    tensor<value, 3, 3> derivs;
+    tensor<value, 3, 3> derivs = d_cGi;
 
-    for(int i=0; i < 3; i++)
+    /*for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
             derivs[i, j] = diff1(ctx, args.cGi.idx(j), i) - diff1(ctx, args.always_derived_cGi.idx(j), i);
         }
-    }
+    }*/
 
     tensor<value, 3, 3> cD = covariant_derivative_high_vec(ctx, args.bigGi, derivs, args.christoff2);
 
