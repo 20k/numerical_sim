@@ -398,8 +398,6 @@ void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 3> 
     value_i iy = "iy";
     value_i iz = "iz";
 
-    ctx.exec(assign(buf_out[ix, iy, iz], buf_in[ix, iy, iz]));
-
     tensor<value_i, 3> dim = {idim.get().x(), idim.get().y(), idim.get().z()};
 
     buf_in.size = {dim.x(), dim.y(), dim.z()};
@@ -5944,7 +5942,7 @@ int main()
         ///todo: backwards euler test
         float timestep = 0.025;
 
-        if(pao && base_mesh.elapsed_time > 250)
+        if(pao && base_mesh.elapsed_time > 400)
             step = false;
 
         if(step)
