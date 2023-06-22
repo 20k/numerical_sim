@@ -341,7 +341,7 @@ value_i get_maximum_differentiation_derivative(const value_i& order)
 
     for(int i=0; i < values.size(); i++)
     {
-        last = if_v(order == distances[i], values[i], last);
+        last = if_v((order & distances[i]), values[i], last);
     }
 
     return last;
@@ -354,8 +354,6 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in, const valu
     value_i n = get_maximum_differentiation_derivative(order);
 
     n = min(n, value_i{6});
-
-    n = 6;
 
     value fin = 0;
 
@@ -373,8 +371,6 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in, const valu
     value divisor = pow(value{2}, p+1);
 
     value prefix = sign / divisor;
-
-    std::cout << "SIGN " << type_to_string(sign) << " DIV " << type_to_string(divisor) << std::endl;
 
     return prefix * fin / scale;
 }
@@ -401,6 +397,8 @@ void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 3> 
     value_i ix = "ix";
     value_i iy = "iy";
     value_i iz = "iz";
+
+    ctx.exec(assign(buf_out[ix, iy, iz], buf_in[ix, iy, iz]));
 
     tensor<value_i, 3> dim = {idim.get().x(), idim.get().y(), idim.get().z()};
 
@@ -620,7 +618,7 @@ value diffnth(equation_context& ctx, const value& in, int idx, const value_i& nt
 {
     value last = 0;
 
-    for(int i=2; i < 6; i+=2)
+    for(int i=2; i <= 6; i+=2)
     {
         last = if_v(nth == i, diffnth(ctx, in, idx, i, scale), last);
     }
