@@ -568,8 +568,27 @@ value diff1(equation_context& ctx, const value& in, int idx)
     }
     else
     {
-        value_us d_low = (uint16_t)D_LOW;
-        value_us d_full = (uint16_t)D_FULL;
+        ///in my case, order corresponds to width
+        int which_check = D_FULL;
+
+        if(ctx.order == 1)
+        {
+            which_check = D_GTE_WIDTH_1;
+        }
+        else if(ctx.order == 2)
+        {
+            which_check = D_GTE_WIDTH_2;
+        }
+        else if(ctx.order == 3)
+        {
+            which_check = D_GTE_WIDTH_3;
+        }
+        else if(ctx.order == 4)
+        {
+            which_check = D_GTE_WIDTH_4;
+        }
+
+        //value_us d_low = (uint16_t)D_LOW;
         value_us d_only_px = (uint16_t)D_ONLY_PX;
         value_us d_only_py = (uint16_t)D_ONLY_PY;
         value_us d_only_pz = (uint16_t)D_ONLY_PZ;
@@ -598,7 +617,7 @@ value diff1(equation_context& ctx, const value& in, int idx)
 
         value_us order = "order";
 
-        value_us is_high_order = (order & d_full) > 0;
+        value_us is_high_order = (order & which_check) > 0;
         //value is_low_order = (order & d_low) > 0;
 
         value_us is_forward = (order & directional_single) > 0;

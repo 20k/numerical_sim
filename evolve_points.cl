@@ -239,4 +239,17 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
         order_ptr[index] |= D_WIDTH_5;
     if(dist == 6)
         order_ptr[index] |= D_WIDTH_6;
+
+    if(dist >= 1)
+        order_ptr[index] |= D_GTE_WIDTH_1;
+    if(dist >= 2)
+        order_ptr[index] |= D_GTE_WIDTH_2;
+    if(dist >= 3)
+        order_ptr[index] |= D_GTE_WIDTH_3;
+    if(dist >= 4)
+        order_ptr[index] |= D_GTE_WIDTH_4;
+    if(dist >= 5)
+        order_ptr[index] |= D_GTE_WIDTH_5;
+    if(dist >= 6)
+        order_ptr[index] |= D_GTE_WIDTH_6;
 }
