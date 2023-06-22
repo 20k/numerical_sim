@@ -577,7 +577,7 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, mat
     }
     #endif
 
-    //#define MOD_CY2
+    #define MOD_CY2
     #ifdef MOD_CY2
     tensor<value, 3, 3> d_cGi;
 
