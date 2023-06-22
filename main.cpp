@@ -535,7 +535,7 @@ value diffnth(equation_context& ctx, const value& in, int idx, int nth)
         return (-0.5f * vars[0] + 2 * vars[1] - (5.f/2.f) * vars[2] + 0 * vars[3] + (5.f/2.f) * vars[4] - 2 * vars[5] + 0.5f * vars[6]) / pow(scale, 5);
     }
 
-    ///5 with accuracy 2
+    ///6 with accuracy 2
     if(nth == 6)
     {
         differentiation_context<7> dctx(in, idx, ctx.uses_linear);
