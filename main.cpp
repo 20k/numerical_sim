@@ -436,58 +436,6 @@ void build_kreiss_oliger_unidir(cl::context& clctx)
     clctx.register_kernel("dissipate_single_unidir", kern);
 }
 
-#if 0
-template<int order = 2>
-value hacky_differentiate(const value& in, int idx, bool pin = true, bool linear = false)
-{
-    value scale = "scale";
-
-    value final_command;
-
-    if(order == 1)
-    {
-        differentiation_context dctx(in, idx, linear);
-        std::array<value, 5> vars = dctx.vars;
-
-        final_command = (vars[3] - vars[1]) / (2 * scale);
-    }
-    else if(order == 2)
-    {
-        differentiation_context dctx(in, idx, linear);
-        std::array<value, 5> vars = dctx.vars;
-
-        final_command = (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
-    }
-    else if(order == 3)
-    {
-        differentiation_context<7> dctx(in, idx, linear);
-        std::array<value, 7> vars = dctx.vars;
-
-        final_command = (-(1/60.f) * vars[0] + (3/20.f) * vars[1] - (3/4.f) * vars[2] + 0 * vars[3] + (3/4.f) * vars[4] - (3/20.f) * vars[5] + (1/60.f) * vars[6]) / scale;
-    }
-
-    static_assert(order == 1 || order == 2 || order == 3);
-
-    /*value final_command;
-
-    {
-        value h = "get_distance(ix,iy,iz," + dctx.xs[3] + "," + dctx.ys[3] + "," + dctx.zs[3] + ",dim,scale)";
-        value k = "get_distance(ix,iy,iz," + dctx.xs[1] + "," + dctx.ys[1] + "," + dctx.zs[1] + ",dim,scale)";
-
-        if(pin)
-        {
-            ctx.pin(h);
-            ctx.pin(k);
-        }
-
-        ///f(x + h) - f(x - k)
-        final_command = (vars[3] - vars[1]) / (h + k);
-    }*/
-
-    return final_command;
-}
-#endif // 0
-
 value diff1_interior(equation_context& ctx, const value& in, int idx, int order, int direction)
 {
     value scale = "scale";
@@ -497,26 +445,6 @@ value diff1_interior(equation_context& ctx, const value& in, int idx, int order,
 
     if(order == 1)
     {
-        #if 0
-        differentiation_context<5> dctx(in, idx, ctx.uses_linear);
-        std::array<value, 5> vars = dctx.vars;
-
-        if(direction == 0)
-            return (vars[3] - vars[1]) / (2 * scale);
-
-        /*if(direction == 1)
-            return (vars[2] - vars[1]) / scale;
-
-        if(direction == -1)
-            return (vars[1] - vars[0]) / scale;*/
-
-        if(direction == 1)
-            return (-vars[4] + 4 * vars[3] - 3 * vars[2]) / (2 * scale);
-
-        if(direction == -1)
-            return (vars[0] - 4 * vars[1] + 3 * vars[2]) / (2 * scale);
-        #endif // 0
-
         differentiation_context<5> dctx(in, idx, ctx.uses_linear);
         std::array<value, 5> vars = dctx.vars;
 
