@@ -313,6 +313,8 @@ struct differentiation_context
     }
 };
 
+value diffnth(equation_context& ctx, const value& in, int idx, int nth);
+
 ///https://hal.archives-ouvertes.fr/hal-00569776/document this paper implies you simply sum the directions
 ///dissipation is fixing some stuff, todo: investigate why so much dissipation is required
 value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int idx)
@@ -320,18 +322,21 @@ value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int id
     ///https://en.wikipedia.org/wiki/Finite_difference_coefficient according to wikipedia, this is the 6th derivative with 2nd order accuracy. I am confused, but at least I know where it came from
     value scale = "scale";
 
-    //#define FOURTH
+    int n = 6;
+
     #ifdef FOURTH
-    differentiation_context<5> dctx(in, idx);
-    value stencil = -(1 / (16.f * scale)) * (dctx.vars[0] - 4 * dctx.vars[1] + 6 * dctx.vars[2] - 4 * dctx.vars[3] + dctx.vars[4]);
+    n = 4;
     #endif // FOURTH
 
-    #define SIXTH
-    #ifdef SIXTH
-    differentiation_context<7> dctx(in, idx);
-    value stencil = (1 / (64.f * scale)) * (dctx.vars[0] - 6 * dctx.vars[1] + 15 * dctx.vars[2] - 20 * dctx.vars[3] + 15 * dctx.vars[4] - 6 * dctx.vars[5] + dctx.vars[6]);
-    #endif // SIXTH
+    #ifdef SECOND
+    n = 2;
+    #endif // SECOND
 
+    int p = n - 1;
+
+    assert((p % 2) == 1);
+
+    value stencil = pow(-1, (p + 3)/2) * (1/pow(2, p+1)) * (pow(scale, p) * diffnth(ctx, in, idx, n));
 
     return stencil;
 }
@@ -479,6 +484,67 @@ value diff1_interior(equation_context& ctx, const value& in, int idx, int order,
 
     assert(false);
     return 0;
+}
+
+value diffnth(equation_context& ctx, const value& in, int idx, int nth)
+{
+    value scale = "scale";
+
+    ///1 with accuracy 2
+    if(nth == 1)
+    {
+        differentiation_context<3> dctx(in, idx, ctx.uses_linear);
+        auto vars = dctx.vars;
+
+        return (vars[2] - vars[0]) / (2 * scale);
+    }
+
+    ///2 with accuracy 2
+    if(nth == 2)
+    {
+        differentiation_context<3> dctx(in, idx, ctx.uses_linear);
+        auto vars = dctx.vars;
+
+        return (vars[0] - 2 * vars[1] + vars[2]) / pow(scale, 2);
+    }
+
+    ///3 with accuracy 2
+    if(nth == 3)
+    {
+        differentiation_context<5> dctx(in, idx, ctx.uses_linear);
+        auto vars = dctx.vars;
+
+        return (-0.5f * vars[0] + vars[1] + -vars[3] + 0.5f * vars[4]) / pow(scale, 3);
+    }
+
+    ///4 with accuracy 2
+    if(nth == 4)
+    {
+        differentiation_context<5> dctx(in, idx, ctx.uses_linear);
+        auto vars = dctx.vars;
+
+        return (vars[0] - 4 * vars[1] + 6 * vars[2] - 4 * vars[3] + vars[4]) / pow(scale, 4);
+    }
+
+    ///5 with accuracy 2
+    if(nth == 5)
+    {
+        differentiation_context<7> dctx(in, idx, ctx.uses_linear);
+        auto vars = dctx.vars;
+
+        return (-0.5f * vars[0] + 2 * vars[1] - (5.f/2.f) * vars[2] + 0 * vars[3] + (5.f/2.f) * vars[4] - 2 * vars[5] + 0.5f * vars[6]) / pow(scale, 5);
+    }
+
+    ///5 with accuracy 2
+    if(nth == 6)
+    {
+        differentiation_context<7> dctx(in, idx, ctx.uses_linear);
+        auto vars = dctx.vars;
+
+        return (1 * vars[0] - 6 * vars[1] + 15 * vars[2] - 20 * vars[3] + 15 * vars[4] - 6 * vars[5] + 1 * vars[6]) / pow(scale, 6);
+    }
+
+    assert(false);
 }
 
 value diff1(equation_context& ctx, const value& in, int idx)
