@@ -313,58 +313,129 @@ struct differentiation_context
     }
 };
 
-value diffnth(equation_context& ctx, const value& in, int idx, int nth);
+value diffnth(equation_context& ctx, const value& in, int idx, int nth, const value& scale);
+value diffnth(equation_context& ctx, const value& in, int idx, const value_i& nth, const value& scale);
 
-///https://hal.archives-ouvertes.fr/hal-00569776/document this paper implies you simply sum the directions
-///dissipation is fixing some stuff, todo: investigate why so much dissipation is required
-value kreiss_oliger_dissipate_dir(equation_context& ctx, const value& in, int idx)
+///with 2nd order accuracy
+value_i get_maximum_differentiation_derivative(const value_i& order)
 {
-    ///https://en.wikipedia.org/wiki/Finite_difference_coefficient according to wikipedia, this is the 6th derivative with 2nd order accuracy. I am confused, but at least I know where it came from
-    value scale = "scale";
+    std::array<value_i, 6> distances = {
+        (int)D_WIDTH_1,
+        (int)D_WIDTH_2,
+        (int)D_WIDTH_3,
+        (int)D_WIDTH_4,
+        (int)D_WIDTH_5,
+        (int)D_WIDTH_6
+    };
 
-    int n = 6;
+    std::array<value_i, 6> values = {
+        2,
+        4,
+        6,
+        8,
+        10,
+        12
+    };
 
-    #ifdef FOURTH
-    n = 4;
-    #endif // FOURTH
+    value_i last = 2;
 
-    #ifdef SECOND
-    n = 2;
-    #endif // SECOND
+    for(int i=0; i < values.size(); i++)
+    {
+        last = if_v(order == distances[i], values[i], last);
+    }
 
-    int p = n - 1;
-
-    assert((p % 2) == 1);
-
-    value stencil = pow(-1, (p + 3)/2) * (1/pow(2, p+1)) * (pow(scale, p) * diffnth(ctx, in, idx, n));
-
-    return stencil;
+    return last;
 }
 
-value kreiss_oliger_dissipate(equation_context& ctx, const value& in)
+///https://hal.archives-ouvertes.fr/hal-00569776/document this paper implies you simply sum the directions
+///https://en.wikipedia.org/wiki/Finite_difference_coefficient according to wikipedia, this is the 6th derivative with 2nd order accuracy. I am confused, but at least I know where it came from
+value kreiss_oliger_dissipate(equation_context& ctx, const value& in, const value_i& order)
 {
-    //#define NO_KREISS
-    #ifndef NO_KREISS
+    value_i n = get_maximum_differentiation_derivative(order);
+
+    n = min(n, value_i{6});
+
+    n = 6;
+
     value fin = 0;
 
     for(int i=0; i < 3; i++)
     {
-        fin = fin + kreiss_oliger_dissipate_dir(ctx, in, i);
+        fin += diffnth(ctx, in, i, n, value{1.f});
     }
 
-    return fin;
-    #else
-    return 0;
-    #endif
+    value scale = "scale";
+
+    value p = n.convert<float>() - 1;
+
+    value sign = pow(value{-1}, (p + 3)/2);
+
+    value divisor = pow(value{2}, p+1);
+
+    value prefix = sign / divisor;
+
+    std::cout << "SIGN " << type_to_string(sign) << " DIV " << type_to_string(divisor) << std::endl;
+
+    return prefix * fin / scale;
 }
 
-void build_kreiss_oliger_dissipate_singular(equation_context& ctx)
+void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, literal<value_i> point_count,
+                          buffer<value, 3> buf_in, buffer<value, 3> buf_out,
+                          literal<value> eps, single_source::named_literal<value, "scale"> scale, single_source::named_literal<tensor<value_i, 4>, "dim"> idim, literal<value> timestep,
+                          buffer<value_us, 3> order_ptr)
 {
-    value buf = dual_types::apply(value("buffer_index"), "buffer", "ix", "iy", "iz", "dim");
+    ctx.exec("int local_idx = get_global_id(0);");
 
-    value coeff = "coefficient";
+    value_i local_idx = "local_idx";
 
-    ctx.add("KREISS_DISSIPATE_SINGULAR", coeff * kreiss_oliger_dissipate(ctx, buf));
+    ctx.exec(if_s(local_idx >= point_count, return_s));
+
+    value_i lix = points[local_idx].x().convert<int>();
+    value_i liy = points[local_idx].y().convert<int>();
+    value_i liz = points[local_idx].z().convert<int>();
+
+    ctx.exec("int ix = " + type_to_string(lix));
+    ctx.exec("int iy = " + type_to_string(liy));
+    ctx.exec("int iz = " + type_to_string(liz));
+
+    value_i ix = "ix";
+    value_i iy = "iy";
+    value_i iz = "iz";
+
+    tensor<value_i, 3> dim = {idim.get().x(), idim.get().y(), idim.get().z()};
+
+    buf_in.size = {dim.x(), dim.y(), dim.z()};
+    buf_out.size = {dim.x(), dim.y(), dim.z()};
+    order_ptr.size = {dim.x(), dim.y(), dim.z()};
+
+    value_us order_v = order_ptr[ix, iy, iz];
+
+    ctx.exec("int order = " + type_to_string(order_v));
+
+    value_i order = "order";
+
+    value_i is_valid_point = (order & value_i{(int)D_LOW}) || (order & value_i{(int)D_FULL});
+
+    ctx.exec(if_s(!is_valid_point,
+                  (assign(buf_out[ix, iy, iz], buf_in[ix, iy, iz]),
+                  return_s)));
+
+    value buf_v = bidx(buf_in.name, false, false);
+
+    value v = buf_v + timestep * eps * kreiss_oliger_dissipate(ctx, buf_v, order);
+
+    ctx.exec(assign(buf_out[ix, iy, iz], v));
+
+    ctx.fix_buffers();
+}
+
+void build_kreiss_oliger_unidir(cl::context& clctx)
+{
+    equation_context ctx;
+
+    cl::kernel kern = single_source::make_kernel_for(clctx, ctx, kreiss_oliger_unidir, "dissipate_single_unidir");
+
+    clctx.register_kernel("dissipate_single_unidir", kern);
 }
 
 #if 0
@@ -486,10 +557,8 @@ value diff1_interior(equation_context& ctx, const value& in, int idx, int order,
     return 0;
 }
 
-value diffnth(equation_context& ctx, const value& in, int idx, int nth)
+value diffnth(equation_context& ctx, const value& in, int idx, int nth, const value& scale)
 {
-    value scale = "scale";
-
     ///1 with accuracy 2
     if(nth == 1)
     {
@@ -545,6 +614,18 @@ value diffnth(equation_context& ctx, const value& in, int idx, int nth)
     }
 
     assert(false);
+}
+
+value diffnth(equation_context& ctx, const value& in, int idx, const value_i& nth, const value& scale)
+{
+    value last = 0;
+
+    for(int i=2; i < 6; i+=2)
+    {
+        last = if_v(nth == i, diffnth(ctx, in, idx, i, scale), last);
+    }
+
+    return last;
 }
 
 value diff1(equation_context& ctx, const value& in, int idx)
@@ -5196,8 +5277,8 @@ int main()
     equation_context ctxgetmatter;
     build_get_matter(meta_interop, ctxgetmatter, holes.use_matter || holes.use_particles);
 
-    equation_context ctx10;
-    build_kreiss_oliger_dissipate_singular(ctx10);
+    //equation_context ctx10;
+    //build_kreiss_oliger_dissipate_singular(ctx10);
 
     equation_context ctx11;
     build_intermediate_thin(ctx11);
@@ -5224,7 +5305,7 @@ int main()
     ctx7.build(argument_string, 6);
     ctxgeo4.build(argument_string, "geo4");
     ctxgetmatter.build(argument_string, "getmatter");
-    ctx10.build(argument_string, 9);
+    //ctx10.build(argument_string, 9);
     ctx11.build(argument_string, 10);
     //ctx12.build(argument_string, 11);
     ctx13.build(argument_string, 12);
@@ -5411,6 +5492,7 @@ int main()
     }
 
     bssn::build(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
+    build_kreiss_oliger_unidir(clctx.ctx);
 
     {
         equation_context ectx;

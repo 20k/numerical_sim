@@ -673,6 +673,7 @@ void multiply_add_impl(__global ushort4* points, int point_count,
     left[index] = left[index] * cst1 + right[index] * cst2;
 }
 
+#if 0
 __kernel
 void dissipate_single_unidir(__global ushort4* points, int point_count,
                              __global float* buffer, __global float* obuffer,
@@ -769,6 +770,7 @@ void dissipate_single(__global ushort4* points, int point_count,
 
     obuffer[index] += damp * dissipate_single * timestep;
 }
+#endif
 
 __kernel
 void render(STANDARD_ARGS(),
