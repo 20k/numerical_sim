@@ -368,6 +368,11 @@ buffer_set& cpu_mesh::get_buffers(cl::context& ctx, cl::managed_command_queue& m
     return data.at(index);
 }
 
+void downsample(equation_context& ctx, buffer<value, 3> in_buf, literal<tensor<value, 3>> in_dim, buffer<value, 3> out_buf, literal<tensor<value, 3>> out_dim)
+{
+
+}
+
 ///returns buffers and intermediates
 void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, step_callback callback)
 {

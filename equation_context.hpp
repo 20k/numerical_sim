@@ -7,6 +7,7 @@
 #include <geodesic/dual_value.hpp>
 #include <vec/tensor.hpp>
 #include "differentiator.hpp"
+#include "util.hpp"
 
 struct equation_context;
 
