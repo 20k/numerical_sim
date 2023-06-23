@@ -382,6 +382,12 @@ void downsample(equation_context& ctx, buffer<value, 3> in_buf, literal<v3i> lin
 
     v3f in_dimf = (v3f)(lin_dim.get());
     v3f out_dimf = (v3f)(lout_dim.get());
+
+    v3f in_ratio = in_dimf / out_dimf;
+
+    v3f upper_pos = (v3f)pos * in_ratio;
+
+    value val = buffer_read_linear(in_buf, upper_pos, lin_dim.get());
 }
 
 ///returns buffers and intermediates
