@@ -370,6 +370,9 @@ buffer_set& cpu_mesh::get_buffers(cl::context& ctx, cl::managed_command_queue& m
 
 void downsample(equation_context& ctx, buffer<value, 3> in_buf, literal<v3i> lin_dim, buffer<value, 3> out_buf, literal<v3i> lout_dim)
 {
+    in_buf.size = lin_dim.get();
+    out_buf.size = lout_dim.get();
+
     ctx.exec("int ix = get_global_id(0)");
     ctx.exec("int iy = get_global_id(1)");
     ctx.exec("int iz = get_global_id(2)");
@@ -388,6 +391,8 @@ void downsample(equation_context& ctx, buffer<value, 3> in_buf, literal<v3i> lin
     v3f upper_pos = (v3f)pos * in_ratio;
 
     value val = buffer_read_linear(in_buf, upper_pos, lin_dim.get());
+
+    ctx.exec(assign(out_buf[pos], val));
 }
 
 ///returns buffers and intermediates
