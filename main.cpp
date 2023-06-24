@@ -313,6 +313,26 @@ struct differentiation_context
     }
 };
 
+template<std::size_t elements, typename T>
+inline
+std::array<tensor<T, 3>, elements> simple_derivative_indices(const tensor<T, 3>& where, int idx)
+{
+    std::array<tensor<T, 3>, elements> ret;
+
+    for(int i=0; i < elements; i++)
+    {
+        int offset = i - (elements - 1)/2;
+
+        tensor<T, 3> val = where;
+
+        val[idx] += offset;
+
+        ret[i] = val;
+    }
+
+    return ret;
+}
+
 value diffnth(equation_context& ctx, const value& in, int idx, int nth, const value& scale);
 value diffnth(equation_context& ctx, const value& in, int idx, const value_i& nth, const value& scale);
 
@@ -550,6 +570,36 @@ value diffnth(equation_context& ctx, const value& in, int idx, const value_i& nt
     }
 
     return last;
+}
+
+value diff1(equation_context& ctx, const buffer<value, 3>& in, int idx, const v3i& where, const value& scale)
+{
+    int order = ctx.order;
+
+    if(order == 1)
+    {
+        std::array<v3i, 3> indices = simple_derivative_indices<3>(where, idx);
+        std::array<value, 3> vars;
+
+        for(int i=0; i < 3; i++)
+            vars[i] = in[indices[i]];
+
+        return (vars[2] - vars[0]) / (2 * scale);
+    }
+    else if(order == 2)
+    {
+        std::array<v3i, 5> indices = simple_derivative_indices<5>(where, idx);
+        std::array<value, 5> vars;
+
+        for(int i=0; i < 5; i++)
+            vars[i] = in[indices[i]];
+
+        return (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
+    }
+    else
+    {
+        assert(false);
+    }
 }
 
 value diff1(equation_context& ctx, const value& in, int idx)

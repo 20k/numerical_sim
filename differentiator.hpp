@@ -1,9 +1,13 @@
 #ifndef DIFFERENTIATOR_HPP_INCLUDED
 #define DIFFERENTIATOR_HPP_INCLUDED
 
+#include <geodesic/dual_value.hpp>
+#include <vec/tensor.hpp>
+
 struct differentiator
 {
     virtual value diff1(const value& in, int idx){assert(false); return value{0.f};};
+    virtual value diff1(const buffer<value, 3>& in, int idx, const v3i& where, const value& scale){assert(false); return value{0.f};};
     virtual value diff2(const value& in, int idx, int idy, const value& dx, const value& dy){assert(false); return value{0.f};};
 };
 
@@ -11,6 +15,12 @@ inline
 value diff1(differentiator& ctx, const value& in, int idx)
 {
     return ctx.diff1(in, idx);
+}
+
+inline
+value diff1(differentiator& ctx, const buffer<value, 3>& in, int idx, const v3i& where, const value& scale)
+{
+    return ctx.diff1(in, idx, where, scale);
 }
 
 inline
