@@ -1800,7 +1800,7 @@ void get_raytraced_quantities(argument_generator& arg_gen, equation_context& ctx
     auto Kij_out = arg_gen.add<std::array<buffer<value>, 6>>();
     auto gA_out = arg_gen.add<buffer<value>>();
     auto gB_out = arg_gen.add<std::array<buffer<value>, 3>>();
-    auto slice = arg_gen.add<literal<value_i>>();
+    //auto slice = arg_gen.add<literal<value_i>>();
 
     ctx.exec("int ix = get_global_id(0)");
     ctx.exec("int iy = get_global_id(1)");
@@ -1825,7 +1825,9 @@ void get_raytraced_quantities(argument_generator& arg_gen, equation_context& ctx
 
     standard_arguments args(ctx);
 
-    value_i idx = slice * out_dim.z() * out_dim.y() * out_dim.x() + pos.z() * out_dim.y() * out_dim.x() + pos.y() * out_dim.x() + pos.x();
+    ///don't need to do the slice thing, because all rays share coordinate time
+    value_i idx = pos.z() * out_dim.y() * out_dim.x() + pos.y() * out_dim.x() + pos.x();
+    //value_i idx = slice * out_dim.z() * out_dim.y() * out_dim.x() + pos.z() * out_dim.y() * out_dim.x() + pos.y() * out_dim.x() + pos.x();
 
     for(int i=0; i < 6; i++)
     {
@@ -1843,6 +1845,54 @@ void get_raytraced_quantities(argument_generator& arg_gen, equation_context& ctx
     ctx.exec(assign(gA_out[idx], args.gA));
 
     ctx.fix_buffers();
+}
+
+void trace_slice(equation_context& ctx, std::array<buffer<value>, 6> linear_Yij, std::array<buffer<value>, 6> linear_Kij, buffer<value> linear_gA, std::array<buffer<value>, 3> linear_gB, named_literal<value, "scale"> scale, named_literal<v3i, "dim"> dim,
+                 std::array<buffer<value>, 3> positions, std::array<buffer<value>, 3> velocities, literal<value_i> ray_count)
+{
+    ctx.exec("int lidx = get_global_id(0)");
+
+    value_i lidx = "lidx";
+
+    ctx.exec(if_s(lidx >= ray_count, return_s));
+
+    v3f pos = {positions[0][lidx], positions[1][lidx], positions[2][lidx]};
+    v3f vel = {velocities[0][lidx], velocities[1][lidx], velocities[2][lidx]};
+
+    ctx.exec("float fx = " + type_to_string(pos.x()));
+    ctx.exec("float fy = " + type_to_string(pos.y()));
+    ctx.exec("float fz = " + type_to_string(pos.z()));
+
+    auto w2v = [&](v3f in)
+    {
+        v3i centre = (dim.get() - 1)/2;
+
+        return (in / scale) + (v3f)centre;
+    };
+
+    value universe_length = ((dim.get().x()-1)/2).convert<float>();
+
+    int index_table[3][3] = {{0, 1, 2},
+                             {1, 3, 4},
+                             {2, 4, 5}};
+
+    tensor<value, 3, 3> Yij;
+    tensor<value, 3, 3> Kij;
+    tensor<value, 3> gB;
+    value gA;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            Yij[i, j] = bidx(linear_Yij[index_table[i][j]].name, true, false);
+            Kij[i, j] = bidx(linear_Kij[index_table[i][j]].name, true, false);
+        }
+
+        gB[i] = bidx(linear_gB[i].name, true, false);
+    }
+
+    gA = bidx(linear_gA.name, true, false);
 }
 
 void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
