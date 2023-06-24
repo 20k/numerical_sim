@@ -1790,28 +1790,17 @@ void build_kernel(argument_generator& arg_gen, equation_context& ctx, matter_int
 void get_raytraced_quantities(argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args)
 {
     arg_gen.add(bssn_args.buffers);
-    arg_gen.add<named_literal<v4i, "in_dim">>();
+    arg_gen.add<named_literal<v4i, "dim">>();
     arg_gen.add<named_literal<v4i, "out_dim">>();
 
-    v3i in_dim = {"in_dim.x", "in_dim.y", "in_dim.z"};
-    v3i out_dim = {"in_dim.x", "in_dim.y", "in_dim.z"};
+    v3i in_dim = {"dim.x", "dim.y", "dim.z"};
+    v3i out_dim = {"out_dim.x", "out_dim.y", "out_dim.z"};
 
     auto Yij_out = arg_gen.add<std::array<buffer<value>, 6>>();
     auto Kij_out = arg_gen.add<std::array<buffer<value>, 6>>();
     auto gA_out = arg_gen.add<buffer<value>>();
     auto gB_out = arg_gen.add<std::array<buffer<value>, 3>>();
     auto slice = arg_gen.add<literal<value_i>>();
-
-    /*for(int i=0; i < 6; i++)
-    {
-        Yij_out[i].size = out_dim;
-        Kij_out[i].size = out_dim;
-    }
-
-    gA_out.size = out_dim;
-
-    for(int i=0; i < 3; i++)
-        gB_out[i].size = out_dim;*/
 
     ctx.exec("int ix = get_global_id(0)");
     ctx.exec("int iy = get_global_id(1)");
@@ -1852,10 +1841,9 @@ void get_raytraced_quantities(argument_generator& arg_gen, equation_context& ctx
     }
 
     ctx.exec(assign(gA_out[idx], args.gA));
-}
 
-//void get_raytraced_quantities(equation_context& ctx, std::array<buffer<value>, 6> cY, const buffer<value>& cfl, std::array<buffer<value>, 6> cA, buffer<value> K, literal<vec4i> dim
-//                              std::array<buffer<value>, 6> Yij_out, std::array<buffer<value>, 6> Kij_out, )
+    ctx.fix_buffers();
+}
 
 void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
@@ -1867,5 +1855,13 @@ void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, b
         cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_1", "", interop, use_matter, bssn_args, utility_args, b);
 
         clctx.register_kernel("evolve_1", kern);
+    }
+
+    {
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, get_raytraced_quantities, "get_raytraced_quantities", "", bssn_args);
+
+        clctx.register_kernel("get_raytraced_quantities", kern);
     }
 }

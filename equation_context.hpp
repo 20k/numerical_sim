@@ -7,7 +7,14 @@
 #include <geodesic/dual_value.hpp>
 #include <vec/tensor.hpp>
 #include "differentiator.hpp"
-#include "util.hpp"
+
+template<typename T, int N>
+inline
+T buffer_read_linear(const buffer<T, N>& buf, const v3f& position, const v3i& dim);
+
+template<typename T, int N>
+inline
+T buffer_index(const buffer<T, N>& buf, const tensor<value_i, 3>& pos, const tensor<value_i, 3>& dim);
 
 struct equation_context;
 
@@ -336,6 +343,27 @@ struct equation_context : differentiator
 
                 ///buffer[z * dim.x * dim.y + y * dim.x + x];
                 value indexed = buf[z * dim.x() * dim.y() + y * dim.x() + x];
+
+                v = indexed;
+            }
+
+            if(function_name == "buffer_read_linear")
+            {
+                buffer<value, 3> buf;
+                buf.name = type_to_string(v.args[1]);
+
+                ///to_sub = apply(value(function_name), variables.args[1], as_float3(xs[kk], ys[kk], zs[kk]), "dim");
+
+                value index_vars = v.args[2];
+                value dim = v.args[3];
+
+                assert(type_to_string(index_vars.args.at(0)) == "(float3)");
+
+                value x = index_vars.args.at(1);
+                value y = index_vars.args.at(2);
+                value z = index_vars.args.at(3);
+
+                value indexed = buffer_read_linear(buf, (v3f){x, y, z}, (v3i){dim.x().as<int>(), dim.y().as<int>(), dim.z().as<int>()});
 
                 v = indexed;
             }

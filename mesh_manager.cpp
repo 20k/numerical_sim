@@ -5,6 +5,7 @@
 #include <toolkit/fs_helpers.hpp>
 #include "equation_context.hpp"
 #include "single_source.hpp"
+#include "util.hpp"
 
 void save_buffer(cl::command_queue& cqueue, cl::buffer& buf, const std::string& where)
 {
