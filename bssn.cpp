@@ -1787,6 +1787,99 @@ void build_kernel(argument_generator& arg_gen, equation_context& ctx, matter_int
     ctx.fix_buffers();
 }
 
+void get_raytraced_quantities(argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args)
+{
+    arg_gen.add(bssn_args.buffers);
+    arg_gen.add<named_literal<v4i, "in_dim">>();
+    arg_gen.add<named_literal<v4i, "out_dim">>();
+
+    v3i in_dim = {"in_dim.x", "in_dim.y", "in_dim.z"};
+    v3i out_dim = {"in_dim.x", "in_dim.y", "in_dim.z"};
+
+    auto Yij_out = arg_gen.add<std::array<buffer<value, 3>, 6>>();
+    auto Kij_out = arg_gen.add<std::array<buffer<value, 3>, 6>>();
+    auto gA_out = arg_gen.add<buffer<value, 3>>();
+    auto gB_out = arg_gen.add<std::array<buffer<value, 3>, 3>>();
+
+    for(int i=0; i < 6; i++)
+    {
+        Yij_out[i].size = out_dim;
+        Kij_out[i].size = out_dim;
+    }
+
+    gA_out.size = out_dim;
+
+    for(int i=0; i < 3; i++)
+        gB_out[i].size = out_dim;
+
+    ctx.exec("int ix = get_global_id(0)");
+    ctx.exec("int iy = get_global_id(1)");
+    ctx.exec("int iz = get_global_id(2)");
+
+    v3i pos = {"ix", "iy", "iz"};
+
+    ctx.exec(if_s(pos.x() >= out_dim.x() || pos.y() >= out_dim.y() || pos.z() >= out_dim.z(), return_s));
+
+    v3f in_dimf = (v3f)in_dim;
+    v3f out_dimf = (v3f)out_dim;
+
+    v3f in_ratio = in_dimf / out_dimf;
+
+    v3f upper_pos = (v3f)pos * in_ratio;
+
+    ctx.uses_linear = true;
+
+    ctx.exec("float fx = " + type_to_string(upper_pos.x()));
+    ctx.exec("float fy = " + type_to_string(upper_pos.y()));
+    ctx.exec("float fz = " + type_to_string(upper_pos.z()));
+
+    standard_arguments args(ctx);
+
+    for(int i=0; i < 6; i++)
+    {
+        vec2i idx = args.linear_indices[i];
+
+        ctx.exec(assign(Yij_out[i][pos], args.Yij[idx.x(), idx.y()]));
+        ctx.exec(assign(Kij_out[i][pos], args.Kij[idx.x(), idx.y()]));
+    }
+
+    for(int i=0; i < 3; i++)
+    {
+        ctx.exec(assign(gB_out[i][pos], args.gB[i]));
+    }
+
+    ctx.exec(assign(gA_out[pos], args.gA));
+
+    /*std::array<buffer<value>, 6> cY = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5"};
+    buffer<value> conformal = "X";
+    std::array<buffer<value>, 6> cA = {"cA0", "cA1", "cA2", "cA3", "cA4", "cA5"};
+    buffer<value> K = "K";
+    buffer<value> gA = "gA";
+    std::array<buffer<value>, 3> gB = {"gB0", "gB1", "gB2"};
+
+    tensor<value, 6> Yij_value;
+    tensor<value, 6> Kij_value;
+    value gA_value = buffer_read_linear(gA, upper_pos, in_dim);
+
+    for(int i=0; i < 6; i++)
+    {
+        value cY_v = cY[i];
+
+        #ifdef USE_W
+        value Yij_v = cY_v / (conformal * conformal);
+        #endif // USE_W
+    }*/
+
+
+
+    //value val = buffer_read_linear(in_buf, upper_pos, lin_dim.get());
+
+    //ctx.exec(assign(out_buf[pos], val));
+}
+
+//void get_raytraced_quantities(equation_context& ctx, std::array<buffer<value>, 6> cY, const buffer<value>& cfl, std::array<buffer<value>, 6> cA, buffer<value> K, literal<vec4i> dim
+//                              std::array<buffer<value>, 6> Yij_out, std::array<buffer<value>, 6> Kij_out, )
+
 void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
     {

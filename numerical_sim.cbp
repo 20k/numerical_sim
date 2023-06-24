@@ -198,6 +198,7 @@
 		<Unit filename="tov_solver.cl" />
 		<Unit filename="transform_position.cl" />
 		<Unit filename="u_solver.cl" />
+		<Unit filename="util.hpp" />
 		<Extensions>
 			<lib_finder disable_auto="1" />
 		</Extensions>
