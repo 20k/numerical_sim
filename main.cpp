@@ -146,22 +146,29 @@ struct differentiation_context
     std::array<value, elements> ys;
     std::array<value, elements> zs;
 
-    differentiation_context(const value& in, int idx, bool linear_interpolation = false)
+    differentiation_context(equation_context& ctx, const value& in, int idx, bool linear_interpolation = false)
     {
+        std::array<std::string, 3> root_variables;
+
+        if(linear_interpolation)
+        {
+            root_variables = {"fx", "fy", "fz"};
+        }
+        else
+        {
+            root_variables = {"ix", "iy", "iz"};
+        }
+
+        if(ctx.position_override.has_value())
+        {
+            root_variables = ctx.position_override.value();
+        }
+
         for(int i=0; i < elements; i++)
         {
-            if(linear_interpolation)
-            {
-                xs[i] = "fx";
-                ys[i] = "fy";
-                zs[i] = "fz";
-            }
-            else
-            {
-                xs[i] = "ix";
-                ys[i] = "iy";
-                zs[i] = "iz";
-            }
+            xs[i] = root_variables[0];
+            ys[i] = root_variables[1];
+            zs[i] = root_variables[2];
         }
 
         for(int i=0; i < elements; i++)
@@ -229,7 +236,7 @@ struct differentiation_context
 
         for(auto& v : variables)
         {
-            if(v == "dim" || v == "scale" || v == "ix" || v == "iy" || v == "iz" || v == "fx" || v == "fy" || v == "fz")
+            if(v == "dim" || v == "scale" || v == root_variables[0] || v == root_variables[1] || v == root_variables[2])
                 continue;
 
             bool found = false;
@@ -463,7 +470,7 @@ value diff1_interior(equation_context& ctx, const value& in, int idx, int order,
 
     if(order == 1)
     {
-        differentiation_context<5> dctx(in, idx, ctx.uses_linear);
+        differentiation_context<5> dctx(ctx, in, idx, ctx.uses_linear);
         std::array<value, 5> vars = dctx.vars;
 
         if(direction == 0)
@@ -477,21 +484,21 @@ value diff1_interior(equation_context& ctx, const value& in, int idx, int order,
     }
     else if(order == 2)
     {
-        differentiation_context dctx(in, idx, ctx.uses_linear);
+        differentiation_context dctx(ctx, in, idx, ctx.uses_linear);
         std::array<value, 5> vars = dctx.vars;
 
         return (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
     }
     else if(order == 3)
     {
-        differentiation_context<7> dctx(in, idx, ctx.uses_linear);
+        differentiation_context<7> dctx(ctx, in, idx, ctx.uses_linear);
         std::array<value, 7> vars = dctx.vars;
 
         return (-(1/60.f) * vars[0] + (3/20.f) * vars[1] - (3/4.f) * vars[2] + 0 * vars[3] + (3/4.f) * vars[4] - (3/20.f) * vars[5] + (1/60.f) * vars[6]) / scale;
     }
     else if(order == 4)
     {
-        differentiation_context<9> dctx(in, idx, ctx.uses_linear);
+        differentiation_context<9> dctx(ctx, in, idx, ctx.uses_linear);
         std::array<value, 9> vars = dctx.vars;
 
         return ((1/280.f) * vars[0] - (4/105.f) * vars[1] + (1/5.f) * vars[2] - (4/5.f) * vars[3] + (4/5.f) * vars[5] - (1/5.f) * vars[6] + (4/105.f) * vars[7] - (1/280.f) * vars[8]) / scale;
@@ -506,7 +513,7 @@ value diffnth(equation_context& ctx, const value& in, int idx, int nth, const va
     ///1 with accuracy 2
     if(nth == 1)
     {
-        differentiation_context<3> dctx(in, idx, ctx.uses_linear);
+        differentiation_context<3> dctx(ctx, in, idx, ctx.uses_linear);
         auto vars = dctx.vars;
 
         return (vars[2] - vars[0]) / (2 * scale);
@@ -515,7 +522,7 @@ value diffnth(equation_context& ctx, const value& in, int idx, int nth, const va
     ///2 with accuracy 2
     if(nth == 2)
     {
-        differentiation_context<3> dctx(in, idx, ctx.uses_linear);
+        differentiation_context<3> dctx(ctx, in, idx, ctx.uses_linear);
         auto vars = dctx.vars;
 
         return (vars[0] - 2 * vars[1] + vars[2]) / pow(scale, 2);
@@ -524,7 +531,7 @@ value diffnth(equation_context& ctx, const value& in, int idx, int nth, const va
     ///3 with accuracy 2
     if(nth == 3)
     {
-        differentiation_context<5> dctx(in, idx, ctx.uses_linear);
+        differentiation_context<5> dctx(ctx, in, idx, ctx.uses_linear);
         auto vars = dctx.vars;
 
         return (-0.5f * vars[0] + vars[1] + -vars[3] + 0.5f * vars[4]) / pow(scale, 3);
@@ -533,7 +540,7 @@ value diffnth(equation_context& ctx, const value& in, int idx, int nth, const va
     ///4 with accuracy 2
     if(nth == 4)
     {
-        differentiation_context<5> dctx(in, idx, ctx.uses_linear);
+        differentiation_context<5> dctx(ctx, in, idx, ctx.uses_linear);
         auto vars = dctx.vars;
 
         return (vars[0] - 4 * vars[1] + 6 * vars[2] - 4 * vars[3] + vars[4]) / pow(scale, 4);
@@ -542,7 +549,7 @@ value diffnth(equation_context& ctx, const value& in, int idx, int nth, const va
     ///5 with accuracy 2
     if(nth == 5)
     {
-        differentiation_context<7> dctx(in, idx, ctx.uses_linear);
+        differentiation_context<7> dctx(ctx, in, idx, ctx.uses_linear);
         auto vars = dctx.vars;
 
         return (-0.5f * vars[0] + 2 * vars[1] - (5.f/2.f) * vars[2] + 0 * vars[3] + (5.f/2.f) * vars[4] - 2 * vars[5] + 0.5f * vars[6]) / pow(scale, 5);
@@ -551,7 +558,7 @@ value diffnth(equation_context& ctx, const value& in, int idx, int nth, const va
     ///6 with accuracy 2
     if(nth == 6)
     {
-        differentiation_context<7> dctx(in, idx, ctx.uses_linear);
+        differentiation_context<7> dctx(ctx, in, idx, ctx.uses_linear);
         auto vars = dctx.vars;
 
         return (1 * vars[0] - 6 * vars[1] + 15 * vars[2] - 20 * vars[3] + 15 * vars[4] - 6 * vars[5] + 1 * vars[6]) / pow(scale, 6);
@@ -572,7 +579,7 @@ value diffnth(equation_context& ctx, const value& in, int idx, const value_i& nt
     return last;
 }
 
-value diff1(equation_context& ctx, const buffer<value, 3>& in, int idx, const v3i& where, const value& scale)
+/*value diff1(equation_context& ctx, const buffer<value, 3>& in, int idx, const v3i& where, const value& scale)
 {
     int order = ctx.order;
 
@@ -600,7 +607,7 @@ value diff1(equation_context& ctx, const buffer<value, 3>& in, int idx, const v3
     {
         assert(false);
     }
-}
+}*/
 
 value diff1(equation_context& ctx, const value& in, int idx)
 {

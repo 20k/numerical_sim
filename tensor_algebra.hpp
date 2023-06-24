@@ -204,7 +204,7 @@ tensor<T, N, N, N> christoffel_symbols_2(differentiator& ctx, const metric<T, N,
 ///derivatives are pass in like dk met ij
 template<typename T, int N>
 inline
-tensor<T, N, N, N> christoffel_symbols_2(const inverse_metric<T, N, N>& inverse, const tensor<T, 3, 3, 3>& derivatives)
+tensor<T, N, N, N> christoffel_symbols_2(const inverse_metric<T, N, N>& inverse, const tensor<T, N, N, N>& derivatives)
 {
     tensor<T, N, N, N> christoff;
 

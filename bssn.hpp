@@ -101,6 +101,32 @@ value bidx(const std::string& buf, bool interpolate, bool is_derivative, const a
     }
 }
 
+template<typename T, typename U>
+inline
+value buffer_index_generic(buffer<value_base<T>, 3> buf, const tensor<value_base<U>, 3>& pos, const std::string& dim)
+{
+    if constexpr(std::is_same_v<T, std::float16_t> && std::is_same_v<U, float>)
+    {
+        return dual_types::apply(value("buffer_read_linearh"), buf.name, as_float3(pos.x(), pos.y(), pos.z()), dim);
+    }
+    else if constexpr(std::is_same_v<T, float> && std::is_same_v<U, float>)
+    {
+        return dual_types::apply(value("buffer_read_linear"), buf.name, as_float3(pos.x(), pos.y(), pos.z()), dim);
+    }
+    else if constexpr(std::is_same_v<T, std::float16_t> && std::is_same_v<U, int>)
+    {
+        return dual_types::apply(value("buffer_indexh"), buf.name, pos.x(), pos.y(), pos.z(), dim);
+    }
+    else if constexpr(std::is_same_v<T, float> && std::is_same_v<U, int>)
+    {
+        return dual_types::apply(value("buffer_index"), buf.name, pos.x(), pos.y(), pos.z(), dim);
+    }
+    else
+    {
+        static_assert(false);
+    }
+}
+
 struct base_bssn_args
 {
     std::vector<single_source::impl::input> buffers;

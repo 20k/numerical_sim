@@ -19,7 +19,7 @@ T buffer_index(const buffer<T, N>& buf, const tensor<value_i, 3>& pos, const ten
 struct equation_context;
 
 value diff1(equation_context& ctx, const value& in, int idx);
-value diff1(equation_context& ctx, const buffer<value, 3>& in, int idx, const v3i& where, const value& scale);
+//value diff1(equation_context& ctx, const buffer<value, 3>& in, int idx, const v3i& where, const value& scale);
 value diff2(equation_context& ctx, const value& in, int idx, int idy, const value& first_x, const value& first_y);
 
 struct equation_context : differentiator
@@ -37,7 +37,7 @@ struct equation_context : differentiator
     int order = 2;
 
     virtual value diff1(const value& in, int idx) override {return ::diff1(*this, in, idx);};
-    virtual value diff1(const buffer<value, 3>& in, int idx, const v3i& where, const value& scale) override {return ::diff1(*this, in, idx, where, scale);};
+    //virtual value diff1(const buffer<value, 3>& in, int idx, const v3i& where, const value& scale) override {return ::diff1(*this, in, idx, where, scale);};
     virtual value diff2(const value& in, int idx, int idy, const value& dx, const value& dy) override {return ::diff2(*this, in, idx, idy, dx, dy);};
 
     void exec(const value& v)

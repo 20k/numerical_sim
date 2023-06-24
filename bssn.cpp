@@ -1866,6 +1866,8 @@ void trace_slice(equation_context& ctx, std::array<buffer<value, 3>, 6> linear_Y
         return (in / scale) + (v3f)centre;
     };
 
+    v3f voxel_pos = w2v(pos);
+
     value universe_length = ((dim.get().x()-1)/2).convert<float>();
 
     int index_table[3][3] = {{0, 1, 2},
@@ -1892,17 +1894,20 @@ void trace_slice(equation_context& ctx, std::array<buffer<value, 3>, 6> linear_Y
             bYij[i, j].size = dim.get();
             bKij[i, j].size = dim.get();
 
-            Yij[i, j] = buffer_read_linear(bYij[i, j], pos, dim);
-            Kij[i, j] = buffer_read_linear(bKij[i, j], pos, dim);
+            Yij[i, j] = buffer_index_generic(bYij[i, j], voxel_pos, dim.name);
+            Kij[i, j] = buffer_index_generic(bKij[i, j], voxel_pos, dim.name);
         }
 
         bgB[i] = linear_gB[i];
         bgB[i].size = dim.get();
-        gB[i] = buffer_read_linear(bgB[i], pos, dim);
+        gB[i] = buffer_index_generic(bgB[i], voxel_pos, dim.name);
     }
 
     bgA.size = dim.get();
-    gA = buffer_read_linear(bgA, pos, dim);
+    gA = buffer_index_generic(bgA, voxel_pos, dim.name);
+
+    ///ok, constraints for a differentiation system
+    ///I want to have an array<buf, 6> of linear_cY, and construct a tensor<VALUE, 3, 3> of indexed values
 }
 
 void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
