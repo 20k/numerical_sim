@@ -1847,7 +1847,7 @@ void get_raytraced_quantities(argument_generator& arg_gen, equation_context& ctx
     ctx.fix_buffers();
 }
 
-void trace_slice(equation_context& ctx, std::array<buffer<value>, 6> linear_Yij, std::array<buffer<value>, 6> linear_Kij, buffer<value> linear_gA, std::array<buffer<value>, 3> linear_gB, named_literal<value, "scale"> scale, named_literal<v3i, "dim"> dim,
+void trace_slice(equation_context& ctx, std::array<buffer<value, 3>, 6> linear_Yij, std::array<buffer<value, 3>, 6> linear_Kij, buffer<value, 3> linear_gA, std::array<buffer<value, 3>, 3> linear_gB, named_literal<value, "scale"> scale, named_literal<v3i, "dim"> dim,
                  std::array<buffer<value>, 3> positions, std::array<buffer<value>, 3> velocities, literal<value_i> ray_count)
 {
     ctx.exec("int lidx = get_global_id(0)");
@@ -1858,10 +1858,6 @@ void trace_slice(equation_context& ctx, std::array<buffer<value>, 6> linear_Yij,
 
     v3f pos = {positions[0][lidx], positions[1][lidx], positions[2][lidx]};
     v3f vel = {velocities[0][lidx], velocities[1][lidx], velocities[2][lidx]};
-
-    ctx.exec("float fx = " + type_to_string(pos.x()));
-    ctx.exec("float fy = " + type_to_string(pos.y()));
-    ctx.exec("float fz = " + type_to_string(pos.z()));
 
     auto w2v = [&](v3f in)
     {
@@ -1881,18 +1877,32 @@ void trace_slice(equation_context& ctx, std::array<buffer<value>, 6> linear_Yij,
     tensor<value, 3> gB;
     value gA;
 
+    tensor<buffer<value, 3>, 3, 3> bYij;
+    tensor<buffer<value, 3>, 3, 3> bKij;
+    tensor<buffer<value, 3>, 3> bgB;
+    buffer<value, 3> bgA = linear_gA;
+
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
-            Yij[i, j] = bidx(linear_Yij[index_table[i][j]].name, true, false);
-            Kij[i, j] = bidx(linear_Kij[index_table[i][j]].name, true, false);
+            bYij[i, j] = linear_Yij[index_table[i][j]];
+            bKij[i, j] = linear_Yij[index_table[i][j]];
+
+            bYij[i, j].size = dim.get();
+            bKij[i, j].size = dim.get();
+
+            Yij[i, j] = buffer_read_linear(bYij[i, j], pos, dim);
+            Kij[i, j] = buffer_read_linear(bKij[i, j], pos, dim);
         }
 
-        gB[i] = bidx(linear_gB[i].name, true, false);
+        bgB[i] = linear_gB[i];
+        bgB[i].size = dim.get();
+        gB[i] = buffer_read_linear(bgB[i], pos, dim);
     }
 
-    gA = bidx(linear_gA.name, true, false);
+    bgA.size = dim.get();
+    gA = buffer_read_linear(bgA, pos, dim);
 }
 
 void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
