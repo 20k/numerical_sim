@@ -1887,7 +1887,7 @@ void trace_slice(equation_context& ctx, std::array<buffer<value, 3>, 6> linear_Y
         for(int j=0; j < 3; j++)
         {
             bYij[i, j] = linear_Yij[index_table[i][j]];
-            bKij[i, j] = linear_Yij[index_table[i][j]];
+            bKij[i, j] = linear_Kij[index_table[i][j]];
 
             bYij[i, j].size = dim.get();
             bKij[i, j].size = dim.get();
