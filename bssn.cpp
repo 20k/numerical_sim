@@ -1847,8 +1847,12 @@ void get_raytraced_quantities(argument_generator& arg_gen, equation_context& ctx
     ctx.fix_buffers();
 }
 
-void trace_slice(equation_context& ctx, std::array<buffer<value, 3>, 6> linear_Yij, std::array<buffer<value, 3>, 6> linear_Kij, buffer<value, 3> linear_gA, std::array<buffer<value, 3>, 3> linear_gB, named_literal<value, "scale"> scale, named_literal<v3i, "dim"> dim,
-                 std::array<buffer<value>, 3> positions, std::array<buffer<value>, 3> velocities, literal<value_i> ray_count)
+void trace_slice(equation_context& ctx,
+                 std::array<buffer<value, 3>, 6> linear_Yij_1, std::array<buffer<value, 3>, 6> linear_Kij_1, buffer<value, 3> linear_gA_1, std::array<buffer<value, 3>, 3> linear_gB_1,
+                 std::array<buffer<value, 3>, 6> linear_Yij_2, std::array<buffer<value, 3>, 6> linear_Kij_2, buffer<value, 3> linear_gA_2, std::array<buffer<value, 3>, 3> linear_gB_2,
+                 named_literal<value, "scale"> scale, named_literal<v3i, "dim"> dim,
+                 std::array<buffer<value>, 3> positions, std::array<buffer<value>, 3> velocities,
+                 std::array<buffer<value>, 3> positions_out, std::array<buffer<value>, 3> velocities_out, literal<value_i> ray_count, literal<value> frac, literal<value> step)
 {
     ctx.exec("int lidx = get_global_id(0)");
 
@@ -1883,14 +1887,16 @@ void trace_slice(equation_context& ctx, std::array<buffer<value, 3>, 6> linear_Y
     {
         for(int j=0; j < 3; j++)
         {
-            Yij[i, j] = buffer_index_generic(linear_Yij[index_table[i][j]], voxel_pos, dim.name);
-            Kij[i, j] = buffer_index_generic(linear_Kij[index_table[i][j]], voxel_pos, dim.name);
+            int tidx = index_table[i][j];
+
+            Yij[i, j] = mix(buffer_index_generic(linear_Yij_1[tidx], voxel_pos, dim.name), buffer_index_generic(linear_Yij_2[tidx], voxel_pos, dim.name), frac.get());
+            Kij[i, j] = mix(buffer_index_generic(linear_Kij_1[tidx], voxel_pos, dim.name), buffer_index_generic(linear_Kij_2[tidx], voxel_pos, dim.name), frac.get());
         }
 
-        gB[i] = buffer_index_generic(linear_gB[i], voxel_pos, dim.name);
+        gB[i] = mix(buffer_index_generic(linear_gB_1[i], voxel_pos, dim.name), buffer_index_generic(linear_gB_2[i], voxel_pos, dim.name), frac.get());
     }
 
-    gA = buffer_index_generic(linear_gA, voxel_pos, dim.name);
+    gA = mix(buffer_index_generic(linear_gA_1, voxel_pos, dim.name), buffer_index_generic(linear_gA_2, voxel_pos, dim.name), frac.get());
 
     ///ok, constraints for a differentiation system
     ///I want to have an array<buf, 6> of linear_cY, and construct a tensor<VALUE, 3, 3> of indexed values
