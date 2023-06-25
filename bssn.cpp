@@ -2193,13 +2193,13 @@ void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, b
         clctx.register_kernel("get_raytraced_quantities", kern);
     }
 
-    /*{
+    {
         equation_context ectx;
 
         cl::kernel kern = single_source::make_kernel_for(clctx, ectx, init_slice_rays, "init_slice_rays", "");
 
         clctx.register_kernel("init_slice_rays", kern);
-    }*/
+    }
 
     {
         equation_context ectx;
