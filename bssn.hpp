@@ -12,6 +12,33 @@
 ///must be 4 because of damping
 #define BORDER_WIDTH 4
 
+template<typename T, int N>
+inline
+literal<T> buffer_read_linear_f(equation_context& ctx, buffer<T, N> buf, literal<v3f> position, literal<v4i> dim)
+{
+    ctx.order = 1;
+    ctx.uses_linear = true;
+
+    v3i idim = dim.get().xyz();
+    v3f ipos = position.get();
+
+    ctx.exec(return_v(buffer_read_linear(buf, ipos, idim)));
+
+    return literal<T>();
+}
+
+
+template<typename T, int N>
+inline
+literal<T> buffer_index_f(equation_context& ctx, buffer<T, N>& buf, literal<value_i> x, literal<value_i> y, literal<value_i> z, literal<v4i> dim)
+{
+    T v = buf[z.get() * dim.get().x() * dim.get().y() + y.get() * dim.get().x() + x.get()];
+
+    ctx.exec(return_v(v));
+
+    return literal<T>();
+}
+
 inline
 value as_float3(const value& x, const value& y, const value& z)
 {

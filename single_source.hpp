@@ -285,27 +285,29 @@ namespace single_source
     namespace impl
     {
         inline
-        std::string generate_kernel_string(kernel_context& kctx, equation_context& ctx, const std::string& kernel_name)
+        std::string generate_kernel_string(kernel_context& kctx, equation_context& ctx, const std::string& kernel_name, bool& any_uses_half)
         {
-            bool any_half = false;
-
             for(auto& in : kctx.inputs)
             {
                 if(in.type == "half")
-                    any_half = true;
+                    any_uses_half = true;
+            }
+
+            std::string functions;
+
+            for(auto& [name, func_kctx, func_ectx] : ctx.functions)
+            {
+                functions += generate_kernel_string(func_kctx, func_ectx, name, any_uses_half);
             }
 
             std::string base;
 
-            if(any_half && !kctx.is_func)
+            if(!kctx.is_func && any_uses_half)
             {
                 base += "#pragma OPENCL EXTENSION cl_khr_fp16 : enable\n\n";
             }
 
-            for(auto& [name, func_kctx, func_ectx] : ctx.functions)
-            {
-                base += generate_kernel_string(func_kctx, func_ectx, name);
-            }
+            base += functions;
 
             if(!kctx.is_func)
                 base += "__kernel void " + kernel_name + "(";
@@ -350,7 +352,9 @@ namespace single_source
         inline
         cl::kernel generate_kernel(cl::context& clctx, kernel_context& kctx, equation_context& ctx, const std::string& kernel_name, const std::string& extra_args)
         {
-            std::string str = generate_kernel_string(kctx, ctx, kernel_name);
+            bool any_uses_half = false;
+
+            std::string str = generate_kernel_string(kctx, ctx, kernel_name, any_uses_half);
 
             file::mkdir("generated");
 

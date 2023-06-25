@@ -421,6 +421,7 @@ void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 3> 
                           literal<value> eps, single_source::named_literal<value, "scale"> scale, single_source::named_literal<tensor<value_i, 4>, "dim"> idim, literal<value> timestep,
                           buffer<value_us, 3> order_ptr)
 {
+    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
     ctx.exec("int local_idx = get_global_id(0);");
 
     value_i local_idx = "local_idx";
@@ -4916,6 +4917,8 @@ void test_kernel_generation(cl::context& clctx, cl::command_queue& cqueue)
 
 void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, literal<value_i> points_count, std::array<single_source::named_buffer<value, 3, "cY">, 6> cY, single_source::named_buffer<value, 3, "X"> X, single_source::named_literal<tensor<value_i, 4>, "dim"> dim, single_source::named_literal<value, "scale"> scale, buffer<value, 3> out)
 {
+    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
+
     value_i local_idx = "get_global_id(0)";
 
     ctx.exec(if_s(local_idx >= points_count.get(), return_s));

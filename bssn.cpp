@@ -54,6 +54,9 @@ tensor<value, 3> matter_meta_interop::calculate_adm_Si(equation_context& ctx, st
 
 void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const tensor<value, 3, 3>& Aij, const value& gA)
 {
+    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
+    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
+
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
 
@@ -347,6 +350,9 @@ using namespace single_source;
 
 std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, value_i point_count, const tensor<value_i, 4>& dim, const buffer<value_us, 3>& order_ptr)
 {
+    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
+    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
+
     ctx.exec("int lidx = get_global_id(0)");
 
     value_i local_idx = "lidx";
@@ -1788,23 +1794,10 @@ void build_kernel(argument_generator& arg_gen, equation_context& ctx, matter_int
     ctx.fix_buffers();
 }
 
-template<typename T, int N>
-inline
-literal<T> buffer_read_linear_f(equation_context& ctx, buffer<T, N> buf, literal<v3f> position, literal<v4i> dim)
-{
-    ctx.order = 1;
-    ctx.uses_linear = true;
-
-    v3i idim = dim.get().xyz();
-    v3f ipos = position.get();
-
-    ctx.exec(return_v(buffer_read_linear(buf, ipos, idim)));
-
-    return literal<T>();
-}
-
 void get_raytraced_quantities(argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args)
 {
+    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
+    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
     ctx.add_function("buffer_read_linear", buffer_read_linear_f<value, 3>);
 
     arg_gen.add(bssn_args.buffers);
@@ -1986,6 +1979,10 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
                      std::array<buffer<value>, 3> positions_out, std::array<buffer<value>, 3> velocities_out
                      )
 {
+    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
+    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
+    ctx.add_function("buffer_read_linear", buffer_read_linear_f<value, 3>);
+
     ctx.order = 1;
     ctx.uses_linear = true;
 
@@ -2041,12 +2038,14 @@ void trace_slice(equation_context& ctx,
                  std::array<buffer<value>, 3> positions, std::array<buffer<value>, 3> velocities,
                  std::array<buffer<value>, 3> positions_out, std::array<buffer<value>, 3> velocities_out, literal<value_i> ray_count, literal<value> frac, literal<value> slice_width, literal<value> step)
 {
+    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
+    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
+    ctx.add_function("buffer_read_linear", buffer_read_linear_f<value, 3>);
+
     ctx.ignored_variables.push_back(frac.name);
 
     ctx.order = 1;
     ctx.uses_linear = true;
-
-    ctx.add_function("buffer_read_linear", buffer_read_linear_f<value, 3>);
 
     ctx.exec("int lidx = get_global_id(0)");
 
@@ -2201,11 +2200,11 @@ void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, b
         clctx.register_kernel("init_slice_rays", kern);
     }*/
 
-    {
+    /*{
         equation_context ectx;
 
         cl::kernel kern = single_source::make_kernel_for(clctx, ectx, trace_slice, "trace_slice", "");
 
         clctx.register_kernel("trace_slice", kern);
-    }
+    }*/
 }
