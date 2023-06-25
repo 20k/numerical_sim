@@ -366,7 +366,7 @@ struct equation_context : differentiator
                 v = indexed;
             }
 
-            if(function_name == "buffer_read_linear")
+            /*if(function_name == "buffer_read_linear")
             {
                 buffer<value, 3> buf;
                 buf.name = type_to_string(v.args[1]);
@@ -385,7 +385,7 @@ struct equation_context : differentiator
                 value indexed = buffer_read_linear(buf, (v3f){x, y, z}, (v3i){dim.x().as<int>(), dim.y().as<int>(), dim.z().as<int>()});
 
                 v = indexed;
-            }
+            }*/
         };
 
         for(auto& [_, v] : sequenced)

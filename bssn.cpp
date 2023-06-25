@@ -1788,8 +1788,25 @@ void build_kernel(argument_generator& arg_gen, equation_context& ctx, matter_int
     ctx.fix_buffers();
 }
 
+template<typename T, int N>
+inline
+literal<T> buffer_read_linear_f(equation_context& ctx, buffer<T, N> buf, literal<v3f> position, literal<v4i> dim)
+{
+    ctx.order = 1;
+    ctx.uses_linear = true;
+
+    v3i idim = dim.get().xyz();
+    v3f ipos = position.get();
+
+    ctx.exec(return_v(buffer_read_linear(buf, ipos, idim)));
+
+    return literal<T>();
+}
+
 void get_raytraced_quantities(argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args)
 {
+    ctx.add_function("buffer_read_linear", buffer_read_linear_f<value, 3>);
+
     arg_gen.add(bssn_args.buffers);
     arg_gen.add<named_literal<v4i, "dim">>();
     arg_gen.add<named_literal<v4i, "out_dim">>();
@@ -1965,7 +1982,7 @@ lightray make_lightray(equation_context& ctx,
 
 void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f> camera_quat, literal<v2i> screen_size,
                      std::array<buffer<value, 3>, 6> linear_Yij_1, std::array<buffer<value, 3>, 6> linear_Kij_1, buffer<value, 3> linear_gA_1, std::array<buffer<value, 3>, 3> linear_gB_1,
-                     named_literal<value, "scale"> scale, named_literal<v3i, "dim"> dim,
+                     named_literal<value, "scale"> scale, named_literal<v4i, "dim"> dim,
                      std::array<buffer<value>, 3> positions_out, std::array<buffer<value>, 3> velocities_out
                      )
 {
@@ -2017,25 +2034,10 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
     ctx.fix_buffers();
 }
 
-template<typename T, int N>
-inline
-literal<T> buffer_read_linear_f(equation_context& ctx, buffer<T, N> buf, literal<v3f> position, literal<v3i> dim)
-{
-    ctx.order = 1;
-    ctx.uses_linear = true;
-
-    v3i idim = dim.get();
-    v3f ipos = position.get();
-
-    ctx.exec(return_v(buffer_read_linear(buf, ipos, idim)));
-
-    return literal<T>();
-}
-
 void trace_slice(equation_context& ctx,
                  std::array<buffer<value, 3>, 6> linear_Yij_1, std::array<buffer<value, 3>, 6> linear_Kij_1, buffer<value, 3> linear_gA_1, std::array<buffer<value, 3>, 3> linear_gB_1,
                  std::array<buffer<value, 3>, 6> linear_Yij_2, std::array<buffer<value, 3>, 6> linear_Kij_2, buffer<value, 3> linear_gA_2, std::array<buffer<value, 3>, 3> linear_gB_2,
-                 named_literal<value, "scale"> scale, named_literal<v3i, "dim"> dim,
+                 named_literal<value, "scale"> scale, named_literal<v4i, "dim"> dim,
                  std::array<buffer<value>, 3> positions, std::array<buffer<value>, 3> velocities,
                  std::array<buffer<value>, 3> positions_out, std::array<buffer<value>, 3> velocities_out, literal<value_i> ray_count, literal<value> frac, literal<value> slice_width, literal<value> step)
 {
@@ -2057,7 +2059,7 @@ void trace_slice(equation_context& ctx,
 
     auto w2v = [&](v3f in)
     {
-        v3i centre = (dim.get() - 1)/2;
+        v3i centre = (dim.get().xyz() - 1)/2;
 
         return (in / scale) + (v3f)centre;
     };
