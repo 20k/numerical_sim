@@ -189,6 +189,8 @@
 		<Unit filename="ref_counted.hpp" />
 		<Unit filename="rendering.cl" />
 		<Unit filename="single_source.hpp" />
+		<Unit filename="single_source_fw.hpp" />
+		<Unit filename="single_source_kernel_context.hpp" />
 		<Unit filename="spherical_decomposition.hpp" />
 		<Unit filename="spherical_harmonics.hpp" />
 		<Unit filename="spherical_integration.cpp" />

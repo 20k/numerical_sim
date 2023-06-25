@@ -6,6 +6,7 @@
 #include <geodesic/dual_value.hpp>
 #include <stdfloat>
 #include "cache.hpp"
+#include "single_source_fw.hpp"
 
 namespace single_source
 {
@@ -106,25 +107,6 @@ namespace single_source
 
     namespace impl
     {
-        struct input
-        {
-            std::string type;
-            bool pointer = false;
-            std::string name;
-
-            std::string format()
-            {
-                if(pointer)
-                {
-                    return "__global " + type + "* __restrict__ " + name;
-                }
-                else
-                {
-                    return type + " " + name;
-                }
-            }
-        };
-
         /*template<typename T, int N>
         inline
         void add(const buffer<T, N>& buf, std::vector<input>& result);
@@ -302,17 +284,6 @@ namespace single_source
 
     namespace impl
     {
-        struct kernel_context
-        {
-            std::vector<input> inputs;
-
-            template<typename T>
-            void add(T& t)
-            {
-                impl::add(t, inputs);
-            }
-        };
-
         inline
         std::string generate_kernel_string(kernel_context& kctx, equation_context& ctx, const std::string& kernel_name)
         {
@@ -326,12 +297,20 @@ namespace single_source
 
             std::string base;
 
-            if(any_half)
+            if(any_half && !kctx.is_func)
             {
                 base += "#pragma OPENCL EXTENSION cl_khr_fp16 : enable\n\n";
             }
 
-            base += "__kernel void " + kernel_name + "(";
+            for(auto& [name, func_kctx, func_ectx] : ctx.functions)
+            {
+                base += generate_kernel_string(func_kctx, func_ectx, name);
+            }
+
+            if(!kctx.is_func)
+                base += "__kernel void " + kernel_name + "(";
+            else
+                base += kctx.ret.at(0).type + " " + kernel_name + "(";
 
             for(int i=0; i < (int)kctx.inputs.size(); i++)
             {
@@ -361,7 +340,7 @@ namespace single_source
                 }
             }
 
-            base += "\n}";
+            base += "\n}\n";
 
             //std::cout << base << std::endl;
 
@@ -391,18 +370,25 @@ namespace single_source
             std::tuple<typename std::remove_reference<Args>::type...> a2;
 
             std::apply([&](auto&&... args){
-                (kctx.add(args), ...);
+                (impl::add(args, kctx.inputs), ...);
             }, a2);
+
+            if constexpr(!std::is_same_v<R, void>)
+            {
+                R val = R();
+
+                ::single_source::impl::add(val, kctx.ret);
+            }
 
             std::tuple<Args...> a3 = a2;
 
             std::apply(func, std::tuple_cat(a1, a3));
 
-            kctx = kernel_context();
+            /*kctx = kernel_context();
 
             std::apply([&](auto&&... args){
                 (kctx.add(args), ...);
-            }, a3);
+            }, a3);*/
         }
     }
 
@@ -474,7 +460,6 @@ namespace single_source
             }
         }
     };
-
 
     template<typename T, typename... U>
     inline
