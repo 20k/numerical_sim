@@ -2078,13 +2078,19 @@ void trace_slice(equation_context& ctx,
 
     gA = mix(buffer_index_generic(linear_gA_1, loop_pos, dim.name), buffer_index_generic(linear_gA_2, loop_pos, dim.name), frac.get());
 
+    ctx.pin(Kij);
+
     tensor<value, 3> dx;
     tensor<value, 3> V_upper_diff;
 
     {
         inverse_metric<value, 3, 3> iYij = Yij.invert();
 
+        ctx.pin(iYij);
+
         tensor<value, 3, 3, 3> full_christoffel2 = christoffel_symbols_2(ctx, Yij, iYij);
+
+        ctx.pin(full_christoffel2);
 
         tensor<value, 3> V_upper = loop_vel;
 
@@ -2093,7 +2099,6 @@ void trace_slice(equation_context& ctx,
         value length = sqrt(fabs(length_sq));
 
         V_upper = V_upper / length;
-
 
         dx = gA * V_upper - gB;
 
