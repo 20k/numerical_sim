@@ -1886,7 +1886,7 @@ void trace_slice(equation_context& ctx,
     value steps = floor(slice_width.get() / step.get());
 
     ///need dual_value::declare(executor, name, value), returns name as a value
-    ctx.exec("float px = " + type_to_string(pos.x()));
+    /*ctx.exec("float px = " + type_to_string(pos.x()));
     ctx.exec("float py = " + type_to_string(pos.y()));
     ctx.exec("float pz = " + type_to_string(pos.z()));
 
@@ -1895,7 +1895,10 @@ void trace_slice(equation_context& ctx,
     ctx.exec("float vz = " + type_to_string(vel.z()));
 
     v3f loop_pos = {"px", "py", "pz"};
-    v3f loop_vel = {"vx", "vy", "vz"};
+    v3f loop_vel = {"vx", "vy", "vz"};*/
+
+    v3f loop_pos = declare(ctx, pos);
+    v3f loop_vel = declare(ctx, vel);
 
     for(int i=0; i < 3; i++)
     {
@@ -1920,7 +1923,7 @@ void trace_slice(equation_context& ctx,
 
         tensor<value, 3, 3, 3> full_christoffel2 = christoffel_symbols_2(ctx, Yij, iYij);
 
-        tensor<value, 3> V_upper = {"vx", "vy", "vz"};
+        tensor<value, 3> V_upper = loop_vel;
 
         value length_sq = dot_metric(V_upper, V_upper, Yij);
 
@@ -1963,21 +1966,11 @@ void trace_slice(equation_context& ctx,
     ctx.exec("for(int i=0; i < " + type_to_string(steps) + "; i++) {");
 
     {
-        ctx.exec("float dpx = " + type_to_string(dx.x()));
-        ctx.exec("float dpy = " + type_to_string(dx.y()));
-        ctx.exec("float dpz = " + type_to_string(dx.z()));
+        v3f dpos = declare(ctx, dx);
+        v3f dvel = declare(ctx, V_upper_diff);
 
-        ctx.exec("float dvx = " + type_to_string(V_upper_diff.x()));
-        ctx.exec("float dvy = " + type_to_string(V_upper_diff.y()));
-        ctx.exec("float dvz = " + type_to_string(V_upper_diff.z()));
-
-        ctx.exec("px += dpx * " + type_to_string(step.get()));
-        ctx.exec("py += dpy * " + type_to_string(step.get()));
-        ctx.exec("pz += dpz * " + type_to_string(step.get()));
-
-        ctx.exec("vx += dvx * " + type_to_string(step.get()));
-        ctx.exec("vy += dvy * " + type_to_string(step.get()));
-        ctx.exec("vz += dvz * " + type_to_string(step.get()));
+        assign(loop_pos, loop_pos + dpos * step.get());
+        assign(loop_vel, loop_vel + dvel * step.get());
     }
 
     ctx.exec("}");
