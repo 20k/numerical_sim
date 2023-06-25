@@ -2043,6 +2043,9 @@ void trace_slice(equation_context& ctx,
 
     ctx.order = 1;
     ctx.uses_linear = true;
+
+    ctx.add_function("buffer_read_linear", buffer_read_linear_f<value, 3>);
+
     ctx.exec("int lidx = get_global_id(0)");
 
     value_i lidx = "lidx";
