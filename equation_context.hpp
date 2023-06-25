@@ -8,14 +8,7 @@
 #include <vec/tensor.hpp>
 #include "differentiator.hpp"
 #include "single_source_fw.hpp"
-
-template<typename T, int N>
-inline
-T buffer_read_linear(const buffer<T, N>& buf, const v3f& position, const v3i& dim);
-
-template<typename T, int N>
-inline
-T buffer_index(const buffer<T, N>& buf, const tensor<value_i, 3>& pos, const tensor<value_i, 3>& dim);
+#include "util.hpp"
 
 struct equation_context;
 

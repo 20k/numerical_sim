@@ -2,6 +2,7 @@
 #include "single_source.hpp"
 #include "bitflags.cl"
 #include "spherical_decomposition.hpp"
+#include "util.hpp"
 
 value matter_meta_interop::calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args)
 {
@@ -2014,6 +2015,21 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
     velocities_out[2][out_idx] = ray.adm_vel.z();
 
     ctx.fix_buffers();
+}
+
+template<typename T, int N>
+inline
+literal<T> buffer_read_linear_f(equation_context& ctx, buffer<T, N> buf, literal<v3f> position, literal<v3i> dim)
+{
+    ctx.order = 1;
+    ctx.uses_linear = true;
+
+    v3i idim = dim.get();
+    v3f ipos = position.get();
+
+    ctx.exec(return_v(buffer_read_linear(buf, ipos, idim)));
+
+    return literal<T>();
 }
 
 void trace_slice(equation_context& ctx,
