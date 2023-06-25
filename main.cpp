@@ -29,6 +29,7 @@
 #include <stdfloat>
 #include "single_source.hpp"
 #include "bitflags.cl"
+#include "raytracing.hpp"
 
 /**
 current paper set
@@ -5359,6 +5360,7 @@ int main()
 
     bssn::build(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
     build_kreiss_oliger_unidir(clctx.ctx);
+    build_raytracing_kernels(clctx.ctx, bssn_arglist);
 
     {
         equation_context ectx;
