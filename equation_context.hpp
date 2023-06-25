@@ -52,6 +52,15 @@ struct equation_context : differentiator
         return exec(v.template as<float>());
     }
 
+    template<typename T, int N>
+    void exec(const tensor<value_base<T>, N>& v)
+    {
+        for(int i=0; i < N; i++)
+        {
+            exec(v[i]);
+        }
+    }
+
     void pin(value& v)
     {
         for(auto& i : temporaries)

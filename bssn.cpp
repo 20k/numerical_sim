@@ -1885,18 +1885,6 @@ void trace_slice(equation_context& ctx,
 
     value steps = floor(slice_width.get() / step.get());
 
-    ///need dual_value::declare(executor, name, value), returns name as a value
-    /*ctx.exec("float px = " + type_to_string(pos.x()));
-    ctx.exec("float py = " + type_to_string(pos.y()));
-    ctx.exec("float pz = " + type_to_string(pos.z()));
-
-    ctx.exec("float vx = " + type_to_string(vel.x()));
-    ctx.exec("float vy = " + type_to_string(vel.y()));
-    ctx.exec("float vz = " + type_to_string(vel.z()));
-
-    v3f loop_pos = {"px", "py", "pz"};
-    v3f loop_vel = {"vx", "vy", "vz"};*/
-
     v3f loop_pos = declare(ctx, pos);
     v3f loop_vel = declare(ctx, vel);
 
@@ -1969,8 +1957,8 @@ void trace_slice(equation_context& ctx,
         v3f dpos = declare(ctx, dx);
         v3f dvel = declare(ctx, V_upper_diff);
 
-        assign(loop_pos, loop_pos + dpos * step.get());
-        assign(loop_vel, loop_vel + dvel * step.get());
+        ctx.exec(assign(loop_pos, loop_pos + dpos * step.get()));
+        ctx.exec(assign(loop_vel, loop_vel + dvel * step.get()));
     }
 
     ctx.exec("}");
