@@ -2175,6 +2175,7 @@ void trace_slice(equation_context& ctx,
 void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
     {
+        //std::vector<exec_builder_base*> b = {&cAexec, &Xexec};
         std::vector<exec_builder_base*> b = {&cAexec, &Xexec, &Kexec, &gAexec, &gBexec, &cYexec, &cGiexec};
 
         equation_context ectx;
@@ -2200,11 +2201,11 @@ void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, b
         clctx.register_kernel("init_slice_rays", kern);
     }*/
 
-    /*{
+    {
         equation_context ectx;
 
         cl::kernel kern = single_source::make_kernel_for(clctx, ectx, trace_slice, "trace_slice", "");
 
         clctx.register_kernel("trace_slice", kern);
-    }*/
+    }
 }

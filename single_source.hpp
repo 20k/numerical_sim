@@ -362,7 +362,7 @@ namespace single_source
 
             file::write(name, str, file::mode::BINARY);
 
-            cl::program prog = build_program_with_cache(clctx, name, "-cl-std=CL1.2 " + extra_args);
+            cl::program prog = build_program_with_cache(clctx, name, "-cl-std=CL1.2 " + extra_args, kernel_name);
 
             return cl::kernel(prog, kernel_name);
         }

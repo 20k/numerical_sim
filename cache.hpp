@@ -13,7 +13,7 @@ inline void hash_combine(std::size_t& seed, const T& v)
 }
 
 inline
-cl::program build_program_with_cache(cl::context& clctx, const std::string& filename, const std::string& options)
+cl::program build_program_with_cache(cl::context& clctx, const std::string& filename, const std::string& options, const std::string& cache_name = "")
 {
     std::string file_data = file::read(filename, file::mode::BINARY);
 
@@ -28,11 +28,16 @@ cl::program build_program_with_cache(cl::context& clctx, const std::string& file
 
     file::mkdir("cache");
 
-    std::string name = filename + "_" + std::to_string(hsh);
+    std::string name_in_cache = filename + "_" + std::to_string(hsh);
 
-    if(file::exists("cache/" + name))
+    if(cache_name != "")
     {
-        std::string bin = file::read("cache/" + name, file::mode::BINARY);
+        name_in_cache = cache_name + "_" + std::to_string(hsh);
+    }
+
+    if(file::exists("cache/" + name_in_cache))
+    {
+        std::string bin = file::read("cache/" + name_in_cache, file::mode::BINARY);
 
         prog_opt.emplace(clctx, bin, cl::program::binary_tag{});
     }
@@ -58,7 +63,7 @@ cl::program build_program_with_cache(cl::context& clctx, const std::string& file
 
     if(needs_cache)
     {
-        file::write("cache/" + name, prog_opt.value().get_binary(), file::mode::BINARY);
+        file::write("cache/" + name_in_cache, prog_opt.value().get_binary(), file::mode::BINARY);
     }
 
     return t_program;

@@ -59,6 +59,22 @@
 					<Add option="-s" />
 				</Linker>
 			</Target>
+			<Target title="Profile">
+				<Option output="bin/Profile/numerical_sim" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Profile/" />
+				<Option type="1" />
+				<Option compiler="gcc-msys2-mingw64" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="-pg" />
+					<Add option="-g" />
+					<Add option="-no-pie" />
+				</Compiler>
+				<Linker>
+					<Add option="-O2" />
+					<Add option="-pg -lgmon" />
+				</Linker>
+			</Target>
 		</Build>
 		<Compiler>
 			<Add option="-Wall" />
@@ -67,6 +83,7 @@
 			<Add option="-Werror=return-type" />
 			<Add option="-fno-omit-frame-pointer" />
 			<Add option="-std=c++23" />
+			<Add option="-Wno-narrowing" />
 			<Add option="-DIMGUI_IMPL_OPENGL_LOADER_GLEW" />
 			<Add option="-DSUBPIXEL_FONT_RENDERING" />
 			<Add option="-DSFML_STATIC" />
@@ -190,7 +207,6 @@
 		<Unit filename="rendering.cl" />
 		<Unit filename="single_source.hpp" />
 		<Unit filename="single_source_fw.hpp" />
-		<Unit filename="single_source_kernel_context.hpp" />
 		<Unit filename="spherical_decomposition.hpp" />
 		<Unit filename="spherical_harmonics.hpp" />
 		<Unit filename="spherical_integration.cpp" />
