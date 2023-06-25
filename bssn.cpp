@@ -1852,7 +1852,7 @@ void trace_slice(equation_context& ctx,
                  std::array<buffer<value, 3>, 6> linear_Yij_2, std::array<buffer<value, 3>, 6> linear_Kij_2, buffer<value, 3> linear_gA_2, std::array<buffer<value, 3>, 3> linear_gB_2,
                  named_literal<value, "scale"> scale, named_literal<v3i, "dim"> dim,
                  std::array<buffer<value>, 3> positions, std::array<buffer<value>, 3> velocities,
-                 std::array<buffer<value>, 3> positions_out, std::array<buffer<value>, 3> velocities_out, literal<value_i> ray_count, literal<value> frac, literal<value> step)
+                 std::array<buffer<value>, 3> positions_out, std::array<buffer<value>, 3> velocities_out, literal<value_i> ray_count, literal<value> frac, literal<value> slice_width, literal<value> step)
 {
     ctx.exec("int lidx = get_global_id(0)");
 
@@ -1878,10 +1878,24 @@ void trace_slice(equation_context& ctx,
                              {1, 3, 4},
                              {2, 4, 5}};
 
-    tensor<value, 3, 3> Yij;
+    metric<value, 3, 3> Yij;
     tensor<value, 3, 3> Kij;
     tensor<value, 3> gB;
     value gA;
+
+    value steps = floor(slice_width.get() / step.get());
+
+    ///need dual_value::declare(executor, name, value), returns name as a value
+    ctx.exec("float px = " + type_to_string(pos.x()));
+    ctx.exec("float py = " + type_to_string(pos.y()));
+    ctx.exec("float pz = " + type_to_string(pos.z()));
+
+    ctx.exec("float vx = " + type_to_string(vel.x()));
+    ctx.exec("float vy = " + type_to_string(vel.y()));
+    ctx.exec("float vz = " + type_to_string(vel.z()));
+
+    v3f loop_pos = {"px", "py", "pz"};
+    v3f loop_vel = {"vx", "vy", "vz"};
 
     for(int i=0; i < 3; i++)
     {
@@ -1889,17 +1903,92 @@ void trace_slice(equation_context& ctx,
         {
             int tidx = index_table[i][j];
 
-            Yij[i, j] = mix(buffer_index_generic(linear_Yij_1[tidx], voxel_pos, dim.name), buffer_index_generic(linear_Yij_2[tidx], voxel_pos, dim.name), frac.get());
-            Kij[i, j] = mix(buffer_index_generic(linear_Kij_1[tidx], voxel_pos, dim.name), buffer_index_generic(linear_Kij_2[tidx], voxel_pos, dim.name), frac.get());
+            Yij[i, j] = mix(buffer_index_generic(linear_Yij_1[tidx], loop_pos, dim.name), buffer_index_generic(linear_Yij_2[tidx], loop_pos, dim.name), frac.get());
+            Kij[i, j] = mix(buffer_index_generic(linear_Kij_1[tidx], loop_pos, dim.name), buffer_index_generic(linear_Kij_2[tidx], loop_pos, dim.name), frac.get());
         }
 
-        gB[i] = mix(buffer_index_generic(linear_gB_1[i], voxel_pos, dim.name), buffer_index_generic(linear_gB_2[i], voxel_pos, dim.name), frac.get());
+        gB[i] = mix(buffer_index_generic(linear_gB_1[i], loop_pos, dim.name), buffer_index_generic(linear_gB_2[i], loop_pos, dim.name), frac.get());
     }
 
-    gA = mix(buffer_index_generic(linear_gA_1, voxel_pos, dim.name), buffer_index_generic(linear_gA_2, voxel_pos, dim.name), frac.get());
+    gA = mix(buffer_index_generic(linear_gA_1, loop_pos, dim.name), buffer_index_generic(linear_gA_2, loop_pos, dim.name), frac.get());
 
-    ///ok, constraints for a differentiation system
-    ///I want to have an array<buf, 6> of linear_cY, and construct a tensor<VALUE, 3, 3> of indexed values
+    tensor<value, 3> dx;
+    tensor<value, 3> V_upper_diff;
+
+    {
+        inverse_metric<value, 3, 3> iYij = Yij.invert();
+
+        tensor<value, 3, 3, 3> full_christoffel2 = christoffel_symbols_2(ctx, Yij, iYij);
+
+        tensor<value, 3> V_upper = {"vx", "vy", "vz"};
+
+        value length_sq = dot_metric(V_upper, V_upper, Yij);
+
+        value length = sqrt(fabs(length_sq));
+
+        V_upper = V_upper / length;
+
+
+        dx = gA * V_upper - gB;
+
+        for(int i=0; i < 3; i++)
+        {
+            V_upper_diff.idx(i) = 0;
+
+            for(int j=0; j < 3; j++)
+            {
+                value kjvk = 0;
+
+                for(int k=0; k < 3; k++)
+                {
+                    kjvk += Kij.idx(j, k) * V_upper.idx(k);
+                }
+
+                value christoffel_sum = 0;
+
+                for(int k=0; k < 3; k++)
+                {
+                    christoffel_sum += full_christoffel2.idx(i, j, k) * V_upper.idx(k);
+                }
+
+                value dlog_gA = diff1(ctx, gA, j) / gA;
+
+                V_upper_diff.idx(i) += gA * V_upper.idx(j) * (V_upper.idx(i) * (dlog_gA - kjvk) + 2 * raise_index(Kij, iYij, 0).idx(i, j) - christoffel_sum)
+                                       - iYij.idx(i, j) * diff1(ctx, gA, j) - V_upper.idx(j) * diff1(ctx, gB.idx(i), j);
+
+            }
+        }
+    }
+
+    ctx.exec("for(int i=0; i < " + type_to_string(steps) + "; i++) {");
+
+    {
+        ctx.exec("float dpx = " + type_to_string(dx.x()));
+        ctx.exec("float dpy = " + type_to_string(dx.y()));
+        ctx.exec("float dpz = " + type_to_string(dx.z()));
+
+        ctx.exec("float dvx = " + type_to_string(V_upper_diff.x()));
+        ctx.exec("float dvy = " + type_to_string(V_upper_diff.y()));
+        ctx.exec("float dvz = " + type_to_string(V_upper_diff.z()));
+
+        ctx.exec("px += dpx * " + type_to_string(step.get()));
+        ctx.exec("py += dpy * " + type_to_string(step.get()));
+        ctx.exec("pz += dpz * " + type_to_string(step.get()));
+
+        ctx.exec("vx += dvx * " + type_to_string(step.get()));
+        ctx.exec("vy += dvy * " + type_to_string(step.get()));
+        ctx.exec("vz += dvz * " + type_to_string(step.get()));
+    }
+
+    ctx.exec("}");
+
+    ctx.exec(assign(positions_out[0][lidx], loop_pos.x()));
+    ctx.exec(assign(positions_out[1][lidx], loop_pos.y()));
+    ctx.exec(assign(positions_out[2][lidx], loop_pos.z()));
+
+    ctx.exec(assign(velocities_out[0][lidx], loop_vel.x()));
+    ctx.exec(assign(velocities_out[1][lidx], loop_vel.y()));
+    ctx.exec(assign(velocities_out[2][lidx], loop_vel.z()));
 }
 
 void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
