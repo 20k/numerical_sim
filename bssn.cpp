@@ -1964,13 +1964,14 @@ lightray make_lightray(equation_context& ctx,
     return ret;
 }
 
-void init_slice_rays(equation_context& ctx, literal<v3i> camera_pos, literal<v4i> camera_quat, literal<v2i> screen_size,
+void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f> camera_quat, literal<v2i> screen_size,
                      std::array<buffer<value, 3>, 6> linear_Yij_1, std::array<buffer<value, 3>, 6> linear_Kij_1, buffer<value, 3> linear_gA_1, std::array<buffer<value, 3>, 3> linear_gB_1,
-                     named_literal<value, "scale"> scale, named_literal<v3i, "dim"> dim
-                     std::array<buffer<value, 3>> positions_out, std::array<buffer<value, 3>> velocities_out
+                     named_literal<value, "scale"> scale, named_literal<v3i, "dim"> dim,
+                     std::array<buffer<value>, 3> positions_out, std::array<buffer<value>, 3> velocities_out
                      )
 {
     ctx.order = 1;
+    ctx.uses_linear = true;
 
     metric<value, 3, 3> Yij;
     tensor<value, 3, 3> Kij;
@@ -1981,22 +1982,38 @@ void init_slice_rays(equation_context& ctx, literal<v3i> camera_pos, literal<v4i
                              {1, 3, 4},
                              {2, 4, 5}};
 
+    v3f pos = camera_pos.get();
 
-    /*for(int i=0; i < 3; i++)
+    for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
             int tidx = index_table[i][j];
 
-            Yij[i, j] = mix(buffer_index_generic(linear_Yij_1[tidx], loop_pos, dim.name), buffer_index_generic(linear_Yij_2[tidx], loop_pos, dim.name), frac.get());
-            Kij[i, j] = mix(buffer_index_generic(linear_Kij_1[tidx], loop_pos, dim.name), buffer_index_generic(linear_Kij_2[tidx], loop_pos, dim.name), frac.get());
+            Yij[i, j] = buffer_index_generic(linear_Yij_1[tidx], pos, dim.name);
+            Kij[i, j] = buffer_index_generic(linear_Kij_1[tidx], pos, dim.name);
         }
 
-        gB[i] = mix(buffer_index_generic(linear_gB_1[i], loop_pos, dim.name), buffer_index_generic(linear_gB_2[i], loop_pos, dim.name), frac.get());
+        gB[i] = buffer_index_generic(linear_gB_1[i], pos, dim.name);
     }
 
-    gA = mix(buffer_index_generic(linear_gA_1, loop_pos, dim.name), buffer_index_generic(linear_gA_2, loop_pos, dim.name), frac.get());*/
+    gA = buffer_index_generic(linear_gA_1, pos, dim.name);
 
+    v2i in_xy = {"get_global_id(0)", "get_global_id(1)"};
+
+    v2i xy = declare(ctx, in_xy);
+
+    lightray ray = make_lightray(ctx, camera_pos.get(), camera_quat.get(), screen_size.get(), xy, Yij, gA, gB);
+
+    value_i out_idx = xy.y() * screen_size.get().x() + xy.x();
+
+    positions_out[0][out_idx] = ray.adm_pos.x();
+    positions_out[1][out_idx] = ray.adm_pos.y();
+    positions_out[2][out_idx] = ray.adm_pos.z();
+
+    velocities_out[0][out_idx] = ray.adm_vel.x();
+    velocities_out[1][out_idx] = ray.adm_vel.y();
+    velocities_out[2][out_idx] = ray.adm_vel.z();
 }
 
 void trace_slice(equation_context& ctx,
@@ -2143,5 +2160,21 @@ void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, b
         cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, get_raytraced_quantities, "get_raytraced_quantities", "", bssn_args);
 
         clctx.register_kernel("get_raytraced_quantities", kern);
+    }
+
+    {
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_kernel_for(clctx, ectx, init_slice_rays, "init_slice_rays", "");
+
+        clctx.register_kernel("init_slice_rays", kern);
+    }
+
+    {
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_kernel_for(clctx, ectx, trace_slice, "trace_slice", "");
+
+        clctx.register_kernel("trace_slice", kern);
     }
 }
