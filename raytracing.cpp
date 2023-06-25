@@ -436,28 +436,15 @@ void raytracing_manager::grab_buffers(cl::context& clctx, cl::managed_command_qu
     if((int)slices.size() >= max_slices)
         return;
 
-    int c1 = time_elapsed / step;
-    int c2 = ceil(time_elapsed + step) / step;
+    int c2 = floor(time_elapsed / slice_width);
 
-    if(c1 != c2)
+    if(last_grabbed != c2)
     {
-        /*
-        arg_gen.add(bssn_args.buffers);
-        arg_gen.add<named_literal<v4i, "dim">>();
-        arg_gen.add<named_literal<v4i, "out_dim">>();
+        last_grabbed = c2;
 
-        v3i in_dim = {"dim.x", "dim.y", "dim.z"};
-        v3i out_dim = {"out_dim.x", "out_dim.y", "out_dim.z"};
-
-        auto Yij_out = arg_gen.add<std::array<buffer<value>, 6>>();
-        auto Kij_out = arg_gen.add<std::array<buffer<value>, 6>>();
-        auto gA_out = arg_gen.add<buffer<value>>();
-        auto gB_out = arg_gen.add<std::array<buffer<value>, 3>>();
-        //auto slice = arg_gen.add<literal<value_i>>();
-    */
+        std::cout << "Grabby\n";
 
         tensor<int, 4> out_clsize = {slice_size.x(), slice_size.y(), slice_size.z(), 0};
-
 
         ///take a snapshot!
         cl::args args;

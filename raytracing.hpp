@@ -28,6 +28,7 @@ void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args);
 struct raytracing_manager
 {
     float time_elapsed = 0;
+    int last_grabbed = 0;
 
     vec3i slice_size;
     float slice_width = 0;
