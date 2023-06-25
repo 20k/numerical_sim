@@ -544,6 +544,20 @@ struct standard_arguments
     }
 };
 
+struct lightray
+{
+    tensor<value, 4> pos4;
+    tensor<value, 4> vel4;
+
+    tensor<value, 3> adm_pos;
+    tensor<value, 3> adm_vel;
+    value ku_uobsu;
+};
+
+lightray make_lightray(equation_context& ctx,
+                       const tensor<value, 3>& world_position, const tensor<value, 4>& camera_quat, v2i screen_size, v2i xy,
+                       const metric<value, 3, 3>& Yij, const value& gA, const tensor<value, 3>& gB);
+
 ///matter interop needs to be moved to plugins
 struct matter_interop
 {

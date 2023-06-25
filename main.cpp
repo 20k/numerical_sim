@@ -4347,165 +4347,42 @@ void process_geodesics(equation_context& ctx)
 
     standard_arguments args(ctx);
 
-    /*vec<3, value> camera;
-    camera.x().make_value("camera_pos.x");
-    camera.y().make_value("camera_pos.y");
-    camera.z().make_value("camera_pos.z");*/
-
-    vec<3, value> world_position;
+    tensor<value, 3> world_position;
     world_position.x().make_value("world_pos.x");
     world_position.y().make_value("world_pos.y");
     world_position.z().make_value("world_pos.z");
 
-    quaternion_base<value> camera_quat;
-    camera_quat.q.x().make_value("camera_quat.x");
-    camera_quat.q.y().make_value("camera_quat.y");
-    camera_quat.q.z().make_value("camera_quat.z");
-    camera_quat.q.w().make_value("camera_quat.w");
+    tensor<value, 4> camera_quat;
+    camera_quat.x().make_value("camera_quat.x");
+    camera_quat.y().make_value("camera_quat.y");
+    camera_quat.z().make_value("camera_quat.z");
+    camera_quat.w().make_value("camera_quat.w");
 
-    value width, height;
+    value_i width, height;
     width.make_value("width");
     height.make_value("height");
 
-    value cx, cy;
+    value_i cx, cy;
     cx.make_value("x");
     cy.make_value("y");
 
-    float FOV = 90;
+    lightray ray = make_lightray(ctx, world_position, camera_quat, {width, height}, {cx, cy}, args.Yij, args.gA, args.gB);
 
-    float fov_rad = (FOV / 360.f) * 2 * M_PI;
+    ctx.add("lv0_d", ray.vel4.x());
+    ctx.add("lv1_d", ray.vel4.y());
+    ctx.add("lv2_d", ray.vel4.z());
+    ctx.add("lv3_d", ray.vel4.w());
 
-    value nonphysical_plane_half_width = width/2;
-    value nonphysical_f_stop = nonphysical_plane_half_width / tan(fov_rad/2);
+    ctx.add("lp0_d", ray.pos4.x());
+    ctx.add("lp1_d", ray.pos4.y());
+    ctx.add("lp2_d", ray.pos4.z());
+    ctx.add("lp3_d", ray.pos4.w());
 
-    vec<3, value> pixel_direction = {cx - width/2, cy - height/2, nonphysical_f_stop};
+    ctx.add("V0_d", ray.adm_vel[0]);
+    ctx.add("V1_d", ray.adm_vel[1]);
+    ctx.add("V2_d", ray.adm_vel[2]);
 
-    pixel_direction = rot_quat(pixel_direction, camera_quat);
-
-    ctx.pin(pixel_direction);
-
-    pixel_direction = pixel_direction.norm();
-
-    metric<value, 4, 4> real_metric = calculate_real_metric(args.Yij, args.gA, args.gB);
-
-    ctx.pin(real_metric);
-
-    frame_basis basis = calculate_frame_basis(ctx, real_metric);
-
-    vec<4, value> e0 = basis.v1;
-    vec<4, value> e1 = basis.v2;
-    vec<4, value> e2 = basis.v3;
-    vec<4, value> e3 = basis.v4;
-
-    ctx.pin(e0);
-    ctx.pin(e1);
-    ctx.pin(e2);
-    ctx.pin(e3);
-
-    vec<4, value> basis_x = e2;
-    vec<4, value> basis_y = e3;
-    vec<4, value> basis_z = e1;
-
-    bool should_orient = true;
-
-    if(should_orient)
-    {
-        tetrad tet = {e0, e1, e2, e3};
-        inverse_tetrad itet = get_tetrad_inverse(tet);
-
-        ctx.pin(itet.e[0]);
-        ctx.pin(itet.e[1]);
-        ctx.pin(itet.e[2]);
-        ctx.pin(itet.e[3]);
-
-        vec<4, value> cartesian_basis_x = {0, 1, 0, 0};
-        vec<4, value> cartesian_basis_y = {0, 0, 1, 0};
-        vec<4, value> cartesian_basis_z = {0, 0, 0, 1};
-
-        vec<4, value> tE1 = coordinate_to_tetrad_basis(cartesian_basis_y, itet);
-        vec<4, value> tE2 = coordinate_to_tetrad_basis(cartesian_basis_x, itet);
-        vec<4, value> tE3 = coordinate_to_tetrad_basis(cartesian_basis_z, itet);
-
-        ctx.pin(tE1);
-        ctx.pin(tE2);
-        ctx.pin(tE3);
-
-        ortho_result result = orthonormalise(tE1.yzw(), tE2.yzw(), tE3.yzw());
-
-        basis_x = {0, result.v2.x(), result.v2.y(), result.v2.z()};
-        basis_y = {0, result.v1.x(), result.v1.y(), result.v1.z()};
-        basis_z = {0, result.v3.x(), result.v3.y(), result.v3.z()};
-        ///basis_t == e0
-    }
-
-    tetrad oriented = {e0, basis_x, basis_y, basis_z};
-
-    /*
-    {
-        float4 observer_velocity = get_timelike_vector(cartesian_basis_speed, 1, e0, e1, e2, e3);
-
-        float lorentz[16] = {};
-
-        #ifndef GENERIC_BIG_METRIC
-        float g_metric[4] = {};
-        calculate_metric_generic(at_metric, g_metric, cfg);
-        calculate_lorentz_boost(e0, observer_velocity, g_metric, lorentz);
-        #else
-        float g_metric_big[16] = {0};
-        calculate_metric_generic_big(at_metric, g_metric_big, cfg);
-        calculate_lorentz_boost_big(e0, observer_velocity, g_metric_big, lorentz);
-        #endif // GENERIC_METRIC
-
-        e0 = observer_velocity;
-        e1 = tensor_contract(lorentz, e1);
-        e2 = tensor_contract(lorentz, e2);
-        e3 = tensor_contract(lorentz, e3);
-    }
-    */
-
-    ///correct for no basis speed
-    tensor<value, 4> observer_velocity = {oriented.e[0][0], oriented.e[0][1], oriented.e[0][2], oriented.e[0][3]};
-
-    vec<4, value> pixel_x = pixel_direction.x() * oriented.e[1];
-    vec<4, value> pixel_y = pixel_direction.y() * oriented.e[2];
-    vec<4, value> pixel_z = pixel_direction.z() * oriented.e[3];
-    vec<4, value> pixel_t = -oriented.e[0];
-
-    #define INVERT_TIME
-    #ifdef INVERT_TIME
-    pixel_t = -pixel_t;
-    #endif // INVERT_TIME
-
-    vec<4, value> lightray_velocity = pixel_x + pixel_y + pixel_z + pixel_t;
-    vec<4, value> lightray_position = {0, world_position.x(), world_position.y(), world_position.z()};
-
-    ctx.add("lv0_d", lightray_velocity.x());
-    ctx.add("lv1_d", lightray_velocity.y());
-    ctx.add("lv2_d", lightray_velocity.z());
-    ctx.add("lv3_d", lightray_velocity.w());
-
-    ctx.add("lp0_d", lightray_position.x());
-    ctx.add("lp1_d", lightray_position.y());
-    ctx.add("lp2_d", lightray_position.z());
-    ctx.add("lp3_d", lightray_position.w());
-
-    tensor<value, 4> tensor_velocity = {lightray_velocity.x(), lightray_velocity.y(), lightray_velocity.z(), lightray_velocity.w()};
-
-    tensor<value, 4> tensor_velocity_lowered = lower_index(tensor_velocity, real_metric, 0);
-
-    value ku_uobsu = sum_multiply(tensor_velocity_lowered, observer_velocity);
-
-    ctx.add("GET_KU_UOBSU", ku_uobsu);
-
-    tensor<value, 4> N = get_adm_hypersurface_normal_raised(args.gA, args.gB);
-
-    value E = -sum_multiply(tensor_velocity_lowered, N);
-
-    tensor<value, 4> adm_velocity = (tensor_velocity / E) - N;
-
-    ctx.add("V0_d", adm_velocity.idx(1));
-    ctx.add("V1_d", adm_velocity.idx(2));
-    ctx.add("V2_d", adm_velocity.idx(3));
+    ctx.add("GET_KU_UOBSU", ray.ku_uobsu);
 
     {
         tensor<value, 3> V_upper = {"vel.x", "vel.y", "vel.z"};
@@ -4529,12 +4406,14 @@ void process_geodesics(equation_context& ctx)
     }
 
     {
+        tensor<value, 4> lN = get_adm_hypersurface_normal_raised(args.gA, args.gB);
+
         tensor<value, 3> V_upper = {"vel.x", "vel.y", "vel.z"};
         value L = value{"in_L"};
 
         tensor<value, 4> adm = {0, V_upper.idx(0), V_upper.idx(1), V_upper.idx(2)};
 
-        tensor<value, 4> tv = (adm + N) * L;
+        tensor<value, 4> tv = (adm + lN) * L;
 
         ctx.add("GETADMFULL0", tv.idx(0));
         ctx.add("GETADMFULL1", tv.idx(1));

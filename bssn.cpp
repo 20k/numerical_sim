@@ -1847,6 +1847,158 @@ void get_raytraced_quantities(argument_generator& arg_gen, equation_context& ctx
     ctx.fix_buffers();
 }
 
+lightray make_lightray(equation_context& ctx,
+                       const tensor<value, 3>& world_position, const tensor<value, 4>& camera_quat, v2i screen_size, v2i xy,
+                       const metric<value, 3, 3>& Yij, const value& gA, const tensor<value, 3>& gB)
+{
+    value cx = (value)xy.x();
+    value cy = (value)xy.y();
+
+    float FOV = 90;
+
+    float fov_rad = (FOV / 360.f) * 2 * M_PI;
+
+    value nonphysical_plane_half_width = (value)screen_size.x()/2;
+    value nonphysical_f_stop = nonphysical_plane_half_width / tan(fov_rad/2);
+
+    tensor<value, 3> pixel_direction = {cx - (value)screen_size.x()/2, cy - (value)screen_size.y()/2, nonphysical_f_stop};
+
+    pixel_direction = rot_quat(pixel_direction, camera_quat);
+
+    ctx.pin(pixel_direction);
+
+    pixel_direction = pixel_direction.norm();
+
+    metric<value, 4, 4> real_metric = calculate_real_metric(Yij, gA, gB);
+
+    ctx.pin(real_metric);
+
+    frame_basis basis = calculate_frame_basis(ctx, real_metric);
+
+    vec<4, value> e0 = basis.v1;
+    vec<4, value> e1 = basis.v2;
+    vec<4, value> e2 = basis.v3;
+    vec<4, value> e3 = basis.v4;
+
+    ctx.pin(e0);
+    ctx.pin(e1);
+    ctx.pin(e2);
+    ctx.pin(e3);
+
+    vec<4, value> basis_x = e2;
+    vec<4, value> basis_y = e3;
+    vec<4, value> basis_z = e1;
+
+    bool should_orient = true;
+
+    if(should_orient)
+    {
+        tetrad tet = {e0, e1, e2, e3};
+        inverse_tetrad itet = get_tetrad_inverse(tet);
+
+        ctx.pin(itet.e[0]);
+        ctx.pin(itet.e[1]);
+        ctx.pin(itet.e[2]);
+        ctx.pin(itet.e[3]);
+
+        vec<4, value> cartesian_basis_x = {0, 1, 0, 0};
+        vec<4, value> cartesian_basis_y = {0, 0, 1, 0};
+        vec<4, value> cartesian_basis_z = {0, 0, 0, 1};
+
+        vec<4, value> tE1 = coordinate_to_tetrad_basis(cartesian_basis_y, itet);
+        vec<4, value> tE2 = coordinate_to_tetrad_basis(cartesian_basis_x, itet);
+        vec<4, value> tE3 = coordinate_to_tetrad_basis(cartesian_basis_z, itet);
+
+        ctx.pin(tE1);
+        ctx.pin(tE2);
+        ctx.pin(tE3);
+
+        ortho_result result = orthonormalise(tE1.yzw(), tE2.yzw(), tE3.yzw());
+
+        basis_x = {0, result.v2.x(), result.v2.y(), result.v2.z()};
+        basis_y = {0, result.v1.x(), result.v1.y(), result.v1.z()};
+        basis_z = {0, result.v3.x(), result.v3.y(), result.v3.z()};
+        ///basis_t == e0
+    }
+
+    tetrad oriented = {e0, basis_x, basis_y, basis_z};
+
+    tensor<value, 4> observer_velocity = {oriented.e[0][0], oriented.e[0][1], oriented.e[0][2], oriented.e[0][3]};
+
+    vec<4, value> pixel_x = pixel_direction.x() * oriented.e[1];
+    vec<4, value> pixel_y = pixel_direction.y() * oriented.e[2];
+    vec<4, value> pixel_z = pixel_direction.z() * oriented.e[3];
+    vec<4, value> pixel_t = -oriented.e[0];
+
+    #define INVERT_TIME
+    #ifdef INVERT_TIME
+    pixel_t = -pixel_t;
+    #endif // INVERT_TIME
+
+    vec<4, value> lightray_velocity = pixel_x + pixel_y + pixel_z + pixel_t;
+    tensor<value, 4> lightray_position = {0, world_position.x(), world_position.y(), world_position.z()};
+
+    tensor<value, 4> tensor_velocity = {lightray_velocity.x(), lightray_velocity.y(), lightray_velocity.z(), lightray_velocity.w()};
+
+    tensor<value, 4> tensor_velocity_lowered = lower_index(tensor_velocity, real_metric, 0);
+
+    value ku_uobsu = sum_multiply(tensor_velocity_lowered, observer_velocity);
+
+    //ctx.add("GET_KU_UOBSU", ku_uobsu);
+
+    tensor<value, 4> N = get_adm_hypersurface_normal_raised(gA, gB);
+
+    value E = -sum_multiply(tensor_velocity_lowered, N);
+
+    tensor<value, 4> adm_velocity = (tensor_velocity / E) - N;
+
+    lightray ret;
+    ret.adm_pos = world_position;
+    ret.adm_vel = {adm_velocity[1], adm_velocity[2], adm_velocity[3]};
+
+    ret.ku_uobsu = ku_uobsu;
+
+    ret.pos4 = lightray_position;
+    ret.vel4 = tensor_velocity;
+
+    return ret;
+}
+
+void init_slice_rays(equation_context& ctx, literal<v3i> camera_pos, literal<v4i> camera_quat, literal<v2i> screen_size,
+                     std::array<buffer<value, 3>, 6> linear_Yij_1, std::array<buffer<value, 3>, 6> linear_Kij_1, buffer<value, 3> linear_gA_1, std::array<buffer<value, 3>, 3> linear_gB_1,
+                     named_literal<value, "scale"> scale, named_literal<v3i, "dim"> dim
+                     std::array<buffer<value, 3>> positions_out, std::array<buffer<value, 3>> velocities_out
+                     )
+{
+    ctx.order = 1;
+
+    metric<value, 3, 3> Yij;
+    tensor<value, 3, 3> Kij;
+    tensor<value, 3> gB;
+    value gA;
+
+    int index_table[3][3] = {{0, 1, 2},
+                             {1, 3, 4},
+                             {2, 4, 5}};
+
+
+    /*for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            int tidx = index_table[i][j];
+
+            Yij[i, j] = mix(buffer_index_generic(linear_Yij_1[tidx], loop_pos, dim.name), buffer_index_generic(linear_Yij_2[tidx], loop_pos, dim.name), frac.get());
+            Kij[i, j] = mix(buffer_index_generic(linear_Kij_1[tidx], loop_pos, dim.name), buffer_index_generic(linear_Kij_2[tidx], loop_pos, dim.name), frac.get());
+        }
+
+        gB[i] = mix(buffer_index_generic(linear_gB_1[i], loop_pos, dim.name), buffer_index_generic(linear_gB_2[i], loop_pos, dim.name), frac.get());
+    }
+
+    gA = mix(buffer_index_generic(linear_gA_1, loop_pos, dim.name), buffer_index_generic(linear_gA_2, loop_pos, dim.name), frac.get());*/
+
+}
+
 void trace_slice(equation_context& ctx,
                  std::array<buffer<value, 3>, 6> linear_Yij_1, std::array<buffer<value, 3>, 6> linear_Kij_1, buffer<value, 3> linear_gA_1, std::array<buffer<value, 3>, 3> linear_gB_1,
                  std::array<buffer<value, 3>, 6> linear_Yij_2, std::array<buffer<value, 3>, 6> linear_Kij_2, buffer<value, 3> linear_gA_2, std::array<buffer<value, 3>, 3> linear_gB_2,
@@ -1854,6 +2006,7 @@ void trace_slice(equation_context& ctx,
                  std::array<buffer<value>, 3> positions, std::array<buffer<value>, 3> velocities,
                  std::array<buffer<value>, 3> positions_out, std::array<buffer<value>, 3> velocities_out, literal<value_i> ray_count, literal<value> frac, literal<value> slice_width, literal<value> step)
 {
+    ctx.order = 1;
     ctx.exec("int lidx = get_global_id(0)");
 
     value_i lidx = "lidx";
