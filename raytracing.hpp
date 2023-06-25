@@ -25,4 +25,19 @@ lightray make_lightray(equation_context& ctx,
 
 void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args);
 
+struct raytracing_manager
+{
+    float time_elapsed = 0;
+
+    vec3i slice_size;
+    float slice_width = 0;
+    int max_slices = 40;
+    std::vector<std::vector<cl::buffer>> slices;
+
+    raytracing_manager();
+
+    std::vector<cl::buffer> get_fresh_buffers(cl::context& clctx);
+    void grab_buffers(cl::context& clctx, cl::managed_command_queue& mqueue, const std::vector<cl::buffer>& bufs, float scale, const tensor<cl_int, 4>& clsize, float step);
+};
+
 #endif // RAYTRACING_HPP_INCLUDED

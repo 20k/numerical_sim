@@ -408,3 +408,77 @@ void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args)
         clctx.register_kernel("trace_slice", kern);
     }
 }
+
+raytracing_manager::raytracing_manager()
+{
+    slice_size = {64, 64, 64};
+    slice_width = 5;
+}
+
+std::vector<cl::buffer> raytracing_manager::get_fresh_buffers(cl::context& clctx)
+{
+    std::vector<cl::buffer> ret;
+    ///so, Yij: 6 components
+    ///Kij: 6 components
+    ///gA,
+    ///gB: 3 components
+
+    for(int i=0; i < (6+6+1+3); i++)
+    {
+        ret.emplace_back(clctx).alloc(sizeof(cl_float) * slice_size.x() * slice_size.y() * slice_size.z());
+    }
+
+    return ret;
+}
+
+void raytracing_manager::grab_buffers(cl::context& clctx, cl::managed_command_queue& mqueue, const std::vector<cl::buffer>& bufs, float scale, const tensor<cl_int, 4>& clsize, float step)
+{
+    if((int)slices.size() >= max_slices)
+        return;
+
+    int c1 = time_elapsed / step;
+    int c2 = ceil(time_elapsed + step) / step;
+
+    if(c1 != c2)
+    {
+        /*
+        arg_gen.add(bssn_args.buffers);
+        arg_gen.add<named_literal<v4i, "dim">>();
+        arg_gen.add<named_literal<v4i, "out_dim">>();
+
+        v3i in_dim = {"dim.x", "dim.y", "dim.z"};
+        v3i out_dim = {"out_dim.x", "out_dim.y", "out_dim.z"};
+
+        auto Yij_out = arg_gen.add<std::array<buffer<value>, 6>>();
+        auto Kij_out = arg_gen.add<std::array<buffer<value>, 6>>();
+        auto gA_out = arg_gen.add<buffer<value>>();
+        auto gB_out = arg_gen.add<std::array<buffer<value>, 3>>();
+        //auto slice = arg_gen.add<literal<value_i>>();
+    */
+
+        tensor<int, 4> out_clsize = {slice_size.x(), slice_size.y(), slice_size.z(), 0};
+
+
+        ///take a snapshot!
+        cl::args args;
+
+        for(cl::buffer b : bufs)
+        {
+            args.push_back(b);
+        }
+
+        args.push_back(clsize);
+        args.push_back(out_clsize);
+
+        auto bufs = get_fresh_buffers(clctx);
+
+        for(auto& i : bufs)
+        {
+            args.push_back(i);
+        }
+
+        mqueue.exec("get_raytraced_quantities", args, {slice_size.x(), slice_size.y(), slice_size.z()}, {8,8,1});
+    }
+
+    time_elapsed += step;
+}
