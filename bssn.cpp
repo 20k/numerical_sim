@@ -1879,32 +1879,18 @@ void trace_slice(equation_context& ctx, std::array<buffer<value, 3>, 6> linear_Y
     tensor<value, 3> gB;
     value gA;
 
-    tensor<buffer<value, 3>, 3, 3> bYij;
-    tensor<buffer<value, 3>, 3, 3> bKij;
-    tensor<buffer<value, 3>, 3> bgB;
-    buffer<value, 3> bgA = linear_gA;
-
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
-            bYij[i, j] = linear_Yij[index_table[i][j]];
-            bKij[i, j] = linear_Kij[index_table[i][j]];
-
-            bYij[i, j].size = dim.get();
-            bKij[i, j].size = dim.get();
-
-            Yij[i, j] = buffer_index_generic(bYij[i, j], voxel_pos, dim.name);
-            Kij[i, j] = buffer_index_generic(bKij[i, j], voxel_pos, dim.name);
+            Yij[i, j] = buffer_index_generic(linear_Yij[index_table[i][j]], voxel_pos, dim.name);
+            Kij[i, j] = buffer_index_generic(linear_Kij[index_table[i][j]], voxel_pos, dim.name);
         }
 
-        bgB[i] = linear_gB[i];
-        bgB[i].size = dim.get();
-        gB[i] = buffer_index_generic(bgB[i], voxel_pos, dim.name);
+        gB[i] = buffer_index_generic(linear_gB[i], voxel_pos, dim.name);
     }
 
-    bgA.size = dim.get();
-    gA = buffer_index_generic(bgA, voxel_pos, dim.name);
+    gA = buffer_index_generic(linear_gA, voxel_pos, dim.name);
 
     ///ok, constraints for a differentiation system
     ///I want to have an array<buf, 6> of linear_cY, and construct a tensor<VALUE, 3, 3> of indexed values
