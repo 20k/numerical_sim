@@ -345,6 +345,7 @@ namespace single_source
 
             ctx.strip_unused();
             ctx.substitute_aliases();
+            ctx.fix_buffers();
 
             for(auto& [name, value] : ctx.sequenced)
             {

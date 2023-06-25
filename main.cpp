@@ -239,6 +239,20 @@ struct differentiation_context
             if(v == "dim" || v == "scale" || v == root_variables[0] || v == root_variables[1] || v == root_variables[2])
                 continue;
 
+            bool skip = false;
+
+            for(const auto& i : ctx.ignored_variables)
+            {
+                if(v == i)
+                {
+                    skip = true;
+                    break;
+                }
+            }
+
+            if(skip)
+                continue;
+
             bool found = false;
 
             for(auto& o : indexed_variables)

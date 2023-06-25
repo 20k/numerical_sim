@@ -1843,8 +1843,6 @@ void get_raytraced_quantities(argument_generator& arg_gen, equation_context& ctx
     }
 
     ctx.exec(assign(gA_out[idx], args.gA));
-
-    ctx.fix_buffers();
 }
 
 lightray make_lightray(equation_context& ctx,
@@ -2014,6 +2012,8 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
     velocities_out[0][out_idx] = ray.adm_vel.x();
     velocities_out[1][out_idx] = ray.adm_vel.y();
     velocities_out[2][out_idx] = ray.adm_vel.z();
+
+    ctx.fix_buffers();
 }
 
 void trace_slice(equation_context& ctx,
@@ -2023,7 +2023,10 @@ void trace_slice(equation_context& ctx,
                  std::array<buffer<value>, 3> positions, std::array<buffer<value>, 3> velocities,
                  std::array<buffer<value>, 3> positions_out, std::array<buffer<value>, 3> velocities_out, literal<value_i> ray_count, literal<value> frac, literal<value> slice_width, literal<value> step)
 {
+    ctx.ignored_variables.push_back(frac.name);
+
     ctx.order = 1;
+    ctx.uses_linear = true;
     ctx.exec("int lidx = get_global_id(0)");
 
     value_i lidx = "lidx";
@@ -2057,6 +2060,8 @@ void trace_slice(equation_context& ctx,
 
     v3f loop_pos = declare(ctx, pos);
     v3f loop_vel = declare(ctx, vel);
+
+    ctx.position_override = {type_to_string(loop_pos[0]), type_to_string(loop_pos[1]), type_to_string(loop_pos[2])};
 
     for(int i=0; i < 3; i++)
     {
@@ -2162,13 +2167,13 @@ void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, b
         clctx.register_kernel("get_raytraced_quantities", kern);
     }
 
-    {
+    /*{
         equation_context ectx;
 
         cl::kernel kern = single_source::make_kernel_for(clctx, ectx, init_slice_rays, "init_slice_rays", "");
 
         clctx.register_kernel("init_slice_rays", kern);
-    }
+    }*/
 
     {
         equation_context ectx;

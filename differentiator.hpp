@@ -7,6 +7,7 @@
 struct differentiator
 {
     std::optional<std::array<std::string, 3>> position_override;
+    std::vector<std::string> ignored_variables;
     //std::optional<value> scale_override;
 
     virtual value diff1(const value& in, int idx){assert(false); return value{0.f};};
