@@ -263,6 +263,12 @@ void calculate_adm_texture_coordinates(__global struct render_ray_info* finished
 
     __global struct render_ray_info* ray = &finished_rays[y * width + x];
 
+    if(ray->hit_type == 1)
+    {
+        texture_coordinates[y * width + x] = (float2){0,0};
+        return;
+    }
+
     float3 cpos = {ray->X, ray->Y, ray->Z};
     float3 cvel = {ray->dX, ray->dY, ray->dZ};
 
@@ -1138,6 +1144,17 @@ __kernel void render_rays(__global struct render_ray_info* rays_in, __write_only
 
     struct render_ray_info ray_in = rays_in[idx];
 
+    float3 density_col = {ray_in.R, ray_in.G, ray_in.B};
+
+    int x = ray_in.x;
+    int y = ray_in.y;
+
+    if(ray_in.hit_type == 1)
+    {
+        write_imagef(screen, (int2){x, y}, (float4)(density_col.xyz,1));
+        return;
+    }
+
     float lp1 = ray_in.X;
     float lp2 = ray_in.Y;
     float lp3 = ray_in.Z;
@@ -1146,9 +1163,6 @@ __kernel void render_rays(__global struct render_ray_info* rays_in, __write_only
     float V1 = ray_in.dY;
     float V2 = ray_in.dZ;
 
-    int x = ray_in.x;
-    int y = ray_in.y;
-
     float3 cpos = {lp1, lp2, lp3};
     float3 cvel = {V0, V1, V2};
 
@@ -1156,7 +1170,6 @@ __kernel void render_rays(__global struct render_ray_info* rays_in, __write_only
 
     float3 density_col = (float3)(1,1,1) * density_frac;*/
 
-    float3 density_col = {ray_in.R, ray_in.G, ray_in.B};
 
     /*#ifndef TRACE_MATTER_P
     if(any(density_col > 1))
@@ -1407,65 +1420,6 @@ __kernel void render_rays(__global struct render_ray_info* rays_in, __write_only
         //float3 with_density = clamp(mix(linear_col, density_col, ray_in.A), 0.f, 1.f);
 
         write_imagef(screen, (int2){x, y}, (float4)(with_density, 1.f));
-    }
-    else if(ray_in.hit_type == 1)
-    {
-        float3 val = (float3)(0,0,0);
-
-        val = density_col;
-
-        //val.xyz = clamp(ray_in.iter_frac, 0.f, 1.f);
-
-        write_imagef(screen, (int2){x, y}, (float4)(val.xyz,1));
-    }
-    else if(ray_in.hit_type == 2)
-    {
-        /*#ifdef RENDER_MATTER
-        float3 val = (float3)(0.5f,0.5f,0.5f);
-
-        float3 Xpos = (float3)(ray_in.lp1, ray_in.lp2, ray_in.lp3);
-
-        float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
-        voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
-
-        float3 px = (float3)(1, 0, 0);
-        float3 nx = (float3)(-1, 0, 0);
-        float3 py = (float3)(0, 1, 0);
-        float3 ny = (float3)(0, -1, 0);
-        float3 pz = (float3)(0, 0, 1);
-        float3 nz = (float3)(0, 0, -1);
-
-        float pxv = buffer_read_linear(Dp_star, voxel_pos + px, dim);
-        float nxv = buffer_read_linear(Dp_star, voxel_pos + nx, dim);
-        float pyv = buffer_read_linear(Dp_star, voxel_pos + py, dim);
-        float nyv = buffer_read_linear(Dp_star, voxel_pos + ny, dim);
-        float pzv = buffer_read_linear(Dp_star, voxel_pos + pz, dim);
-        float nzv = buffer_read_linear(Dp_star, voxel_pos + nz, dim);
-
-        float3 normal = {pxv - nxv, pyv - nyv, pzv - nzv};
-
-        normal = normalize(normal);
-
-        //float pstar_val = buffer_read_linear(Dp_star, voxel_pos, dim);
-
-        float3 to_point = camera_pos - Xpos;
-
-        //printf("Normal %f %f %f\n", normal.x, normal.y, normal.z);
-
-        //printf("Cam %f %f %f\n", camera_voxel_pos.x, camera_voxel_pos.y, camera_voxel_pos.z);
-
-        float light = dot(normalize(to_point), normal);
-
-        light = clamp(fabs(light), 0.f, 1.f);
-
-        float3 col = (float3){1,1,1} * light + density_col;
-
-        col = clamp(col, 0.f, 1.f);
-
-        //col = fabs(normal);
-
-        write_imagef(screen, (int2){x, y}, (float4)(col.xyz, 1));
-        #endif*/
     }
 }
 

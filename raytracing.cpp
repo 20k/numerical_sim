@@ -443,6 +443,11 @@ void trace_slice(equation_context& ctx,
                              assign(out.background_power.get(), value{1}),
                              assign(out.zp1.get(), value{1}));
 
+    ctx.exec(assign(out.R.get(), value{0}));
+    ctx.exec(assign(out.G.get(), value{1}));
+    ctx.exec(assign(out.B.get(), value{0}));
+    ctx.exec(assign(out.hit_type.get(), value_i{1}));
+
     ctx.exec(if_s(hit_type != value_i{-1},
                   on_terminated
                   ));
@@ -455,16 +460,6 @@ void trace_slice(equation_context& ctx,
     ctx.exec(assign(velocities_out[1][lidx], loop_vel.y()));
     ctx.exec(assign(velocities_out[2][lidx], loop_vel.z()));
 }
-
-void write_render_info(equation_context& ctx, std::array<buffer<value>, 3> positions, std::array<buffer<value>, 3> velocities, literal<value_i> ray_count, buffer<render_ray_info, 3>& out)
-{
-    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
-    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
-    ctx.add_function("buffer_read_linear", buffer_read_linear_f<value, 3>);
-
-    //ctx.add_struct(out);
-}
-
 
 void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args)
 {
@@ -490,14 +485,6 @@ void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args)
         cl::kernel kern = single_source::make_kernel_for(clctx, ectx, trace_slice, "trace_slice", "");
 
         clctx.register_kernel("trace_slice", kern);
-    }
-
-    {
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_kernel_for(clctx, ectx, write_render_info, "write_render_info", "");
-
-        clctx.register_kernel("write_render_info", kern);
     }
 }
 
