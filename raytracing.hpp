@@ -32,7 +32,7 @@ struct raytracing_manager
 
     vec3i slice_size;
     float slice_width = 0;
-    int max_slices = 40;
+    int max_slices = 80;
     std::vector<std::vector<cl::buffer>> slices;
 
     cl::buffer render_ray_info_buf;
@@ -40,7 +40,7 @@ struct raytracing_manager
     raytracing_manager(cl::context& clctx, const tensor<int, 2>& screen);
 
     std::vector<cl::buffer> get_fresh_buffers(cl::context& clctx);
-    void trace(cl::context& clctx, cl::command_queue& mqueue, float scale, const tensor<int, 2>& screen, vec3f camera_pos, vec4f camera_quat);
+    void trace(cl::context& clctx, cl::command_queue& mqueue, float scale, const tensor<int, 2>& screen, vec3f camera_pos, vec4f camera_quat, float camera_start_time);
     void grab_buffers(cl::context& clctx, cl::managed_command_queue& mqueue, const std::vector<cl::buffer>& bufs, float scale, const tensor<cl_int, 4>& clsize, float step);
 };
 

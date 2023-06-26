@@ -5544,6 +5544,8 @@ int main()
 
     float rendering_err = 0.01f;
 
+    float camera_start_time = 0;
+
     while(!win.should_close())
     {
         steady_timer frametime;
@@ -5701,6 +5703,8 @@ int main()
             }
 
             ImGui::Checkbox("pao", &pao);
+
+            ImGui::DragFloat("Camera Start Time", &camera_start_time, 0.1f);
 
             if(ImGui::Button("Deconstruct Velocities"))
             {
@@ -5869,7 +5873,7 @@ int main()
         ///todo: backwards euler test
         float timestep = 0.025;
 
-        if(pao && base_mesh.elapsed_time > 400)
+        if(pao && base_mesh.elapsed_time > 100)
             step = false;
 
         if(step)
@@ -6072,7 +6076,7 @@ int main()
 
             if(rendering_method == 2)
             {
-                raytrace.trace(clctx.ctx, clctx.cqueue, scale, {width, height}, camera_pos, camera_quat.q);
+                raytrace.trace(clctx.ctx, clctx.cqueue, scale, {width, height}, camera_pos, camera_quat.q, camera_start_time);
 
                 {
                     cl::args texture_args;
