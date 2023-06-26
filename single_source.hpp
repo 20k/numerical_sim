@@ -12,96 +12,16 @@ namespace single_source
 {
     namespace impl
     {
-        ///https://vector-of-bool.github.io/2021/10/22/string-templates.html
-        template<size_t N>
-        struct fixed_string
-        {
-            char _chars[N+1] = {};
-
-            //std::array<char, N+1> _chars = {};
-
-            std::string get() const
-            {
-                return std::string(_chars, _chars + N);
-            }
-
-            constexpr fixed_string(){}
-
-            constexpr fixed_string(const char (&arr)[N+1])
-            {
-                std::copy(arr, arr + N, _chars);
-            }
-
-            template<size_t M>
-            constexpr fixed_string<N + M> operator+(const fixed_string<M>& other) const
-            {
-                fixed_string<N + M> result;
-
-                for(size_t i=0; i < N; i++)
-                {
-                    result._chars[i] = _chars[i];
-                }
-
-                for(size_t i=0; i < M; i++)
-                {
-                    result._chars[i + N] = other._chars[i];
-                }
-
-                return result;
-            }
-
-            template<size_t M>
-            constexpr fixed_string<N + M - 1> operator+(const char (&arr)[M]) const
-            {
-                fixed_string<N + M - 1> result;
-
-                for(size_t i=0; i < N; i++)
-                {
-                    result._chars[i] = _chars[i];
-                }
-
-                for(size_t i=0; i < M-1; i++)
-                {
-                    result._chars[i + N] = arr[i];
-                }
-
-                return result;
-            }
-        };
-
-        template<size_t N>
-        fixed_string(const char (&arr)[N]) -> fixed_string<N-1>;  // Drop the null terminator
-
         struct input;
     }
 
-    template<typename T, int dimensions, impl::fixed_string _name>
-    struct named_buffer : buffer<T, dimensions>
-    {
-        named_buffer()
-        {
-            buffer<T, dimensions>::name = _name.get();
-            buffer<T, dimensions>::permanent_name = true;
-        }
-    };
-
-    template<typename T, impl::fixed_string _name>
-    struct named_literal : literal<T>
-    {
-        named_literal()
-        {
-            literal<T>::name = _name.get();
-            literal<T>::permanent_name = true;
-        }
-    };
-
-    struct function_args
+    /*struct function_args
     {
         virtual void call(std::vector<impl::input>& result)
         {
             assert(false);
         }
-    };
+    };*/
 
     #define TOUCH_FUNCTION_ARG(x) single_source::impl::add(x, result)
 
@@ -119,25 +39,86 @@ namespace single_source
         inline
         void add(const tensor<T, N>& ten, std::vector<input>& result);*/
 
+        #if 0
+        template<typename T, typename U>
+        std::string process_type(type_storage& result)
+        {
+            if constexpr(!std::is_base_of_v<struct_base, T>)
+                return dual_types::name_type(T());
+
+            /*input in;
+            in.type = "struct s_" + std::to_string(result.structs.size());
+            in.pointer = false;
+
+            std::string name = "str_" + std::to_string(result.size());
+
+            in.name = name;
+            i.name = name;
+
+            result.push_back(in);
+
+            type_storage& out = result.structs.emplace_back();
+            args.call(out);*/
+
+            std::string type = "struct s_" + std::to_string(result.structs.size());
+
+            T val = T{};
+            val.call(result);
+
+            return type;
+        }
+        #endif
+
         template<typename T, int N>
         inline
-        void add(buffer<T, N>& buf, std::vector<input>& result)
+        void add(buffer<struct_base<T>, N>& buf, type_storage& result)
+        {
+            input in;
+            in.type = buf.type;
+            in.pointer = true;
+            in.is_struct = true;
+
+            std::string name = buf.permanent_name ? buf.name : "s_name_" + std::to_string(result.args.size());
+
+            in.name = name;
+            buf.name = name;
+
+            type_storage& s_info = in.defines_structs.emplace_back();
+
+            auto do_assignment = [&](auto& v)
+            {
+                ::single_source::impl::add(v, s_info);
+            };
+
+            buf.storage.iterate_ext(do_assignment);
+
+            for(auto& i : s_info.args)
+            {
+                buf.storage.names.push_back(i.name);
+            }
+
+            result.args.push_back(in);
+        }
+
+        template<typename T, int N>
+        inline
+        void add(buffer<T, N>& buf, type_storage& result)
         {
             input in;
             in.type = dual_types::name_type(T());
             in.pointer = true;
 
-            std::string name = buf.permanent_name ? buf.name : "buf" + std::to_string(result.size());
+            std::string name = buf.permanent_name ? buf.name : "buf" + std::to_string(result.args.size());
 
             in.name = name;
             buf.name = name;
 
-            result.push_back(in);
+            result.args.push_back(in);
         }
 
         template<typename T, int N, size_t fN, fixed_string<fN> str>
         inline
-        void add(named_buffer<T, N, str>& buf, std::vector<input>& result)
+        void add(named_buffer<T, N, str>& buf, type_storage& result)
         {
             buffer<T, N>& lbuf = buf;
 
@@ -146,24 +127,23 @@ namespace single_source
 
         template<typename T>
         inline
-        void add(literal<T>& lit, std::vector<input>& result)
+        void add(literal<T>& lit, type_storage& result)
         {
             input in;
             in.type = dual_types::name_type(T());
             in.pointer = false;
 
-            std::string name = lit.permanent_name ? lit.name : "lit" + std::to_string(result.size());
+            std::string name = lit.permanent_name ? lit.name : "lit" + std::to_string(result.args.size());
 
             in.name = name;
             lit.name = name;
 
-            result.push_back(in);
+            result.args.push_back(in);
         }
-
 
         template<typename T, size_t fN, fixed_string<fN> str>
         inline
-        void add(named_literal<T, str>& lit, std::vector<input>& result)
+        void add(named_literal<T, str>& lit, type_storage& result)
         {
             literal<T>& llit = lit;
 
@@ -172,7 +152,7 @@ namespace single_source
 
         template<typename T, int N>
         inline
-        void add(tensor<T, N>& ten, std::vector<input>& result)
+        void add(tensor<T, N>& ten, type_storage& result)
         {
             for(auto& i : ten)
             {
@@ -183,18 +163,18 @@ namespace single_source
                 in.type = dual_types::name_type(T());
                 in.pointer = false;
 
-                std::string name = "ten" + std::to_string(result.size());
+                std::string name = "ten" + std::to_string(result.args.size());
 
                 in.name = name;
                 i.name = name;
 
-                result.push_back(in);
+                result.args.push_back(in);
             }
         }
 
         template<typename T, std::size_t N>
         inline
-        void add(std::array<T, N>& buf, std::vector<input>& result)
+        void add(std::array<T, N>& buf, type_storage& result)
         {
             for(int i=0; i < (int)N; i++)
             {
@@ -205,7 +185,7 @@ namespace single_source
         ///todo: named buffers
         /*template<typename T>
         inline
-        void add(std::vector<T>& buf, std::vector<input>& result)
+        void add(std::vector<T>& buf, type_storage& result)
         {
             for(int i=0; i < (int)buf.size(); i++)
             {
@@ -215,7 +195,7 @@ namespace single_source
 
         template<typename T, int buffer_N, std::size_t array_N, auto str>
         inline
-        void add(std::array<named_buffer<T, buffer_N, str>, array_N>& named_bufs, std::vector<input>& result)
+        void add(std::array<named_buffer<T, buffer_N, str>, array_N>& named_bufs, type_storage& result)
         {
             for(int i=0; i < (int)array_N; i++)
             {
@@ -228,13 +208,13 @@ namespace single_source
                 in.name = name;
                 named_bufs[i].name = name;
 
-                result.push_back(in);
+                result.args.push_back(in);
             }
         }
 
         template<typename T, std::size_t array_N, auto str>
         inline
-        void add(std::array<named_literal<T, str>, array_N>& named_bufs, std::vector<input>& result)
+        void add(std::array<named_literal<T, str>, array_N>& named_bufs, type_storage& result)
         {
             for(int i=0; i < (int)array_N; i++)
             {
@@ -247,19 +227,37 @@ namespace single_source
                 in.name = name;
                 named_bufs[i].name = name;
 
-                result.push_back(in);
+                result.args.push_back(in);
             }
         }
 
-        inline
-        void add(function_args& args, std::vector<input>& result)
+        /*inline
+        void add(function_args& args, type_storage& result)
         {
             args.call(result);
-        }
+        }*/
+
+        /*inline
+        void add(struct_base& args, type_storage& result)
+        {
+            input in;
+            in.type = "struct s_" + std::to_string(result.structs.size());
+            in.pointer = false;
+
+            std::string name = "str_" + std::to_string(result.size());
+
+            in.name = name;
+            i.name = name;
+
+            result.push_back(in);
+
+            type_storage& out = result.structs.emplace_back();
+            args.call(out);
+        }*/
 
         template<typename T>
         inline
-        void add(std::optional<T>& opt, std::vector<input>& result)
+        void add(std::optional<T>& opt, type_storage& result)
         {
             if(opt.has_value())
                 add(opt.value(), result);
@@ -267,14 +265,14 @@ namespace single_source
 
         /*template<typename T>
         inline
-        void add(T*& val, std::vector<input>& result)
+        void add(T*& val, type_storage& result)
         {
             add(*val, result);
         }*/
 
         /*template<typename T>
         inline
-        void add(const T&, std::vector<input>& result)
+        void add(const T&, type_storage& result)
         {
             static_assert(false);
         }*/
@@ -285,12 +283,47 @@ namespace single_source
     namespace impl
     {
         inline
+        std::string make_struct(const std::string& type, type_storage& store)
+        {
+            std::string ret = "struct " + type + "{";
+
+            for(input& in : store.args)
+            {
+                ret += "    " + in.format() + ";\n";
+            }
+
+            return ret + "\n};\n";
+        }
+
+        inline
         std::string generate_kernel_string(kernel_context& kctx, equation_context& ctx, const std::string& kernel_name, bool& any_uses_half)
         {
-            for(auto& in : kctx.inputs)
+            for(auto& in : kctx.inputs.args)
             {
                 if(in.type == "half")
                     any_uses_half = true;
+            }
+
+            std::string structs;
+            std::map<std::string, bool> generated;
+            std::vector<std::pair<std::string, type_storage>> pending_structs;
+
+            for(input& arg : kctx.inputs.args)
+            {
+                if(arg.is_struct)
+                {
+                    if(generated[arg.type])
+                        continue;
+
+                    generated[arg.type] = true;
+
+                    pending_structs.push_back({arg.type, arg.defines_structs.at(0)});
+                }
+            }
+
+            for(auto& [type, store] : pending_structs)
+            {
+                structs += make_struct(type, store) + "\n";
             }
 
             std::string functions;
@@ -307,18 +340,19 @@ namespace single_source
                 base += "#pragma OPENCL EXTENSION cl_khr_fp16 : enable\n\n";
             }
 
+            base += structs;
             base += functions;
 
             if(!kctx.is_func)
                 base += "__kernel void " + kernel_name + "(";
             else
-                base += kctx.ret.at(0).type + " " + kernel_name + "(";
+                base += kctx.ret.args.at(0).type + " " + kernel_name + "(";
 
-            for(int i=0; i < (int)kctx.inputs.size(); i++)
+            for(int i=0; i < (int)kctx.inputs.args.size(); i++)
             {
-                base += kctx.inputs[i].format();
+                base += kctx.inputs.args[i].format();
 
-                if(i != (int)kctx.inputs.size() - 1)
+                if(i != (int)kctx.inputs.args.size() - 1)
                     base += ",";
             }
 
@@ -418,7 +452,7 @@ namespace single_source
 
         void add(impl::input& in)
         {
-            kctx.inputs.push_back(in);
+            kctx.inputs.args.push_back(in);
         }
 
         void add(const std::string& prefix, impl::input& in)
@@ -452,7 +486,7 @@ namespace single_source
         }
     };
 
-    struct combined_args : function_args
+    /*struct combined_args : function_args
     {
         std::vector<function_args*> args;
 
@@ -463,7 +497,7 @@ namespace single_source
                 impl::add(*args[i], result);
             }
         }
-    };
+    };*/
 
     template<typename T, typename... U>
     inline
@@ -485,7 +519,6 @@ namespace single_source
 
         return impl::generate_kernel(clctx, kctx, ectx, kernel_name, extra_args);
     }
-
 }
 
 #endif // SINGLE_SOURCE_HPP_INCLUDED

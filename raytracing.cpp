@@ -2,9 +2,10 @@
 #include "bssn.hpp"
 #include "single_source.hpp"
 
-using namespace single_source;
+using single_source::named_buffer;
+using single_source::named_literal;
 
-void get_raytraced_quantities(argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args)
+void get_raytraced_quantities(single_source::argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args)
 {
     ctx.add_function("buffer_index", buffer_index_f<value, 3>);
     ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
@@ -381,6 +382,57 @@ void trace_slice(equation_context& ctx,
     ctx.exec(assign(velocities_out[1][lidx], loop_vel.y()));
     ctx.exec(assign(velocities_out[2][lidx], loop_vel.z()));
 }
+
+struct render_ray_info : single_source::struct_base<render_ray_info>
+{
+    render_ray_info()
+    {
+        type = "render_ray_info";
+    }
+
+    literal<value> X, Y, Z;
+    literal<value> dX, dY, dZ;
+
+    literal<value_i> hit_type;
+
+    literal<value> R, G, B;
+    literal<value> background_power;
+
+    literal<value_i> x, y;
+    literal<value> zp1;
+
+    template<typename T>
+    void iterate(T&& t)
+    {
+        t(X);
+        t(Y);
+        t(Z);
+
+        t(dX);
+        t(dY);
+        t(dZ);
+
+        t(hit_type);
+
+        t(R);
+        t(G);
+        t(B);
+        t(background_power);
+        t(x);
+        t(y);
+        t(zp1);
+    }
+};
+
+void write_render_info(equation_context& ctx, std::array<buffer<value>, 3> positions, std::array<buffer<value>, 3> velocities, literal<value_i> ray_count, buffer<render_ray_info, 3>& out)
+{
+    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
+    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
+    ctx.add_function("buffer_read_linear", buffer_read_linear_f<value, 3>);
+
+    //ctx.add_struct(out);
+}
+
 
 void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args)
 {

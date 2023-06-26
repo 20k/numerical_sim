@@ -2,17 +2,18 @@
 #define UTIL_HPP_INCLUDED
 
 #include <geodesic/dual_value.hpp>
+#include "single_source_fw.hpp"
 
 template<typename T, int N>
 inline
-T buffer_index(const buffer<T, N>& buf, const tensor<value_i, 3>& pos, const tensor<value_i, 3>& dim)
+T buffer_index(buffer<T, N> buf, const tensor<value_i, 3>& pos, const tensor<value_i, 3>& dim)
 {
     return buf[pos.z() * dim.x() * dim.y() + pos.y() * dim.x() + pos.x()];
 }
 
 template<typename T, int N>
 inline
-T buffer_read_linear(const buffer<T, N>& buf, const v3f& position, const v3i& dim)
+T buffer_read_linear(buffer<T, N> buf, const v3f& position, const v3i& dim)
 {
     auto clamped_read = [&](v3i in)
     {

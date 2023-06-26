@@ -346,9 +346,7 @@ using half_type = value_h;
 using half_type = value;
 #endif
 
-using namespace single_source;
-
-std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, value_i point_count, const tensor<value_i, 4>& dim, const buffer<value_us, 3>& order_ptr)
+std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, value_i point_count, tensor<value_i, 4> dim, buffer<value_us, 3> order_ptr)
 {
     ctx.add_function("buffer_index", buffer_index_f<value, 3>);
     ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
@@ -420,6 +418,9 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
     return {ix, iy, iz, index};
 }
 
+using single_source::named_buffer;
+using single_source::named_literal;
+
 template<single_source::impl::fixed_string str>
 struct bssn_arg_pack
 {
@@ -472,7 +473,7 @@ struct all_args
     literal<value> timestep;
     named_buffer<value_us, 3, "order_ptr"> order_ptr;
 
-    all_args(argument_generator& arg_gen, base_bssn_args& bssn_args, base_utility_args& utility_args)
+    all_args(single_source::argument_generator& arg_gen, base_bssn_args& bssn_args, base_utility_args& utility_args)
     {
         arg_gen.add(points, point_count);
 
@@ -1777,7 +1778,7 @@ void finish_gB(equation_context& ctx, all_args& all, tensor<value, 3>& dtgB)
 
 exec_builder<tensor<value, 3>, get_dtgB, finish_gB> gBexec;
 
-void build_kernel(argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args, std::vector<exec_builder_base*> execs)
+void build_kernel(single_source::argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args, std::vector<exec_builder_base*> execs)
 {
     all_args all(arg_gen, bssn_args, utility_args);
 

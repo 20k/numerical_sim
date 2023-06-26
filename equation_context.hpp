@@ -19,6 +19,7 @@ value diff2(equation_context& ctx, const value& in, int idx, int idy, const valu
 struct equation_context : differentiator
 {
     std::vector<std::tuple<std::string, single_source::impl::kernel_context, equation_context>> functions;
+    //std::vector<std::tuple<std::string, single_source::impl::type_storage>> structs;
 
     std::vector<std::pair<std::string, value>> values;
     std::vector<std::pair<std::string, value>> temporaries;
@@ -35,6 +36,21 @@ struct equation_context : differentiator
     virtual value diff1(const value& in, int idx) override {return ::diff1(*this, in, idx);};
     //virtual value diff1(const buffer<value, 3>& in, int idx, const v3i& where, const value& scale) override {return ::diff1(*this, in, idx, where, scale);};
     virtual value diff2(const value& in, int idx, int idy, const value& dx, const value& dy) override {return ::diff2(*this, in, idx, idy, dx, dy);};
+
+    /*template<typename T>
+    void add_struct(single_source::struct_base<T>& to_add)
+    {
+        single_source::impl::type_storage store;
+
+        auto adder = [&](auto& in)
+        {
+            single_source::impl::add(in, store);
+        };
+
+        to_add.iterate_ext(adder);
+
+        structs.push_back({to_add.type, store});
+    }*/
 
     template<typename T>
     void add_function(const std::string& name, const T& func)
