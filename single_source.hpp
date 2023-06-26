@@ -27,54 +27,58 @@ namespace single_source
 
     namespace impl
     {
-        /*template<typename T, int N>
+        template<typename T>
+        concept Structy = T::is_struct::value;
+
+        template<typename T, int N>
+        requires(Structy<T>)
         inline
-        void add(const buffer<T, N>& buf, std::vector<input>& result);
+        void add(buffer<T, N>& buf, type_storage& result);
+
+        template<typename T, int N>
+        requires(!Structy<T>)
+        inline
+        void add(buffer<T, N>& buf, type_storage& result);
+
+        template<typename T, int N, size_t fN, fixed_string<fN> str>
+        inline
+        void add(named_buffer<T, N, str>& buf, type_storage& result);
 
         template<typename T>
         inline
-        void add(const literal<T>& lit, std::vector<input>& result);
+        void add(literal<T>& lit, type_storage& result);
+
+        template<typename T, size_t fN, fixed_string<fN> str>
+        inline
+        void add(named_literal<T, str>& lit, type_storage& result);
 
         template<typename T, int N>
         inline
-        void add(const tensor<T, N>& ten, std::vector<input>& result);*/
+        void add(tensor<T, N>& ten, type_storage& result);
 
-        #if 0
-        template<typename T, typename U>
-        std::string process_type(type_storage& result)
-        {
-            if constexpr(!std::is_base_of_v<struct_base, T>)
-                return dual_types::name_type(T());
+        template<typename T, std::size_t N>
+        inline
+        void add(std::array<T, N>& buf, type_storage& result);
 
-            /*input in;
-            in.type = "struct s_" + std::to_string(result.structs.size());
-            in.pointer = false;
+        template<typename T, int buffer_N, std::size_t array_N, auto str>
+        inline
+        void add(std::array<named_buffer<T, buffer_N, str>, array_N>& named_bufs, type_storage& result);
 
-            std::string name = "str_" + std::to_string(result.size());
+        template<typename T, std::size_t array_N, auto str>
+        inline
+        void add(std::array<named_literal<T, str>, array_N>& named_bufs, type_storage& result);
 
-            in.name = name;
-            i.name = name;
-
-            result.push_back(in);
-
-            type_storage& out = result.structs.emplace_back();
-            args.call(out);*/
-
-            std::string type = "struct s_" + std::to_string(result.structs.size());
-
-            T val = T{};
-            val.call(result);
-
-            return type;
-        }
-        #endif
+        template<typename T>
+        inline
+        void add(std::optional<T>& opt, type_storage& result);
 
         template<typename T, int N>
+        requires(Structy<T>)
         inline
-        void add(buffer<struct_base<T>, N>& buf, type_storage& result)
+        void add(buffer<T, N>& buf, type_storage& result)
         {
             input in;
-            in.type = buf.type;
+            in.type = T::type;
             in.pointer = true;
             in.is_struct = true;
 
@@ -101,6 +105,7 @@ namespace single_source
         }
 
         template<typename T, int N>
+        requires(!Structy<T>)
         inline
         void add(buffer<T, N>& buf, type_storage& result)
         {
@@ -237,23 +242,6 @@ namespace single_source
             args.call(result);
         }*/
 
-        /*inline
-        void add(struct_base& args, type_storage& result)
-        {
-            input in;
-            in.type = "struct s_" + std::to_string(result.structs.size());
-            in.pointer = false;
-
-            std::string name = "str_" + std::to_string(result.size());
-
-            in.name = name;
-            i.name = name;
-
-            result.push_back(in);
-
-            type_storage& out = result.structs.emplace_back();
-            args.call(out);
-        }*/
 
         template<typename T>
         inline
@@ -285,7 +273,7 @@ namespace single_source
         inline
         std::string make_struct(const std::string& type, type_storage& store)
         {
-            std::string ret = "struct " + type + "{";
+            std::string ret = "struct " + type + "{\n";
 
             for(input& in : store.args)
             {

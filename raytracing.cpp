@@ -385,10 +385,7 @@ void trace_slice(equation_context& ctx,
 
 struct render_ray_info : single_source::struct_base<render_ray_info>
 {
-    render_ray_info()
-    {
-        type = "render_ray_info";
-    }
+    static constexpr std::string type = "ray_render_info";
 
     literal<value> X, Y, Z;
     literal<value> dX, dY, dZ;
@@ -458,6 +455,14 @@ void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args)
         cl::kernel kern = single_source::make_kernel_for(clctx, ectx, trace_slice, "trace_slice", "");
 
         clctx.register_kernel("trace_slice", kern);
+    }
+
+    {
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_kernel_for(clctx, ectx, write_render_info, "write_render_info", "");
+
+        clctx.register_kernel("write_render_info", kern);
     }
 }
 

@@ -121,7 +121,8 @@ namespace single_source
     template<typename T>
     struct struct_base
     {
-        std::string type;
+        using is_struct = std::true_type;
+
         std::vector<std::string> names;
 
         template<typename U>
