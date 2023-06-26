@@ -6050,12 +6050,6 @@ int main()
                     texture_args.push_back(height);
                     texture_args.push_back(ccamera_pos);
                     texture_args.push_back(ccamera_quat);
-
-                    for(auto& i : base_mesh.data.at(0).buffers)
-                    {
-                        texture_args.push_back(i.buf.as_device_read_only());
-                    }
-
                     texture_args.push_back(scale);
                     texture_args.push_back(clsize);
 
@@ -6066,12 +6060,6 @@ int main()
                     cl::args render_args;
                     render_args.push_back(rays_terminated.as_device_read_only());
                     render_args.push_back(rtex);
-
-                    for(auto& i : base_mesh.data.at(0).buffers)
-                    {
-                        render_args.push_back(i.buf.as_device_read_only());
-                    }
-
                     render_args.push_back(scale);
                     render_args.push_back(clsize);
                     render_args.push_back(width);
