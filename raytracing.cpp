@@ -294,6 +294,8 @@ void trace_slice(equation_context& ctx,
 
     ctx.exec(if_s(lidx >= ray_count, return_s));
 
+    ctx.exec(if_s(terminated[lidx] > 0, return_s));
+
     v3f pos = {positions[0][lidx], positions[1][lidx], positions[2][lidx]};
     v3f vel = {velocities[0][lidx], velocities[1][lidx], velocities[2][lidx]};
 
