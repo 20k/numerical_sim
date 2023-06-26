@@ -351,7 +351,10 @@ namespace single_source
             {
                 if(name == "")
                 {
-                    base += type_to_string(value) + ";\n";
+                    if(value.type != dual_types::ops::FOR_START)
+                        base += type_to_string(value) + ";\n";
+                    else
+                        base += type_to_string(value);
                 }
                 else
                 {

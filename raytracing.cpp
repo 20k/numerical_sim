@@ -325,7 +325,8 @@ void trace_slice(equation_context& ctx,
     tensor<value, 3> gB;
     value gA;
 
-    value steps = floor(slice_width.get() / step.get());
+    value until_out = frac.get() * slice_width;
+    value steps = ceil(until_out / step.get());
 
     v3f loop_pos = declare(ctx, pos);
     v3f loop_vel = declare(ctx, vel);
@@ -402,9 +403,11 @@ void trace_slice(equation_context& ctx,
 
     value_i hit_type = declare(ctx, value_i{-1});
 
-    value frac_increment = slice_width.get() / step.get();
+    value frac_increment = step.get() / slice_width.get();
 
-    ctx.exec("for(int i=0; i < " + type_to_string(steps) + "; i++) {");
+    //ctx.exec("for(int i=0; i < " + type_to_string(steps) + "; i++) {");
+
+    ctx.exec(for_s("idx", value_i(0), (value_i)steps, value_i("idx++")));
 
     {
         v3f dpos = declare(ctx, dx);
@@ -431,7 +434,11 @@ void trace_slice(equation_context& ctx,
         ctx.exec(assign(local_frac, clamp(local_frac - frac_increment, value{0.f}, value{1.f})));
     }
 
-    ctx.exec("}");
+    ctx.exec(for_end());
+
+    //ctx.exec("}");
+
+    ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"%i\", " + type_to_string(hit_type) + ");}");
 
     render_ray_info out = render_out[lidx];
 
@@ -451,6 +458,8 @@ void trace_slice(equation_context& ctx,
                              assign(out.background_power.get(), value{1}),
                              assign(out.zp1.get(), value{1}));
 
+    ctx.exec(assign(out.x.get(), x));
+    ctx.exec(assign(out.y.get(), y));
     ctx.exec(assign(out.R.get(), value{0}));
     ctx.exec(assign(out.G.get(), value{1}));
     ctx.exec(assign(out.B.get(), value{0}));
@@ -602,9 +611,9 @@ void raytracing_manager::trace(cl::context& clctx, cl::managed_command_queue& mq
     };
 
     float my_time = slices.size() * slice_width;
-    float my_step = 0.4f;
+    float my_step = 2.f;
 
-    int steps = 400;
+    int steps = 100;
 
     for(int i=0; i < steps; i++)
     {
@@ -701,6 +710,8 @@ void raytracing_manager::grab_buffers(cl::context& clctx, cl::managed_command_qu
         }
 
         mqueue.exec("get_raytraced_quantities", args, {slice_size.x(), slice_size.y(), slice_size.z()}, {8,8,1});
+
+        slices.push_back(bufs);
     }
 
     time_elapsed += step;

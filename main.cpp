@@ -5031,7 +5031,7 @@ int main()
     std::string hydro_argument_string = argument_string;
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {255, 255, 255};
+    vec3i size = {213, 213, 213};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -6057,6 +6057,38 @@ int main()
                 {
                     cl::args render_args;
                     render_args.push_back(rays_terminated.as_device_read_only());
+                    render_args.push_back(rtex);
+                    render_args.push_back(scale);
+                    render_args.push_back(clsize);
+                    render_args.push_back(width);
+                    render_args.push_back(height);
+                    render_args.push_back(background_mipped);
+                    render_args.push_back(texture_coordinates);
+                    render_args.push_back(sam);
+
+                    clctx.cqueue.exec("render_rays", render_args, {width * height}, {128});
+                }
+            }
+
+            if(rendering_method == 2)
+            {
+                raytrace.trace(clctx.ctx, mqueue, scale, {width, height}, camera_pos, camera_quat.q);
+
+                {
+                    cl::args texture_args;
+                    texture_args.push_back(raytrace.render_ray_info_buf.as_device_read_only());
+                    texture_args.push_back(texture_coordinates);
+                    texture_args.push_back(width);
+                    texture_args.push_back(height);
+                    texture_args.push_back(scale);
+                    texture_args.push_back(clsize);
+
+                    clctx.cqueue.exec("calculate_adm_texture_coordinates", texture_args, {width, height}, {8, 8});
+                }
+
+                {
+                    cl::args render_args;
+                    render_args.push_back(raytrace.render_ray_info_buf.as_device_read_only());
                     render_args.push_back(rtex);
                     render_args.push_back(scale);
                     render_args.push_back(clsize);
