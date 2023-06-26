@@ -27,9 +27,6 @@ namespace single_source
 
     namespace impl
     {
-        template<typename T>
-        concept Structy = T::is_struct::value;
-
         template<typename T, int N>
         requires(Structy<T>)
         inline

@@ -227,6 +227,8 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
 
     v2i xy = declare(ctx, in_xy);
 
+    ctx.exec(if_s(xy.x() >= screen_size.get().x() || xy.y() >= screen_size.get().y(), return_s));
+
     lightray ray = make_lightray(ctx, camera_pos.get(), camera_quat.get(), screen_size.get(), xy, Yij, gA, gB);
 
     value_i out_idx = xy.y() * screen_size.get().x() + xy.x();
@@ -242,12 +244,35 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
     ctx.fix_buffers();
 }
 
+struct render_ray_info : single_source::struct_base<render_ray_info>
+{
+    static constexpr std::string type = "ray_render_info";
+
+    literal<value> X, Y, Z;
+    literal<value> dX, dY, dZ;
+
+    literal<value_i> hit_type;
+
+    literal<value> R, G, B;
+    literal<value> background_power;
+
+    literal<value_i> x, y;
+    literal<value> zp1;
+
+    auto as_tuple()
+    {
+        return std::tie(X, Y, Z, dX, dY, dZ, hit_type, R, G, B, background_power, x, y, zp1);
+    }
+};
+
 void trace_slice(equation_context& ctx,
                  std::array<buffer<value, 3>, 6> linear_Yij_1, std::array<buffer<value, 3>, 6> linear_Kij_1, buffer<value, 3> linear_gA_1, std::array<buffer<value, 3>, 3> linear_gB_1,
                  std::array<buffer<value, 3>, 6> linear_Yij_2, std::array<buffer<value, 3>, 6> linear_Kij_2, buffer<value, 3> linear_gA_2, std::array<buffer<value, 3>, 3> linear_gB_2,
-                 named_literal<value, "scale"> scale, named_literal<v4i, "dim"> dim,
+                 named_literal<value, "scale"> scale, named_literal<v4i, "dim"> dim, literal<v2i> screen_size,
                  std::array<buffer<value>, 3> positions, std::array<buffer<value>, 3> velocities,
-                 std::array<buffer<value>, 3> positions_out, std::array<buffer<value>, 3> velocities_out, literal<value_i> ray_count, literal<value> frac, literal<value> slice_width, literal<value> step)
+                 buffer<value_i> terminated,
+                 std::array<buffer<value>, 3> positions_out, std::array<buffer<value>, 3> velocities_out, literal<value_i> ray_count, literal<value> frac, literal<value> slice_width, literal<value> step,
+                 buffer<render_ray_info>& render_out)
 {
     ctx.add_function("buffer_index", buffer_index_f<value, 3>);
     ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
@@ -258,9 +283,14 @@ void trace_slice(equation_context& ctx,
     ctx.order = 1;
     ctx.uses_linear = true;
 
-    ctx.exec("int lidx = get_global_id(0)");
+    //ctx.exec("int lidx = get_global_id(0)");
 
-    value_i lidx = "lidx";
+    //value_i lidx = "lidx";
+
+    value_i x = declare(ctx, value_i{"get_global_id(0)"});
+    value_i y = declare(ctx, value_i{"get_global_id(1)"});
+
+    value_i lidx = y * screen_size.get().x() + x;
 
     ctx.exec(if_s(lidx >= ray_count, return_s));
 
@@ -276,7 +306,9 @@ void trace_slice(equation_context& ctx,
 
     v3f voxel_pos = w2v(pos);
 
-    value universe_length = ((dim.get().x()-1)/2).convert<float>();
+    value universe_size = ((dim.get().x()-1)/2).convert<float>() * scale;
+
+    value u_sq = universe_size * universe_size * 0.95f * 0.95f;
 
     int index_table[3][3] = {{0, 1, 2},
                              {1, 3, 4},
@@ -362,17 +394,56 @@ void trace_slice(equation_context& ctx,
         }
     }
 
+    value_i hit_type = declare(ctx, value_i{-1});
+
     ctx.exec("for(int i=0; i < " + type_to_string(steps) + "; i++) {");
 
     {
         v3f dpos = declare(ctx, dx);
         v3f dvel = declare(ctx, V_upper_diff);
 
+        value pos_sq = loop_pos.squared_length();
+
+        value escape_cond = pos_sq >= u_sq;
+        value ingested_cond = dpos.squared_length() < 0.2f * 0.2f;
+
+        ctx.exec(if_s(escape_cond,
+                        (assign(hit_type, value_i{0}),
+                         break_s)
+                      ));
+
+        ctx.exec(if_s(ingested_cond,
+                      (assign(hit_type, value_i{1}),
+                       break_s)
+                      ));
+
         ctx.exec(assign(loop_pos, loop_pos + dpos * step.get()));
         ctx.exec(assign(loop_vel, loop_vel + dvel * step.get()));
     }
 
     ctx.exec("}");
+
+    render_ray_info out = render_out[lidx];
+
+    value_v on_terminated = (assign(terminated[lidx], value_i{1}),
+                             assign(out.x.get(), x),
+                             assign(out.y.get(), y),
+                             assign(out.X.get(), loop_pos.x()),
+                             assign(out.Y.get(), loop_pos.y()),
+                             assign(out.Z.get(), loop_pos.z()),
+                             assign(out.dX.get(), dx.x()),
+                             assign(out.dY.get(), dx.y()),
+                             assign(out.dZ.get(), dx.z()),
+                             assign(out.hit_type.get(), hit_type),
+                             assign(out.R.get(), value{0}),
+                             assign(out.G.get(), value{0}),
+                             assign(out.B.get(), value{0}),
+                             assign(out.background_power.get(), value{1}),
+                             assign(out.zp1.get(), value{1}));
+
+    ctx.exec(if_s(hit_type != value_i{-1},
+                  on_terminated
+                  ));
 
     ctx.exec(assign(positions_out[0][lidx], loop_pos.x()));
     ctx.exec(assign(positions_out[1][lidx], loop_pos.y()));
@@ -382,27 +453,6 @@ void trace_slice(equation_context& ctx,
     ctx.exec(assign(velocities_out[1][lidx], loop_vel.y()));
     ctx.exec(assign(velocities_out[2][lidx], loop_vel.z()));
 }
-
-struct render_ray_info : single_source::struct_base<render_ray_info>
-{
-    static constexpr std::string type = "ray_render_info";
-
-    literal<value> X, Y, Z;
-    literal<value> dX, dY, dZ;
-
-    literal<value_i> hit_type;
-
-    literal<value> R, G, B;
-    literal<value> background_power;
-
-    literal<value_i> x, y;
-    literal<value> zp1;
-
-    auto as_tuple()
-    {
-        return std::tie(X, Y, Z, dX, dY, dZ, hit_type, R, G, B, background_power, x, y, zp1);
-    }
-};
 
 void write_render_info(equation_context& ctx, std::array<buffer<value>, 3> positions, std::array<buffer<value>, 3> velocities, literal<value_i> ray_count, buffer<render_ray_info, 3>& out)
 {

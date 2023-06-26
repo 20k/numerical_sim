@@ -132,14 +132,18 @@ namespace single_source
         }
     };
 
+    template<typename T>
+    concept Structy = T::is_struct::value;
+
     template<typename U>
-    static U parse_tensor(U& tag, value_i op)
+    requires(!Structy<U>)
+    inline U parse_tensor(U& tag, value_i op)
     {
         return op.as<typename U::value_type>();
     }
 
     template<typename U, int N>
-    static tensor<U, N> parse_tensor(tensor<U, N>& tag, value_i op)
+    inline tensor<U, N> parse_tensor(tensor<U, N>& tag, value_i op)
     {
         tensor<U, N> ret;
 
@@ -152,9 +156,10 @@ namespace single_source
     }
 
     template<typename T>
-    static struct_base<T> parse_tensor(struct_base<T>& val, value_i op)
+    requires(Structy<T>)
+    inline T parse_tensor(T& val, value_i op)
     {
-        struct_base<T> result;
+        T result;
 
         ///so op either contains "name", or name[index]
 
