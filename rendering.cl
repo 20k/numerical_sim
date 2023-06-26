@@ -252,7 +252,6 @@ float3 redshift_with_intensity(float3 lin_result, float z_shift)
 
 __kernel
 void calculate_adm_texture_coordinates(__global struct render_ray_info* finished_rays, __global float2* texture_coordinates, int width, int height,
-                                       float3 camera_pos, float4 camera_quat,
                                        float scale, int4 dim)
 {
     int x = get_global_id(0);
@@ -1135,7 +1134,7 @@ float2 circular_diff2(float2 f1, float2 f2)
 __kernel void render_rays(__global struct render_ray_info* rays_in, __write_only image2d_t screen,
                           float scale, int4 dim, int width, int height,
                           __read_only image2d_t mip_background,
-                          __global float2* texture_coordinates, sampler_t sam, float3 camera_pos)
+                          __global float2* texture_coordinates, sampler_t sam)
 {
     int idx = get_global_id(0);
 

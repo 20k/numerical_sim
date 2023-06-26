@@ -5509,7 +5509,7 @@ int main()
     matter_vars = matter_initial_vars(clctx.ctx);
     u_arg = cl::buffer(clctx.ctx);
 
-    raytracing_manager raytrace;
+    raytracing_manager raytrace(clctx.ctx, {width, height});
 
     std::vector<float> adm_mass;
     std::vector<float> real_graph;
@@ -6048,8 +6048,6 @@ int main()
                     texture_args.push_back(texture_coordinates);
                     texture_args.push_back(width);
                     texture_args.push_back(height);
-                    texture_args.push_back(ccamera_pos);
-                    texture_args.push_back(ccamera_quat);
                     texture_args.push_back(scale);
                     texture_args.push_back(clsize);
 
@@ -6067,7 +6065,6 @@ int main()
                     render_args.push_back(background_mipped);
                     render_args.push_back(texture_coordinates);
                     render_args.push_back(sam);
-                    render_args.push_back(ccamera_pos);
 
                     clctx.cqueue.exec("render_rays", render_args, {width * height}, {128});
                 }

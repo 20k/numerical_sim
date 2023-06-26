@@ -296,6 +296,10 @@ void trace_slice(equation_context& ctx,
 
     ctx.exec(if_s(terminated[lidx] > 0, return_s));
 
+    value local_frac = declare(ctx, frac.get());
+
+    ctx.ignored_variables.push_back(type_to_string(local_frac));
+
     v3f pos = {positions[0][lidx], positions[1][lidx], positions[2][lidx]};
     v3f vel = {velocities[0][lidx], velocities[1][lidx], velocities[2][lidx]};
 
@@ -334,14 +338,14 @@ void trace_slice(equation_context& ctx,
         {
             int tidx = index_table[i][j];
 
-            Yij[i, j] = mix(buffer_index_generic(linear_Yij_1[tidx], loop_pos, dim.name), buffer_index_generic(linear_Yij_2[tidx], loop_pos, dim.name), frac.get());
-            Kij[i, j] = mix(buffer_index_generic(linear_Kij_1[tidx], loop_pos, dim.name), buffer_index_generic(linear_Kij_2[tidx], loop_pos, dim.name), frac.get());
+            Yij[i, j] = mix(buffer_index_generic(linear_Yij_1[tidx], loop_pos, dim.name), buffer_index_generic(linear_Yij_2[tidx], loop_pos, dim.name), local_frac);
+            Kij[i, j] = mix(buffer_index_generic(linear_Kij_1[tidx], loop_pos, dim.name), buffer_index_generic(linear_Kij_2[tidx], loop_pos, dim.name), local_frac);
         }
 
-        gB[i] = mix(buffer_index_generic(linear_gB_1[i], loop_pos, dim.name), buffer_index_generic(linear_gB_2[i], loop_pos, dim.name), frac.get());
+        gB[i] = mix(buffer_index_generic(linear_gB_1[i], loop_pos, dim.name), buffer_index_generic(linear_gB_2[i], loop_pos, dim.name), local_frac);
     }
 
-    gA = mix(buffer_index_generic(linear_gA_1, loop_pos, dim.name), buffer_index_generic(linear_gA_2, loop_pos, dim.name), frac.get());
+    gA = mix(buffer_index_generic(linear_gA_1, loop_pos, dim.name), buffer_index_generic(linear_gA_2, loop_pos, dim.name), local_frac);
 
     ctx.pin(Kij);
 
@@ -398,6 +402,8 @@ void trace_slice(equation_context& ctx,
 
     value_i hit_type = declare(ctx, value_i{-1});
 
+    value frac_increment = slice_width.get() / step.get();
+
     ctx.exec("for(int i=0; i < " + type_to_string(steps) + "; i++) {");
 
     {
@@ -421,6 +427,8 @@ void trace_slice(equation_context& ctx,
 
         ctx.exec(assign(loop_pos, loop_pos + dpos * step.get()));
         ctx.exec(assign(loop_vel, loop_vel + dvel * step.get()));
+
+        ctx.exec(assign(local_frac, clamp(local_frac - frac_increment, value{0.f}, value{1.f})));
     }
 
     ctx.exec("}");
@@ -488,10 +496,12 @@ void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args)
     }
 }
 
-raytracing_manager::raytracing_manager()
+raytracing_manager::raytracing_manager(cl::context& clctx, const tensor<int, 2>& screen) : render_ray_info_buf(clctx)
 {
     slice_size = {64, 64, 64};
     slice_width = 5;
+
+    render_ray_info_buf.alloc(30 * sizeof(float) * 4096 * 4096);
 }
 
 std::vector<cl::buffer> raytracing_manager::get_fresh_buffers(cl::context& clctx)
@@ -508,6 +518,153 @@ std::vector<cl::buffer> raytracing_manager::get_fresh_buffers(cl::context& clctx
     }
 
     return ret;
+}
+
+void raytracing_manager::trace(cl::context& clctx, cl::managed_command_queue& mqueue, float scale, const tensor<int, 2>& screen, vec3f camera_pos, vec4f camera_quat)
+{
+    if(slices.size() == 0)
+        return;
+
+    float last_slice_time = (slices.size() - 1) * slice_width;
+
+    std::array<cl::buffer, 6> rays_1{clctx, clctx, clctx, clctx, clctx, clctx};
+    std::array<cl::buffer, 6> rays_2{clctx, clctx, clctx, clctx, clctx, clctx};
+    cl::buffer terminated(clctx);
+
+    int size = screen.x() * screen.y() * sizeof(cl_float);
+
+    terminated.alloc(size);
+    terminated.set_to_zero(mqueue);
+
+    for(int i=0; i < 6; i++)
+    {
+        rays_1[i].alloc(size);
+        rays_2[i].alloc(size);
+
+        rays_1[i].set_to_zero(mqueue);
+        rays_2[i].set_to_zero(mqueue);
+    }
+
+    cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
+    cl_float4 ccamera_quat = {camera_quat.x(), camera_quat.y(), camera_quat.z(), camera_quat.w()};
+    cl_int4 mesh_dim = {slice_size.x(), slice_size.y(), slice_size.z()};
+    cl_int2 clscreen = {screen.x(), screen.y()};
+
+    {
+        cl::args args;
+        args.push_back(ccamera_pos, ccamera_quat, screen);
+
+        std::vector<cl::buffer>& which_buf = slices.back();
+
+        for(auto& i : which_buf)
+        {
+            args.push_back(i);
+        }
+
+
+        args.push_back(scale);
+        args.push_back(mesh_dim);
+
+        for(int i=0; i < 6; i++)
+        {
+            args.push_back(rays_1[i]);
+        }
+
+        mqueue.exec("init_slice_rays", args, {screen.x(), screen.y()}, {8,8});
+    }
+
+    auto get_slices_for_time = [&](float time) -> std::tuple<std::vector<cl::buffer>*, std::vector<cl::buffer>*, float>
+    {
+        if(slices.size() == 1)
+            return {&slices[0], &slices[0], 0.f};
+
+        if(time <= 0)
+            return {&slices[0], &slices[0], 0.f};
+
+        for(int i=0; i < (int)slices.size() - 1; i++)
+        {
+            float current_time = i * slice_width;
+            float next_time = (i + 1) * slice_width;
+
+            if(time >= current_time && time < next_time)
+            {
+                float frac = (time - current_time) / (next_time - current_time);
+
+                return {&slices[i], &slices[i+1], frac};
+            }
+        }
+
+        int last = slices.size() - 1;
+
+        std::vector<cl::buffer>* last_buf = &slices[last];
+
+        return {last_buf, last_buf, 0.f};
+    };
+
+    float my_time = slices.size() * slice_width;
+    float my_step = 0.4f;
+
+    int steps = 400;
+
+    for(int i=0; i < steps; i++)
+    {
+        float current_time = my_time - my_step * i;
+
+        {
+            cl::args args;
+
+            auto [b1, b2, frac] = get_slices_for_time(current_time);
+
+            for(int i=0; i < b1->size(); i++)
+            {
+                args.push_back((*b1)[i]);
+            }
+
+            for(int i=0; i < b2->size(); i++)
+            {
+                args.push_back((*b2)[i]);
+            }
+
+            args.push_back(scale, mesh_dim, clscreen);
+
+            for(int i=0; i < 6; i++)
+                args.push_back(rays_1[i]);
+
+            args.push_back(terminated);
+
+            for(int i=0; i < 6; i++)
+                args.push_back(rays_2[i]);
+
+            cl_int rays = screen.x() * screen.y();
+
+            args.push_back(rays);
+            args.push_back(frac);
+            args.push_back(slice_width);
+            args.push_back(my_step);
+            args.push_back(render_ray_info_buf);
+
+            mqueue.exec("trace_slice", args, {screen.x(), screen.y()}, {8,8});
+
+            std::swap(rays_1, rays_2);
+        }
+    }
+
+
+    /*void trace_slice(equation_context& ctx,
+                 std::array<buffer<value, 3>, 6> linear_Yij_1, std::array<buffer<value, 3>, 6> linear_Kij_1, buffer<value, 3> linear_gA_1, std::array<buffer<value, 3>, 3> linear_gB_1,
+                 std::array<buffer<value, 3>, 6> linear_Yij_2, std::array<buffer<value, 3>, 6> linear_Kij_2, buffer<value, 3> linear_gA_2, std::array<buffer<value, 3>, 3> linear_gB_2,
+                 named_literal<value, "scale"> scale, named_literal<v4i, "dim"> dim, literal<v2i> screen_size,
+                 std::array<buffer<value>, 3> positions, std::array<buffer<value>, 3> velocities,
+                 buffer<value_i> terminated,
+                 std::array<buffer<value>, 3> positions_out, std::array<buffer<value>, 3> velocities_out, literal<value_i> ray_count, literal<value> frac, literal<value> slice_width, literal<value> step,
+                 buffer<render_ray_info>& render_out)*/
+
+    /*
+void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f> camera_quat, literal<v2i> screen_size,
+                     std::array<buffer<value, 3>, 6> linear_Yij_1, std::array<buffer<value, 3>, 6> linear_Kij_1, buffer<value, 3> linear_gA_1, std::array<buffer<value, 3>, 3> linear_gB_1,
+                     named_literal<value, "scale"> scale, named_literal<v4i, "dim"> dim,
+                     std::array<buffer<value>, 3> positions_out, std::array<buffer<value>, 3> velocities_out
+                     )*/
 }
 
 void raytracing_manager::grab_buffers(cl::context& clctx, cl::managed_command_queue& mqueue, const std::vector<cl::buffer>& bufs, float scale, const tensor<cl_int, 4>& clsize, float step)
