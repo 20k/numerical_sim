@@ -17,8 +17,6 @@ namespace single_source
         {
             char _chars[N+1] = {};
 
-            //std::array<char, N+1> _chars = {};
-
             std::string get() const
             {
                 return std::string(_chars, _chars + N);
@@ -128,7 +126,9 @@ namespace single_source
         template<typename U>
         void iterate_ext(U&& u)
         {
-            static_cast<T*>(this)->iterate(std::forward<U>(u));
+            auto tup = static_cast<T*>(this)->as_tuple();
+
+            std::apply([&](auto& ...x){(..., u(x));}, tup);
         }
     };
 

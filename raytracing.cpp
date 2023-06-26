@@ -398,26 +398,9 @@ struct render_ray_info : single_source::struct_base<render_ray_info>
     literal<value_i> x, y;
     literal<value> zp1;
 
-    template<typename T>
-    void iterate(T&& t)
+    auto as_tuple()
     {
-        t(X);
-        t(Y);
-        t(Z);
-
-        t(dX);
-        t(dY);
-        t(dZ);
-
-        t(hit_type);
-
-        t(R);
-        t(G);
-        t(B);
-        t(background_power);
-        t(x);
-        t(y);
-        t(zp1);
+        return std::tie(X, Y, Z, dX, dY, dZ, hit_type, R, G, B, background_power, x, y, zp1);
     }
 };
 
