@@ -6072,7 +6072,7 @@ int main()
 
             if(rendering_method == 2)
             {
-                raytrace.trace(clctx.ctx, mqueue, scale, {width, height}, camera_pos, camera_quat.q);
+                raytrace.trace(clctx.ctx, clctx.cqueue, scale, {width, height}, camera_pos, camera_quat.q);
 
                 {
                     cl::args texture_args;
@@ -6183,6 +6183,6 @@ int main()
         if(frametime.get_elapsed_time_s() > 10 && !long_operation)
             return 0;
 
-        printf("Time: %f\n", frametime.restart() * 1000.);
+        //printf("Time: %f\n", frametime.restart() * 1000.);
     }
 }

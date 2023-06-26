@@ -1,6 +1,7 @@
 #include "raytracing.hpp"
 #include "bssn.hpp"
 #include "single_source.hpp"
+#include "mesh_manager.hpp"
 
 using single_source::named_buffer;
 using single_source::named_literal;
@@ -233,13 +234,13 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
 
     value_i out_idx = xy.y() * screen_size.get().x() + xy.x();
 
-    positions_out[0][out_idx] = ray.adm_pos.x();
-    positions_out[1][out_idx] = ray.adm_pos.y();
-    positions_out[2][out_idx] = ray.adm_pos.z();
+    ctx.exec(assign(positions_out[0][out_idx], ray.adm_pos.x()));
+    ctx.exec(assign(positions_out[1][out_idx], ray.adm_pos.y()));
+    ctx.exec(assign(positions_out[2][out_idx], ray.adm_pos.z()));
 
-    velocities_out[0][out_idx] = ray.adm_vel.x();
-    velocities_out[1][out_idx] = ray.adm_vel.y();
-    velocities_out[2][out_idx] = ray.adm_vel.z();
+    ctx.exec(assign(velocities_out[0][out_idx], ray.adm_vel.x()));
+    ctx.exec(assign(velocities_out[1][out_idx], ray.adm_vel.y()));
+    ctx.exec(assign(velocities_out[2][out_idx], ray.adm_vel.z()));
 
     ctx.fix_buffers();
 }
@@ -294,7 +295,15 @@ void trace_slice(equation_context& ctx,
 
     ctx.exec(if_s(lidx >= ray_count, return_s));
 
-    ctx.exec(if_s(terminated[lidx] > 0, return_s));
+    value_v on_terminate = (assign(positions_out[0][lidx], positions[0][lidx]),
+                            assign(positions_out[1][lidx], positions[1][lidx]),
+                            assign(positions_out[2][lidx], positions[2][lidx]),
+                            assign(velocities_out[0][lidx], positions[0][lidx]),
+                            assign(velocities_out[1][lidx], positions[1][lidx]),
+                            assign(velocities_out[2][lidx], positions[2][lidx])
+                            );
+
+    ctx.exec(if_s(terminated[lidx] > 0, (on_terminate, return_s)));
 
     value local_frac = declare(ctx, frac.get());
 
@@ -303,11 +312,22 @@ void trace_slice(equation_context& ctx,
     v3f pos = {positions[0][lidx], positions[1][lidx], positions[2][lidx]};
     v3f vel = {velocities[0][lidx], velocities[1][lidx], velocities[2][lidx]};
 
+    //ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"base pos %f %f %f\", " + type_to_string(pos.x()) + "," + type_to_string(pos.y()) + "," + type_to_string(pos.z()) + ");}");
+
+    //ctx.exec(return_s);
+
     auto w2v = [&](v3f in)
     {
         v3i centre = (dim.get().xyz() - 1)/2;
 
         return (in / scale) + (v3f)centre;
+    };
+
+    auto v2w = [&](v3f in)
+    {
+        v3i centre = (dim.get().xyz() - 1)/2;
+
+        return (in - (v3f)centre) * scale;
     };
 
     v3f voxel_pos = w2v(pos);
@@ -328,10 +348,12 @@ void trace_slice(equation_context& ctx,
     value until_out = frac.get() * slice_width;
     value steps = ceil(until_out / step.get());
 
-    v3f loop_pos = declare(ctx, pos);
+    steps = max(steps, value{1.f});
+
+    v3f loop_voxel_pos = declare(ctx, voxel_pos);
     v3f loop_vel = declare(ctx, vel);
 
-    ctx.position_override = {type_to_string(loop_pos[0]), type_to_string(loop_pos[1]), type_to_string(loop_pos[2])};
+    ctx.position_override = {type_to_string(loop_voxel_pos[0]), type_to_string(loop_voxel_pos[1]), type_to_string(loop_voxel_pos[2])};
 
     for(int i=0; i < 3; i++)
     {
@@ -339,14 +361,14 @@ void trace_slice(equation_context& ctx,
         {
             int tidx = index_table[i][j];
 
-            Yij[i, j] = mix(buffer_index_generic(linear_Yij_1[tidx], loop_pos, dim.name), buffer_index_generic(linear_Yij_2[tidx], loop_pos, dim.name), local_frac);
-            Kij[i, j] = mix(buffer_index_generic(linear_Kij_1[tidx], loop_pos, dim.name), buffer_index_generic(linear_Kij_2[tidx], loop_pos, dim.name), local_frac);
+            Yij[i, j] = mix(buffer_index_generic(linear_Yij_1[tidx], loop_voxel_pos, dim.name), buffer_index_generic(linear_Yij_2[tidx], loop_voxel_pos, dim.name), local_frac);
+            Kij[i, j] = mix(buffer_index_generic(linear_Kij_1[tidx], loop_voxel_pos, dim.name), buffer_index_generic(linear_Kij_2[tidx], loop_voxel_pos, dim.name), local_frac);
         }
 
-        gB[i] = mix(buffer_index_generic(linear_gB_1[i], loop_pos, dim.name), buffer_index_generic(linear_gB_2[i], loop_pos, dim.name), local_frac);
+        gB[i] = mix(buffer_index_generic(linear_gB_1[i], loop_voxel_pos, dim.name), buffer_index_generic(linear_gB_2[i], loop_voxel_pos, dim.name), local_frac);
     }
 
-    gA = mix(buffer_index_generic(linear_gA_1, loop_pos, dim.name), buffer_index_generic(linear_gA_2, loop_pos, dim.name), local_frac);
+    gA = mix(buffer_index_generic(linear_gA_1, loop_voxel_pos, dim.name), buffer_index_generic(linear_gA_2, loop_voxel_pos, dim.name), local_frac);
 
     ctx.pin(Kij);
 
@@ -407,28 +429,39 @@ void trace_slice(equation_context& ctx,
 
     //ctx.exec("for(int i=0; i < " + type_to_string(steps) + "; i++) {");
 
+    //steps = 1;
+
     ctx.exec(for_s("idx", value_i(0), (value_i)steps, value_i("idx++")));
 
     {
         v3f dpos = declare(ctx, dx);
         v3f dvel = declare(ctx, V_upper_diff);
 
-        value pos_sq = loop_pos.squared_length();
+        value pos_sq = v2w(loop_voxel_pos).squared_length();
 
         value escape_cond = pos_sq >= u_sq;
         value ingested_cond = dpos.squared_length() < 0.2f * 0.2f;
 
+
+        //ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"dx %f %f %f\", " + type_to_string(dpos.x()) + "," + type_to_string(dpos.y()) + "," + type_to_string(dpos.z()) + ");}");
+        //ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"loop_vel %f %f %f\", " + type_to_string(loop_vel.x()) + "," + type_to_string(loop_vel.y()) + "," + type_to_string(loop_vel.z()) + ");}");
+
+        value_v dbg1 = if_s(x==128 && y == 128, value_v{"printf(\"here1 %f\", " + type_to_string(pos_sq) + ");"});
+        value_v dbg2 = if_s(x==128 && y == 128, value_v{"printf(\"here2\");"});
+
         ctx.exec(if_s(escape_cond,
                         (assign(hit_type, value_i{0}),
+                         dbg1,
                          break_s)
                       ));
 
         ctx.exec(if_s(ingested_cond,
                       (assign(hit_type, value_i{1}),
+                       dbg2,
                        break_s)
                       ));
 
-        ctx.exec(assign(loop_pos, loop_pos + dpos * step.get()));
+        ctx.exec(assign(loop_voxel_pos, loop_voxel_pos + dpos * step.get() / scale));
         ctx.exec(assign(loop_vel, loop_vel + dvel * step.get()));
 
         ctx.exec(assign(local_frac, clamp(local_frac - frac_increment, value{0.f}, value{1.f})));
@@ -438,16 +471,20 @@ void trace_slice(equation_context& ctx,
 
     //ctx.exec("}");
 
-    ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"%i\", " + type_to_string(hit_type) + ");}");
+    //ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"%i\", " + type_to_string((value_i)steps) + ");}");
+
+    v3f fin_world_pos = v2w(loop_voxel_pos);
+
+    //ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"p2 %f %f %f\", " + type_to_string(fin_world_pos.x()) + "," + type_to_string(fin_world_pos.y()) + "," + type_to_string(fin_world_pos.z()) + ");}");
 
     render_ray_info out = render_out[lidx];
 
     value_v on_terminated = (assign(terminated[lidx], value_i{1}),
                              assign(out.x.get(), x),
                              assign(out.y.get(), y),
-                             assign(out.X.get(), loop_pos.x()),
-                             assign(out.Y.get(), loop_pos.y()),
-                             assign(out.Z.get(), loop_pos.z()),
+                             assign(out.X.get(), fin_world_pos.x()),
+                             assign(out.Y.get(), fin_world_pos.y()),
+                             assign(out.Z.get(), fin_world_pos.z()),
                              assign(out.dX.get(), dx.x()),
                              assign(out.dY.get(), dx.y()),
                              assign(out.dZ.get(), dx.z()),
@@ -466,16 +503,18 @@ void trace_slice(equation_context& ctx,
     ctx.exec(assign(out.hit_type.get(), value_i{1}));
 
     ctx.exec(if_s(hit_type != value_i{-1},
-                  on_terminated
+                  (on_terminate, on_terminated)
                   ));
 
-    ctx.exec(assign(positions_out[0][lidx], loop_pos.x()));
-    ctx.exec(assign(positions_out[1][lidx], loop_pos.y()));
-    ctx.exec(assign(positions_out[2][lidx], loop_pos.z()));
+    ctx.exec(assign(positions_out[0][lidx], fin_world_pos.x()));
+    ctx.exec(assign(positions_out[1][lidx], fin_world_pos.y()));
+    ctx.exec(assign(positions_out[2][lidx], fin_world_pos.z()));
 
     ctx.exec(assign(velocities_out[0][lidx], loop_vel.x()));
     ctx.exec(assign(velocities_out[1][lidx], loop_vel.y()));
     ctx.exec(assign(velocities_out[2][lidx], loop_vel.z()));
+
+    //ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"p3 %i %f\", " + type_to_string(hit_type) + ", " + type_to_string(u_sq) + ");}");
 }
 
 void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args)
@@ -529,10 +568,12 @@ std::vector<cl::buffer> raytracing_manager::get_fresh_buffers(cl::context& clctx
     return ret;
 }
 
-void raytracing_manager::trace(cl::context& clctx, cl::managed_command_queue& mqueue, float scale, const tensor<int, 2>& screen, vec3f camera_pos, vec4f camera_quat)
+void raytracing_manager::trace(cl::context& clctx, cl::command_queue& mqueue, float scale, const tensor<int, 2>& screen, vec3f camera_pos, vec4f camera_quat)
 {
     if(slices.size() == 0)
         return;
+
+    scale = calculate_scale(get_c_at_max(), slice_size);
 
     float last_slice_time = (slices.size() - 1) * slice_width;
 
@@ -613,7 +654,7 @@ void raytracing_manager::trace(cl::context& clctx, cl::managed_command_queue& mq
     float my_time = slices.size() * slice_width;
     float my_step = 2.f;
 
-    int steps = 100;
+    int steps = 200;
 
     for(int i=0; i < steps; i++)
     {
@@ -623,6 +664,8 @@ void raytracing_manager::trace(cl::context& clctx, cl::managed_command_queue& mq
             cl::args args;
 
             auto [b1, b2, frac] = get_slices_for_time(current_time);
+
+            //printf("Frac %f\n", frac);
 
             for(int i=0; i < b1->size(); i++)
             {
@@ -655,6 +698,8 @@ void raytracing_manager::trace(cl::context& clctx, cl::managed_command_queue& mq
             mqueue.exec("trace_slice", args, {screen.x(), screen.y()}, {8,8});
 
             std::swap(rays_1, rays_2);
+
+            //printf("Exec?\n");
         }
     }
 
@@ -681,7 +726,7 @@ void raytracing_manager::grab_buffers(cl::context& clctx, cl::managed_command_qu
     if((int)slices.size() >= max_slices)
         return;
 
-    int c2 = floor(time_elapsed / slice_width);
+    int c2 = ceil(time_elapsed / slice_width);
 
     if(last_grabbed != c2)
     {
