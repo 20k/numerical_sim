@@ -884,11 +884,37 @@ void raytracing4_manager::grab_buffers(cl::context& clctx, cl::managed_command_q
     time_elapsed += step;
 }
 
+v4f world_to_voxel4(v4f in, v4i dim, value slice_width, value scale)
+{
+    v3i centre = (dim.xyz() - 1)/2;
+
+    v3f spatial_world = {in.y(), in.z(), in.w()};
+
+    v3f spatial = (spatial_world / scale) + (v3f)centre;
+    value time = in.x() * slice_width;
+
+    return {time, spatial.x(), spatial.y(), spatial.z()};
+}
+
+
+v4f voxel_to_world4(v4f in, v4i dim, value slice_width, value scale)
+{
+    v3i centre = (dim.xyz() - 1)/2;
+
+    v3f spatial_voxel = {in.y(), in.z(), in.w()};
+
+    v3f spatial = (spatial_voxel - (v3f)centre) * scale;
+
+    value time = in.x() / slice_width;
+
+    return {time, spatial.x(), spatial.y(), spatial.z()};
+}
 
 void init_slice_rays4(equation_context& ctx, literal<v3f> camera_pos, literal<v4f> camera_quat, literal<v2i> screen_size,
-                     std::array<ray4_value, 10> Guv_1, std::array<ray4_value, 10> Guv_2,
+                     std::array<buffer<ray4_value, 4>, 10> Guv,
                      named_literal<value, "scale"> scale, named_literal<v4i, "dim"> dim,
-                     std::array<buffer<value>, 3> positions_out, std::array<buffer<value>, 3> velocities_out
+                     literal<value> w_coord, literal<value> slice_width,
+                     std::array<buffer<value>, 4> positions_out, std::array<buffer<value>, 4> velocities_out
                      )
 {
     ctx.add_function("buffer_index", buffer_index_f<value, 3>);
@@ -899,16 +925,18 @@ void init_slice_rays4(equation_context& ctx, literal<v3f> camera_pos, literal<v4
     ctx.order = 1;
     ctx.uses_linear = true;
 
-    metric<value, 3, 3> Yij;
-    tensor<value, 3, 3> Kij;
-    tensor<value, 3> gB;
-    value gA;
+    auto w2v4 = [&](v4f in)
+    {
+        return world_to_voxel4(in, dim.get(), slice_width.get(), scale.get());
+    };
 
-    int index_table[3][3] = {{0, 1, 2},
-                             {1, 3, 4},
-                             {2, 4, 5}};
+    v3f world_pos3 = camera_pos.get();
 
-    v3f pos = camera_pos.get();
+    ///takes in t, x, y, z, outputs t, x, y, z
+    v4f pos4_txyz = w2v4({w_coord.get(), world_pos3.x(), world_pos3.y(), world_pos3.z()});
+
+    ///x, y, z, t
+    v4f pos4 = {pos4_txyz.y(), pos4_txyz.z(), pos4_txyz.w(), pos4_txyz.x()};
 
     v2i in_xy = {"get_global_id(0)", "get_global_id(1)"};
 
@@ -925,22 +953,249 @@ void init_slice_rays4(equation_context& ctx, literal<v3f> camera_pos, literal<v4
 
     for(int i=0; i < 10; i++)
     {
-
+        Guv_i[i] = buffer_read_linear(Guv[i], pos4, dim.get());
     }
 
-    lightray ray = make_lightray(ctx, camera_pos.get(), camera_quat.get(), screen_size.get(), xy, Yij, gA, gB);
+    metric<value, 4, 4> Guv_built;
+
+    for(int i=0; i < 4; i++)
+    {
+        for(int j=0; j < 4; j++)
+        {
+            Guv_built[i, j] = Guv_i[indices[i][j]];
+        }
+    }
+
+    ctx.pin(Guv_built);
+
+    value fgA = 0;
+    tensor<value, 3> fgB = {0,0,0};
+
+    lightray ray = make_lightray(ctx, camera_pos.get(), camera_quat.get(), screen_size.get(), xy, Guv_built, fgA, fgB);
 
     value_i out_idx = xy.y() * screen_size.get().x() + xy.x();
 
-    ctx.exec(assign(positions_out[0][out_idx], ray.adm_pos.x()));
-    ctx.exec(assign(positions_out[1][out_idx], ray.adm_pos.y()));
-    ctx.exec(assign(positions_out[2][out_idx], ray.adm_pos.z()));
+    ctx.exec(assign(positions_out[0][out_idx], w_coord.get()));
+    ctx.exec(assign(positions_out[1][out_idx], ray.pos4.y()));
+    ctx.exec(assign(positions_out[2][out_idx], ray.pos4.z()));
+    ctx.exec(assign(positions_out[3][out_idx], ray.pos4.w()));
 
-    ctx.exec(assign(velocities_out[0][out_idx], ray.adm_vel.x()));
-    ctx.exec(assign(velocities_out[1][out_idx], ray.adm_vel.y()));
-    ctx.exec(assign(velocities_out[2][out_idx], ray.adm_vel.z()));
+    ctx.exec(assign(velocities_out[0][out_idx], ray.vel4.x()));
+    ctx.exec(assign(velocities_out[1][out_idx], ray.vel4.y()));
+    ctx.exec(assign(velocities_out[2][out_idx], ray.vel4.z()));
+    ctx.exec(assign(velocities_out[3][out_idx], ray.vel4.w()));
 
     ctx.fix_buffers();
+}
+
+tensor<value, 4> txyz_to_xyzt(const tensor<value, 4>& in)
+{
+    return {in.y(), in.z(), in.w(), in.x()};
+}
+
+void trace_slice4(equation_context& ctx,
+                 std::array<buffer<ray4_value, 4>, 10> Guv_4d,
+                 named_literal<value, "scale"> scale, named_literal<v4i, "dim"> dim, literal<v2i> screen_size, literal<value_i> ray_count,
+                 literal<value> slice_width,
+                 std::array<buffer<value>, 4> positions, std::array<buffer<value>, 4> velocities,
+                 buffer<render_ray_info>& render_out)
+{
+    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
+    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
+    ctx.add_function("buffer_read_linear", buffer_read_linear_f<value, 3>);
+    ctx.add_function("buffer_read_linear4", buffer_read_linear_f<value, 4>);
+
+    ctx.order = 1;
+    ctx.uses_linear = true;
+
+    value_i x = declare(ctx, value_i{"get_global_id(0)"});
+    value_i y = declare(ctx, value_i{"get_global_id(1)"});
+
+    value_i lidx = y * screen_size.get().x() + x;
+
+    ctx.exec(if_s(lidx >= ray_count, return_s));
+
+    ///t, x, y, z
+    v4f pos = {positions[0][lidx], positions[1][lidx], positions[2][lidx], positions[3][lidx]};
+    v4f vel = {velocities[0][lidx], velocities[1][lidx], velocities[2][lidx], velocities[4][lidx]};
+
+    ///takes in t, x, y, z -> outputs t, x, y, z
+    auto w2v4 = [&](v4f in)
+    {
+        return world_to_voxel4(in, dim.get(), slice_width.get(), scale.get());
+    };
+
+    ///t, x, y, z
+    v4f voxel_pos_txyz = w2v4(pos);
+
+    v4f loop_voxel_pos_txyz = declare(ctx, voxel_pos_txyz);
+    v4f loop_vel = declare(ctx, vel);
+
+    value universe_size = ((dim.get().x()-1)/2).convert<float>() * scale;
+
+    value u_sq = universe_size * universe_size * 0.95f * 0.95f;
+
+    metric<value, 10> Guv_lin;
+
+    for(int i=0; i < 10; i++)
+    {
+        Guv_lin[i] = buffer_read_linear(Guv_4d[i], txyz_to_xyzt(loop_voxel_pos_txyz), dim.get());
+    }
+
+
+    int indices[4][4] = {{0, 1, 2, 3},
+                         {1, 4, 5, 6},
+                         {2, 5, 7, 8},
+                         {3, 6, 8, 9}};
+
+    metric<value, 4, 4> Guv;
+
+    for(int i=0; i < 4; i++)
+    {
+        for(int j=0; j < 4; j++)
+        {
+            Guv[i, j] = Guv_lin[indices[i][j]];
+        }
+    }
+
+    ctx.pin(Guv);
+
+    tensor<value, 4> acceleration;
+
+    {
+        ///k, uv
+        tensor<value, 4, 4, 4> dGuv;
+
+        for(int k=0; k < 4; k++)
+        {
+            v4f directions[4] = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+            v4f scales = {slice_width.get(), scale.get(), scale.get(), scale.get()};
+
+            for(int i=0; i < 4; i++)
+            {
+                for(int j=0; j < 4; j++)
+                {
+                    v4f offset = directions[k];
+
+                    v4f voxel_pos_u = loop_voxel_pos_txyz + offset;
+                    v4f voxel_pos_l = loop_voxel_pos_txyz - offset;
+
+                    ///buffer stores x, y, z, t
+                    ///coordinates are t, x, y, z. Annoying!
+                    v4f shuffled_u = txyz_to_xyzt(voxel_pos_u);
+                    v4f shuffled_l = txyz_to_xyzt(voxel_pos_l);
+
+                    int linear_index = indices[i][j];
+
+                    dGuv[k, i, j] = (buffer_read_linear(Guv_4d[linear_index], shuffled_u, dim.get()) - buffer_read_linear(Guv_4d[linear_index], shuffled_l, dim.get())) / (2 * scales[k]);
+                }
+            }
+        }
+
+        ctx.pin(dGuv);
+
+        inverse_metric<value, 4, 4> inverted = Guv.invert();
+
+        ctx.pin(inverted);
+
+        tensor<value, 4, 4, 4> christoff2 = christoffel_symbols_2(inverted, dGuv);
+
+        for(int mu=0; mu < 4; mu++)
+        {
+            value sum = 0;
+
+            for(int a=0; a < 4; a++)
+            {
+                for(int b=0; b < 4; b++)
+                {
+                    sum += christoff2[mu, a, b] * loop_vel[a] * loop_vel[b];
+                }
+            }
+
+            acceleration[mu] = -sum;
+        }
+    }
+
+    value_i hit_type = declare(ctx, value_i{-1});
+
+    value_i steps = 400;
+
+    value step = 0.1f;
+
+    ctx.exec(for_s("idx", value_i(0), value_i("idx") < (value_i)steps, value_i("idx++")));
+
+    {
+        //v3f dpos = declare(ctx, dx);
+        //v3f dvel = declare(ctx, V_upper_diff);
+
+        v4f dpos = declare(ctx, loop_vel);
+        v4f dvel = declare(ctx, acceleration);
+
+        //value pos_sq = v2w4(loop_voxel_pos).squared_length();
+
+        v4f world_pos4 = voxel_to_world4(loop_voxel_pos_txyz, dim.get(), slice_width.get(), scale.get());
+
+        v3f world_pos = {world_pos4.y(), world_pos4.z(), world_pos4.w()};
+
+        value escape_cond = world_pos.squared_length() >= u_sq;
+        //value ingested_cond = dpos.squared_length() < 0.1f * 0.1f;
+
+        value ingested_cond = fabs(loop_vel.x()) > 1000 && fabs(dvel.x() > 100);
+
+        //if(fabs(velocity.x) > 1000 + f_in_x && fabs(acceleration.x) > 100)
+
+        ctx.exec(if_s(escape_cond,
+                        (assign(hit_type, value_i{0}),
+                         break_s)
+                      ));
+
+        ctx.exec(if_s(ingested_cond,
+                      (assign(hit_type, value_i{1}),
+                       break_s)
+                      ));
+
+        ctx.exec(assign(loop_voxel_pos_txyz, loop_voxel_pos_txyz + dpos * step / scale.get()));
+        ctx.exec(assign(loop_vel, loop_vel + dvel * step));
+    }
+
+    ctx.exec(for_end());
+
+    //ctx.exec("}");
+
+    //ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"%i\", " + type_to_string((value_i)steps) + ");}");
+
+    v4f fin_world_pos = voxel_to_world4(loop_voxel_pos_txyz, dim.get(), slice_width.get(), scale.get());
+
+    //ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"p2 %f %f %f\", " + type_to_string(fin_world_pos.x()) + "," + type_to_string(fin_world_pos.y()) + "," + type_to_string(fin_world_pos.z()) + ");}");
+
+    render_ray_info out = render_out[lidx];
+
+    value_v on_terminated = (
+                             assign(out.x.get(), x),
+                             assign(out.y.get(), y),
+                             assign(out.X.get(), fin_world_pos.y()),
+                             assign(out.Y.get(), fin_world_pos.z()),
+                             assign(out.Z.get(), fin_world_pos.w()),
+                             assign(out.dX.get(), loop_vel.y()),
+                             assign(out.dY.get(), loop_vel.z()),
+                             assign(out.dZ.get(), loop_vel.w()),
+                             assign(out.hit_type.get(), hit_type),
+                             assign(out.R.get(), value{0}),
+                             assign(out.G.get(), value{0}),
+                             assign(out.B.get(), value{0}),
+                             assign(out.background_power.get(), value{1}),
+                             assign(out.zp1.get(), value{1}));
+
+    ctx.exec(assign(out.x.get(), x));
+    ctx.exec(assign(out.y.get(), y));
+    ctx.exec(assign(out.R.get(), value{1}));
+    ctx.exec(assign(out.G.get(), value{0}));
+    ctx.exec(assign(out.B.get(), value{0}));
+    ctx.exec(assign(out.hit_type.get(), value_i{1}));
+
+    ctx.exec(if_s(hit_type != value_i{-1},
+                  on_terminated
+                  ));
 }
 
 void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args)
@@ -975,5 +1230,19 @@ void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args)
         cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, get_raytraced_quantities4, "get_raytraced_quantities4", "", bssn_args);
 
         clctx.register_kernel("get_raytraced_quantities4", kern);
+    }
+    {
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_kernel_for(clctx, ectx, init_slice_rays4, "init_slice_rays4", "");
+
+        clctx.register_kernel("init_slice_rays4", kern);
+    }
+    {
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_kernel_for(clctx, ectx, trace_slice4, "trace_slice4", "");
+
+        clctx.register_kernel("trace_slice4", kern);
     }
 }
