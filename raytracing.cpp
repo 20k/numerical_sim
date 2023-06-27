@@ -1066,6 +1066,46 @@ tensor<value, 4> txyz_to_xyzt(const tensor<value, 4>& in)
     return {in.y(), in.z(), in.w(), in.x()};
 }
 
+value acceleration_to_precision(const v4f& acceleration, const value& max_acceleration, value* next_ds_out)
+{
+    value current_acceleration_err = acceleration.length();
+
+    value err = max_acceleration;
+
+    //#define MIN_STEP 0.00001f
+    #define MIN_STEP 0.000001f
+
+    value max_timestep = 100000;
+
+    current_acceleration_err = min(current_acceleration_err, max_acceleration * pow(max_timestep, 2.f));
+
+    ///of course, as is tradition, whatever works for kerr does not work for alcubierre
+    ///the sqrt error calculation is significantly better for alcubierre, largely in terms of having no visual artifacts at all
+    ///whereas the pow version is nearly 2x faster for kerr
+    value next_ds = sqrt(max_acceleration / current_acceleration_err);
+
+    *next_ds_out = next_ds;
+
+    return current_acceleration_err;
+}
+
+value calculate_ds_error(const value& current_ds, const v4f& acceleration, const value& max_acceleration, value* next_ds_out)
+{
+    value next_ds = 0;
+    value diff = acceleration_to_precision(acceleration, max_acceleration, &next_ds);
+
+    ///produces strictly worse results for kerr
+    next_ds = 0.99f * current_ds * clamp(next_ds / current_ds, value{0.3f}, value{2.f});
+
+    next_ds = max(next_ds, value{MIN_STEP});
+
+    *next_ds_out = next_ds;
+
+    value err = max_acceleration;
+
+    return next_ds == MIN_STEP && diff > err * 1000;
+}
+
 void trace_slice4(equation_context& ctx,
                  std::array<buffer<ray4_value, 4>, 10> Guv_4d,
                  named_literal<value, "scale"> scale, named_literal<v4i, "dim"> dim, literal<v2i> screen_size, literal<value_i> ray_count,
@@ -1199,9 +1239,16 @@ void trace_slice4(equation_context& ctx,
 
     value_i hit_type = declare(ctx, value_i{-1});
 
-    value_i steps = 400;
+    value_i steps = 800;
 
-    value step = 0.1f;
+    value max_accel = 0.005f;
+
+    value current_ds = declare(ctx, value{0.001f});
+
+    //value next_ds_start;
+    //acceleration_to_precision(acceleration, max_accel, &next_ds_start);
+
+    //ctx.exec(assign(current_ds, next_ds_start));
 
     ctx.exec(for_s("idx", value_i(0), value_i("idx") < (value_i)steps, value_i("idx++")));
 
@@ -1246,8 +1293,15 @@ void trace_slice4(equation_context& ctx,
                        break_s)
                       ));
 
-        ctx.exec(assign(loop_voxel_pos_txyz, loop_voxel_pos_txyz + dpos * step / scales));
-        ctx.exec(assign(loop_vel, loop_vel + dvel * step));
+        //ctx.exec(if_s(x == 128 && y == 128, dual_types::print("%f cds", current_ds)));
+
+        ctx.exec(assign(loop_voxel_pos_txyz, loop_voxel_pos_txyz + dpos * current_ds / scales));
+        ctx.exec(assign(loop_vel, loop_vel + dvel * current_ds));
+
+        value ds_out = 0;
+        calculate_ds_error(current_ds, dvel, max_accel, &ds_out);
+
+        ctx.exec(assign(current_ds, ds_out));
     }
 
     ctx.exec(for_end());
