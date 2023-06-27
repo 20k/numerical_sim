@@ -4995,8 +4995,8 @@ int main()
     test_harmonics();
     test_integration();
 
-    int width = 800;
-    int height = 600;
+    int width = 1280;
+    int height = 720;
 
     render_settings sett;
     sett.width = width;
@@ -5031,7 +5031,7 @@ int main()
     std::string hydro_argument_string = argument_string;
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {213, 213, 213};
+    vec3i size = {255, 255, 255};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -5545,6 +5545,8 @@ int main()
     float rendering_err = 0.01f;
 
     float camera_start_time = 0;
+    bool advance_camera_time = false;
+    float camera_speed = 1.f;
 
     while(!win.should_close())
     {
@@ -5703,6 +5705,8 @@ int main()
             }
 
             ImGui::Checkbox("pao", &pao);
+            ImGui::Checkbox("Advance Camera Time", &advance_camera_time);
+            ImGui::DragFloat("Camera Time Speed", &camera_speed, 0.1f);
 
             ImGui::DragFloat("Camera Start Time", &camera_start_time, 0.1f);
 
@@ -5873,7 +5877,7 @@ int main()
         ///todo: backwards euler test
         float timestep = 0.025;
 
-        if(pao && base_mesh.elapsed_time > 100)
+        if(pao && base_mesh.elapsed_time > 120)
             step = false;
 
         if(step)
@@ -6187,6 +6191,11 @@ int main()
         if(frametime.get_elapsed_time_s() > 10 && !long_operation)
             return 0;
 
-        //printf("Time: %f\n", frametime.restart() * 1000.);
+        if(advance_camera_time)
+        {
+            camera_start_time += frametime.get_elapsed_time_s() * camera_speed;
+        }
+
+        printf("Time: %f\n", frametime.restart() * 1000.);
     }
 }

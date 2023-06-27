@@ -21,7 +21,7 @@ struct equation_context : differentiator
     std::vector<std::tuple<std::string, single_source::impl::kernel_context, equation_context>> functions;
 
     std::vector<std::pair<std::string, value>> values;
-    std::vector<std::pair<std::string, value>> temporaries;
+    std::vector<std::tuple<std::string, value, int>> temporaries;
     std::vector<std::pair<std::string, value>> sequenced;
     std::vector<std::pair<value, value>> aliases;
     bool uses_linear = false;
@@ -31,6 +31,8 @@ struct equation_context : differentiator
     bool is_derivative_free = false;
 
     int order = 2;
+
+    int current_block_level = 0;
 
     virtual value diff1(const value& in, int idx) override {return ::diff1(*this, in, idx);};
     //virtual value diff1(const buffer<value, 3>& in, int idx, const v3i& where, const value& scale) override {return ::diff1(*this, in, idx, where, scale);};
@@ -50,6 +52,12 @@ struct equation_context : differentiator
 
     void exec(const value& v)
     {
+        if(v.type == dual_types::ops::FOR_START)
+            current_block_level++;
+
+        if(v.type == dual_types::ops::FOR_END)
+            current_block_level--;
+
         sequenced.push_back({"", v});
     }
 
@@ -71,12 +79,15 @@ struct equation_context : differentiator
 
     void pin(value& v)
     {
-        for(auto& i : temporaries)
+        for(auto& [name, val, level] : temporaries)
         {
-            if(dual_types::equivalent<float>(v, i.first) || dual_types::equivalent<float>(v, i.second))
+            if(level != current_block_level)
+                continue;
+
+            if(dual_types::equivalent<float>(v, name) || dual_types::equivalent<float>(v, val))
             {
                 value facade;
-                facade.make_value(i.first);
+                facade.make_value(name);
 
                 v = facade;
                 return;
@@ -88,7 +99,7 @@ struct equation_context : differentiator
 
         value old = v;
 
-        temporaries.push_back({name, old});
+        temporaries.push_back({name, old, current_block_level});
         sequenced.push_back({name, old});
 
         value facade;
@@ -223,7 +234,7 @@ struct equation_context : differentiator
             }
         }
 
-        std::vector<std::pair<std::string, value>> unprocessed_temporaries = temporaries;
+        std::vector<std::tuple<std::string, value, int>> unprocessed_temporaries = temporaries;
 
         bool any_change = true;
 
@@ -233,15 +244,15 @@ struct equation_context : differentiator
 
             for(int i=0; i < (int)unprocessed_temporaries.size(); i++)
             {
-                std::pair<std::string, value>& next = unprocessed_temporaries[i];
+                std::tuple<std::string, value, int>& next = unprocessed_temporaries[i];
 
                 //unprocessed_temporaries.erase(unprocessed_temporaries.begin());
 
-                if(used_names.find(next.first) != used_names.end())
+                if(used_names.find(std::get<0>(next)) != used_names.end())
                 {
-                    std::vector<std::string> all_used = next.second.get_all_variables();
+                    std::vector<std::string> all_used = std::get<1>(next).get_all_variables();
 
-                    used_names.insert(next.first);
+                    used_names.insert(std::get<0>(next));
 
                     for(auto& kk : all_used)
                     {
@@ -261,12 +272,12 @@ struct equation_context : differentiator
 
         for(auto& i : unprocessed_temporaries)
         {
-            to_erase.insert(i.first);
+            to_erase.insert(std::get<0>(i));
         }
 
         for(int i=0; i < (int)temporaries.size(); i++)
         {
-            if(to_erase.find(temporaries[i].first) != to_erase.end())
+            if(to_erase.find(std::get<0>(temporaries[i])) != to_erase.end())
             {
                 temporaries.erase(temporaries.begin() + i);
                 i--;
@@ -282,7 +293,7 @@ struct equation_context : differentiator
             v.substitute(aliases);
         }
 
-        for(auto& [name, v] : temporaries)
+        for(auto& [name, v, level] : temporaries)
         {
             v.substitute(aliases);
         }
@@ -295,6 +306,8 @@ struct equation_context : differentiator
 
     void build_impl(std::string& argument_string, const std::string& str)
     {
+        assert(current_block_level == 0);
+
         strip_unused();
         substitute_aliases();
 
@@ -313,7 +326,7 @@ struct equation_context : differentiator
 
         std::string temporary_string;
 
-        for(auto& [current_name, value] : temporaries)
+        for(auto& [current_name, value, level] : temporaries)
         {
             temporary_string += current_name + "=" + type_to_string(value) + ",";
         }

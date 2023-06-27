@@ -1165,21 +1165,21 @@ void trace_slice4(equation_context& ctx,
                          {2, 5, 7, 8},
                          {3, 6, 8, 9}};
 
-    metric<value, 4, 4> Guv;
-
-    for(int i=0; i < 4; i++)
-    {
-        for(int j=0; j < 4; j++)
-        {
-            Guv[i, j] = Guv_lin[indices[i][j]];
-        }
-    }
-
     v4f scales = {slice_width.get(), scale.get(), scale.get(), scale.get()};
     tensor<value, 4> acceleration;
 
     auto do_Guv = [&]()
     {
+        metric<value, 4, 4> Guv;
+
+        for(int i=0; i < 4; i++)
+        {
+            for(int j=0; j < 4; j++)
+            {
+                Guv[i, j] = Guv_lin[indices[i][j]];
+            }
+        }
+
         ctx.pin(Guv);
 
         {
@@ -1253,6 +1253,8 @@ void trace_slice4(equation_context& ctx,
     ctx.exec(for_s("idx", value_i(0), value_i("idx") < (value_i)steps, value_i("idx++")));
 
     {
+        assert(ctx.current_block_level == 1);
+
         do_Guv();
 
         //v3f dpos = declare(ctx, dx);
@@ -1287,11 +1289,11 @@ void trace_slice4(equation_context& ctx,
                          break_s)
                       ));
 
-        ctx.exec(if_s(ingested_cond,
+        /*ctx.exec(if_s(ingested_cond,
                       (assign(hit_type, value_i{1}),
                        //on_quit2,
                        break_s)
-                      ));
+                      ));*/
 
         //ctx.exec(if_s(x == 128 && y == 128, dual_types::print("%f cds", current_ds)));
 
