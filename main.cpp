@@ -5509,7 +5509,7 @@ int main()
     matter_vars = matter_initial_vars(clctx.ctx);
     u_arg = cl::buffer(clctx.ctx);
 
-    raytracing_manager raytrace(clctx.ctx, {width, height});
+    raytracing4_manager raytrace(clctx.ctx, {width, height});
 
     std::vector<float> adm_mass;
     std::vector<float> real_graph;

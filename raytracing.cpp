@@ -158,7 +158,7 @@ lightray make_lightray(equation_context& ctx,
     vec<4, value> pixel_z = pixel_direction.z() * oriented.e[3];
     vec<4, value> pixel_t = -oriented.e[0];
 
-    #define INVERT_TIME
+    //#define INVERT_TIME
     #ifdef INVERT_TIME
     pixel_t = -pixel_t;
     #endif // INVERT_TIME
@@ -180,7 +180,7 @@ lightray make_lightray(equation_context& ctx,
 
     value E = -sum_multiply(tensor_velocity_lowered, N);
 
-    tensor<value, 4> adm_velocity = (tensor_velocity / E) - N;
+    tensor<value, 4> adm_velocity = -((tensor_velocity / E) - N);
 
     lightray ret;
     ret.adm_pos = world_position;
@@ -852,9 +852,12 @@ void raytracing4_manager::grab_buffers(cl::context& clctx, cl::managed_command_q
 
     int c2 = floor(time_elapsed / slice_width);
 
+    if(c2 < 0)
+        return;
+
     if(last_grabbed != c2)
     {
-        std::cout << "Grabby4\n";
+        std::cout << "Grabby4 " << c2 << std::endl;;
 
         tensor<int, 4> out_clsize = {slice_size.x(), slice_size.y(), slice_size.z(), 0};
 
@@ -869,12 +872,12 @@ void raytracing4_manager::grab_buffers(cl::context& clctx, cl::managed_command_q
         args.push_back(clsize);
         args.push_back(out_clsize);
 
+        args.push_back(c2);
+
         for(auto& i : slice)
         {
             args.push_back(i);
         }
-
-        args.push_back(c2);
 
         mqueue.exec("get_raytraced_quantities4", args, {slice_size.x(), slice_size.y(), slice_size.z()}, {8,8,1});
 
@@ -884,6 +887,74 @@ void raytracing4_manager::grab_buffers(cl::context& clctx, cl::managed_command_q
     time_elapsed += step;
 }
 
+void raytracing4_manager::trace(cl::context& clctx, cl::command_queue& mqueue, float scale, const tensor<int, 2>& screen, vec3f camera_pos, vec4f camera_quat, float camera_start_time)
+{
+    if(last_grabbed < 0)
+        return;
+
+    std::vector<cl::buffer> ray_props;
+
+    for(int i=0; i < 8; i++)
+    {
+        ray_props.emplace_back(clctx).alloc(sizeof(cl_float) * screen.x() * screen.y());
+        ray_props.back().set_to_zero(mqueue);
+    }
+
+    cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
+    cl_float4 ccamera_quat = {camera_quat.x(), camera_quat.y(), camera_quat.z(), camera_quat.w()};
+    cl_int4 mesh_dim = {slice_size.x(), slice_size.y(), slice_size.z(), last_grabbed + 1};
+    cl_int2 clscreen = {screen.x(), screen.y()};
+    scale = calculate_scale(get_c_at_max(), slice_size);
+
+    {
+        cl::args args;
+        args.push_back(ccamera_pos, ccamera_quat, clscreen);
+
+        for(auto& i : slice)
+        {
+            args.push_back(i);
+        }
+
+        args.push_back(scale);
+        args.push_back(mesh_dim);
+        args.push_back(camera_start_time);
+        args.push_back(slice_width);
+
+        for(auto& i : ray_props)
+        {
+            args.push_back(i);
+        }
+
+        mqueue.exec("init_slice_rays4", args, {screen.x(), screen.y()}, {8,8});
+    }
+
+    {
+        cl::args args;
+
+        for(auto& i : slice)
+        {
+            args.push_back(i);
+        }
+
+        int ray_count = screen.x() * screen.y();
+
+        args.push_back(scale);
+        args.push_back(mesh_dim);
+        args.push_back(clscreen);
+        args.push_back(ray_count);
+        args.push_back(slice_width);
+
+        for(auto& i : ray_props)
+        {
+            args.push_back(i);
+        }
+
+        args.push_back(render_ray_info_buf);
+
+        mqueue.exec("trace_slice4", args, {screen.x(), screen.y()}, {8,8});
+    }
+}
+
 v4f world_to_voxel4(v4f in, v4i dim, value slice_width, value scale)
 {
     v3i centre = (dim.xyz() - 1)/2;
@@ -891,7 +962,7 @@ v4f world_to_voxel4(v4f in, v4i dim, value slice_width, value scale)
     v3f spatial_world = {in.y(), in.z(), in.w()};
 
     v3f spatial = (spatial_world / scale) + (v3f)centre;
-    value time = in.x() * slice_width;
+    value time = in.x() / slice_width;
 
     return {time, spatial.x(), spatial.y(), spatial.z()};
 }
@@ -905,7 +976,7 @@ v4f voxel_to_world4(v4f in, v4i dim, value slice_width, value scale)
 
     v3f spatial = (spatial_voxel - (v3f)centre) * scale;
 
-    value time = in.x() / slice_width;
+    value time = in.x() * slice_width;
 
     return {time, spatial.x(), spatial.y(), spatial.z()};
 }
@@ -920,7 +991,7 @@ void init_slice_rays4(equation_context& ctx, literal<v3f> camera_pos, literal<v4
     ctx.add_function("buffer_index", buffer_index_f<value, 3>);
     ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
     ctx.add_function("buffer_read_linear", buffer_read_linear_f<value, 3>);
-    ctx.add_function("buffer_read_linear4", buffer_read_linear_f<value, 4>);
+    ctx.add_function("buffer_read_linear4", buffer_read_linear_f4<value, 4>);
 
     ctx.order = 1;
     ctx.uses_linear = true;
@@ -975,6 +1046,8 @@ void init_slice_rays4(equation_context& ctx, literal<v3f> camera_pos, literal<v4
 
     value_i out_idx = xy.y() * screen_size.get().x() + xy.x();
 
+    //ctx.exec(if_s(xy.x() == 128 && xy.y() == 128, dual_types::print("w_coord %f", w_coord.get())));
+
     ctx.exec(assign(positions_out[0][out_idx], w_coord.get()));
     ctx.exec(assign(positions_out[1][out_idx], ray.pos4.y()));
     ctx.exec(assign(positions_out[2][out_idx], ray.pos4.z()));
@@ -1003,7 +1076,7 @@ void trace_slice4(equation_context& ctx,
     ctx.add_function("buffer_index", buffer_index_f<value, 3>);
     ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
     ctx.add_function("buffer_read_linear", buffer_read_linear_f<value, 3>);
-    ctx.add_function("buffer_read_linear4", buffer_read_linear_f<value, 4>);
+    ctx.add_function("buffer_read_linear4", buffer_read_linear_f4<value, 4>);
 
     ctx.order = 1;
     ctx.uses_linear = true;
@@ -1019,6 +1092,8 @@ void trace_slice4(equation_context& ctx,
     v4f pos = {positions[0][lidx], positions[1][lidx], positions[2][lidx], positions[3][lidx]};
     v4f vel = {velocities[0][lidx], velocities[1][lidx], velocities[2][lidx], velocities[3][lidx]};
 
+    //ctx.exec(if_s(x == 128 && y == 128, dual_types::print("TPosx %f", pos.x())));
+
     ///takes in t, x, y, z -> outputs t, x, y, z
     auto w2v4 = [&](v4f in)
     {
@@ -1030,6 +1105,8 @@ void trace_slice4(equation_context& ctx,
 
     v4f loop_voxel_pos_txyz = declare(ctx, voxel_pos_txyz);
     v4f loop_vel = declare(ctx, vel);
+
+    //ctx.exec(if_s(x == 128 && y == 128, value_v{"printf(\"hi %f\", " + type_to_string(pos.x()) + ")"}));
 
     value universe_size = ((dim.get().x()-1)/2).convert<float>() * scale;
 
@@ -1058,63 +1135,67 @@ void trace_slice4(equation_context& ctx,
         }
     }
 
-    ctx.pin(Guv);
-
+    v4f scales = {slice_width.get(), scale.get(), scale.get(), scale.get()};
     tensor<value, 4> acceleration;
 
+    auto do_Guv = [&]()
     {
-        ///k, uv
-        tensor<value, 4, 4, 4> dGuv;
+        ctx.pin(Guv);
 
-        for(int k=0; k < 4; k++)
         {
-            v4f directions[4] = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
-            v4f scales = {slice_width.get(), scale.get(), scale.get(), scale.get()};
+            ///k, uv
+            tensor<value, 4, 4, 4> dGuv;
 
-            for(int i=0; i < 4; i++)
+            for(int k=0; k < 4; k++)
             {
-                for(int j=0; j < 4; j++)
+                v4f directions[4] = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
+
+
+                for(int i=0; i < 4; i++)
                 {
-                    v4f offset = directions[k];
+                    for(int j=0; j < 4; j++)
+                    {
+                        v4f offset = directions[k];
 
-                    v4f voxel_pos_u = loop_voxel_pos_txyz + offset;
-                    v4f voxel_pos_l = loop_voxel_pos_txyz - offset;
+                        v4f voxel_pos_u = loop_voxel_pos_txyz + offset;
+                        v4f voxel_pos_l = loop_voxel_pos_txyz - offset;
 
-                    ///buffer stores x, y, z, t
-                    ///coordinates are t, x, y, z. Annoying!
-                    v4f shuffled_u = txyz_to_xyzt(voxel_pos_u);
-                    v4f shuffled_l = txyz_to_xyzt(voxel_pos_l);
+                        ///buffer stores x, y, z, t
+                        ///coordinates are t, x, y, z. Annoying!
+                        v4f shuffled_u = txyz_to_xyzt(voxel_pos_u);
+                        v4f shuffled_l = txyz_to_xyzt(voxel_pos_l);
 
-                    int linear_index = indices[i][j];
+                        int linear_index = indices[i][j];
 
-                    dGuv[k, i, j] = (buffer_read_linear(Guv_4d[linear_index], shuffled_u, dim.get()) - buffer_read_linear(Guv_4d[linear_index], shuffled_l, dim.get())) / (2 * scales[k]);
-                }
-            }
-        }
-
-        ctx.pin(dGuv);
-
-        inverse_metric<value, 4, 4> inverted = Guv.invert();
-
-        ctx.pin(inverted);
-
-        tensor<value, 4, 4, 4> christoff2 = christoffel_symbols_2(inverted, dGuv);
-
-        for(int mu=0; mu < 4; mu++)
-        {
-            value sum = 0;
-
-            for(int a=0; a < 4; a++)
-            {
-                for(int b=0; b < 4; b++)
-                {
-                    sum += christoff2[mu, a, b] * loop_vel[a] * loop_vel[b];
+                        dGuv[k, i, j] = (buffer_read_linear(Guv_4d[linear_index], shuffled_u, dim.get()) - buffer_read_linear(Guv_4d[linear_index], shuffled_l, dim.get())) / (2 * scales[k]);
+                    }
                 }
             }
 
-            acceleration[mu] = -sum;
+            ctx.pin(dGuv);
+
+            inverse_metric<value, 4, 4> inverted = Guv.invert();
+
+            ctx.pin(inverted);
+
+            tensor<value, 4, 4, 4> christoff2 = christoffel_symbols_2(inverted, dGuv);
+
+            for(int mu=0; mu < 4; mu++)
+            {
+                value sum = 0;
+
+                for(int a=0; a < 4; a++)
+                {
+                    for(int b=0; b < 4; b++)
+                    {
+                        sum += christoff2[mu, a, b] * loop_vel[a] * loop_vel[b];
+                    }
+                }
+
+                acceleration[mu] = -sum;
+            }
         }
-    }
+    };
 
     value_i hit_type = declare(ctx, value_i{-1});
 
@@ -1125,6 +1206,8 @@ void trace_slice4(equation_context& ctx,
     ctx.exec(for_s("idx", value_i(0), value_i("idx") < (value_i)steps, value_i("idx++")));
 
     {
+        do_Guv();
+
         //v3f dpos = declare(ctx, dx);
         //v3f dvel = declare(ctx, V_upper_diff);
 
@@ -1140,21 +1223,30 @@ void trace_slice4(equation_context& ctx,
         value escape_cond = world_pos.squared_length() >= u_sq;
         //value ingested_cond = dpos.squared_length() < 0.1f * 0.1f;
 
-        value ingested_cond = fabs(loop_vel.x()) > 1000 && fabs(dvel.x() > 100);
+        value ingested_cond = fabs(loop_vel.x()) > 1000 && fabs(dvel.x()) > 100;
 
         //if(fabs(velocity.x) > 1000 + f_in_x && fabs(acceleration.x) > 100)
+        //ctx.exec(if_s(x == 128 && y == 128, value_v{"printf(\"hi %f\", " + type_to_string(pos.x()) + ")"}));
+
+        //value_v on_quit1 = if_s(x == 128 && y == 128, dual_types::print("quit1 %f %f %f %f loop %f", world_pos4.x(), world_pos4.y(), world_pos4.z(), world_pos4.w(), loop_voxel_pos_txyz.x()));
+        //value_v on_quit2 = if_s(x == 128 && y == 128, value_v{"printf(\"quit2 %f\", " + type_to_string(pos.x()) + ")"});
+
+        //ctx.exec(if_s(x == 128 && y == 128, dual_types::print("Guv %f", Guv[0, 0])));
+        //ctx.exec(if_s(x == 128 && y == 128, dual_types::print("Loop %f %f %f tvoxel %f", world_pos.x(), world_pos.y(), world_pos.z(), loop_voxel_pos_txyz.x())));
 
         ctx.exec(if_s(escape_cond,
                         (assign(hit_type, value_i{0}),
+                         //on_quit1,
                          break_s)
                       ));
 
         ctx.exec(if_s(ingested_cond,
                       (assign(hit_type, value_i{1}),
+                       //on_quit2,
                        break_s)
                       ));
 
-        ctx.exec(assign(loop_voxel_pos_txyz, loop_voxel_pos_txyz + dpos * step / scale.get()));
+        ctx.exec(assign(loop_voxel_pos_txyz, loop_voxel_pos_txyz + dpos * step / scales));
         ctx.exec(assign(loop_vel, loop_vel + dvel * step));
     }
 

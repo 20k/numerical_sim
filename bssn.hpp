@@ -27,6 +27,20 @@ literal<T> buffer_read_linear_f(equation_context& ctx, buffer<T, N> buf, literal
     return literal<T>();
 }
 
+template<typename T, int N>
+inline
+literal<T> buffer_read_linear_f4(equation_context& ctx, buffer<T, N> buf, literal<v4f> position, literal<v4i> dim)
+{
+    ctx.order = 1;
+    ctx.uses_linear = true;
+
+    v4i idim = dim.get();
+    v4f ipos = position.get();
+
+    ctx.exec(return_v(buffer_read_linear(buf, ipos, idim)));
+
+    return literal<T>();
+}
 
 template<typename T, int N>
 inline
