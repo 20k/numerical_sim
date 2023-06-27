@@ -76,12 +76,12 @@ lightray make_lightray(equation_context& ctx,
 
     ctx.pin(real_metric);
 
-    return make_lightray(ctx, world_position, camera_quat, screen_size, xy, real_metric);
+    return make_lightray(ctx, world_position, camera_quat, screen_size, xy, real_metric, gA, gB);
 }
 
 lightray make_lightray(equation_context& ctx,
                        const tensor<value, 3>& world_position, const tensor<value, 4>& camera_quat, v2i screen_size, v2i xy,
-                       const metric<value, 4, 4>& real_metric)
+                       const metric<value, 4, 4>& real_metric, const value& gA, const tensor<value, 3>& gB)
 {
     value cx = (value)xy.x();
     value cy = (value)xy.y();
@@ -174,14 +174,7 @@ lightray make_lightray(equation_context& ctx,
 
     //ctx.add("GET_KU_UOBSU", ku_uobsu);
 
-    ///https://arxiv.org/pdf/gr-qc/0703035.pdf
-    tensor<value, 3> gB = {real_metric[1, 1], real_metric[1, 2], real_metric[1, 3]};
-
-    ///g^00 = -1/n^2
-    ///n^2 g^00 = -1
-    ///n^2 = -1/g^00
-    ///n = sqrt(-1/g00)
-    value gA = sqrt(-1/real_metric.invert()[0, 0]);
+    ///https://arxiv.org/pdf/gr-qc/0703035.pdf todo
 
     tensor<value, 4> N = get_adm_hypersurface_normal_raised(gA, gB);
 

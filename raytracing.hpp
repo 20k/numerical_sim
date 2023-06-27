@@ -25,7 +25,7 @@ lightray make_lightray(equation_context& ctx,
 
 lightray make_lightray(equation_context& ctx,
                        const tensor<value, 3>& world_position, const tensor<value, 4>& camera_quat, v2i screen_size, v2i xy,
-                       const metric<value, 4, 4>& Guv);
+                       const metric<value, 4, 4>& Guv, const value& gA, const tensor<value, 3>& gB);
 
 void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args);
 
