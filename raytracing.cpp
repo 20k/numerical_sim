@@ -72,6 +72,17 @@ lightray make_lightray(equation_context& ctx,
                        const tensor<value, 3>& world_position, const tensor<value, 4>& camera_quat, v2i screen_size, v2i xy,
                        const metric<value, 3, 3>& Yij, const value& gA, const tensor<value, 3>& gB)
 {
+    metric<value, 4, 4> real_metric = calculate_real_metric(Yij, gA, gB);
+
+    ctx.pin(real_metric);
+
+    return make_lightray(ctx, world_position, camera_quat, screen_size, xy, real_metric);
+}
+
+lightray make_lightray(equation_context& ctx,
+                       const tensor<value, 3>& world_position, const tensor<value, 4>& camera_quat, v2i screen_size, v2i xy,
+                       const metric<value, 4, 4>& real_metric)
+{
     value cx = (value)xy.x();
     value cy = (value)xy.y();
 
@@ -89,10 +100,6 @@ lightray make_lightray(equation_context& ctx,
     ctx.pin(pixel_direction);
 
     pixel_direction = pixel_direction.norm();
-
-    metric<value, 4, 4> real_metric = calculate_real_metric(Yij, gA, gB);
-
-    ctx.pin(real_metric);
 
     frame_basis basis = calculate_frame_basis(ctx, real_metric);
 
@@ -167,6 +174,15 @@ lightray make_lightray(equation_context& ctx,
 
     //ctx.add("GET_KU_UOBSU", ku_uobsu);
 
+    ///https://arxiv.org/pdf/gr-qc/0703035.pdf
+    tensor<value, 3> gB = {real_metric[1, 1], real_metric[1, 2], real_metric[1, 3]};
+
+    ///g^00 = -1/n^2
+    ///n^2 g^00 = -1
+    ///n^2 = -1/g^00
+    ///n = sqrt(-1/g00)
+    value gA = sqrt(-1/real_metric.invert()[0, 0]);
+
     tensor<value, 4> N = get_adm_hypersurface_normal_raised(gA, gB);
 
     value E = -sum_multiply(tensor_velocity_lowered, N);
@@ -187,6 +203,8 @@ lightray make_lightray(equation_context& ctx,
 
 void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f> camera_quat, literal<v2i> screen_size,
                      std::array<buffer<value, 3>, 6> linear_Yij_1, std::array<buffer<value, 3>, 6> linear_Kij_1, buffer<value, 3> linear_gA_1, std::array<buffer<value, 3>, 3> linear_gB_1,
+                     std::array<buffer<value, 3>, 6> linear_Yij_2, std::array<buffer<value, 3>, 6> linear_Kij_2, buffer<value, 3> linear_gA_2, std::array<buffer<value, 3>, 3> linear_gB_2,
+                     literal<value> frac,
                      named_literal<value, "scale"> scale, named_literal<v4i, "dim"> dim,
                      std::array<buffer<value>, 3> positions_out, std::array<buffer<value>, 3> velocities_out
                      )
@@ -209,7 +227,16 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
 
     v3f pos = camera_pos.get();
 
-    for(int i=0; i < 3; i++)
+    auto w2v = [&](v3f in)
+    {
+        v3i centre = (dim.get().xyz() - 1)/2;
+
+        return (in / scale) + (v3f)centre;
+    };
+
+    v3f voxel_pos = w2v(pos);
+
+    /*for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
         {
@@ -222,7 +249,22 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
         gB[i] = buffer_index_generic(linear_gB_1[i], pos, dim.name);
     }
 
-    gA = buffer_index_generic(linear_gA_1, pos, dim.name);
+    gA = buffer_index_generic(linear_gA_1, pos, dim.name);*/
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            int tidx = index_table[i][j];
+
+            Yij[i, j] = mix(buffer_index_generic(linear_Yij_1[tidx], voxel_pos, dim.name), buffer_index_generic(linear_Yij_2[tidx], voxel_pos, dim.name), frac.get());
+            Kij[i, j] = mix(buffer_index_generic(linear_Kij_1[tidx], voxel_pos, dim.name), buffer_index_generic(linear_Kij_2[tidx], voxel_pos, dim.name), frac.get());
+        }
+
+        gB[i] = mix(buffer_index_generic(linear_gB_1[i], voxel_pos, dim.name), buffer_index_generic(linear_gB_2[i], voxel_pos, dim.name), frac.get());
+    }
+
+    gA = mix(buffer_index_generic(linear_gA_1, voxel_pos, dim.name), buffer_index_generic(linear_gA_2, voxel_pos, dim.name), frac.get());
 
     v2i in_xy = {"get_global_id(0)", "get_global_id(1)"};
 
@@ -507,7 +549,7 @@ void trace_slice(equation_context& ctx,
     ctx.exec(assign(out.hit_type.get(), value_i{1}));
 
     ctx.exec(if_s(hit_type != value_i{-1},
-                  (on_terminate, on_terminated)
+                  on_terminated
                   ));
 
     ctx.exec(assign(positions_out[0][lidx], fin_world_pos.x()));
@@ -519,33 +561,6 @@ void trace_slice(equation_context& ctx,
     ctx.exec(assign(velocities_out[2][lidx], loop_vel.z()));
 
     //ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"p3 %i %f\", " + type_to_string(hit_type) + ", " + type_to_string(u_sq) + ");}");
-}
-
-void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args)
-{
-    {
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, get_raytraced_quantities, "get_raytraced_quantities", "", bssn_args);
-
-        clctx.register_kernel("get_raytraced_quantities", kern);
-    }
-
-    {
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_kernel_for(clctx, ectx, init_slice_rays, "init_slice_rays", "");
-
-        clctx.register_kernel("init_slice_rays", kern);
-    }
-
-    {
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_kernel_for(clctx, ectx, trace_slice, "trace_slice", "");
-
-        clctx.register_kernel("trace_slice", kern);
-    }
 }
 
 raytracing_manager::raytracing_manager(cl::context& clctx, const tensor<int, 2>& screen) : render_ray_info_buf(clctx)
@@ -604,29 +619,6 @@ void raytracing_manager::trace(cl::context& clctx, cl::command_queue& mqueue, fl
     cl_int4 mesh_dim = {slice_size.x(), slice_size.y(), slice_size.z()};
     cl_int2 clscreen = {screen.x(), screen.y()};
 
-    {
-        cl::args args;
-        args.push_back(ccamera_pos, ccamera_quat, screen);
-
-        std::vector<cl::buffer>& which_buf = slices.back();
-
-        for(auto& i : which_buf)
-        {
-            args.push_back(i);
-        }
-
-
-        args.push_back(scale);
-        args.push_back(mesh_dim);
-
-        for(int i=0; i < 6; i++)
-        {
-            args.push_back(rays_1[i]);
-        }
-
-        mqueue.exec("init_slice_rays", args, {screen.x(), screen.y()}, {8,8});
-    }
-
     auto get_slices_for_time = [&](float time) -> std::tuple<std::vector<cl::buffer>*, std::vector<cl::buffer>*, float>
     {
         if(slices.size() == 1)
@@ -656,6 +648,36 @@ void raytracing_manager::trace(cl::context& clctx, cl::command_queue& mqueue, fl
     };
 
     float my_time = camera_start_time;
+
+    {
+        auto [b1, b2, frac] = get_slices_for_time(my_time);
+
+        cl::args args;
+        args.push_back(ccamera_pos, ccamera_quat, screen);
+
+        for(auto& i : *b1)
+        {
+            args.push_back(i);
+        }
+
+        for(auto& i : *b2)
+        {
+            args.push_back(i);
+        }
+
+        args.push_back(frac);
+
+        args.push_back(scale);
+        args.push_back(mesh_dim);
+
+        for(int i=0; i < 6; i++)
+        {
+            args.push_back(rays_1[i]);
+        }
+
+        mqueue.exec("init_slice_rays", args, {screen.x(), screen.y()}, {8,8});
+    }
+
     //float my_time = slices.size() * slice_width;
     float my_step = 0.05f;
 
@@ -672,16 +694,14 @@ void raytracing_manager::trace(cl::context& clctx, cl::command_queue& mqueue, fl
 
             auto [b1, b2, frac] = get_slices_for_time(my_time);
 
-            //printf("Frac %f\n", frac);
-
-            for(int i=0; i < b1->size(); i++)
+            for(auto& i : *b1)
             {
-                args.push_back((*b1)[i]);
+                args.push_back(i);
             }
 
-            for(int i=0; i < b2->size(); i++)
+            for(auto& i : *b2)
             {
-                args.push_back((*b2)[i]);
+                args.push_back(i);
             }
 
             args.push_back(scale, mesh_dim, clscreen, i);
@@ -773,4 +793,209 @@ void raytracing_manager::grab_buffers(cl::context& clctx, cl::managed_command_qu
     }
 
     time_elapsed += step;
+}
+
+using ray4_value = value;
+
+void get_raytraced_quantities4(single_source::argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args)
+{
+    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
+    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
+    ctx.add_function("buffer_read_linear", buffer_read_linear_f<value, 3>);
+
+    arg_gen.add(bssn_args.buffers);
+    arg_gen.add<named_literal<v4i, "dim">>();
+    arg_gen.add<named_literal<v4i, "out_dim">>();
+    auto slice = arg_gen.add<named_literal<value_i, "slice">>();
+
+    v3i in_dim = {"dim.x", "dim.y", "dim.z"};
+    v3i out_dim = {"out_dim.x", "out_dim.y", "out_dim.z"};
+
+    auto Guv_out = arg_gen.add<std::array<buffer<ray4_value>, 10>>();
+
+    ctx.exec("int ix = get_global_id(0)");
+    ctx.exec("int iy = get_global_id(1)");
+    ctx.exec("int iz = get_global_id(2)");
+
+    v3i pos = {"ix", "iy", "iz"};
+
+    ctx.exec(if_s(pos.x() >= out_dim.x() || pos.y() >= out_dim.y() || pos.z() >= out_dim.z(), return_s));
+
+    v3f in_dimf = (v3f)in_dim;
+    v3f out_dimf = (v3f)out_dim;
+
+    v3f in_ratio = in_dimf / out_dimf;
+
+    v3f upper_pos = (v3f)pos * in_ratio;
+
+    ctx.uses_linear = true;
+
+    ctx.exec("float fx = " + type_to_string(upper_pos.x()));
+    ctx.exec("float fy = " + type_to_string(upper_pos.y()));
+    ctx.exec("float fz = " + type_to_string(upper_pos.z()));
+
+    standard_arguments args(ctx);
+
+    value_i idx = slice.get() * out_dim.x() * out_dim.y() * out_dim.z() + pos.z() * out_dim.y() * out_dim.x() + pos.y() * out_dim.x() + pos.x();
+
+    metric<value, 4, 4> Guv = calculate_real_metric(args.Yij, args.gA, args.gB);
+
+    vec2i linear_indices[] = {{0, 0}, {0, 1}, {0, 2}, {0, 3}, {1, 1}, {1, 2}, {1, 3}, {2, 2}, {2, 3}, {3, 3}};
+
+    for(int i=0; i < 10; i++)
+    {
+        vec2i lidx = linear_indices[i];
+
+        ctx.exec(assign(Guv_out[i][idx], Guv[lidx.x(), lidx.y()]));
+    }
+}
+
+raytracing4_manager::raytracing4_manager(cl::context& clctx, const tensor<int, 2>& screen) : render_ray_info_buf(clctx)
+{
+    slice_size = {100, 100, 100};
+    slice_width = 2;
+
+    render_ray_info_buf.alloc(30 * sizeof(float) * 4096 * 4096);
+
+    for(int i=0; i < 10; i++)
+    {
+        cl::buffer buf(clctx);
+
+        buf.alloc(sizeof(ray4_value::value_type) * slice_size.x() * slice_size.y() * slice_size.z() * max_slices);
+
+        slice.push_back(buf);
+    }
+}
+
+void raytracing4_manager::grab_buffers(cl::context& clctx, cl::managed_command_queue& mqueue, const std::vector<cl::buffer>& bufs, float scale, const tensor<cl_int, 4>& clsize, float step)
+{
+    if(last_grabbed >= max_slices)
+        return;
+
+    int c2 = floor(time_elapsed / slice_width);
+
+    if(last_grabbed != c2)
+    {
+        std::cout << "Grabby4\n";
+
+        tensor<int, 4> out_clsize = {slice_size.x(), slice_size.y(), slice_size.z(), 0};
+
+        ///take a snapshot!
+        cl::args args;
+
+        for(cl::buffer b : bufs)
+        {
+            args.push_back(b);
+        }
+
+        args.push_back(clsize);
+        args.push_back(out_clsize);
+
+        for(auto& i : slice)
+        {
+            args.push_back(i);
+        }
+
+        args.push_back(c2);
+
+        mqueue.exec("get_raytraced_quantities4", args, {slice_size.x(), slice_size.y(), slice_size.z()}, {8,8,1});
+
+        last_grabbed = c2;
+    }
+
+    time_elapsed += step;
+}
+
+
+void init_slice_rays4(equation_context& ctx, literal<v3f> camera_pos, literal<v4f> camera_quat, literal<v2i> screen_size,
+                     std::array<ray4_value, 10> Guv_1, std::array<ray4_value, 10> Guv_2,
+                     named_literal<value, "scale"> scale, named_literal<v4i, "dim"> dim,
+                     std::array<buffer<value>, 3> positions_out, std::array<buffer<value>, 3> velocities_out
+                     )
+{
+    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
+    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
+    ctx.add_function("buffer_read_linear", buffer_read_linear_f<value, 3>);
+    ctx.add_function("buffer_read_linear4", buffer_read_linear_f<value, 4>);
+
+    ctx.order = 1;
+    ctx.uses_linear = true;
+
+    metric<value, 3, 3> Yij;
+    tensor<value, 3, 3> Kij;
+    tensor<value, 3> gB;
+    value gA;
+
+    int index_table[3][3] = {{0, 1, 2},
+                             {1, 3, 4},
+                             {2, 4, 5}};
+
+    v3f pos = camera_pos.get();
+
+    v2i in_xy = {"get_global_id(0)", "get_global_id(1)"};
+
+    v2i xy = declare(ctx, in_xy);
+
+    ctx.exec(if_s(xy.x() >= screen_size.get().x() || xy.y() >= screen_size.get().y(), return_s));
+
+    int indices[4][4] = {{0, 1, 2, 3},
+                         {1, 4, 5, 6},
+                         {2, 5, 7, 8},
+                         {3, 6, 8, 9}};
+
+    std::array<ray4_value, 10> Guv_i;
+
+    for(int i=0; i < 10; i++)
+    {
+
+    }
+
+    lightray ray = make_lightray(ctx, camera_pos.get(), camera_quat.get(), screen_size.get(), xy, Yij, gA, gB);
+
+    value_i out_idx = xy.y() * screen_size.get().x() + xy.x();
+
+    ctx.exec(assign(positions_out[0][out_idx], ray.adm_pos.x()));
+    ctx.exec(assign(positions_out[1][out_idx], ray.adm_pos.y()));
+    ctx.exec(assign(positions_out[2][out_idx], ray.adm_pos.z()));
+
+    ctx.exec(assign(velocities_out[0][out_idx], ray.adm_vel.x()));
+    ctx.exec(assign(velocities_out[1][out_idx], ray.adm_vel.y()));
+    ctx.exec(assign(velocities_out[2][out_idx], ray.adm_vel.z()));
+
+    ctx.fix_buffers();
+}
+
+void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args)
+{
+    {
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, get_raytraced_quantities, "get_raytraced_quantities", "", bssn_args);
+
+        clctx.register_kernel("get_raytraced_quantities", kern);
+    }
+
+    {
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_kernel_for(clctx, ectx, init_slice_rays, "init_slice_rays", "");
+
+        clctx.register_kernel("init_slice_rays", kern);
+    }
+
+    {
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_kernel_for(clctx, ectx, trace_slice, "trace_slice", "");
+
+        clctx.register_kernel("trace_slice", kern);
+    }
+
+    {
+        equation_context ectx;
+
+        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, get_raytraced_quantities4, "get_raytraced_quantities4", "", bssn_args);
+
+        clctx.register_kernel("get_raytraced_quantities4", kern);
+    }
 }
