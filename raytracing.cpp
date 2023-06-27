@@ -1134,8 +1134,6 @@ void trace_slice4(equation_context& ctx,
     v4f pos = {positions[0][lidx], positions[1][lidx], positions[2][lidx], positions[3][lidx]};
     v4f vel = {velocities[0][lidx], velocities[1][lidx], velocities[2][lidx], velocities[3][lidx]};
 
-    //ctx.exec(if_s(x == 128 && y == 128, dual_types::print("TPosx %f", pos.x())));
-
     ///takes in t, x, y, z -> outputs t, x, y, z
     auto w2v4 = [&](v4f in)
     {
@@ -1148,8 +1146,6 @@ void trace_slice4(equation_context& ctx,
     v4f loop_voxel_pos_txyz = declare(ctx, voxel_pos_txyz);
     v4f loop_vel = declare(ctx, vel);
 
-    //ctx.exec(if_s(x == 128 && y == 128, value_v{"printf(\"hi %f\", " + type_to_string(pos.x()) + ")"}));
-
     value universe_size = ((dim.get().x()-1)/2).convert<float>() * scale;
 
     value u_sq = universe_size * universe_size * 0.95f * 0.95f;
@@ -1160,7 +1156,6 @@ void trace_slice4(equation_context& ctx,
     {
         Guv_lin[i] = buffer_read_linear(Guv_4d[i], txyz_to_xyzt(loop_voxel_pos_txyz), dim.get());
     }
-
 
     int indices[4][4] = {{0, 1, 2, 3},
                          {1, 4, 5, 6},
@@ -1267,9 +1262,6 @@ void trace_slice4(equation_context& ctx,
 
         tensor<value, 4> acceleration = do_Guv();
 
-        //v3f dpos = declare(ctx, dx);
-        //v3f dvel = declare(ctx, V_upper_diff);
-
         v4f dpos = declare(ctx, loop_vel);
         v4f dvel = declare(ctx, acceleration);
 
@@ -1282,20 +1274,11 @@ void trace_slice4(equation_context& ctx,
         value escape_cond = world_pos.squared_length() >= u_sq;
         //value ingested_cond = dpos.squared_length() < 0.1f * 0.1f;
 
-        value ingested_cond = fabs(loop_vel.x()) > 1000 && fabs(dvel.x()) > 100;
-
-        //if(fabs(velocity.x) > 1000 + f_in_x && fabs(acceleration.x) > 100)
-        //ctx.exec(if_s(x == 128 && y == 128, value_v{"printf(\"hi %f\", " + type_to_string(pos.x()) + ")"}));
-
-        //value_v on_quit1 = if_s(x == 128 && y == 128, dual_types::print("quit1 %f %f %f %f loop %f", world_pos4.x(), world_pos4.y(), world_pos4.z(), world_pos4.w(), loop_voxel_pos_txyz.x()));
-        //value_v on_quit2 = if_s(x == 128 && y == 128, value_v{"printf(\"quit2 %f\", " + type_to_string(pos.x()) + ")"});
-
-        //ctx.exec(if_s(x == 128 && y == 128, dual_types::print("Guv %f", Guv[0, 0])));
-        //ctx.exec(if_s(x == 128 && y == 128, dual_types::print("Loop %f %f %f tvoxel %f", world_pos.x(), world_pos.y(), world_pos.z(), loop_voxel_pos_txyz.x())));
+        value ingested_cond = fabs(loop_vel.x()) > 10000;
+        //value ingested_cond = fabs(loop_vel.x()) > 1000 && fabs(dvel.x()) > 100;
 
         ctx.exec(if_s(escape_cond,
                         (assign(hit_type, value_i{0}),
-                         //on_quit1,
                          break_s)
                       ));
 
@@ -1304,8 +1287,6 @@ void trace_slice4(equation_context& ctx,
                        //on_quit2,
                        break_s)
                       ));*/
-
-        //ctx.exec(if_s(x == 128 && y == 128, dual_types::print("%f cds", current_ds)));
 
         ctx.exec(assign(loop_voxel_pos_txyz, loop_voxel_pos_txyz + dpos * current_ds / scales));
         ctx.exec(assign(loop_vel, loop_vel + dvel * current_ds));
@@ -1321,7 +1302,6 @@ void trace_slice4(equation_context& ctx,
     value zp1 = 1;
 
     {
-        ///at loop voxel pos
         //auto Guv = get_Guv();
 
         metric<value, 4, 4> Guv;
@@ -1337,22 +1317,15 @@ void trace_slice4(equation_context& ctx,
 
         value top = sum_multiply(loop_vel, observer_lowered);
 
-        ctx.exec(if_s(x == 128 && y == 128, dual_types::print("Ku %f %f", top, ku_uobsu[lidx])));
+        top = clamp(top, value{-100.f}, {100.f});
 
         zp1 = top / ku_uobsu[lidx];
 
-        ///(velocity.x / -ray->ku_uobsu)
-
-        //value top = -loop_vel.x() / ku_uobsu[lidx];
+        ///pretty sure this boils down to
+        ///(-velocity.x / ray->ku_uobsu)
     }
 
-    //ctx.exec("}");
-
-    //ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"%i\", " + type_to_string((value_i)steps) + ");}");
-
     v4f fin_world_pos = voxel_to_world4(loop_voxel_pos_txyz, dim.get(), slice_width.get(), scale.get());
-
-    //ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"p2 %f %f %f\", " + type_to_string(fin_world_pos.x()) + "," + type_to_string(fin_world_pos.y()) + "," + type_to_string(fin_world_pos.z()) + ");}");
 
     render_ray_info out = render_out[lidx];
 
