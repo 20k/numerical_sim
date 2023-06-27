@@ -1017,7 +1017,7 @@ void trace_slice4(equation_context& ctx,
 
     ///t, x, y, z
     v4f pos = {positions[0][lidx], positions[1][lidx], positions[2][lidx], positions[3][lidx]};
-    v4f vel = {velocities[0][lidx], velocities[1][lidx], velocities[2][lidx], velocities[4][lidx]};
+    v4f vel = {velocities[0][lidx], velocities[1][lidx], velocities[2][lidx], velocities[3][lidx]};
 
     ///takes in t, x, y, z -> outputs t, x, y, z
     auto w2v4 = [&](v4f in)
