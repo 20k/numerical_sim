@@ -229,21 +229,6 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
 
     v3f voxel_pos = w2v(pos);
 
-    /*for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            int tidx = index_table[i][j];
-
-            Yij[i, j] = buffer_index_generic(linear_Yij_1[tidx], pos, dim.name);
-            Kij[i, j] = buffer_index_generic(linear_Kij_1[tidx], pos, dim.name);
-        }
-
-        gB[i] = buffer_index_generic(linear_gB_1[i], pos, dim.name);
-    }
-
-    gA = buffer_index_generic(linear_gA_1, pos, dim.name);*/
-
     for(int i=0; i < 3; i++)
     {
         for(int j=0; j < 3; j++)
