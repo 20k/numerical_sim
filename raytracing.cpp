@@ -894,7 +894,7 @@ void raytracing4_manager::trace(cl::context& clctx, cl::command_queue& mqueue, f
 
     std::vector<cl::buffer> ray_props;
 
-    for(int i=0; i < 8; i++)
+    for(int i=0; i < 9; i++)
     {
         ray_props.emplace_back(clctx).alloc(sizeof(cl_float) * screen.x() * screen.y());
         ray_props.back().set_to_zero(mqueue);
@@ -985,7 +985,8 @@ void init_slice_rays4(equation_context& ctx, literal<v3f> camera_pos, literal<v4
                      std::array<buffer<ray4_value, 4>, 10> Guv,
                      named_literal<value, "scale"> scale, named_literal<v4i, "dim"> dim,
                      literal<value> w_coord, literal<value> slice_width,
-                     std::array<buffer<value>, 4> positions_out, std::array<buffer<value>, 4> velocities_out
+                     std::array<buffer<value>, 4> positions_out, std::array<buffer<value>, 4> velocities_out,
+                     buffer<value> ku_uobsu_out
                      )
 {
     ctx.add_function("buffer_index", buffer_index_f<value, 3>);
@@ -1057,6 +1058,7 @@ void init_slice_rays4(equation_context& ctx, literal<v3f> camera_pos, literal<v4
     ctx.exec(assign(velocities_out[1][out_idx], ray.vel4.y()));
     ctx.exec(assign(velocities_out[2][out_idx], ray.vel4.z()));
     ctx.exec(assign(velocities_out[3][out_idx], ray.vel4.w()));
+    ctx.exec(assign(ku_uobsu_out[out_idx], ray.ku_uobsu));
 
     ctx.fix_buffers();
 }
@@ -1110,7 +1112,7 @@ void trace_slice4(equation_context& ctx,
                  std::array<buffer<ray4_value, 4>, 10> Guv_4d,
                  named_literal<value, "scale"> scale, named_literal<v4i, "dim"> dim, literal<v2i> screen_size, literal<value_i> ray_count,
                  literal<value> slice_width,
-                 std::array<buffer<value>, 4> positions, std::array<buffer<value>, 4> velocities,
+                 std::array<buffer<value>, 4> positions, std::array<buffer<value>, 4> velocities, buffer<value> ku_uobsu,
                  buffer<render_ray_info>& render_out)
 {
     ctx.add_function("buffer_index", buffer_index_f<value, 3>);
@@ -1166,9 +1168,8 @@ void trace_slice4(equation_context& ctx,
                          {3, 6, 8, 9}};
 
     v4f scales = {slice_width.get(), scale.get(), scale.get(), scale.get()};
-    tensor<value, 4> acceleration;
 
-    auto do_Guv = [&]()
+    auto get_Guv = [&]()
     {
         metric<value, 4, 4> Guv;
 
@@ -1182,59 +1183,68 @@ void trace_slice4(equation_context& ctx,
 
         ctx.pin(Guv);
 
+        return Guv;
+    };
+
+    auto do_Guv = [&]()
+    {
+        auto Guv = get_Guv();
+
+        ///k, uv
+        tensor<value, 4, 4, 4> dGuv;
+
+        for(int k=0; k < 4; k++)
         {
-            ///k, uv
-            tensor<value, 4, 4, 4> dGuv;
+            v4f directions[4] = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
 
-            for(int k=0; k < 4; k++)
+
+            for(int i=0; i < 4; i++)
             {
-                v4f directions[4] = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
-
-
-                for(int i=0; i < 4; i++)
+                for(int j=0; j < 4; j++)
                 {
-                    for(int j=0; j < 4; j++)
-                    {
-                        v4f offset = directions[k];
+                    v4f offset = directions[k];
 
-                        v4f voxel_pos_u = loop_voxel_pos_txyz + offset;
-                        v4f voxel_pos_l = loop_voxel_pos_txyz - offset;
+                    v4f voxel_pos_u = loop_voxel_pos_txyz + offset;
+                    v4f voxel_pos_l = loop_voxel_pos_txyz - offset;
 
-                        ///buffer stores x, y, z, t
-                        ///coordinates are t, x, y, z. Annoying!
-                        v4f shuffled_u = txyz_to_xyzt(voxel_pos_u);
-                        v4f shuffled_l = txyz_to_xyzt(voxel_pos_l);
+                    ///buffer stores x, y, z, t
+                    ///coordinates are t, x, y, z. Annoying!
+                    v4f shuffled_u = txyz_to_xyzt(voxel_pos_u);
+                    v4f shuffled_l = txyz_to_xyzt(voxel_pos_l);
 
-                        int linear_index = indices[i][j];
+                    int linear_index = indices[i][j];
 
-                        dGuv[k, i, j] = (buffer_read_linear(Guv_4d[linear_index], shuffled_u, dim.get()) - buffer_read_linear(Guv_4d[linear_index], shuffled_l, dim.get())) / (2 * scales[k]);
-                    }
+                    dGuv[k, i, j] = (buffer_read_linear(Guv_4d[linear_index], shuffled_u, dim.get()) - buffer_read_linear(Guv_4d[linear_index], shuffled_l, dim.get())) / (2 * scales[k]);
                 }
-            }
-
-            ctx.pin(dGuv);
-
-            inverse_metric<value, 4, 4> inverted = Guv.invert();
-
-            ctx.pin(inverted);
-
-            tensor<value, 4, 4, 4> christoff2 = christoffel_symbols_2(inverted, dGuv);
-
-            for(int mu=0; mu < 4; mu++)
-            {
-                value sum = 0;
-
-                for(int a=0; a < 4; a++)
-                {
-                    for(int b=0; b < 4; b++)
-                    {
-                        sum += christoff2[mu, a, b] * loop_vel[a] * loop_vel[b];
-                    }
-                }
-
-                acceleration[mu] = -sum;
             }
         }
+
+        ctx.pin(dGuv);
+
+        inverse_metric<value, 4, 4> inverted = Guv.invert();
+
+        ctx.pin(inverted);
+
+        tensor<value, 4, 4, 4> christoff2 = christoffel_symbols_2(inverted, dGuv);
+
+        tensor<value, 4> acceleration;
+
+        for(int mu=0; mu < 4; mu++)
+        {
+            value sum = 0;
+
+            for(int a=0; a < 4; a++)
+            {
+                for(int b=0; b < 4; b++)
+                {
+                    sum += christoff2[mu, a, b] * loop_vel[a] * loop_vel[b];
+                }
+            }
+
+            acceleration[mu] = -sum;
+        }
+
+        return acceleration;
     };
 
     value_i hit_type = declare(ctx, value_i{-1});
@@ -1255,7 +1265,7 @@ void trace_slice4(equation_context& ctx,
     {
         assert(ctx.current_block_level == 1);
 
-        do_Guv();
+        tensor<value, 4> acceleration = do_Guv();
 
         //v3f dpos = declare(ctx, dx);
         //v3f dvel = declare(ctx, V_upper_diff);
@@ -1265,7 +1275,7 @@ void trace_slice4(equation_context& ctx,
 
         //value pos_sq = v2w4(loop_voxel_pos).squared_length();
 
-        v4f world_pos4 = voxel_to_world4(loop_voxel_pos_txyz, dim.get(), slice_width.get(), scale.get());
+        v4f world_pos4 = voxel_to_world4(loop_voxel_pos_txyz + dpos * current_ds / scales, dim.get(), slice_width.get(), scale.get());
 
         v3f world_pos = {world_pos4.y(), world_pos4.z(), world_pos4.w()};
 
@@ -1308,6 +1318,34 @@ void trace_slice4(equation_context& ctx,
 
     ctx.exec(for_end());
 
+    value zp1 = 1;
+
+    {
+        ///at loop voxel pos
+        //auto Guv = get_Guv();
+
+        metric<value, 4, 4> Guv;
+
+        Guv[0, 0] = -1;
+
+        for(int i=1; i < 4; i++)
+            Guv[i, i] = 1;
+
+        v4f observer = v4f{1, 0, 0, 0};
+
+        v4f observer_lowered = lower_index(observer, Guv, 0);
+
+        value top = sum_multiply(loop_vel, observer_lowered);
+
+        ctx.exec(if_s(x == 128 && y == 128, dual_types::print("Ku %f %f", top, ku_uobsu[lidx])));
+
+        zp1 = top / ku_uobsu[lidx];
+
+        ///(velocity.x / -ray->ku_uobsu)
+
+        //value top = -loop_vel.x() / ku_uobsu[lidx];
+    }
+
     //ctx.exec("}");
 
     //ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"%i\", " + type_to_string((value_i)steps) + ");}");
@@ -1332,7 +1370,7 @@ void trace_slice4(equation_context& ctx,
                              assign(out.G.get(), value{0}),
                              assign(out.B.get(), value{0}),
                              assign(out.background_power.get(), value{1}),
-                             assign(out.zp1.get(), value{1}));
+                             assign(out.zp1.get(), zp1));
 
     ctx.exec(assign(out.x.get(), x));
     ctx.exec(assign(out.y.get(), y));
