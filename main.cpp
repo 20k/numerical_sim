@@ -3640,7 +3640,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 inline
 void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact_object::data>& holes)
 {
-
+    #define REGULAR_INITIAL
     #ifdef REGULAR_INITIAL
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
@@ -3692,22 +3692,9 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
 
         tensor<dual, 3> pos = {x - xs_t, y, z};
 
-        ctx.add("posx", pos.x().dual);
-        ctx.add("posy", pos.y().dual);
-        ctx.add("posz", pos.z().dual);
-
         dual rs_t = sqrt(pos.squared_length() + 0.00001f);
 
-        ctx.add("Rs_t", rs_t.dual);
-
-        ctx.add("bssx", x.dual);
-        ctx.add("bssy", y.dual);
-        ctx.add("bssz", z.dual);
-        ctx.add("bssxs_t", xs_t.dual);
-
         dual f_rs = (tanh(sigma * (rs_t + R)) - tanh(sigma * (rs_t - R))) / (2 * tanh(sigma * R));
-
-        ctx.add("F_rs" + std::to_string(k), f_rs.dual);
 
         dual vs_t = velocity;
 

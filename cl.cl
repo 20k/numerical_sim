@@ -230,24 +230,6 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     NANCHECK(gB1);
     NANCHECK(gB2);
 
-    if(ix == 106 && iy == 106 && iz == 106)
-    {
-        //printf("OVal %f %f %f gA? %f\n", ox, oy, oz, gA[index]);
-        //printf("F_rs %f %f %f %f\n", F_rs0, F_rs1, F_rs2, F_rs3);
-        printf("Rs_t %f\n", Rs_t);
-
-        printf("Pos %f %f %f\n", posx, posy, posz);
-
-        printf("bss %f %f %f %f\n", bssx, bssy, bssz, bssxs_t);
-
-        float f_dguv000 = dguv000;
-        float f_dguv001 = dguv001;
-        float f_dguv002 = dguv002;
-        float f_dguv003 = dguv003;
-
-        printf("Fdguv %f %f %f %f\n", f_dguv000, f_dguv001, f_dguv002, f_dguv003);
-
-    }
 
     #ifdef USE_GBB
     gBB0[index] = init_gBB0;
