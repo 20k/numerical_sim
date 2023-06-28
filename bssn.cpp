@@ -147,6 +147,156 @@ void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
     ctx.add("GET_X", args.get_X());
 }
 
+void bssn::init(equation_context& ctx, const metric<value, 4, 4>& Guv, const tensor<value, 4, 4, 4>& dGuv)
+{
+    metric<value, 3, 3> Yij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            Yij[i, j] = Guv[i+1, j+1];
+        }
+    }
+
+    tensor<value, 3, 3, 3> Yij_derivatives;
+
+    for(int k=0; k < 3; k++)
+    {
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                Yij_derivatives[k, i, j] = dGuv[k+1, i+1, j+1];
+            }
+        }
+    }
+
+    tensor<value, 3, 3, 3> Yij_christoffel = christoffel_symbols_2(Yij.invert(), Yij_derivatives);
+
+    ctx.pin(Yij_christoffel);
+
+    auto covariant_derivative_low_vec_e = [&](const tensor<value, 3>& lo, const tensor<value, 3, 3>& dlo)
+    {
+        ///DcXa
+        tensor<value, 3, 3> ret;
+
+        for(int a=0; a < 3; a++)
+        {
+            for(int c=0; c < 3; c++)
+            {
+                value sum = 0;
+
+                for(int b=0; b < 3; b++)
+                {
+                    sum += Yij_christoffel[b, c, a] * lo[b];
+                }
+
+                ret[c, a] = dlo[c, a] - sum;
+            }
+        }
+
+        return ret;
+    };
+
+    tensor<value, 3> gB_lower;
+    tensor<value, 3, 3> dgB_lower;
+
+    for(int i=0; i < 3; i++)
+    {
+        gB_lower[i] = Guv[0, i+1];
+
+        for(int k=0; k < 3; k++)
+        {
+            dgB_lower[k, i] = dGuv[k+1, 0, i+1];
+        }
+    }
+
+    tensor<value, 3> gB = raise_index(gB_lower, Yij.invert(), 0);
+
+    ctx.pin(gB);
+
+    value gB_sum = sum_multiply(gB, gB_lower);
+
+    ///g00 = nini - n^2
+    ///g00 - nini = -n^2
+    ///-g00 + nini = n^2
+    ///n = sqrt(-g00 + nini)
+    value gA = sqrt(-Guv[0, 0] + gB_sum);
+
+    ///https://clas.ucdenver.edu/math-clinic/sites/default/files/attached-files/master_project_mach_.pdf 4-19a
+    tensor<value, 3, 3> DigBj = covariant_derivative_low_vec_e(gB_lower, dgB_lower);
+
+    ctx.pin(DigBj);
+
+    tensor<value, 3, 3> Kij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            Kij[i, j] = (1/(2 * gA)) * (DigBj[i, j] + DigBj[j, i] - dGuv[0, i+1, j+1]);
+        }
+    }
+
+
+    value X = pow(Yij.det(), -1/3.f);
+    metric<value, 3, 3> cY = X * Yij;
+    value K = trace(Kij, Yij.invert());
+
+    inverse_metric<value, 3, 3> icY = cY.invert();
+
+    ///Kij = (1/X) * (cAij + 1/3 Yij K)
+    ///X Kij = cAij + 1/3 Yij K
+    ///X Kij - 1/3 Yij K = cAij
+
+    tensor<value, 3, 3> cA = X * Kij - (1.f/3.f) * cY.to_tensor() * K;
+
+    tensor<value, 3> cGi;
+
+    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
+
+    for(int i=0; i < 6; i++)
+    {
+        vec2i index = linear_indices[i];
+
+        std::string y_name = "init_cY" + std::to_string(i);
+
+        ctx.add(y_name, cY.idx(index.x(), index.y()));
+    }
+
+    for(int i=0; i < 6; i++)
+    {
+        ctx.add("init_cA" + std::to_string(i), cA.idx(linear_indices[i].x(), linear_indices[i].y()));
+    }
+
+    ctx.add("init_cGi0", cGi.idx(0));
+    ctx.add("init_cGi1", cGi.idx(1));
+    ctx.add("init_cGi2", cGi.idx(2));
+
+    ctx.add("init_K", K);
+
+    #ifdef USE_W
+    ctx.add("init_X", sqrt(X));
+    #else
+    ctx.add("init_X", X);
+    #endif
+
+    ctx.add("init_gA", gA);
+    ctx.add("init_gB0", gB[0]);
+    ctx.add("init_gB1", gB[1]);
+    ctx.add("init_gB2", gB[2]);
+
+    #ifdef USE_W
+    ctx.add("X_IS_ACTUALLY_W", 1);
+    #endif
+
+    #ifdef DAMP_C
+    ctx.add("DAMPED_CONSTRAINTS", 1);
+    #endif // DAMP_C
+
+}
+
 ///returns DcTab
 ///my covariant derivative functions are an absolute mess
 tensor<value, 3, 3, 3> covariant_derivative_low_tensor(equation_context& ctx, const tensor<value, 3, 3>& mT, const metric<value, 3, 3>& met, const inverse_metric<value, 3, 3>& inverse)

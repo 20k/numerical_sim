@@ -165,6 +165,8 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
         return;
 
+    float local_time = 0.f;
+
     float3 offset = transform_position(ix, iy, iz, dim, scale);
 
     float ox = offset.x;
@@ -200,6 +202,52 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     gB0[index] = init_gB0;
     gB1[index] = init_gB1;
     gB2[index] = init_gB2;
+
+    NANCHECK(cY0);
+    NANCHECK(cY1);
+    NANCHECK(cY2);
+    NANCHECK(cY3);
+    NANCHECK(cY4);
+    NANCHECK(cY5);
+
+    NANCHECK(cA0);
+    NANCHECK(cA1);
+    NANCHECK(cA2);
+    NANCHECK(cA3);
+    NANCHECK(cA4);
+    NANCHECK(cA5);
+
+
+    NANCHECK(cGi0);
+    NANCHECK(cGi1);
+    NANCHECK(cGi2);
+
+    NANCHECK(K);
+    NANCHECK(X);
+
+    NANCHECK(gA);
+    NANCHECK(gB0);
+    NANCHECK(gB1);
+    NANCHECK(gB2);
+
+    if(ix == 106 && iy == 106 && iz == 106)
+    {
+        //printf("OVal %f %f %f gA? %f\n", ox, oy, oz, gA[index]);
+        //printf("F_rs %f %f %f %f\n", F_rs0, F_rs1, F_rs2, F_rs3);
+        printf("Rs_t %f\n", Rs_t);
+
+        printf("Pos %f %f %f\n", posx, posy, posz);
+
+        printf("bss %f %f %f %f\n", bssx, bssy, bssz, bssxs_t);
+
+        float f_dguv000 = dguv000;
+        float f_dguv001 = dguv001;
+        float f_dguv002 = dguv002;
+        float f_dguv003 = dguv003;
+
+        printf("Fdguv %f %f %f %f\n", f_dguv000, f_dguv001, f_dguv002, f_dguv003);
+
+    }
 
     #ifdef USE_GBB
     gBB0[index] = init_gBB0;

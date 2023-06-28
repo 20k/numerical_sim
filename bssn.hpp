@@ -611,6 +611,7 @@ namespace bssn
     tensor<value, 3, 3> calculate_xgARij(equation_context& ctx, standard_arguments& args, const inverse_metric<value, 3, 3>& icY, const tensor<value, 3, 3, 3>& christoff1, const tensor<value, 3, 3, 3>& christoff2);
 
     void init(equation_context& ctx, const metric<value, 3, 3>& Yij, const tensor<value, 3, 3>& Aij, const value& gA);
+    void init(equation_context& ctx, const metric<value, 4, 4>& Guv, const tensor<value, 4, 4, 4>& dGuv);
 
     tensor<value, 3> calculate_momentum_constraint(matter_interop& interop, equation_context& ctx, bool use_matter);
     value calculate_hamiltonian_constraint(matter_interop& interop, equation_context& ctx, bool use_matter);

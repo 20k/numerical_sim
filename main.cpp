@@ -3640,6 +3640,8 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 inline
 void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact_object::data>& holes)
 {
+
+    #ifdef REGULAR_INITIAL
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
     value bl_conformal = calculate_conformal_guess(pos, holes);
@@ -3678,6 +3680,102 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     //value gA = 2/(1 + pow(bl_conformal + 1, 4));
 
     bssn::init(ctx, Yij, Aij, gA);
+    #else
+
+    auto fetch_Guv_of = [&ctx](int k, dual t, dual x, dual y, dual z)
+    {
+        float velocity = 2;
+        float sigma = 1;
+        float R = 2;
+
+        dual xs_t = velocity * t;
+
+        tensor<dual, 3> pos = {x - xs_t, y, z};
+
+        ctx.add("posx", pos.x().dual);
+        ctx.add("posy", pos.y().dual);
+        ctx.add("posz", pos.z().dual);
+
+        dual rs_t = sqrt(pos.squared_length() + 0.00001f);
+
+        ctx.add("Rs_t", rs_t.dual);
+
+        ctx.add("bssx", x.dual);
+        ctx.add("bssy", y.dual);
+        ctx.add("bssz", z.dual);
+        ctx.add("bssxs_t", xs_t.dual);
+
+        dual f_rs = (tanh(sigma * (rs_t + R)) - tanh(sigma * (rs_t - R))) / (2 * tanh(sigma * R));
+
+        ctx.add("F_rs" + std::to_string(k), f_rs.dual);
+
+        dual vs_t = velocity;
+
+        dual dt = (vs_t * vs_t * f_rs * f_rs - 1);
+        dual dxdt = -2 * vs_t * f_rs;
+        dual dx = 1;
+        dual dy = 1;
+        dual dz = 1;
+
+        metric<dual, 4, 4> Guv;
+
+        Guv[0, 0] = dt;
+        Guv[1, 0] = 0.5 * dxdt;
+        Guv[0, 1] = Guv[1, 0];
+        Guv[1, 1] = dx;
+        Guv[2, 2] = dy;
+        Guv[3, 3] = dz;
+
+        return Guv;
+    };
+
+    tensor<value, 4, 4, 4> dGuv;
+    metric<value, 4, 4> Guv;
+
+    {
+        std::vector<std::string> variable_names = {"local_time", "ox", "oy", "oz"};
+        std::vector<value> raw_eq;
+        std::vector<value> raw_derivatives;
+
+        for(int k=0; k < 4; k++)
+        {
+            for(int m=0; m < 4; m++)
+            {
+                std::array<dual, 4> variables;
+
+                for(int i=0; i < 4; i++)
+                {
+                    if(i == k)
+                    {
+                        variables[i].make_variable(variable_names[i]);
+                    }
+                    else
+                    {
+                        variables[i].make_constant(variable_names[i]);
+                    }
+                }
+
+                ///differentiating in the kth direction
+
+                metric<dual, 4, 4> diff_Guv = fetch_Guv_of(k,variables[0], variables[1], variables[2], variables[3]);
+
+                for(int i=0; i < 4; i++)
+                {
+                    for(int j=0; j < 4; j++)
+                    {
+                        dGuv[k, i, j] = diff_Guv[i, j].dual;
+
+                        Guv[i, j] = diff_Guv[i, j].real;
+
+                        ctx.add("dguv" + std::to_string(k) + std::to_string(i) + std::to_string(j), dGuv[k, i, j]);
+                    }
+                }
+            }
+        }
+    }
+
+    bssn::init(ctx, Guv, dGuv);
+    #endif
 }
 
 void build_sommerfeld_thin(equation_context& ctx)
@@ -5031,7 +5129,7 @@ int main()
     std::string hydro_argument_string = argument_string;
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {213, 213, 213};
+    vec3i size = {255, 255, 255};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -6196,6 +6294,8 @@ int main()
             camera_start_time += frametime.get_elapsed_time_s() * camera_speed;
         }
 
-        printf("Time: %f\n", frametime.restart() * 1000.);
+        float elapsed = frametime.restart() * 1000.f;
+
+        //printf("Time: %f\n", elapsed);
     }
 }
