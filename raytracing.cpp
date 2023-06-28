@@ -830,8 +830,8 @@ void get_raytraced_quantities4(single_source::argument_generator& arg_gen, equat
 
 raytracing4_manager::raytracing4_manager(cl::context& clctx, const tensor<int, 2>& screen) : render_ray_info_buf(clctx)
 {
-    slice_size = {100, 100, 100};
-    slice_width = 2;
+    slice_size = {64, 64, 64};
+    slice_width = 4;
 
     render_ray_info_buf.alloc(30 * sizeof(float) * 4096 * 4096);
 
