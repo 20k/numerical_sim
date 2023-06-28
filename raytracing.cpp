@@ -453,9 +453,11 @@ void trace_slice(equation_context& ctx,
 
     //ctx.exec(if_s(x == 128 && y == 128, value_v{"printf(\"hi %i stepc %i\", " + type_to_string(iteration.get()) + ", " + type_to_string((value_i)steps) + ");"}));
 
-    ctx.exec(for_s("idx", value_i(0), value_i("idx") < (value_i)steps, value_i("idx++")));
+    ctx.exec(for_b("idx", value_i(0), value_i("idx") < (value_i)steps, value_i("idx++")));
 
     {
+        dual_types::block blk(ctx);
+
         v3f dpos = declare(ctx, dx);
         v3f dvel = declare(ctx, V_upper_diff);
 
@@ -490,8 +492,6 @@ void trace_slice(equation_context& ctx,
 
         ctx.exec(assign(local_frac, clamp(local_frac - frac_increment, value{0.f}, value{1.f})));
     }
-
-    ctx.exec(for_end());
 
     //ctx.exec("}");
 
@@ -1255,9 +1255,10 @@ void trace_slice4(equation_context& ctx,
 
     //ctx.exec(assign(current_ds, next_ds_start));
 
-    ctx.exec(for_s("idx", value_i(0), value_i("idx") < (value_i)steps, value_i("idx++")));
+    ctx.exec(for_b("idx", value_i(0), value_i("idx") < (value_i)steps, value_i("idx++")));
 
     {
+        dual_types::block blk(ctx);
         assert(ctx.current_block_level == 1);
 
         tensor<value, 4> acceleration = do_Guv();
@@ -1296,8 +1297,6 @@ void trace_slice4(equation_context& ctx,
 
         ctx.exec(assign(current_ds, ds_out));
     }
-
-    ctx.exec(for_end());
 
     value zp1 = 1;
 

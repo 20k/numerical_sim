@@ -351,7 +351,7 @@ namespace single_source
             {
                 if(name == "")
                 {
-                    if(value.type != dual_types::ops::FOR_START)
+                    if(dual_types::get_description(value.type).is_semicolon_terminated)
                         base += type_to_string(value) + ";\n";
                     else
                         base += type_to_string(value);

@@ -52,10 +52,10 @@ struct equation_context : differentiator
 
     void exec(const value& v)
     {
-        if(v.type == dual_types::ops::FOR_START)
+        if(v.type == dual_types::ops::BLOCK_START)
             current_block_level++;
 
-        if(v.type == dual_types::ops::FOR_END)
+        if(v.type == dual_types::ops::BLOCK_END)
             current_block_level--;
 
         sequenced.push_back({"", v});
