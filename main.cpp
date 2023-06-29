@@ -5864,6 +5864,8 @@ int main()
                     nlohmann::json misc;
                     misc["real_w2"] = real_decomp;
                     misc["imaginary_w2"] = imaginary_decomp;
+                    misc["last_grabbed"] = raytrace.last_grabbed;
+                    misc["time_elapsed"] = raytrace.time_elapsed;
 
                     base_mesh.save(clctx.cqueue, "save", misc);
 
@@ -5896,6 +5898,12 @@ int main()
 
                     real_decomp = misc["real_w2"].get<std::vector<float>>();
                     imaginary_decomp = misc["imaginary_w2"].get<std::vector<float>>();
+
+                    if(misc.count("last_grabbed") > 0)
+                        raytrace.last_grabbed = misc["last_grabbed"];
+
+                    if(misc.count("time_elapsed") > 0)
+                        raytrace.time_elapsed = misc["time_elapsed"];
 
                     for(int i=0; i < raytrace.slice.size(); i++)
                         load_buffer(clctx.cqueue, raytrace.slice[i], "save/slice_" + std::to_string(i) + ".bin");

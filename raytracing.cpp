@@ -1150,22 +1150,22 @@ void trace_slice4(equation_context& ctx,
 
     value u_sq = universe_size * universe_size * 0.95f * 0.95f;
 
-    metric<value, 10> Guv_lin;
-
-    for(int i=0; i < 10; i++)
-    {
-        Guv_lin[i] = buffer_read_linear(Guv_4d[i], txyz_to_xyzt(loop_voxel_pos_txyz), dim.get());
-    }
+    v4f scales = {slice_width.get(), scale.get(), scale.get(), scale.get()};
 
     int indices[4][4] = {{0, 1, 2, 3},
                          {1, 4, 5, 6},
                          {2, 5, 7, 8},
                          {3, 6, 8, 9}};
 
-    v4f scales = {slice_width.get(), scale.get(), scale.get(), scale.get()};
-
-    auto get_Guv = [&]()
+    auto get_Guv = [&](v4f my_voxel_pos_txyz)
     {
+        metric<value, 10> Guv_lin;
+
+        for(int i=0; i < 10; i++)
+        {
+            Guv_lin[i] = buffer_read_linear(Guv_4d[i], txyz_to_xyzt(my_voxel_pos_txyz), dim.get());
+        }
+
         metric<value, 4, 4> Guv;
 
         for(int i=0; i < 4; i++)
@@ -1181,10 +1181,8 @@ void trace_slice4(equation_context& ctx,
         return Guv;
     };
 
-    auto do_Guv = [&]()
+    auto do_Guv = [&](v4f my_voxel_pos_txyz, v4f my_velocity)
     {
-        auto Guv = get_Guv();
-
         ///k, uv
         tensor<value, 4, 4, 4> dGuv;
 
@@ -1192,15 +1190,14 @@ void trace_slice4(equation_context& ctx,
         {
             v4f directions[4] = {{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
 
-
             for(int i=0; i < 4; i++)
             {
                 for(int j=0; j < 4; j++)
                 {
                     v4f offset = directions[k];
 
-                    v4f voxel_pos_u = loop_voxel_pos_txyz + offset;
-                    v4f voxel_pos_l = loop_voxel_pos_txyz - offset;
+                    v4f voxel_pos_u = my_voxel_pos_txyz + offset;
+                    v4f voxel_pos_l = my_voxel_pos_txyz - offset;
 
                     ///buffer stores x, y, z, t
                     ///coordinates are t, x, y, z. Annoying!
@@ -1215,6 +1212,8 @@ void trace_slice4(equation_context& ctx,
         }
 
         ctx.pin(dGuv);
+
+        auto Guv = get_Guv(my_voxel_pos_txyz);
 
         inverse_metric<value, 4, 4> inverted = Guv.invert();
 
@@ -1232,12 +1231,14 @@ void trace_slice4(equation_context& ctx,
             {
                 for(int b=0; b < 4; b++)
                 {
-                    sum += christoff2[mu, a, b] * loop_vel[a] * loop_vel[b];
+                    sum += christoff2[mu, a, b] * my_velocity[a] * my_velocity[b];
                 }
             }
 
             acceleration[mu] = -sum;
         }
+
+        ctx.pin(acceleration);
 
         return acceleration;
     };
@@ -1246,7 +1247,7 @@ void trace_slice4(equation_context& ctx,
 
     value_i steps = 800;
 
-    value max_accel = 0.005f;
+    value max_accel = 0.1f;
 
     value current_ds = declare(ctx, value{0.001f});
 
@@ -1261,15 +1262,52 @@ void trace_slice4(equation_context& ctx,
         dual_types::block blk(ctx);
         assert(ctx.current_block_level == 1);
 
-        tensor<value, 4> acceleration = do_Guv();
+        v4f loop_voxel_pos_pinned = declare(ctx, loop_voxel_pos_txyz);
+        v4f loop_velocity_pinned = declare(ctx, loop_vel);
 
-        v4f dpos = declare(ctx, loop_vel);
+        v4f acceleration = do_Guv(loop_voxel_pos_pinned, loop_velocity_pinned);
+
+        v4f v_half = loop_velocity_pinned + 0.5f * acceleration * current_ds;
+
+        v4f next_voxel_pos = loop_voxel_pos_pinned + v_half * current_ds / scales;
+        v4f intermediate_next_velocity = loop_velocity_pinned + acceleration * current_ds;
+
+        v4f next_acceleration = do_Guv(next_voxel_pos, intermediate_next_velocity);
+
+        v4f next_velocity = v_half + 0.5f * next_acceleration * current_ds;
+
+
+        v4f world_pos4 = voxel_to_world4(next_voxel_pos, dim.get(), slice_width.get(), scale.get());
+        v3f world_pos = {world_pos4.y(), world_pos4.z(), world_pos4.w()};
+
+        value escape_cond = world_pos.squared_length() >= u_sq;
+        //value ingested_cond = dpos.squared_length() < 0.1f * 0.1f;
+
+        value ingested_cond = fabs(loop_vel.x()) > 1000;
+        //value ingested_cond = fabs(loop_vel.x()) > 1000 && fabs(dvel.x()) > 100;
+
+        ctx.exec(if_s(escape_cond,
+                        (assign(hit_type, value_i{0}),
+                         break_s)
+                      ));
+
+        ctx.exec(if_s(ingested_cond,
+                      (assign(hit_type, value_i{1}),
+                       //on_quit2,
+                       break_s)
+                      ));
+
+
+
+        ctx.exec(assign(loop_voxel_pos_txyz, next_voxel_pos));
+        ctx.exec(assign(loop_vel, next_velocity));
+
+        /*v4f dpos = declare(ctx, loop_vel);
         v4f dvel = declare(ctx, acceleration);
 
         //value pos_sq = v2w4(loop_voxel_pos).squared_length();
 
         v4f world_pos4 = voxel_to_world4(loop_voxel_pos_txyz + dpos * current_ds / scales, dim.get(), slice_width.get(), scale.get());
-
         v3f world_pos = {world_pos4.y(), world_pos4.z(), world_pos4.w()};
 
         value escape_cond = world_pos.squared_length() >= u_sq;
@@ -1290,10 +1328,10 @@ void trace_slice4(equation_context& ctx,
                       ));
 
         ctx.exec(assign(loop_voxel_pos_txyz, loop_voxel_pos_txyz + dpos * current_ds / scales));
-        ctx.exec(assign(loop_vel, loop_vel + dvel * current_ds));
+        ctx.exec(assign(loop_vel, loop_vel + dvel * current_ds));*/
 
         value ds_out = 0;
-        calculate_ds_error(current_ds, dvel, max_accel, &ds_out);
+        calculate_ds_error(current_ds, next_acceleration, max_accel, &ds_out);
 
         ctx.exec(assign(current_ds, ds_out));
     }
