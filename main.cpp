@@ -2244,7 +2244,7 @@ struct superimposed_gpu_data
         pull(clctx, cqueue, particles, scale, dim);
 
         laplace_data solve = setup_u_laplace(clctx, objs, aij_aIJ, ppw2p, particle_grid_E_without_conformal);
-        u_arg = laplace_solver(clctx, cqueue, solve, scale, dim, 0.00001f);
+        u_arg = laplace_solver(clctx, cqueue, solve, scale, dim, 0.00000001f);
 
         tensor<value, 3> pos = {"ox", "oy", "oz"};
 
@@ -2993,13 +2993,13 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.8, 0};
+    h1.momentum = {0, 0.133 * 0.96, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     compact_object::data h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.8, 0};
+    h2.momentum = {0, -0.133 * 0.96, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     objects = {h1, h2};
@@ -3032,14 +3032,14 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     h1.bare_mass = 0.1764;
     h1.momentum = {0, 0.12616, 0};
     h1.position = {-2.966, 0.f, 0.f};
-    h1.angular_momentum = {0, 0, 0.225};
+    h1.angular_momentum = {0, 0, -0.225};
 
     compact_object::data h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.1764;
     h2.momentum = {0, -0.12616, 0};
     h2.position = {2.966, 0.f, 0.f};
-    h2.angular_momentum = {0, 0, 0.225};
+    h2.angular_momentum = {0, 0, -0.225};
 
     objects = {h1, h2};
     #endif
@@ -3674,8 +3674,8 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf the york-lichnerowicz split
     tensor<value, 3, 3> Aij = pow(phi, -2) * bcAij;
 
-    value gA = 1;
-    //value gA = 1/(pow(bl_conformal + u, 2));
+    //value gA = 1;
+    value gA = 1/(pow(bl_conformal + u + 1, 2));
     ///https://arxiv.org/pdf/1304.3937.pdf
     //value gA = 2/(1 + pow(bl_conformal + 1, 4));
 
@@ -5089,6 +5089,7 @@ int main()
     sett.opencl = true;
     sett.no_double_buffer = true;
     sett.is_srgb = true;
+    sett.no_decoration = false;
 
     render_window win(sett, "Geodesics");
 
@@ -5866,6 +5867,9 @@ int main()
 
                     base_mesh.save(clctx.cqueue, "save", misc);
 
+                    for(int i=0; i < raytrace.slice.size(); i++)
+                        save_buffer(clctx.cqueue, raytrace.slice[i], "save/slice_" + std::to_string(i) + ".bin");
+
                     ImGui::CloseCurrentPopup();
                 }
 
@@ -5892,6 +5896,9 @@ int main()
 
                     real_decomp = misc["real_w2"].get<std::vector<float>>();
                     imaginary_decomp = misc["imaginary_w2"].get<std::vector<float>>();
+
+                    for(int i=0; i < raytrace.slice.size(); i++)
+                        load_buffer(clctx.cqueue, raytrace.slice[i], "save/slice_" + std::to_string(i) + ".bin");
 
                     ImGui::CloseCurrentPopup();
                 }
@@ -5960,9 +5967,9 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.025;
+        float timestep = 0.035;
 
-        if(pao && base_mesh.elapsed_time > 120)
+        if(pao && base_mesh.elapsed_time > 300)
             step = false;
 
         if(step)
@@ -5972,7 +5979,7 @@ int main()
             auto callback = [&](cl::managed_command_queue& mqueue, std::vector<cl::buffer>& bufs, std::vector<ref_counted_buffer>& intermediates)
             {
                 wave_manager.issue_extraction(mqueue, bufs, intermediates, scale, clsize);
-                //raytrace.grab_buffers(clctx.ctx, mqueue, bufs, scale, {clsize.x(), clsize.y(), clsize.z(), 0}, timestep);
+                raytrace.grab_buffers(clctx.ctx, mqueue, bufs, scale, {clsize.x(), clsize.y(), clsize.z(), 0}, timestep);
 
                 if(!should_render)
                 {

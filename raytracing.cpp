@@ -831,9 +831,9 @@ void get_raytraced_quantities4(single_source::argument_generator& arg_gen, equat
 raytracing4_manager::raytracing4_manager(cl::context& clctx, const tensor<int, 2>& screen) : render_ray_info_buf(clctx)
 {
     slice_size = {100, 100, 100};
-    slice_width = 2;
+    slice_width = 4;
 
-    render_ray_info_buf.alloc(30 * sizeof(float) * 4096 * 4096);
+    render_ray_info_buf.alloc(30 * sizeof(float) * 2000 * 2000);
 
     for(int i=0; i < 10; i++)
     {
@@ -1275,7 +1275,7 @@ void trace_slice4(equation_context& ctx,
         value escape_cond = world_pos.squared_length() >= u_sq;
         //value ingested_cond = dpos.squared_length() < 0.1f * 0.1f;
 
-        value ingested_cond = fabs(loop_vel.x()) > 10000;
+        value ingested_cond = fabs(loop_vel.x()) > 1000;
         //value ingested_cond = fabs(loop_vel.x()) > 1000 && fabs(dvel.x()) > 100;
 
         ctx.exec(if_s(escape_cond,
@@ -1283,11 +1283,11 @@ void trace_slice4(equation_context& ctx,
                          break_s)
                       ));
 
-        /*ctx.exec(if_s(ingested_cond,
+        ctx.exec(if_s(ingested_cond,
                       (assign(hit_type, value_i{1}),
                        //on_quit2,
                        break_s)
-                      ));*/
+                      ));
 
         ctx.exec(assign(loop_voxel_pos_txyz, loop_voxel_pos_txyz + dpos * current_ds / scales));
         ctx.exec(assign(loop_vel, loop_vel + dvel * current_ds));

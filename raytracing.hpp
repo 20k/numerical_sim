@@ -58,7 +58,7 @@ struct raytracing4_manager
     ///x, y, z, using the cube strategy here
     vec3i slice_size;
     float slice_width = 0;
-    int max_slices = 80;
+    int max_slices = 75;
     ///using one fat slice per buffer
     std::vector<cl::buffer> slice;
 

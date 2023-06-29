@@ -707,7 +707,7 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, mat
     {
         for(int j=0; j < 3; j++)
         {
-            value sigma = 4/5.f;
+            value sigma = 0.5/5.f;
 
             dtcYij.idx(i, j) += sigma * 0.5f * (gB_lower.idx(i) * bigGi_lower.idx(j) + gB_lower.idx(j) * bigGi_lower.idx(i));
 
@@ -805,7 +805,7 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, mat
                 sum += 0.5f * (args.cY[k, i] * cD[k, j] + args.cY[k, j] * cD[k, i]);
             }
 
-            float cK = -0.035f;
+            float cK = -0.055f;
 
             dtcYij.idx(i, j) += cK * args.gA * sum;
         }
@@ -1230,7 +1230,7 @@ tensor<value, 6> get_dtcAij(standard_arguments& args, equation_context& ctx, mat
             #endif // DAMP_DTCAIJ
 
             #ifdef BETTERDAMP_DTCAIJ
-            value F_a = scale * gA;
+            value F_a = scale; //* gA
 
             ///https://arxiv.org/pdf/1205.5111v1.pdf (56)
             dtcAij.idx(i, j) += scale * F_a * trace_free(symmetric_momentum_deriv, cY, icY).idx(i, j);
@@ -1694,7 +1694,7 @@ exec_builder<value, get_dtX, finish_X> Xexec;
 value get_dtgA(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter)
 {
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf (94) is bad
-    value dtgA = lie_derivative(ctx, args.gB, args.gA) * 1 - 2 * args.gA * args.K;
+    value dtgA = lie_derivative(ctx, args.gB, args.gA) * 0 - 2 * args.gA * args.K;
 
     /*value dibi = 0;
 
@@ -1818,7 +1818,7 @@ tensor<value, 3> get_dtgB(standard_arguments& args, equation_context& ctx, matte
 
     #define STATIC_DAMP
     #ifdef STATIC_DAMP
-    value Ns_r = 2.f;
+    value Ns_r = 3.f;
     #endif
 
     value N = max(Ns_r, 0.5f);
@@ -1826,7 +1826,7 @@ tensor<value, 3> get_dtgB(standard_arguments& args, equation_context& ctx, matte
     #ifndef USE_GBB
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
     ///todo: remove this
-    tensor<value, 3> dtgB = (3.f/4.f) * args.derived_cGi + bjdjbi * 1 - N * args.gB;
+    tensor<value, 3> dtgB = (3.f/4.f) * args.derived_cGi + bjdjbi * 0 - N * args.gB;
 
     //dtgB = {0,0,0};
 
