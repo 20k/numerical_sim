@@ -1276,6 +1276,7 @@ void trace_slice4(equation_context& ctx,
 
         v4f next_velocity = v_half + 0.5f * next_acceleration * current_ds;
 
+        //next_velocity.x() = clamp(next_velocity.x(), value{-100}, value{100});
 
         v4f world_pos4 = voxel_to_world4(next_voxel_pos, dim.get(), slice_width.get(), scale.get());
         v3f world_pos = {world_pos4.y(), world_pos4.z(), world_pos4.w()};
@@ -1283,7 +1284,7 @@ void trace_slice4(equation_context& ctx,
         value escape_cond = world_pos.squared_length() >= u_sq;
         //value ingested_cond = dpos.squared_length() < 0.1f * 0.1f;
 
-        value ingested_cond = fabs(loop_vel.x()) > 1000;
+        value ingested_cond = fabs(next_velocity.x()) > 100 || fabs(next_acceleration.x()) >= 100;
         //value ingested_cond = fabs(loop_vel.x()) > 1000 && fabs(dvel.x()) > 100;
 
         ctx.exec(if_s(escape_cond,
