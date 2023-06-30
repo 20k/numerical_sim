@@ -470,11 +470,7 @@ void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 3> 
 
 void build_kreiss_oliger_unidir(cl::context& clctx)
 {
-    equation_context ctx;
-
-    cl::kernel kern = single_source::make_kernel_for(clctx, ctx, kreiss_oliger_unidir, "dissipate_single_unidir");
-
-    clctx.register_kernel(kern);
+    single_source::make_async_kernel_for(clctx, kreiss_oliger_unidir, "dissipate_single_unidir");
 }
 
 value diff1_interior(equation_context& ctx, const value& in, int idx, int order, int direction)
@@ -5448,11 +5444,7 @@ int main()
     build_kreiss_oliger_unidir(clctx.ctx);
     build_raytracing_kernels(clctx.ctx, bssn_arglist);
 
-    {
-        equation_context ectx;
-        cl::kernel kern = single_source::make_kernel_for(clctx.ctx, ectx, adm_mass_integral, "adm_mass_integral");
-        clctx.ctx.register_kernel(kern);
-    }
+    single_source::make_async_kernel_for(clctx.ctx, adm_mass_integral, "adm_mass_integral");
 
     {
         std::string generated_arglist = "#define GET_ARGLIST(a, p) ";

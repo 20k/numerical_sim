@@ -1368,49 +1368,13 @@ void trace_slice4(equation_context& ctx,
 
 void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args)
 {
-    {
-        equation_context ectx;
+    single_source::make_async_dynamic_kernel_for(clctx, get_raytraced_quantities, "get_raytraced_quantities", "", bssn_args);
 
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, get_raytraced_quantities, "get_raytraced_quantities", "", bssn_args);
+    single_source::make_async_kernel_for(clctx, init_slice_rays, "init_slice_rays");
+    single_source::make_async_kernel_for(clctx, trace_slice, "trace_slice");
 
-        clctx.register_kernel(kern);
-    }
+    single_source::make_async_dynamic_kernel_for(clctx, get_raytraced_quantities4, "get_raytraced_quantities4", "", bssn_args);
 
-    {
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_kernel_for(clctx, ectx, init_slice_rays, "init_slice_rays", "");
-
-        clctx.register_kernel(kern);
-    }
-
-    {
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_kernel_for(clctx, ectx, trace_slice, "trace_slice", "");
-
-        clctx.register_kernel(kern);
-    }
-
-    {
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, get_raytraced_quantities4, "get_raytraced_quantities4", "", bssn_args);
-
-        clctx.register_kernel(kern);
-    }
-    {
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_kernel_for(clctx, ectx, init_slice_rays4, "init_slice_rays4", "");
-
-        clctx.register_kernel(kern);
-    }
-    {
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_kernel_for(clctx, ectx, trace_slice4, "trace_slice4", "");
-
-        clctx.register_kernel(kern);
-    }
+    single_source::make_async_kernel_for(clctx, init_slice_rays4, "init_slice_rays4");
+    single_source::make_async_kernel_for(clctx, trace_slice4, "trace_slice4");
 }
