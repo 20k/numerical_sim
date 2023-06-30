@@ -474,7 +474,7 @@ void build_kreiss_oliger_unidir(cl::context& clctx)
 
     cl::kernel kern = single_source::make_kernel_for(clctx, ctx, kreiss_oliger_unidir, "dissipate_single_unidir");
 
-    clctx.register_kernel("dissipate_single_unidir", kern);
+    clctx.register_kernel(kern);
 }
 
 value diff1_interior(equation_context& ctx, const value& in, int idx, int order, int direction)
@@ -2244,7 +2244,7 @@ struct superimposed_gpu_data
         pull(clctx, cqueue, particles, scale, dim);
 
         laplace_data solve = setup_u_laplace(clctx, objs, aij_aIJ, ppw2p, particle_grid_E_without_conformal);
-        u_arg = laplace_solver(clctx, cqueue, solve, scale, dim, 0.00000001f);
+        u_arg = laplace_solver(clctx, cqueue, solve, scale, dim, 0.00001f);
 
         tensor<value, 3> pos = {"ox", "oy", "oz"};
 
@@ -2993,13 +2993,13 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.96, 0};
+    h1.momentum = {0, 0.133 * 0.94, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     compact_object::data h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.96, 0};
+    h2.momentum = {0, -0.133 * 0.94, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     objects = {h1, h2};
@@ -5451,7 +5451,7 @@ int main()
     {
         equation_context ectx;
         cl::kernel kern = single_source::make_kernel_for(clctx.ctx, ectx, adm_mass_integral, "adm_mass_integral");
-        clctx.ctx.register_kernel("adm_mass_integral", kern);
+        clctx.ctx.register_kernel(kern);
     }
 
     {
@@ -6298,6 +6298,6 @@ int main()
 
         float elapsed = frametime.restart() * 1000.f;
 
-        //printf("Time: %f\n", elapsed);
+        printf("Time: %f\n", elapsed);
     }
 }

@@ -1299,37 +1299,8 @@ void trace_slice4(equation_context& ctx,
                       ));
 
 
-
         ctx.exec(assign(loop_voxel_pos_txyz, next_voxel_pos));
         ctx.exec(assign(loop_vel, next_velocity));
-
-        /*v4f dpos = declare(ctx, loop_vel);
-        v4f dvel = declare(ctx, acceleration);
-
-        //value pos_sq = v2w4(loop_voxel_pos).squared_length();
-
-        v4f world_pos4 = voxel_to_world4(loop_voxel_pos_txyz + dpos * current_ds / scales, dim.get(), slice_width.get(), scale.get());
-        v3f world_pos = {world_pos4.y(), world_pos4.z(), world_pos4.w()};
-
-        value escape_cond = world_pos.squared_length() >= u_sq;
-        //value ingested_cond = dpos.squared_length() < 0.1f * 0.1f;
-
-        value ingested_cond = fabs(loop_vel.x()) > 1000;
-        //value ingested_cond = fabs(loop_vel.x()) > 1000 && fabs(dvel.x()) > 100;
-
-        ctx.exec(if_s(escape_cond,
-                        (assign(hit_type, value_i{0}),
-                         break_s)
-                      ));
-
-        ctx.exec(if_s(ingested_cond,
-                      (assign(hit_type, value_i{1}),
-                       //on_quit2,
-                       break_s)
-                      ));
-
-        ctx.exec(assign(loop_voxel_pos_txyz, loop_voxel_pos_txyz + dpos * current_ds / scales));
-        ctx.exec(assign(loop_vel, loop_vel + dvel * current_ds));*/
 
         value ds_out = 0;
         calculate_ds_error(current_ds, next_acceleration, max_accel, &ds_out);
@@ -1402,7 +1373,7 @@ void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args)
 
         cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, get_raytraced_quantities, "get_raytraced_quantities", "", bssn_args);
 
-        clctx.register_kernel("get_raytraced_quantities", kern);
+        clctx.register_kernel(kern);
     }
 
     {
@@ -1410,7 +1381,7 @@ void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args)
 
         cl::kernel kern = single_source::make_kernel_for(clctx, ectx, init_slice_rays, "init_slice_rays", "");
 
-        clctx.register_kernel("init_slice_rays", kern);
+        clctx.register_kernel(kern);
     }
 
     {
@@ -1418,7 +1389,7 @@ void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args)
 
         cl::kernel kern = single_source::make_kernel_for(clctx, ectx, trace_slice, "trace_slice", "");
 
-        clctx.register_kernel("trace_slice", kern);
+        clctx.register_kernel(kern);
     }
 
     {
@@ -1426,20 +1397,20 @@ void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args)
 
         cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, get_raytraced_quantities4, "get_raytraced_quantities4", "", bssn_args);
 
-        clctx.register_kernel("get_raytraced_quantities4", kern);
+        clctx.register_kernel(kern);
     }
     {
         equation_context ectx;
 
         cl::kernel kern = single_source::make_kernel_for(clctx, ectx, init_slice_rays4, "init_slice_rays4", "");
 
-        clctx.register_kernel("init_slice_rays4", kern);
+        clctx.register_kernel(kern);
     }
     {
         equation_context ectx;
 
         cl::kernel kern = single_source::make_kernel_for(clctx, ectx, trace_slice4, "trace_slice4", "");
 
-        clctx.register_kernel("trace_slice4", kern);
+        clctx.register_kernel(kern);
     }
 }

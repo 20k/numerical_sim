@@ -1955,6 +1955,6 @@ void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, b
 
         cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_1", "", interop, use_matter, bssn_args, utility_args, b);
 
-        clctx.register_kernel("evolve_1", kern);
+        clctx.register_kernel(kern);
     }
 }
