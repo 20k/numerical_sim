@@ -824,7 +824,7 @@ value get_cacheable_W(equation_context& ctx, standard_arguments& args, matter& m
 }
 
 
-value eularian_matter::calculate_adm_S(equation_context& ctx, standard_arguments& args)
+value eularian_matter::calculate_adm_S(equation_context& ctx, standard_arguments& args) const
 {
     matter matt(ctx);
 
@@ -835,7 +835,7 @@ value eularian_matter::calculate_adm_S(equation_context& ctx, standard_arguments
     return matt.calculate_adm_S(args.cY, args.cY.invert(), args.get_X(), W);
 }
 
-value eularian_matter::calculate_adm_p(equation_context& ctx, standard_arguments& args)
+value eularian_matter::calculate_adm_p(equation_context& ctx, standard_arguments& args) const
 {
     matter matt(ctx);
 
@@ -846,7 +846,7 @@ value eularian_matter::calculate_adm_p(equation_context& ctx, standard_arguments
     return matt.calculate_adm_p(args.get_X(), W);
 }
 
-tensor<value, 3, 3> eularian_matter::calculate_adm_X_Sij(equation_context& ctx, standard_arguments& args)
+tensor<value, 3, 3> eularian_matter::calculate_adm_X_Sij(equation_context& ctx, standard_arguments& args) const
 {
     matter matt(ctx);
 
@@ -857,7 +857,7 @@ tensor<value, 3, 3> eularian_matter::calculate_adm_X_Sij(equation_context& ctx, 
     return matt.calculate_adm_X_Sij(args.get_X(), W, args.cY);
 }
 
-tensor<value, 3> eularian_matter::calculate_adm_Si(equation_context& ctx, standard_arguments& args)
+tensor<value, 3> eularian_matter::calculate_adm_Si(equation_context& ctx, standard_arguments& args) const
 {
     matter matt(ctx);
 

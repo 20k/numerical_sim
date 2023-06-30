@@ -7,6 +7,7 @@
 #include <stdfloat>
 #include "cache.hpp"
 #include "single_source_fw.hpp"
+#include <thread>
 
 namespace single_source
 {
@@ -372,7 +373,7 @@ namespace single_source
         }
 
         inline
-        cl::kernel generate_kernel(cl::context& clctx, kernel_context& kctx, equation_context& ctx, const std::string& kernel_name, const std::string& extra_args)
+        cl::kernel generate_kernel(const cl::context& clctx, kernel_context& kctx, equation_context& ctx, const std::string& kernel_name, const std::string& extra_args)
         {
             bool any_uses_half = false;
 
@@ -489,7 +490,7 @@ namespace single_source
 
     template<typename T, typename... U>
     inline
-    cl::kernel make_dynamic_kernel_for(cl::context& clctx, equation_context& ectx, T&& func, const std::string& kernel_name = "kernel_name", const std::string& extra_args = "", U&&... u)
+    cl::kernel make_dynamic_kernel_for(cl::context& clctx, equation_context& ectx, T&& func, const std::string& kernel_name, const std::string& extra_args = "", U&&... u)
     {
         argument_generator args;
 
@@ -500,12 +501,50 @@ namespace single_source
 
     template<typename T>
     inline
-    cl::kernel make_kernel_for(cl::context& clctx, equation_context& ectx, T&& func, const std::string& kernel_name = "kernel_name", const std::string& extra_args = "")
+    cl::kernel make_kernel_for(cl::context& clctx, equation_context& ectx, T&& func, const std::string& kernel_name, const std::string& extra_args = "")
     {
         impl::kernel_context kctx;
         impl::setup_kernel(kctx, ectx, func);
 
         return impl::generate_kernel(clctx, kctx, ectx, kernel_name, extra_args);
+    }
+
+    template<typename T, typename... U>
+    inline
+    void make_async_dynamic_kernel_for(cl::context& clctx, T&& func, const std::string& kernel_name, const std::string& extra_args = "", U&&... u)
+    {
+        std::shared_ptr<cl::pending_kernel> pending = std::make_shared<cl::pending_kernel>();
+
+        std::thread([=]() mutable
+        {
+            equation_context ectx;
+
+            cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, func, kernel_name, "", u...);
+
+            pending->kernel = kern;
+            pending->latch.count_down();
+        }).detach();
+
+        clctx.register_kernel(pending, kernel_name);
+    }
+
+    template<typename T>
+    inline
+    void make_async_kernel_for(cl::context& clctx, T&& func, const std::string& kernel_name, const std::string& extra_args = "")
+    {
+        std::shared_ptr<cl::pending_kernel> pending = std::make_shared<cl::pending_kernel>();
+
+        std::thread([=]() mutable
+        {
+            equation_context ectx;
+
+            cl::kernel kern = single_source::make_kernel_for(clctx, ectx, func, kernel_name, "");
+
+            pending->kernel = kern;
+            pending->latch.count_down();
+        }).detach();
+
+        clctx.register_kernel(pending, kernel_name);
     }
 }
 

@@ -3,8 +3,9 @@
 #include "bitflags.cl"
 #include "spherical_decomposition.hpp"
 #include "util.hpp"
+#include <thread>
 
-value matter_meta_interop::calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args)
+value matter_meta_interop::calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args) const
 {
     value ret;
 
@@ -16,7 +17,7 @@ value matter_meta_interop::calculate_adm_S(equation_context& ctx, standard_argum
     return ret;
 }
 
-value matter_meta_interop::calculate_adm_p(equation_context& ctx, standard_arguments& bssn_args)
+value matter_meta_interop::calculate_adm_p(equation_context& ctx, standard_arguments& bssn_args) const
 {
     value ret;
 
@@ -28,7 +29,7 @@ value matter_meta_interop::calculate_adm_p(equation_context& ctx, standard_argum
     return ret;
 }
 
-tensor<value, 3, 3> matter_meta_interop::calculate_adm_X_Sij(equation_context& ctx, standard_arguments& bssn_args)
+tensor<value, 3, 3> matter_meta_interop::calculate_adm_X_Sij(equation_context& ctx, standard_arguments& bssn_args) const
 {
     tensor<value, 3, 3> ret;
 
@@ -40,7 +41,7 @@ tensor<value, 3, 3> matter_meta_interop::calculate_adm_X_Sij(equation_context& c
     return ret;
 }
 
-tensor<value, 3> matter_meta_interop::calculate_adm_Si(equation_context& ctx, standard_arguments& bssn_args)
+tensor<value, 3> matter_meta_interop::calculate_adm_Si(equation_context& ctx, standard_arguments& bssn_args) const
 {
     tensor<value, 3> ret;
 
@@ -642,7 +643,7 @@ struct all_args
 
 struct exec_builder_base
 {
-    virtual void start(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter){}
+    virtual void start(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter){}
     virtual void execute(equation_context& ctx, all_args& all){}
 
     virtual ~exec_builder_base(){}
@@ -653,7 +654,7 @@ struct exec_builder : exec_builder_base
 {
     T dt;
 
-    void start(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter) override
+    void start(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter) override
     {
         dt = U(args, ctx, interop, use_matter);
     }
@@ -666,7 +667,7 @@ struct exec_builder : exec_builder_base
     virtual ~exec_builder(){}
 };
 
-tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter)
+tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter)
 {
     metric<value, 3, 3> unpinned_cY = args.unpinned_cY;
 
@@ -1025,7 +1026,7 @@ value calculate_hamiltonian(equation_context& ctx, standard_arguments& args)
     return calculate_hamiltonian(args.cY, icY, args.Yij, args.iYij, (xgARij / (max(args.get_X(), 0.001f) * args.gA)), args.K, args.cA);
 }
 
-tensor<value, 6> get_dtcAij(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter)
+tensor<value, 6> get_dtcAij(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter)
 {
     value scale = "scale";
 
@@ -1312,7 +1313,7 @@ void finish_cA(equation_context& ctx, all_args& all, tensor<value, 6>& dtcA)
 
 exec_builder<tensor<value, 6>, get_dtcAij, finish_cA> cAexec;
 
-tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter)
+tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter)
 {
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
@@ -1584,7 +1585,7 @@ void finish_cGi(equation_context& ctx, all_args& all, tensor<value, 3>& dtcGi)
 
 exec_builder<tensor<value, 3>, get_dtcGi, finish_cGi> cGiexec;
 
-value get_dtK(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter)
+value get_dtK(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter)
 {
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
@@ -1658,7 +1659,7 @@ void finish_K(equation_context& ctx, all_args& all, value& dtK)
 
 exec_builder<value, get_dtK, finish_K> Kexec;
 
-value get_dtX(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter)
+value get_dtX(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter)
 {
     tensor<value, 3> linear_dB;
 
@@ -1691,7 +1692,7 @@ void finish_X(equation_context& ctx, all_args& all, value& dtX)
 
 exec_builder<value, get_dtX, finish_X> Xexec;
 
-value get_dtgA(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter)
+value get_dtgA(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter)
 {
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf (94) is bad
     value dtgA = lie_derivative(ctx, args.gB, args.gA) * 0 - 2 * args.gA * args.K;
@@ -1726,7 +1727,7 @@ void finish_gA(equation_context& ctx, all_args& all, value& dtgA)
 
 exec_builder<value, get_dtgA, finish_gA> gAexec;
 
-tensor<value, 3> get_dtgB(standard_arguments& args, equation_context& ctx, matter_interop& interop, bool use_matter)
+tensor<value, 3> get_dtgB(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter)
 {
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
@@ -1928,7 +1929,7 @@ void finish_gB(equation_context& ctx, all_args& all, tensor<value, 3>& dtgB)
 
 exec_builder<tensor<value, 3>, get_dtgB, finish_gB> gBexec;
 
-void build_kernel(single_source::argument_generator& arg_gen, equation_context& ctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args, std::vector<exec_builder_base*> execs)
+void build_kernel(single_source::argument_generator& arg_gen, equation_context& ctx, const matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args, std::vector<exec_builder_base*> execs)
 {
     all_args all(arg_gen, bssn_args, utility_args);
 
@@ -1945,16 +1946,9 @@ void build_kernel(single_source::argument_generator& arg_gen, equation_context& 
     ctx.fix_buffers();
 }
 
-void bssn::build(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args)
+void bssn::build(cl::context& clctx, const matter_interop& interop, bool use_matter, base_bssn_args bssn_args, base_utility_args utility_args)
 {
-    {
-        //std::vector<exec_builder_base*> b = {&cAexec, &Xexec};
-        std::vector<exec_builder_base*> b = {&cAexec, &Xexec, &Kexec, &gAexec, &gBexec, &cYexec, &cGiexec};
+    std::vector<exec_builder_base*> b = {&cAexec, &Xexec, &Kexec, &gAexec, &gBexec, &cYexec, &cGiexec};
 
-        equation_context ectx;
-
-        cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, build_kernel, "evolve_1", "", interop, use_matter, bssn_args, utility_args, b);
-
-        clctx.register_kernel(kern);
-    }
+    single_source::make_async_dynamic_kernel_for(clctx, build_kernel, "evolve_1", "", interop, use_matter, bssn_args, utility_args, b);
 }

@@ -6,14 +6,14 @@
 #include "spherical_integration.hpp"
 #include "cache.hpp"
 
-value particle_matter_interop::calculate_adm_p(equation_context& ctx, standard_arguments& bssn_args)
+value particle_matter_interop::calculate_adm_p(equation_context& ctx, standard_arguments& bssn_args) const
 {
     value adm_p = bidx("adm_p", ctx.uses_linear, false);
 
     return adm_p;
 }
 
-value particle_matter_interop::calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args)
+value particle_matter_interop::calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args) const
 {
     value adm_S = bidx("adm_S", ctx.uses_linear, false);
 
@@ -22,7 +22,7 @@ value particle_matter_interop::calculate_adm_S(equation_context& ctx, standard_a
     return adm_S;
 }
 
-tensor<value, 3> particle_matter_interop::calculate_adm_Si(equation_context& ctx, standard_arguments& bssn_args)
+tensor<value, 3> particle_matter_interop::calculate_adm_Si(equation_context& ctx, standard_arguments& bssn_args) const
 {
     value adm_Si0 = bidx("adm_Si0", ctx.uses_linear, false);
     value adm_Si1 = bidx("adm_Si1", ctx.uses_linear, false);
@@ -31,7 +31,7 @@ tensor<value, 3> particle_matter_interop::calculate_adm_Si(equation_context& ctx
     return {adm_Si0, adm_Si1, adm_Si2};
 }
 
-tensor<value, 3, 3> particle_matter_interop::calculate_adm_X_Sij(equation_context& ctx, standard_arguments& bssn_args)
+tensor<value, 3, 3> particle_matter_interop::calculate_adm_X_Sij(equation_context& ctx, standard_arguments& bssn_args) const
 {
     value X = bssn_args.get_X();
 

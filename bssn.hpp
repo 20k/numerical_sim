@@ -588,10 +588,10 @@ struct standard_arguments
 ///matter interop needs to be moved to plugins
 struct matter_interop
 {
-    virtual value               calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args){return 0;};
-    virtual value               calculate_adm_p(equation_context& ctx, standard_arguments& bssn_args){return 0;};
-    virtual tensor<value, 3, 3> calculate_adm_X_Sij(equation_context& ctx, standard_arguments& bssn_args){return {0,0,0,0,0,0,0,0,0};};
-    virtual tensor<value, 3>    calculate_adm_Si(equation_context& ctx, standard_arguments& bssn_args){return {0,0,0};};
+    virtual value               calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args) const{return 0;};
+    virtual value               calculate_adm_p(equation_context& ctx, standard_arguments& bssn_args) const{return 0;};
+    virtual tensor<value, 3, 3> calculate_adm_X_Sij(equation_context& ctx, standard_arguments& bssn_args) const{return {0,0,0,0,0,0,0,0,0};};
+    virtual tensor<value, 3>    calculate_adm_Si(equation_context& ctx, standard_arguments& bssn_args) const{return {0,0,0};};
 
     virtual ~matter_interop(){}
 };
@@ -600,10 +600,10 @@ struct matter_meta_interop : matter_interop
 {
     std::vector<matter_interop*> sub_interop;
 
-    virtual value               calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args) override;
-    virtual value               calculate_adm_p(equation_context& ctx, standard_arguments& bssn_args) override;
-    virtual tensor<value, 3, 3> calculate_adm_X_Sij(equation_context& ctx, standard_arguments& bssn_args) override;
-    virtual tensor<value, 3>    calculate_adm_Si(equation_context& ctx, standard_arguments& bssn_args) override;
+    virtual value               calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args) const override;
+    virtual value               calculate_adm_p(equation_context& ctx, standard_arguments& bssn_args) const override;
+    virtual tensor<value, 3, 3> calculate_adm_X_Sij(equation_context& ctx, standard_arguments& bssn_args) const override;
+    virtual tensor<value, 3>    calculate_adm_Si(equation_context& ctx, standard_arguments& bssn_args) const override;
 };
 
 namespace bssn
@@ -616,7 +616,7 @@ namespace bssn
     tensor<value, 3> calculate_momentum_constraint(matter_interop& interop, equation_context& ctx, bool use_matter);
     value calculate_hamiltonian_constraint(matter_interop& interop, equation_context& ctx, bool use_matter);
 
-    void build(cl::context& clctx, matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args);
+    void build(cl::context& clctx, const matter_interop& interop, bool use_matter, base_bssn_args bssn_args, base_utility_args utility_args);
 }
 
 #endif // BSSN_HPP_INCLUDED

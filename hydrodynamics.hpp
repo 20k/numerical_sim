@@ -58,10 +58,10 @@ T chi_to_e_6phi(const T& chi)
 
 struct eularian_matter : matter_interop
 {
-    virtual value calculate_adm_S(equation_context& ctx, standard_arguments& args) override;
-    virtual value calculate_adm_p(equation_context& ctx, standard_arguments& args) override;
-    virtual tensor<value, 3, 3> calculate_adm_X_Sij(equation_context& ctx, standard_arguments& args) override;
-    virtual tensor<value, 3> calculate_adm_Si(equation_context& ctx, standard_arguments& args) override;
+    virtual value calculate_adm_S(equation_context& ctx, standard_arguments& args) const override;
+    virtual value calculate_adm_p(equation_context& ctx, standard_arguments& args) const override;
+    virtual tensor<value, 3, 3> calculate_adm_X_Sij(equation_context& ctx, standard_arguments& args) const override;
+    virtual tensor<value, 3> calculate_adm_Si(equation_context& ctx, standard_arguments& args) const override;
 };
 
 namespace hydrodynamics

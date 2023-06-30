@@ -13,7 +13,7 @@ inline void hash_combine(std::size_t& seed, const T& v)
 }
 
 inline
-cl::program build_program_with_cache(cl::context& clctx, const std::string& filename, const std::string& options, const std::string& cache_name = "")
+cl::program build_program_with_cache(const cl::context& clctx, const std::string& filename, const std::string& options, const std::string& cache_name = "")
 {
     std::string file_data = file::read(filename, file::mode::BINARY);
 

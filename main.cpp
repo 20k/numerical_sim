@@ -4984,7 +4984,7 @@ void test_kernel_generation(cl::context& clctx, cl::command_queue& cqueue)
 {
     equation_context ectx;
 
-    cl::kernel kern = single_source::make_kernel_for(clctx, ectx, test_kernel);
+    cl::kernel kern = single_source::make_kernel_for(clctx, ectx, test_kernel, "test_kernel");
 
     cl::buffer b_in(clctx);
     b_in.alloc(sizeof(cl_float) * 128 * 128 * 128);
