@@ -965,12 +965,12 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     step(0, 2, 1, timestep * 0.5f, false, 0, 1);
     //step(0, 1, 2, timestep * 0.5f, false, 0, 1);
 
-    std::swap(data[2], data[1]);
+    std::swap(data.at(2), data.at(1));
 
     ///data[2] == yn+0.5
 
-    midpoint_guess(data[2], data[0]);
-    std::swap(data[2], data[1]);
+    midpoint_guess(data.at(2), data.at(0));
+    std::swap(data.at(2), data.at(1));
 
     #endif // IMPLICIT_MIDPOINT2
 
