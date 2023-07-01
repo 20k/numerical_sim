@@ -20,43 +20,43 @@ T buffer_index(buffer<T, N> buf, const tensor<value_i, 4>& pos, const tensor<val
 
 template<typename T, int N>
 inline
-T buffer_read_linear(buffer<T, N> buf, const v3f& position, const v3i& dim)
+value buffer_read_linear(buffer<T, N> buf, const v3f& position, const v3i& dim)
 {
     auto clamped_read = [&](v3i in)
     {
         in = clamp(in, (v3i){0,0,0}, dim - 1);
 
-        return buffer_index(buf, in, dim);
+        return (value)buffer_index(buf, in, dim);
     };
 
     v3f floored = floor(position);
 
     v3i ipos = (v3i)(floored);
 
-    T c000 = clamped_read(ipos + (v3i){0,0,0});
-    T c100 = clamped_read(ipos + (v3i){1,0,0});
+    value c000 = clamped_read(ipos + (v3i){0,0,0});
+    value c100 = clamped_read(ipos + (v3i){1,0,0});
 
-    T c010 = clamped_read(ipos + (v3i){0,1,0});
-    T c110 = clamped_read(ipos + (v3i){1,1,0});
+    value c010 = clamped_read(ipos + (v3i){0,1,0});
+    value c110 = clamped_read(ipos + (v3i){1,1,0});
 
-    T c001 = clamped_read(ipos + (v3i){0,0,1});
-    T c101 = clamped_read(ipos + (v3i){1,0,1});
+    value c001 = clamped_read(ipos + (v3i){0,0,1});
+    value c101 = clamped_read(ipos + (v3i){1,0,1});
 
-    T c011 = clamped_read(ipos + (v3i){0,1,1});
-    T c111 = clamped_read(ipos + (v3i){1,1,1});
+    value c011 = clamped_read(ipos + (v3i){0,1,1});
+    value c111 = clamped_read(ipos + (v3i){1,1,1});
 
     v3f frac = position - floored;
 
-    T c00 = c000 - (T)frac.x() * (c000 - c100);
-    T c01 = c001 - (T)frac.x() * (c001 - c101);
+    value c00 = c000 - (value)frac.x() * (c000 - c100);
+    value c01 = c001 - (value)frac.x() * (c001 - c101);
 
-    T c10 = c010 - (T)frac.x() * (c010 - c110);
-    T c11 = c011 - (T)frac.x() * (c011 - c111);
+    value c10 = c010 - (value)frac.x() * (c010 - c110);
+    value c11 = c011 - (value)frac.x() * (c011 - c111);
 
-    T c0 = c00 - (T)frac.y() * (c00 - c10);
-    T c1 = c01 - (T)frac.y() * (c01 - c11);
+    value c0 = c00 - (value)frac.y() * (c00 - c10);
+    value c1 = c01 - (value)frac.y() * (c01 - c11);
 
-    return c0 - (T)frac.z() * (c0 - c1);
+    return c0 - (value)frac.z() * (c0 - c1);
 }
 
 template<typename T, int N>
