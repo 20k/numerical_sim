@@ -2,20 +2,6 @@
 #include "common.cl"
 #include "generic_laplace.cl"
 
-__kernel
-void setup_u_offset(__global float* u_offset,
-                    int4 dim)
-{
-    int ix = get_global_id(0);
-    int iy = get_global_id(1);
-    int iz = get_global_id(2);
-
-    if(ix >= dim.x || iy >= dim.y || iz >= dim.z)
-        return;
-
-    u_offset[IDX(ix, iy, iz)] = U_BOUNDARY;
-}
-
 float round_away_from(float in, float val)
 {
     return in < val ? floor(in) : ceil(in);

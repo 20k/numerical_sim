@@ -2,6 +2,7 @@
 #include "mesh_manager.hpp"
 #include "equation_context.hpp"
 #include "cache.hpp"
+#include "single_source.hpp"
 
 void check_symmetry(const std::string& debug_name, cl::kernel& kern, cl::command_queue& cqueue, cl::buffer& arg, vec<4, cl_int> size)
 {
@@ -202,6 +203,21 @@ cl::buffer extract_u_region(cl::context& ctx, cl::command_queue& cqueue, cl::ker
     return solve_for_u(ctx, cqueue, setup, iterate, clsize, c_at_max, 1, last, etol);
 }*/
 
+
+void setup_u_offset(single_source::argument_generator& arg_gen, equation_context& ctx, const value& boundary)
+{
+    buffer<value, 3> u_offset = arg_gen.add<buffer<value, 3>>();
+    literal<v3i> dim = arg_gen.add<literal<v3i>>();
+
+    u_offset.size = dim.get();
+
+    v3i pos = declare(ctx, (v3i){"get_global_id(0)", "get_global_id(1)", "get_global_id(2)"});
+
+    ctx.exec(if_s(pos.x() >= dim.get().x() || pos.y() >= dim.get().y() || pos.z() >= dim.get().z(), return_s));
+
+    ctx.exec(assign(u_offset[pos], boundary));
+}
+
 cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, laplace_data& data, float scale, vec3i dim, float err)
 {
     equation_context ctx = data.ectx;
@@ -218,9 +234,11 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, laplace
 
     ctx.build(local_build_str, "laplacesolve");
 
+    equation_context setup_ectx;
+    cl::kernel setup = single_source::make_dynamic_kernel_for(clctx, setup_ectx, setup_u_offset, "setup_u_offset", "", data.boundary);
+
     cl::program u_program = build_program_with_cache(clctx, "u_solver.cl", local_build_str);
 
-    cl::kernel setup(u_program, "setup_u_offset");
     cl::kernel iterate(u_program, "iterative_u_solve");
     cl::kernel extract(u_program, "extract_u_region");
     cl::kernel upscale(u_program, "upscale_u");
