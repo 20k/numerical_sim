@@ -186,6 +186,16 @@ struct base_utility_args
 
 #define USE_HALF_INTERMEDIATE
 
+inline
+value conformal_to_X(const value& conformal)
+{
+    #ifndef USE_W
+    return conformal;
+    #else
+    return conformal * conformal;
+    #endif
+}
+
 struct standard_arguments
 {
     value gA;

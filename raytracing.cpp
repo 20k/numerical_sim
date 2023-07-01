@@ -773,13 +773,14 @@ void raytracing_manager::grab_buffers(cl::context& clctx, cl::managed_command_qu
     time_elapsed += step;
 }
 
-using ray4_value = value;
+using ray4_value = value_h;
 
 void get_raytraced_quantities4(single_source::argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args)
 {
     ctx.add_function("buffer_index", buffer_index_f<value, 3>);
     ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
     ctx.add_function("buffer_read_linear", buffer_read_linear_f<value, 3>);
+    ctx.add_function("buffer_read_linearh", buffer_read_linear_f<value_h, 3>);
 
     arg_gen.add(bssn_args.buffers);
     arg_gen.add<named_literal<v4i, "dim">>();
@@ -814,6 +815,16 @@ void get_raytraced_quantities4(single_source::argument_generator& arg_gen, equat
 
     standard_arguments args(ctx);
 
+    /*std::array<buffer<ray4_value>, 6> linear_cY = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5"};
+    buffer<ray4_value> linear_conformal = {"X"};
+    buffer<ray4_value> linear_gA = {"gA"};
+    std::array<buffer<ray4_value>, 3> linear_gB = {"gB0", "gB1", "gB2"};
+
+    metric<value, 3, 3> Yij;
+    value X = buffer_read_linear(linear_conformal, upper_pos, );
+    value gA;
+    tensor<value, 3> gB;*/
+
     value_i idx = slice.get() * out_dim.x() * out_dim.y() * out_dim.z() + pos.z() * out_dim.y() * out_dim.x() + pos.y() * out_dim.x() + pos.x();
 
     metric<value, 4, 4> Guv = calculate_real_metric(args.Yij, args.gA, args.gB);
@@ -824,7 +835,7 @@ void get_raytraced_quantities4(single_source::argument_generator& arg_gen, equat
     {
         vec2i lidx = linear_indices[i];
 
-        ctx.exec(assign(Guv_out[i][idx], Guv[lidx.x(), lidx.y()]));
+        ctx.exec(assign(Guv_out[i][idx], (ray4_value)Guv[lidx.x(), lidx.y()]));
     }
 }
 
@@ -1021,7 +1032,7 @@ void init_slice_rays4(equation_context& ctx, literal<v3f> camera_pos, literal<v4
                          {2, 5, 7, 8},
                          {3, 6, 8, 9}};
 
-    std::array<ray4_value, 10> Guv_i;
+    std::array<value, 10> Guv_i;
 
     for(int i=0; i < 10; i++)
     {
@@ -1034,7 +1045,7 @@ void init_slice_rays4(equation_context& ctx, literal<v3f> camera_pos, literal<v4
     {
         for(int j=0; j < 4; j++)
         {
-            Guv_built[i, j] = Guv_i[indices[i][j]];
+            Guv_built[i, j] = (value)Guv_i[indices[i][j]];
         }
     }
 
@@ -1109,7 +1120,7 @@ value calculate_ds_error(const value& current_ds, const v4f& acceleration, const
 }
 
 void trace_slice4(equation_context& ctx,
-                 std::array<buffer<ray4_value, 4>, 10> Guv_4d,
+                 std::array<buffer<ray4_value>, 10> Guv_4d,
                  named_literal<value, "scale"> scale, named_literal<v4i, "dim"> dim, literal<v2i> screen_size, literal<value_i> ray_count,
                  literal<value> slice_width,
                  std::array<buffer<value>, 4> positions, std::array<buffer<value>, 4> velocities, buffer<value> ku_uobsu,
@@ -1163,7 +1174,7 @@ void trace_slice4(equation_context& ctx,
 
         for(int i=0; i < 10; i++)
         {
-            Guv_lin[i] = buffer_read_linear(Guv_4d[i], txyz_to_xyzt(my_voxel_pos_txyz), dim.get());
+            Guv_lin[i] = (value)buffer_read_linear(Guv_4d[i], txyz_to_xyzt(my_voxel_pos_txyz), dim.get());
         }
 
         metric<value, 4, 4> Guv;
@@ -1206,7 +1217,7 @@ void trace_slice4(equation_context& ctx,
 
                     int linear_index = indices[i][j];
 
-                    dGuv[k, i, j] = (buffer_read_linear(Guv_4d[linear_index], shuffled_u, dim.get()) - buffer_read_linear(Guv_4d[linear_index], shuffled_l, dim.get())) / (2 * scales[k]);
+                    dGuv[k, i, j] = (value)(buffer_read_linear(Guv_4d[linear_index], shuffled_u, dim.get()) - buffer_read_linear(Guv_4d[linear_index], shuffled_l, dim.get())) / (2 * scales[k]);
                 }
             }
         }
