@@ -1935,13 +1935,15 @@ struct superimposed_gpu_data
     cl::program multi_matter_program;
     cl::kernel multi_matter_kernel;
 
+    cl::buffer u_arg;
+
     superimposed_gpu_data(cl::context& ctx, cl::command_queue& cqueue, vec3i _dim, float _scale) : tov_phi{ctx}, bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, aij_aIJ{ctx}, ppw2p{ctx},
                                                                                                       pressure_buf{ctx}, rho_buf{ctx}, rhoH_buf{ctx}, p0_buf{ctx}, Si_buf{ctx, ctx, ctx},
                                                                                                       colour_buf{ctx, ctx, ctx},
                                                                                                       ppw2p_program(ctx), bcAij_matter_program(ctx), multi_matter_program(ctx),
                                                                                                       particle_position(ctx), particle_mass(ctx), particle_lorentz(ctx),
                                                                                                       particle_counts(ctx), particle_indices(ctx), particle_memory(ctx), particle_memory_count(ctx),
-                                                                                                      particle_grid_E_without_conformal(ctx)
+                                                                                                      particle_grid_E_without_conformal(ctx), u_arg(ctx)
     {
         dim = _dim;
         scale = _scale;
@@ -2210,7 +2212,7 @@ struct superimposed_gpu_data
         std::tie(multi_matter_program, multi_matter_kernel) = build_and_fetch_kernel(ctx, ectx, "initial_conditions.cl", "multi_accumulate", "multiaccumulate");
     }
 
-    cl::buffer pull_all(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, const particle_data& particles)
+    void pull_all(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, const particle_data& particles)
     {
         bool built_accum_matter_kernel = false;
 
@@ -2244,7 +2246,7 @@ struct superimposed_gpu_data
         pull(clctx, cqueue, particles);
 
         laplace_data solve = setup_u_laplace(clctx, objs, aij_aIJ, ppw2p, particle_grid_E_without_conformal);
-        cl::buffer u_arg = laplace_solver(clctx, cqueue, solve, scale, dim, 0.00000001f);
+        u_arg = laplace_solver(clctx, cqueue, solve, scale, dim, 0.00000001f);
 
         tensor<value, 3> pos = {"ox", "oy", "oz"};
 
@@ -2263,14 +2265,12 @@ struct superimposed_gpu_data
                     built_matter_program = true;
                 }
 
-                accumulate_matter_variables(clctx, cqueue, obj, conformal_guess, u_arg);
+                accumulate_matter_variables(clctx, cqueue, obj, conformal_guess);
             }
         }
-
-        return u_arg;
     }
 
-    void accumulate_matter_variables(cl::context& clctx, cl::command_queue& cqueue, const compact_object::data& obj, const value& conformal_guess, cl::buffer& u_arg)
+    void accumulate_matter_variables(cl::context& clctx, cl::command_queue& cqueue, const compact_object::data& obj, const value& conformal_guess)
     {
         vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
 
@@ -2565,6 +2565,15 @@ struct superimposed_gpu_data
         cqueue.exec(calculate_aij_aIJ_k, {dim.x(), dim.y(), dim.z()}, {8,8,1}, {});
     }
 };
+
+superimposed_gpu_data get_superimposed(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, const particle_data& particles, vec3i dim, float scale)
+{
+    superimposed_gpu_data data(clctx, cqueue, dim, scale);
+
+    data.pull_all(clctx, cqueue, objs, particles);
+
+    return data;
+}
 
 ///the standard arguments have been constructed when this is called
 void construct_hydrodynamic_quantities(equation_context& ctx)
@@ -5155,8 +5164,9 @@ int main()
 
         cl::command_queue cqueue(clctx.ctx);
 
-        superimposed_gpu_data super(clctx.ctx, cqueue, size, scale);
-        u_arg = super.pull_all(clctx.ctx, cqueue, holes.objs, holes.particles);
+        superimposed_gpu_data super = get_superimposed(clctx.ctx, cqueue, holes.objs, holes.particles, size, scale);
+
+        u_arg = super.u_arg;
 
         matter_vars.bcAij = super.bcAij;
         matter_vars.superimposed_tov_phi = super.tov_phi;
