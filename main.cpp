@@ -1584,14 +1584,11 @@ value tov_phi_at_coordinate_general(const tensor<value, 3>& world_position)
     //return dual_types::apply("tov_phi", as_float3(vx, vy, vz), "dim");
 }
 
-///so. Need to awkward mash particle ph in here
-laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_object::data>& cpu_holes, cl::buffer& aij_aIJ_buf, cl::buffer& ppw2p_buf, cl::buffer& nonconformal_pH)
+value get_u_rhs(cl::context& clctx, const std::vector<compact_object::data>& cpu_holes)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
     value u_value = dual_types::apply(value("buffer_index"), "u_offset_in", "ix", "iy", "iz", "dim");
-
-    equation_context eqs;
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     ///todo when I forget: I'm using the conformal guess here for neutron stars which probably isn't right
@@ -1608,15 +1605,7 @@ laplace_data setup_u_laplace(cl::context& clctx, const std::vector<compact_objec
     ///ok no: I think what it is is that they're solving for ph in ToV, which uses tov's conformally flat variable
     ///whereas I'm getting values directly out of an analytic solution
     ///the latter term comes from phi^5 * X^(3/2) == phi^5 * phi^-6, == phi^-1
-    value U_RHS = (-1.f/8.f) * cached_aij_aIJ * pow(phi, -7) - 2 * (float)M_PI * pow(phi, -3) * cached_ppw2p - 2 * (float)M_PI * pow(phi, -1) * cached_non_conformal_pH;
-
-    laplace_data solve(aij_aIJ_buf, ppw2p_buf, nonconformal_pH);
-
-    solve.rhs = U_RHS;
-    solve.boundary = 0;
-    solve.ectx = eqs;
-
-    return solve;
+    return(-1.f/8.f) * cached_aij_aIJ * pow(phi, -7) - 2 * (float)M_PI * pow(phi, -3) * cached_ppw2p - 2 * (float)M_PI * pow(phi, -1) * cached_non_conformal_pH;
 }
 
 std::pair<cl::program, std::vector<cl::kernel>> build_and_fetch_kernel(cl::context& clctx, equation_context& ctx, const std::string& filename, const std::vector<std::string>& kernel_name, const std::string& temporaries_name)
@@ -2244,13 +2233,6 @@ struct superimposed_gpu_data
         pull(clctx, cqueue, particles);
     }
 
-    static cl::buffer get_u(cl::context& clctx, cl::command_queue& cqueue,  const std::vector<compact_object::data>& objs,
-                            cl::buffer& aij_aIJ, cl::buffer& ppw2p, cl::buffer& particle_grid_E_without_conformal,
-                            vec3i dim, float scale)
-    {
-        laplace_data solve = setup_u_laplace(clctx, objs, aij_aIJ, ppw2p, particle_grid_E_without_conformal);
-        return laplace_solver(clctx, cqueue, solve, scale, dim, 0.00000001f);
-    }
 
     void post_u(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, const particle_data& particles, cl::buffer& u_arg)
     {
@@ -2572,17 +2554,118 @@ struct superimposed_gpu_data
     }
 };
 
+
+void setup_u_offset(single_source::argument_generator& arg_gen, equation_context& ctx, const value& boundary)
+{
+    buffer<value, 3> u_offset = arg_gen.add<buffer<value, 3>>();
+    literal<v3i> dim = arg_gen.add<literal<v3i>>();
+
+    u_offset.size = dim.get();
+
+    v3i pos = declare(ctx, (v3i){"get_global_id(0)", "get_global_id(1)", "get_global_id(2)"});
+
+    ctx.exec(if_s(pos.x() >= dim.get().x() || pos.y() >= dim.get().y() || pos.z() >= dim.get().z(), return_s));
+
+    ctx.exec(assign(u_offset[pos], boundary));
+}
+
 std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, const particle_data& particles, vec3i dim, float scale)
 {
     superimposed_gpu_data data(clctx, cqueue, dim, scale);
 
     data.pre_u(clctx, cqueue, objs, particles);
 
-    cl::buffer u = superimposed_gpu_data::get_u(clctx, cqueue, objs, data.aij_aIJ, data.ppw2p, data.particle_grid_E_without_conformal, dim, scale);
+    cl::buffer found_u_val(clctx);
 
-    data.post_u(clctx, cqueue,objs, particles, u);
+    {
+        float etol = 0.00000001f;
 
-    return {data, u};
+        float boundary = 0;
+
+        value rhs = get_u_rhs(clctx, objs);
+
+        std::string local_build_str;
+
+        {
+            equation_context ectx;
+            ectx.add("U_RHS", rhs);
+            ectx.add("U_BOUNDARY", 0.f);
+
+            local_build_str = "-I ./ -cl-std=CL1.2 ";
+
+            ectx.build(local_build_str, "laplacesolve");
+        }
+
+        cl::program u_program = build_program_with_cache(clctx, "u_solver.cl", local_build_str);
+
+        cl::kernel iterate(u_program, "iterative_u_solve");
+
+
+        {
+            vec3i current_dim = dim;
+            cl_int3 current_cldim = {dim.x(), dim.y(), dim.z()};
+            float current_c_at_max = scale * current_dim.largest_elem();
+
+            std::array<cl::buffer, 2> u_args{clctx, clctx};
+            std::array<cl::buffer, 2> still_going{clctx, clctx};
+
+            for(int i=0; i < 2; i++)
+            {
+                u_args[i].alloc(sizeof(cl_float) * current_dim.x() * current_dim.y() * current_dim.z());
+                u_args[i].fill(cqueue, boundary);
+            }
+
+            for(int i=0; i < 2; i++)
+            {
+                still_going[i].alloc(sizeof(cl_int));
+                still_going[i].fill(cqueue, cl_int{1});
+            }
+
+            int N = 8000;
+
+            #ifdef GPU_PROFILE
+            N = 1000;
+            #endif // GPU_PROFILE
+
+            #ifdef QUICKSTART
+            N = 200;
+            #endif // QUICKSTART
+
+            float local_scale = calculate_scale(current_c_at_max, current_dim);
+
+            int which_reduced = 0;
+            int which_still_going = 0;
+
+            for(int i=0; i < N; i++)
+            {
+                cl::args iterate_u_args;
+
+                iterate_u_args.push_back(u_args[which_reduced], u_args[(which_reduced + 1) % 2],
+                                         data.aij_aIJ, data.ppw2p, data.particle_grid_E_without_conformal,
+                                         local_scale, current_cldim,
+                                         still_going[which_still_going], still_going[(which_still_going + 1) % 2],
+                                         etol);
+
+                iterate.set_args(iterate_u_args);
+
+                cqueue.exec(iterate, {current_dim.x(), current_dim.y(), current_dim.z()}, {8, 8, 1}, {});
+
+                if(((i % 50) == 0) && still_going[(which_still_going + 1) % 2].read<cl_int>(cqueue)[0] == 0)
+                    break;
+
+                still_going[which_still_going].set_to_zero(cqueue);
+
+                which_reduced = (which_reduced + 1) % 2;
+                which_still_going = (which_still_going + 1) % 2;
+            }
+
+            found_u_val = u_args[which_reduced];
+        }
+    }
+
+    data.post_u(clctx, cqueue,objs, particles, found_u_val);
+
+    return {data, found_u_val};
 }
 
 ///the standard arguments have been constructed when this is called

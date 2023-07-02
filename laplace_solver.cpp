@@ -204,7 +204,7 @@ cl::buffer extract_u_region(cl::context& ctx, cl::command_queue& cqueue, cl::ker
 }*/
 
 
-void setup_u_offset(single_source::argument_generator& arg_gen, equation_context& ctx, const value& boundary)
+/*void setup_u_offset(single_source::argument_generator& arg_gen, equation_context& ctx, const value& boundary)
 {
     buffer<value, 3> u_offset = arg_gen.add<buffer<value, 3>>();
     literal<v3i> dim = arg_gen.add<literal<v3i>>();
@@ -255,7 +255,7 @@ cl::buffer laplace_solver(cl::context& clctx, cl::command_queue& cqueue, laplace
     return solve_for_u(clctx, cqueue, setup, iterate, cached_aij_aIJ, cached_ppw2p, nonconformal_pH, clsize, c_at_max, 1, std::nullopt, err);
 
     //return iterate_u(clctx, cqueue, setup, iterate, extract, dim, c_at_max, err);
-}
+}*/
 
 struct sandwich_state
 {
