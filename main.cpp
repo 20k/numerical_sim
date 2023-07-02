@@ -1935,15 +1935,13 @@ struct superimposed_gpu_data
     cl::program multi_matter_program;
     cl::kernel multi_matter_kernel;
 
-    cl::buffer u_arg;
-
     superimposed_gpu_data(cl::context& ctx, cl::command_queue& cqueue, vec3i _dim, float _scale) : tov_phi{ctx}, bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, aij_aIJ{ctx}, ppw2p{ctx},
                                                                                                       pressure_buf{ctx}, rho_buf{ctx}, rhoH_buf{ctx}, p0_buf{ctx}, Si_buf{ctx, ctx, ctx},
                                                                                                       colour_buf{ctx, ctx, ctx},
                                                                                                       ppw2p_program(ctx), bcAij_matter_program(ctx), multi_matter_program(ctx),
                                                                                                       particle_position(ctx), particle_mass(ctx), particle_lorentz(ctx),
                                                                                                       particle_counts(ctx), particle_indices(ctx), particle_memory(ctx), particle_memory_count(ctx),
-                                                                                                      particle_grid_E_without_conformal(ctx), u_arg(ctx)
+                                                                                                      particle_grid_E_without_conformal(ctx)
     {
         dim = _dim;
         scale = _scale;
@@ -2212,7 +2210,7 @@ struct superimposed_gpu_data
         std::tie(multi_matter_program, multi_matter_kernel) = build_and_fetch_kernel(ctx, ectx, "initial_conditions.cl", "multi_accumulate", "multiaccumulate");
     }
 
-    void pull_all(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, const particle_data& particles)
+    void pre_u(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, const particle_data& particles)
     {
         bool built_accum_matter_kernel = false;
 
@@ -2244,10 +2242,18 @@ struct superimposed_gpu_data
         ///So write the particle positions, set up everything, do the fast method (sigh), and then go
 
         pull(clctx, cqueue, particles);
+    }
 
+    static cl::buffer get_u(cl::context& clctx, cl::command_queue& cqueue,  const std::vector<compact_object::data>& objs,
+                            cl::buffer& aij_aIJ, cl::buffer& ppw2p, cl::buffer& particle_grid_E_without_conformal,
+                            vec3i dim, float scale)
+    {
         laplace_data solve = setup_u_laplace(clctx, objs, aij_aIJ, ppw2p, particle_grid_E_without_conformal);
-        u_arg = laplace_solver(clctx, cqueue, solve, scale, dim, 0.00000001f);
+        return laplace_solver(clctx, cqueue, solve, scale, dim, 0.00000001f);
+    }
 
+    void post_u(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, const particle_data& particles, cl::buffer& u_arg)
+    {
         tensor<value, 3> pos = {"ox", "oy", "oz"};
 
         //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
@@ -2265,12 +2271,12 @@ struct superimposed_gpu_data
                     built_matter_program = true;
                 }
 
-                accumulate_matter_variables(clctx, cqueue, obj, conformal_guess);
+                accumulate_matter_variables(clctx, cqueue, obj, conformal_guess, u_arg);
             }
         }
     }
 
-    void accumulate_matter_variables(cl::context& clctx, cl::command_queue& cqueue, const compact_object::data& obj, const value& conformal_guess)
+    void accumulate_matter_variables(cl::context& clctx, cl::command_queue& cqueue, const compact_object::data& obj, const value& conformal_guess, cl::buffer& u_arg)
     {
         vec<4, cl_int> clsize = {dim.x(), dim.y(), dim.z(), 0};
 
@@ -2566,13 +2572,17 @@ struct superimposed_gpu_data
     }
 };
 
-superimposed_gpu_data get_superimposed(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, const particle_data& particles, vec3i dim, float scale)
+std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, const particle_data& particles, vec3i dim, float scale)
 {
     superimposed_gpu_data data(clctx, cqueue, dim, scale);
 
-    data.pull_all(clctx, cqueue, objs, particles);
+    data.pre_u(clctx, cqueue, objs, particles);
 
-    return data;
+    cl::buffer u = superimposed_gpu_data::get_u(clctx, cqueue, objs, data.aij_aIJ, data.ppw2p, data.particle_grid_E_without_conformal, dim, scale);
+
+    data.post_u(clctx, cqueue,objs, particles, u);
+
+    return {data, u};
 }
 
 ///the standard arguments have been constructed when this is called
@@ -5164,9 +5174,9 @@ int main()
 
         cl::command_queue cqueue(clctx.ctx);
 
-        superimposed_gpu_data super = get_superimposed(clctx.ctx, cqueue, holes.objs, holes.particles, size, scale);
+        auto [super, found_u] = get_superimposed(clctx.ctx, cqueue, holes.objs, holes.particles, size, scale);
 
-        u_arg = super.u_arg;
+        u_arg = found_u;
 
         matter_vars.bcAij = super.bcAij;
         matter_vars.superimposed_tov_phi = super.tov_phi;
