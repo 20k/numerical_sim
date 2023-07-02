@@ -2571,48 +2571,91 @@ void setup_u_offset(single_source::argument_generator& arg_gen, equation_context
 
 std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, const particle_data& particles, vec3i dim, float scale)
 {
-    superimposed_gpu_data data(clctx, cqueue, dim, scale);
+    float boundary = 0;
 
-    data.pre_u(clctx, cqueue, objs, particles);
+    value rhs = get_u_rhs(clctx, objs);
+
+    std::string local_build_str;
+
+    {
+        equation_context ectx;
+        ectx.add("U_RHS", rhs);
+        ectx.add("U_BOUNDARY", 0.f);
+
+        local_build_str = "-I ./ -cl-std=CL1.2 ";
+
+        ectx.build(local_build_str, "laplacesolve");
+    }
+
+    cl::program u_program = build_program_with_cache(clctx, "u_solver.cl", local_build_str, "", {"generic_laplace.cl"});
+    cl::kernel iterate_kernel(u_program, "iterative_u_solve");
+    cl::kernel extract_kernel(u_program, "extract_u_region");
+
+    auto get_superimposed_of = [&clctx, &cqueue, &objs, &particles](vec3i dim, float scale)
+    {
+        superimposed_gpu_data data(clctx, cqueue, dim, scale);
+
+        data.pre_u(clctx, cqueue, objs, particles);
+
+        return data;
+    };
 
     cl::buffer found_u_val(clctx);
 
     {
-        float etol = 0.00000001f;
+        float etol = 0.000000001f;
 
-        float boundary = 0;
+        steady_timer time;
 
-        value rhs = get_u_rhs(clctx, objs);
-
-        std::string local_build_str;
-
+        auto extract = [&extract_kernel](cl::context& ctx, cl::command_queue& cqueue,
+                            cl::buffer& in, float c_at_max_in, float c_at_max_out, vec3i dim)
         {
-            equation_context ectx;
-            ectx.add("U_RHS", rhs);
-            ectx.add("U_BOUNDARY", 0.f);
+            cl_int4 clsize = {dim.x(), dim.y(), dim.z()};
 
-            local_build_str = "-I ./ -cl-std=CL1.2 ";
+            cl::buffer out(ctx);
+            out.alloc(in.alloc_size);
 
-            ectx.build(local_build_str, "laplacesolve");
-        }
+            cl::args upscale_args;
+            upscale_args.push_back(in);
+            upscale_args.push_back(out);
+            upscale_args.push_back(c_at_max_in);
+            upscale_args.push_back(c_at_max_out);
+            upscale_args.push_back(clsize);
 
-        cl::program u_program = build_program_with_cache(clctx, "u_solver.cl", local_build_str);
+            extract_kernel.set_args(upscale_args);
 
-        cl::kernel iterate(u_program, "iterative_u_solve");
+            cqueue.exec(extract_kernel, {dim.x(), dim.y(), dim.z()}, {8, 8, 1}, {});
 
+            return out;
+        };
 
+        auto get_u_of = [&clctx, &cqueue, &objs, &particles, &boundary, &get_superimposed_of, &etol, &iterate_kernel](vec3i dim, float scale, std::optional<cl::buffer> u_upper)
         {
             vec3i current_dim = dim;
             cl_int3 current_cldim = {dim.x(), dim.y(), dim.z()};
             float current_c_at_max = scale * current_dim.largest_elem();
+            float local_scale = calculate_scale(current_c_at_max, current_dim);
+
+            superimposed_gpu_data data = get_superimposed_of(dim, scale);
 
             std::array<cl::buffer, 2> u_args{clctx, clctx};
             std::array<cl::buffer, 2> still_going{clctx, clctx};
 
-            for(int i=0; i < 2; i++)
+            if(u_upper.has_value())
             {
-                u_args[i].alloc(sizeof(cl_float) * current_dim.x() * current_dim.y() * current_dim.z());
-                u_args[i].fill(cqueue, boundary);
+                u_args[0] = u_upper.value();
+
+                u_args[1].alloc(sizeof(cl_float) * current_dim.x() * current_dim.y() * current_dim.z());
+
+                cl::copy(cqueue, u_args[0], u_args[1]);
+            }
+            else
+            {
+                for(int i=0; i < 2; i++)
+                {
+                    u_args[i].alloc(sizeof(cl_float) * current_dim.x() * current_dim.y() * current_dim.z());
+                    u_args[i].fill(cqueue, boundary);
+                }
             }
 
             for(int i=0; i < 2; i++)
@@ -2621,7 +2664,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
                 still_going[i].fill(cqueue, cl_int{1});
             }
 
-            int N = 8000;
+            int N = 32000;
 
             #ifdef GPU_PROFILE
             N = 1000;
@@ -2630,8 +2673,6 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
             #ifdef QUICKSTART
             N = 200;
             #endif // QUICKSTART
-
-            float local_scale = calculate_scale(current_c_at_max, current_dim);
 
             int which_reduced = 0;
             int which_still_going = 0;
@@ -2646,9 +2687,9 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
                                          still_going[which_still_going], still_going[(which_still_going + 1) % 2],
                                          etol);
 
-                iterate.set_args(iterate_u_args);
+                iterate_kernel.set_args(iterate_u_args);
 
-                cqueue.exec(iterate, {current_dim.x(), current_dim.y(), current_dim.z()}, {8, 8, 1}, {});
+                cqueue.exec(iterate_kernel, {current_dim.x(), current_dim.y(), current_dim.z()}, {8, 8, 1}, {});
 
                 if(((i % 50) == 0) && still_going[(which_still_going + 1) % 2].read<cl_int>(cqueue)[0] == 0)
                     break;
@@ -2659,9 +2700,39 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
                 which_still_going = (which_still_going + 1) % 2;
             }
 
-            found_u_val = u_args[which_reduced];
+            return u_args[which_reduced];
+        };
+
+        float c_at_max = scale * dim.largest_elem();
+
+        float boundaries[4] = {c_at_max * 16, c_at_max * 8, c_at_max * 4, c_at_max * 1};
+
+        std::optional<cl::buffer> last_u;
+
+        /*for(int i=0; i < 3; i++)
+        {
+            float current_boundary = boundaries[i];
+            float next_boundary = boundaries[i + 1];
+
+            float local_scale = calculate_scale(current_boundary, dim);
+
+            cl::buffer current_u = get_u_of(dim, local_scale, last_u);
+
+            cl::buffer extracted = extract(clctx, cqueue, current_u, current_boundary, next_boundary, dim);
+
+            last_u = extracted;
         }
+
+        found_u_val = last_u.value();*/
+
+        found_u_val = get_u_of(dim, scale, std::nullopt);
+
+        cqueue.block();
+
+        std::cout << "U spin " << time.get_elapsed_time_s() << std::endl;
     }
+
+    auto data = get_superimposed_of(dim, scale);
 
     data.post_u(clctx, cqueue,objs, particles, found_u_val);
 
@@ -3097,13 +3168,13 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
     h1.bare_mass = 0.483;
-    h1.momentum = {0, 0.133 * 0.94, 0};
+    h1.momentum = {0, 0.133, 0};
     h1.position = {-3.257, 0.f, 0.f};
 
     compact_object::data h2;
     h2.t = compact_object::BLACK_HOLE;
     h2.bare_mass = 0.483;
-    h2.momentum = {0, -0.133 * 0.94, 0};
+    h2.momentum = {0, -0.133, 0};
     h2.position = {3.257, 0.f, 0.f};
 
     objects = {h1, h2};
@@ -6397,6 +6468,6 @@ int main()
 
         float elapsed = frametime.restart() * 1000.f;
 
-        printf("Time: %f\n", elapsed);
+        //printf("Time: %f\n", elapsed);
     }
 }
