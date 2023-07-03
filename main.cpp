@@ -3859,6 +3859,10 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
 
     auto fetch_Guv_of = [&ctx](int k, dual t, dual x, dual y, dual z)
     {
+        metric<dual, 4, 4> Guv;
+
+        #ifdef ALCUBIERRE
+
         float velocity = 2;
         float sigma = 1;
         float R = 2;
@@ -3879,14 +3883,47 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
         dual dy = 1;
         dual dz = 1;
 
-        metric<dual, 4, 4> Guv;
-
         Guv[0, 0] = dt;
         Guv[1, 0] = 0.5 * dxdt;
         Guv[0, 1] = Guv[1, 0];
         Guv[1, 1] = dx;
         Guv[2, 2] = dy;
         Guv[3, 3] = dz;
+        #endif // ALCUBIERRE
+
+        //#define KERR_SCHILD
+        #ifdef KERR_SCHILD
+        tensor<float, 4, 4> Nuv = {-1, 0, 0, 0,
+                                    0, 1, 0, 0,
+                                    0, 0, 1, 0,
+                                    0, 0, 0, 1};
+
+        float M = 0.5;
+        float rs = 2 * M;
+        float a = 0.8;
+
+        dual R2 = x*x + y*y + z*z;
+        dual Rm2 = x*x + y*y - z*z;
+
+        float pad = 0.0001f;
+
+        dual r2 = (-a*a + sqrt(a*a*a*a - 2*a*a * Rm2 + R2*R2 + pad) + R2) / 2;
+
+        dual r = sqrt(r2 + pad);
+
+        tensor<dual, 4> lv = {1, (r*x + a*y) / (r2 + a*a + pad), (r*y - a*x) / (r2 + a*a + pad), z/(r + pad)};
+
+        dual f = rs * r2 * r/(r2 * r2 + a*a * z*z + pad*100);
+
+        for(int i=0; i < 4; i++)
+        {
+            for(int j=0; j < 4; j++)
+            {
+                Guv[i, j] = Nuv[i, j] + f * lv[i] * lv[j];
+            }
+        }
+
+        #endif // KERR
 
         return Guv;
     };
@@ -4117,7 +4154,7 @@ tensor<value, 3, 3, 3> gpu_covariant_derivative_low_tensor(equation_context& ctx
     return ret;
 }
 
-void build_hamiltonian_constraint(matter_interop& interop, equation_context& ctx, bool use_matter)
+void build_hamiltonian_constraint(const matter_interop& interop, equation_context& ctx, bool use_matter)
 {
     ctx.add("init_hamiltonian", bssn::calculate_hamiltonian_constraint(interop, ctx, use_matter));
 }
@@ -5292,7 +5329,7 @@ int main()
     std::string hydro_argument_string = argument_string;
 
     ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {255, 255, 255};
+    vec3i size = {311, 311, 311};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -6145,7 +6182,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.035;
+        float timestep = 0.01;
 
         if(pao && base_mesh.elapsed_time > 300)
             step = false;

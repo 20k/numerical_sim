@@ -624,7 +624,7 @@ namespace bssn
     void init(equation_context& ctx, const metric<value, 4, 4>& Guv, const tensor<value, 4, 4, 4>& dGuv);
 
     tensor<value, 3> calculate_momentum_constraint(matter_interop& interop, equation_context& ctx, bool use_matter);
-    value calculate_hamiltonian_constraint(matter_interop& interop, equation_context& ctx, bool use_matter);
+    value calculate_hamiltonian_constraint(const matter_interop& interop, equation_context& ctx, bool use_matter);
 
     void build(cl::context& clctx, const matter_interop& interop, bool use_matter, base_bssn_args bssn_args, base_utility_args utility_args);
 }

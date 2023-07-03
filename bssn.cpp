@@ -487,7 +487,7 @@ tensor<value, 3> bssn::calculate_momentum_constraint(matter_interop& interop, eq
     return Mi;
 }
 
-value bssn::calculate_hamiltonian_constraint(matter_interop& interop, equation_context& ctx, bool use_matter)
+value bssn::calculate_hamiltonian_constraint(const matter_interop& interop, equation_context& ctx, bool use_matter)
 {
     standard_arguments args(ctx);
 
