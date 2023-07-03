@@ -5335,8 +5335,7 @@ int main()
     std::string argument_string = "-I ./ -cl-std=CL2.0 -cl-mad-enable ";
     std::string hydro_argument_string = argument_string;
 
-    ///must be a multiple of DIFFERENTIATION_WIDTH
-    vec3i size = {311, 311, 311};
+    vec3i size = {255, 255, 255};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
