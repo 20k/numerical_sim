@@ -1584,7 +1584,8 @@ value tov_phi_at_coordinate_general(const tensor<value, 3>& world_position)
     //return dual_types::apply("tov_phi", as_float3(vx, vy, vz), "dim");
 }
 
-value get_u_rhs(cl::context& clctx, const std::vector<compact_object::data>& cpu_holes)
+///make this faster by neglecting the terms that are unused, eg cached_ppw2p and nonconformal_pH
+value get_u_rhs(cl::context& clctx, const initial_conditions& init)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
@@ -1592,7 +1593,7 @@ value get_u_rhs(cl::context& clctx, const std::vector<compact_object::data>& cpu
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     ///todo when I forget: I'm using the conformal guess here for neutron stars which probably isn't right
-    value BL_s_dyn = calculate_conformal_guess(pos, cpu_holes);
+    value BL_s_dyn = calculate_conformal_guess(pos, init.objs);
 
     ///https://arxiv.org/pdf/1606.04881.pdf 74
     value phi = BL_s_dyn + u_value + 1;
@@ -1600,6 +1601,12 @@ value get_u_rhs(cl::context& clctx, const std::vector<compact_object::data>& cpu
     value cached_aij_aIJ = bidx("cached_aij_aIJ", false, false);
     value cached_ppw2p = bidx("cached_ppw2p", false, false);
     value cached_non_conformal_pH = bidx("nonconformal_pH", false, false);
+
+    if(!init.use_matter && !init.use_particles)
+    {
+        cached_ppw2p = 0;
+        cached_non_conformal_pH = 0;
+    }
 
     ///https://arxiv.org/pdf/1606.04881.pdf I think I need to do (85)
     ///ok no: I think what it is is that they're solving for ph in ToV, which uses tov's conformally flat variable
@@ -2569,11 +2576,11 @@ void setup_u_offset(single_source::argument_generator& arg_gen, equation_context
     ctx.exec(assign(u_offset[pos], boundary));
 }
 
-std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, const particle_data& particles, vec3i dim, float scale)
+std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx, cl::command_queue& cqueue, initial_conditions& init, vec3i dim, float scale)
 {
     float boundary = 0;
 
-    value rhs = get_u_rhs(clctx, objs);
+    value rhs = get_u_rhs(clctx, init);
 
     std::string local_build_str;
 
@@ -2591,11 +2598,11 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
     cl::kernel iterate_kernel(u_program, "iterative_u_solve");
     cl::kernel extract_kernel(u_program, "extract_u_region");
 
-    auto get_superimposed_of = [&clctx, &cqueue, &objs, &particles](vec3i dim, float scale)
+    auto get_superimposed_of = [&clctx, &cqueue, &init](vec3i dim, float scale)
     {
         superimposed_gpu_data data(clctx, cqueue, dim, scale);
 
-        data.pre_u(clctx, cqueue, objs, particles);
+        data.pre_u(clctx, cqueue, init.objs, init.particles);
 
         return data;
     };
@@ -2629,7 +2636,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
             return out;
         };
 
-        auto get_u_of = [&clctx, &cqueue, &objs, &particles, &boundary, &get_superimposed_of, &etol, &iterate_kernel](vec3i dim, float scale, std::optional<cl::buffer> u_upper)
+        auto get_u_of = [&clctx, &cqueue, &init, &boundary, &get_superimposed_of, &etol, &iterate_kernel](vec3i dim, float scale, std::optional<cl::buffer> u_upper)
         {
             vec3i current_dim = dim;
             cl_int3 current_cldim = {dim.x(), dim.y(), dim.z()};
@@ -2734,7 +2741,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
 
     auto data = get_superimposed_of(dim, scale);
 
-    data.post_u(clctx, cqueue,objs, particles, found_u_val);
+    data.post_u(clctx, cqueue, init.objs, init.particles, found_u_val);
 
     return {data, found_u_val};
 }
@@ -5365,7 +5372,7 @@ int main()
 
         cl::command_queue cqueue(clctx.ctx);
 
-        auto [super, found_u] = get_superimposed(clctx.ctx, cqueue, holes.objs, holes.particles, size, scale);
+        auto [super, found_u] = get_superimposed(clctx.ctx, cqueue, holes, size, scale);
 
         u_arg = found_u;
 
