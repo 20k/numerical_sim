@@ -268,6 +268,25 @@ void cpu_mesh::init(cl::context& ctx, cl::command_queue& cqueue, thin_intermedia
         cqueue.exec("calculate_initial_conditions", init, {dim.x(), dim.y(), dim.z()}, {8, 8, 1});
     }
 
+    {
+        cl::args args;
+
+        for(auto& i : data.at(0).buffers)
+        {
+            args.push_back(i.buf);
+        }
+
+        args.push_back(points_set.all_points);
+        args.push_back(points_set.all_count);
+        args.push_back(points_set.order);
+
+        args.push_back(scale);
+        args.push_back(clsize);
+
+        cqueue.exec("calculate_christoffel_symbol", args, {points_set.all_count}, {128});
+
+    }
+
     for(plugin* p : plugins)
     {
         p->init(*this, ctx, cqueue, pool, data.at(0));
@@ -367,33 +386,6 @@ buffer_set& cpu_mesh::get_buffers(cl::context& ctx, cl::managed_command_queue& m
     }
 
     return data.at(index);
-}
-
-void downsample(equation_context& ctx, buffer<value, 3> in_buf, literal<v3i> lin_dim, buffer<value, 3> out_buf, literal<v3i> lout_dim)
-{
-    in_buf.size = lin_dim.get();
-    out_buf.size = lout_dim.get();
-
-    ctx.exec("int ix = get_global_id(0)");
-    ctx.exec("int iy = get_global_id(1)");
-    ctx.exec("int iz = get_global_id(2)");
-
-    v3i pos = {"ix", "iy", "iz"};
-
-    v3i out_dim = lout_dim.get();
-
-    ctx.exec(if_s(pos.x() >= out_dim.x() || pos.y() >= out_dim.y() || pos.z() >= out_dim.z(), return_s));
-
-    v3f in_dimf = (v3f)(lin_dim.get());
-    v3f out_dimf = (v3f)(lout_dim.get());
-
-    v3f in_ratio = in_dimf / out_dimf;
-
-    v3f upper_pos = (v3f)pos * in_ratio;
-
-    value val = buffer_read_linear(in_buf, upper_pos, lin_dim.get());
-
-    ctx.exec(assign(out_buf[pos], val));
 }
 
 ///returns buffers and intermediates

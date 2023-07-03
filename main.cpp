@@ -2603,7 +2603,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
     cl::buffer found_u_val(clctx);
 
     {
-        float etol = 0.000000001f;
+        float etol = 0.000001f;
 
         steady_timer time;
 
@@ -2664,7 +2664,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
                 still_going[i].fill(cqueue, cl_int{1});
             }
 
-            int N = 32000;
+            int N = 8000;
 
             #ifdef GPU_PROFILE
             N = 1000;

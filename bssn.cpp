@@ -5,6 +5,9 @@
 #include "util.hpp"
 #include <thread>
 
+using single_source::named_buffer;
+using single_source::named_literal;
+
 value matter_meta_interop::calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args) const
 {
     value ret;
@@ -53,13 +56,59 @@ tensor<value, 3> matter_meta_interop::calculate_adm_Si(equation_context& ctx, st
     return ret;
 }
 
+std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, value_i point_count, tensor<value_i, 4> dim, buffer<value_us, 3> order_ptr);
+
+void calculate_christoffel_symbol(single_source::argument_generator& arg_gen, equation_context& ctx, base_bssn_args bssn_args)
+{
+    arg_gen.add(bssn_args.buffers);
+
+    auto points = arg_gen.add<buffer<tensor<value_us, 4>, 3>>();
+    auto point_count = arg_gen.add<literal<value_i>>();
+    auto order_ptr = arg_gen.add<named_buffer<value_us, 3, "order_ptr">>();
+
+    arg_gen.add<named_literal<value, "scale">>();
+    auto dim = arg_gen.add<named_literal<tensor<value_i, 4>, "dim">>();
+
+    named_buffer<value, 3, "cGi0"> cGi0;
+    named_buffer<value, 3, "cGi1"> cGi1;
+    named_buffer<value, 3, "cGi2"> cGi2;
+
+    auto [ix, iy, iz, index] = setup(ctx, points, point_count, dim, order_ptr);
+
+    standard_arguments args(ctx);
+
+    auto icY = args.cY.invert();
+
+    tensor<value, 3, 3, 3> christoff2 = christoffel_symbols_2(ctx, args.cY, icY);
+
+    tensor<value, 3> cGi;
+
+    for(int i=0; i < 3; i++)
+    {
+        value sum = 0;
+
+        for(int m=0; m < 3; m++)
+        {
+            for(int n=0; n < 3; n++)
+            {
+                sum += icY[m, n] * christoff2[i, m, n];
+            }
+        }
+
+        cGi[i] = sum;
+    }
+
+    ctx.exec(assign(cGi0[index], cGi[0]));
+    ctx.exec(assign(cGi1[index], cGi[1]));
+    ctx.exec(assign(cGi2[index], cGi[2]));
+}
+
 void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const tensor<value, 3, 3>& Aij, const value& gA)
 {
     ctx.add_function("buffer_index", buffer_index_f<value, 3>);
     ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
-
 
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 10
     ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
@@ -568,9 +617,6 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
 
     return {ix, iy, iz, index};
 }
-
-using single_source::named_buffer;
-using single_source::named_literal;
 
 template<single_source::impl::fixed_string str>
 struct bssn_arg_pack
@@ -1951,4 +1997,6 @@ void bssn::build(cl::context& clctx, const matter_interop& interop, bool use_mat
     std::vector<exec_builder_base*> b = {&cAexec, &Xexec, &Kexec, &gAexec, &gBexec, &cYexec, &cGiexec};
 
     single_source::make_async_dynamic_kernel_for(clctx, build_kernel, "evolve_1", "", interop, use_matter, bssn_args, utility_args, b);
+
+    single_source::make_async_dynamic_kernel_for(clctx, calculate_christoffel_symbol, "calculate_christoffel_symbol", "", bssn_args);
 }
