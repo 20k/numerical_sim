@@ -707,6 +707,7 @@ __kernel
 void render(STANDARD_ARGS(),
             STANDARD_DERIVS(),
             STANDARD_UTILITY(),
+            __global ushort* order_ptr,
             float scale, int4 dim, __write_only image2d_t screen)
 {
     int ix = get_global_id(0);
@@ -736,6 +737,8 @@ void render(STANDARD_ARGS(),
     float matter = 0;
     #endif
 
+    int index = IDX(ix, iy, iz);
+
     //for(int z = 20; z < dim.z-20; z++)
 
     {
@@ -754,7 +757,6 @@ void render(STANDARD_ARGS(),
             return;
         }
 
-        int index = IDX(ix, iy, iz);
 
         float ascalar = 0;
 
@@ -943,6 +945,11 @@ void render(STANDARD_ARGS(),
     col += max_scalar;
 
     col = clamp(col, 0.f, 1.f);
+
+    if(order_ptr[index] & D_GTE_WIDTH_6)
+        col = (float3){0,0,1};
+    else
+        col = (float3){0,1,0};
 
     float3 lin_col = srgb_to_lin(col);
 

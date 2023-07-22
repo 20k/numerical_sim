@@ -79,16 +79,18 @@ int get_distance_to_border(int x, int y, int z, float scale, int4 dim)
     if(sponge_damp_coeff(x, y, z, scale, dim) == 1)
         return 0;
 
-    uint dist = BORDER_WIDTH;
+    #define MAX_DERIVATIVE_WIDTH 6
+
+    uint dist = MAX_DERIVATIVE_WIDTH;
 
     #pragma unroll
-    for(int iz=-BORDER_WIDTH; iz <= BORDER_WIDTH; iz++)
+    for(int iz=-MAX_DERIVATIVE_WIDTH; iz <= MAX_DERIVATIVE_WIDTH; iz++)
     {
         #pragma unroll
-        for(int iy=-BORDER_WIDTH; iy <= BORDER_WIDTH; iy++)
+        for(int iy=-MAX_DERIVATIVE_WIDTH; iy <= MAX_DERIVATIVE_WIDTH; iy++)
         {
             #pragma unroll
-            for(int ix=-BORDER_WIDTH; ix <= BORDER_WIDTH; ix++)
+            for(int ix=-MAX_DERIVATIVE_WIDTH; ix <= MAX_DERIVATIVE_WIDTH; ix++)
             {
                 if(is_exact_border_point(x + ix, y + iy, z + iz, scale, dim) == 1)
                 {
@@ -153,14 +155,16 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
 
     int index = IDX(ix, iy, iz);
 
+    int out = 0;
+
     if(is_regular_order_evolved_point(ix, iy, iz, scale, dim))
     {
-        order_ptr[index] = D_FULL;
+        out |= D_FULL;
     }
 
     if(is_low_order_evolved_point(ix, iy, iz, scale, dim))
     {
-        order_ptr[index] = D_LOW;
+        out |= D_LOW;
     }
 
     if(is_exact_border_point(ix, iy, iz, scale, dim))
@@ -193,8 +197,6 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
             printf("Error! No valid point x for %i %i %i\n", ix, iy, iz);
         }
 
-        ushort out = 0;
-
         if(valid_px && valid_nx)
         {
             out |= D_BOTH_PX;
@@ -221,35 +223,27 @@ void generate_evolution_points(__global ushort4* points_1st, __global int* point
         {
             out |= D_ONLY_PZ;
         }
-
-        order_ptr[index] = out;
     }
 
     int dist = get_distance_to_border(ix,iy, iz, scale, dim);
 
-    if(dist == 1)
-        order_ptr[index] |= D_WIDTH_1;
-    if(dist == 2)
-        order_ptr[index] |= D_WIDTH_2;
-    if(dist == 3)
-        order_ptr[index] |= D_WIDTH_3;
-    if(dist == 4)
-        order_ptr[index] |= D_WIDTH_4;
-    if(dist == 5)
-        order_ptr[index] |= D_WIDTH_5;
-    if(dist == 6)
-        order_ptr[index] |= D_WIDTH_6;
-
     if(dist >= 1)
-        order_ptr[index] |= D_GTE_WIDTH_1;
+        out |= D_GTE_WIDTH_1;
     if(dist >= 2)
-        order_ptr[index] |= D_GTE_WIDTH_2;
+        out |= D_GTE_WIDTH_2;
     if(dist >= 3)
-        order_ptr[index] |= D_GTE_WIDTH_3;
+        out |= D_GTE_WIDTH_3;
     if(dist >= 4)
-        order_ptr[index] |= D_GTE_WIDTH_4;
+        out |= D_GTE_WIDTH_4;
     if(dist >= 5)
-        order_ptr[index] |= D_GTE_WIDTH_5;
+        out |= D_GTE_WIDTH_5;
     if(dist >= 6)
-        order_ptr[index] |= D_GTE_WIDTH_6;
+        out |= D_GTE_WIDTH_6;
+
+    if(out >= 65535)
+    {
+        printf("Overflow in evolve\n");
+    }
+
+    order_ptr[index] = out;
 }

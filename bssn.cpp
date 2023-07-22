@@ -611,6 +611,7 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
     value_i lD_FULL = (int)D_FULL;
     value_i lD_LOW = (int)D_LOW;
 
+    ///note to self the d_full check here is bad
     value_i is_bad = ((order & lD_FULL) == 0) && ((order & lD_LOW) == 0);
 
     ctx.exec(if_s(is_bad, return_s));
