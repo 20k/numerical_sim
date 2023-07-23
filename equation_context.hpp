@@ -15,6 +15,7 @@ struct equation_context;
 value diff1(equation_context& ctx, const value& in, int idx);
 //value diff1(equation_context& ctx, const buffer<value, 3>& in, int idx, const v3i& where, const value& scale);
 value diff2(equation_context& ctx, const value& in, int idx, int idy, const value& first_x, const value& first_y);
+value upwind(equation_context& ctx, const value& prefix, const value& in, int idx);
 
 struct equation_context : differentiator
 {
@@ -37,6 +38,8 @@ struct equation_context : differentiator
     virtual value diff1(const value& in, int idx) override {return ::diff1(*this, in, idx);};
     //virtual value diff1(const buffer<value, 3>& in, int idx, const v3i& where, const value& scale) override {return ::diff1(*this, in, idx, where, scale);};
     virtual value diff2(const value& in, int idx, int idy, const value& dx, const value& dy) override {return ::diff2(*this, in, idx, idy, dx, dy);};
+
+    virtual value upwind(const value& prefix, const value& in, int idx) {return ::upwind(*this, prefix, in, idx);}
 
     template<typename T>
     void add_function(const std::string& name, const T& func)

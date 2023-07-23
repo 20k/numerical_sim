@@ -45,7 +45,7 @@ tensor<T, N, N> trace_free(const tensor<T, N, N>& mT, const metric<T, N, N>& met
 
 ///B^i * Di whatever
 inline
-value upwind_differentiate(differentiator& ctx, const value& prefix, const value& in, int idx, bool pin = true)
+value upwind_differentiate(differentiator& ctx, const value& prefix, const value& in, int idx)
 {
     /*differentiation_context dctx(in, idx);
 
@@ -67,7 +67,8 @@ value upwind_differentiate(differentiator& ctx, const value& prefix, const value
 
     return final_command;*/
 
-    return prefix * ctx.diff1(in, idx);
+    return ctx.upwind(prefix, in, idx);
+    //return prefix * ctx.diff1(in, idx);
 
     /*differentiation_context<7> dctx(in, idx);
 

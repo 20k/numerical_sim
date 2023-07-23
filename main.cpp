@@ -761,6 +761,11 @@ value diff2(equation_context& ctx, const value& in, int idx, int idy, const valu
     return diff1(ctx, first_x, idy);
 }
 
+value upwind(equation_context& ctx, const value& prefix, const value& in, int idx)
+{
+    return prefix * diff1(ctx, in, idx);
+}
+
 /*tensor<value, 3> tensor_derivative(equation_context& ctx, const value& in)
 {
     tensor<value, 3> ret;

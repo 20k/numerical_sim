@@ -13,6 +13,7 @@ struct differentiator
     virtual value diff1(const value& in, int idx){assert(false); return value{0.f};};
     //virtual value diff1(const buffer<value, 3>& in, int idx, const v3i& where, const value& scale){assert(false); return value{0.f};};
     virtual value diff2(const value& in, int idx, int idy, const value& dx, const value& dy){assert(false); return value{0.f};};
+    virtual value upwind(const value& prefix, const value& in, int idx){assert(false); return value{0.f};}
 
     virtual ~differentiator(){}
 };
