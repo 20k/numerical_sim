@@ -712,7 +712,7 @@ value diff1(equation_context& ctx, const value& in, int idx)
             X = X*X;
             #endif
 
-            is_high_order = if_v(X < 0.1f, value_us{0}, is_high_order);
+            is_high_order = if_v(X < 0.03f, value_us{0}, is_high_order);
         }
         #endif // DYNAMIC_DROP
 
