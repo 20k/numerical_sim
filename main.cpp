@@ -617,6 +617,30 @@ value diffnth(equation_context& ctx, const value& in, int idx, const value_i& nt
     return last;
 }
 
+value_us satisfies_order(int order, value_us found_order)
+{
+    int which_check = D_FULL;
+
+    if(order == 1)
+    {
+        which_check = D_GTE_WIDTH_1;
+    }
+    else if(order == 2)
+    {
+        which_check = D_GTE_WIDTH_2;
+    }
+    else if(order == 3)
+    {
+        which_check = D_GTE_WIDTH_3;
+    }
+    else if(order == 4)
+    {
+        which_check = D_GTE_WIDTH_4;
+    }
+
+    return (found_order & which_check) > 0;
+}
+
 value diff1(equation_context& ctx, const value& in, int idx)
 {
     //ctx.use_precise_differentiation = false;
@@ -632,24 +656,7 @@ value diff1(equation_context& ctx, const value& in, int idx)
     else
     {
         ///in my case, order corresponds to width
-        int which_check = D_FULL;
 
-        if(ctx.order == 1)
-        {
-            which_check = D_GTE_WIDTH_1;
-        }
-        else if(ctx.order == 2)
-        {
-            which_check = D_GTE_WIDTH_2;
-        }
-        else if(ctx.order == 3)
-        {
-            which_check = D_GTE_WIDTH_3;
-        }
-        else if(ctx.order == 4)
-        {
-            which_check = D_GTE_WIDTH_4;
-        }
 
         //value_us d_low = (uint16_t)D_LOW;
         value_us d_only_px = (uint16_t)D_ONLY_PX;
@@ -680,8 +687,7 @@ value diff1(equation_context& ctx, const value& in, int idx)
 
         value_us order = "order";
 
-        value_us is_high_order = (order & which_check) > 0;
-        //value is_low_order = (order & d_low) > 0;
+        value_us is_high_order = satisfies_order(ctx.order, order);
 
         value_us is_forward = (order & directional_single) > 0;
         value_us is_bidi = (order & directional_both) > 0;
@@ -763,7 +769,22 @@ value diff2(equation_context& ctx, const value& in, int idx, int idy, const valu
 
 value upwind(equation_context& ctx, const value& prefix, const value& in, int idx)
 {
+    #ifdef USE_UPWIND_STENCILS
+    value_us is_high_order = satisfies_order(3, "order");
+    value scale = "scale";
+
+    differentiation_context<7> dctx(ctx, in, idx, ctx.uses_linear);
+    auto vars = dctx.vars;
+
+    value positive_stencil = -3 * vars[2] - 10 * vars[3] + 18 * vars[4] - 6 * vars[5] + vars[6];
+    value negative_stencil = -vars[0] + 6 * vars[1] - 18 * vars[2] + 10 * vars[3] + 3 * vars[4];
+
+    value high_order_upwind = prefix * if_v(prefix > 0, positive_stencil, negative_stencil) / (12 * scale);
+
+    return if_v(is_high_order, high_order_upwind, prefix * diff1(ctx, in, idx));
+    #else
     return prefix * diff1(ctx, in, idx);
+    #endif
 }
 
 /*tensor<value, 3> tensor_derivative(equation_context& ctx, const value& in)
