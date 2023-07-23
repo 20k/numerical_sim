@@ -1866,7 +1866,7 @@ tensor<value, 3> get_dtgB(standard_arguments& args, equation_context& ctx, const
 
     #define STATIC_DAMP
     #ifdef STATIC_DAMP
-    value Ns_r = 3.f;
+    value Ns_r = 2.f;
     #endif
 
     value N = max(Ns_r, 0.5f);
@@ -1978,6 +1978,8 @@ exec_builder<tensor<value, 3>, get_dtgB, finish_gB> gBexec;
 
 void build_kernel(single_source::argument_generator& arg_gen, equation_context& ctx, const matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args, std::vector<exec_builder_base*> execs)
 {
+    ctx.dynamic_drop = true;
+
     all_args all(arg_gen, bssn_args, utility_args);
 
     (void)setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);

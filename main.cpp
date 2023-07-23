@@ -702,6 +702,20 @@ value diff1(equation_context& ctx, const value& in, int idx)
 
         value selected_full = dual_types::if_v(is_bidi, low_d, selected_directional);
 
+        #define DYNAMIC_DROP
+        #ifdef DYNAMIC_DROP
+        if(ctx.dynamic_drop)
+        {
+            value X = "X[index]";
+
+            #ifdef USE_W
+            X = X*X;
+            #endif
+
+            is_high_order = if_v(X < 0.1f, value_us{0}, is_high_order);
+        }
+        #endif // DYNAMIC_DROP
+
         if(ctx.always_directional_derivatives)
             return selected_full;
         else
@@ -6240,7 +6254,7 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = 0.03;
+        float timestep = get_timestep(get_c_at_max(), size);
 
         if(pao && base_mesh.elapsed_time > 300)
             step = false;

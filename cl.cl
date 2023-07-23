@@ -946,6 +946,9 @@ void render(STANDARD_ARGS(),
 
     col = clamp(col, 0.f, 1.f);
 
+    if(X[index] * X[index] < 0.1f)
+        col = (float3)(0, 0, 1);
+
     /*if(order_ptr[index] & D_GTE_WIDTH_4)
         col = (float3){0,0,1};
     else
