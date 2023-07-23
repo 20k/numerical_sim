@@ -702,7 +702,7 @@ value diff1(equation_context& ctx, const value& in, int idx)
 
         value selected_full = dual_types::if_v(is_bidi, low_d, selected_directional);
 
-        #define DYNAMIC_DROP
+        //#define DYNAMIC_DROP
         #ifdef DYNAMIC_DROP
         if(ctx.dynamic_drop)
         {
