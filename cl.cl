@@ -946,10 +946,10 @@ void render(STANDARD_ARGS(),
 
     col = clamp(col, 0.f, 1.f);
 
-    if(order_ptr[index] & D_GTE_WIDTH_6)
+    /*if(order_ptr[index] & D_GTE_WIDTH_4)
         col = (float3){0,0,1};
     else
-        col = (float3){0,1,0};
+        col = (float3){0,1,0};*/
 
     float3 lin_col = srgb_to_lin(col);
 

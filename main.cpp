@@ -408,7 +408,7 @@ value_i get_maximum_differentiation_derivative(const value_i& order)
 
     for(int i=0; i < values.size(); i++)
     {
-        last = if_v((order & distances[i]), values[i], last);
+        last = if_v((order & distances[i]) > 0, values[i], last);
     }
 
     return last;
@@ -479,7 +479,7 @@ void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 3> 
     value_i order = "order";
 
     ///note to self we're not actually doing this correctly
-    value_i is_valid_point = (order & value_i{(int)D_LOW}) || (order & value_i{(int)D_FULL});
+    value_i is_valid_point = ((order & value_i{(int)D_LOW}) > 0) || ((order & value_i{(int)D_FULL}) > 0);
 
     ctx.exec(if_s(!is_valid_point,
                   (assign(buf_out[ix, iy, iz], buf_in[ix, iy, iz]),
