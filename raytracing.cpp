@@ -1285,6 +1285,7 @@ void trace_slice4(equation_context& ctx,
         ///YET
         v4f loop_voxel_pos_pinned = declare(ctx, as_constant(loop_voxel_pos_txyz));
         v4f loop_velocity_pinned = declare(ctx, as_constant(loop_vel));
+        value current_ds_pinned = declare(ctx, as_constant(current_ds));
 
         bool can_cache = true;
 
@@ -1298,14 +1299,14 @@ void trace_slice4(equation_context& ctx,
 
         v4f acceleration = do_Guv(loop_voxel_pos_pinned, loop_velocity_pinned);
 
-        v4f v_half = loop_velocity_pinned + 0.5f * acceleration * current_ds;
+        v4f v_half = loop_velocity_pinned + 0.5f * acceleration * current_ds_pinned;
 
-        v4f next_voxel_pos = loop_voxel_pos_pinned + v_half * current_ds / scales;
-        v4f intermediate_next_velocity = loop_velocity_pinned + acceleration * current_ds;
+        v4f next_voxel_pos = loop_voxel_pos_pinned + v_half * current_ds_pinned / scales;
+        v4f intermediate_next_velocity = loop_velocity_pinned + acceleration * current_ds_pinned;
 
         v4f next_acceleration = do_Guv(next_voxel_pos, intermediate_next_velocity);
 
-        v4f next_velocity = v_half + 0.5f * next_acceleration * current_ds;
+        v4f next_velocity = v_half + 0.5f * next_acceleration * current_ds_pinned;
 
         //next_velocity.x() = clamp(next_velocity.x(), value{-100}, value{100});
 
