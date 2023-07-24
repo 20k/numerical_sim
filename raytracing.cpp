@@ -1274,8 +1274,20 @@ void trace_slice4(equation_context& ctx,
         dual_types::block blk(ctx);
         assert(ctx.current_block_level == 1);
 
+        assert(loop_voxel_pos_txyz[0].is_mutable);
+
         v4f loop_voxel_pos_pinned = declare(ctx, as_constant(loop_voxel_pos_txyz));
         v4f loop_velocity_pinned = declare(ctx, as_constant(loop_vel));
+
+        bool can_cache = true;
+
+        loop_voxel_pos_pinned[0].recurse_arguments([&](const value& in)
+        {
+            if(in.is_mutable)
+                can_cache = false;
+        });
+
+        assert(!can_cache);
 
         v4f acceleration = do_Guv(loop_voxel_pos_pinned, loop_velocity_pinned);
 
@@ -1320,6 +1332,10 @@ void trace_slice4(equation_context& ctx,
         ctx.exec(assign(current_ds, ds_out));
     }
 
+    ///guarantee that loop_vel and loop_voxel_pos_txyz won't change now
+    v4f loop_vel_cst = declare(ctx, as_constant(loop_vel));
+    v4f loop_voxel_pos_txyz_cst = declare(ctx, as_constant(loop_voxel_pos_txyz));
+
     value zp1 = 1;
 
     {
@@ -1336,7 +1352,7 @@ void trace_slice4(equation_context& ctx,
 
         v4f observer_lowered = lower_index(observer, Guv, 0);
 
-        value top = sum_multiply(as_constant(loop_vel), observer_lowered);
+        value top = sum_multiply(loop_vel_cst, observer_lowered);
 
         top = clamp(top, value{-100.f}, {100.f});
 
@@ -1346,7 +1362,7 @@ void trace_slice4(equation_context& ctx,
         ///(-velocity.x / ray->ku_uobsu)
     }
 
-    v4f fin_world_pos = voxel_to_world4(as_constant(loop_voxel_pos_txyz), dim.get(), slice_width.get(), scale.get());
+    v4f fin_world_pos = voxel_to_world4(loop_voxel_pos_txyz_cst, dim.get(), slice_width.get(), scale.get());
 
     render_ray_info out = render_out[lidx];
 
@@ -1356,9 +1372,9 @@ void trace_slice4(equation_context& ctx,
                              assign(out.X.get(), fin_world_pos.y()),
                              assign(out.Y.get(), fin_world_pos.z()),
                              assign(out.Z.get(), fin_world_pos.w()),
-                             assign(out.dX.get(), loop_vel.y()),
-                             assign(out.dY.get(), loop_vel.z()),
-                             assign(out.dZ.get(), loop_vel.w()),
+                             assign(out.dX.get(), loop_vel_cst.y()),
+                             assign(out.dY.get(), loop_vel_cst.z()),
+                             assign(out.dZ.get(), loop_vel_cst.w()),
                              assign(out.hit_type.get(), hit_type),
                              assign(out.R.get(), value{0}),
                              assign(out.G.get(), value{0}),

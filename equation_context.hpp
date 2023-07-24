@@ -23,6 +23,7 @@ struct equation_context : differentiator
 
     std::vector<std::pair<std::string, value>> values;
     std::vector<std::tuple<std::string, value, int>> temporaries;
+    std::vector<int> can_cache_status;
     std::vector<std::pair<std::string, value>> sequenced;
     std::vector<std::pair<value, value>> aliases;
     bool uses_linear = false;
@@ -106,20 +107,35 @@ struct equation_context : differentiator
         ///ok so. Types must be declared as mutable or not mutable
         ///only mutable types can be mutated, obviously
         ///if an expression contains a mutable type, it can't be cached
-        for(auto& [name, val, level] : temporaries)
+
+        bool can_cache = true;
+
+        v.recurse_arguments([&](value& in)
         {
-            if(level != current_block_level)
-                continue;
+            if(in.is_mutable)
+                can_cache = false;
+        });
 
-            if(dual_types::equivalent<float>(v, name) || dual_types::equivalent<float>(v, val))
+        if(can_cache)
+        {
+            for(int i=0; i < (int)temporaries.size(); i++)
             {
-                value facade;
-                facade.make_value(name);
+                auto& [name, val, level] = temporaries[i];
 
-                v = facade;
-                return;
+                if(!can_cache_status[i])
+                    continue;
+
+                if(dual_types::equivalent<float>(v, name) || dual_types::equivalent<float>(v, val))
+                {
+                    value facade;
+                    facade.make_value(name);
+
+                    v = facade;
+                    return;
+                }
             }
         }
+
 
         std::string name = "pv" + std::to_string(temporaries.size());
         //std::string name = "pv[" + std::to_string(temporaries.size()) + "]";
@@ -127,6 +143,7 @@ struct equation_context : differentiator
         value old = v;
 
         temporaries.push_back({name, old, current_block_level});
+        can_cache_status.push_back(can_cache);
         sequenced.push_back({name, old});
 
         value facade;
