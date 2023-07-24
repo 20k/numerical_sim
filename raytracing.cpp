@@ -1276,6 +1276,13 @@ void trace_slice4(equation_context& ctx,
 
         assert(loop_voxel_pos_txyz[0].is_mutable);
 
+        ///so, we could totally cache this is in equivalent, and there's 0 reason to deprive us of that
+        ///loop_voxel_pos_pinned has a unique name, which cannot be referred to outside this scope
+        ///its safe to look up loop_voxel_pos_pinned within this scope, because we're fundamentally saying
+        ///i want the value of loop_voxel_pos_pinned, NOT the value of its *contents*
+        ///that means that it is safe to cache
+        ///MUST NOT INSPECT THE TREE WHICH MAKES IT UP, which is a very different constraint, and isn't something that is done
+        ///YET
         v4f loop_voxel_pos_pinned = declare(ctx, as_constant(loop_voxel_pos_txyz));
         v4f loop_velocity_pinned = declare(ctx, as_constant(loop_vel));
 
@@ -1287,7 +1294,7 @@ void trace_slice4(equation_context& ctx,
                 can_cache = false;
         });
 
-        assert(!can_cache);
+        assert(can_cache);
 
         v4f acceleration = do_Guv(loop_voxel_pos_pinned, loop_velocity_pinned);
 
@@ -1322,14 +1329,13 @@ void trace_slice4(equation_context& ctx,
                        break_s)
                       ));
 
-
-        ctx.exec(assign(loop_voxel_pos_txyz, next_voxel_pos));
-        ctx.exec(assign(loop_vel, next_velocity));
+        loop_voxel_pos_txyz.as_mutable(ctx) = next_voxel_pos;
+        loop_vel.as_mutable(ctx) = next_velocity;
 
         value ds_out = 0;
         calculate_ds_error(current_ds, next_acceleration, max_accel, &ds_out);
 
-        ctx.exec(assign(current_ds, ds_out));
+        current_ds.as_mutable(ctx) = ds_out;
     }
 
     ///guarantee that loop_vel and loop_voxel_pos_txyz won't change now
