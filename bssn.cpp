@@ -1724,7 +1724,14 @@ exec_builder<value, get_dtX, finish_X> Xexec;
 value get_dtgA(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter)
 {
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf (94) is bad
+    #define ONE_PLUS_LOG
+    #ifdef ONE_PLUS_LOG
     value dtgA = lie_derivative(ctx, args.gB, args.gA) * 0 - 2 * args.gA * args.K;
+    #endif
+
+    #ifdef HARMONIC
+    value dtgA = - args.gA * args.gA * args.K;
+    #endif
 
     /*value dibi = 0;
 
