@@ -3888,7 +3888,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 inline
 void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact_object::data>& holes)
 {
-    #define REGULAR_INITIAL
+    //#define REGULAR_INITIAL
     #ifdef REGULAR_INITIAL
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
@@ -3928,8 +3928,10 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     //value gA = 2/(1 + pow(bl_conformal + 1, 4));
 
     bssn::init(ctx, Yij, Aij, gA);
-    #else
+    #endif
 
+    #define METRIC_TENSOR
+    #ifdef METRIC_TENSOR
     auto fetch_Guv_of = [&ctx](int k, dual t, dual x, dual y, dual z)
     {
         metric<dual, 4, 4> Guv;
@@ -3997,6 +3999,22 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
         }
 
         #endif // KERR
+
+        #define GAUGE_WAVE
+        #ifdef GAUGE_WAVE
+        float d = 1;
+        float A = 0.01;
+
+        value X = "ox";
+        value T = "local_time";
+
+        value H = 1 + A * sin(2 * M_PI * (X - T) / d);
+
+        Guv[0, 0] = -H;
+        Guv[1, 1] = H;
+        Guv[2, 2] = 1;
+        Guv[3, 3] = 1;
+        #endif
 
         return Guv;
     };
@@ -6328,6 +6346,27 @@ int main()
                         adm_mass.push_back(i);
                     }
                 }
+
+
+                #ifdef GAUGE_WAVE
+                {
+                    cl::args args;
+                    args.push_back(base_mesh.points_set.all_points);
+                    args.push_back(base_mesh.points_set.all_count);
+
+                    for(auto& i : bufs)
+                    {
+                        args.push_back(i.as_device_read_only());
+                    }
+
+                    args.push_back(scale);
+                    args.push_back(clsize);
+                    args.push_back(base_mesh.points_set.order);
+                    args.push_back(base_mesh.elapsed_time);
+
+                    mqueue.exec("check_gauge_wave", args, {base_mesh.points_set.all_count}, {128}, {});
+                }
+                #endif // GAUGE_WAVE
             };
 
             base_mesh.full_step(clctx.ctx, clctx.cqueue, mqueue, timestep, thin_pool, callback);

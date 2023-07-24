@@ -1995,6 +1995,64 @@ void build_kernel(single_source::argument_generator& arg_gen, equation_context& 
     ctx.fix_buffers();
 }
 
+
+void check_gauge_wave(equation_context& ctx,
+    buffer<tensor<value_us, 4>, 3> points,
+    literal<value_i> point_count,
+    std::array<named_buffer<value, 3, "cY">, 6> cY,
+    std::array<named_buffer<value, 3, "cA">, 6> cA,
+    std::array<named_buffer<value, 3, "cGi">, 3> cGi,
+    named_buffer<value, 3, "K"> K,
+    named_buffer<value, 3, "X"> X,
+    named_buffer<value, 3, "gA"> gA,
+    std::array<named_buffer<value, 3, "gB">, 3> gB,
+    named_literal<value, "scale"> scale,
+    named_literal<v4i, "dim"> dim,
+    named_buffer<value_us, 3, "order_ptr"> order_ptr,
+    literal<value> time_elapsed)
+{
+    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
+
+    value_i local_idx = "get_global_id(0)";
+
+    ctx.exec(if_s(local_idx >= point_count.get(), return_s));
+
+    tensor<value_i, 4> centre = (dim.get() - 1)/2;
+    tensor<value, 3> centref = {centre.x().convert<float>(), centre.y().convert<float>(), centre.z().convert<float>()};
+
+    value_i ix = declare(ctx, points[local_idx].x().convert<int>(), "ix");
+    value_i iy = declare(ctx, points[local_idx].y().convert<int>(), "iy");
+    value_i iz = declare(ctx, points[local_idx].z().convert<int>(), "iz");
+
+    tensor<value, 3> fpos = {ix.convert<float>(), iy.convert<float>(), iz.convert<float>()};
+
+    v3f voxel = {(value)ix, (value)iy, (value)iz};
+    v3f world_pos = (voxel - centref) * scale;
+
+    value_i c_index = iz * dim.get().x() * dim.get().y() + iy * dim.get().x() + ix;
+
+    ctx.exec("int index = " + type_to_string(c_index) + ";");
+    ctx.exec("int order = " + std::to_string(D_FULL) + ";");
+
+    standard_arguments args(ctx);
+
+    metric<value, 3, 3> Yij = args.Yij;
+    tensor<value, 3, 3> Kij = args.Kij;
+
+    float d = 1;
+    float A = 0.01;
+
+    value Yxx = 1 + A * sin(2 * M_PI * (world_pos.x() - time_elapsed) / d);
+
+    /*metric<value, 3, 3> real_Yij;
+    real_Yij[0, 0] = Yxx;
+    real_Yij[1, 1] = 1;
+    real_Yij[2, 2] = 1;*/
+
+    ctx.exec(if_s(ix == 128 && iy == 128 && iz == 128,
+                  dual_types::print("Yxx real %f anal %f", Yij[0, 0], Yxx)));
+}
+
 void bssn::build(cl::context& clctx, const matter_interop& interop, bool use_matter, base_bssn_args bssn_args, base_utility_args utility_args)
 {
     std::vector<exec_builder_base*> b = {&cAexec, &Xexec, &Kexec, &gAexec, &gBexec, &cYexec, &cGiexec};
@@ -2002,4 +2060,6 @@ void bssn::build(cl::context& clctx, const matter_interop& interop, bool use_mat
     single_source::make_async_dynamic_kernel_for(clctx, build_kernel, "evolve_1", "", interop, use_matter, bssn_args, utility_args, b);
 
     single_source::make_async_dynamic_kernel_for(clctx, calculate_christoffel_symbol, "calculate_christoffel_symbol", "", bssn_args);
+
+    single_source::make_async_kernel_for(clctx, check_gauge_wave, "check_gauge_wave", "");
 }
