@@ -551,31 +551,17 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
     ctx.add_function("buffer_index", buffer_index_f<value, 3>);
     ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
 
-    ctx.exec("int lidx = get_global_id(0)");
-
-    value_i local_idx = "lidx";
+    value_i local_idx = declare(ctx, value_i{"get_global_id(0)"}, "lidx");
 
     ctx.exec(if_s(local_idx >= point_count, return_s));
 
-    value_i tix = points[local_idx].x().convert<int>();
-    value_i tiy = points[local_idx].y().convert<int>();
-    value_i tiz = points[local_idx].z().convert<int>();
-
-    ctx.exec("int ix = " + type_to_string(tix) + ";");
-    ctx.exec("int iy = " + type_to_string(tiy) + ";");
-    ctx.exec("int iz = " + type_to_string(tiz) + ";");
-
-    value_i ix = "ix";
-    value_i iy = "iy";
-    value_i iz = "iz";
+    value_i ix = declare(ctx, points[local_idx].x().convert<int>(), "ix");
+    value_i iy = declare(ctx, points[local_idx].y().convert<int>(), "iy");
+    value_i iz = declare(ctx, points[local_idx].z().convert<int>(), "iz");
 
     ///((k) * dim.x * dim.y + (j) * dim.x + (i))
 
-    value_i c_index = iz * dim.x() * dim.y() + iy * dim.x() + ix;
-
-    ctx.exec("int index = " + type_to_string(c_index) + ";");
-
-    value_i index = "index";
+    value_i index = declare(ctx, iz * dim.x() * dim.y() + iy * dim.x() + ix, "index");
 
     //ctx.exec("prefetch(&order_ptr[index], 1)");
     ctx.exec("prefetch(&cY0[index], 1)");
@@ -602,11 +588,7 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
     ctx.exec("prefetch(&gB1[index], 1)");
     ctx.exec("prefetch(&gB2[index], 1)");
 
-    value_i c_order = order_ptr[index].convert<int>();
-
-    ctx.exec("int order = " + type_to_string(c_order) + ";");
-
-    value_i order = "order";
+    value_i order = declare(ctx, (value_i)order_ptr[index], "order");
 
     value_i lD_FULL = (int)D_FULL;
     value_i lD_LOW = (int)D_LOW;
