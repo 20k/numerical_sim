@@ -135,11 +135,12 @@ namespace single_source
     template<typename T>
     concept Structy = T::is_struct::value;
 
+    ///all of this parse_tensor stuff needs to be fixed well in advanced of being a compiler
     template<typename U>
     requires(!Structy<U>)
     inline U parse_tensor(U& tag, value_i op)
     {
-        return op.as<typename U::value_type>();
+        return op.reinterpret_as<U>();
     }
 
     template<typename U, int N>
@@ -149,7 +150,7 @@ namespace single_source
 
         for(int i=0; i < N; i++)
         {
-            ret.idx(i) = op.index(i).as<typename U::value_type>();
+            ret.idx(i) = op.index(i).reinterpret_as<U>();
         }
 
         return ret;
@@ -245,10 +246,10 @@ namespace single_source
             return operator[](pos.x(), pos.y(), pos.z());
         }
 
-        T assign(const T& location, const T& what)
+        /*T assign(const T& location, const T& what)
         {
             return make_op<typename T::value_type>(dual_types::ops::ASSIGN, location, what);
-        }
+        }*/
     };
 
     template<typename T, int dimensions, impl::fixed_string _name>

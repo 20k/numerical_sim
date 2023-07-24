@@ -69,11 +69,17 @@ struct equation_context : differentiator
     template<typename T>
     void exec(const value_base<T>& v)
     {
-        return exec(v.template as<float>());
+        return exec(v.template reinterpret_as<value_base<float>>());
+    }
+
+    template<typename T>
+    void exec(const value_base_mut<T>& v)
+    {
+        return exec(v.template reinterpret_as<value_base<float>>());
     }
 
     template<typename T, int N>
-    void exec(const tensor<value_base<T>, N>& v)
+    void exec(const tensor<T, N>& v)
     {
         for(int i=0; i < N; i++)
         {
@@ -83,6 +89,23 @@ struct equation_context : differentiator
 
     void pin(value& v)
     {
+        ///so: case 1
+        ///expr1 = ix + 1
+        ///ix = ix + 1
+        ///expr2 = ix + 1
+        ///expr2 should not equal expr1
+        ///
+        ///expr1 = ix + 1
+        ///for(idx) {
+        ///ix = ix + 1
+        ///}
+        ///expr2 = ix + 1
+        ///expr2 != expr1
+        ///expr3 = ix + 1
+        ///expr2 == expr3
+        ///ok so. Types must be declared as mutable or not mutable
+        ///only mutable types can be mutated, obviously
+        ///if an expression contains a mutable type, it can't be cached
         for(auto& [name, val, level] : temporaries)
         {
             if(level != current_block_level)

@@ -19,10 +19,10 @@ void get_raytraced_quantities(single_source::argument_generator& arg_gen, equati
     v3i in_dim = {"dim.x", "dim.y", "dim.z"};
     v3i out_dim = {"out_dim.x", "out_dim.y", "out_dim.z"};
 
-    auto Yij_out = arg_gen.add<std::array<buffer<value>, 6>>();
-    auto Kij_out = arg_gen.add<std::array<buffer<value>, 6>>();
-    auto gA_out = arg_gen.add<buffer<value>>();
-    auto gB_out = arg_gen.add<std::array<buffer<value>, 3>>();
+    auto Yij_out = arg_gen.add<std::array<buffer<value_mut>, 6>>();
+    auto Kij_out = arg_gen.add<std::array<buffer<value_mut>, 6>>();
+    auto gA_out = arg_gen.add<buffer<value_mut>>();
+    auto gB_out = arg_gen.add<std::array<buffer<value_mut>, 3>>();
     //auto slice = arg_gen.add<literal<value_i>>();
 
     ctx.exec("int ix = get_global_id(0)");
@@ -199,7 +199,7 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
                      std::array<buffer<value, 3>, 6> linear_Yij_2, std::array<buffer<value, 3>, 6> linear_Kij_2, buffer<value, 3> linear_gA_2, std::array<buffer<value, 3>, 3> linear_gB_2,
                      literal<value> frac,
                      named_literal<value, "scale"> scale, named_literal<v4i, "dim"> dim,
-                     std::array<buffer<value>, 3> positions_out, std::array<buffer<value>, 3> velocities_out
+                     std::array<buffer<value_mut>, 3> positions_out, std::array<buffer<value_mut>, 3> velocities_out
                      )
 {
     ctx.add_function("buffer_index", buffer_index_f<value, 3>);
@@ -269,16 +269,16 @@ struct render_ray_info : single_source::struct_base<render_ray_info>
 {
     static constexpr std::string type = "ray_render_info";
 
-    literal<value> X, Y, Z;
-    literal<value> dX, dY, dZ;
+    literal<value_mut> X, Y, Z;
+    literal<value_mut> dX, dY, dZ;
 
-    literal<value_i> hit_type;
+    literal<value_i_mut> hit_type;
 
-    literal<value> R, G, B;
-    literal<value> background_power;
+    literal<value_mut> R, G, B;
+    literal<value_mut> background_power;
 
-    literal<value_i> x, y;
-    literal<value> zp1;
+    literal<value_i_mut> x, y;
+    literal<value_mut> zp1;
 
     auto as_tuple()
     {
@@ -291,8 +291,8 @@ void trace_slice(equation_context& ctx,
                  std::array<buffer<value, 3>, 6> linear_Yij_2, std::array<buffer<value, 3>, 6> linear_Kij_2, buffer<value, 3> linear_gA_2, std::array<buffer<value, 3>, 3> linear_gB_2,
                  named_literal<value, "scale"> scale, named_literal<v4i, "dim"> dim, literal<v2i> screen_size, literal<value_i> iteration,
                  std::array<buffer<value>, 3> positions, std::array<buffer<value>, 3> velocities,
-                 buffer<value_i> terminated,
-                 std::array<buffer<value>, 3> positions_out, std::array<buffer<value>, 3> velocities_out, literal<value_i> ray_count, literal<value> frac, literal<value> slice_width, literal<value> step,
+                 buffer<value_i_mut> terminated,
+                 std::array<buffer<value_mut>, 3> positions_out, std::array<buffer<value_mut>, 3> velocities_out, literal<value_i> ray_count, literal<value> frac, literal<value> slice_width, literal<value> step,
                  buffer<render_ray_info>& render_out)
 {
     ctx.add_function("buffer_index", buffer_index_f<value, 3>);
@@ -325,7 +325,7 @@ void trace_slice(equation_context& ctx,
 
     ctx.exec(if_s(terminated[lidx] > 0, (on_terminate, return_s)));
 
-    value local_frac = declare(ctx, frac.get());
+    value_mut local_frac = declare_mut(ctx, frac.get());
 
     ctx.ignored_variables.push_back(type_to_string(local_frac));
 
@@ -370,8 +370,8 @@ void trace_slice(equation_context& ctx,
 
     steps = max(steps, value{1.f});
 
-    v3f loop_voxel_pos = declare(ctx, voxel_pos);
-    v3f loop_vel = declare(ctx, vel);
+    v3f_mut loop_voxel_pos = declare_mut(ctx, voxel_pos);
+    v3f_mut loop_vel = declare_mut(ctx, vel);
 
     ctx.position_override = {type_to_string(loop_voxel_pos[0]), type_to_string(loop_voxel_pos[1]), type_to_string(loop_voxel_pos[2])};
 
@@ -381,14 +381,14 @@ void trace_slice(equation_context& ctx,
         {
             int tidx = index_table[i][j];
 
-            Yij[i, j] = mix(buffer_index_generic(linear_Yij_1[tidx], loop_voxel_pos, dim.name), buffer_index_generic(linear_Yij_2[tidx], loop_voxel_pos, dim.name), local_frac);
-            Kij[i, j] = mix(buffer_index_generic(linear_Kij_1[tidx], loop_voxel_pos, dim.name), buffer_index_generic(linear_Kij_2[tidx], loop_voxel_pos, dim.name), local_frac);
+            Yij[i, j] = mix(buffer_index_generic(linear_Yij_1[tidx], as_constant(loop_voxel_pos), dim.name), buffer_index_generic(linear_Yij_2[tidx], as_constant(loop_voxel_pos), dim.name), local_frac);
+            Kij[i, j] = mix(buffer_index_generic(linear_Kij_1[tidx], as_constant(loop_voxel_pos), dim.name), buffer_index_generic(linear_Kij_2[tidx], as_constant(loop_voxel_pos), dim.name), local_frac);
         }
 
-        gB[i] = mix(buffer_index_generic(linear_gB_1[i], loop_voxel_pos, dim.name), buffer_index_generic(linear_gB_2[i], loop_voxel_pos, dim.name), local_frac);
+        gB[i] = mix(buffer_index_generic(linear_gB_1[i], as_constant(loop_voxel_pos), dim.name), buffer_index_generic(linear_gB_2[i], as_constant(loop_voxel_pos), dim.name), local_frac);
     }
 
-    gA = mix(buffer_index_generic(linear_gA_1, loop_voxel_pos, dim.name), buffer_index_generic(linear_gA_2, loop_voxel_pos, dim.name), local_frac);
+    gA = mix(buffer_index_generic(linear_gA_1, as_constant(loop_voxel_pos), dim.name), buffer_index_generic(linear_gA_2, as_constant(loop_voxel_pos), dim.name), local_frac);
 
     ctx.pin(Kij);
 
@@ -404,7 +404,7 @@ void trace_slice(equation_context& ctx,
 
         ctx.pin(full_christoffel2);
 
-        tensor<value, 3> V_upper = loop_vel;
+        tensor<value, 3> V_upper = as_constant(loop_vel);
 
         value length_sq = dot_metric(V_upper, V_upper, Yij);
 
@@ -443,7 +443,7 @@ void trace_slice(equation_context& ctx,
         }
     }
 
-    value_i hit_type = declare(ctx, value_i{-1});
+    value_i_mut hit_type = declare_mut(ctx, value_i{-1});
 
     value frac_increment = step.get() / slice_width.get();
 
@@ -461,7 +461,7 @@ void trace_slice(equation_context& ctx,
         v3f dpos = declare(ctx, dx);
         v3f dvel = declare(ctx, V_upper_diff);
 
-        value pos_sq = v2w(loop_voxel_pos).squared_length();
+        value pos_sq = v2w(as_constant(loop_voxel_pos)).squared_length();
 
         value escape_cond = pos_sq >= u_sq;
         value ingested_cond = dpos.squared_length() < 0.1f * 0.1f;
@@ -485,8 +485,8 @@ void trace_slice(equation_context& ctx,
                        break_s)
                       ));
 
-        ctx.exec(assign(loop_voxel_pos, loop_voxel_pos + dpos * step.get() / scale));
-        ctx.exec(assign(loop_vel, loop_vel + dvel * step.get()));
+        ctx.exec(assign(loop_voxel_pos, as_constant(loop_voxel_pos) + dpos * step.get() / scale));
+        ctx.exec(assign(loop_vel, as_constant(loop_vel) + dvel * step.get()));
 
         //ctx.exec(if_s(x == 128 && y == 128, value_v{"printf(\"frac %f\", " + type_to_string(local_frac) + ");"}));
 
@@ -497,7 +497,7 @@ void trace_slice(equation_context& ctx,
 
     //ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"%i\", " + type_to_string((value_i)steps) + ");}");
 
-    v3f fin_world_pos = v2w(loop_voxel_pos);
+    v3f fin_world_pos = v2w(as_constant(loop_voxel_pos));
 
     //ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"p2 %f %f %f\", " + type_to_string(fin_world_pos.x()) + "," + type_to_string(fin_world_pos.y()) + "," + type_to_string(fin_world_pos.z()) + ");}");
 
@@ -773,6 +773,7 @@ void raytracing_manager::grab_buffers(cl::context& clctx, cl::managed_command_qu
     time_elapsed += step;
 }
 
+using ray4_value_mut = value_h_mut;
 using ray4_value = value_h;
 
 void get_raytraced_quantities4(single_source::argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args)
@@ -790,7 +791,7 @@ void get_raytraced_quantities4(single_source::argument_generator& arg_gen, equat
     v3i in_dim = {"dim.x", "dim.y", "dim.z"};
     v3i out_dim = {"out_dim.x", "out_dim.y", "out_dim.z"};
 
-    auto Guv_out = arg_gen.add<std::array<buffer<ray4_value>, 10>>();
+    auto Guv_out = arg_gen.add<std::array<buffer<ray4_value_mut>, 10>>();
 
     ctx.exec("int ix = get_global_id(0)");
     ctx.exec("int iy = get_global_id(1)");
@@ -996,8 +997,8 @@ void init_slice_rays4(equation_context& ctx, literal<v3f> camera_pos, literal<v4
                      std::array<buffer<ray4_value, 4>, 10> Guv,
                      named_literal<value, "scale"> scale, named_literal<v4i, "dim"> dim,
                      literal<value> w_coord, literal<value> slice_width,
-                     std::array<buffer<value>, 4> positions_out, std::array<buffer<value>, 4> velocities_out,
-                     buffer<value> ku_uobsu_out
+                     std::array<buffer<value_mut>, 4> positions_out, std::array<buffer<value_mut>, 4> velocities_out,
+                     buffer<value_mut> ku_uobsu_out
                      )
 {
     ctx.add_function("buffer_index", buffer_index_f<value, 3>);
@@ -1154,8 +1155,8 @@ void trace_slice4(equation_context& ctx,
     ///t, x, y, z
     v4f voxel_pos_txyz = w2v4(pos);
 
-    v4f loop_voxel_pos_txyz = declare(ctx, voxel_pos_txyz);
-    v4f loop_vel = declare(ctx, vel);
+    v4f_mut loop_voxel_pos_txyz = declare_mut(ctx, voxel_pos_txyz);
+    v4f_mut loop_vel = declare_mut(ctx, vel);
 
     value universe_size = ((dim.get().x()-1)/2).convert<float>() * scale;
 
@@ -1254,13 +1255,13 @@ void trace_slice4(equation_context& ctx,
         return acceleration;
     };
 
-    value_i hit_type = declare(ctx, value_i{-1});
+    value_i_mut hit_type = declare_mut(ctx, value_i{-1});
 
     value_i steps = 800;
 
     value max_accel = 0.1f;
 
-    value current_ds = declare(ctx, value{0.001f});
+    value_mut current_ds = declare_mut(ctx, value{0.001f});
 
     //value next_ds_start;
     //acceleration_to_precision(acceleration, max_accel, &next_ds_start);
@@ -1273,8 +1274,8 @@ void trace_slice4(equation_context& ctx,
         dual_types::block blk(ctx);
         assert(ctx.current_block_level == 1);
 
-        v4f loop_voxel_pos_pinned = declare(ctx, loop_voxel_pos_txyz);
-        v4f loop_velocity_pinned = declare(ctx, loop_vel);
+        v4f loop_voxel_pos_pinned = declare(ctx, as_constant(loop_voxel_pos_txyz));
+        v4f loop_velocity_pinned = declare(ctx, as_constant(loop_vel));
 
         v4f acceleration = do_Guv(loop_voxel_pos_pinned, loop_velocity_pinned);
 
@@ -1335,7 +1336,7 @@ void trace_slice4(equation_context& ctx,
 
         v4f observer_lowered = lower_index(observer, Guv, 0);
 
-        value top = sum_multiply(loop_vel, observer_lowered);
+        value top = sum_multiply(as_constant(loop_vel), observer_lowered);
 
         top = clamp(top, value{-100.f}, {100.f});
 
@@ -1345,7 +1346,7 @@ void trace_slice4(equation_context& ctx,
         ///(-velocity.x / ray->ku_uobsu)
     }
 
-    v4f fin_world_pos = voxel_to_world4(loop_voxel_pos_txyz, dim.get(), slice_width.get(), scale.get());
+    v4f fin_world_pos = voxel_to_world4(as_constant(loop_voxel_pos_txyz), dim.get(), slice_width.get(), scale.get());
 
     render_ray_info out = render_out[lidx];
 

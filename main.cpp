@@ -443,7 +443,7 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in, const valu
 }
 
 void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, literal<value_i> point_count,
-                          buffer<value, 3> buf_in, buffer<value, 3> buf_out,
+                          buffer<value, 3> buf_in, buffer<value_mut, 3> buf_out,
                           literal<value> eps, single_source::named_literal<value, "scale"> scale, single_source::named_literal<tensor<value_i, 4>, "dim"> idim, literal<value> timestep,
                           buffer<value_us, 3> order_ptr)
 {
@@ -2630,7 +2630,7 @@ struct superimposed_gpu_data
 
 void setup_u_offset(single_source::argument_generator& arg_gen, equation_context& ctx, const value& boundary)
 {
-    buffer<value, 3> u_offset = arg_gen.add<buffer<value, 3>>();
+    buffer<value_mut, 3> u_offset = arg_gen.add<buffer<value_mut, 3>>();
     literal<v3i> dim = arg_gen.add<literal<v3i>>();
 
     u_offset.size = dim.get();
@@ -5241,7 +5241,7 @@ cl::image_with_mipmaps load_mipped_image(const std::string& fname, opencl_contex
 ///want to declare a kernel in one step like this, and then immediately run it in the second step with a bunch of buffers without any messing around
 ///buffer names need to be dynamic
 ///buffer *sizes* may need to be manually associated within this function
-void test_kernel(equation_context& ctx, buffer<value, 3> test_input, buffer<value, 3> test_output, literal<value> val, literal<tensor<value_i, 3>> dim)
+void test_kernel(equation_context& ctx, buffer<value, 3> test_input, buffer<value_mut, 3> test_output, literal<value> val, literal<tensor<value_i, 3>> dim)
 {
     test_input.size = dim.get();
     test_output.size = dim.get();
@@ -5258,7 +5258,7 @@ void test_kernel(equation_context& ctx, buffer<value, 3> test_input, buffer<valu
 
     test += val;
 
-    value result_expr = test_output.assign(test_output[ix, iy, iz], test);
+    value result_expr = assign(test_output[ix, iy, iz], test);
 
     ctx.exec(result_expr);
 
@@ -5286,7 +5286,7 @@ void test_kernel_generation(cl::context& clctx, cl::command_queue& cqueue)
     cqueue.exec(kern, {128, 128, 128}, {8,8,1});
 }
 
-void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, literal<value_i> points_count, std::array<single_source::named_buffer<value, 3, "cY">, 6> cY, single_source::named_buffer<value, 3, "X"> X, single_source::named_literal<tensor<value_i, 4>, "dim"> dim, single_source::named_literal<value, "scale"> scale, buffer<value, 3> out)
+void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, literal<value_i> points_count, std::array<single_source::named_buffer<value, 3, "cY">, 6> cY, single_source::named_buffer<value, 3, "X"> X, single_source::named_literal<tensor<value_i, 4>, "dim"> dim, single_source::named_literal<value, "scale"> scale, buffer<value_mut, 3> out)
 {
     ctx.add_function("buffer_index", buffer_index_f<value, 3>);
 
