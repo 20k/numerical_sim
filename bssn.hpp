@@ -332,7 +332,7 @@ struct standard_arguments
         #ifndef USE_W
         X_impl = max(bidx(pack.X, interpolate, false), 0);
         #else
-        W_impl = bidx(pack.X, interpolate, false);
+        W_impl = max(bidx(pack.X, interpolate, false), 0);
         #endif
 
         K = bidx(pack.K, interpolate, false);
