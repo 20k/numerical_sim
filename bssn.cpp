@@ -1742,7 +1742,14 @@ exec_builder<value, get_dtX, finish_X> Xexec;
 value get_dtgA(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter)
 {
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf (94) is bad
+    #ifdef ONE_PLUS_LOG
     value dtgA = lie_derivative(ctx, args.gB, args.gA) * 0 - 2 * args.gA * args.K;
+    #endif
+
+    #define HARMONIC_SLICING
+    #ifdef HARMONIC_SLICING
+    value dtgA = -args.gA * args.gA * args.K;
+    #endif // HARMONIC_SLICING
 
     /*value dibi = 0;
 
@@ -1875,13 +1882,6 @@ tensor<value, 3> get_dtgB(standard_arguments& args, equation_context& ctx, const
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
     ///todo: remove this
     tensor<value, 3> dtgB = (3.f/4.f) * args.derived_cGi + bjdjbi * 0 - N * args.gB;
-
-    //dtgB = {0,0,0};
-
-    tensor<value, 3> dtgBB;
-    dtgBB.idx(0) = 0;
-    dtgBB.idx(1) = 0;
-    dtgBB.idx(2) = 0;
 
     #else
 
@@ -2043,11 +2043,6 @@ void check_gauge_wave(equation_context& ctx,
     float A = 0.01;
 
     value Yxx = 1 + A * sin(2 * M_PI * (world_pos.x() - time_elapsed) / d);
-
-    /*metric<value, 3, 3> real_Yij;
-    real_Yij[0, 0] = Yxx;
-    real_Yij[1, 1] = 1;
-    real_Yij[2, 2] = 1;*/
 
     ctx.exec(if_s(ix == 128 && iy == 128 && iz == 128,
                   dual_types::print("Yxx real %f anal %f", Yij[0, 0], Yxx)));
