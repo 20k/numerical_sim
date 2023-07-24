@@ -361,7 +361,7 @@ namespace single_source
                 {
                     std::string type = dual_types::name_type(decltype(value)());
 
-                    base += type + " " + name + " = " + type_to_string(value) + ";\n";
+                    base += "const " + type + " " + name + " = " + type_to_string(value) + ";\n";
                 }
             }
 
