@@ -1,14 +1,51 @@
 #include "common.cl"
 
-void laplace_interior(__global float* buffer_in, __global float* buffer_out, float h2f0, int ix, int iy, int iz, float scale, int4 dim, __global int* still_going, float etol)
+void laplace_interior(__global float* buffer_in, __global float* buffer_out, float h2f0, int ix, int iy, int iz, float scale, int4 dim, __global int* still_going, float etol, int iteration)
 {
     bool x_degenerate = ix < 2 || ix >= dim.x - 2;
     bool y_degenerate = iy < 2 || iy >= dim.y - 2;
     bool z_degenerate = iz < 2 || iz >= dim.z - 2;
 
+    ///this is the 2d case
+    ///so we'd do == iteration % 2
+    ///((ix + iy) % 2) == (iteration % 2)
+    ///is the correct result in 2d. Want to alternate if that's the correct result on every z grid, literally invert it
+    ///so if((ix + iy) % 2 - iteration % 2 == z_m % 2)
+
+    //if(((ix + iy) % 2) == ((iteration + z_m) % 2))
+
+    //if(((ix + iy) % 2) - (iteration % 2) == (z_m % 2))
+
+    int lix = ix;
+    int liy = iy;
+
+    if((iz % 2) == 0)
+    {
+        lix += 1;
+        liy += 1;
+    }
+
+    int nis_valid = (lix + liy) % 2 == (iteration % 2);
+
+    bool check = (ix == 128 || ix == 129) && iy == 128 && iz == 128;
+
+    if(check)
+    {
+        //printf("U in %f valid %i ix %i iy %i iz %i it %i\n", buffer_in[IDX(ix,iy,iz)], nis_valid, ix, iy, iz, iteration);
+    }
+
+    #define RED_BLACK
+    #ifdef RED_BLACK
+    if(nis_valid)
+    {
+        //buffer_out[IDX(ix,iy,iz)] = buffer_in[IDX(ix,iy,iz)];
+        return;
+    }
+    #endif
+
     float u0n1 = 0;
 
-    if(x_degenerate || y_degenerate || z_degenerate || true)
+    //if(x_degenerate || y_degenerate || z_degenerate || true)
     {
         float uxm1 = buffer_in[IDX(ix-1, iy, iz)];
         float uxp1 = buffer_in[IDX(ix+1, iy, iz)];
@@ -40,7 +77,7 @@ void laplace_interior(__global float* buffer_in, __global float* buffer_out, flo
         ///-6u0 + the rest of the terms = h^2 f0
         u0n1 = (1/6.f) * (Xs + Ys + Zs - h2f0);
     }
-    else
+    /*else
     {
         float coeff1 = 4.f/3.f;
         float coeff2 = -1.f/12.f;
@@ -92,7 +129,7 @@ void laplace_interior(__global float* buffer_in, __global float* buffer_out, flo
 
         ///3 because 3 dimensions
         u0n1 = -(1/(3 * coeff_center)) * (Xs1 + Ys1 + Zs1 + Xs2 + Ys2 + Zs2 - h2f0);
-    }
+    }*/
 
     float u = buffer_in[IDX(ix,iy,iz)];
 
@@ -103,5 +140,14 @@ void laplace_interior(__global float* buffer_in, __global float* buffer_out, flo
         atomic_xchg(still_going, 1);
     }
 
+    #ifdef RED_BLACK
+    buffer_in[IDX(ix, iy, iz)] = mix(u, u0n1, 1.5f);
+    #else
     buffer_out[IDX(ix, iy, iz)] = mix(u, u0n1, 0.9f);
+    #endif
+
+    if(check)
+    {
+        //printf("Wrote %f %i\n", u0n1, iteration);
+    }
 }

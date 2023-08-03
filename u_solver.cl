@@ -102,7 +102,7 @@ void extract_u_region(__global float* u_in, __global float* u_out, float c_at_ma
 ///todo: this, but second order, because memory reads are heavily cached
 __kernel
 void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out, __global float* cached_aij_aIJ, __global float* cached_ppw2p, __global float* nonconformal_pH,
-                       float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol)
+                       float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol, int iteration)
 {
     if(*last_still_going == 0)
         return;
@@ -129,5 +129,5 @@ void iterative_u_solve(__global float* u_offset_in, __global float* u_offset_out
 
     float h2f0 = scale * scale * RHS;
 
-    laplace_interior(u_offset_in, u_offset_out, h2f0, ix, iy, iz, scale, dim, still_going, etol);
+    laplace_interior(u_offset_in, u_offset_out, h2f0, ix, iy, iz, scale, dim, still_going, etol, iteration);
 }

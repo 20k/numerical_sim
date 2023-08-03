@@ -3,6 +3,7 @@
 #include "generic_laplace.cl"
 #include "laplace_order.cl"
 
+#if 0
 __kernel
 void simple_tov_solver_phi(__global float* u_offset_in,
                            __global float* u_offset_out,
@@ -45,3 +46,4 @@ void simple_tov_solver_phi(__global float* u_offset_in,
         printf("Tovs %i %f %f rho %f\n", ix, u_offset_in[IDX(ix,iy,iz)], u_offset_out[IDX(ix,iy,iz)], rho);
     }*/
 }
+#endif

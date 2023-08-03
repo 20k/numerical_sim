@@ -1655,6 +1655,37 @@ value get_u_rhs(cl::context& clctx, const initial_conditions& init)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
+    /*std::array<std::array<float, 3>, 6> offsets = {
+        {1.f, 0, 0},
+        {-1.f, 0, 0},
+        {0, 1.f, 0},
+        {0, -1.f, 0},
+        {0, 0, 1.f},
+        {0, 0, -1.f}
+    };*/
+
+    std::array<std::array<float, 3>, 6> offsets;
+
+    /*offsets[0] = {1, 0, 0};
+    offsets[1] = {-1, 0, 0};
+    offsets[2] = {0, 1, 0};
+    offsets[3] = {0, -1, 0};
+    offsets[4] = {0, 0, 1};
+    offsets[5] = {0, 0, -1};
+
+    value ix = "ix";
+    value iy = "iy";
+    value iz = "iz";
+
+    value u_value = 0;
+
+    for(auto& i : offsets)
+    {
+        u_value += dual_types::apply(value("buffer_index"), "u_offset_in", ix + i[0], iy + i[1], iz + i[2], "dim");
+    }
+
+    u_value = u_value / (float)offsets.size();*/
+
     value u_value = dual_types::apply(value("buffer_index"), "u_offset_in", "ix", "iy", "iz", "dim");
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
@@ -2676,7 +2707,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
     cl::buffer found_u_val(clctx);
 
     {
-        float etol = 0.000001f;
+        float etol = 0.0000001f;
 
         steady_timer time;
 
@@ -2758,7 +2789,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
                                          data.aij_aIJ, data.ppw2p, data.particle_grid_E_without_conformal,
                                          local_scale, current_cldim,
                                          still_going[which_still_going], still_going[(which_still_going + 1) % 2],
-                                         etol);
+                                         etol, i);
 
                 iterate_kernel.set_args(iterate_u_args);
 
@@ -2769,7 +2800,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
 
                 still_going[which_still_going].set_to_zero(cqueue);
 
-                which_reduced = (which_reduced + 1) % 2;
+                //which_reduced = (which_reduced + 1) % 2;
                 which_still_going = (which_still_going + 1) % 2;
             }
 
@@ -2808,6 +2839,8 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
     auto data = get_superimposed_of(dim, scale);
 
     data.post_u(clctx, cqueue, init.objs, init.particles, found_u_val);
+
+    printf("Post u\n");
 
     return {data, found_u_val};
 }
@@ -6569,8 +6602,8 @@ int main()
 
         win.display();
 
-        if(frametime.get_elapsed_time_s() > 10 && !long_operation)
-            return 0;
+        //if(frametime.get_elapsed_time_s() > 10 && !long_operation)
+        //    return 0;
 
         if(advance_camera_time)
         {

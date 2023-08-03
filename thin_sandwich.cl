@@ -71,6 +71,7 @@ void calculate_djbj(__global float* gB0_in, __global float* gB1_in, __global flo
     djbj_out[IDX(ix,iy,iz)] = v0;
 }
 
+#if 0
 __kernel
 void iterative_sandwich(__global float* gB0_in, __global float* gB1_in, __global float* gB2_in,
                         __global float* gB0_out, __global float* gB1_out, __global float* gB2_out,
@@ -125,3 +126,4 @@ void iterative_sandwich(__global float* gB0_in, __global float* gB1_in, __global
 
     gA_phi_out[IDX(ix,iy,iz)] = 1 / pow(phi[IDX(ix,iy,iz)], 2);*/
 }
+#endif
