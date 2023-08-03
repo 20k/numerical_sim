@@ -2676,7 +2676,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
     cl::buffer found_u_val(clctx);
 
     {
-        float etol = 0.000001f;
+        float etol = 0.0000001f;
 
         steady_timer time;
 
@@ -2711,24 +2711,16 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
 
             superimposed_gpu_data data = get_superimposed_of(dim, scale);
 
-            std::array<cl::buffer, 2> u_args{clctx, clctx};
+            cl::buffer u_args(clctx);
             std::array<cl::buffer, 2> still_going{clctx, clctx};
 
             if(u_upper.has_value())
             {
-                u_args[0] = u_upper.value();
-
-                u_args[1].alloc(sizeof(cl_float) * current_dim.x() * current_dim.y() * current_dim.z());
-
-                cl::copy(cqueue, u_args[0], u_args[1]);
+                u_args = u_upper.value();
             }
             else
             {
-                for(int i=0; i < 2; i++)
-                {
-                    u_args[i].alloc(sizeof(cl_float) * current_dim.x() * current_dim.y() * current_dim.z());
-                    u_args[i].fill(cqueue, boundary);
-                }
+                u_args.alloc(sizeof(cl_float) * current_dim.x() * current_dim.y() * current_dim.z());
             }
 
             for(int i=0; i < 2; i++)
@@ -2747,18 +2739,17 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
             N = 200;
             #endif // QUICKSTART
 
-            int which_reduced = 0;
             int which_still_going = 0;
 
             for(int i=0; i < N; i++)
             {
                 cl::args iterate_u_args;
 
-                iterate_u_args.push_back(u_args[which_reduced], u_args[(which_reduced + 1) % 2],
+                iterate_u_args.push_back(u_args,
                                          data.aij_aIJ, data.ppw2p, data.particle_grid_E_without_conformal,
                                          local_scale, current_cldim,
                                          still_going[which_still_going], still_going[(which_still_going + 1) % 2],
-                                         etol);
+                                         etol, i);
 
                 iterate_kernel.set_args(iterate_u_args);
 
@@ -2769,11 +2760,10 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
 
                 still_going[which_still_going].set_to_zero(cqueue);
 
-                which_reduced = (which_reduced + 1) % 2;
                 which_still_going = (which_still_going + 1) % 2;
             }
 
-            return u_args[which_reduced];
+            return u_args;
         };
 
         float c_at_max = scale * dim.largest_elem();
