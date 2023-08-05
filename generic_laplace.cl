@@ -59,7 +59,7 @@ void laplace_interior_rb(__global float* buffer_in, float h2f0, int ix, int iy, 
     if(iz % 2)
     {
         lix++;
-        liy++;
+        //liy++;
     }
 
     ///pretty crappy layout here
