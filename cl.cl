@@ -567,9 +567,9 @@ void clean_data_thin(__global ushort4* points, int point_count,
 
     float TEMPORARIESsommerthin;
 
-    float sommer_dtc = sommer_thin_out;
+    float sommer_fin = sommer_fin_out;
 
-    out[index] = sommer_dtc * timestep + base[index];
+    out[index] = sommer_fin;
 }
 
 #define DISSB 0.1f

@@ -984,7 +984,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
     ///this implies that I can redefine base to be base + f(base) and get the same effect
     #define BACKWARD_EULER
     #ifdef BACKWARD_EULER
-    int iterations = 2;
+    int iterations = 4;
 
     if(iterations == 1)
     {

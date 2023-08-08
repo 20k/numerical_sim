@@ -196,6 +196,8 @@ value conformal_to_X(const value& conformal)
     #endif
 }
 
+value relax(const value& ynp1k, const value& yn, const value& f_ynp1k, const value& dt);
+
 struct standard_arguments
 {
     value gA;
