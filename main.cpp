@@ -489,8 +489,6 @@ void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 3> 
 
     value v = buf_v + timestep * eps * kreiss_oliger_dissipate(ctx, buf_v, order);
 
-    //value v = relax(buf_in[ix, iy, iz], buf_v, kreiss_oliger_dissipate(ctx, buf_v, order) * eps, timestep);
-
     ctx.exec(assign(buf_out[ix, iy, iz], v));
 
     ctx.fix_buffers();
@@ -4074,7 +4072,7 @@ void build_sommerfeld_thin(equation_context& ctx)
     value timestep = "timestep";
     value base = bidx("base", false, false);
 
-    ctx.add("sommer_fin_out", relax(in, base, out, timestep));
+    ctx.add("sommer_fin_out", backwards_euler_relax(in, base, out, timestep));
 }
 
 ///algebraic_constraints
@@ -6249,9 +6247,9 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = get_timestep(get_c_at_max(), size) * 2.5;
+        float timestep = get_timestep(get_c_at_max(), size) * 1/get_backwards_euler_relax_parameter();
 
-        if(pao && base_mesh.elapsed_time > 75)
+        if(pao && base_mesh.elapsed_time > 300)
             step = false;
 
         if(step)

@@ -58,12 +58,17 @@ tensor<value, 3> matter_meta_interop::calculate_adm_Si(equation_context& ctx, st
 
 std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, value_i point_count, tensor<value_i, 4> dim, buffer<value_us, 3> order_ptr);
 
-///in, base, dvalue, dt
-value relax(const value& ynp1k, const value& yn, const value& f_ynp1k, const value& dt)
+float get_backwards_euler_relax_parameter()
 {
-    value param = 0.4;
+    return 1.f;
+}
 
-    return ynp1k + (yn + f_ynp1k * dt - ynp1k) * param;
+///in, base, dvalue, dt
+value backwards_euler_relax(const value& ynp1k, const value& yn, const value& f_ynp1k, const value& dt)
+{
+    float relax = get_backwards_euler_relax_parameter();
+
+    return ynp1k * (1 - relax) + (yn + f_ynp1k * dt) * relax;
 }
 
 void calculate_christoffel_symbol(single_source::argument_generator& arg_gen, equation_context& ctx, base_bssn_args bssn_args)
@@ -870,7 +875,7 @@ void finish_cY(equation_context& ctx, all_args& all, tensor<value, 6>& dtcY)
 
     for(int i=0; i < 6; i++)
     {
-        ctx.exec(assign(all.out.cY[i][index], relax(all.in.cY[i][index], all.base.cY[i][index], dtcY[i], all.timestep)));
+        ctx.exec(assign(all.out.cY[i][index], backwards_euler_relax(all.in.cY[i][index], all.base.cY[i][index], dtcY[i], all.timestep)));
 
         //ctx.exec(assign(all.out.cY[i][index], all.base.cY[i][index] + all.timestep * dtcY[i]));
     }
@@ -1346,7 +1351,7 @@ void finish_cA(equation_context& ctx, all_args& all, tensor<value, 6>& dtcA)
 
     for(int i=0; i < 6; i++)
     {
-        ctx.exec(assign(all.out.cA[i][index], relax(all.in.cA[i][index], all.base.cA[i][index], dtcA[i], all.timestep)));
+        ctx.exec(assign(all.out.cA[i][index], backwards_euler_relax(all.in.cA[i][index], all.base.cA[i][index], dtcA[i], all.timestep)));
         //ctx.exec(assign(all.out.cA[i][index], all.base.cA[i][index] + all.timestep * dtcA[i]));
     }
 }
@@ -1619,7 +1624,7 @@ void finish_cGi(equation_context& ctx, all_args& all, tensor<value, 3>& dtcGi)
 
     for(int i=0; i < 3; i++)
     {
-        ctx.exec(assign(all.out.cGi[i][index], relax(all.in.cGi[i][index], all.base.cGi[i][index], dtcGi[i], all.timestep)));
+        ctx.exec(assign(all.out.cGi[i][index], backwards_euler_relax(all.in.cGi[i][index], all.base.cGi[i][index], dtcGi[i], all.timestep)));
 
         //ctx.exec(assign(all.out.cGi[i][index], all.base.cGi[i][index] + all.timestep * dtcGi[i]));
     }
@@ -1696,7 +1701,7 @@ void finish_K(equation_context& ctx, all_args& all, value& dtK)
 {
     value_i index = "index";
 
-    ctx.exec(assign(all.out.K[index], relax(all.in.K[index], all.base.K[index], dtK, all.timestep)));
+    ctx.exec(assign(all.out.K[index], backwards_euler_relax(all.in.K[index], all.base.K[index], dtK, all.timestep)));
 
     //ctx.exec(assign(all.out.K[index], all.base.K[index] + all.timestep * dtK));
 }
@@ -1731,7 +1736,7 @@ void finish_X(equation_context& ctx, all_args& all, value& dtX)
 {
     value_i index = "index";
 
-    ctx.exec(assign(all.out.X[index], relax(all.in.X[index], all.base.X[index], dtX, all.timestep)));
+    ctx.exec(assign(all.out.X[index], backwards_euler_relax(all.in.X[index], all.base.X[index], dtX, all.timestep)));
 
     //ctx.exec(assign(all.out.X[index], all.base.X[index] + all.timestep * dtX));
 }
@@ -1775,7 +1780,7 @@ void finish_gA(equation_context& ctx, all_args& all, value& dtgA)
 {
     value_i index = "index";
 
-    ctx.exec(assign(all.out.gA[index], relax(all.in.gA[index], all.base.gA[index], dtgA, all.timestep)));
+    ctx.exec(assign(all.out.gA[index], backwards_euler_relax(all.in.gA[index], all.base.gA[index], dtgA, all.timestep)));
 
     //ctx.exec(assign(all.out.gA[index], all.base.gA[index] + all.timestep * dtgA));
 }
@@ -1978,7 +1983,7 @@ void finish_gB(equation_context& ctx, all_args& all, tensor<value, 3>& dtgB)
 
     for(int i=0; i < 3; i++)
     {
-        ctx.exec(assign(all.out.gB[i][index], relax(all.in.gB[i][index], all.base.gB[i][index], dtgB[i], all.timestep)));
+        ctx.exec(assign(all.out.gB[i][index], backwards_euler_relax(all.in.gB[i][index], all.base.gB[i][index], dtgB[i], all.timestep)));
 
         //ctx.exec(assign(all.out.gB[i][index], all.base.gB[i][index] + all.timestep * dtgB[i]));
     }
