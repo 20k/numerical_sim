@@ -69,10 +69,15 @@
 					<Add option="-pg" />
 					<Add option="-g" />
 					<Add option="-no-pie" />
+					<Add option="-fno-omit-frame-pointer" />
+					<Add option="-fno-inline-functions" />
+					<Add option="-fno-inline-functions-called-once" />
+					<Add option="-fno-optimize-sibling-calls" />
 				</Compiler>
 				<Linker>
 					<Add option="-O2" />
 					<Add option="-pg -lgmon" />
+					<Add option="-pg" />
 				</Linker>
 			</Target>
 		</Build>

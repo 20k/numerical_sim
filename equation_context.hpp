@@ -152,6 +152,12 @@ struct equation_context : differentiator
         v = facade;
     }
 
+    void pin(dual& d)
+    {
+        pin(d.real);
+        pin(d.dual);
+    }
+
     template<typename T, int N>
     void pin(tensor<T, N>& mT)
     {

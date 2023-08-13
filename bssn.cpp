@@ -4,6 +4,7 @@
 #include "spherical_decomposition.hpp"
 #include "util.hpp"
 #include <thread>
+#include <toolkit/clock.hpp>
 
 using single_source::named_buffer;
 using single_source::named_literal;
@@ -796,7 +797,11 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, con
             }
         }
 
+        ctx.pin(d_cYij);
+
         auto icY = d_cYij.invert();
+
+        ctx.pin(icY);
 
         for(int k=0; k < 3; k++)
         {
@@ -810,7 +815,11 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, con
             }
         }
 
+        ctx.pin(d_dcYij);
+
         auto d_christoff2 = christoffel_symbols_2(icY, d_dcYij);
+
+        ctx.pin(d_christoff2);
 
         tensor<dual, 3> dcGi_G;
 
@@ -829,6 +838,8 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, con
             dcGi_G[i] = sum;
         }
 
+        ctx.pin(dcGi_G);
+
         for(int i=0; i < 3; i++)
         {
             d_cGi[m, i] = diff1(ctx, args.cGi[i], m) - dcGi_G[i].dual;
@@ -836,6 +847,8 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, con
     }
 
     tensor<value, 3, 3> cD = covariant_derivative_high_vec(ctx, args.bigGi, d_cGi, args.christoff2);
+
+    ctx.pin(cD);
 
     for(int i=0; i < 3; i++)
     {
@@ -1993,6 +2006,8 @@ exec_builder<tensor<value, 3>, get_dtgB, finish_gB> gBexec;
 
 void build_kernel(single_source::argument_generator& arg_gen, equation_context& ctx, const matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args, std::vector<exec_builder_base*> execs)
 {
+    std::cout << "Start build\n";
+
     ctx.dynamic_drop = true;
 
     all_args all(arg_gen, bssn_args, utility_args);
@@ -2003,11 +2018,16 @@ void build_kernel(single_source::argument_generator& arg_gen, equation_context& 
 
     for(int i=0; i < (int)execs.size(); i++)
     {
+        steady_timer time;
+
         execs[i]->start(args, ctx, interop, use_matter);
         execs[i]->execute(ctx, all);
+
+        std::cout << "Elapsed " << time.get_elapsed_time_s() * 1000 << "ms" << std::endl;
     }
 
     ctx.fix_buffers();
+    std::cout << "End build\n";
 }
 
 void bssn::build(cl::context& clctx, const matter_interop& interop, bool use_matter, base_bssn_args bssn_args, base_utility_args utility_args)
