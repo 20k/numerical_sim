@@ -382,6 +382,9 @@ namespace single_source
 
             for(auto& block : blocks)
             {
+                if(block.size() == 0)
+                    continue;
+
                 /*std::set<std::string> block_variables;
 
                 for(auto& [name, v] : block)
@@ -405,6 +408,8 @@ namespace single_source
                 {
                     v.bottom_up_recurse([&](const value& in)
                     {
+                        depends_on[&in];
+
                         for(const auto& i : in.args)
                         {
                             if(auto block_it = block_variables.find(&i); block_it != block_variables.end())
@@ -433,7 +438,22 @@ namespace single_source
                     }
                 }
 
-                for(const auto& [constant, count] : most_in_demand)
+                /*for(const auto& [constant, count] : most_in_demand)
+                {
+                    std::cout << type_to_string(*constant) << " " << count << std::endl;
+                }*/
+
+                std::map<const value*, int> most_unblocked;
+
+                for(const auto& [source, depends] : depends_on)
+                {
+                    if(depends.size() == 1)
+                    {
+                        most_unblocked[depends.back()]++;
+                    }
+                }
+
+                for(const auto& [constant, count] : most_unblocked)
                 {
                     std::cout << type_to_string(*constant) << " " << count << std::endl;
                 }

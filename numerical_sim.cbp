@@ -26,7 +26,6 @@
 				<Option compiler="gcc-msys2-mingw64" />
 				<Compiler>
 					<Add option="-O2" />
-					<Add option="-g" />
 				</Compiler>
 				<Linker>
 					<Add option="-O2" />
