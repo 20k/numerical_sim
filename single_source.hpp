@@ -374,71 +374,139 @@ namespace single_source
                 blocks.back().push_back(value);
             }
 
+            auto insert_value = [&](const value& in)
+            {
+                if(dual_types::get_description(in.type).is_semicolon_terminated)
+                    base += type_to_string(in) + ";\n";
+                else
+                    base += type_to_string(in);
+            };
+
             for(auto& block : blocks)
             {
                 if(block.size() == 0)
                     continue;
 
-                std::set<const value*> block_variables;
+                std::set<const value*> emitted;
 
-                for(auto& v : block)
+                while(1)
                 {
-                    v.recurse_variables([&](const value& in)
+                    std::set<const value*> block_variables;
+
+                    for(auto& v : block)
                     {
-                        block_variables.insert(&in);
-                    });
-                }
-
-                std::map<const value*, std::vector<const value*>> depends_on;
-
-                for(auto& v : block)
-                {
-                    v.bottom_up_recurse([&](const value& in)
-                    {
-                        depends_on[&in];
-
-                        for(const auto& i : in.args)
+                        v.recurse_variables([&](const value& in)
                         {
-                            if(auto block_it = block_variables.find(&i); block_it != block_variables.end())
-                            {
-                                depends_on[&in].push_back(&i);
-                            }
+                            block_variables.insert(&in);
+                        });
+                    }
 
-                            if(auto map_it = depends_on.find(&i); map_it != depends_on.end())
+                    std::map<const value*, std::vector<const value*>> depends_on;
+
+                    for(auto& v : block)
+                    {
+                        v.bottom_up_recurse([&](const value& in)
+                        {
+                            if(emitted.find(&in) != emitted.end())
+                                return;
+
+                            depends_on[&in];
+
+                            for(const auto& i : in.args)
                             {
-                                for(const auto& e : map_it->second)
+                                if(emitted.find(&i) != emitted.end())
+                                    continue;
+
+                                if(auto block_it = block_variables.find(&i); block_it != block_variables.end())
                                 {
-                                    depends_on[&in].push_back(e);
+                                    depends_on[&in].push_back(&i);
+                                }
+
+                                if(auto map_it = depends_on.find(&i); map_it != depends_on.end())
+                                {
+                                    for(const auto& e : map_it->second)
+                                    {
+                                        depends_on[&in].push_back(e);
+                                    }
                                 }
                             }
+                        });
+                    }
+
+                    if(depends_on.size() == 0)
+                        break;
+
+                    auto map_2_vec = [](const std::map<const value*, int>& in)
+                    {
+                        std::vector<std::pair<const value*, int>> vec;
+
+                        for(auto& [a, b] : in)
+                        {
+                            vec.push_back({a, b});
                         }
-                    });
-                }
 
-                std::map<const value*, int> most_in_demand;
+                        std::sort(vec.begin(), vec.end(), [](const auto& v1, const auto& v2)
+                        {
+                            return v1.second < v2.second;
+                        });
 
-                for(const auto& [source, depends] : depends_on)
-                {
-                    for(auto d : depends)
+                        return vec;
+                    };
+
+                    ///needs to be by name, need dedup
+                    std::map<const value*, int> most_in_demand;
+
+                    for(const auto& [source, depends] : depends_on)
                     {
-                        most_in_demand[d]++;
+                        for(auto d : depends)
+                        {
+                            most_in_demand[d]++;
+                        }
+                    }
+
+                    std::vector<std::pair<const value*, int>> most_in_demand_vec = map_2_vec(most_in_demand);
+
+                    std::map<const value*, int> most_unblocked;
+
+                    for(const auto& [source, depends] : depends_on)
+                    {
+                        if(depends.size() == 1)
+                        {
+                            most_unblocked[depends.back()]++;
+                        }
+                    }
+
+                    auto most_unblocked_vec = map_2_vec(most_unblocked);
+
+                    const value* next = nullptr;
+
+                    assert(most_in_demand_vec.size() > 0 || most_unblocked_vec.size() > 0);
+
+                    if(most_unblocked_vec.size() > 0)
+                        next = most_unblocked_vec.back().first;
+
+                    if(next == nullptr)
+                        next = most_in_demand_vec.back().first;
+
+                    emitted.insert(next);
+
+                    insert_value(*next);
+
+                    for(const auto& [source, on] : depends_on)
+                    {
+                        if(on.size() == 1)
+                        {
+                            if(on[0] != next)
+                                continue;
+                        }
+
+                        if(on.size() == 1 || on.size() == 0)
+                        {
+                            insert_value(*source);
+                        }
                     }
                 }
 
-                /*for(const auto& [constant, count] : most_in_demand)
-                {
-                    std::cout << type_to_string(*constant) << " " << count << std::endl;
-                }*/
-
-                std::map<const value*, int> most_unblocked;
-
-                for(const auto& [source, depends] : depends_on)
-                {
-                    if(depends.size() == 1)
-                    {
-                        most_unblocked[depends.back()]++;
-                    }
-                }
 
                 /*for(const auto& [constant, count] : most_unblocked)
                 {
@@ -446,7 +514,7 @@ namespace single_source
                 }*/
             }
 
-            int block_id = 0;
+            /*int block_id = 0;
 
             for(const auto& block : blocks)
             {
@@ -461,7 +529,7 @@ namespace single_source
                 }
 
                 block_id++;
-            }
+            }*/
 
             base += "\n}\n";
 
