@@ -24,7 +24,7 @@ struct equation_context : differentiator
     std::vector<std::pair<std::string, value>> values;
     std::vector<std::tuple<std::string, value, int>> temporaries;
     std::vector<int> can_cache_status;
-    std::vector<std::pair<std::string, value>> sequenced;
+    std::vector<value> sequenced;
     std::vector<std::pair<value, value>> aliases;
     bool uses_linear = false;
     bool debug = false;
@@ -63,7 +63,7 @@ struct equation_context : differentiator
         if(v.type == dual_types::ops::BLOCK_END)
             current_block_level--;
 
-        sequenced.push_back({"", v});
+        sequenced.push_back(v);
     }
 
     ////errrr this is starting to become a real type mess
@@ -144,7 +144,8 @@ struct equation_context : differentiator
 
         temporaries.push_back({name, old, current_block_level});
         can_cache_status.push_back(can_cache);
-        sequenced.push_back({name, old});
+
+        declare(*this, old, name);
 
         value facade;
         facade.make_value(name);
@@ -262,7 +263,7 @@ struct equation_context : differentiator
     void add(const std::string& name, const value& v)
     {
         values.push_back({name, v});
-        sequenced.push_back({name, v});
+        declare(*this, v, name);
     }
 
     void strip_unused()
@@ -348,7 +349,7 @@ struct equation_context : differentiator
             v.substitute(aliases);
         }
 
-        for(auto& [name, v] : sequenced)
+        for(auto& v : sequenced)
         {
             v.substitute(aliases);
         }

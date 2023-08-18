@@ -348,16 +348,16 @@ namespace single_source
             ctx.substitute_aliases();
             ctx.fix_buffers();
 
-            std::vector<std::vector<std::pair<std::string, value>>> blocks;
+            std::vector<std::vector<value>> blocks;
             blocks.emplace_back();
 
-            for(auto& [name, value] : ctx.sequenced)
+            for(auto& value : ctx.sequenced)
             {
                 ///control flow constructs are in their own dedicated segment
                 if(dual_types::get_description(value.type).introduces_block)
                 {
                     blocks.emplace_back();
-                    blocks.back().push_back({name, value});
+                    blocks.back().push_back(value);
                     blocks.emplace_back();
                     continue;
                 }
@@ -366,35 +366,22 @@ namespace single_source
                 if(dual_types::get_description(value.type).reordering_hazard)
                 {
                     blocks.emplace_back();
-                    blocks.back().push_back({name, value});
+                    blocks.back().push_back(value);
                     blocks.emplace_back();
                     continue;
                 }
 
-                blocks.back().push_back({name, value});
+                blocks.back().push_back(value);
             }
-
-            ///so. Need a getting_my_value_depends_on kind of a deal
-
-            //std::map<value*, std::set<std::string>> depends_on;
-
-            std::map<const value*, std::vector<std::string>> depends_on_unevaluable_constants;
 
             for(auto& block : blocks)
             {
                 if(block.size() == 0)
                     continue;
 
-                /*std::set<std::string> block_variables;
-
-                for(auto& [name, v] : block)
-                {
-                    v.get_all_variables_impl(block_variables);
-                }*/
-
                 std::set<const value*> block_variables;
 
-                for(auto& [name, v] : block)
+                for(auto& v : block)
                 {
                     v.recurse_variables([&](const value& in)
                     {
@@ -404,7 +391,7 @@ namespace single_source
 
                 std::map<const value*, std::vector<const value*>> depends_on;
 
-                for(auto& [name, v] : block)
+                for(auto& v : block)
                 {
                     v.bottom_up_recurse([&](const value& in)
                     {
@@ -453,60 +440,11 @@ namespace single_source
                     }
                 }
 
-                for(const auto& [constant, count] : most_unblocked)
+                /*for(const auto& [constant, count] : most_unblocked)
                 {
                     std::cout << type_to_string(*constant) << " " << count << std::endl;
-                }
-
-                /*for(auto& [name, v] : block)
-                {
-                    v.bottom_up_recurse([&](const value& in)
-                    {
-                        ///so: bottom up, applied to all arguments before applied to me
-                        if(in.is_value())
-                            return;
-
-                        if(in.type == dual_types::ops::IDOT)
-                            return;
-
-                        int count = 0;
-
-                        //for(const value& arg : in.args)
-
-                        for(int count=0; count < (int)in.args.size(); count++)
-                        {
-                            if(count == 0 && (in.type == dual_types::ops::UNKNOWN_FUNCTION || in.type == dual_types::ops::DECLARE))
-                                continue;
-
-                            if(count == 1 && in.type == dual_types::ops::CONVERT)
-                                continue;
-
-                            if(count == 1 && in.type == dual_types::ops::DECLARE)
-                                continue;
-
-                            const value& arg = in.args[count];
-
-                            if(arg.is_constant())
-                                continue;
-
-                            if(!arg.is_value())
-                                continue;
-
-                            ///arg is an unevaluable constant
-
-                            depends_on_unevaluable_constants[&in].push_back(type_to_string(arg));
-                        }
-                    });
                 }*/
             }
-
-            /*for(auto& [ptr, vec] : depends_on_unevaluable_constants)
-            {
-                for(auto& k : vec)
-                {
-                    std::cout << "Ptr " << type_to_string(*ptr) << " Depends on " << k << std::endl;
-                }
-            }*/
 
             int block_id = 0;
 
@@ -514,21 +452,21 @@ namespace single_source
             {
                 base += "//" + std::to_string(block_id) + "\n";
 
-                for(const auto& [name, value] : block)
+                for(const auto& value : block)
                 {
-                    if(name == "")
+                    //if(name == "")
                     {
                         if(dual_types::get_description(value.type).is_semicolon_terminated)
                             base += type_to_string(value) + ";\n";
                         else
                             base += type_to_string(value);
                     }
-                    else
+                    /*else
                     {
                         std::string type = value.original_type;
 
                         base += "const " + type + " " + name + " = " + type_to_string(value) + ";\n";
-                    }
+                    }*/
                 }
 
                 block_id++;
