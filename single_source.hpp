@@ -454,19 +454,10 @@ namespace single_source
 
                 for(const auto& value : block)
                 {
-                    //if(name == "")
-                    {
-                        if(dual_types::get_description(value.type).is_semicolon_terminated)
-                            base += type_to_string(value) + ";\n";
-                        else
-                            base += type_to_string(value);
-                    }
-                    /*else
-                    {
-                        std::string type = value.original_type;
-
-                        base += "const " + type + " " + name + " = " + type_to_string(value) + ";\n";
-                    }*/
+                    if(dual_types::get_description(value.type).is_semicolon_terminated)
+                        base += type_to_string(value) + ";\n";
+                    else
+                        base += type_to_string(value);
                 }
 
                 block_id++;
