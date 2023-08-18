@@ -374,6 +374,120 @@ namespace single_source
                 blocks.back().push_back({name, value});
             }
 
+            ///so. Need a getting_my_value_depends_on kind of a deal
+
+            //std::map<value*, std::set<std::string>> depends_on;
+
+            std::map<const value*, std::vector<std::string>> depends_on_unevaluable_constants;
+
+            for(auto& block : blocks)
+            {
+                /*std::set<std::string> block_variables;
+
+                for(auto& [name, v] : block)
+                {
+                    v.get_all_variables_impl(block_variables);
+                }*/
+
+                std::set<const value*> block_variables;
+
+                for(auto& [name, v] : block)
+                {
+                    v.recurse_variables([&](const value& in)
+                    {
+                        block_variables.insert(&in);
+                    });
+                }
+
+                std::map<const value*, std::vector<const value*>> depends_on;
+
+                for(auto& [name, v] : block)
+                {
+                    v.bottom_up_recurse([&](const value& in)
+                    {
+                        for(const auto& i : in.args)
+                        {
+                            if(auto block_it = block_variables.find(&i); block_it != block_variables.end())
+                            {
+                                depends_on[&in].push_back(&i);
+                            }
+
+                            if(auto map_it = depends_on.find(&i); map_it != depends_on.end())
+                            {
+                                for(const auto& e : map_it->second)
+                                {
+                                    depends_on[&in].push_back(e);
+                                }
+                            }
+                        }
+                    });
+                }
+
+                std::map<const value*, int> most_in_demand;
+
+                for(const auto& [source, depends] : depends_on)
+                {
+                    for(auto d : depends)
+                    {
+                        most_in_demand[d]++;
+                    }
+                }
+
+                for(const auto& [constant, count] : most_in_demand)
+                {
+                    std::cout << type_to_string(*constant) << " " << count << std::endl;
+                }
+
+                /*for(auto& [name, v] : block)
+                {
+                    v.bottom_up_recurse([&](const value& in)
+                    {
+                        ///so: bottom up, applied to all arguments before applied to me
+                        if(in.is_value())
+                            return;
+
+                        if(in.type == dual_types::ops::IDOT)
+                            return;
+
+                        int count = 0;
+
+                        //for(const value& arg : in.args)
+
+                        for(int count=0; count < (int)in.args.size(); count++)
+                        {
+                            if(count == 0 && (in.type == dual_types::ops::UNKNOWN_FUNCTION || in.type == dual_types::ops::DECLARE))
+                                continue;
+
+                            if(count == 1 && in.type == dual_types::ops::CONVERT)
+                                continue;
+
+                            if(count == 1 && in.type == dual_types::ops::DECLARE)
+                                continue;
+
+                            const value& arg = in.args[count];
+
+                            if(arg.is_constant())
+                                continue;
+
+                            if(!arg.is_value())
+                                continue;
+
+                            ///arg is an unevaluable constant
+
+                            depends_on_unevaluable_constants[&in].push_back(type_to_string(arg));
+                        }
+                    });
+                }*/
+            }
+
+            /*for(auto& [ptr, vec] : depends_on_unevaluable_constants)
+            {
+                for(auto& k : vec)
+                {
+                    std::cout << "Ptr " << type_to_string(*ptr) << " Depends on " << k << std::endl;
+                }
+            }*/
+
             int block_id = 0;
 
             for(const auto& block : blocks)
