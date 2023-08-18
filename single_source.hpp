@@ -348,21 +348,56 @@ namespace single_source
             ctx.substitute_aliases();
             ctx.fix_buffers();
 
+            std::vector<std::vector<std::pair<std::string, value>>> blocks;
+            blocks.emplace_back();
+
             for(auto& [name, value] : ctx.sequenced)
             {
-                if(name == "")
+                ///control flow constructs are in their own dedicated segment
+                if(dual_types::get_description(value.type).introduces_block)
                 {
-                    if(dual_types::get_description(value.type).is_semicolon_terminated)
-                        base += type_to_string(value) + ";\n";
-                    else
-                        base += type_to_string(value);
+                    blocks.emplace_back();
+                    blocks.back().push_back({name, value});
+                    blocks.emplace_back();
+                    continue;
                 }
-                else
-                {
-                    std::string type = value.original_type;
 
-                    base += "const " + type + " " + name + " = " + type_to_string(value) + ";\n";
+                ///just for simplicity
+                if(dual_types::get_description(value.type).reordering_hazard)
+                {
+                    blocks.emplace_back();
+                    blocks.back().push_back({name, value});
+                    blocks.emplace_back();
+                    continue;
                 }
+
+                blocks.back().push_back({name, value});
+            }
+
+            int block_id = 0;
+
+            for(const auto& block : blocks)
+            {
+                base += "//" + std::to_string(block_id) + "\n";
+
+                for(const auto& [name, value] : block)
+                {
+                    if(name == "")
+                    {
+                        if(dual_types::get_description(value.type).is_semicolon_terminated)
+                            base += type_to_string(value) + ";\n";
+                        else
+                            base += type_to_string(value);
+                    }
+                    else
+                    {
+                        std::string type = value.original_type;
+
+                        base += "const " + type + " " + name + " = " + type_to_string(value) + ";\n";
+                    }
+                }
+
+                block_id++;
             }
 
             base += "\n}\n";
