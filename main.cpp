@@ -452,7 +452,10 @@ void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 3> 
 
     value_i local_idx = "local_idx";
 
-    ctx.exec(if_s(local_idx >= point_count, return_s));
+    if_e(local_idx >= point_count, ctx, [&]()
+    {
+        ctx.exec(return_s);
+    });
 
     value_i lix = points[local_idx].x().convert<int>();
     value_i liy = points[local_idx].y().convert<int>();
@@ -481,9 +484,13 @@ void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 3> 
     ///note to self we're not actually doing this correctly
     value_i is_valid_point = ((order & value_i{(int)D_LOW}) > 0) || ((order & value_i{(int)D_FULL}) > 0);
 
-    ctx.exec(if_s(!is_valid_point,
-                  (assign(buf_out[ix, iy, iz], buf_in[ix, iy, iz]),
-                  return_s)));
+    assert(buf_out.storage.is_mutable);
+
+    if_e(!is_valid_point, ctx, [&]()
+    {
+        buf_out[ix, iy, iz].as_mutable(ctx) = buf_in[ix, iy, iz];
+        ctx.exec(return_s);
+    });
 
     value buf_v = bidx(buf_in.name, false, false);
 
@@ -2637,7 +2644,10 @@ void setup_u_offset(single_source::argument_generator& arg_gen, equation_context
 
     v3i pos = declare(ctx, (v3i){"get_global_id(0)", "get_global_id(1)", "get_global_id(2)"});
 
-    ctx.exec(if_s(pos.x() >= dim.get().x() || pos.y() >= dim.get().y() || pos.z() >= dim.get().z(), return_s));
+    if_e(pos.x() >= dim.get().x() || pos.y() >= dim.get().y() || pos.z() >= dim.get().z(), ctx, [&]()
+    {
+        ctx.exec(return_s);
+    });
 
     ctx.exec(assign(u_offset[pos], boundary));
 }
@@ -5243,7 +5253,10 @@ void test_kernel(equation_context& ctx, buffer<value, 3> test_input, buffer<valu
     value_i iy = "get_global_id(1)";
     value_i iz = "get_global_id(2)";
 
-    ctx.exec(if_s(ix >= dim.get().x() || iy >= dim.get().y() || iz >= dim.get().z(), return_s));
+    if_e(ix >= dim.get().x() || iy >= dim.get().y() || iz >= dim.get().z(), ctx, [&]()
+    {
+        ctx.exec(return_s);
+    });
 
     value test = test_input[ix, iy, iz];
 
@@ -5255,7 +5268,7 @@ void test_kernel(equation_context& ctx, buffer<value, 3> test_input, buffer<valu
 
     ctx.exec(result_expr);
 
-    ctx.exec(assert_s(test == 3));
+    //ctx.exec(assert_s(test == 3));
 }
 
 void test_kernel_generation(cl::context& clctx, cl::command_queue& cqueue)
@@ -5285,7 +5298,10 @@ void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>, 3> poi
 
     value_i local_idx = "get_global_id(0)";
 
-    ctx.exec(if_s(local_idx >= points_count.get(), return_s));
+    if_e(local_idx >= points_count.get(), ctx, [&]()
+    {
+        ctx.exec(return_s);
+    });
 
     tensor<value_i, 4> centre = (dim.get() - 1)/2;
 

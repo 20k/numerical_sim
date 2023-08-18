@@ -567,7 +567,10 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
 
     value_i local_idx = declare(ctx, value_i{"get_global_id(0)"}, "lidx");
 
-    ctx.exec(if_s(local_idx >= point_count, return_s));
+    if_e(local_idx >= point_count, ctx, [&]()
+    {
+        ctx.exec(return_s);
+    });
 
     value_i ix = declare(ctx, points[local_idx].x().convert<int>(), "ix");
     value_i iy = declare(ctx, points[local_idx].y().convert<int>(), "iy");
@@ -610,7 +613,10 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
     ///note to self the d_full check here is bad
     value_i is_bad = ((order & lD_FULL) == 0) && ((order & lD_LOW) == 0);
 
-    ctx.exec(if_s(is_bad, return_s));
+    if_e(is_bad, ctx, [&]()
+    {
+        ctx.exec(return_s);
+    });
 
     return {ix, iy, iz, index};
 }

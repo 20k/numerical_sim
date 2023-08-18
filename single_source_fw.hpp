@@ -140,7 +140,9 @@ namespace single_source
     requires(!Structy<U>)
     inline U parse_tensor(U& tag, value_i op)
     {
-        return op.reinterpret_as<U>();
+        auto result = op.reinterpret_as<U>();
+        result.is_mutable = tag.is_mutable;
+        return result;
     }
 
     template<typename U, int N>
@@ -150,7 +152,8 @@ namespace single_source
 
         for(int i=0; i < N; i++)
         {
-            ret.idx(i) = op.index(i).reinterpret_as<U>();
+            ret[i] = op.index(i).reinterpret_as<U>();
+            ret[i].is_mutable = tag[i].is_mutable;
         }
 
         return ret;

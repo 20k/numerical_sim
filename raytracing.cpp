@@ -31,7 +31,10 @@ void get_raytraced_quantities(single_source::argument_generator& arg_gen, equati
 
     v3i pos = {"ix", "iy", "iz"};
 
-    ctx.exec(if_s(pos.x() >= out_dim.x() || pos.y() >= out_dim.y() || pos.z() >= out_dim.z(), return_s));
+    if_e(pos.x() >= out_dim.x() || pos.y() >= out_dim.y() || pos.z() >= out_dim.z(), ctx, [&]()
+    {
+        ctx.exec(return_s);
+    });
 
     v3f in_dimf = (v3f)in_dim;
     v3f out_dimf = (v3f)out_dim;
@@ -248,7 +251,10 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
 
     v2i xy = declare(ctx, in_xy);
 
-    ctx.exec(if_s(xy.x() >= screen_size.get().x() || xy.y() >= screen_size.get().y(), return_s));
+    if_e(xy.x() >= screen_size.get().x() || xy.y() >= screen_size.get().y(), ctx, [&]()
+    {
+        ctx.exec(return_s);
+    });
 
     lightray ray = make_lightray(ctx, camera_pos.get(), camera_quat.get(), screen_size.get(), xy, Yij, gA, gB);
 
@@ -313,17 +319,21 @@ void trace_slice(equation_context& ctx,
 
     value_i lidx = y * screen_size.get().x() + x;
 
-    ctx.exec(if_s(lidx >= ray_count, return_s));
+    if_e(lidx >= ray_count, ctx, [&]()
+    {
+        ctx.exec(return_s);
+    });
 
-    value_v on_terminate = (assign(positions_out[0][lidx], positions[0][lidx]),
-                            assign(positions_out[1][lidx], positions[1][lidx]),
-                            assign(positions_out[2][lidx], positions[2][lidx]),
-                            assign(velocities_out[0][lidx], positions[0][lidx]),
-                            assign(velocities_out[1][lidx], positions[1][lidx]),
-                            assign(velocities_out[2][lidx], positions[2][lidx])
-                            );
+    if_e(terminated[lidx] > 0, ctx, [&]()
+    {
+        for(int i=0; i < 3; i++)
+        {
+            positions_out[i][lidx].as_mutable(ctx) = positions[i][lidx];
+            velocities_out[i][lidx].as_mutable(ctx) = velocities[i][lidx];
+        }
 
-    ctx.exec(if_s(terminated[lidx] > 0, (on_terminate, return_s)));
+        ctx.exec(return_s);
+    });
 
     value_mut local_frac = declare_mut(ctx, frac.get());
 
@@ -451,8 +461,6 @@ void trace_slice(equation_context& ctx,
 
     //steps = 1;
 
-    //ctx.exec(if_s(x == 128 && y == 128, value_v{"printf(\"hi %i stepc %i\", " + type_to_string(iteration.get()) + ", " + type_to_string((value_i)steps) + ");"}));
-
     ctx.exec(for_b("idx", value_i(0), value_i("idx") < (value_i)steps, value_i("idx++")));
 
     {
@@ -470,25 +478,20 @@ void trace_slice(equation_context& ctx,
         //ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"dx %f %f %f\", " + type_to_string(dpos.x()) + "," + type_to_string(dpos.y()) + "," + type_to_string(dpos.z()) + ");}");
         //ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"loop_vel %f %f %f\", " + type_to_string(loop_vel.x()) + "," + type_to_string(loop_vel.y()) + "," + type_to_string(loop_vel.z()) + ");}");
 
-        //value_v dbg1 = if_s(x==128 && y == 128, value_v{"printf(\"here1 %f\", " + type_to_string(pos_sq) + ");"});
-        //value_v dbg2 = if_s(x==128 && y == 128, value_v{"printf(\"here2\");"});
+        if_e(escape_cond, ctx, [&]()
+        {
+            hit_type.as_mutable(ctx) = 0;
+            ctx.exec(break_s);
+        });
 
-        ctx.exec(if_s(escape_cond,
-                        (assign(hit_type, value_i{0}),
-                         //dbg1,
-                         break_s)
-                      ));
-
-        ctx.exec(if_s(ingested_cond,
-                      (assign(hit_type, value_i{1}),
-                       //dbg2,
-                       break_s)
-                      ));
+        if_e(ingested_cond, ctx, [&]()
+        {
+            hit_type.as_mutable(ctx) = 1;
+            ctx.exec(break_s);
+        });
 
         ctx.exec(assign(loop_voxel_pos, as_constant(loop_voxel_pos) + dpos * step.get() / scale));
         ctx.exec(assign(loop_vel, as_constant(loop_vel) + dvel * step.get()));
-
-        //ctx.exec(if_s(x == 128 && y == 128, value_v{"printf(\"frac %f\", " + type_to_string(local_frac) + ");"}));
 
         ctx.exec(assign(local_frac, clamp(local_frac - frac_increment, value{0.f}, value{1.f})));
     }
@@ -503,22 +506,6 @@ void trace_slice(equation_context& ctx,
 
     render_ray_info out = render_out[lidx];
 
-    value_v on_terminated = (assign(terminated[lidx], value_i{1}),
-                             assign(out.x.get(), x),
-                             assign(out.y.get(), y),
-                             assign(out.X.get(), fin_world_pos.x()),
-                             assign(out.Y.get(), fin_world_pos.y()),
-                             assign(out.Z.get(), fin_world_pos.z()),
-                             assign(out.dX.get(), dx.x()),
-                             assign(out.dY.get(), dx.y()),
-                             assign(out.dZ.get(), dx.z()),
-                             assign(out.hit_type.get(), hit_type),
-                             assign(out.R.get(), value{0}),
-                             assign(out.G.get(), value{0}),
-                             assign(out.B.get(), value{0}),
-                             assign(out.background_power.get(), value{1}),
-                             assign(out.zp1.get(), value{1}));
-
     ctx.exec(assign(out.x.get(), x));
     ctx.exec(assign(out.y.get(), y));
     ctx.exec(assign(out.R.get(), value{0}));
@@ -526,9 +513,24 @@ void trace_slice(equation_context& ctx,
     ctx.exec(assign(out.B.get(), value{0}));
     ctx.exec(assign(out.hit_type.get(), value_i{1}));
 
-    ctx.exec(if_s(hit_type != value_i{-1},
-                  on_terminated
-                  ));
+    if_e(hit_type != value_i{-1}, ctx, [&]()
+    {
+        terminated[lidx].as_mutable(ctx) = value_i{1};
+        out.x.get().as_mutable(ctx) = x;
+        out.y.get().as_mutable(ctx) = y;
+        out.X.get().as_mutable(ctx) = fin_world_pos.x();
+        out.Y.get().as_mutable(ctx) = fin_world_pos.y();
+        out.Z.get().as_mutable(ctx) = fin_world_pos.z();
+        out.dX.get().as_mutable(ctx) = dx.x();
+        out.dY.get().as_mutable(ctx) = dx.y();
+        out.dZ.get().as_mutable(ctx) = dx.z();
+        out.hit_type.get().as_mutable(ctx) = hit_type;
+        out.R.get().as_mutable(ctx) = value{0};
+        out.G.get().as_mutable(ctx) = value{0};
+        out.B.get().as_mutable(ctx) = value{0};
+        out.background_power.get().as_mutable(ctx) = value{1};
+        out.zp1.get().as_mutable(ctx) = value{1};
+    });
 
     ctx.exec(assign(positions_out[0][lidx], fin_world_pos.x()));
     ctx.exec(assign(positions_out[1][lidx], fin_world_pos.y()));
@@ -799,7 +801,10 @@ void get_raytraced_quantities4(single_source::argument_generator& arg_gen, equat
 
     v3i pos = {"ix", "iy", "iz"};
 
-    ctx.exec(if_s(pos.x() >= out_dim.x() || pos.y() >= out_dim.y() || pos.z() >= out_dim.z(), return_s));
+    if_e(pos.x() >= out_dim.x() || pos.y() >= out_dim.y() || pos.z() >= out_dim.z(), ctx, [&]()
+    {
+        ctx.exec(return_s);
+    });
 
     v3f in_dimf = (v3f)in_dim;
     v3f out_dimf = (v3f)out_dim;
@@ -1026,7 +1031,10 @@ void init_slice_rays4(equation_context& ctx, literal<v3f> camera_pos, literal<v4
 
     v2i xy = declare(ctx, in_xy);
 
-    ctx.exec(if_s(xy.x() >= screen_size.get().x() || xy.y() >= screen_size.get().y(), return_s));
+    if_e(xy.x() >= screen_size.get().x() || xy.y() >= screen_size.get().y(), ctx, [&]()
+    {
+        ctx.exec(return_s);
+    });
 
     int indices[4][4] = {{0, 1, 2, 3},
                          {1, 4, 5, 6},
@@ -1058,8 +1066,6 @@ void init_slice_rays4(equation_context& ctx, literal<v3f> camera_pos, literal<v4
     lightray ray = make_lightray(ctx, camera_pos.get(), camera_quat.get(), screen_size.get(), xy, Guv_built, fgA, fgB);
 
     value_i out_idx = xy.y() * screen_size.get().x() + xy.x();
-
-    //ctx.exec(if_s(xy.x() == 128 && xy.y() == 128, dual_types::print("w_coord %f", w_coord.get())));
 
     ctx.exec(assign(positions_out[0][out_idx], w_coord.get()));
     ctx.exec(assign(positions_out[1][out_idx], ray.pos4.y()));
@@ -1140,7 +1146,10 @@ void trace_slice4(equation_context& ctx,
 
     value_i lidx = y * screen_size.get().x() + x;
 
-    ctx.exec(if_s(lidx >= ray_count, return_s));
+    if_e(lidx >= ray_count, ctx, [&]()
+    {
+        ctx.exec(return_s);
+    });
 
     ///t, x, y, z
     v4f pos = {positions[0][lidx], positions[1][lidx], positions[2][lidx], positions[3][lidx]};
@@ -1319,16 +1328,17 @@ void trace_slice4(equation_context& ctx,
         value ingested_cond = fabs(next_velocity.x()) > 100 || fabs(next_acceleration.x()) >= 100;
         //value ingested_cond = fabs(loop_vel.x()) > 1000 && fabs(dvel.x()) > 100;
 
-        ctx.exec(if_s(escape_cond,
-                        (assign(hit_type, value_i{0}),
-                         break_s)
-                      ));
+        if_e(escape_cond, ctx, [&]()
+        {
+            hit_type.as_mutable(ctx) = 0;
+            ctx.exec(break_s);
+        });
 
-        ctx.exec(if_s(ingested_cond,
-                      (assign(hit_type, value_i{1}),
-                       //on_quit2,
-                       break_s)
-                      ));
+        if_e(ingested_cond, ctx, [&]()
+        {
+            hit_type.as_mutable(ctx) = 1;
+            ctx.exec(break_s);
+        });
 
         loop_voxel_pos_txyz.as_mutable(ctx) = next_voxel_pos;
         loop_vel.as_mutable(ctx) = next_velocity;
@@ -1373,22 +1383,6 @@ void trace_slice4(equation_context& ctx,
 
     render_ray_info out = render_out[lidx];
 
-    value_v on_terminated = (
-                             assign(out.x.get(), x),
-                             assign(out.y.get(), y),
-                             assign(out.X.get(), fin_world_pos.y()),
-                             assign(out.Y.get(), fin_world_pos.z()),
-                             assign(out.Z.get(), fin_world_pos.w()),
-                             assign(out.dX.get(), loop_vel_cst.y()),
-                             assign(out.dY.get(), loop_vel_cst.z()),
-                             assign(out.dZ.get(), loop_vel_cst.w()),
-                             assign(out.hit_type.get(), hit_type),
-                             assign(out.R.get(), value{0}),
-                             assign(out.G.get(), value{0}),
-                             assign(out.B.get(), value{0}),
-                             assign(out.background_power.get(), value{1}),
-                             assign(out.zp1.get(), zp1));
-
     ctx.exec(assign(out.x.get(), x));
     ctx.exec(assign(out.y.get(), y));
     ctx.exec(assign(out.R.get(), value{1}));
@@ -1396,9 +1390,23 @@ void trace_slice4(equation_context& ctx,
     ctx.exec(assign(out.B.get(), value{0}));
     ctx.exec(assign(out.hit_type.get(), value_i{1}));
 
-    ctx.exec(if_s(hit_type != value_i{-1},
-                  on_terminated
-                  ));
+    if_e(hit_type != value_i{-1}, ctx, [&]()
+    {
+        out.x.get().as_mutable(ctx) = x;
+        out.y.get().as_mutable(ctx) = y;
+        out.X.get().as_mutable(ctx) = fin_world_pos.y();
+        out.Y.get().as_mutable(ctx) = fin_world_pos.z();
+        out.Z.get().as_mutable(ctx) = fin_world_pos.w();
+        out.dX.get().as_mutable(ctx) = loop_vel_cst.y();
+        out.dY.get().as_mutable(ctx) = loop_vel_cst.z();
+        out.dZ.get().as_mutable(ctx) = loop_vel_cst.w();
+        out.hit_type.get().as_mutable(ctx) = hit_type;
+        out.R.get().as_mutable(ctx) = value{0};
+        out.G.get().as_mutable(ctx) = value{0};
+        out.B.get().as_mutable(ctx) = value{0};
+        out.background_power.get().as_mutable(ctx) = value{1};
+        out.zp1.get().as_mutable(ctx) = zp1;
+    });
 }
 
 void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args)
