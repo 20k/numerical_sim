@@ -1572,7 +1572,7 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, cons
 
         auto step = [](const value& in)
         {
-            return if_v(in >= 0.f, value{1.f}, value{0.f});
+            return if_v((value_i)(in >= 0.f), value{1.f}, value{0.f});
         };
 
         value bkk = 0;

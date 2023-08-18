@@ -25,11 +25,11 @@ void get_raytraced_quantities(single_source::argument_generator& arg_gen, equati
     auto gB_out = arg_gen.add<std::array<buffer<value_mut>, 3>>();
     //auto slice = arg_gen.add<literal<value_i>>();
 
-    ctx.exec("int ix = get_global_id(0)");
-    ctx.exec("int iy = get_global_id(1)");
-    ctx.exec("int iz = get_global_id(2)");
+    value_i ix = declare(ctx, value_i{"get_global_id(0)"}, "ix");
+    value_i iy = declare(ctx, value_i{"get_global_id(1)"}, "iy");
+    value_i iz = declare(ctx, value_i{"get_global_id(2)"}, "iz");
 
-    v3i pos = {"ix", "iy", "iz"};
+    v3i pos = {ix, iy, iz};
 
     if_e(pos.x() >= out_dim.x() || pos.y() >= out_dim.y() || pos.z() >= out_dim.z(), ctx, [&]()
     {
@@ -45,9 +45,9 @@ void get_raytraced_quantities(single_source::argument_generator& arg_gen, equati
 
     ctx.uses_linear = true;
 
-    ctx.exec("float fx = " + type_to_string(upper_pos.x()));
-    ctx.exec("float fy = " + type_to_string(upper_pos.y()));
-    ctx.exec("float fz = " + type_to_string(upper_pos.z()));
+    declare(ctx, upper_pos.x(), "fx");
+    declare(ctx, upper_pos.y(), "fy");
+    declare(ctx, upper_pos.z(), "fz");
 
     standard_arguments args(ctx);
 
@@ -795,11 +795,11 @@ void get_raytraced_quantities4(single_source::argument_generator& arg_gen, equat
 
     auto Guv_out = arg_gen.add<std::array<buffer<ray4_value_mut>, 10>>();
 
-    ctx.exec("int ix = get_global_id(0)");
-    ctx.exec("int iy = get_global_id(1)");
-    ctx.exec("int iz = get_global_id(2)");
+    value_i ix = declare(ctx, value_i{"get_global_id(0)"}, "ix");
+    value_i iy = declare(ctx, value_i{"get_global_id(1)"}, "iy");
+    value_i iz = declare(ctx, value_i{"get_global_id(2)"}, "iz");
 
-    v3i pos = {"ix", "iy", "iz"};
+    v3i pos = {ix, iy, iz};
 
     if_e(pos.x() >= out_dim.x() || pos.y() >= out_dim.y() || pos.z() >= out_dim.z(), ctx, [&]()
     {
@@ -815,9 +815,9 @@ void get_raytraced_quantities4(single_source::argument_generator& arg_gen, equat
 
     ctx.uses_linear = true;
 
-    ctx.exec("float fx = " + type_to_string(upper_pos.x()));
-    ctx.exec("float fy = " + type_to_string(upper_pos.y()));
-    ctx.exec("float fz = " + type_to_string(upper_pos.z()));
+    declare(ctx, upper_pos.x(), "fx");
+    declare(ctx, upper_pos.y(), "fy");
+    declare(ctx, upper_pos.z(), "fz");
 
     standard_arguments args(ctx);
 

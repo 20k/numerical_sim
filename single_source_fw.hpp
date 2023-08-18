@@ -142,6 +142,7 @@ namespace single_source
     {
         auto result = op.reinterpret_as<U>();
         result.is_mutable = tag.is_mutable;
+        result.original_type = tag.original_type;
         return result;
     }
 
@@ -154,6 +155,7 @@ namespace single_source
         {
             ret[i] = op.index(i).reinterpret_as<U>();
             ret[i].is_mutable = tag[i].is_mutable;
+            ret[i].original_type = tag[i].original_type;
         }
 
         return ret;

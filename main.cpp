@@ -448,26 +448,17 @@ void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 3> 
                           buffer<value_us, 3> order_ptr)
 {
     ctx.add_function("buffer_index", buffer_index_f<value, 3>);
-    ctx.exec("int local_idx = get_global_id(0);");
 
-    value_i local_idx = "local_idx";
+    value_i local_idx = declare(ctx, value_i{"get_global_id(0)"}, "local_idx");
 
     if_e(local_idx >= point_count, ctx, [&]()
     {
         ctx.exec(return_s);
     });
 
-    value_i lix = points[local_idx].x().convert<int>();
-    value_i liy = points[local_idx].y().convert<int>();
-    value_i liz = points[local_idx].z().convert<int>();
-
-    ctx.exec("int ix = " + type_to_string(lix));
-    ctx.exec("int iy = " + type_to_string(liy));
-    ctx.exec("int iz = " + type_to_string(liz));
-
-    value_i ix = "ix";
-    value_i iy = "iy";
-    value_i iz = "iz";
+    value_i ix = declare(ctx, points[local_idx].x().convert<int>(), "ix");
+    value_i iy = declare(ctx, points[local_idx].y().convert<int>(), "iy");
+    value_i iz = declare(ctx, points[local_idx].z().convert<int>(), "iz");
 
     tensor<value_i, 3> dim = {idim.get().x(), idim.get().y(), idim.get().z()};
 
@@ -475,11 +466,7 @@ void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 3> 
     buf_out.size = {dim.x(), dim.y(), dim.z()};
     order_ptr.size = {dim.x(), dim.y(), dim.z()};
 
-    value_us order_v = order_ptr[ix, iy, iz];
-
-    ctx.exec("int order = " + type_to_string(order_v));
-
-    value_i order = "order";
+    value_i order = declare(ctx, order_ptr[ix, iy, iz].convert<int>(), "order");
 
     ///note to self we're not actually doing this correctly
     value_i is_valid_point = ((order & value_i{(int)D_LOW}) > 0) || ((order & value_i{(int)D_FULL}) > 0);
@@ -624,7 +611,7 @@ value diffnth(equation_context& ctx, const value& in, int idx, const value_i& nt
     return last;
 }
 
-value_us satisfies_order(int order, value_us found_order)
+value_i satisfies_order(int order, value_i found_order)
 {
     int which_check = D_FULL;
 
@@ -666,15 +653,15 @@ value diff1(equation_context& ctx, const value& in, int idx)
 
 
         //value_us d_low = (uint16_t)D_LOW;
-        value_us d_only_px = (uint16_t)D_ONLY_PX;
-        value_us d_only_py = (uint16_t)D_ONLY_PY;
-        value_us d_only_pz = (uint16_t)D_ONLY_PZ;
-        value_us d_both_px = (uint16_t)D_BOTH_PX;
-        value_us d_both_py = (uint16_t)D_BOTH_PY;
-        value_us d_both_pz = (uint16_t)D_BOTH_PZ;
+        value_i d_only_px = (int)D_ONLY_PX;
+        value_i d_only_py = (int)D_ONLY_PY;
+        value_i d_only_pz = (int)D_ONLY_PZ;
+        value_i d_both_px = (int)D_BOTH_PX;
+        value_i d_both_py = (int)D_BOTH_PY;
+        value_i d_both_pz = (int)D_BOTH_PZ;
 
-        value_us directional_single = 0;
-        value_us directional_both = 0;
+        value_i directional_single = 0;
+        value_i directional_both = 0;
 
         if(idx == 0)
         {
@@ -692,12 +679,12 @@ value diff1(equation_context& ctx, const value& in, int idx)
             directional_both = d_both_pz;
         }
 
-        value_us order = "order";
+        value_i order = "order";
 
-        value_us is_high_order = satisfies_order(ctx.order, order);
+        value_i is_high_order = satisfies_order(ctx.order, order);
 
-        value_us is_forward = (order & directional_single) > 0;
-        value_us is_bidi = (order & directional_both) > 0;
+        value_i is_forward = (order & directional_single) > 0;
+        value_i is_bidi = (order & directional_both) > 0;
 
         value regular_d = diff1_interior(ctx, in, idx, ctx.order, 0);
         value low_d = diff1_interior(ctx, in, idx, 1, 0);
@@ -5307,28 +5294,23 @@ void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>, 3> poi
 
     tensor<value, 3> centref = {centre.x().convert<float>(), centre.y().convert<float>(), centre.z().convert<float>()};
 
-    value_i tix = points[local_idx].x().convert<int>();
-    value_i tiy = points[local_idx].y().convert<int>();
-    value_i tiz = points[local_idx].z().convert<int>();
+    value_i ix = declare(ctx, points[local_idx].x().convert<int>(), "ix");
+    value_i iy = declare(ctx, points[local_idx].y().convert<int>(), "iy");
+    value_i iz = declare(ctx, points[local_idx].z().convert<int>(), "iz");
 
-    ctx.exec("int ix = " + type_to_string(tix) + ";");
-    ctx.exec("int iy = " + type_to_string(tiy) + ";");
-    ctx.exec("int iz = " + type_to_string(tiz) + ";");
-
-    value_i ix = "ix";
-    value_i iy = "iy";
-    value_i iz = "iz";
     tensor<value, 3> fpos = {ix.convert<float>(), iy.convert<float>(), iz.convert<float>()};
 
     tensor<value, 3> from_centre = fpos - centref;
 
     tensor<value, 3> normal = from_centre / from_centre.length();
 
-    value_i c_index = iz * dim.get().x() * dim.get().y() + iy * dim.get().x() + ix;
+    //value_i c_index = ;
 
-    ctx.exec("int index = " + type_to_string(c_index) + ";");
+    //ctx.exec("int index = " + type_to_string(c_index) + ";");
 
-    ctx.exec("int order = " + std::to_string(D_FULL) + ";");
+    value_i index = declare(ctx, iz * dim.get().x() * dim.get().y() + iy * dim.get().x() + ix, "index");
+
+    value_i order = declare(ctx, value_i{(int)D_FULL}, "order");
 
     //value_i index = "index";
 

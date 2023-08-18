@@ -374,7 +374,7 @@ namespace single_source
                 blocks.back().push_back(value);
             }
 
-            auto insert_value = [&](const value& in)
+            auto insert_value = [&]<typename T>(const T& in)
             {
                 if(dual_types::get_description(in.type).is_semicolon_terminated)
                     base += type_to_string(in) + ";\n";
@@ -382,6 +382,137 @@ namespace single_source
                     base += type_to_string(in);
             };
 
+            int gidx = 0;
+
+            for(auto& block : blocks)
+            {
+                if(block.size() == 0)
+                    continue;
+
+                for(auto& v : block)
+                {
+                    /*v.recurse_variables([&](const value& in)
+                    {
+                        block_variables.insert(&in);
+                    });*/
+
+                    /*v.bottom_up_recurse([&](value& in)
+                    {
+                        if(in.type == dual_types::ops::IDOT)
+                        {
+                            insert_value(in);
+                            return true;
+                        }
+
+                        if(in.type == dual_types::ops::RETURN || in.type == dual_types::ops::BREAK ||
+                           in.type == dual_types::ops::FOR_START || in.type == dual_types::ops::IF_START ||
+                           in.type == dual_types::ops::BLOCK_START || in.type == dual_types::ops::BLOCK_END)
+                        {
+                            insert_value(in);
+                            return true;
+                        }
+
+                        if(in.type == dual_types::ops::UNKNOWN_FUNCTION)
+                        {
+                            //insert_value(in);
+                            return true;
+                        }
+
+                        if(in.type == dual_types::ops::DECLARE || in.type == dual_types::ops::ASSIGN)
+                        {
+                            insert_value(in);
+                            return true;
+                        }
+
+                        return false;
+                    },
+                    [&](value& in)
+                    {
+                        if(in.type == dual_types::ops::VALUE)
+                            return;
+
+                        auto [declare_op, val] = declare_raw(in, "genid" + std::to_string(gidx), in.is_mutable);
+
+                        insert_value(declare_op);
+
+                        in = val;
+
+                        gidx++;
+                    });
+                }*/
+
+                    auto checker = [&]<typename T>(value& in, T&& func)
+                    {
+                        if(in.type == dual_types::ops::IDOT)
+                        {
+                            return;
+                        }
+
+                        if(in.type == dual_types::ops::RETURN || in.type == dual_types::ops::BREAK ||
+                           in.type == dual_types::ops::FOR_START || in.type == dual_types::ops::IF_START ||
+                           in.type == dual_types::ops::BLOCK_START || in.type == dual_types::ops::BLOCK_END)
+                        {
+                            insert_value(in);
+                            return;
+                        }
+
+                        if(in.type == dual_types::ops::UNKNOWN_FUNCTION)
+                        {
+                            ///treat like a constant
+                            return;
+                        }
+
+
+                        /*if(in.type == dual_types::ops::DECLARE || in.type == dual_types::ops::ASSIGN)
+                        {
+                            insert_value(in);
+                            return;
+                        }*/
+
+                        if(in.type == dual_types::ops::VALUE)
+                            return;
+
+                        for(int i=0; i < (int)in.args.size(); i++)
+                        {
+                            if(in.type == dual_types::ops::DECLARE && i < 2)
+                                continue;
+
+                            if(in.type == dual_types::ops::UNKNOWN_FUNCTION && i == 0)
+                                continue;
+
+                            if(in.type == dual_types::ops::CONVERT && i == 1)
+                                continue;
+
+                            if(in.type == dual_types::ops::ASSIGN && i == 0)
+                                continue;
+
+                            func(in.args[i], func);
+                        }
+
+                        if(in.type == dual_types::ops::DECLARE || in.type == dual_types::ops::ASSIGN)
+                        {
+                            insert_value(in);
+                            return;
+                        }
+
+                        auto [declare_op, val] = declare_raw(in, "genid" + std::to_string(gidx), in.is_mutable);
+
+                        insert_value(declare_op);
+
+                        in = val;
+
+                        gidx++;
+                    };
+
+                    v.recurse_lambda(checker);
+                }
+            }
+
+            ///so, take 2
+            ///we only really want to unblock by memory accesses, because that's the entire point
+            ///but memory accesses aren't clear
+
+            #if 0
             for(auto& block : blocks)
             {
                 if(block.size() == 0)
@@ -389,18 +520,18 @@ namespace single_source
 
                 std::set<const value*> emitted;
 
+                std::set<const value*> block_variables;
+
+                for(auto& v : block)
+                {
+                    v.recurse_variables([&](const value& in)
+                    {
+                        block_variables.insert(&in);
+                    });
+                }
+
                 while(1)
                 {
-                    std::set<const value*> block_variables;
-
-                    for(auto& v : block)
-                    {
-                        v.recurse_variables([&](const value& in)
-                        {
-                            block_variables.insert(&in);
-                        });
-                    }
-
                     std::map<const value*, std::vector<const value*>> depends_on;
 
                     for(auto& v : block)
@@ -436,9 +567,9 @@ namespace single_source
                     if(depends_on.size() == 0)
                         break;
 
-                    auto map_2_vec = [](const std::map<const value*, int>& in)
+                    auto map_2_vec = []<typename T>(const std::map<T, int>& in)
                     {
-                        std::vector<std::pair<const value*, int>> vec;
+                        std::vector<std::pair<T, int>> vec;
 
                         for(auto& [a, b] : in)
                         {
@@ -454,17 +585,17 @@ namespace single_source
                     };
 
                     ///needs to be by name, need dedup
-                    std::map<const value*, int> most_in_demand;
+                    std::map<std::string, int> most_in_demand;
 
                     for(const auto& [source, depends] : depends_on)
                     {
                         for(auto d : depends)
                         {
-                            most_in_demand[d]++;
+                            most_in_demand[type_to_string(d)]++;
                         }
                     }
 
-                    std::vector<std::pair<const value*, int>> most_in_demand_vec = map_2_vec(most_in_demand);
+                    std::vector<std::pair<std::string, int>> most_in_demand_vec = map_2_vec(most_in_demand);
 
                     std::map<const value*, int> most_unblocked;
 
@@ -513,6 +644,7 @@ namespace single_source
                     std::cout << type_to_string(*constant) << " " << count << std::endl;
                 }*/
             }
+            #endif
 
             /*int block_id = 0;
 
