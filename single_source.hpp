@@ -389,6 +389,8 @@ namespace single_source
                 if(block.size() == 0)
                     continue;
 
+                std::vector<std::pair<value, std::string>> emitted_cache;
+
                 for(auto& v : block)
                 {
                     /*v.recurse_variables([&](const value& in)
@@ -495,9 +497,22 @@ namespace single_source
                             return;
                         }
 
-                        auto [declare_op, val] = declare_raw(in, "genid" + std::to_string(gidx), in.is_mutable);
+                        for(const auto& [val, name] : emitted_cache)
+                        {
+                            if(equivalent(val, in))
+                            {
+                                in = name;
+                                return;
+                            }
+                        }
+
+                        std::string name = "genid" + std::to_string(gidx);
+
+                        auto [declare_op, val] = declare_raw(in, name, in.is_mutable);
 
                         insert_value(declare_op);
+
+                        emitted_cache.push_back({in, name});
 
                         in = val;
 
