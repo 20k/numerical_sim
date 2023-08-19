@@ -279,6 +279,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             for(value* v : to_emit)
             {
+                std::cout << "Emitting " << type_to_string(*v) << std::endl;
+
                 ///so. All our arguments are constants
                 ///this means we want to ideally place ourself into a constant, then emit that new declaration
                 ///if applicable
@@ -300,20 +302,20 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                         }
                     }
 
-                    if(!valid)
-                        continue;
+                    if(valid)
+                    {
+                        std::string name = "genid" + std::to_string(gidx);
 
-                    std::string name = "genid" + std::to_string(gidx);
+                        auto [declare_op, val] = declare_raw(*v, name, v->is_mutable);
 
-                    auto [declare_op, val] = declare_raw(*v, name, v->is_mutable);
+                        insert_value(declare_op);
 
-                    insert_value(declare_op);
+                        emitted_cache.push_back({*v, name});
 
-                    emitted_cache.push_back({*v, name});
+                        *v = val;
 
-                    *v = val;
-
-                    gidx++;
+                        gidx++;
+                    }
                 }
 
                 emitted.insert(v);
