@@ -114,6 +114,24 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
     {
         for(value& v : block)
         {
+            auto substitute = [&](value& in)
+            {
+                if(in.type == dual_types::ops::UNKNOWN_FUNCTION)
+                {
+                    if(type_to_string(in.args[0]) == "buffer_index" || type_to_string(in.args[0]) == "buffer_indexh")
+                    {
+                        if(!in.is_memory_access)
+                        {
+                            std::cout << kernel_name << std::endl;
+                            std::cout << type_to_string(in) << std::endl;
+                        }
+                        assert(in.is_memory_access);
+                    }
+                }
+            };
+
+            v.recurse_arguments(substitute);
+
             auto check = [&]<typename T>(value& in, T&& func)
             {
                 if(in.type == dual_types::ops::DECLARE)
@@ -199,6 +217,19 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             {
                 auto substitute = [&](value& in)
                 {
+                    /*if(in.type == dual_types::ops::UNKNOWN_FUNCTION)
+                    {
+                        if(type_to_string(in.args[0]) == "buffer_index" || type_to_string(in.args[0]) == "buffer_indexh")
+                        {
+                            if(!in.is_memory_access)
+                            {
+                                std::cout << kernel_name << std::endl;
+                                std::cout << type_to_string(in) << std::endl;
+                            }
+                            assert(in.is_memory_access);
+                        }
+                    }*/
+
                     for(auto& [val, name] : emitted_cache)
                     {
                         if(equivalent(val, in))
@@ -257,6 +288,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             std::vector<value*> not_memory_access;
             std::vector<value*> memory_access;
+            std::vector<value*> assigns;
 
             for(auto i : all_arguments_bottom_rung)
             {
@@ -266,21 +298,24 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 }
                 else
                 {
-                    not_memory_access.push_back(i);
+                    if(i->type == dual_types::ops::ASSIGN)
+                        assigns.push_back(i);
+                    else
+                        not_memory_access.push_back(i);
                 }
             }
 
             std::vector<value*> to_emit;
 
-            if(not_memory_access.size() > 0)
+            if(assigns.size() > 0)
+                to_emit = assigns;
+            else if(not_memory_access.size() > 0)
                 to_emit = not_memory_access;
             else
                 to_emit = {memory_access.at(0)};
 
             for(value* v : to_emit)
             {
-                std::cout << "Emitting " << type_to_string(*v) << std::endl;
-
                 ///so. All our arguments are constants
                 ///this means we want to ideally place ourself into a constant, then emit that new declaration
                 ///if applicable

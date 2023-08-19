@@ -485,6 +485,7 @@ void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 3> 
     });
 
     value buf_v = bidx(buf_in.name, false, false);
+    assert(buf_v.is_memory_access);
 
     value v = buf_v + timestep * eps * kreiss_oliger_dissipate(ctx, buf_v, order);
 
@@ -1644,8 +1645,9 @@ value tov_phi_at_coordinate_general(const tensor<value, 3>& world_position)
 
     value v = dual_types::apply(value("world_to_voxel"), fl3, "dim", "scale");
 
-    return dual_types::apply(value("buffer_read_linear"), "tov_phi", v, "dim");
-
+    auto result = dual_types::apply(value("buffer_read_linear"), "tov_phi", v, "dim");
+    result.is_memory_access = true;
+    return result;
     //return dual_types::apply("tov_phi", as_float3(vx, vy, vz), "dim");
 }
 
@@ -1655,6 +1657,7 @@ value get_u_rhs(cl::context& clctx, const initial_conditions& init)
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
     value u_value = dual_types::apply(value("buffer_index"), "u_offset_in", "ix", "iy", "iz", "dim");
+    u_value.is_memory_access = true;
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     ///todo when I forget: I'm using the conformal guess here for neutron stars which probably isn't right
@@ -1834,6 +1837,8 @@ private:
         value rho = dat.mass_energy_density;
 
         value u_value = dual_types::apply(value("buffer_index"), "u_offset_in", "ix", "iy", "iz", "dim");
+        u_value.is_memory_access = true;
+
         value phi = u_value;
         value phi_rhs = -2 * (float)M_PI * pow(phi, 5) * rho;
 
@@ -2150,6 +2155,7 @@ struct superimposed_gpu_data
         };
 
         value u_value = dual_types::apply(value("buffer_index"), "u_value", "ix", "iy", "iz", "dim");
+        u_value.is_memory_access = true;
 
         ///https://arxiv.org/pdf/1606.04881.pdf 74
         value phi = conformal_guess + u_value + 1;
@@ -3886,6 +3892,7 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
 
     value bl_conformal = calculate_conformal_guess(pos, holes);
     value u = dual_types::apply(value("buffer_index"), "u_value", "ix", "iy", "iz", "dim");
+    u.is_memory_access = true;
     value phi = u + bl_conformal + 1;
 
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
@@ -4157,6 +4164,7 @@ void build_intermediate_thin(equation_context& ctx)
     standard_arguments args(ctx);
 
     value buffer = dual_types::apply(value("buffer_index"), "buffer", "ix", "iy", "iz", "dim");
+    buffer.is_memory_access = true;
 
     value v1 = diff1(ctx, buffer, 0);
     value v2 = diff1(ctx, buffer, 1);
@@ -4175,6 +4183,7 @@ void build_intermediate_thin_directional(equation_context& ctx)
     standard_arguments args(ctx);
 
     value buffer = dual_types::apply(value("buffer_index"), "buffer", "ix", "iy", "iz", "dim");
+    buffer.is_memory_access = true;
 
     value v1 = diff1(ctx, buffer, 0);
     value v2 = diff1(ctx, buffer, 1);
