@@ -207,6 +207,31 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             return true;
         };
 
+        auto get_variable_deps = [&](value& in)
+        {
+            std::vector<std::string> includes_dupes;
+
+            auto getter = [&]<typename T>(value& me, T&& func)
+            {
+                me.for_each_real_arg([&](value& arg)
+                {
+                    if(arg.type == dual_types::ops::VALUE && !arg.is_constant())
+                    {
+                        std::string str = type_to_string(arg);
+
+                        bool will_ever_be_declared = eventually_declared.find(str) != eventually_declared.end();
+
+                        if(will_ever_be_declared)
+                            includes_dupes.push_back(str);
+                    }
+
+                    arg.recurse_lambda(func);
+                });
+            };
+
+            in.recurse_lambda(getter);
+        };
+
         bool going = true;
 
         while(going)
