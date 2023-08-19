@@ -52,8 +52,12 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
     else
         base += kctx.ret.args.at(0).type + " " + kernel_name + "(";
 
+    std::set<std::string> emitted_variable_names;
+
     for(int i=0; i < (int)kctx.inputs.args.size(); i++)
     {
+        emitted_variable_names.insert(kctx.inputs.args[i].name);
+
         base += kctx.inputs.args[i].format();
 
         if(i != (int)kctx.inputs.args.size() - 1)
@@ -94,6 +98,9 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
     auto insert_value = [&]<typename T>(const T& in)
     {
+        if(in.type == dual_types::ops::DECLARE)
+            emitted_variable_names.insert(type_to_string(in.args.at(1)));
+
         if(dual_types::get_description(in.type).is_semicolon_terminated)
             base += type_to_string(in) + ";\n";
         else
@@ -108,15 +115,133 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             continue;
 
         std::vector<std::pair<value, std::string>> emitted_cache;
+        std::set<value*> emitted;
+        std::set<std::string> emitted_decl_names;
 
-        auto is_bottom_rung = [](const value& in)
+        auto is_bottom_rung = [&](value& in)
         {
-            return in.type == dual_types::ops::RETURN || in.type == dual_types::ops::BREAK ||
+            return in.type == dual_types::ops::BREAK ||
                    in.type == dual_types::ops::FOR_START || in.type == dual_types::ops::IF_START ||
                    in.type == dual_types::ops::BLOCK_START || in.type == dual_types::ops::BLOCK_END ||
-                   in.type == dual_types::ops::VALUE || in.type == dual_types::ops::IDOT || in.is_memory_access;
+                   in.type == dual_types::ops::VALUE || in.type == dual_types::ops::IDOT || in.is_memory_access ||
+                   in.type == dual_types::ops::UNKNOWN_FUNCTION || emitted.find(&in) != emitted.end();
         };
 
+        auto all_bottom_rung = [&](value& in)
+        {
+            for(auto& i : in.args)
+            {
+                if(!is_bottom_rung(i))
+                    return false;
+            }
+
+            return true;
+        };
+
+        auto can_be_assigned_to_variable = [&](value& in)
+        {
+            using namespace dual_types::ops;
+
+            return  in.type != RETURN && in.type != BREAK && in.type != FOR_START && in.type != IF_START && in.type != BLOCK_START &&
+                    in.type != BLOCK_END && in.type != IDOT && in.type != DECLARE && in.type != ASSIGN;
+        };
+
+        auto has_variable_deps = [&](value& in)
+        {
+            std::vector<std::string> variables = in.get_all_variables();
+
+            for(auto& i : variables)
+            {
+                if(emitted_variable_names.find(i) == emitted_variable_names.end())
+                    return false;
+            }
+
+            return true;
+        };
+
+        bool going = true;
+
+        while(going)
+        {
+            std::vector<value*> all_arguments_bottom_rung;
+
+            for(auto& v : block)
+            {
+                if(is_bottom_rung(v) && emitted.find(&v) == emitted.end() && has_variable_deps(v))
+                {
+                    all_arguments_bottom_rung.push_back(&v);
+                    continue;
+                }
+
+                auto recurse = [&]<typename T>(value& in, T&& func)
+                {
+                    if(emitted.find(&in) != emitted.end())
+                        return;
+
+                    if(is_bottom_rung(in))
+                        return;
+
+                    if(all_bottom_rung(in) && has_variable_deps(in))
+                    {
+                        all_arguments_bottom_rung.push_back(&in);
+                        return;
+                    }
+
+                    in.for_each_real_arg([&](value& arg)
+                    {
+                        func(arg, func);
+                    });
+                };
+
+                v.recurse_lambda(recurse);
+            }
+
+            for(value* v : all_arguments_bottom_rung)
+            {
+                ///so. All our arguments are constants
+                ///this means we want to ideally place ourself into a constant, then emit that new declaration
+                ///if applicable
+                ///otherwise just emit the statement
+
+                if(!can_be_assigned_to_variable(*v))
+                    insert_value(*v);
+                else
+                {
+                    bool valid = true;
+
+                    for(const auto& [val, name] : emitted_cache)
+                    {
+                        if(equivalent(val, *v))
+                        {
+                            *v = name;
+                            valid = false;
+                            break;
+                        }
+                    }
+
+                    if(!valid)
+                        continue;
+
+                    std::string name = "genid" + std::to_string(gidx);
+
+                    auto [declare_op, val] = declare_raw(*v, name, v->is_mutable);
+
+                    insert_value(declare_op);
+
+                    emitted_cache.push_back({*v, name});
+
+                    *v = val;
+
+                    gidx++;
+                }
+
+                emitted.insert(v);
+            }
+
+            going = all_arguments_bottom_rung.size() > 0;
+        }
+
+        #if 0
         for(auto& v : block)
         {
             auto checker = [&]<typename T>(value& in, T&& func)
@@ -187,6 +312,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             v.recurse_lambda(checker);
         }
+        #endif
     }
 
     base += "\n}\n";

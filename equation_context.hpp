@@ -110,7 +110,7 @@ struct equation_context : differentiator
 
         bool can_cache = true;
 
-        v.recurse_arguments([&](value& in)
+        v.recurse_arguments([&](const value& in)
         {
             if(in.is_mutable)
                 can_cache = false;
