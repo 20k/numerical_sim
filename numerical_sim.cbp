@@ -211,6 +211,7 @@
 		<Unit filename="raytracing.hpp" />
 		<Unit filename="ref_counted.hpp" />
 		<Unit filename="rendering.cl" />
+		<Unit filename="single_source.cpp" />
 		<Unit filename="single_source.hpp" />
 		<Unit filename="single_source_fw.hpp" />
 		<Unit filename="spherical_decomposition.hpp" />
