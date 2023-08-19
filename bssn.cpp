@@ -581,7 +581,8 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
     value_i index = declare(ctx, iz * dim.x() * dim.y() + iy * dim.x() + ix, "index");
 
     //ctx.exec("prefetch(&order_ptr[index], 1)");
-    ctx.exec("prefetch(&cY0[index], 1)");
+
+    /*ctx.exec("prefetch(&cY0[index], 1)");
     ctx.exec("prefetch(&cY1[index], 1)");
     ctx.exec("prefetch(&cY2[index], 1)");
     ctx.exec("prefetch(&cY3[index], 1)");
@@ -603,7 +604,7 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
     ctx.exec("prefetch(&gA[index], 1)");
     ctx.exec("prefetch(&gB0[index], 1)");
     ctx.exec("prefetch(&gB1[index], 1)");
-    ctx.exec("prefetch(&gB2[index], 1)");
+    ctx.exec("prefetch(&gB2[index], 1)");*/
 
     value_i order = declare(ctx, (value_i)order_ptr[index], "order");
 

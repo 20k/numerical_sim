@@ -73,27 +73,28 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
     std::vector<std::vector<value>> blocks;
     blocks.emplace_back();
 
-    for(auto& value : ctx.sequenced)
+    for(auto& v : ctx.sequenced)
     {
+        bool is_bad = dual_types::get_description(v.type).introduces_block;
+
+        is_bad = is_bad || dual_types::get_description(v.type).reordering_hazard;
+
+        v.recurse_arguments([&](const value& in)
+        {
+            if(in.is_mutable)
+                is_bad = true;
+        });
+
         ///control flow constructs are in their own dedicated segment
-        if(dual_types::get_description(value.type).introduces_block)
+        if(is_bad)
         {
             blocks.emplace_back();
-            blocks.back().push_back(value);
+            blocks.back().push_back(v);
             blocks.emplace_back();
             continue;
         }
 
-        ///just for simplicity
-        if(dual_types::get_description(value.type).reordering_hazard)
-        {
-            blocks.emplace_back();
-            blocks.back().push_back(value);
-            blocks.emplace_back();
-            continue;
-        }
-
-        blocks.back().push_back(value);
+        blocks.back().push_back(v);
     }
 
     auto insert_value = [&]<typename T>(const T& in)
@@ -106,6 +107,29 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         else
             base += type_to_string(in);
     };
+
+    std::set<std::string> eventually_declared = emitted_variable_names;
+
+    for(auto& block : blocks)
+    {
+        for(value& v : block)
+        {
+            auto check = [&]<typename T>(value& in, T&& func)
+            {
+                if(in.type == dual_types::ops::DECLARE)
+                {
+                    eventually_declared.insert(type_to_string(in.args.at(1)));
+                }
+
+                for(value& i : in.args)
+                {
+                    i.recurse_lambda(func);
+                }
+            };
+
+            v.recurse_lambda(check);
+        }
+    }
 
     int gidx = 0;
 
@@ -152,6 +176,11 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             for(auto& i : variables)
             {
+                bool will_ever_be_declared = eventually_declared.find(i) != eventually_declared.end();
+
+                if(!will_ever_be_declared)
+                    continue;
+
                 if(emitted_variable_names.find(i) == emitted_variable_names.end())
                     return false;
             }
@@ -168,6 +197,12 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             for(auto& v : block)
             {
                 if(is_bottom_rung(v) && emitted.find(&v) == emitted.end() && has_variable_deps(v))
+                {
+                    all_arguments_bottom_rung.push_back(&v);
+                    continue;
+                }
+
+                if(!is_bottom_rung(v) && all_bottom_rung(v) && has_variable_deps(v) && emitted.find(&v) == emitted.end())
                 {
                     all_arguments_bottom_rung.push_back(&v);
                     continue;
