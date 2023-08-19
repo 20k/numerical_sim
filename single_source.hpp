@@ -458,11 +458,11 @@ namespace single_source
                             return;
                         }
 
-                        if(in.type == dual_types::ops::UNKNOWN_FUNCTION)
+                        /*if(in.type == dual_types::ops::UNKNOWN_FUNCTION)
                         {
                             ///treat like a constant
                             return;
-                        }
+                        }*/
 
 
                         /*if(in.type == dual_types::ops::DECLARE || in.type == dual_types::ops::ASSIGN)
@@ -480,6 +480,9 @@ namespace single_source
                                 continue;
 
                             if(in.type == dual_types::ops::UNKNOWN_FUNCTION && i == 0)
+                                continue;
+
+                            if(in.type == dual_types::ops::UNKNOWN_FUNCTION)
                                 continue;
 
                             if(in.type == dual_types::ops::CONVERT && i == 1)
