@@ -153,13 +153,15 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
         auto all_bottom_rung = [&](value& in)
         {
-            for(auto& i : in.args)
-            {
-                if(!is_bottom_rung(i))
-                    return false;
-            }
+            bool valid = true;
 
-            return true;
+            in.for_each_real_arg([&](value& me)
+            {
+                if(!is_bottom_rung(me))
+                    valid = false;
+            });
+
+            return valid;
         };
 
         auto can_be_assigned_to_variable = [&](value& in)
@@ -196,16 +198,23 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             for(auto& v : block)
             {
-                if(is_bottom_rung(v) && emitted.find(&v) == emitted.end() && has_variable_deps(v))
+                bool already_emitted = emitted.find(&v) != emitted.end();
+
+                if(is_bottom_rung(v) && !already_emitted && has_variable_deps(v))
                 {
                     all_arguments_bottom_rung.push_back(&v);
                     continue;
                 }
 
-                if(!is_bottom_rung(v) && all_bottom_rung(v) && has_variable_deps(v) && emitted.find(&v) == emitted.end())
+                if(!is_bottom_rung(v) && all_bottom_rung(v) && has_variable_deps(v) && !already_emitted)
                 {
                     all_arguments_bottom_rung.push_back(&v);
                     continue;
+                }
+
+                if(v.type == dual_types::ops::ASSIGN)
+                {
+                    std::cout << "Trying " << type_to_string(v) << " emitted? " << already_emitted << " all bottom? " << all_bottom_rung(v) << " " << std::endl;
                 }
 
                 auto recurse = [&]<typename T>(value& in, T&& func)
