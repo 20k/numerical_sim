@@ -156,6 +156,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         if(block.size() == 0)
             continue;
 
+        std::vector<std::pair<value, std::string>> emitted_memory_requests;
         std::vector<std::pair<value, std::string>> emitted_cache;
         std::set<value*> emitted;
 
@@ -189,7 +190,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     in.type != BLOCK_END && in.type != IDOT && in.type != DECLARE && in.type != ASSIGN && in.type != SIDE_EFFECT;
         };
 
-        auto has_variable_deps = [&](value& in)
+        auto has_satisfied_variable_deps = [&](value& in)
         {
             std::vector<std::string> variables = in.get_all_variables();
 
@@ -207,7 +208,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             return true;
         };
 
-        auto get_variable_deps = [&](value& in)
+        /*auto get_unsatisfied_variable_deps = [&](value& in)
         {
             std::vector<std::string> includes_dupes;
 
@@ -219,9 +220,10 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     {
                         std::string str = type_to_string(arg);
 
+                        bool is_unsatisfied = emitted_variable_names.find(str) == emitted_variable_names.end();
                         bool will_ever_be_declared = eventually_declared.find(str) != eventually_declared.end();
 
-                        if(will_ever_be_declared)
+                        if(will_ever_be_declared && is_unsatisfied)
                             includes_dupes.push_back(str);
                     }
 
@@ -230,11 +232,178 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             };
 
             in.recurse_lambda(getter);
+
+            return includes_dupes;
+        };*/
+
+        auto is_memory_request_sat = [&](value& in) -> std::optional<std::string>
+        {
+            for(auto& i : emitted_memory_requests)
+            {
+                if(dual_types::equivalent(i.first, in))
+                    return i.second;
+            }
+
+            return std::nullopt;
+        };
+
+        auto get_unsatisfied_memory_deps = [&](value& in)
+        {
+            std::vector<std::string> req;
+
+            auto getter = [&]<typename T>(value& me, T&& func)
+            {
+                me.for_each_real_arg([&](value& arg)
+                {
+                    if(arg.is_memory_access && !is_memory_request_sat(arg).has_value())
+                    {
+                        req.push_back(type_to_string(arg));
+                    }
+
+                    arg.recurse_lambda(func);
+                });
+            };
+
+            in.recurse_lambda(getter);
+
+            return req;
+        };
+
+        auto get_memory_deps = [&](value& in)
+        {
+            std::set<std::string> req;
+
+            auto getter = [&]<typename T>(value& me, T&& func)
+            {
+                me.for_each_real_arg([&](value& arg)
+                {
+                    if(arg.is_memory_access)
+                    {
+                        req.insert(type_to_string(arg));
+                    }
+
+                    arg.recurse_lambda(func);
+                });
+            };
+
+            in.recurse_lambda(getter);
+
+            return req;
         };
 
         bool going = true;
 
+        #if 0
         while(going)
+        {
+            std::vector<std::string> unsat_memory;
+            std::vector<value*> all_generatable_top_level_args;
+
+            for(auto& v : block)
+            {
+                auto get_unsat = [&]<typename T>(value& in, T&& func)
+                {
+                    auto unsat = get_unsatisfied_memory_deps(in);
+
+                    if(unsat.size() == 0)
+                    {
+                        if(has_satisfied_variable_deps(in))
+                        {
+                            all_generatable_top_level_args.push_back(&in);
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        for(auto& i : unsat)
+                        {
+                            unsat_memory.push_back(i);
+                        }
+                    }
+
+                    in.for_each_real_arg([&](value& arg)
+                    {
+                        func(arg, func);
+                    });
+                };
+
+                v.recurse_lambda(get_unsat);
+            }
+
+            if(all_generatable_top_level_args.size() == 0)
+                break;
+
+            std::vector<value*> not_memory_access;
+            std::vector<value*> memory_access;
+            std::vector<value*> assigns;
+
+            for(auto i : all_generatable_top_level_args)
+            {
+                if(i->is_memory_access)
+                {
+                    memory_access.push_back(i);
+                }
+                else
+                {
+                    if(i->type == dual_types::ops::ASSIGN)
+                        assigns.push_back(i);
+                    else
+                        not_memory_access.push_back(i);
+                }
+            }
+
+            std::vector<value*> to_emit;
+
+            if(assigns.size() > 0)
+                to_emit = assigns;
+            else if(not_memory_access.size() > 0)
+                to_emit = not_memory_access;
+            else
+                to_emit = {memory_access.at(0)};
+
+            for(value* v : to_emit)
+            {
+                if(!can_be_assigned_to_variable(*v))
+                    insert_value(*v);
+                else
+                {
+                    bool valid = true;
+
+                    for(const auto& [val, name] : emitted_cache)
+                    {
+                        if(equivalent(val, *v))
+                        {
+                            *v = name;
+                            valid = false;
+                            break;
+                        }
+                    }
+
+                    if(valid)
+                    {
+                        std::string name = "genid" + std::to_string(gidx);
+
+                        auto [declare_op, val] = declare_raw(*v, name, v->is_mutable);
+
+                        insert_value(declare_op);
+
+                        emitted_cache.push_back({*v, name});
+
+                        *v = val;
+
+                        gidx++;
+                    }
+                }
+
+                emitted.insert(v);
+            }
+
+            going = all_generatable_top_level_args.size() > 0;
+        }
+        #endif
+
+        #if 1
+        while(1)
         {
             std::vector<value*> all_arguments_bottom_rung;
 
@@ -242,19 +411,6 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             {
                 auto substitute = [&](value& in)
                 {
-                    /*if(in.type == dual_types::ops::UNKNOWN_FUNCTION)
-                    {
-                        if(type_to_string(in.args[0]) == "buffer_index" || type_to_string(in.args[0]) == "buffer_indexh")
-                        {
-                            if(!in.is_memory_access)
-                            {
-                                std::cout << kernel_name << std::endl;
-                                std::cout << type_to_string(in) << std::endl;
-                            }
-                            assert(in.is_memory_access);
-                        }
-                    }*/
-
                     for(auto& [val, name] : emitted_cache)
                     {
                         if(equivalent(val, in))
@@ -268,13 +424,16 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
                 bool already_emitted = emitted.find(&v) != emitted.end();
 
-                if(is_bottom_rung(v) && !already_emitted && has_variable_deps(v))
+                if(already_emitted)
+                    continue;
+
+                if(is_bottom_rung(v) && has_satisfied_variable_deps(v))
                 {
                     all_arguments_bottom_rung.push_back(&v);
                     continue;
                 }
 
-                if(!is_bottom_rung(v) && all_bottom_rung(v) && has_variable_deps(v) && !already_emitted)
+                if(!is_bottom_rung(v) && all_bottom_rung(v) && has_satisfied_variable_deps(v))
                 {
                     all_arguments_bottom_rung.push_back(&v);
                     continue;
@@ -293,7 +452,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     if(is_bottom_rung(in))
                         return;
 
-                    if(all_bottom_rung(in) && has_variable_deps(in))
+                    if(all_bottom_rung(in) && has_satisfied_variable_deps(in))
                     {
                         all_arguments_bottom_rung.push_back(&in);
                         return;
@@ -356,7 +515,6 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     {
                         if(equivalent(val, *v))
                         {
-                            *v = name;
                             valid = false;
                             break;
                         }
@@ -372,17 +530,14 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
                         emitted_cache.push_back({*v, name});
 
-                        *v = val;
-
                         gidx++;
                     }
                 }
 
                 emitted.insert(v);
             }
-
-            going = all_arguments_bottom_rung.size() > 0;
         }
+        #endif
 
         #if 0
         for(auto& v : block)
