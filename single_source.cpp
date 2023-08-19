@@ -140,15 +140,14 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
         std::vector<std::pair<value, std::string>> emitted_cache;
         std::set<value*> emitted;
-        std::set<std::string> emitted_decl_names;
 
         auto is_bottom_rung = [&](value& in)
         {
             return in.type == dual_types::ops::BREAK ||
                    in.type == dual_types::ops::FOR_START || in.type == dual_types::ops::IF_START ||
                    in.type == dual_types::ops::BLOCK_START || in.type == dual_types::ops::BLOCK_END ||
-                   in.type == dual_types::ops::VALUE || in.type == dual_types::ops::IDOT || in.is_memory_access ||
-                   in.type == dual_types::ops::UNKNOWN_FUNCTION || emitted.find(&in) != emitted.end() || in.type == dual_types::ops::SIDE_EFFECT;
+                   in.type == dual_types::ops::VALUE || in.type == dual_types::ops::IDOT ||
+                   emitted.find(&in) != emitted.end() || in.type == dual_types::ops::SIDE_EFFECT;
         };
 
         auto all_bottom_rung = [&](value& in)
@@ -198,6 +197,19 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             for(auto& v : block)
             {
+                auto substitute = [&](value& in)
+                {
+                    for(auto& [val, name] : emitted_cache)
+                    {
+                        if(equivalent(val, in))
+                        {
+                            in = name;
+                        }
+                    }
+                };
+
+                v.recurse_arguments(substitute);
+
                 bool already_emitted = emitted.find(&v) != emitted.end();
 
                 if(is_bottom_rung(v) && !already_emitted && has_variable_deps(v))
@@ -212,10 +224,10 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     continue;
                 }
 
-                if(v.type == dual_types::ops::ASSIGN)
+                /*if(v.type == dual_types::ops::ASSIGN)
                 {
                     std::cout << "Trying " << type_to_string(v) << " emitted? " << already_emitted << " all bottom? " << all_bottom_rung(v) << " " << std::endl;
-                }
+                }*/
 
                 auto recurse = [&]<typename T>(value& in, T&& func)
                 {
@@ -240,7 +252,32 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 v.recurse_lambda(recurse);
             }
 
-            for(value* v : all_arguments_bottom_rung)
+            if(all_arguments_bottom_rung.size() == 0)
+                break;
+
+            std::vector<value*> not_memory_access;
+            std::vector<value*> memory_access;
+
+            for(auto i : all_arguments_bottom_rung)
+            {
+                if(i->is_memory_access)
+                {
+                    memory_access.push_back(i);
+                }
+                else
+                {
+                    not_memory_access.push_back(i);
+                }
+            }
+
+            std::vector<value*> to_emit;
+
+            if(not_memory_access.size() > 0)
+                to_emit = not_memory_access;
+            else
+                to_emit = {memory_access.at(0)};
+
+            for(value* v : to_emit)
             {
                 ///so. All our arguments are constants
                 ///this means we want to ideally place ourself into a constant, then emit that new declaration

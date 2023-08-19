@@ -265,6 +265,9 @@ struct differentiation_context
                 }
             }
 
+            if(v.starts_with("(float3)"))
+                continue;
+
             if(!found)
             {
                 std::cout << "Could not find " << v << std::endl;

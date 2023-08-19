@@ -62,7 +62,8 @@ literal<value> buffer_index_f(equation_context& ctx, buffer<T, N>& buf, literal<
 inline
 value as_float3(const value& x, const value& y, const value& z)
 {
-    return dual_types::apply(value("(float3)"), x, y, z);
+    return "(float3)(" + type_to_string(x) + "," + type_to_string(y) + "," + type_to_string(z) + ")";
+    //return dual_types::apply(value("(float3)"), x, y, z);
 }
 
 struct argument_pack
