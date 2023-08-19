@@ -295,10 +295,12 @@ struct differentiation_context
                 if(function_name == "buffer_index" || function_name == "buffer_indexh")
                 {
                     to_sub = apply(value(function_name), variables.args[1], xs[kk], ys[kk], zs[kk], "dim");
+                    to_sub.is_memory_access = true;
                 }
                 else if(function_name == "buffer_read_linear" || function_name == "buffer_read_linearh")
                 {
                     to_sub = apply(value(function_name), variables.args[1], as_float3(xs[kk], ys[kk], zs[kk]), "dim");
+                    to_sub.is_memory_access = true;
                 }
                 else
                 {

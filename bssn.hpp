@@ -24,7 +24,9 @@ literal<value> buffer_read_linear_f(equation_context& ctx, buffer<T, N> buf, lit
 
     ctx.exec(return_v(buffer_read_linear(buf, ipos, idim)));
 
-    return literal<value>();
+    literal<value> result;
+    result.storage.is_memory_access = true;
+    return result;
 }
 
 template<typename T, int N>
@@ -39,7 +41,9 @@ literal<value> buffer_read_linear_f4(equation_context& ctx, buffer<T, N> buf, li
 
     ctx.exec(return_v(buffer_read_linear(buf, ipos, idim)));
 
-    return literal<value>();
+    literal<value> result;
+    result.storage.is_memory_access = true;
+    return result;
 }
 
 template<typename T, int N>
@@ -50,7 +54,9 @@ literal<value> buffer_index_f(equation_context& ctx, buffer<T, N>& buf, literal<
 
     ctx.exec(return_v(v));
 
-    return literal<value>();
+    literal<value> result;
+    result.storage.is_memory_access = true;
+    return result;
 }
 
 inline
@@ -118,54 +124,64 @@ struct argument_pack
 inline
 value bidx(const std::string& buf, bool interpolate, bool is_derivative, const argument_pack& pack = argument_pack())
 {
+    value v;
+
     if(interpolate)
     {
         if(is_derivative)
         {
-            return dual_types::apply(value("buffer_read_linearh"), buf, as_float3("fx", "fy", "fz"), "dim");
+            v = dual_types::apply(value("buffer_read_linearh"), buf, as_float3("fx", "fy", "fz"), "dim");
         }
         else
         {
-            return dual_types::apply(value("buffer_read_linear"), buf, as_float3("fx", "fy", "fz"), "dim");
+            v = dual_types::apply(value("buffer_read_linear"), buf, as_float3("fx", "fy", "fz"), "dim");
         }
     }
     else
     {
         if(is_derivative)
         {
-            return dual_types::apply(value("buffer_indexh"), buf, pack.pos[0], pack.pos[1], pack.pos[2], pack.dim);
+            v = dual_types::apply(value("buffer_indexh"), buf, pack.pos[0], pack.pos[1], pack.pos[2], pack.dim);
         }
         else
         {
-            return dual_types::apply(value("buffer_index"), buf, pack.pos[0], pack.pos[1], pack.pos[2], pack.dim);
+            v = dual_types::apply(value("buffer_index"), buf, pack.pos[0], pack.pos[1], pack.pos[2], pack.dim);
         }
     }
+
+    v.is_memory_access = true;
+    return v;
 }
 
 template<typename T, typename U>
 inline
 value buffer_index_generic(buffer<value_base<T>, 3> buf, const tensor<value_base<U>, 3>& pos, const std::string& dim)
 {
+    value v;
+
     if constexpr(std::is_same_v<T, std::float16_t> && std::is_same_v<U, float>)
     {
-        return dual_types::apply(value("buffer_read_linearh"), buf.name, as_float3(pos.x(), pos.y(), pos.z()), dim);
+        v = dual_types::apply(value("buffer_read_linearh"), buf.name, as_float3(pos.x(), pos.y(), pos.z()), dim);
     }
     else if constexpr(std::is_same_v<T, float> && std::is_same_v<U, float>)
     {
-        return dual_types::apply(value("buffer_read_linear"), buf.name, as_float3(pos.x(), pos.y(), pos.z()), dim);
+        v = dual_types::apply(value("buffer_read_linear"), buf.name, as_float3(pos.x(), pos.y(), pos.z()), dim);
     }
     else if constexpr(std::is_same_v<T, std::float16_t> && std::is_same_v<U, int>)
     {
-        return dual_types::apply(value("buffer_indexh"), buf.name, pos.x(), pos.y(), pos.z(), dim);
+        v = dual_types::apply(value("buffer_indexh"), buf.name, pos.x(), pos.y(), pos.z(), dim);
     }
     else if constexpr(std::is_same_v<T, float> && std::is_same_v<U, int>)
     {
-        return dual_types::apply(value("buffer_index"), buf.name, pos.x(), pos.y(), pos.z(), dim);
+        v = dual_types::apply(value("buffer_index"), buf.name, pos.x(), pos.y(), pos.z(), dim);
     }
     else
     {
         static_assert(false);
     }
+
+    v.is_memory_access = true;
+    return v;
 }
 
 struct base_bssn_args

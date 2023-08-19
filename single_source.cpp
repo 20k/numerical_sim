@@ -109,6 +109,14 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
         std::vector<std::pair<value, std::string>> emitted_cache;
 
+        auto is_bottom_rung = [](const value& in)
+        {
+            return in.type == dual_types::ops::RETURN || in.type == dual_types::ops::BREAK ||
+                   in.type == dual_types::ops::FOR_START || in.type == dual_types::ops::IF_START ||
+                   in.type == dual_types::ops::BLOCK_START || in.type == dual_types::ops::BLOCK_END ||
+                   in.type == dual_types::ops::VALUE || in.type == dual_types::ops::IDOT || in.is_memory_access;
+        };
+
         for(auto& v : block)
         {
             auto checker = [&]<typename T>(value& in, T&& func)

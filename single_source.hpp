@@ -311,16 +311,18 @@ namespace single_source
                 (impl::add(args, kctx.inputs), ...);
             }, a2);
 
+            std::tuple<Args...> a3 = a2;
+
             if constexpr(!std::is_same_v<R, void>)
             {
-                R val = R();
+                R val = std::apply(func, std::tuple_cat(a1, a3));;
 
                 ::single_source::impl::add(val, kctx.ret);
             }
-
-            std::tuple<Args...> a3 = a2;
-
-            std::apply(func, std::tuple_cat(a1, a3));
+            else
+            {
+                std::apply(func, std::tuple_cat(a1, a3));
+            }
 
             /*kctx = kernel_context();
 
