@@ -582,29 +582,29 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
 
     //ctx.exec("prefetch(&order_ptr[index], 1)");
 
-    /*ctx.exec("prefetch(&cY0[index], 1)");
-    ctx.exec("prefetch(&cY1[index], 1)");
-    ctx.exec("prefetch(&cY2[index], 1)");
-    ctx.exec("prefetch(&cY3[index], 1)");
-    ctx.exec("prefetch(&cY4[index], 1)");
-    ctx.exec("prefetch(&cY5[index], 1)");
+    dual_types::side_effect(ctx, "prefetch(&cY0[index], 1)");
+    dual_types::side_effect(ctx, "prefetch(&cY1[index], 1)");
+    dual_types::side_effect(ctx, "prefetch(&cY2[index], 1)");
+    dual_types::side_effect(ctx, "prefetch(&cY3[index], 1)");
+    dual_types::side_effect(ctx, "prefetch(&cY4[index], 1)");
+    dual_types::side_effect(ctx, "prefetch(&cY5[index], 1)");
 
-    ctx.exec("prefetch(&cA0[index], 1)");
-    ctx.exec("prefetch(&cA1[index], 1)");
-    ctx.exec("prefetch(&cA2[index], 1)");
-    ctx.exec("prefetch(&cA3[index], 1)");
-    ctx.exec("prefetch(&cA4[index], 1)");
-    ctx.exec("prefetch(&cA5[index], 1)");
+    dual_types::side_effect(ctx, "prefetch(&cA0[index], 1)");
+    dual_types::side_effect(ctx, "prefetch(&cA1[index], 1)");
+    dual_types::side_effect(ctx, "prefetch(&cA2[index], 1)");
+    dual_types::side_effect(ctx, "prefetch(&cA3[index], 1)");
+    dual_types::side_effect(ctx, "prefetch(&cA4[index], 1)");
+    dual_types::side_effect(ctx, "prefetch(&cA5[index], 1)");
 
-    ctx.exec("prefetch(&cGi0[index], 1)");
-    ctx.exec("prefetch(&cGi1[index], 1)");
-    ctx.exec("prefetch(&cGi2[index], 1)");
-    ctx.exec("prefetch(&X[index], 1)");
-    ctx.exec("prefetch(&K[index], 1)");
-    ctx.exec("prefetch(&gA[index], 1)");
-    ctx.exec("prefetch(&gB0[index], 1)");
-    ctx.exec("prefetch(&gB1[index], 1)");
-    ctx.exec("prefetch(&gB2[index], 1)");*/
+    dual_types::side_effect(ctx, "prefetch(&cGi0[index], 1)");
+    dual_types::side_effect(ctx, "prefetch(&cGi1[index], 1)");
+    dual_types::side_effect(ctx, "prefetch(&cGi2[index], 1)");
+    dual_types::side_effect(ctx, "prefetch(&X[index], 1)");
+    dual_types::side_effect(ctx, "prefetch(&K[index], 1)");
+    dual_types::side_effect(ctx, "prefetch(&gA[index], 1)");
+    dual_types::side_effect(ctx, "prefetch(&gB0[index], 1)");
+    dual_types::side_effect(ctx, "prefetch(&gB1[index], 1)");
+    dual_types::side_effect(ctx, "prefetch(&gB2[index], 1)");
 
     value_i order = declare(ctx, (value_i)order_ptr[index], "order");
 

@@ -148,7 +148,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                    in.type == dual_types::ops::FOR_START || in.type == dual_types::ops::IF_START ||
                    in.type == dual_types::ops::BLOCK_START || in.type == dual_types::ops::BLOCK_END ||
                    in.type == dual_types::ops::VALUE || in.type == dual_types::ops::IDOT || in.is_memory_access ||
-                   in.type == dual_types::ops::UNKNOWN_FUNCTION || emitted.find(&in) != emitted.end();
+                   in.type == dual_types::ops::UNKNOWN_FUNCTION || emitted.find(&in) != emitted.end() || in.type == dual_types::ops::SIDE_EFFECT;
         };
 
         auto all_bottom_rung = [&](value& in)
@@ -169,7 +169,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             using namespace dual_types::ops;
 
             return  in.type != RETURN && in.type != BREAK && in.type != FOR_START && in.type != IF_START && in.type != BLOCK_START &&
-                    in.type != BLOCK_END && in.type != IDOT && in.type != DECLARE && in.type != ASSIGN;
+                    in.type != BLOCK_END && in.type != IDOT && in.type != DECLARE && in.type != ASSIGN && in.type != SIDE_EFFECT;
         };
 
         auto has_variable_deps = [&](value& in)
