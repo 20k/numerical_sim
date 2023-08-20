@@ -70,6 +70,17 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
     ctx.substitute_aliases();
     ctx.fix_buffers();
 
+    for(value& v : ctx.sequenced)
+    {
+        auto fix_idot = [&](value& in)
+        {
+            if(in.type == dual_types::ops::IDOT && in.args.at(0).is_memory_access)
+                in.is_memory_access = true;
+        };
+
+        v.recurse_arguments(fix_idot);
+    }
+
     std::vector<std::vector<value>> blocks;
     blocks.emplace_back();
 
@@ -187,7 +198,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             using namespace dual_types::ops;
 
             return  in.type != RETURN && in.type != BREAK && in.type != FOR_START && in.type != IF_START && in.type != BLOCK_START &&
-                    in.type != BLOCK_END && in.type != IDOT && in.type != DECLARE && in.type != ASSIGN && in.type != SIDE_EFFECT;
+                    in.type != BLOCK_END && in.type != DECLARE && in.type != ASSIGN && in.type != SIDE_EFFECT;
         };
 
         auto has_satisfied_variable_deps = [&](value& in)
@@ -238,6 +249,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
         auto is_memory_request_sat = [&](value& in) -> std::optional<std::string>
         {
+            assert(in.is_memory_access);
+
             for(auto& i : emitted_memory_requests)
             {
                 if(dual_types::equivalent(i.first, in))
@@ -247,7 +260,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             return std::nullopt;
         };
 
-        auto get_unsatisfied_memory_deps = [&](value& in)
+        /*auto get_unsatisfied_memory_deps = [&](value& in)
         {
             std::vector<std::string> req;
 
@@ -258,6 +271,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     if(arg.is_memory_access && !is_memory_request_sat(arg).has_value())
                     {
                         req.push_back(type_to_string(arg));
+                        return;
                     }
 
                     arg.recurse_lambda(func);
@@ -267,6 +281,39 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             in.recurse_lambda(getter);
 
             return req;
+        };*/
+
+        auto has_unsatisfied_memory_deps = [&](value& in)
+        {
+            if(in.type == dual_types::ops::IDOT && in.args[0].is_memory_access)
+            {
+                return false;
+            }
+
+            bool unsat = false;
+
+            auto getter = [&]<typename T>(value& me, T&& func)
+            {
+                if(&me != &in)
+                {
+                    if(me.type == dual_types::ops::IDOT && me.args[0].is_memory_access)
+                        return;
+
+                    if(me.is_memory_access && !is_memory_request_sat(me).has_value())
+                    {
+                        unsat = true;
+                        return;
+                    }
+                }
+
+                me.for_each_real_arg([&](value& arg)
+                {
+                    arg.recurse_lambda(func);
+                });
+            };
+
+            in.recurse_lambda(getter);
+            return unsat;
         };
 
         auto get_memory_deps = [&](value& in)
@@ -422,6 +469,19 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
                 v.recurse_arguments(substitute);
 
+                auto mem = [&](value& in)
+                {
+                    for(auto& [val, name] : emitted_memory_requests)
+                    {
+                        if(equivalent(val, in))
+                        {
+                            in = name;
+                        }
+                    }
+                };
+
+                v.recurse_arguments(mem);
+
                 bool already_emitted = emitted.find(&v) != emitted.end();
 
                 if(already_emitted)
@@ -439,6 +499,20 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     continue;
                 }
 
+                /*if(v.type == dual_types::ops::IF_START)
+                {
+                    std::cout << kernel_name << " " << type_to_string(v) << " sat1 " << has_satisfied_variable_deps(v) << " sat2 " << has_unsatisfied_memory_deps(v) << std::endl;
+                }*/
+
+                if(v.type == dual_types::ops::DECLARE)
+                {
+                    if(type_to_string(v.args[1]) == "ix")
+                    {
+                        if(kernel_name == "calculate_christoffel_symbol")
+                        std::cout << kernel_name << " " << type_to_string(v) << " sat1 " << has_satisfied_variable_deps(v) << " sat2 " << has_unsatisfied_memory_deps(v) << std::endl;
+                    }
+                }
+
                 /*if(v.type == dual_types::ops::ASSIGN)
                 {
                     std::cout << "Trying " << type_to_string(v) << " emitted? " << already_emitted << " all bottom? " << all_bottom_rung(v) << " " << std::endl;
@@ -449,10 +523,40 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     if(emitted.find(&in) != emitted.end())
                         return;
 
-                    if(is_bottom_rung(in))
+                    /*if(is_bottom_rung(in))
                         return;
 
                     if(all_bottom_rung(in) && has_satisfied_variable_deps(in))
+                    {
+                        all_arguments_bottom_rung.push_back(&in);
+                        return;
+                    }*/
+
+
+                    /*if(in.type == dual_types::ops::BRACKET)
+                    {
+                        if(kernel_name == "calculate_christoffel_symbol")
+                        std::cout << "bket" << kernel_name << " " << type_to_string(in) << " sat1 " << has_satisfied_variable_deps(in) << " sat2 " << has_unsatisfied_memory_deps(in) << std::endl;
+                    }*/
+
+                    if(is_bottom_rung(in) && has_satisfied_variable_deps(in) && in.is_memory_access)
+                    {
+                        all_arguments_bottom_rung.push_back(&in);
+                        return;
+                    }
+
+                    if(is_bottom_rung(in))
+                        return;
+
+                    /*if(in.type == dual_types::ops::IDOT)
+                    {
+                        if(kernel_name == "calculate_christoffel_symbol")
+                        std::cout << "bket" << kernel_name << " " << type_to_string(in) << " sat1 " << has_satisfied_variable_deps(in) << " sat2 " << has_unsatisfied_memory_deps(in) << std::endl;
+                    }*/
+
+                    ///i think the issue is we can't look through an idot
+                    ///so doing int ix = points[lidx].x is always doomed to fail
+                    if(has_satisfied_variable_deps(in) && !has_unsatisfied_memory_deps(in))
                     {
                         all_arguments_bottom_rung.push_back(&in);
                         return;
@@ -506,10 +610,12 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 ///otherwise just emit the statement
 
                 if(!can_be_assigned_to_variable(*v))
+                {
                     insert_value(*v);
+                }
                 else
                 {
-                    bool valid = true;
+                    /*bool valid = true;
 
                     for(const auto& [val, name] : emitted_cache)
                     {
@@ -520,13 +626,18 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                         }
                     }
 
-                    if(valid)
+                    if(valid)*/
                     {
                         std::string name = "genid" + std::to_string(gidx);
 
                         auto [declare_op, val] = declare_raw(*v, name, v->is_mutable);
 
                         insert_value(declare_op);
+
+                        if(v->is_memory_access)
+                        {
+                            emitted_memory_requests.push_back({*v, name});
+                        }
 
                         emitted_cache.push_back({*v, name});
 

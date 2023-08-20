@@ -292,7 +292,7 @@ namespace single_source
 
             file::mkdir("generated");
 
-            std::string name = "generated/" + std::to_string(std::hash<std::string>()(str)) + ".cl";
+            std::string name = "generated/" + kernel_name + "_" + std::to_string(std::hash<std::string>()(str)) + ".cl";
 
             file::write(name, str, file::mode::BINARY);
 
