@@ -160,6 +160,13 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         }
     }
 
+    auto make_unique_vec = []<typename T>(const std::vector<T>& in)
+    {
+        std::set<T> s(in.begin(), in.end());
+
+        return std::vector<T>(s.begin(), s.end());
+    };
+
     int gidx = 0;
 
     for(auto& block : blocks)
@@ -171,13 +178,19 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         std::vector<std::pair<value, std::string>> emitted_cache;
         std::set<value*> emitted;
 
-        auto is_bottom_rung = [&](value& in)
+        auto is_bottom_rung_type = [&](value& in)
         {
             return in.type == dual_types::ops::BREAK ||
                    in.type == dual_types::ops::FOR_START || in.type == dual_types::ops::IF_START ||
                    in.type == dual_types::ops::BLOCK_START || in.type == dual_types::ops::BLOCK_END ||
                    in.type == dual_types::ops::VALUE || in.type == dual_types::ops::IDOT ||
-                   emitted.find(&in) != emitted.end() || in.type == dual_types::ops::SIDE_EFFECT;
+                   in.type == dual_types::ops::SIDE_EFFECT;
+        };
+
+        auto is_bottom_rung = [&](value& in)
+        {
+            return is_bottom_rung_type(in) ||
+                   emitted.find(&in) != emitted.end();
         };
 
         auto all_bottom_rung = [&](value& in)
@@ -260,36 +273,31 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             return std::nullopt;
         };
 
-        /*auto get_unsatisfied_memory_deps = [&](value& in)
+        auto get_unsatisfied_memory_deps = [&](value& in)
         {
             std::vector<std::string> req;
 
             auto getter = [&]<typename T>(value& me, T&& func)
             {
+                if(me.is_memory_access && !is_memory_request_sat(me).has_value())
+                {
+                    req.push_back(type_to_string(me));
+                    return;
+                }
+
                 me.for_each_real_arg([&](value& arg)
                 {
-                    if(arg.is_memory_access && !is_memory_request_sat(arg).has_value())
-                    {
-                        req.push_back(type_to_string(arg));
-                        return;
-                    }
-
                     arg.recurse_lambda(func);
                 });
             };
 
             in.recurse_lambda(getter);
 
-            return req;
-        };*/
+            return make_unique_vec(req);
+        };
 
         auto has_unsatisfied_memory_deps = [&](value& in)
         {
-            if(in.type == dual_types::ops::IDOT && in.args[0].is_memory_access)
-            {
-                return false;
-            }
-
             bool unsat = false;
 
             auto getter = [&]<typename T>(value& me, T&& func)
@@ -453,6 +461,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         while(1)
         {
             std::vector<value*> all_arguments_bottom_rung;
+            std::map<std::string, int> could_be_satisfied_with;
 
             for(auto& v : block)
             {
@@ -493,30 +502,17 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     continue;
                 }
 
-                if(!is_bottom_rung(v) && all_bottom_rung(v) && has_satisfied_variable_deps(v))
+                /*if(!is_bottom_rung(v) && has_satisfied_variable_deps(v) && !has_unsatisfied_memory_deps(v))
+                {
+                    all_arguments_bottom_rung.push_back(&v);
+                    continue;
+                }*/
+
+                if(all_bottom_rung(v) && has_satisfied_variable_deps(v))
                 {
                     all_arguments_bottom_rung.push_back(&v);
                     continue;
                 }
-
-                /*if(v.type == dual_types::ops::IF_START)
-                {
-                    std::cout << kernel_name << " " << type_to_string(v) << " sat1 " << has_satisfied_variable_deps(v) << " sat2 " << has_unsatisfied_memory_deps(v) << std::endl;
-                }*/
-
-                if(v.type == dual_types::ops::DECLARE)
-                {
-                    if(type_to_string(v.args[1]) == "ix")
-                    {
-                        if(kernel_name == "calculate_christoffel_symbol")
-                        std::cout << kernel_name << " " << type_to_string(v) << " sat1 " << has_satisfied_variable_deps(v) << " sat2 " << has_unsatisfied_memory_deps(v) << std::endl;
-                    }
-                }
-
-                /*if(v.type == dual_types::ops::ASSIGN)
-                {
-                    std::cout << "Trying " << type_to_string(v) << " emitted? " << already_emitted << " all bottom? " << all_bottom_rung(v) << " " << std::endl;
-                }*/
 
                 auto recurse = [&]<typename T>(value& in, T&& func)
                 {
@@ -532,14 +528,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                         return;
                     }*/
 
-
-                    /*if(in.type == dual_types::ops::BRACKET)
-                    {
-                        if(kernel_name == "calculate_christoffel_symbol")
-                        std::cout << "bket" << kernel_name << " " << type_to_string(in) << " sat1 " << has_satisfied_variable_deps(in) << " sat2 " << has_unsatisfied_memory_deps(in) << std::endl;
-                    }*/
-
-                    if(is_bottom_rung(in) && has_satisfied_variable_deps(in) && in.is_memory_access)
+                    if(is_bottom_rung_type(in) && has_satisfied_variable_deps(in) && in.is_memory_access)
                     {
                         all_arguments_bottom_rung.push_back(&in);
                         return;
@@ -548,18 +537,23 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     if(is_bottom_rung(in))
                         return;
 
-                    /*if(in.type == dual_types::ops::IDOT)
-                    {
-                        if(kernel_name == "calculate_christoffel_symbol")
-                        std::cout << "bket" << kernel_name << " " << type_to_string(in) << " sat1 " << has_satisfied_variable_deps(in) << " sat2 " << has_unsatisfied_memory_deps(in) << std::endl;
-                    }*/
-
                     ///i think the issue is we can't look through an idot
                     ///so doing int ix = points[lidx].x is always doomed to fail
-                    if(has_satisfied_variable_deps(in) && !has_unsatisfied_memory_deps(in))
+                    /*if(has_satisfied_variable_deps(in) && !has_unsatisfied_memory_deps(in))
                     {
                         all_arguments_bottom_rung.push_back(&in);
                         return;
+                    }*/
+
+                    if(all_bottom_rung(in) && has_satisfied_variable_deps(in))
+                    {
+                        all_arguments_bottom_rung.push_back(&in);
+                        return;
+                    }
+
+                    if(auto unsat_amount = get_unsatisfied_memory_deps(in); has_satisfied_variable_deps(in) && unsat_amount.size() == 1)
+                    {
+                        could_be_satisfied_with[unsat_amount[0]]++;
                     }
 
                     in.for_each_real_arg([&](value& arg)
@@ -573,6 +567,15 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             if(all_arguments_bottom_rung.size() == 0)
                 break;
+
+            std::vector<std::pair<std::string, int>> could_be_sat_vec;
+
+            for(auto& i : could_be_satisfied_with)
+            {
+                could_be_sat_vec.push_back(i);
+            }
+
+            std::sort(could_be_sat_vec.begin(), could_be_sat_vec.end(), [](const auto& v1, const auto& v2){return v1.second < v2.second;});
 
             std::vector<value*> not_memory_access;
             std::vector<value*> memory_access;
@@ -600,7 +603,27 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             else if(not_memory_access.size() > 0)
                 to_emit = not_memory_access;
             else
-                to_emit = {memory_access.at(0)};
+            {
+                //assert(could_be_sat_vec.size() > 0);
+
+                if(could_be_sat_vec.size() > 0)
+                {
+                    std::string last = could_be_sat_vec.back().first;
+
+                    for(auto& i : memory_access)
+                    {
+                        if(type_to_string(*i) == last)
+                        {
+                            to_emit = {i};
+                            std::cout << "Got\n";
+                        }
+                    }
+                }
+                //assert(to_emit.size() > 0);
+
+                if(to_emit.size() == 0)
+                    to_emit = {memory_access.at(0)};
+            }
 
             for(value* v : to_emit)
             {
@@ -615,7 +638,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 }
                 else
                 {
-                    /*bool valid = true;
+                    bool valid = true;
 
                     for(const auto& [val, name] : emitted_cache)
                     {
@@ -626,7 +649,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                         }
                     }
 
-                    if(valid)*/
+                    if(valid)
                     {
                         std::string name = "genid" + std::to_string(gidx);
 
