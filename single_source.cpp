@@ -184,6 +184,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         std::vector<std::pair<value, std::string>> emitted_memory_requests;
         std::vector<std::pair<value, std::string>> emitted_cache;
         std::set<const value*> emitted;
+        std::vector<const value*> linear_emitted;
 
         auto is_bottom_rung_type = [&](value& in)
         {
@@ -570,6 +571,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             }
 
             emitted.insert(&v);
+            linear_emitted.push_back(&v);
         };
 
         std::vector<const value*> memory_accesses;
@@ -623,9 +625,32 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             }
         }
 
+        auto distance_to_past_instruction = [&](const value& in)
+        {
+            int distance = 99999;
+
+            for(int i=(int)linear_emitted.size() - 1; i >= 0 && i >= (int)linear_emitted.size() - 50; i--)
+            {
+                in.for_each_real_arg([&](const value& arg)
+                {
+                    if(equivalent(arg, in))
+                    {
+                        distance = std::min(distance, i);
+                    }
+                });
+            }
+
+            if(distance == 99999)
+                return -1;
+
+            return distance;
+        };
+
         while(memory_dependency_map.size() > 0)
         {
             bool any_emitted = false;
+
+            std::vector<const value*> candidates;
 
             for(auto& [v, deps] : memory_dependency_map)
             {
@@ -633,9 +658,26 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
                 if(deps.size() == 0 && all_args_emitted(*could_emit) && has_satisfied_variable_deps(*could_emit))
                 {
-                    emit(*could_emit);
-                    any_emitted = true;
+                    //emit(*could_emit);
+                    //any_emitted = true;
+
+                    candidates.push_back(could_emit);
                 }
+            }
+
+            std::vector<std::pair<const value*, int>> sorted_candidates;
+
+            for(auto i : candidates)
+            {
+                sorted_candidates.push_back({i, distance_to_past_instruction(*i)});
+            }
+
+            std::sort(sorted_candidates.begin(), sorted_candidates.end(), [](const auto& i1, const auto& i2){return i1.second < i2.second;});
+
+            for(auto& i : sorted_candidates)
+            {
+                emit(*i.first);
+                any_emitted = true;
             }
 
             bool any_memory = false;
