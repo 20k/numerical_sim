@@ -466,6 +466,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         }
         #endif
 
+        ///so the big problem currently is actually *using* the results we've generated in the expressions
+        ///because while I can check the top level arg, the only recourse I'd have is to do a full resub which... isn't fast
         auto emit = [&](const value& v)
         {
             ///so. All our arguments are constants
@@ -479,6 +481,20 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             }
             else
             {
+                value could_emit = v;
+
+                could_emit.recurse_arguments([&](value& arg)
+                {
+                    for(const auto& [val, name] : emitted_cache)
+                    {
+                        if(equivalent(arg, val))
+                        {
+                            arg = name;
+                            return;
+                        }
+                    }
+                });
+
                 /*bool valid = true;
 
                 for(const auto& [val, name] : emitted_cache)
@@ -494,11 +510,11 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 {
                     std::string name = "genid" + std::to_string(gidx);
 
-                    auto [declare_op, val] = declare_raw(v, name, v.is_mutable);
+                    auto [declare_op, val] = declare_raw(could_emit, name, could_emit.is_mutable);
 
                     insert_value(declare_op);
 
-                    //emitted_cache.push_back({v, name});
+                    emitted_cache.push_back({could_emit, name});
 
                     gidx++;
                 }
