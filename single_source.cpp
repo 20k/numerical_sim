@@ -90,11 +90,14 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
         is_bad = is_bad || dual_types::get_description(v.type).reordering_hazard;
 
-        v.recurse_arguments([&](const value& in)
+        if(!(v.type == dual_types::ops::ASSIGN && v.args.at(0).is_memory_access))
         {
-            if(in.is_mutable)
-                is_bad = true;
-        });
+            v.recurse_arguments([&](const value& in)
+            {
+                if(in.is_mutable)
+                    is_bad = true;
+            });
+        }
 
         ///control flow constructs are in their own dedicated segment
         if(is_bad)
@@ -169,8 +172,12 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
     int gidx = 0;
 
+    int block_id = 0;
+
     for(auto& block : blocks)
     {
+        block_id++;
+
         if(block.size() == 0)
             continue;
 
@@ -505,6 +512,19 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             {
                 for(const auto& [val, name] : emitted_cache)
                 {
+                    /*if(arg.type == dual_types::ops::UNKNOWN_FUNCTION && val.type == dual_types::ops::UNKNOWN_FUNCTION &&
+                       type_to_string(arg).starts_with("buffer_index(cY5,ix,iy,iz") &&
+                       type_to_string(val).starts_with("buffer_index(cY5,ix,iy,iz"))
+                    {
+                        std::cout << "Met\n";
+
+                        if(!equivalent(arg, val))
+                        {
+                            std::cout << "WTF " << type_to_string(arg) << " " << type_to_string(val) << std::endl;
+                            assert(false);
+                        }
+                    }*/
+
                     if(equivalent(arg, val))
                     {
                         if(&arg == &could_emit)
@@ -532,6 +552,11 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 if(!is_root_relabling)
                 {
                     std::string name = "genid" + std::to_string(gidx);
+
+                    if(kernel_name == "evolve_1" && type_to_string(could_emit).starts_with("buffer_index(cY5,ix,iy,iz"))
+                    {
+                        std::cout << "Hello there " << any_sub << " block " << block_id << std::endl;
+                    }
 
                     auto [declare_op, val] = declare_raw(could_emit, name, could_emit.is_mutable);
 
