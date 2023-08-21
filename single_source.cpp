@@ -215,6 +215,25 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             return valid;
         };*/
 
+        auto all_args_emitted = [&](const value& in)
+        {
+            if(dont_peek(in))
+                return true;
+
+            bool valid = true;
+
+            in.for_each_real_arg([&](const value& arg)
+            {
+                if(arg.type == dual_types::ops::VALUE)
+                    return;
+
+                if(emitted.find(&arg) == emitted.end())
+                    valid = false;
+            });
+
+            return valid;
+        };
+
         auto can_be_assigned_to_variable = [&](const value& in)
         {
             using namespace dual_types::ops;
@@ -466,6 +485,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         }
         #endif
 
+        std::map<const value*, std::vector<std::string>> memory_dependency_map;
+
         ///so the big problem currently is actually *using* the results we've generated in the expressions
         ///because while I can check the top level arg, the only recourse I'd have is to do a full resub which... isn't fast
         auto emit = [&](const value& v)
@@ -508,26 +529,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             }
             else
             {
-                /*bool valid = true;
-
-                for(const auto& [val, name] : emitted_cache)
-                {
-                    if(equivalent(val, v))
-                    {
-                        valid = false;
-                        break;
-                    }
-                }
-
-                if(valid)*/
                 if(!is_root_relabling)
                 {
-                    if(kernel_name == "calculate_christoffel_symbol" && gidx == 32)
-                    {
-                        std::cout << "Root relabling? " << is_root_relabling << std::endl;
-                        std::cout << "Any sub " << any_sub << std::endl;
-                    }
-
                     std::string name = "genid" + std::to_string(gidx);
 
                     auto [declare_op, val] = declare_raw(could_emit, name, could_emit.is_mutable);
@@ -535,6 +538,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     insert_value(declare_op);
 
                     emitted_cache.push_back({v, name});
+                    emitted_cache.push_back({could_emit, name});
 
                     gidx++;
                 }
@@ -543,7 +547,6 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             emitted.insert(&v);
         };
 
-        std::map<const value*, std::vector<std::string>> memory_dependency_map;
         std::vector<const value*> memory_accesses;
 
         for(auto& v : block)
@@ -568,8 +571,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 if(in.type == dual_types::ops::VALUE)
                     return;
 
-                auto deps = get_memory_dependencies(in);
-                memory_dependency_map[&in] = deps;
+                memory_dependency_map[&in] = get_memory_dependencies(in);
 
                 if(dont_peek(in))
                     return;
@@ -604,7 +606,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             {
                 const value* could_emit = v;
 
-                if(deps.size() == 0 && has_satisfied_variable_deps(*could_emit))
+                if(deps.size() == 0 && all_args_emitted(*could_emit) && has_satisfied_variable_deps(*could_emit))
                 {
                     emit(*could_emit);
                     any_emitted = true;
