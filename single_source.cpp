@@ -512,21 +512,46 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
         for(auto& v : block)
         {
-            auto build_memory_dependencies = [&]<typename T>(const value& in, T&& func)
+            auto build_memory_accesses = [&]<typename T>(const value& in, T&& func)
             {
-                if(in.type == dual_types::ops::VALUE)
-                    return;
-
                 if(in.is_memory_access)
                 {
                     memory_accesses.push_back(&in);
                 }
 
+                in.for_each_real_arg([&](const value& arg)
+                {
+                    arg.recurse_lambda(func);
+                });
+            };
+
+            v.recurse_lambda(build_memory_accesses);
+
+            auto build_memory_dependencies = [&]<typename T>(const value& in, T&& func)
+            {
+                if(in.type == dual_types::ops::VALUE)
+                    return;
+
+                /*if(in.type == dual_types::ops::BRACKET)
+                    assert(in.is_memory_access);
+
+                if(in.is_memory_access)
+                {
+                    if(kernel_name == "trace_slice")
+                        std::cout << "Picked up dep\n";
+                }*/
+
                 auto deps = get_memory_dependencies(in);
                 memory_dependency_map[&in] = deps;
 
-                if(deps.size() == 0)
-                    return;
+                /*if(deps.size() > 0 && kernel_name == "trace_slice")
+                {
+                    std::cout << "Looked at deps " << deps.size() << std::endl;
+                    std::cout << "For " << type_to_string(in) << std::endl;
+                }*/
+
+                //if(deps.size() == 0)
+                //    return;
 
                 if(dont_peek(in))
                     return;
@@ -540,6 +565,12 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             v.recurse_lambda(build_memory_dependencies);
         }
 
+
+        /*if(kernel_name == "trace_slice")
+        {
+            std::cout << "pHello! " << memory_accesses.size() << std::endl;
+        }*/
+
         for(int i=0; i < (int)memory_accesses.size(); i++)
         {
             for(int j=i+1; j < (int)memory_accesses.size(); j++)
@@ -552,6 +583,19 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 }
             }
         }
+
+        /*if(kernel_name == "trace_slice")
+        {
+            std::cout << "Hello! " << memory_accesses.size() << std::endl;
+        }*/
+
+        /*for(auto& i : memory_accesses)
+        {
+            if(kernel_name == "trace_slice")
+            {
+                std::cout << type_to_string(*i) << std::endl;
+            }
+        }*/
 
         //memory_accesses = make_unique_vec(memory_accesses);
 
@@ -627,8 +671,13 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                         std::cout << kernel_name << " waiting on " << d << std::endl;
                 }
 
+                for(auto& v : memory_accesses)
+                {
+                    std::cout << "Check? " << type_to_string(*v) << std::endl;
+                }
+
                 assert(false);
-                //break;
+                break;
             }
 
             for(auto& i : emitted)
