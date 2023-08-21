@@ -1411,6 +1411,7 @@ void trace_slice4(equation_context& ctx,
 
 void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args)
 {
+    #if 0
     single_source::make_async_dynamic_kernel_for(clctx, get_raytraced_quantities, "get_raytraced_quantities", "", bssn_args);
 
     single_source::make_async_kernel_for(clctx, init_slice_rays, "init_slice_rays");
@@ -1420,4 +1421,5 @@ void build_raytracing_kernels(cl::context& clctx, base_bssn_args& bssn_args)
 
     single_source::make_async_kernel_for(clctx, init_slice_rays4, "init_slice_rays4");
     single_source::make_async_kernel_for(clctx, trace_slice4, "trace_slice4");
+    #endif
 }

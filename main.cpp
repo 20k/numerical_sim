@@ -6271,7 +6271,7 @@ int main()
             auto callback = [&](cl::managed_command_queue& mqueue, std::vector<cl::buffer>& bufs, std::vector<ref_counted_buffer>& intermediates)
             {
                 wave_manager.issue_extraction(mqueue, bufs, intermediates, scale, clsize);
-                raytrace.grab_buffers(clctx.ctx, mqueue, bufs, scale, {clsize.x(), clsize.y(), clsize.z(), 0}, timestep);
+                //raytrace.grab_buffers(clctx.ctx, mqueue, bufs, scale, {clsize.x(), clsize.y(), clsize.z(), 0}, timestep);
 
                 if(!should_render)
                 {
