@@ -533,7 +533,14 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
                 if(v.type == dual_types::ops::DECLARE)
                 {
-                    emitted_cache.push_back({v.args.at(2), type_to_string(v.args.at(1))});
+                    ///lets say we've relabelled. This means we declare with a name of pv0
+                    ///and a value of gen1232123
+                    ///const float pv0 = genid12321
+                    ///args.at(2) == genid12321
+                    ///args.at(1) == pv0
+
+                    //emitted_cache.push_back({type_to_string(could_emit.args.at(1)), type_to_string(could_emit.args.at(2))});
+                    //emitted_cache.push_back({v.args.at(2), type_to_string(v.args.at(1))});
                 }
             }
             else
