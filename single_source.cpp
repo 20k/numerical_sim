@@ -625,6 +625,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
         auto prefetch = [&](const value& in)
         {
+            return;
+
             if(in.type != dual_types::ops::UNKNOWN_FUNCTION)
                 return;
 
