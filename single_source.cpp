@@ -532,26 +532,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 if(in.type == dual_types::ops::VALUE)
                     return;
 
-                /*if(in.type == dual_types::ops::BRACKET)
-                    assert(in.is_memory_access);
-
-                if(in.is_memory_access)
-                {
-                    if(kernel_name == "trace_slice")
-                        std::cout << "Picked up dep\n";
-                }*/
-
                 auto deps = get_memory_dependencies(in);
                 memory_dependency_map[&in] = deps;
-
-                /*if(deps.size() > 0 && kernel_name == "trace_slice")
-                {
-                    std::cout << "Looked at deps " << deps.size() << std::endl;
-                    std::cout << "For " << type_to_string(in) << std::endl;
-                }*/
-
-                //if(deps.size() == 0)
-                //    return;
 
                 if(dont_peek(in))
                     return;
@@ -564,12 +546,6 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             v.recurse_lambda(build_memory_dependencies);
         }
-
-
-        /*if(kernel_name == "trace_slice")
-        {
-            std::cout << "pHello! " << memory_accesses.size() << std::endl;
-        }*/
 
         for(int i=0; i < (int)memory_accesses.size(); i++)
         {
@@ -584,21 +560,6 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             }
         }
 
-        /*if(kernel_name == "trace_slice")
-        {
-            std::cout << "Hello! " << memory_accesses.size() << std::endl;
-        }*/
-
-        /*for(auto& i : memory_accesses)
-        {
-            if(kernel_name == "trace_slice")
-            {
-                std::cout << type_to_string(*i) << std::endl;
-            }
-        }*/
-
-        //memory_accesses = make_unique_vec(memory_accesses);
-
         while(memory_dependency_map.size() > 0)
         {
             bool any_emitted = false;
@@ -606,18 +567,6 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             for(auto& [v, deps] : memory_dependency_map)
             {
                 const value* could_emit = v;
-
-                /*if(could_emit->type == dual_types::ops::DECLARE)
-                {
-                    auto deps = could_emit->get_all_variables();
-
-                    std::cout << "EXPR " << type_to_string(*could_emit) << std::endl;
-
-                    for(auto& i : deps)
-                    {
-                        std::cout << "DEP " << i << std::endl;
-                    }
-                }*/
 
                 if(deps.size() == 0 && has_satisfied_variable_deps(*could_emit))
                 {
