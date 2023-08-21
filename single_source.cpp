@@ -187,6 +187,15 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                    in.type == dual_types::ops::SIDE_EFFECT;
         };
 
+        auto dont_peek = [&](const value& in)
+        {
+            return in.type == dual_types::ops::BREAK ||
+            in.type == dual_types::ops::FOR_START || in.type == dual_types::ops::IF_START ||
+            in.type == dual_types::ops::BLOCK_START || in.type == dual_types::ops::BLOCK_END ||
+            in.type == dual_types::ops::VALUE ||
+            in.type == dual_types::ops::SIDE_EFFECT;
+        };
+
         /*auto is_bottom_rung = [&](value& in)
         {
             return is_bottom_rung_type(in) ||
@@ -333,7 +342,6 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 if(me.is_memory_access)
                 {
                     req.push_back(type_to_string(me));
-                    return;
                 }
 
                 me.for_each_real_arg([&](const value& arg)
@@ -506,6 +514,9 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         {
             auto build_memory_dependencies = [&]<typename T>(const value& in, T&& func)
             {
+                if(in.type == dual_types::ops::VALUE)
+                    return;
+
                 if(in.is_memory_access)
                 {
                     memory_accesses.push_back(&in);
@@ -515,6 +526,9 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 memory_dependency_map[&in] = deps;
 
                 if(deps.size() == 0)
+                    return;
+
+                if(dont_peek(in))
                     return;
 
                 in.for_each_real_arg([&](const value& arg)
@@ -570,23 +584,33 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             if(!any_emitted && memory_accesses.size() > 0)
             {
-                const value* to_emit = memory_accesses.back();
-                std::string as_str = type_to_string(*to_emit);
-
-                emit(*memory_accesses.back());
-                memory_accesses.pop_back();
-
-                for(auto& [v, deps] : memory_dependency_map)
+                for(auto it = memory_accesses.begin(); it != memory_accesses.end(); it++)
                 {
-                    for(int idx=0; idx < (int)deps.size(); idx++)
+                    const value* to_emit = *it;
+
+                    if(!has_satisfied_variable_deps(*to_emit))
+                        continue;
+
+                    std::string as_str = type_to_string(*to_emit);
+
+                    emit(*to_emit);
+
+                    for(auto& [v, deps] : memory_dependency_map)
                     {
-                        if(deps[idx] == as_str)
+                        for(int idx=0; idx < (int)deps.size(); idx++)
                         {
-                            deps.erase(deps.begin() + idx);
-                            idx--;
-                            continue;
+                            if(deps[idx] == as_str)
+                            {
+                                deps.erase(deps.begin() + idx);
+                                idx--;
+                                continue;
+                            }
                         }
                     }
+
+                    memory_accesses.erase(it);
+
+                    break;
                 }
             }
 
