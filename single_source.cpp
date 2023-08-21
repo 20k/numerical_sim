@@ -623,6 +623,33 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             }
         }
 
+        auto prefetch = [&](const value& in)
+        {
+            if(in.type != dual_types::ops::UNKNOWN_FUNCTION)
+                return;
+
+            if(type_to_string(in.args.at(0)) != "buffer_index" && type_to_string(in.args.at(0)) != "buffer_indexh")
+                return;
+
+            if(kernel_name != "evolve_1")
+                return;
+
+            value buffer = in.args.at(1);
+            value ix = in.args.at(2);
+            value iy = in.args.at(3);
+            value iz = in.args.at(4);
+
+            value_i dx = "dim.x";
+            value_i dy = "dim.y";
+            value_i dz = "dim.z";
+
+            value_i index = iz.convert<int>() * dx * dy + iy.convert<int>() * dx + ix.convert<int>();
+
+            value op = dual_types::make_op<std::monostate>(dual_types::ops::SIDE_EFFECT, "prefetch(&" + type_to_string(buffer) + "[" + type_to_string(index) + "],1);").reinterpret_as<value_base<float>>();
+
+            emit(op);
+        };
+
         while(memory_dependency_map.size() > 0)
         {
             bool any_emitted = false;
@@ -642,9 +669,11 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             if(!any_emitted && memory_accesses.size() > 0)
             {
-                for(auto it = memory_accesses.begin(); it != memory_accesses.end(); it++)
+                //for(auto it = memory_accesses.begin(); it != memory_accesses.end(); it++)
+
+                for(int midx = 0; midx < (int)memory_accesses.size(); midx++)
                 {
-                    const value* to_emit = *it;
+                    const value* to_emit = memory_accesses[midx];
 
                     if(!has_satisfied_variable_deps(*to_emit))
                         continue;
@@ -666,7 +695,16 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                         }
                     }
 
-                    memory_accesses.erase(it);
+                    for(int next = midx+1; next < (int)memory_accesses.size(); next++)
+                    {
+                        if(has_satisfied_variable_deps(*memory_accesses[next]))
+                        {
+                            prefetch(*memory_accesses[next]);
+                            break;
+                        }
+                    }
+
+                    memory_accesses.erase(memory_accesses.begin() + midx);
                     any_memory = true;
 
                     break;
