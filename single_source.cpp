@@ -617,34 +617,71 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             if(!any_emitted && memory_accesses.size() > 0)
             {
-                for(auto it = memory_accesses.begin(); it != memory_accesses.end(); it++)
+                std::vector<std::pair<std::string, int>> memory_sat_vec;
+
                 {
-                    const value* to_emit = *it;
+                    std::map<std::string, int> memory_sat;
 
-                    if(!has_satisfied_variable_deps(*to_emit))
-                        continue;
-
-                    std::string as_str = type_to_string(*to_emit);
-
-                    emit(*to_emit);
-
-                    for(auto& [v, deps] : memory_dependency_map)
+                    for(auto& i : memory_dependency_map)
                     {
-                        for(int idx=0; idx < (int)deps.size(); idx++)
+                        if(i.second.size() != 1)
+                            continue;
+
+                        for(auto& d : i.second)
                         {
-                            if(deps[idx] == as_str)
-                            {
-                                deps.erase(deps.begin() + idx);
-                                idx--;
-                                continue;
-                            }
+                            memory_sat[d]++;
                         }
                     }
 
-                    memory_accesses.erase(it);
-                    any_memory = true;
+                    assert(memory_sat.size() > 0);
 
-                    break;
+                   for(auto& i : memory_sat)
+                   {
+                       memory_sat_vec.push_back(i);
+                   }
+
+                   std::sort(memory_sat_vec.begin(), memory_sat_vec.end(), [](const auto& i1, const auto& i2){return i1.second > i2.second;});
+                }
+
+                assert(memory_sat_vec.size() > 0);
+
+                for(int i=0; i < (int)memory_sat_vec.size(); i++)
+                {
+                    for(auto it = memory_accesses.begin(); it != memory_accesses.end(); it++)
+                    {
+                        const value* to_emit = *it;
+
+                        if(!has_satisfied_variable_deps(*to_emit))
+                            continue;
+
+                        std::string as_str = type_to_string(*to_emit);
+
+                        if(as_str != memory_sat_vec[i].first)
+                            break;
+
+                        emit(*to_emit);
+
+                        for(auto& [v, deps] : memory_dependency_map)
+                        {
+                            for(int idx=0; idx < (int)deps.size(); idx++)
+                            {
+                                if(deps[idx] == as_str)
+                                {
+                                    deps.erase(deps.begin() + idx);
+                                    idx--;
+                                    continue;
+                                }
+                            }
+                        }
+
+                        memory_accesses.erase(it);
+                        any_memory = true;
+
+                        break;
+                    }
+
+                    if(any_memory)
+                        break;
                 }
             }
 
