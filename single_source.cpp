@@ -475,9 +475,31 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             ///if applicable
             ///otherwise just emit the statement
 
+            value could_emit = v;
+
+            bool is_root_relabling = false;
+            bool any_sub = false;
+
+            could_emit.recurse_arguments([&](value& arg)
+            {
+                for(const auto& [val, name] : emitted_cache)
+                {
+                    if(equivalent(arg, val))
+                    {
+                        if(&arg == &could_emit)
+                            is_root_relabling = true;
+
+                        any_sub = true;
+
+                        arg = name;
+                        return;
+                    }
+                }
+            });
+
             if(!can_be_assigned_to_variable(v))
             {
-                insert_value(v);
+                insert_value(could_emit);
 
                 if(v.type == dual_types::ops::DECLARE)
                 {
@@ -486,28 +508,6 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             }
             else
             {
-                value could_emit = v;
-
-                bool is_root_relabling = false;
-                bool any_sub = false;
-
-                could_emit.recurse_arguments([&](value& arg)
-                {
-                    for(const auto& [val, name] : emitted_cache)
-                    {
-                        if(equivalent(arg, val))
-                        {
-                            if(&arg == &could_emit)
-                                is_root_relabling = true;
-
-                            any_sub = true;
-
-                            arg = name;
-                            return;
-                        }
-                    }
-                });
-
                 /*bool valid = true;
 
                 for(const auto& [val, name] : emitted_cache)
