@@ -214,7 +214,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     in.type != BLOCK_END && in.type != DECLARE && in.type != ASSIGN && in.type != SIDE_EFFECT;
         };
 
-        auto has_satisfied_variable_deps = [&](value& in)
+        auto has_satisfied_variable_deps = [&](const value& in)
         {
             std::vector<std::string> variables = in.get_all_variables();
 
@@ -324,26 +324,27 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             return unsat;
         };
 
-        auto get_memory_deps = [&](value& in)
+        auto get_memory_dependencies = [&](const value& in)
         {
-            std::set<std::string> req;
+            std::vector<std::string> req;
 
-            auto getter = [&]<typename T>(value& me, T&& func)
+            auto getter = [&]<typename T>(const value& me, T&& func)
             {
-                me.for_each_real_arg([&](value& arg)
+                if(me.is_memory_access)
                 {
-                    if(arg.is_memory_access)
-                    {
-                        req.insert(type_to_string(arg));
-                    }
+                    req.push_back(type_to_string(me));
+                    return;
+                }
 
+                me.for_each_real_arg([&](const value& arg)
+                {
                     arg.recurse_lambda(func);
                 });
             };
 
             in.recurse_lambda(getter);
 
-            return req;
+            return make_unique_vec(req);
         };
 
         bool going = true;
@@ -457,7 +458,136 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         }
         #endif
 
-        #if 1
+        auto emit = [&](const value& v)
+        {
+            ///so. All our arguments are constants
+            ///this means we want to ideally place ourself into a constant, then emit that new declaration
+            ///if applicable
+            ///otherwise just emit the statement
+
+            if(!can_be_assigned_to_variable(v))
+            {
+                insert_value(v);
+            }
+            else
+            {
+                /*bool valid = true;
+
+                for(const auto& [val, name] : emitted_cache)
+                {
+                    if(equivalent(val, v))
+                    {
+                        valid = false;
+                        break;
+                    }
+                }
+
+                if(valid)*/
+                {
+                    std::string name = "genid" + std::to_string(gidx);
+
+                    auto [declare_op, val] = declare_raw(v, name, v.is_mutable);
+
+                    insert_value(declare_op);
+
+                    //emitted_cache.push_back({v, name});
+
+                    gidx++;
+                }
+            }
+
+            emitted.insert(&v);
+        };
+
+        std::map<const value*, std::vector<std::string>> memory_dependency_map;
+        std::vector<const value*> memory_accesses;
+
+        for(auto& v : block)
+        {
+            auto build_memory_dependencies = [&]<typename T>(const value& in, T&& func)
+            {
+                if(in.is_memory_access)
+                {
+                    memory_accesses.push_back(&in);
+                    return;
+                }
+
+                memory_dependency_map[&in] = get_memory_dependencies(in);
+
+                in.for_each_real_arg([&](const value& arg)
+                {
+                    arg.recurse_lambda(func);
+                });
+            };
+
+            v.recurse_lambda(build_memory_dependencies);
+        }
+
+        for(int i=0; i < (int)memory_accesses.size(); i++)
+        {
+            for(int j=i+1; j < (int)memory_accesses.size(); j++)
+            {
+                if(dual_types::equivalent(*memory_accesses[i], *memory_accesses[j]))
+                {
+                    memory_accesses.erase(memory_accesses.begin() + j);
+                    j--;
+                    continue;
+                }
+            }
+        }
+
+        //memory_accesses = make_unique_vec(memory_accesses);
+
+        while(memory_dependency_map.size() > 0)
+        {
+            bool any_emitted = false;
+
+            for(auto& [v, deps] : memory_dependency_map)
+            {
+                const value* could_emit = v;
+
+                if(could_emit->type == dual_types::ops::BRACKET)
+                {
+
+                }
+
+                if(deps.size() == 0 && has_satisfied_variable_deps(*could_emit))
+                {
+                    emit(*could_emit);
+                    any_emitted = true;
+                }
+            }
+
+            if(!any_emitted && memory_accesses.size() > 0)
+            {
+                const value* to_emit = memory_accesses.back();
+                std::string as_str = type_to_string(*to_emit);
+
+                emit(*memory_accesses.back());
+                memory_accesses.pop_back();
+
+                for(auto& [v, deps] : memory_dependency_map)
+                {
+                    for(int idx=0; idx < (int)deps.size(); idx++)
+                    {
+                        if(deps[idx] == as_str)
+                        {
+                            deps.erase(deps.begin() + idx);
+                            idx--;
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            for(auto& i : emitted)
+            {
+                if(auto it = memory_dependency_map.find(i); it != memory_dependency_map.end())
+                    memory_dependency_map.erase(it);
+            }
+        }
+
+        #if 0
 
         int max_instr = 30;
         int current_instr = 0;
