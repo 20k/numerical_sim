@@ -184,6 +184,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         std::vector<std::pair<value, std::string>> emitted_memory_requests;
         std::vector<std::pair<value, std::string>> emitted_cache;
         std::set<const value*> emitted;
+        std::set<const value*> prefetched;
 
         auto is_bottom_rung_type = [&](value& in)
         {
@@ -492,6 +493,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         }
         #endif
 
+        #if 1
         std::map<const value*, std::vector<std::string>> memory_dependency_map;
 
         ///so the big problem currently is actually *using* the results we've generated in the expressions
@@ -538,6 +540,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 }
             });
 
+            bool emitted_anything = true;
+
             if(!can_be_assigned_to_variable(v))
             {
                 insert_value(could_emit);
@@ -567,9 +571,15 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
                     gidx++;
                 }
+                else
+                {
+                    emitted_anything = false;
+                }
             }
 
             emitted.insert(&v);
+
+            return emitted_anything;
         };
 
         std::vector<const value*> memory_accesses;
@@ -625,8 +635,6 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
         auto prefetch = [&](const value& in)
         {
-            return;
-
             if(in.type != dual_types::ops::UNKNOWN_FUNCTION)
                 return;
 
@@ -652,6 +660,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             emit(op);
         };
 
+        int instr = 0;
+
         while(memory_dependency_map.size() > 0)
         {
             bool any_emitted = false;
@@ -662,8 +672,30 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
                 if(deps.size() == 0 && all_args_emitted(*could_emit) && has_satisfied_variable_deps(*could_emit))
                 {
-                    emit(*could_emit);
-                    any_emitted = true;
+                    bool real_emission = emit(*could_emit);
+
+                    if(real_emission)
+                    {
+                        any_emitted = true;
+                        instr++;
+                    }
+
+                    if(instr > 50)
+                    {
+                        for(auto i : memory_accesses)
+                        {
+                            if(prefetched.find(i) == prefetched.end())
+                            {
+                                prefetch(*i);
+
+                                prefetched.insert(i);
+
+                                break;
+                            }
+                        }
+
+                        instr = 0;
+                    }
                 }
             }
 
@@ -683,6 +715,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     std::string as_str = type_to_string(*to_emit);
 
                     emit(*to_emit);
+                    prefetched.insert(to_emit);
 
                     for(auto& [v, deps] : memory_dependency_map)
                     {
@@ -697,14 +730,14 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                         }
                     }
 
-                    for(int next = midx+1; next < (int)memory_accesses.size(); next++)
+                    /*for(int next = midx+1; next < (int)memory_accesses.size(); next++)
                     {
                         if(has_satisfied_variable_deps(*memory_accesses[next]))
                         {
                             prefetch(*memory_accesses[next]);
                             break;
                         }
-                    }
+                    }*/
 
                     memory_accesses.erase(memory_accesses.begin() + midx);
                     any_memory = true;
@@ -738,6 +771,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     memory_dependency_map.erase(it);
             }
         }
+        #endif
 
         #if 0
 
@@ -1058,6 +1092,25 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         }
         #endif
     }
+
+    #ifdef OLD_BUT_FAST
+    int bid = 0;
+
+    for(const auto& block : blocks)
+    {
+        base += "//" + std::to_string(bid) + "\n";
+
+        for(const auto& value : block)
+        {
+            if(dual_types::get_description(value.type).is_semicolon_terminated)
+                base += type_to_string(value) + ";\n";
+            else
+                base += type_to_string(value);
+        }
+
+        bid++;
+    }
+    #endif
 
     base += "\n}\n";
 
