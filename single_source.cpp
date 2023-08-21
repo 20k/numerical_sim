@@ -176,7 +176,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
         std::vector<std::pair<value, std::string>> emitted_memory_requests;
         std::vector<std::pair<value, std::string>> emitted_cache;
-        std::set<value*> emitted;
+        std::set<const value*> emitted;
 
         auto is_bottom_rung_type = [&](value& in)
         {
@@ -206,7 +206,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             return valid;
         };
 
-        auto can_be_assigned_to_variable = [&](value& in)
+        auto can_be_assigned_to_variable = [&](const value& in)
         {
             using namespace dual_types::ops;
 
@@ -458,6 +458,10 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         #endif
 
         #if 1
+
+        int max_instr = 30;
+        int current_instr = 0;
+
         while(1)
         {
             std::vector<value*> all_arguments_bottom_rung;
@@ -465,6 +469,11 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             for(auto& v : block)
             {
+                bool already_emitted = emitted.find(&v) != emitted.end();
+
+                if(already_emitted)
+                    continue;
+
                 auto substitute = [&](value& in)
                 {
                     for(auto& [val, name] : emitted_cache)
@@ -490,11 +499,6 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 };
 
                 v.recurse_arguments(mem);
-
-                bool already_emitted = emitted.find(&v) != emitted.end();
-
-                if(already_emitted)
-                    continue;
 
                 if(is_bottom_rung(v) && has_satisfied_variable_deps(v))
                 {
@@ -596,45 +600,56 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 }
             }
 
+            auto pop_best_memory_access = [&]()
+            {
+                if(could_be_sat_vec.size() > 0)
+                {
+                    std::string last = could_be_sat_vec.back().first;
+
+                    for(auto it = memory_access.begin(); it != memory_access.end(); it++)
+                    {
+                        auto val = *it;
+
+                        if(type_to_string(*val) == last)
+                        {
+                            could_be_sat_vec.pop_back();
+                            memory_access.erase(it);
+
+                            return val;
+                        }
+                    }
+
+                    //assert(false);
+                }
+
+                auto val = memory_access.at(0);
+                memory_access.erase(memory_access.begin());
+                return val;
+            };
+
             std::vector<value*> to_emit;
 
             if(assigns.size() > 0)
                 to_emit = assigns;
             else if(not_memory_access.size() > 0)
+            {
                 to_emit = not_memory_access;
+            }
             else
             {
-                //assert(could_be_sat_vec.size() > 0);
-
-                if(could_be_sat_vec.size() > 0)
-                {
-                    std::string last = could_be_sat_vec.back().first;
-
-                    for(auto& i : memory_access)
-                    {
-                        if(type_to_string(*i) == last)
-                        {
-                            to_emit = {i};
-                            std::cout << "Got\n";
-                        }
-                    }
-                }
-                //assert(to_emit.size() > 0);
-
-                if(to_emit.size() == 0)
-                    to_emit = {memory_access.at(0)};
+                to_emit = {pop_best_memory_access()};
             }
 
-            for(value* v : to_emit)
+            auto emit = [&](const value& v)
             {
                 ///so. All our arguments are constants
                 ///this means we want to ideally place ourself into a constant, then emit that new declaration
                 ///if applicable
                 ///otherwise just emit the statement
 
-                if(!can_be_assigned_to_variable(*v))
+                if(!can_be_assigned_to_variable(v))
                 {
-                    insert_value(*v);
+                    insert_value(v);
                 }
                 else
                 {
@@ -642,7 +657,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
                     for(const auto& [val, name] : emitted_cache)
                     {
-                        if(equivalent(val, *v))
+                        if(equivalent(val, v))
                         {
                             valid = false;
                             break;
@@ -653,23 +668,38 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     {
                         std::string name = "genid" + std::to_string(gidx);
 
-                        auto [declare_op, val] = declare_raw(*v, name, v->is_mutable);
+                        auto [declare_op, val] = declare_raw(v, name, v.is_mutable);
 
                         insert_value(declare_op);
 
-                        if(v->is_memory_access)
+                        if(v.is_memory_access)
                         {
-                            emitted_memory_requests.push_back({*v, name});
+                            emitted_memory_requests.push_back({v, name});
+                            current_instr = 0;
                         }
 
-                        emitted_cache.push_back({*v, name});
+                        emitted_cache.push_back({v, name});
 
                         gidx++;
+
+                        current_instr++;
                     }
                 }
 
-                emitted.insert(v);
+                emitted.insert(&v);
+            };
+
+            for(value* v : to_emit)
+            {
+                emit(*v);
+
+                if(current_instr > max_instr && memory_access.size() > 0)
+                {
+                    emit(*pop_best_memory_access());
+                    current_instr = 0;
+                }
             }
+
         }
         #endif
 
