@@ -646,9 +646,6 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
                     break;
                 }
-
-                if(any_memory)
-                    break;
             }
 
             if(!any_memory && !any_emitted)
