@@ -582,6 +582,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 }
             }
 
+            bool any_memory = false;
+
             if(!any_emitted && memory_accesses.size() > 0)
             {
                 for(auto it = memory_accesses.begin(); it != memory_accesses.end(); it++)
@@ -609,9 +611,24 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     }
 
                     memory_accesses.erase(it);
+                    any_memory = true;
 
                     break;
                 }
+            }
+
+            if(!any_memory && !any_emitted)
+            {
+                for(auto& [v, deps] : memory_dependency_map)
+                {
+                    std::cout << "Test\n";
+
+                    for(auto& d : deps)
+                        std::cout << kernel_name << " waiting on " << d << std::endl;
+                }
+
+                assert(false);
+                //break;
             }
 
             for(auto& i : emitted)

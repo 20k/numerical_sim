@@ -138,17 +138,17 @@ namespace single_source
     ///all of this parse_tensor stuff needs to be fixed well in advanced of being a compiler
     template<typename U>
     requires(!Structy<U>)
-    inline U parse_tensor(U& tag, value_i op)
+    inline U parse_tensor(U& tag, value_i op, bool is_memory_access)
     {
         auto result = op.reinterpret_as<U>();
         result.is_mutable = tag.is_mutable;
         result.original_type = tag.original_type;
-        result.is_memory_access = true;
+        result.is_memory_access = is_memory_access;
         return result;
     }
 
     template<typename U, int N>
-    inline tensor<U, N> parse_tensor(tensor<U, N>& tag, value_i op)
+    inline tensor<U, N> parse_tensor(tensor<U, N>& tag, value_i op, bool is_memory_access)
     {
         tensor<U, N> ret;
 
@@ -157,7 +157,7 @@ namespace single_source
             ret[i] = op.index(i).reinterpret_as<U>();
             ret[i].is_mutable = tag[i].is_mutable;
             ret[i].original_type = tag[i].original_type;
-            ret[i].is_memory_access = true;
+            ret[i].is_memory_access = is_memory_access;
         }
 
         return ret;
@@ -165,7 +165,7 @@ namespace single_source
 
     template<typename T>
     requires(Structy<T>)
-    inline T parse_tensor(T& val, value_i op)
+    inline T parse_tensor(T& val, value_i op, bool unused)
     {
         T result;
 
@@ -207,7 +207,7 @@ namespace single_source
         {
             value_i op(name);
 
-            return parse_tensor(storage, op);
+            return parse_tensor(storage, op, false);
         }
 
         operator T()
@@ -234,7 +234,7 @@ namespace single_source
         {
             value_i op = make_op<int>(dual_types::ops::BRACKET, value_i(name), in);
 
-            return parse_tensor(storage, op);
+            return parse_tensor(storage, op, true);
         }
 
         T operator[](const value_i& ix, const value_i& iy, const value_i& iz)
@@ -245,7 +245,7 @@ namespace single_source
 
             value_i op = make_op<int>(dual_types::ops::BRACKET, value_i(name), index);
 
-            return parse_tensor(storage, op);
+            return parse_tensor(storage, op, true);
         }
 
         T operator[](const tensor<value_i, 3>& pos)
