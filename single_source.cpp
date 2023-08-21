@@ -478,10 +478,18 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             if(!can_be_assigned_to_variable(v))
             {
                 insert_value(v);
+
+                if(v.type == dual_types::ops::DECLARE)
+                {
+                    emitted_cache.push_back({v.args.at(2), type_to_string(v.args.at(1))});
+                }
             }
             else
             {
                 value could_emit = v;
+
+                bool is_root_relabling = false;
+                bool any_sub = false;
 
                 could_emit.recurse_arguments([&](value& arg)
                 {
@@ -489,6 +497,11 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     {
                         if(equivalent(arg, val))
                         {
+                            if(&arg == &could_emit)
+                                is_root_relabling = true;
+
+                            any_sub = true;
+
                             arg = name;
                             return;
                         }
@@ -507,14 +520,21 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 }
 
                 if(valid)*/
+                if(!is_root_relabling)
                 {
+                    if(kernel_name == "calculate_christoffel_symbol" && gidx == 32)
+                    {
+                        std::cout << "Root relabling? " << is_root_relabling << std::endl;
+                        std::cout << "Any sub " << any_sub << std::endl;
+                    }
+
                     std::string name = "genid" + std::to_string(gidx);
 
                     auto [declare_op, val] = declare_raw(could_emit, name, could_emit.is_mutable);
 
                     insert_value(declare_op);
 
-                    emitted_cache.push_back({could_emit, name});
+                    emitted_cache.push_back({v, name});
 
                     gidx++;
                 }
