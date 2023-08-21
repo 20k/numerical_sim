@@ -187,7 +187,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                    in.type == dual_types::ops::SIDE_EFFECT;
         };
 
-        auto is_bottom_rung = [&](value& in)
+        /*auto is_bottom_rung = [&](value& in)
         {
             return is_bottom_rung_type(in) ||
                    emitted.find(&in) != emitted.end();
@@ -204,7 +204,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             });
 
             return valid;
-        };
+        };*/
 
         auto can_be_assigned_to_variable = [&](const value& in)
         {
@@ -260,7 +260,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             return includes_dupes;
         };*/
 
-        auto is_memory_request_sat = [&](value& in) -> std::optional<std::string>
+        /*auto is_memory_request_sat = [&](value& in) -> std::optional<std::string>
         {
             assert(in.is_memory_access);
 
@@ -322,7 +322,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             in.recurse_lambda(getter);
             return unsat;
-        };
+        };*/
 
         auto get_memory_dependencies = [&](const value& in)
         {
@@ -509,10 +509,13 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 if(in.is_memory_access)
                 {
                     memory_accesses.push_back(&in);
-                    return;
                 }
 
-                memory_dependency_map[&in] = get_memory_dependencies(in);
+                auto deps = get_memory_dependencies(in);
+                memory_dependency_map[&in] = deps;
+
+                if(deps.size() == 0)
+                    return;
 
                 in.for_each_real_arg([&](const value& arg)
                 {
@@ -546,10 +549,17 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             {
                 const value* could_emit = v;
 
-                if(could_emit->type == dual_types::ops::BRACKET)
+                /*if(could_emit->type == dual_types::ops::DECLARE)
                 {
+                    auto deps = could_emit->get_all_variables();
 
-                }
+                    std::cout << "EXPR " << type_to_string(*could_emit) << std::endl;
+
+                    for(auto& i : deps)
+                    {
+                        std::cout << "DEP " << i << std::endl;
+                    }
+                }*/
 
                 if(deps.size() == 0 && has_satisfied_variable_deps(*could_emit))
                 {
