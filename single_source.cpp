@@ -493,8 +493,6 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         }
         #endif
 
-        #if 1
-        std::map<const value*, std::vector<std::string>> memory_dependency_map;
 
         ///so the big problem currently is actually *using* the results we've generated in the expressions
         ///because while I can check the top level arg, the only recourse I'd have is to do a full resub which... isn't fast
@@ -514,19 +512,6 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             {
                 for(const auto& [val, name] : emitted_cache)
                 {
-                    /*if(arg.type == dual_types::ops::UNKNOWN_FUNCTION && val.type == dual_types::ops::UNKNOWN_FUNCTION &&
-                       type_to_string(arg).starts_with("buffer_index(cY5,ix,iy,iz") &&
-                       type_to_string(val).starts_with("buffer_index(cY5,ix,iy,iz"))
-                    {
-                        std::cout << "Met\n";
-
-                        if(!equivalent(arg, val))
-                        {
-                            std::cout << "WTF " << type_to_string(arg) << " " << type_to_string(val) << std::endl;
-                            assert(false);
-                        }
-                    }*/
-
                     if(equivalent(arg, val))
                     {
                         if(&arg == &could_emit)
@@ -557,11 +542,6 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 {
                     std::string name = "genid" + std::to_string(gidx);
 
-                    if(kernel_name == "evolve_1" && type_to_string(could_emit).starts_with("buffer_index(cY5,ix,iy,iz"))
-                    {
-                        std::cout << "Hello there " << any_sub << " block " << block_id << std::endl;
-                    }
-
                     auto [declare_op, val] = declare_raw(could_emit, name, could_emit.is_mutable);
 
                     insert_value(declare_op);
@@ -581,6 +561,30 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             return emitted_anything;
         };
+
+        for(auto& v : block)
+        {
+            auto recurse = [&]<typename T>(const value& in, T&& func)
+            {
+                if(in.type == dual_types::ops::VALUE)
+                    return;
+
+                if(!dont_peek(in))
+                {
+                    in.for_each_real_arg([&](const value& arg)
+                    {
+                        arg.recurse_lambda(func);
+                    });
+                }
+
+                emit(in);
+            };
+
+            v.recurse_lambda(recurse);
+        }
+
+        #if 0
+        std::map<const value*, std::vector<std::string>> memory_dependency_map;
 
         std::vector<const value*> memory_accesses;
 
@@ -680,7 +684,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                         instr++;
                     }
 
-                    if(instr > 50)
+                    /*if(instr > 50)
                     {
                         for(auto i : memory_accesses)
                         {
@@ -695,7 +699,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                         }
 
                         instr = 0;
-                    }
+                    }*/
                 }
             }
 
