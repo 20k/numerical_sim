@@ -185,6 +185,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         std::vector<std::pair<value, std::string>> emitted_memory_requests;
         std::vector<std::pair<value, std::string>> emitted_cache;
         std::set<const value*> emitted;
+        std::vector<const value*> linear_emitted;
         std::set<const value*> prefetched;
 
         auto is_bottom_rung_type = [&](value& in)
@@ -231,12 +232,38 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             bool valid = true;
 
-            in.for_each_real_arg([&](const value& arg)
+            /*in.for_each_real_arg([&](const value& arg)
             {
                 if(arg.type == dual_types::ops::VALUE)
                     return;
 
                 if(emitted.find(&arg) == emitted.end())
+                    valid = false;
+            });*/
+
+            in.for_each_real_arg([&](const value& arg)
+            {
+                if(arg.type == dual_types::ops::VALUE)
+                    return;
+
+                if(emitted.find(&arg) != emitted.end())
+                    return;
+
+                /*if(emitted.find(&arg) == emitted.end())
+                    valid = false;*/
+
+                bool none_valid = true;
+
+                for(auto i : linear_emitted)
+                {
+                    if(equivalent(arg, *i))
+                    {
+                        none_valid = false;
+                        break;
+                    }
+                }
+
+                if(none_valid)
                     valid = false;
             });
 
@@ -251,9 +278,21 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     in.type != BLOCK_END && in.type != DECLARE && in.type != ASSIGN && in.type != SIDE_EFFECT;
         };
 
+        std::map<const value*, std::vector<std::string>> var_cache;
+
         auto has_satisfied_variable_deps = [&](const value& in)
         {
-            std::vector<std::string> variables = in.get_all_variables();
+            std::vector<std::string> variables;
+
+            if(auto it = var_cache.find(&in); it != var_cache.end())
+            {
+                variables = it->second;
+            }
+            else
+            {
+                variables = in.get_all_variables();
+                var_cache[&in] = variables;
+            }
 
             for(auto& i : variables)
             {
@@ -566,6 +605,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             }
 
             emitted.insert(&v);
+            linear_emitted.push_back(&v);
 
             return emitted_anything;
         };
@@ -592,8 +632,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             v.recurse_lambda(recurse);
         }*/
 
-        std::vector<std::pair<const value*, int>> unevaluated;
-        std::vector<std::pair<const value*, int>> unevaluated_memory;
+        std::vector<std::pair<const value*, int>> unevaluated_depth;
+        std::vector<std::pair<const value*, int>> unevaluated_memory_depth;
 
         for(auto& v : block)
         {
@@ -605,7 +645,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
                 if(in.is_memory_access)
                 {
-                    unevaluated_memory.push_back({&in, level});
+                    unevaluated_memory_depth.push_back({&in, level});
                 }
 
                 in.for_each_real_arg([&](const value& arg)
@@ -636,7 +676,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     });
                 }
 
-                unevaluated.push_back({&in, level});
+                if(!in.is_memory_access)
+                    unevaluated_depth.push_back({&in, level});
 
                 //emit(in);
                 level--;
@@ -645,15 +686,54 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             v.recurse_lambda(recurse);
         }
 
-        std::sort(unevaluated.begin(), unevaluated.end(), [](const auto& i1, const auto& i2)
+        std::sort(unevaluated_depth.begin(), unevaluated_depth.end(), [](const auto& i1, const auto& i2)
         {
             return i1.first > i2.first;
         });
 
-        std::sort(unevaluated_memory.begin(), unevaluated_memory.end(), [](const auto& i1, const auto& i2)
+        std::sort(unevaluated_memory_depth.begin(), unevaluated_memory_depth.end(), [](const auto& i1, const auto& i2)
         {
             return i1.first > i2.first;
         });
+
+        std::vector<const value*> unevaluated_memory;
+        std::vector<const value*> unevaluated;
+
+        for(auto& [v, _] : unevaluated_memory_depth)
+        {
+            unevaluated_memory.push_back(v);
+        }
+
+        for(auto& [v, _] : unevaluated_depth)
+        {
+            unevaluated.push_back(v);
+        }
+
+        for(int i=0; i < (int)unevaluated.size(); i++)
+        {
+            for(int j=i+1; j < (int)unevaluated.size(); j++)
+            {
+                if(dual_types::equivalent(*unevaluated[i], *unevaluated[j]))
+                {
+                    unevaluated.erase(unevaluated.begin() + j);
+                    j--;
+                    continue;
+                }
+            }
+        }
+
+        for(int i=0; i < (int)unevaluated_memory.size(); i++)
+        {
+            for(int j=i+1; j < (int)unevaluated_memory.size(); j++)
+            {
+                if(dual_types::equivalent(*unevaluated_memory[i], *unevaluated_memory[j]))
+                {
+                    unevaluated_memory.erase(unevaluated_memory.begin() + j);
+                    j--;
+                    continue;
+                }
+            }
+        }
 
         while(unevaluated.size() > 0)
         {
@@ -661,12 +741,11 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             for(int i=0; i < (int)unevaluated.size(); i++)
             {
-                if(!has_satisfied_variable_deps(*unevaluated[i].first))
-                    continue;
-
-                if(all_args_emitted(*unevaluated[i].first))
+                if(all_args_emitted(*unevaluated[i]) && has_satisfied_variable_deps(*unevaluated[i]))
                 {
-                    emit(*unevaluated[i].first);
+                    printf("emit %i %i\n", i, unevaluated.size());
+
+                    emit(*unevaluated[i]);
                     unevaluated.erase(unevaluated.begin() + i);
                     i--;
                     forward_progress = true;
@@ -678,10 +757,10 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             {
                 for(int i=0; i < (int)unevaluated_memory.size(); i++)
                 {
-                    if(!has_satisfied_variable_deps(*unevaluated_memory[i].first))
+                    if(!has_satisfied_variable_deps(*unevaluated_memory[i]))
                         continue;
 
-                    emit(*unevaluated_memory[i].first);
+                    emit(*unevaluated_memory[i]);
                     unevaluated_memory.erase(unevaluated_memory.begin() + i);
                     forward_progress = true;
                     break;
