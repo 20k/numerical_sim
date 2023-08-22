@@ -1,4 +1,5 @@
 #include "single_source.hpp"
+#include <ranges>
 
 std::string single_source::impl::generate_kernel_string(kernel_context& kctx, equation_context& ctx, const std::string& kernel_name, bool& any_uses_half)
 {
@@ -569,7 +570,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             return emitted_anything;
         };
 
-        for(auto& v : block)
+        ///the most deeply bracketed thing would be evaluated first. Todo, do this
+        /*for(auto& v : block)
         {
             auto recurse = [&]<typename T>(const value& in, T&& func)
             {
@@ -588,6 +590,108 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             };
 
             v.recurse_lambda(recurse);
+        }*/
+
+        std::vector<std::pair<const value*, int>> unevaluated;
+        std::vector<std::pair<const value*, int>> unevaluated_memory;
+
+        for(auto& v : block)
+        {
+            int level = 0;
+
+            auto memcheck = [&]<typename T>(const value& in, T&& func)
+            {
+                level++;
+
+                if(in.is_memory_access)
+                {
+                    unevaluated_memory.push_back({&in, level});
+                }
+
+                in.for_each_real_arg([&](const value& arg)
+                {
+                    arg.recurse_lambda(func);
+                });
+
+                level--;
+            };
+
+            v.recurse_lambda(memcheck);
+
+            auto recurse = [&]<typename T>(const value& in, T&& func)
+            {
+                level++;
+
+                if(in.type == dual_types::ops::VALUE)
+                {
+                    level--;
+                    return;
+                }
+
+                if(!dont_peek(in))
+                {
+                    in.for_each_real_arg([&](const value& arg)
+                    {
+                        arg.recurse_lambda(func);
+                    });
+                }
+
+                unevaluated.push_back({&in, level});
+
+                //emit(in);
+                level--;
+            };
+
+            v.recurse_lambda(recurse);
+        }
+
+        std::sort(unevaluated.begin(), unevaluated.end(), [](const auto& i1, const auto& i2)
+        {
+            return i1.first > i2.first;
+        });
+
+        std::sort(unevaluated_memory.begin(), unevaluated_memory.end(), [](const auto& i1, const auto& i2)
+        {
+            return i1.first > i2.first;
+        });
+
+        while(unevaluated.size() > 0)
+        {
+            bool forward_progress = false;
+
+            for(int i=0; i < (int)unevaluated.size(); i++)
+            {
+                if(!has_satisfied_variable_deps(*unevaluated[i].first))
+                    continue;
+
+                if(all_args_emitted(*unevaluated[i].first))
+                {
+                    emit(*unevaluated[i].first);
+                    unevaluated.erase(unevaluated.begin() + i);
+                    i--;
+                    forward_progress = true;
+                    continue;
+                }
+            }
+
+            if(!forward_progress)
+            {
+                for(int i=0; i < (int)unevaluated_memory.size(); i++)
+                {
+                    if(!has_satisfied_variable_deps(*unevaluated_memory[i].first))
+                        continue;
+
+                    emit(*unevaluated_memory[i].first);
+                    unevaluated_memory.erase(unevaluated_memory.begin() + i);
+                    forward_progress = true;
+                    break;
+                }
+            }
+
+            if(!forward_progress && unevaluated.size() > 0)
+            {
+                assert(false);
+            }
         }
 
         #if 0
