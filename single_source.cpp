@@ -766,13 +766,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             assert(depends_on(v4, v3.as_generic()));
         }*/
 
-        {
-            ///const int genid6=(dim.x); const int genid10=(iy*genid6); Dep on 0
-
-            //value v = dual_types::make_op<float>(dual_types::ops::DECLARE, )
-        }
-
-        auto try_move_later = [&](int index)
+        auto try_move_later = [&](int index, bool& any_change)
         {
             //printf("Try move %i\n", index);
 
@@ -780,8 +774,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             for(int j=index+1; j < (int)local_emit.size(); j++)
             {
-                if(kernel_name == "dissipate_single_unidir")
-                    std::cout << type_to_string(local_emit[index]) << " " << type_to_string(local_emit[j]) << " Dep on " << depends_on(local_emit[j], local_emit[index]) << std::endl;
+                //if(kernel_name == "dissipate_single_unidir")
+                //    std::cout << type_to_string(local_emit[index]) << " " << type_to_string(local_emit[j]) << " Dep on " << depends_on(local_emit[j], local_emit[index]) << std::endl;
 
                 if(!depends_on(local_emit[j], local_emit[index]))
                     continue;
@@ -796,29 +790,25 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
                     local_emit.erase(local_emit.begin() + index);
 
-                    return true;
+                    any_change = true;
+                    return;
                 }
 
-                return false;
+                return;
             }
-
-            return false;
-
-            //printf("Never dep on?\n");
         };
 
-        bool any_change = true;
+        int counts = 2;
 
-        //while(any_change)
+        for(int i=0; i < counts; i++)
         {
-            any_change = false;
+            bool any_change = false;
 
             for(int i=(int)local_emit.size() - 1; i >= 0; i--)
             {
-                any_change = any_change || try_move_later(i);
+                try_move_later(i, any_change);
             }
         }
-
 
         for(const auto& v : local_emit)
         {
