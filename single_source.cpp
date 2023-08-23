@@ -225,6 +225,11 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             return valid;
         };*/
 
+        auto was_emitted = [&](const value& in)
+        {
+            return emitted.find(&in) != emitted.end();
+        };
+
         auto all_args_emitted = [&](const value& in)
         {
             if(dont_peek(in))
@@ -611,7 +616,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         };
 
         ///the most deeply bracketed thing would be evaluated first. Todo, do this
-        /*for(auto& v : block)
+        #if 0
+        for(auto& v : block)
         {
             auto recurse = [&]<typename T>(const value& in, T&& func)
             {
@@ -630,8 +636,71 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             };
 
             v.recurse_lambda(recurse);
-        }*/
+        }
+        #endif
 
+        bool any_emitted = true;
+
+        while(any_emitted)
+        {
+            any_emitted = false;
+
+            for(auto& v : block)
+            {
+                auto recurse = [&]<typename T>(const value& in, T&& func)
+                {
+                    if(in.type == dual_types::ops::VALUE)
+                        return;
+
+                    if(was_emitted(in))
+                        return;
+
+                    if(!dont_peek(in))
+                    {
+                        in.for_each_real_arg([&](const value& arg)
+                        {
+                            arg.recurse_lambda(func);
+                        });
+                    }
+
+                    if(all_args_emitted(in) && has_satisfied_variable_deps(in))
+                    {
+                        emit(in);
+                        any_emitted = true;
+                    }
+                };
+
+                v.recurse_lambda(recurse);
+
+                auto recursem = [&]<typename T>(const value& in, T&& func)
+                {
+                    if(any_emitted)
+                        return;
+
+                    if(!any_emitted && in.is_memory_access)
+                    {
+                        if(!was_emitted(in))
+                        {
+                            emit(in);
+                            any_emitted = true;
+                            return;
+                        }
+                    }
+
+                    in.for_each_real_arg([&](const value& arg)
+                    {
+                        arg.recurse_lambda(func);
+                    });
+                };
+
+                if(!any_emitted)
+                    v.recurse_lambda(recursem);
+            }
+        }
+
+
+        //#define BOTTOMS_UP
+        #ifdef BOTTOMS_UP
         std::vector<std::pair<const value*, int>> unevaluated_depth;
         std::vector<std::pair<const value*, int>> unevaluated_memory_depth;
 
@@ -772,9 +841,10 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 assert(false);
             }
         }
+        #endif
 
         #if 0
-        std::map<const value*, std::vector<std::string>> memory_dependency_map;
+        std::vector<std::pair<const value*, std::vector<std::string>>> memory_dependency_map;
 
         std::vector<const value*> memory_accesses;
 
@@ -800,7 +870,9 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 if(in.type == dual_types::ops::VALUE)
                     return;
 
-                memory_dependency_map[&in] = get_memory_dependencies(in);
+                //memory_dependency_map[&in] = get_memory_dependencies(in);
+
+                memory_dependency_map.push_back({&in, get_memory_dependencies(in)});
 
                 if(dont_peek(in))
                     return;
@@ -826,6 +898,19 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 }
             }
         }
+
+        /*for(int i=0; i < (int)memory_dependency_map.size(); i++)
+        {
+            for(int j=i+1; j < (int)memory_dependency_map.size(); j++)
+            {
+                if(dual_types::equivalent(*memory_dependency_map[i].first, *memory_dependency_map[j].first))
+                {
+                    memory_dependency_map.erase(memory_dependency_map.begin() + j);
+                    j--;
+                    continue;
+                }
+            }
+        }*/
 
         auto prefetch = [&](const value& in)
         {
@@ -961,8 +1046,18 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             for(auto& i : emitted)
             {
-                if(auto it = memory_dependency_map.find(i); it != memory_dependency_map.end())
-                    memory_dependency_map.erase(it);
+                for(int kk=0; kk < (int)memory_dependency_map.size(); kk++)
+                {
+                    if(memory_dependency_map[kk].first == i)
+                    {
+                        memory_dependency_map.erase(memory_dependency_map.begin() + kk);
+                        kk--;
+                        continue;
+                    }
+                }
+
+                //if(auto it = memory_dependency_map.find(i); it != memory_dependency_map.end())
+                //    memory_dependency_map.erase(it);
             }
         }
         #endif
