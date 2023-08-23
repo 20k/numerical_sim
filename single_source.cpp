@@ -744,39 +744,15 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             base.recurse_lambda(checker);
 
-            /*if(is_dependent_on.type == dual_types::ops::DECLARE)
-            {
-                is_dependent = is_dependent || depends_on(base, is_dependent_on.args.at(1));
-            }*/
-
             return is_dependent;
         };
 
-        /*{
-            value v1 = "testo";
-
-            value v2 = "hithere";
-
-            value v3 = v1 * v2;
-
-            assert(depends_on(v3, v1));
-
-            auto v4 = make_op<float>(dual_types::ops::DECLARE, "float", "potato", v3).as_generic();
-
-            assert(depends_on(v4, v3.as_generic()));
-        }*/
-
         auto try_move_later = [&](int index, bool& any_change)
         {
-            //printf("Try move %i\n", index);
-
             assert(index >= 0 && index < (int)local_emit.size());
 
             for(int j=index+1; j < (int)local_emit.size(); j++)
             {
-                //if(kernel_name == "dissipate_single_unidir")
-                //    std::cout << type_to_string(local_emit[index]) << " " << type_to_string(local_emit[j]) << " Dep on " << depends_on(local_emit[j], local_emit[index]) << std::endl;
-
                 if(!depends_on(local_emit[j], local_emit[index]))
                     continue;
 
@@ -785,8 +761,6 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     auto me = local_emit[index];
 
                     local_emit.insert(local_emit.begin() + j, me);
-
-                    //printf("Moved\n");
 
                     local_emit.erase(local_emit.begin() + index);
 
