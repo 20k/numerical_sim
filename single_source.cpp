@@ -625,7 +625,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         };
 
         ///the most deeply bracketed thing would be evaluated first. Todo, do this
-        #if 0
+        #if 1
         for(auto& v : block)
         {
             auto recurse = [&]<typename T>(const value& in, T&& func)
@@ -648,6 +648,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         }
         #endif
 
+        #if 0
         bool any_emitted = true;
 
         while(any_emitted)
@@ -706,6 +707,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     v.recurse_lambda(recursem);
             }
         }
+        #endif
 
         auto depends_on = [&]<typename T>(const T& base, const T& is_dependent_on)
         {
@@ -747,6 +749,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             return is_dependent;
         };
 
+        #if 0
         auto try_move_later = [&](int index, bool& any_change)
         {
             assert(index >= 0 && index < (int)local_emit.size());
@@ -783,6 +786,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 try_move_later(i, any_change);
             }
         }
+        #endif
 
         for(const auto& v : local_emit)
         {
