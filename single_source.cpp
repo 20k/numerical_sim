@@ -707,6 +707,119 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             }
         }
 
+        auto depends_on = [&]<typename T>(const T& base, const T& is_dependent_on)
+        {
+            bool is_dependent = false;
+
+            auto checker = [&]<typename U>(const T& in, U&& func)
+            {
+                if(is_dependent)
+                    return;
+
+                if(equivalent(is_dependent_on, in))
+                {
+                    is_dependent = true;
+                    return;
+                }
+
+                if(is_dependent_on.type == dual_types::ops::DECLARE)
+                {
+                    if(equivalent(is_dependent_on.args.at(1), in))
+                    {
+                        is_dependent = true;
+                        return;
+                    }
+                }
+
+                if(in.type == dual_types::ops::DECLARE)
+                {
+                    in.args.at(1).recurse_lambda(func);
+                }
+
+                in.for_each_real_arg([&](const T& arg)
+                {
+                    arg.recurse_lambda(func);
+                });
+            };
+
+            base.recurse_lambda(checker);
+
+            /*if(is_dependent_on.type == dual_types::ops::DECLARE)
+            {
+                is_dependent = is_dependent || depends_on(base, is_dependent_on.args.at(1));
+            }*/
+
+            return is_dependent;
+        };
+
+        /*{
+            value v1 = "testo";
+
+            value v2 = "hithere";
+
+            value v3 = v1 * v2;
+
+            assert(depends_on(v3, v1));
+
+            auto v4 = make_op<float>(dual_types::ops::DECLARE, "float", "potato", v3).as_generic();
+
+            assert(depends_on(v4, v3.as_generic()));
+        }*/
+
+        {
+            ///const int genid6=(dim.x); const int genid10=(iy*genid6); Dep on 0
+
+            //value v = dual_types::make_op<float>(dual_types::ops::DECLARE, )
+        }
+
+        auto try_move_later = [&](int index)
+        {
+            //printf("Try move %i\n", index);
+
+            assert(index >= 0 && index < (int)local_emit.size());
+
+            for(int j=index+1; j < (int)local_emit.size(); j++)
+            {
+                if(kernel_name == "dissipate_single_unidir")
+                    std::cout << type_to_string(local_emit[index]) << " " << type_to_string(local_emit[j]) << " Dep on " << depends_on(local_emit[j], local_emit[index]) << std::endl;
+
+                if(!depends_on(local_emit[j], local_emit[index]))
+                    continue;
+
+                if(j != index + 1)
+                {
+                    auto me = local_emit[index];
+
+                    local_emit.insert(local_emit.begin() + j, me);
+
+                    //printf("Moved\n");
+
+                    local_emit.erase(local_emit.begin() + index);
+
+                    return true;
+                }
+
+                return false;
+            }
+
+            return false;
+
+            //printf("Never dep on?\n");
+        };
+
+        bool any_change = true;
+
+        //while(any_change)
+        {
+            any_change = false;
+
+            for(int i=(int)local_emit.size() - 1; i >= 0; i--)
+            {
+                any_change = any_change || try_move_later(i);
+            }
+        }
+
+
         for(const auto& v : local_emit)
         {
             insert_value(v);
