@@ -538,6 +538,15 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         }
         #endif
 
+        std::vector<value_base<std::monostate>> local_emit;
+
+        auto insert_local = [&]<typename T>(const T& in)
+        {
+            local_emit.push_back(in.as_generic());
+
+            if(in.type == dual_types::ops::DECLARE)
+                emitted_variable_names.insert(type_to_string(in.args.at(1)));
+        };
 
         ///so the big problem currently is actually *using* the results we've generated in the expressions
         ///because while I can check the top level arg, the only recourse I'd have is to do a full resub which... isn't fast
@@ -574,7 +583,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             if(!can_be_assigned_to_variable(v))
             {
-                insert_value(could_emit);
+                insert_local(could_emit);
 
                 if(v.type == dual_types::ops::DECLARE)
                 {
@@ -596,7 +605,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
                     auto [declare_op, val] = declare_raw(could_emit, name, could_emit.is_mutable);
 
-                    insert_value(declare_op);
+                    insert_local(declare_op);
 
                     emitted_cache.push_back({v, name});
                     emitted_cache.push_back({could_emit, name});
@@ -698,6 +707,10 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             }
         }
 
+        for(const auto& v : local_emit)
+        {
+            insert_value(v);
+        }
 
         //#define BOTTOMS_UP
         #ifdef BOTTOMS_UP
