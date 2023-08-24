@@ -594,7 +594,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     ///args.at(1) == pv0
 
                     //emitted_cache.push_back({type_to_string(could_emit.args.at(1)), type_to_string(could_emit.args.at(2))});
-                    //emitted_cache.push_back({v.args.at(2), type_to_string(v.args.at(1))});
+                    emitted_cache.push_back({v.args.at(2), type_to_string(v.args.at(1))});
                 }
             }
             else
@@ -843,6 +843,20 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             base.recurse_lambda(checker);
 
             return is_dependent;
+        };
+
+        auto is_dep_free = [&](int index)
+        {
+            if(local_emit[index].type != dual_types::ops::DECLARE)
+                return false;
+
+            for(int j=index+1; j < (int)local_emit.size(); j++)
+            {
+                if(depends_on(local_emit[j], local_emit[index]))
+                    return false;
+            }
+
+            return true;
         };
 
         #if 1
@@ -1705,6 +1719,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             std::vector<value_v> additions;
             std::vector<value_v> multiplications;
+            std::vector<value_v> omultiplications;
 
             for(int i=0; i < (int)decl.args.size(); i++)
             {
@@ -1717,7 +1732,10 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 }
 
                 if(which_opt.value().type == MULTIPLY)
+                {
                     multiplications.push_back(which_opt.value());
+                    omultiplications.push_back(decl.args[i]);
+                }
                 else
                     additions.push_back(decl.args[i]);
 
@@ -1761,6 +1779,34 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             decl = result.value();
         }
 
+        if(block_id == blocks.size())
+        for(int i=(int)local_emit.size() - 1; i >= 0; i--)
+        {
+            if(is_dep_free(i))
+            {
+                local_emit.erase(local_emit.begin() + i);
+                //i++;
+                continue;
+            }
+        }
+
+        std::vector<value> new_local_emit;
+
+        for(const value_v& v : local_emit)
+        {
+            new_local_emit.push_back(v.reinterpret_as<value>());
+        }
+
+        local_emit.clear();
+        emitted.clear();
+        emitted_cache.clear();
+        emitted_memory_requests.clear();
+        linear_emitted.clear();
+
+        for(auto& i : new_local_emit)
+        {
+            emit(i);
+        }
 
         for(const auto& v : local_emit)
         {
