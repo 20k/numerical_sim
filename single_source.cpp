@@ -602,13 +602,13 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     ///args.at(2) == genid12321
                     ///args.at(1) == pv0
 
-                    if(could_emit.args.at(2).is_value())
+                    /*if(could_emit.args.at(2).is_value())
                     {
                         emitted_cache.push_back({could_emit.args.at(1), type_to_string(could_emit.args.at(2))});
 
                         //std::cout << "mapping " << type_to_string(could_emit.args.at(1)) << " to " << type_to_string(could_emit.args.at(2)) << std::endl;
                     }
-                    else
+                    else*/
                     {
 
                         emitted_cache.push_back({v.args.at(2), type_to_string(v.args.at(1))});
@@ -1656,7 +1656,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             return last_valid_it->second;
         };
 
-        #if 1
+        #if 0
         ///?????????
         for(int i=(int)local_emit.size() - 1; i >= 0; i--)
         {
@@ -1678,14 +1678,17 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 if(decl.type != MULTIPLY)
                     return;
 
+                if(decl.original_type != "float")
+                    return;
+
                 auto left_opt = get_arg(decl, 0, get_arg);
                 auto right_opt = get_arg(decl, 1, get_arg);
 
                 auto propagate_constants = [&](value_v& in, value_v& multiply_arg, int which_arg)
                 {
-                    value_v c = in.args[1-which_arg];
-                    value_v a = multiply_arg.args[0];
-                    value_v b = multiply_arg.args[1];
+                    value c = in.args[1-which_arg].reinterpret_as<value>();
+                    value a = multiply_arg.args[0].reinterpret_as<value>();
+                    value b = multiply_arg.args[1].reinterpret_as<value>();
 
                     if(kernel_name == "evolve_1")
                     std::cout << "M1 " << type_to_string(c) << " " << type_to_string(a) << " " << type_to_string(b) << std::endl;
@@ -1694,7 +1697,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     {
                         printf("Reassoc1\n");
 
-                        in = (a * c) * b;
+                        in = ((a * c) * b).as_generic();
                         return true;
                     }
 
@@ -1702,7 +1705,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     {
                         printf("Reassoc2\n");
 
-                        in = (c * b) * a;
+                        in = ((c * b) * a).as_generic();
                         return true;
                     }
 
@@ -1916,9 +1919,12 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
                 const value_v& mult = multiplications[i];
 
-                //result = (mult.args[0] * mult.args[1]) + result.value();
+                result = (mult.args[0] * mult.args[1]) + result.value();
 
-                result = fma(mult.args[0], mult.args[1], result.value());
+                /*if(mult.args[1].is_constant())
+                    result = fma(mult.args[0], mult.args[1], result.value());
+                else
+                    result = fma(mult.args[1], mult.args[0], result.value());*/
             }
 
             assert(result.has_value());
@@ -1927,15 +1933,19 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         }
         #endif
 
-        /*if(block_id == blocks.size())
+        if(block_id == blocks.size())
         for(int i=(int)local_emit.size() - 1; i >= 0; i--)
         {
             if(is_dep_free(local_emit, i))
             {
+                //printf("Hello\n");
+
+                assert(i >= 0 && i < (int)local_emit.size());
+
                 local_emit.erase(local_emit.begin() + i);
-                continue;
+                //continue;
             }
-        }*/
+        }
 
         //if(block_id == blocks.size())
         //move_later(local_emit);
