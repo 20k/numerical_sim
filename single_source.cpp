@@ -1684,6 +1684,133 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             }
         }
 
+
+        for(int i=(int)local_emit.size() - 1; i >= 0; i--)
+        {
+            ///const float my_val = a;
+            value_v& me = local_emit[i];
+
+            using namespace dual_types::ops;
+
+            if(me.type != DECLARE)
+                continue;
+
+            value_v& decl = me.args.at(2);
+
+            if(decl.type != COMBO_PLUS)
+                continue;
+
+            if(decl.original_type != "float" && decl.original_type != "half")
+                continue;
+
+            ///const float my_val = a + b
+
+            /*auto left_opt = get_arg(decl, 0, get_arg);
+            auto right_opt = get_arg(decl, 1, get_arg);
+
+            auto get_check_fma = [](value_v& in, value_v& multiply_arg, int which_arg, bool is_minus)
+            {
+                assert(multiply_arg.type == MULTIPLY);
+
+                int root_arg = 1-which_arg;
+
+                value_v c = in.args[root_arg];
+                value_v a = multiply_arg.args[0];
+                value_v b = multiply_arg.args[1];
+
+                ///a - (b*c)
+                if(is_minus)
+                {
+                    if(root_arg == 0)
+                        in = -fma(a, b, -c);
+                    else
+                        in = fma(a, b, -c);
+                }
+                else
+                    in = fma(a, b, c);
+
+                return true;
+            };
+
+            bool is_minus = decl.type == MINUS;
+
+            ///if a == (c * d)
+            if(left_opt.has_value() && left_opt.value().type == MULTIPLY)
+            {
+                value_v v = left_opt.value();
+
+                if(get_check_fma(decl, v, 0, is_minus))
+                    continue;
+            }
+
+            ///if a == (c * d)
+            if(right_opt.has_value() && right_opt.value().type == MULTIPLY)
+            {
+                value_v v = right_opt.value();
+
+                if(get_check_fma(decl, v, 1, is_minus))
+                    continue;
+            }*/
+
+            std::vector<value_v> additions;
+            std::vector<value_v> multiplications;
+
+            for(int i=0; i < (int)decl.args.size(); i++)
+            {
+                std::optional<value_v> which_opt = get_arg(decl, i, get_arg);
+
+                if(!which_opt.has_value())
+                {
+                    additions.push_back(decl.args[i]);
+                    continue;
+                }
+
+                if(which_opt.value().type == MULTIPLY)
+                    multiplications.push_back(which_opt.value());
+                else
+                    additions.push_back(decl.args[i]);
+
+                ///a + b + ... + (v1 * v2) + ... * f
+
+                ///-> fma(v1, v2, a + b + ... + f)
+            }
+
+            if(multiplications.size() == 0)
+                continue;
+
+            std::optional<value_v> add;
+
+            for(auto& v : additions)
+            {
+                if(!add)
+                    add = v;
+                else
+                    add.value() += v;
+            }
+
+            std::optional<value_v> result = add;
+
+            for(int i=0; i < multiplications.size(); i++)
+            {
+                if(!result.has_value())
+                {
+                    result = multiplications[i];
+                    continue;
+                }
+
+                const value_v& mult = multiplications[i];
+
+                result = (mult.args[0] * mult.args[1]) + result.value();
+
+                //result = fma(mult.args[0], mult.args[1], result.value());
+            }
+
+            assert(result.has_value());
+
+            decl = result.value();
+        }
+
+
         for(const auto& v : local_emit)
         {
             insert_value(v);
