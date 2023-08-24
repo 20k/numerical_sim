@@ -788,6 +788,159 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         }
         #endif
 
+        std::map<std::string, value_v> decl_to_value;
+
+        for(auto& i : local_emit)
+        {
+            if(i.type == dual_types::ops::DECLARE)
+            {
+                decl_to_value[type_to_string(i.args.at(1))] = i.args.at(2);
+            }
+        }
+
+        std::map<std::string, int> depends_on_me_count;
+
+        for(int i=0; i < (int)local_emit.size(); i++)
+        {
+            for(int j=i+1; j < (int)local_emit.size(); j++)
+            {
+                if(depends_on(local_emit[j], local_emit[i]))
+                {
+                    if(local_emit[i].type == dual_types::ops::DECLARE)
+                    {
+                        depends_on_me_count[type_to_string(local_emit[i].args.at(1))]++;
+                    }
+                }
+            }
+        }
+
+        /*for(auto& i : depends_on_me_count)
+        {
+            if(i.second == 1)
+            {
+                if(kernel_name == "evolve_1")
+                std::cout << "1dep\n";
+            }
+        }*/
+
+        for(int i=(int)local_emit.size() - 1; i >= 0; i--)
+        {
+            ///const float my_val = a;
+            value_v& me = local_emit[i];
+
+            using namespace dual_types::ops;
+
+            if(me.type != DECLARE)
+                continue;
+
+            value_v& decl = me.args.at(2);
+
+            if(decl.type != PLUS)
+                continue;
+
+            if(decl.original_type != "float" && decl.original_type != "half")
+                continue;
+
+            ///const float my_val = a + b
+
+            auto get_arg = [&](const value_v& in, int which) -> std::optional<value_v>
+            {
+                const value_v& arg = in.args.at(which);
+
+                if(!arg.is_value())
+                    return std::nullopt;
+
+                if(arg.is_constant())
+                    return std::nullopt;
+
+                auto it = decl_to_value.find(type_to_string(arg));
+
+                if(it == decl_to_value.end())
+                    return std::nullopt;
+
+                return it->second;
+            };
+
+            auto left_opt = get_arg(decl, 0);
+            auto right_opt = get_arg(decl, 1);
+
+            auto get_check_fma = [](value_v& in, value_v& multiply_arg, int which_arg)
+            {
+                assert(in.type == PLUS);
+                assert(multiply_arg.type == MULTIPLY);
+
+                int root_arg = 1-which_arg;
+
+                value_v c = in.args[root_arg];
+                value_v a = multiply_arg.args[0];
+                value_v b = multiply_arg.args[1];
+
+                in = fma(a, b, c);
+
+                return true;
+            };
+
+            ///if a == (c * d)
+            if(left_opt.has_value() && left_opt.value().type == MULTIPLY)
+            {
+                value_v v = left_opt.value();
+
+                if(get_check_fma(decl, v, 0))
+                    continue;
+            }
+
+            ///if a == (c * d)
+            if(right_opt.has_value() && right_opt.value().type == MULTIPLY)
+            {
+                value_v v = right_opt.value();
+
+                if(get_check_fma(decl, v, 1))
+                    continue;
+            }
+
+            #if 0
+            if(!(decl.args[0].type == MULTIPLY || me.args[1].type == MULTIPLY))
+                continue;
+
+            printf("Hi\n");
+
+            /*for(int j=i - 1; j >= 0; j--)
+            {
+                const value_v& them = local_emit[j];
+            }*/
+
+
+            if(decl.args[0].type == MULTIPLY)
+            {
+                value_v c = decl.args[1];
+                /*value_v a = decl.args[0].args[0];
+                value_v b = decl.args[0].args[1];*/
+
+                std::optional<value_v> a = get_arg(decl.args[0], 0);
+                std::optional<value_v> b = get_arg(decl.args[0], 1);
+
+                if(a && b)
+                {
+                    decl = fma(a.value(), b.value(), c);
+                }
+            }
+            else if(decl.args[1].type == MULTIPLY)
+            {
+                value_v c = decl.args[0];
+                //value_v a = decl.args[1].args[0];
+                //value_v b = decl.args[1].args[1];
+
+                std::optional<value_v> a = get_arg(decl.args[1], 0);
+                std::optional<value_v> b = get_arg(decl.args[1], 1);
+
+                if(a && b)
+                {
+                    decl = fma(a.value(), b.value(), c);
+                }
+            }
+            #endif
+        }
+
         for(const auto& v : local_emit)
         {
             insert_value(v);
