@@ -550,7 +550,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
         ///so the big problem currently is actually *using* the results we've generated in the expressions
         ///because while I can check the top level arg, the only recourse I'd have is to do a full resub which... isn't fast
-        auto emit = [&](const value& v)
+        auto emit = [&](value v)
         {
             ///so. All our arguments are constants
             ///this means we want to ideally place ourself into a constant, then emit that new declaration
@@ -583,6 +583,15 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             if(!can_be_assigned_to_variable(v))
             {
+                /*if(kernel_name == "evolve_1")
+                {
+                    std::cout << "hi " << type_to_string(could_emit) << std::endl;
+                    std::cout << "? " << (v.type == dual_types::ops::DECLARE) << std::endl;
+
+                    if(v.type == dual_types::ops::DECLARE)
+                    std::cout << "Type2 " << v.args.at(2).type << " is " << type_to_string(v.args.at(2)) << " cst? " << v.args.at(2).is_constant() << std::endl;
+                }*/
+
                 insert_local(could_emit);
 
                 if(v.type == dual_types::ops::DECLARE)
@@ -593,11 +602,11 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     ///args.at(2) == genid12321
                     ///args.at(1) == pv0
 
-                    if(v.args.at(2).is_value())
+                    if(could_emit.args.at(2).is_value())
                     {
                         emitted_cache.push_back({could_emit.args.at(1), type_to_string(could_emit.args.at(2))});
 
-                        std::cout << "mapping " << type_to_string(could_emit.args.at(1)) << " to " << type_to_string(could_emit.args.at(2)) << std::endl;
+                        //std::cout << "mapping " << type_to_string(could_emit.args.at(1)) << " to " << type_to_string(could_emit.args.at(2)) << std::endl;
                     }
                     else
                     {
@@ -870,7 +879,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             return true;
         };
 
-        #if 1
+        #if 0
         auto try_move_later = [depends_on](std::vector<value_v>& in, int index)
         {
             assert(index >= 0 && index < (int)in.size());
@@ -1647,7 +1656,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             return last_valid_it->second;
         };
 
-        #if 0
+        #if 1
         ///?????????
         for(int i=(int)local_emit.size() - 1; i >= 0; i--)
         {
@@ -1766,6 +1775,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         }
         #endif
 
+        #if 1
         for(int i=(int)local_emit.size() - 1; i >= 0; i--)
         {
             ///const float my_val = a;
@@ -1833,8 +1843,9 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     continue;
             }
         }
+        #endif
 
-
+        #if 1
         for(int i=(int)local_emit.size() - 1; i >= 0; i--)
         {
             ///const float my_val = a;
@@ -1914,17 +1925,17 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             decl = result.value();
         }
+        #endif
 
-        if(block_id == blocks.size())
+        /*if(block_id == blocks.size())
         for(int i=(int)local_emit.size() - 1; i >= 0; i--)
         {
             if(is_dep_free(local_emit, i))
             {
                 local_emit.erase(local_emit.begin() + i);
-                //i++;
                 continue;
             }
-        }
+        }*/
 
         //if(block_id == blocks.size())
         //move_later(local_emit);
