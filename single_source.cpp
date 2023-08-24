@@ -649,6 +649,102 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         #endif
 
         #if 0
+        std::map<int, int> easiest_block;
+
+        for(int i=0; i < (int)block.size(); i++)
+        {
+            if(block[i].type != dual_types::ops::ASSIGN)
+            {
+                easiest_block[i] += 999999;
+            }
+
+            auto count_ops = [&](const value& in)
+            {
+                easiest_block[i]++;
+            };
+
+            block[i].recurse_arguments(count_ops);
+        }
+
+        std::vector<std::pair<int, int>> easiest_block_vec;
+
+        for(auto& i : easiest_block)
+        {
+            easiest_block_vec.push_back(i);
+        }
+
+        std::sort(easiest_block_vec.begin(), easiest_block_vec.end(), [](const auto& i1,const auto& i2){return i1.second < i2.second;});
+
+        bool any_emitted = true;
+
+        while(any_emitted)
+        {
+            any_emitted = false;
+
+            //for(auto& v : block)
+
+            for(auto& [which_block, _] : easiest_block_vec)
+            {
+                auto& v = block[which_block];
+
+                auto recurse = [&]<typename T>(const value& in, T&& func)
+                {
+                    if(in.type == dual_types::ops::VALUE)
+                        return;
+
+                    if(was_emitted(in))
+                        return;
+
+                    if(!dont_peek(in))
+                    {
+                        in.for_each_real_arg([&](const value& arg)
+                        {
+                            arg.recurse_lambda(func);
+                        });
+                    }
+
+                    if(all_args_emitted(in) && has_satisfied_variable_deps(in))
+                    {
+                        emit(in);
+                        any_emitted = true;
+                    }
+                };
+
+                v.recurse_lambda(recurse);
+            }
+
+            for(auto& [which_block, _] : easiest_block_vec)
+            {
+                auto& v = block[which_block];
+
+                auto recursem = [&]<typename T>(const value& in, T&& func)
+                {
+                    if(any_emitted)
+                        return;
+
+                    if(!any_emitted && in.is_memory_access)
+                    {
+                        if(!was_emitted(in))
+                        {
+                            emit(in);
+                            any_emitted = true;
+                            return;
+                        }
+                    }
+
+                    in.for_each_real_arg([&](const value& arg)
+                    {
+                        arg.recurse_lambda(func);
+                    });
+                };
+
+                if(!any_emitted)
+                    v.recurse_lambda(recursem);
+            }
+        }
+        #endif
+
+        #if 0
         bool any_emitted = true;
 
         while(any_emitted)
@@ -749,7 +845,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             return is_dependent;
         };
 
-        #if 0
+        #if 1
         auto try_move_later = [&](int index, bool& any_change)
         {
             assert(index >= 0 && index < (int)local_emit.size());
