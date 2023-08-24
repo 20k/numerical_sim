@@ -574,7 +574,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                         any_sub = true;
 
                         arg = name;
-                        return;
+                        //return;
                     }
                 }
             });
@@ -593,8 +593,19 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     ///args.at(2) == genid12321
                     ///args.at(1) == pv0
 
+                    if(v.args.at(2).is_value())
+                    {
+                        emitted_cache.push_back({could_emit.args.at(1), type_to_string(could_emit.args.at(2))});
+
+                        std::cout << "mapping " << type_to_string(could_emit.args.at(1)) << " to " << type_to_string(could_emit.args.at(2)) << std::endl;
+                    }
+                    else
+                    {
+
+                        emitted_cache.push_back({v.args.at(2), type_to_string(v.args.at(1))});
+                    }
+
                     //emitted_cache.push_back({type_to_string(could_emit.args.at(1)), type_to_string(could_emit.args.at(2))});
-                    emitted_cache.push_back({v.args.at(2), type_to_string(v.args.at(1))});
                 }
             }
             else
@@ -805,7 +816,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         }
         #endif
 
-        auto depends_on = [&]<typename T>(const T& base, const T& is_dependent_on)
+        auto depends_on = []<typename T>(const T& base, const T& is_dependent_on)
         {
             bool is_dependent = false;
 
@@ -845,14 +856,14 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             return is_dependent;
         };
 
-        auto is_dep_free = [&](int index)
+        auto is_dep_free = [depends_on](std::vector<value_v>& in, int index)
         {
-            if(local_emit[index].type != dual_types::ops::DECLARE)
+            if(in.at(index).type != dual_types::ops::DECLARE)
                 return false;
 
-            for(int j=index+1; j < (int)local_emit.size(); j++)
+            for(int j=index+1; j < (int)in.size(); j++)
             {
-                if(depends_on(local_emit[j], local_emit[index]))
+                if(depends_on(in.at(j), in.at(index)))
                     return false;
             }
 
@@ -860,24 +871,26 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         };
 
         #if 1
-        auto try_move_later = [&](int index, bool& any_change)
+        auto try_move_later = [depends_on](std::vector<value_v>& in, int index)
         {
-            assert(index >= 0 && index < (int)local_emit.size());
+            assert(index >= 0 && index < (int)in.size());
 
-            for(int j=index+1; j < (int)local_emit.size(); j++)
+            for(int j=index+1; j < (int)in.size(); j++)
             {
-                if(!depends_on(local_emit[j], local_emit[index]))
+                if(!depends_on(in.at(j), in.at(index)))
                     continue;
 
                 if(j != index + 1)
                 {
-                    auto me = local_emit[index];
+                    auto me = in[index];
 
-                    local_emit.insert(local_emit.begin() + j, me);
+                    assert(j >= 0 && j < in.size());
 
-                    local_emit.erase(local_emit.begin() + index);
+                    in.insert(in.begin() + j, me);
 
-                    any_change = true;
+                    assert(index >= 0 && index < in.size());
+
+                    in.erase(in.begin() + index);
                     return;
                 }
 
@@ -885,19 +898,16 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             }
         };
 
-        int counts = 2;
-
-        for(int i=0; i < counts; i++)
+        auto move_later = [try_move_later](std::vector<value_v>& in)
         {
-            bool any_change = false;
-
-            for(int i=(int)local_emit.size() - 1; i >= 0; i--)
+            for(int i=(int)in.size() - 1; i >= 0; i--)
             {
-                try_move_later(i, any_change);
+                try_move_later(in, i);
             }
-        }
-        #endif
+        };
 
+        move_later(local_emit);
+        #endif
 
         //#define BOTTOMS_UP
         #ifdef BOTTOMS_UP
@@ -1613,9 +1623,6 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             value_v arg = in.args.at(which);
 
-            if(arg.type == DECLARE)
-                return func(arg, 2, func);
-
             if(!arg.is_value())
                 return std::nullopt;
 
@@ -1627,8 +1634,137 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             if(it == decl_to_value.end())
                 return std::nullopt;
 
-            return it->second;
+            auto last_valid_it = it;
+
+            while(it != decl_to_value.end())
+            {
+                it = decl_to_value.find(type_to_string(it->second));
+
+                if(it != decl_to_value.end())
+                    last_valid_it = it;
+            }
+
+            return last_valid_it->second;
         };
+
+        #if 0
+        ///?????????
+        for(int i=(int)local_emit.size() - 1; i >= 0; i--)
+        {
+            ///const float my_val = a;
+            value_v& me = local_emit[i];
+
+            using namespace dual_types::ops;
+
+            //if(me.type != DECLARE)
+            //    continue;
+
+            //value_v& test = me.args.at(2);
+
+            //if(test.type != MULTIPLY)
+            //    continue;
+
+            me.recurse_arguments([&](value_v& decl)
+            {
+                if(decl.type != MULTIPLY)
+                    return;
+
+                auto left_opt = get_arg(decl, 0, get_arg);
+                auto right_opt = get_arg(decl, 1, get_arg);
+
+                auto propagate_constants = [&](value_v& in, value_v& multiply_arg, int which_arg)
+                {
+                    value_v c = in.args[1-which_arg];
+                    value_v a = multiply_arg.args[0];
+                    value_v b = multiply_arg.args[1];
+
+                    if(kernel_name == "evolve_1")
+                    std::cout << "M1 " << type_to_string(c) << " " << type_to_string(a) << " " << type_to_string(b) << std::endl;
+
+                    if(c.is_constant() && a.is_constant())
+                    {
+                        printf("Reassoc1\n");
+
+                        in = (a * c) * b;
+                        return true;
+                    }
+
+                    if(c.is_constant() && b.is_constant())
+                    {
+                        printf("Reassoc2\n");
+
+                        in = (c * b) * a;
+                        return true;
+                    }
+
+                    return false;
+                };
+
+                bool left_is_multiply = left_opt && left_opt.value().type == MULTIPLY;
+
+                if(left_is_multiply)
+                {
+                    if(propagate_constants(decl, left_opt.value(), 0))
+                        return;
+                }
+
+                bool right_is_multiply = right_opt && right_opt.value().type == MULTIPLY;
+
+                if(right_is_multiply)
+                {
+                    if(propagate_constants(decl, right_opt.value(), 1))
+                        return;
+                }
+
+                if(left_is_multiply && right_is_multiply)
+                {
+                    value_v left = left_opt.value();
+                    value_v right = right_opt.value();
+
+                    value_v a = left.args[0];
+                    value_v b = left.args[1];
+                    value_v c = right.args[0];
+                    value_v d = right.args[1];
+
+                    std::optional<value_v> cst_sum;
+                    std::optional<value_v> dyn_sum;
+
+                    auto punt_cst = [&](value_v in)
+                    {
+                        if(cst_sum)
+                            cst_sum.value() = cst_sum.value() * in;
+                        else
+                            cst_sum = in;
+                    };
+                    auto punt_dyn = [&](value_v in)
+                    {
+                        if(dyn_sum)
+                            dyn_sum.value() = dyn_sum.value() * in;
+                        else
+                            dyn_sum = in;
+                    };
+
+                    auto punt = [&](value_v in)
+                    {
+                        if(in.is_constant())
+                            punt_cst(in);
+                        else
+                            punt_dyn(in);
+                    };
+
+                    punt(a);
+                    punt(b);
+                    punt(c);
+                    punt(d);
+
+                    if(cst_sum && dyn_sum)
+                    {
+                        decl = cst_sum.value() * dyn_sum.value();
+                    }
+                }
+            });
+        }
+        #endif
 
         for(int i=(int)local_emit.size() - 1; i >= 0; i--)
         {
@@ -1782,13 +1918,16 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         if(block_id == blocks.size())
         for(int i=(int)local_emit.size() - 1; i >= 0; i--)
         {
-            if(is_dep_free(i))
+            if(is_dep_free(local_emit, i))
             {
                 local_emit.erase(local_emit.begin() + i);
                 //i++;
                 continue;
             }
         }
+
+        //if(block_id == blocks.size())
+        //move_later(local_emit);
 
         std::vector<value> new_local_emit;
 
