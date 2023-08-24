@@ -1497,6 +1497,30 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             }
         }
 
+        auto get_arg = [&]<typename T>(const value_v& in, int which, T&& func) -> std::optional<value_v>
+        {
+            using namespace dual_types::ops;
+
+            value_v arg = in.args.at(which);
+
+            if(arg.type == DECLARE)
+                return func(arg, 2, func);
+
+            if(!arg.is_value())
+                return std::nullopt;
+
+            if(arg.is_constant())
+                return std::nullopt;
+
+            auto it = decl_to_value.find(type_to_string(arg));
+
+            if(it == decl_to_value.end())
+                return std::nullopt;
+
+            return it->second;
+        };
+
+        #if 0
         for(int i=(int)local_emit.size() - 1; i >= 0; i--)
         {
             ///const float my_val = a;
@@ -1509,16 +1533,116 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             value_v& decl = me.args.at(2);
 
-            ///a + (b * c) or (a*b) + c
-            ///would also like to support a - (b * c)
-            ///and (a*b) - c
+            if(decl.type != MULTIPLY)
+                continue;
 
-            ///a - (b*c) -> -fma(b, c, -a)
-            ///a*b - c = fma(a, b, -c)
+            ///const float my_val = a + b
 
-            ///a * (b + c) is bad
-            ///but (a + b) * c == c * a + b * a?
-            ///which actually, is fma(c, a, b*a), ie a multiply accumulate
+            auto left_opt = get_arg(decl, 0, get_arg);
+            auto right_opt = get_arg(decl, 1, get_arg);
+
+            auto propagate_constants = [](value_v& in, value_v& multiply_arg, int which_arg)
+            {
+                value_v c = in.args[1-which_arg];
+                value_v a = multiply_arg.args[0];
+                value_v b = multiply_arg.args[1];
+
+                if(c.is_constant() && a.is_constant())
+                {
+                    printf("Reassoc1\n");
+
+                    in = (a * c) * b;
+                    return true;
+                }
+
+                if(c.is_constant() && b.is_constant())
+                {
+                    printf("Reassoc2\n");
+
+                    in = (c * b) * a;
+                    return true;
+                }
+
+                return false;
+            };
+
+            bool left_is_multiply = left_opt && left_opt.value().type == MULTIPLY;
+
+            if(left_is_multiply)
+            {
+                if(propagate_constants(me, left_opt.value(), 0))
+                    continue;
+            }
+
+            bool right_is_multiply = right_opt && right_opt.value().type == MULTIPLY;
+
+            if(right_is_multiply)
+            {
+                if(propagate_constants(me, right_opt.value(), 1))
+                    continue;
+            }
+
+            if(left_is_multiply && right_is_multiply)
+            {
+                value_v left = left_opt.value();
+                value_v right = right_opt.value();
+
+                value_v a = left.args[0];
+                value_v b = left.args[1];
+                value_v c = right.args[0];
+                value_v d = right.args[1];
+
+                std::optional<value_v> cst_sum;
+                std::optional<value_v> dyn_sum;
+
+                auto punt_cst = [&](value_v in)
+                {
+                    if(cst_sum)
+                        cst_sum.value() = cst_sum.value() * in;
+                    else
+                        cst_sum = in;
+                };
+                auto punt_dyn = [&](value_v in)
+                {
+                    if(dyn_sum)
+                        dyn_sum.value() = dyn_sum.value() * in;
+                    else
+                        dyn_sum = in;
+                };
+
+                auto punt = [&](value_v in)
+                {
+                    if(in.is_constant())
+                        punt_cst(in);
+                    else
+                        punt_dyn(in);
+                };
+
+                punt(a);
+                punt(b);
+                punt(c);
+                punt(d);
+
+                if(cst_sum && dyn_sum)
+                {
+                    decl = cst_sum.value() * dyn_sum.value();
+                }
+            }
+        }
+        #endif
+
+        for(int i=(int)local_emit.size() - 1; i >= 0; i--)
+        {
+            ///const float my_val = a;
+            value_v& me = local_emit[i];
+
+            using namespace dual_types::ops;
+
+            if(me.type != DECLARE)
+                continue;
+
+            value_v& decl = me.args.at(2);
+
             if(decl.type != PLUS && decl.type != MINUS)
                 continue;
 
@@ -1527,26 +1651,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             ///const float my_val = a + b
 
-            auto get_arg = [&](const value_v& in, int which) -> std::optional<value_v>
-            {
-                const value_v& arg = in.args.at(which);
-
-                if(!arg.is_value())
-                    return std::nullopt;
-
-                if(arg.is_constant())
-                    return std::nullopt;
-
-                auto it = decl_to_value.find(type_to_string(arg));
-
-                if(it == decl_to_value.end())
-                    return std::nullopt;
-
-                return it->second;
-            };
-
-            auto left_opt = get_arg(decl, 0);
-            auto right_opt = get_arg(decl, 1);
+            auto left_opt = get_arg(decl, 0, get_arg);
+            auto right_opt = get_arg(decl, 1, get_arg);
 
             auto get_check_fma = [](value_v& in, value_v& multiply_arg, int which_arg, bool is_minus)
             {
@@ -1568,6 +1674,17 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 }
                 else
                     in = fma(a, b, c);
+
+                ///this does actually work
+                /*if(is_minus)
+                {
+                    if(root_arg == 0)
+                        in = -((a * b) - c);
+                    else
+                        in = (a * b) - c;
+                }
+                else
+                    in = (a * b) + c;*/
 
                 return true;
             };
@@ -1592,6 +1709,150 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     continue;
             }
         }
+
+        ///this transform is essentially irrelevant
+        #if 0
+        for(int i=(int)local_emit.size() - 1; i >= 0; i--)
+        {
+            ///const float my_val = a;
+            value_v& me = local_emit[i];
+
+            using namespace dual_types::ops;
+
+            if(me.type != DECLARE)
+                continue;
+
+            value_v& decl = me.args.at(2);
+
+            if(decl.type != MULTIPLY)
+                continue;
+
+            if(decl.original_type != "float" && decl.original_type != "half")
+                continue;
+
+            ///const float my_val = a + b
+
+            auto left_opt = get_arg(decl, 0, get_arg);
+            auto right_opt = get_arg(decl, 1, get_arg);
+
+            if(!left_opt || !right_opt)
+                continue;
+
+            value_v left = left_opt.value();
+            value_v right = right_opt.value();
+
+            if(left.type != PLUS)
+                continue;
+
+            if(right.type != PLUS)
+                continue;
+
+            bool is_minus = decl.type == MINUS;
+
+            ///(a + b) * (c + d)
+            ///== c (a + b) + d (b + a)
+            ///= ac + db + ad + bc
+
+            ///ac + bc + db + ad
+            ///fma(c, a+b, d * (b + a))
+
+            value_v a = left.args.at(0);
+            value_v b = left.args.at(1);
+
+            value_v c = right.args.at(0);
+            value_v d = right.args.at(1);
+
+            decl = (a * c) + (b * c) + (a * d) + (d * b);
+
+            //decl = fma()
+        }
+        #endif
+
+        #ifdef REPLACE_MULTIPLIES
+        for(int i=(int)local_emit.size() - 1; i >= 0; i--)
+        {
+            ///const float my_val = a;
+            value_v& me = local_emit[i];
+
+            using namespace dual_types::ops;
+
+            if(me.type != DECLARE)
+                continue;
+
+            value_v& decl = me.args.at(2);
+
+            if(decl.type != MULTIPLY)
+                continue;
+
+            if(decl.original_type != "float" && decl.original_type != "half")
+                continue;
+
+            ///const float my_val = a + b
+
+            auto left_opt = get_arg(decl, 0, get_arg);
+            auto right_opt = get_arg(decl, 1, get_arg);
+
+            auto get_check_fma = [](value_v& in, value_v& arg, int which_arg, bool is_minus)
+            {
+                int root_arg = 1-which_arg;
+
+                ///so, now we have root = multiply
+                ///arg == +
+                ///this means our op is either a * (b + c)
+                ///or (a+b) * c
+                ///either ab + ac or ac + bc
+
+                value_v a = in.args[root_arg];
+                value_v b = arg.args.at(0);
+                value_v c = arg.args.at(1);
+
+                in = fma(a, b, a*c);
+
+                ///ok this is slower. What about (a + b) * (c + d)
+                ///= ac + bd + ad + cb
+                ///= c(a + b) + d(b + a)
+
+                return true;
+
+                /*value_v c = in.args[root_arg];
+                value_v a = multiply_arg.args[0];
+                value_v b = multiply_arg.args[1];
+
+                ///a - (b*c)
+                if(is_minus)
+                {
+                    if(root_arg == 0)
+                        in = -fma(a, b, -c);
+                    else
+                        in = fma(a, b, -c);
+                }
+                else
+                    in = fma(a, b, c);
+
+                return true;*/
+            };
+
+            bool is_minus = decl.type == MINUS;
+
+            ///if a == (c * d)
+            if(left_opt.has_value() && left_opt.value().type == PLUS)
+            {
+                value_v v = left_opt.value();
+
+                if(get_check_fma(decl, v, 0, is_minus))
+                    continue;
+            }
+
+            ///if a == (c * d)
+            if(right_opt.has_value() && right_opt.value().type == PLUS)
+            {
+                value_v v = right_opt.value();
+
+                if(get_check_fma(decl, v, 1, is_minus))
+                    continue;
+            }
+        }
+        #endif
 
         for(const auto& v : local_emit)
         {
