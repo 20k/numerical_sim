@@ -143,12 +143,14 @@ struct differentiation_context
 {
     std::array<value, elements> vars;
 
-    std::array<value, elements> xs;
-    std::array<value, elements> ys;
-    std::array<value, elements> zs;
-
     differentiation_context(equation_context& ctx, const value& in, int idx, bool linear_interpolation = false)
     {
+        std::array<value, elements> xs;
+        std::array<value, elements> ys;
+        std::array<value, elements> zs;
+
+        std::array<value_i, elements> indices;
+
         std::array<std::string, 3> root_variables;
 
         if(linear_interpolation)
@@ -184,6 +186,18 @@ struct differentiation_context
                 zs[i] += offset;
         }
 
+        for(int i=0; i < elements; i++)
+        {
+            int offset = i - (elements - 1)/2;
+
+            if(idx == 0)
+                indices[i] = value_i{"index"} + offset;
+            if(idx == 1)
+                indices[i] = value_i{"index"} + offset * value_i{"dim.x"};
+            if(idx == 2)
+                indices[i] = value_i{"index"} + offset * value_i{"dim.x"} * value_i{"dim.y"};
+        }
+
         std::vector<value> indexed_variables;
 
         in.recurse_arguments([&indexed_variables, linear_interpolation](const value& v)
@@ -194,13 +208,14 @@ struct differentiation_context
             std::string function_name = type_to_string(v.args[0]);
 
             if(function_name != "buffer_index" && function_name != "buffer_indexh" &&
-               function_name != "buffer_read_linear" && function_name != "buffer_read_linearh")
+               function_name != "buffer_read_linear" && function_name != "buffer_read_linearh" &&
+               function_name != "buffer_index_2" && function_name != "buffer_indexh_2")
                 return;
 
             if(linear_interpolation)
                 assert(function_name == "buffer_read_linear" || function_name == "buffer_read_linearh");
             else
-                assert(function_name == "buffer_index" || function_name == "buffer_indexh");
+                assert(function_name == "buffer_index" || function_name == "buffer_indexh" || function_name == "buffer_index_2" || function_name == "buffer_indexh_2");
 
             #ifdef CHECK_HALF_PRECISION
             std::string vname = type_to_string(v.args[1]);
@@ -237,7 +252,7 @@ struct differentiation_context
 
         for(auto& v : variables)
         {
-            if(v == "dim" || v == "scale" || v == root_variables[0] || v == root_variables[1] || v == root_variables[2])
+            if(v == "dim" || v == "scale" || v == root_variables[0] || v == root_variables[1] || v == root_variables[2] || v == "index")
                 continue;
 
             bool skip = false;
@@ -303,6 +318,13 @@ struct differentiation_context
                 else if(function_name == "buffer_read_linear" || function_name == "buffer_read_linearh")
                 {
                     to_sub = apply(value(function_name), variables.args[1], as_float3(xs[kk], ys[kk], zs[kk]), "dim");
+                    to_sub.is_memory_access = true;
+                }
+                else if(function_name == "buffer_index_2" || function_name == "buffer_indexh_2")
+                {
+                    value v = indices[kk].template reinterpret_as<value>();
+
+                    to_sub = apply(value(function_name), variables.args[1], v);
                     to_sub.is_memory_access = true;
                 }
                 else
@@ -484,7 +506,7 @@ void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 3> 
         ctx.exec(return_s);
     });
 
-    value buf_v = bidx(buf_in.name, false, false);
+    value buf_v = bidx(ctx, buf_in.name, false, false);
     assert(buf_v.is_memory_access);
 
     value v = buf_v + timestep * eps * kreiss_oliger_dissipate(ctx, buf_v, order);
@@ -1652,7 +1674,7 @@ value tov_phi_at_coordinate_general(const tensor<value, 3>& world_position)
 }
 
 ///make this faster by neglecting the terms that are unused, eg cached_ppw2p and nonconformal_pH
-value get_u_rhs(cl::context& clctx, const initial_conditions& init)
+value get_u_rhs(equation_context& ctx, cl::context& clctx, const initial_conditions& init)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
@@ -1666,9 +1688,9 @@ value get_u_rhs(cl::context& clctx, const initial_conditions& init)
     ///https://arxiv.org/pdf/1606.04881.pdf 74
     value phi = BL_s_dyn + u_value + 1;
 
-    value cached_aij_aIJ = bidx("cached_aij_aIJ", false, false);
-    value cached_ppw2p = bidx("cached_ppw2p", false, false);
-    value cached_non_conformal_pH = bidx("nonconformal_pH", false, false);
+    value cached_aij_aIJ = bidx(ctx, "cached_aij_aIJ", false, false);
+    value cached_ppw2p = bidx(ctx, "cached_ppw2p", false, false);
+    value cached_non_conformal_pH = bidx(ctx, "nonconformal_pH", false, false);
 
     if(!init.use_matter && !init.use_particles)
     {
@@ -2605,7 +2627,7 @@ struct superimposed_gpu_data
         {
             for(int j=0; j < 3; j++)
             {
-                bcAija.idx(i, j) = bidx("bcAij" + std::to_string(index_table[i][j]), false, false);
+                bcAija.idx(i, j) = bidx(ctx, "bcAij" + std::to_string(index_table[i][j]), false, false);
             }
         }
 
@@ -2654,12 +2676,13 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
 {
     float boundary = 0;
 
-    value rhs = get_u_rhs(clctx, init);
-
     std::string local_build_str;
 
     {
         equation_context ectx;
+
+        value rhs = get_u_rhs(ectx, clctx, init);
+
         ectx.add("U_RHS", rhs);
         ectx.add("U_BOUNDARY", 0.f);
 
@@ -2815,25 +2838,25 @@ void construct_hydrodynamic_quantities(equation_context& ctx)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
-    value gA = bidx("gA", ctx.uses_linear, false);
+    value gA = bidx(ctx, "gA", ctx.uses_linear, false);
 
-    value pressure = bidx("pressure_in", ctx.uses_linear, false);
-    value rho = bidx("rho_in", ctx.uses_linear, false);
-    value rhoH = bidx("rhoH_in", ctx.uses_linear, false);
-    value p0 = bidx("p0_in", ctx.uses_linear, false);
+    value pressure = bidx(ctx, "pressure_in", ctx.uses_linear, false);
+    value rho = bidx(ctx, "rho_in", ctx.uses_linear, false);
+    value rhoH = bidx(ctx, "rhoH_in", ctx.uses_linear, false);
+    value p0 = bidx(ctx, "p0_in", ctx.uses_linear, false);
 
     tensor<value, 3> Si;
 
     for(int i=0; i < 3; i++)
     {
-        Si.idx(i) = bidx("Si" + std::to_string(i) + "_in", ctx.uses_linear, false);;
+        Si.idx(i) = bidx(ctx, "Si" + std::to_string(i) + "_in", ctx.uses_linear, false);;
     }
 
     tensor<value, 3> colour;
 
     for(int i=0; i < 3; i++)
     {
-        colour.idx(i) = bidx("colour" + std::to_string(i) + "_in", ctx.uses_linear, false);;
+        colour.idx(i) = bidx(ctx, "colour" + std::to_string(i) + "_in", ctx.uses_linear, false);;
     }
 
     value is_degenerate = rho < 0.0001f;
@@ -2976,9 +2999,9 @@ sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cq
 
     tensor<value, 3> gB;
 
-    gB.idx(0) = bidx("gB0_in", false, false);
-    gB.idx(1) = bidx("gB1_in", false, false);
-    gB.idx(2) = bidx("gB2_in", false, false);
+    gB.idx(0) = bidx(ctx, "gB0_in", false, false);
+    gB.idx(1) = bidx(ctx, "gB1_in", false, false);
+    gB.idx(2) = bidx(ctx, "gB2_in", false, false);
 
     equation_context ctx;
     ctx.order = 1;
@@ -3001,11 +3024,11 @@ sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cq
 
     sandwich.djbj = djbj_precalculate;
 
-    value djbj = bidx("djbj", false, false);
+    value djbj = bidx(ctx, "djbj", false, false);
 
-    value phi = bidx("phi", false, false);
+    value phi = bidx(ctx, "phi", false, false);
 
-    value gA_phi = bidx("gA_phi_in", false, false);
+    value gA_phi = bidx(ctx, "gA_phi_in", false, false);
 
     value gA = gA_phi / phi;
 
@@ -3912,7 +3935,7 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
         {
             int index = arg_table[i * 3 + j];
 
-            bcAij.idx(i, j) = bidx("bcAij" + std::to_string(index), false, false);
+            bcAij.idx(i, j) = bidx(ctx, "bcAij" + std::to_string(index), false, false);
         }
     }
 
@@ -4072,14 +4095,14 @@ void build_sommerfeld_thin(equation_context& ctx)
         return -sum - v * (f - f0) / r;
     };
 
-    value in = bidx("input", false, false);
+    value in = bidx(ctx, "input", false, false);
     value asym = "asym";
     value v = "speed";
 
     value out = sommerfeld(in, asym, v);
 
     value timestep = "timestep";
-    value base = bidx("base", false, false);
+    value base = bidx(ctx, "base", false, false);
 
     ctx.add("sommer_fin_out", backwards_euler_relax(in, base, out, timestep));
 }

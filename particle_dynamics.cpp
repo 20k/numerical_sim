@@ -8,14 +8,14 @@
 
 value particle_matter_interop::calculate_adm_p(equation_context& ctx, standard_arguments& bssn_args) const
 {
-    value adm_p = bidx("adm_p", ctx.uses_linear, false);
+    value adm_p = bidx(ctx, "adm_p", ctx.uses_linear, false);
 
     return adm_p;
 }
 
 value particle_matter_interop::calculate_adm_S(equation_context& ctx, standard_arguments& bssn_args) const
 {
-    value adm_S = bidx("adm_S", ctx.uses_linear, false);
+    value adm_S = bidx(ctx, "adm_S", ctx.uses_linear, false);
 
     printf("Using particle ADM matter\n");
 
@@ -24,9 +24,9 @@ value particle_matter_interop::calculate_adm_S(equation_context& ctx, standard_a
 
 tensor<value, 3> particle_matter_interop::calculate_adm_Si(equation_context& ctx, standard_arguments& bssn_args) const
 {
-    value adm_Si0 = bidx("adm_Si0", ctx.uses_linear, false);
-    value adm_Si1 = bidx("adm_Si1", ctx.uses_linear, false);
-    value adm_Si2 = bidx("adm_Si2", ctx.uses_linear, false);
+    value adm_Si0 = bidx(ctx, "adm_Si0", ctx.uses_linear, false);
+    value adm_Si1 = bidx(ctx, "adm_Si1", ctx.uses_linear, false);
+    value adm_Si2 = bidx(ctx, "adm_Si2", ctx.uses_linear, false);
 
     return {adm_Si0, adm_Si1, adm_Si2};
 }
@@ -50,7 +50,7 @@ tensor<value, 3, 3> particle_matter_interop::calculate_adm_X_Sij(equation_contex
         {
             int index = arg_table[i * 3 + j];
 
-            Sij.idx(i, j) = bidx("adm_Sij" + std::to_string(index), ctx.uses_linear, false);
+            Sij.idx(i, j) = bidx(ctx, "adm_Sij" + std::to_string(index), ctx.uses_linear, false);
         }
     }
 
@@ -471,7 +471,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         /*value idet = 0;
 
         #ifdef USE_W
-        value W_impl = bidx("X", false, false);
+        value W_impl = bidx(ctx, "X", false, false);
 
         idet = pow(W_impl, 3);
         #else

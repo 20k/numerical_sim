@@ -32,6 +32,7 @@ struct equation_context : differentiator
     bool always_directional_derivatives = false;
     bool is_derivative_free = false;
     bool dynamic_drop = false;
+    bool better_buffer_index = false;
 
     int order = 2;
 

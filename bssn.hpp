@@ -59,6 +59,19 @@ literal<value> buffer_index_f(equation_context& ctx, buffer<T, N>& buf, literal<
     return result;
 }
 
+template<typename T, int N>
+inline
+literal<value> buffer_index_f2(equation_context& ctx, buffer<T, N>& buf, literal<value_i> index)
+{
+    value v = (value)buf[index.get()];
+
+    ctx.exec(return_v(v));
+
+    literal<value> result;
+    result.storage.is_memory_access = true;
+    return result;
+}
+
 inline
 value as_float3(const value& x, const value& y, const value& z)
 {
@@ -123,7 +136,7 @@ struct argument_pack
 };
 
 inline
-value bidx(const std::string& buf, bool interpolate, bool is_derivative, const argument_pack& pack = argument_pack())
+value bidx(equation_context& ctx, const std::string& buf, bool interpolate, bool is_derivative, const argument_pack& pack = argument_pack())
 {
     value v;
 
@@ -140,13 +153,22 @@ value bidx(const std::string& buf, bool interpolate, bool is_derivative, const a
     }
     else
     {
+        value_i index = "index";
+        value findex = index.reinterpret_as<value>();
+
         if(is_derivative)
         {
-            v = dual_types::apply(value("buffer_indexh"), buf, pack.pos[0], pack.pos[1], pack.pos[2], pack.dim);
+            if(!ctx.better_buffer_index)
+                v = dual_types::apply(value("buffer_indexh"), buf, pack.pos[0], pack.pos[1], pack.pos[2], pack.dim);
+            else
+                v = dual_types::apply(value("buffer_indexh_2"), buf, findex);
         }
         else
         {
-            v = dual_types::apply(value("buffer_index"), buf, pack.pos[0], pack.pos[1], pack.pos[2], pack.dim);
+            if(!ctx.better_buffer_index)
+                v = dual_types::apply(value("buffer_index"), buf, pack.pos[0], pack.pos[1], pack.pos[2], pack.dim);
+            else
+                v = dual_types::apply(value("buffer_index_2"), buf, findex);
         }
     }
 
@@ -294,18 +316,18 @@ struct standard_arguments
     {
         bool interpolate = ctx.uses_linear;
 
-        gA = bidx(pack.gA, interpolate, false);
+        gA = bidx(ctx, pack.gA, interpolate, false);
 
         gA = max(gA, 0.f);
         //gA = max(gA, 0.00001f);
 
-        gB.idx(0) = bidx(pack.gB[0], interpolate, false);
-        gB.idx(1) = bidx(pack.gB[1], interpolate, false);
-        gB.idx(2) = bidx(pack.gB[2], interpolate, false);
+        gB.idx(0) = bidx(ctx, pack.gB[0], interpolate, false);
+        gB.idx(1) = bidx(ctx, pack.gB[1], interpolate, false);
+        gB.idx(2) = bidx(ctx, pack.gB[2], interpolate, false);
 
-        gBB.idx(0) = bidx(pack.gBB[0], interpolate, false);
-        gBB.idx(1) = bidx(pack.gBB[1], interpolate, false);
-        gBB.idx(2) = bidx(pack.gBB[2], interpolate, false);
+        gBB.idx(0) = bidx(ctx, pack.gBB[0], interpolate, false);
+        gBB.idx(1) = bidx(ctx, pack.gBB[1], interpolate, false);
+        gBB.idx(2) = bidx(ctx, pack.gBB[2], interpolate, false);
 
         std::array<int, 9> arg_table
         {
@@ -320,7 +342,7 @@ struct standard_arguments
             {
                 int index = arg_table[i * 3 + j];
 
-                cY.idx(i, j) = bidx(pack.cY[index], interpolate, false);
+                cY.idx(i, j) = bidx(ctx, pack.cY[index], interpolate, false);
             }
         }
 
@@ -335,7 +357,7 @@ struct standard_arguments
             {
                 int index = arg_table[i * 3 + j];
 
-                cA.idx(i, j) = bidx(pack.cA[index], interpolate, false);
+                cA.idx(i, j) = bidx(ctx, pack.cA[index], interpolate, false);
             }
         }
 
@@ -350,20 +372,20 @@ struct standard_arguments
         //cA.idx(1, 1) = -(raised_cAij.idx(0, 0) + raised_cAij.idx(2, 2) + cA.idx(0, 1) * icY.idx(0, 1) + cA.idx(1, 2) * icY.idx(1, 2)) / (icY.idx(1, 1));
 
         #ifndef USE_W
-        X_impl = max(bidx(pack.X, interpolate, false), 0);
+        X_impl = max(bidx(ctx, pack.X, interpolate, false), 0);
         #else
-        W_impl = max(bidx(pack.X, interpolate, false), 0);
+        W_impl = max(bidx(ctx, pack.X, interpolate, false), 0);
         #endif
 
-        K = bidx(pack.K, interpolate, false);
+        K = bidx(ctx, pack.K, interpolate, false);
 
         //X = max(X, 0.0001f);
 
         gA_X = gA / max(get_X(), 0.001f);
 
-        cGi.idx(0) = bidx(pack.cGi[0], interpolate, false);
-        cGi.idx(1) = bidx(pack.cGi[1], interpolate, false);
-        cGi.idx(2) = bidx(pack.cGi[2], interpolate, false);
+        cGi.idx(0) = bidx(ctx, pack.cGi[0], interpolate, false);
+        cGi.idx(1) = bidx(ctx, pack.cGi[1], interpolate, false);
+        cGi.idx(2) = bidx(ctx, pack.cGi[2], interpolate, false);
 
         Yij = unpinned_cY / max(get_X(), 0.001f);
         iYij = get_X() * icY;
@@ -372,9 +394,9 @@ struct standard_arguments
 
         Kij = Aij + Yij.to_tensor() * (K / 3.f);
 
-        momentum_constraint.idx(0) = bidx(pack.momentum[0], interpolate, false);
-        momentum_constraint.idx(1) = bidx(pack.momentum[1], interpolate, false);
-        momentum_constraint.idx(2) = bidx(pack.momentum[2], interpolate, false);
+        momentum_constraint.idx(0) = bidx(ctx, pack.momentum[0], interpolate, false);
+        momentum_constraint.idx(1) = bidx(ctx, pack.momentum[1], interpolate, false);
+        momentum_constraint.idx(2) = bidx(ctx, pack.momentum[2], interpolate, false);
 
         for(int k=0; k < 3; k++)
         {
@@ -386,28 +408,28 @@ struct standard_arguments
 
                     int final_index = k + symmetric_index * 3;
 
-                    dcYij.idx(k, i, j) = bidx(pack.dcYij[final_index], interpolate, true);
+                    dcYij.idx(k, i, j) = bidx(ctx, pack.dcYij[final_index], interpolate, true);
                 }
             }
         }
 
-        digA.idx(0) = bidx(pack.digA[0], interpolate, true);
-        digA.idx(1) = bidx(pack.digA[1], interpolate, true);
-        digA.idx(2) = bidx(pack.digA[2], interpolate, true);
+        digA.idx(0) = bidx(ctx, pack.digA[0], interpolate, true);
+        digA.idx(1) = bidx(ctx, pack.digA[1], interpolate, true);
+        digA.idx(2) = bidx(ctx, pack.digA[2], interpolate, true);
 
         #ifndef USE_W
-        dX_impl.idx(0) = bidx(pack.dX[0], interpolate, true);
-        dX_impl.idx(1) = bidx(pack.dX[1], interpolate, true);
-        dX_impl.idx(2) = bidx(pack.dX[2], interpolate, true);
+        dX_impl.idx(0) = bidx(ctx, pack.dX[0], interpolate, true);
+        dX_impl.idx(1) = bidx(ctx, pack.dX[1], interpolate, true);
+        dX_impl.idx(2) = bidx(ctx, pack.dX[2], interpolate, true);
 
         for(int i=0; i < 3; i++)
         {
             dX_calc.idx(i) = diff1(ctx, X_impl, i);
         }
         #else
-        dW_impl.idx(0) = bidx(pack.dX[0], interpolate, true);
-        dW_impl.idx(1) = bidx(pack.dX[1], interpolate, true);
-        dW_impl.idx(2) = bidx(pack.dX[2], interpolate, true);
+        dW_impl.idx(0) = bidx(ctx, pack.dX[0], interpolate, true);
+        dW_impl.idx(1) = bidx(ctx, pack.dX[1], interpolate, true);
+        dW_impl.idx(2) = bidx(ctx, pack.dX[2], interpolate, true);
 
         for(int i=0; i < 3; i++)
         {
@@ -423,7 +445,7 @@ struct standard_arguments
             {
                 int idx = i + j * 3;
 
-                digB.idx(i, j)  = bidx(pack.digB[idx], interpolate, true);
+                digB.idx(i, j)  = bidx(ctx, pack.digB[idx], interpolate, true);
             }
         }
 

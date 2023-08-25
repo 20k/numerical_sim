@@ -399,12 +399,12 @@ struct matter
 
     matter(equation_context& ctx)
     {
-        p_star = bidx("Dp_star", ctx.uses_linear, false);
-        e_star = bidx("De_star", ctx.uses_linear, false);
+        p_star = bidx(ctx, "Dp_star", ctx.uses_linear, false);
+        e_star = bidx(ctx, "De_star", ctx.uses_linear, false);
 
         for(int i=0; i < 3; i++)
         {
-            cS.idx(i) = bidx("DcS" + std::to_string(i), ctx.uses_linear, false);
+            cS.idx(i) = bidx(ctx, "DcS" + std::to_string(i), ctx.uses_linear, false);
         }
 
         p_star = max(p_star, 0.f);
@@ -888,7 +888,7 @@ namespace hydrodynamics
         standard_arguments args(ctx);
         matter matt(ctx);
 
-        value sW = bidx("hW", ctx.uses_linear, false);
+        value sW = bidx(ctx, "hW", ctx.uses_linear, false);
 
         inverse_metric<value, 3, 3> icY = args.cY.invert();
 
@@ -904,14 +904,14 @@ namespace hydrodynamics
 
         inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-        value sW = bidx("hW", ctx.uses_linear, false);
+        value sW = bidx(ctx, "hW", ctx.uses_linear, false);
 
         tensor<value, 3, 3> cSk_vi = matt.cSk_vi(icY, args.gA, args.gB, matter_X_2(args.get_X()), sW);
 
         tensor<value, 3> p_star_vi = matt.p_star_vi(icY, args.gA, args.gB, matter_X_2(args.get_X()), sW);
         tensor<value, 3> e_star_vi = matt.e_star_vi(icY, args.gA, args.gB, matter_X_2(args.get_X()), sW);
 
-        value P = bidx("pressure", ctx.uses_linear, false);
+        value P = bidx(ctx, "pressure", ctx.uses_linear, false);
 
         value lhs_dtp_star = 0;
 
@@ -990,11 +990,11 @@ namespace hydrodynamics
 
         inverse_metric<value, 3, 3> icY = args.cY.invert();
 
-        value sW = bidx("hW", ctx.uses_linear, false);
+        value sW = bidx(ctx, "hW", ctx.uses_linear, false);
 
         tensor<value, 3> vi_upper = matt.get_v_upper(icY, args.gA, args.gB, matter_X_2(args.get_X()), sW);
 
-        value quantity = max(bidx("quantity_in", ctx.uses_linear, false), 0.f);
+        value quantity = max(bidx(ctx, "quantity_in", ctx.uses_linear, false), 0.f);
 
         value fin = 0;
 
