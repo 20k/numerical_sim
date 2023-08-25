@@ -33,6 +33,7 @@ struct equation_context : differentiator
     bool is_derivative_free = false;
     bool dynamic_drop = false;
     bool better_buffer_index = false;
+    std::optional<vec3i> fixed_dim;
 
     int order = 2;
 

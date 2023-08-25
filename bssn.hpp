@@ -668,7 +668,7 @@ namespace bssn
     tensor<value, 3> calculate_momentum_constraint(matter_interop& interop, equation_context& ctx, bool use_matter);
     value calculate_hamiltonian_constraint(const matter_interop& interop, equation_context& ctx, bool use_matter);
 
-    void build(cl::context& clctx, const matter_interop& interop, bool use_matter, base_bssn_args bssn_args, base_utility_args utility_args);
+    void build(cl::context& clctx, const matter_interop& interop, bool use_matter, base_bssn_args bssn_args, base_utility_args utility_args, vec3i dim);
 }
 
 #endif // BSSN_HPP_INCLUDED

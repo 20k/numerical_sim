@@ -186,6 +186,15 @@ struct differentiation_context
                 zs[i] += offset;
         }
 
+        tensor<value_i, 3> dim = {"dim.x", "dim.y", "dim.z"};
+
+        if(ctx.fixed_dim)
+        {
+            dim.x() = ctx.fixed_dim.value().x();
+            dim.y() = ctx.fixed_dim.value().y();
+            dim.z() = ctx.fixed_dim.value().z();
+        }
+
         for(int i=0; i < elements; i++)
         {
             int offset = i - (elements - 1)/2;
@@ -193,9 +202,9 @@ struct differentiation_context
             if(idx == 0)
                 indices[i] = value_i{"index"} + offset;
             if(idx == 1)
-                indices[i] = value_i{"index"} + offset * value_i{"dim.x"};
+                indices[i] = value_i{"index"} + offset * dim.x();
             if(idx == 2)
-                indices[i] = value_i{"index"} + offset * value_i{"dim.x"} * value_i{"dim.y"};
+                indices[i] = value_i{"index"} + offset * dim.x() * dim.y();
         }
 
         std::vector<value> indexed_variables;
@@ -5755,7 +5764,7 @@ int main()
         utility_arglist.buffers.push_back(in);
     }
 
-    bssn::build(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist);
+    bssn::build(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist, size);
     build_kreiss_oliger_unidir(clctx.ctx);
     build_raytracing_kernels(clctx.ctx, bssn_arglist);
 

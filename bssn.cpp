@@ -119,8 +119,6 @@ void calculate_christoffel_symbol(single_source::argument_generator& arg_gen, eq
 
 void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const tensor<value, 3, 3>& Aij, const value& gA)
 {
-    ctx.better_buffer_index = true;
-
     ctx.add_function("buffer_index", buffer_index_f<value, 3>);
     ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
     ctx.add_function("buffer_index_2", buffer_index_f2<value, 3>);
@@ -566,7 +564,7 @@ using half_type = value;
 
 std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, value_i point_count, tensor<value_i, 4> dim, buffer<value_us, 3> order_ptr)
 {
-    ctx.better_buffer_index = true;
+    ctx.better_buffer_index = false;
 
     ctx.add_function("buffer_index", buffer_index_f<value, 3>);
     ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
@@ -2019,7 +2017,7 @@ void finish_gB(equation_context& ctx, all_args& all, tensor<value, 3>& dtgB)
 
 exec_builder<tensor<value, 3>, get_dtgB, finish_gB> gBexec;
 
-void build_kernel(single_source::argument_generator& arg_gen, equation_context& ctx, const matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args, std::vector<exec_builder_base*> execs)
+void build_kernel(single_source::argument_generator& arg_gen, equation_context& ctx, const matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args, std::vector<exec_builder_base*> execs, vec3i dim)
 {
     std::cout << "Start build\n";
 
@@ -2027,7 +2025,15 @@ void build_kernel(single_source::argument_generator& arg_gen, equation_context& 
 
     all_args all(arg_gen, bssn_args, utility_args);
 
-    (void)setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
+    tensor<value_i, 4> ddim = all.dim.get();
+
+    ddim.x() = dim.x();
+    ddim.y() = dim.y();
+    ddim.z() = dim.z();
+
+    ctx.fixed_dim = dim;
+
+    (void)setup(ctx, all.points, all.point_count.get(), ddim, all.order_ptr);
 
     standard_arguments args(ctx);
 
@@ -2045,11 +2051,11 @@ void build_kernel(single_source::argument_generator& arg_gen, equation_context& 
     std::cout << "End build\n";
 }
 
-void bssn::build(cl::context& clctx, const matter_interop& interop, bool use_matter, base_bssn_args bssn_args, base_utility_args utility_args)
+void bssn::build(cl::context& clctx, const matter_interop& interop, bool use_matter, base_bssn_args bssn_args, base_utility_args utility_args, vec3i dim)
 {
     std::vector<exec_builder_base*> b = {&cAexec, &Xexec, &Kexec, &gAexec, &gBexec, &cYexec, &cGiexec};
 
-    single_source::make_async_dynamic_kernel_for(clctx, build_kernel, "evolve_1", "", interop, use_matter, bssn_args, utility_args, b);
+    single_source::make_async_dynamic_kernel_for(clctx, build_kernel, "evolve_1", "", interop, use_matter, bssn_args, utility_args, b, dim);
 
     single_source::make_async_dynamic_kernel_for(clctx, calculate_christoffel_symbol, "calculate_christoffel_symbol", "", bssn_args);
 }

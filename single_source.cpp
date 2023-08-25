@@ -1812,16 +1812,26 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 value_v a = multiply_arg.args[0];
                 value_v b = multiply_arg.args[1];
 
+                auto hacky_fma = [](const value_v& a, const value_v& b, const value_v& c)
+                {
+                    if(a.is_constant() || b.is_constant() || c.is_constant())
+                    {
+                        return (a * b) + c;
+                    }
+
+                    return fma(a, b, c);
+                };
+
                 ///a - (b*c)
                 if(is_minus)
                 {
                     if(root_arg == 0)
-                        in = -fma(a, b, -c);
+                        in = -hacky_fma(a, b, -c);
                     else
-                        in = fma(a, b, -c);
+                        in = hacky_fma(a, b, -c);
                 }
                 else
-                    in = fma(a, b, c);
+                    in = hacky_fma(a, b, c);
 
                 return true;
             };
