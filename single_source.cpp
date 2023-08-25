@@ -550,7 +550,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
         ///so the big problem currently is actually *using* the results we've generated in the expressions
         ///because while I can check the top level arg, the only recourse I'd have is to do a full resub which... isn't fast
-        auto emit = [&](value v)
+        auto emit = [&](const value& v)
         {
             ///so. All our arguments are constants
             ///this means we want to ideally place ourself into a constant, then emit that new declaration
@@ -645,7 +645,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         };
 
         ///the most deeply bracketed thing would be evaluated first. Todo, do this
-        #if 1
+        #if 0
         for(auto& v : block)
         {
             auto recurse = [&]<typename T>(const value& in, T&& func)
@@ -665,6 +665,81 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             };
 
             v.recurse_lambda(recurse);
+        }
+        #endif
+
+        #if 0
+        bool any_emitted = true;
+
+        while(any_emitted)
+        {
+            /*if(kernel_name == "evolve_1")
+            {
+                printf("hi\n");
+            }*/
+
+            any_emitted = false;
+
+            for(auto& v : block)
+            {
+                auto recurse = [&]<typename T>(const value& in, T&& func)
+                {
+                    if(in.type == dual_types::ops::VALUE)
+                        return;
+
+                    if(was_emitted(in))
+                        return;
+
+                    if(!dont_peek(in))
+                    {
+                        in.for_each_real_arg([&](const value& arg)
+                        {
+                            arg.recurse_lambda(func);
+                        });
+                    }
+
+                    if(all_args_emitted(in) && has_satisfied_variable_deps(in))
+                    {
+                        //if(kernel_name == "evolve_1")
+                        //std::cout << "Emit " << type_to_string(in) << " " << kernel_name << std::endl;
+
+                        emit(in);
+                        any_emitted = true;
+                    }
+                };
+
+                v.recurse_lambda(recurse);
+            }
+
+            //if(kernel_name == "evolve_1")
+                //printf("Here\n");
+
+            for(auto& v : block)
+            {
+                auto recursem = [&]<typename T>(const value& in, T&& func)
+                {
+                    if(any_emitted)
+                        return;
+
+                    if(!any_emitted && in.is_memory_access)
+                    {
+                        if(!was_emitted(in))
+                        {
+                            emit(in);
+                            any_emitted = true;
+                            return;
+                        }
+                    }
+
+                    in.for_each_real_arg([&](const value& arg)
+                    {
+                        arg.recurse_lambda(func);
+                    });
+                };
+
+                if(!any_emitted)
+                    v.recurse_lambda(recursem);
+            }
         }
         #endif
 
@@ -918,7 +993,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         move_later(local_emit);
         #endif
 
-        //#define BOTTOMS_UP
+        #define BOTTOMS_UP
         #ifdef BOTTOMS_UP
         std::vector<std::pair<const value*, int>> unevaluated_depth;
         std::vector<std::pair<const value*, int>> unevaluated_memory_depth;
