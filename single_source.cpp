@@ -1252,7 +1252,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             std::map<std::string, int> best_memory_request;
 
-            std::cout << "Mem dep map " << memory_dependency_map.size() << std::endl;
+            std::cout << "Mem dep map " << memory_dependency_map.size() << " kernel " << kernel_name << std::endl;
 
             bool any_emitted = false;
 
@@ -1759,6 +1759,9 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             if(i.type == dual_types::ops::DECLARE)
             {
                 decl_to_value[type_to_string(i.args.at(1))] = i.args.at(2);
+
+                if(type_to_string(i.args.at(1)) == "pv100")
+                    std::cout << "HI THERE\n";
             }
         }
 
@@ -1807,6 +1810,75 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             return last_valid_it->second;
         };
+
+        auto is_indirectly_half = [&](const value_v& in)
+        {
+            // bool debug = type_to_string(in) == "genid300";
+            bool debug = false;
+
+            auto check = [&]<typename T>(const value_v& v, T&& func)
+            {
+                if(debug)
+                {
+                    std::cout << "p1\n";
+                }
+
+                if(v.original_type == "half")
+                    return true;
+
+                if(debug)
+                    std::cout << "p2\n";
+
+                if(debug)
+                    std::cout << "as_str " << type_to_string(v) << std::endl;
+
+                auto found = decl_to_value.find(type_to_string(v));
+
+                if(found != decl_to_value.end())
+                {
+                    return func(found->second, func);
+                }
+
+                if(debug)
+                    std::cout << "p3\n";
+
+                if(v.type == dual_types::ops::DECLARE)
+                {
+                    if(type_to_string(v.args.at(0)) == "half")
+                        return true;
+
+                    return func(v.args.at(2), func);
+                }
+
+                if(debug)
+                    std::cout << "p4\n";
+
+                if(v.type == dual_types::ops::CONVERT)
+                    return func(v.args.at(0), func);
+
+
+                if(debug)
+                    std::cout << "p5\n";
+
+                if(v.type == dual_types::ops::UMINUS)
+                    return func(v.args.at(0), func);
+
+
+                if(debug)
+                    std::cout << "p6\n";
+
+                return false;
+            };
+
+            return check(in, check);
+        };
+
+        if(kernel_name == "evolve_1" && block_id == blocks.size())
+        {
+            std::cout << "kernel " << kernel_name << std::endl;
+
+            //assert(is_indirectly_half("genid300"));
+        }
 
         #if 0
         ///?????????
@@ -1930,7 +2002,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         }
         #endif
 
-        #if 1
+        #if 0
         for(int i=(int)local_emit.size() - 1; i >= 0; i--)
         {
             ///const float my_val = a;
@@ -1954,7 +2026,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             auto left_opt = get_arg(decl, 0, get_arg);
             auto right_opt = get_arg(decl, 1, get_arg);
 
-            auto get_check_fma = [](value_v& in, value_v& multiply_arg, int which_arg, bool is_minus)
+            auto get_check_fma = [get_arg, is_indirectly_half](value_v& in, value_v& multiply_arg, int which_arg, bool is_minus)
             {
                 assert(multiply_arg.type == MULTIPLY);
 
@@ -1964,6 +2036,18 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 value_v a = multiply_arg.args[0];
                 value_v b = multiply_arg.args[1];
 
+                {
+                    auto c_opt = get_arg(in, root_arg, get_arg);
+
+                    if(c_opt && c_opt.value().type == MULTIPLY)
+                    {
+                        c = c_opt.value();
+                    }
+                }
+
+                if(is_indirectly_half(a) || is_indirectly_half(b) || is_indirectly_half(c))
+                    return false;
+
                 auto hacky_fma = [](const value_v& a, const value_v& b, const value_v& c)
                 {
                     if(a.is_constant() || b.is_constant() || c.is_constant())
@@ -1971,7 +2055,9 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                         return (a * b) + c;
                     }
 
-                    return fma(a, b, c);
+                    return (a*b) + c;
+
+                    //return fma(a, b, c);
                 };
 
                 ///a - (b*c)
@@ -2059,6 +2145,27 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             if(multiplications.size() == 0)
                 continue;
 
+            bool skip = false;
+
+            for(auto& i : additions)
+            {
+                if(is_indirectly_half(i))
+                {
+                    skip = true;
+                }
+            }
+
+            for(auto& i : multiplications)
+            {
+                if(is_indirectly_half(i))
+                {
+                    skip = true;
+                }
+            }
+
+            if(skip)
+                continue;
+
             std::optional<value_v> add;
 
             for(auto& v : additions)
@@ -2068,6 +2175,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 else
                     add.value() += v;
             }
+
+            bool is_bad = false;
 
             std::optional<value_v> result = add;
 
@@ -2081,6 +2190,10 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
                 const value_v& mult = multiplications[i];
 
+                ///ok so: this *is* a good opt, we just need to be more intelligent about it
+                if(is_indirectly_half(mult.args[0]) || is_indirectly_half(mult.args[1]));
+                    is_bad = true;
+
                 result = (mult.args[0] * mult.args[1]) + result.value();
 
                 /*if(mult.args[1].is_constant())
@@ -2090,6 +2203,9 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             }
 
             assert(result.has_value());
+
+            if(is_bad)
+                continue;
 
             decl = result.value();
         }

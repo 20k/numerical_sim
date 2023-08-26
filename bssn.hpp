@@ -61,13 +61,13 @@ literal<value> buffer_index_f(equation_context& ctx, buffer<T, N>& buf, literal<
 
 template<typename T, int N>
 inline
-literal<value> buffer_index_f2(equation_context& ctx, buffer<T, N>& buf, literal<value_i> index)
+literal<T> buffer_index_f2(equation_context& ctx, buffer<T, N>& buf, literal<value_i> index)
 {
-    value v = (value)buf[index.get()];
+    T v = buf[index.get()];
 
     ctx.exec(return_v(v));
 
-    literal<value> result;
+    literal<T> result;
     result.storage.is_memory_access = true;
     return result;
 }
@@ -155,13 +155,18 @@ value bidx(equation_context& ctx, const std::string& buf, bool interpolate, bool
     {
         value_i index = "index";
         value findex = index.reinterpret_as<value>();
+        value_h hindex = index.reinterpret_as<value_h>();
 
         if(is_derivative)
         {
             if(!ctx.better_buffer_index)
                 v = dual_types::apply(value("buffer_indexh"), buf, pack.pos[0], pack.pos[1], pack.pos[2], pack.dim);
             else
-                v = dual_types::apply(value("buffer_indexh_2"), buf, findex);
+            {
+                value_h v_h = dual_types::apply(value_h("buffer_indexh_2"), buf, hindex);
+                v_h.is_memory_access = true;
+                return (value)v_h;
+            }
         }
         else
         {

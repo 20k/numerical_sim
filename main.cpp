@@ -334,6 +334,7 @@ struct differentiation_context
                     value v = indices[kk].template reinterpret_as<value>();
 
                     to_sub = apply(value(function_name), variables.args[1], v);
+                    to_sub.original_type = variables.original_type;
                     to_sub.is_memory_access = true;
                 }
                 else
@@ -6616,6 +6617,6 @@ int main()
 
         float elapsed = frametime.restart() * 1000.f;
 
-        printf("Time: %f\n", elapsed);
+        //printf("Time: %f\n", elapsed);
     }
 }
