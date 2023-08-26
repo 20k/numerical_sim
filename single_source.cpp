@@ -2097,10 +2097,10 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         #endif
 
         #if 1
-        for(int i=(int)local_emit.size() - 1; i >= 0; i--)
+        for(int leidx=(int)local_emit.size() - 1; leidx >= 0; leidx--)
         {
             ///const float my_val = a;
-            value_v& me = local_emit[i];
+            value_v& me = local_emit[leidx];
 
             using namespace dual_types::ops;
 
@@ -2131,6 +2131,14 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
                 if(which_opt.value().type == MULTIPLY)
                 {
+                    #ifdef SUPPRESS_HALF
+                    if(is_indirectly_half(which_opt.value().args.at(0)) || is_indirectly_half(which_opt.value().args.at(1)))
+                    {
+                        additions.push_back(decl.args[i]);
+                        continue;
+                    }
+                    #endif
+
                     multiplications.push_back(which_opt.value());
                     omultiplications.push_back(decl.args[i]);
                 }
@@ -2145,27 +2153,6 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             if(multiplications.size() == 0)
                 continue;
 
-            bool skip = false;
-
-            for(auto& i : additions)
-            {
-                if(is_indirectly_half(i))
-                {
-                    skip = true;
-                }
-            }
-
-            for(auto& i : multiplications)
-            {
-                if(is_indirectly_half(i))
-                {
-                    skip = true;
-                }
-            }
-
-            if(skip)
-                continue;
-
             std::optional<value_v> add;
 
             for(auto& v : additions)
@@ -2176,23 +2163,24 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     add.value() += v;
             }
 
-            bool is_bad = false;
+            if(add.has_value())
+                add.value().group_associative_operators();
+
+            bool is_first = true;
+
+            std::vector<value_v> decls;
 
             std::optional<value_v> result = add;
 
-            for(int i=0; i < multiplications.size(); i++)
+            for(int kk=0; kk < multiplications.size(); kk++)
             {
                 if(!result.has_value())
                 {
-                    result = multiplications[i];
+                    result = multiplications[kk];
                     continue;
                 }
 
-                const value_v& mult = multiplications[i];
-
-                ///ok so: this *is* a good opt, we just need to be more intelligent about it
-                if(is_indirectly_half(mult.args[0]) || is_indirectly_half(mult.args[1]));
-                    is_bad = true;
+                const value_v& mult = multiplications[kk];
 
                 result = (mult.args[0] * mult.args[1]) + result.value();
 
@@ -2204,10 +2192,12 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             assert(result.has_value());
 
-            if(is_bad)
-                continue;
-
             decl = result.value();
+
+            for(int declid=0; declid < (int)decls.size(); declid++)
+            {
+                local_emit.insert(local_emit.begin() + leidx, decls[declid]);
+            }
         }
         #endif
 
