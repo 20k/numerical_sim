@@ -71,8 +71,6 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
     ctx.substitute_aliases();
     ctx.fix_buffers();
 
-    base += "int local_thread_id = get_local_id(0);\n";
-
     for(value& v : ctx.sequenced)
     {
         auto fix_idot = [&](value& in)
@@ -182,6 +180,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
     for(auto& block : blocks)
     {
+        //break;
+
         block_id++;
 
         if(block.size() == 0)
@@ -2211,6 +2211,71 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         }
         #endif
 
+        //#define SUBSTITUTE_UP
+        #ifdef SUBSTITUTE_UP
+        auto pull_args = [&](value_v& v)
+        {
+            if(v.type != dual_types::ops::MULTIPLY && v.type != dual_types::ops::PLUS && v.type != dual_types::ops::COMBO_PLUS)
+                return;
+
+            for(int i=0; i < (int)v.args.size(); i++)
+            {
+                auto arg_opt = get_arg(v, i, get_arg);
+
+                if(arg_opt.has_value())
+                {
+                    v.args[i] = arg_opt.value();
+                }
+            }
+        };
+
+        ///upwards substitute everything?
+        for(int leidx = (int)local_emit.size() - 1; leidx >= 0; leidx--)
+        {
+            value_v& me = local_emit[leidx];
+
+            using namespace dual_types::ops;
+
+            if(me.type != DECLARE)
+                continue;
+
+            value_v& decl = me.args.at(2);
+
+            if(decl.type != COMBO_PLUS)
+                continue;
+
+            if(decl.original_type != "float" && decl.original_type != "half")
+                continue;
+
+            pull_args(decl);
+
+            int depth = 0;
+            int max_depth = 2;
+
+            auto lambda = [&]<typename T>(value_v& in, T&& func)
+            {
+                depth++;
+
+                if(depth == max_depth)
+                {
+                    depth--;
+                    return;
+                }
+
+                pull_args(in);
+
+                for(auto& i : in.args)
+                {
+                    func(i, func);
+                }
+
+                depth--;
+            };
+
+            decl.recurse_lambda(lambda);
+        }
+        #endif
+
         if(block_id == blocks.size())
         for(int i=(int)local_emit.size() - 1; i >= 0; i--)
         {
@@ -2252,6 +2317,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         }
     }
 
+    //#define OLD_BUT_FAST
     #ifdef OLD_BUT_FAST
     int bid = 0;
 
