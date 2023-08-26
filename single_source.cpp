@@ -71,6 +71,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
     ctx.substitute_aliases();
     ctx.fix_buffers();
 
+    base += "int local_thread_id = get_local_id(0);\n";
+
     for(value& v : ctx.sequenced)
     {
         auto fix_idot = [&](value& in)
@@ -117,6 +119,9 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         if(in.type == dual_types::ops::DECLARE)
             emitted_variable_names.insert(type_to_string(in.args.at(1)));
 
+        if(in.type == dual_types::ops::DECLARE_ARRAY)
+            emitted_variable_names.insert(type_to_string(in.args.at(1)));
+
         if(dual_types::get_description(in.type).is_semicolon_terminated)
             base += type_to_string(in) + ";\n";
         else
@@ -149,7 +154,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             auto check = [&]<typename T>(value& in, T&& func)
             {
-                if(in.type == dual_types::ops::DECLARE)
+                if(in.type == dual_types::ops::DECLARE || in.type == dual_types::ops::DECLARE_ARRAY)
                 {
                     eventually_declared.insert(type_to_string(in.args.at(1)));
                 }
@@ -283,7 +288,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             using namespace dual_types::ops;
 
             return  in.type != RETURN && in.type != BREAK && in.type != FOR_START && in.type != IF_START && in.type != BLOCK_START &&
-                    in.type != BLOCK_END && in.type != DECLARE && in.type != ASSIGN && in.type != SIDE_EFFECT;
+                    in.type != BLOCK_END && in.type != DECLARE && in.type != DECLARE_ARRAY && in.type != ASSIGN && in.type != SIDE_EFFECT;
         };
 
         std::map<const value*, std::vector<std::string>> var_cache;
@@ -549,6 +554,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             if(in.type == dual_types::ops::DECLARE)
                 emitted_variable_names.insert(type_to_string(in.args.at(1)));
+            if(in.type == dual_types::ops::DECLARE_ARRAY)
+                emitted_variable_names.insert(type_to_string(in.args.at(1)));
         };
 
         ///so the big problem currently is actually *using* the results we've generated in the expressions
@@ -626,12 +633,31 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 {
                     std::string name = "genid" + std::to_string(gidx);
 
-                    auto [declare_op, val] = declare_raw(could_emit, name, could_emit.is_mutable);
+                    if(could_emit.original_type == "half" && kernel_name == "evolve_1")
+                    {
+                        auto [declare_op, val] = dual_types::declare_array_raw<float>(name, 128);
 
-                    insert_local(declare_op);
+                        insert_local(declare_op);
 
-                    emitted_cache.push_back({v, name});
-                    emitted_cache.push_back({could_emit, name});
+                        value_i idx = "local_thread_id";
+
+                        dual_types::value_mut<float> mut;
+                        mut.set_from_constant(val.bracket(idx));
+
+                        insert_local(assign(mut, could_emit));
+
+                        emitted_cache.push_back({v, name + "[local_thread_id]"});
+                        emitted_cache.push_back({could_emit, name + "[local_thread_id]"});
+                    }
+                    else
+                    {
+                        auto [declare_op, val] = declare_raw(could_emit, name, could_emit.is_mutable);
+
+                        insert_local(declare_op);
+
+                        emitted_cache.push_back({v, name});
+                        emitted_cache.push_back({could_emit, name});
+                    }
 
                     gidx++;
                 }

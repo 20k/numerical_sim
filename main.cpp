@@ -6617,6 +6617,6 @@ int main()
 
         float elapsed = frametime.restart() * 1000.f;
 
-        //printf("Time: %f\n", elapsed);
+        printf("Time: %f\n", elapsed);
     }
 }
