@@ -1186,6 +1186,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             v.recurse_lambda(build_memory_dependencies);
         }
 
+        std::map<std::string, const value*> memory_by_name;
+
         for(int i=0; i < (int)memory_accesses.size(); i++)
         {
             for(int j=i+1; j < (int)memory_accesses.size(); j++)
@@ -1197,6 +1199,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                     continue;
                 }
             }
+
+            memory_by_name[type_to_string(*memory_accesses[i])] = memory_accesses[i];
         }
 
         /*for(int i=0; i < (int)memory_dependency_map.size(); i++)
@@ -1245,6 +1249,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         {
             std::vector<const value*> just_emitted;
 
+            std::map<std::string, int> best_memory_request;
+
             std::cout << "Mem dep map " << memory_dependency_map.size() << std::endl;
 
             bool any_emitted = false;
@@ -1252,6 +1258,11 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             for(auto& [v, deps] : memory_dependency_map)
             {
                 const value* could_emit = v;
+
+                if(deps.size() == 1 && could_emit->type != dual_types::ops::DECLARE)
+                {
+                    best_memory_request[deps[0]]++;
+                }
 
                 if(deps.size() == 0 && has_satisfied_variable_deps(*could_emit) && all_args_emitted(*could_emit))
                 {
@@ -1291,6 +1302,62 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             {
                 //for(auto it = memory_accesses.begin(); it != memory_accesses.end(); it++)
 
+                if(best_memory_request.size() > 0)
+                {
+                    std::vector<std::pair<std::string, int>> best_req;
+
+                    for(auto& i : best_memory_request)
+                    {
+                        best_req.push_back(i);
+                    }
+
+                    std::sort(best_req.begin(), best_req.end(), [](const auto& v1, const auto& v2){return v1.second > v2.second;});
+
+                    for(auto& [req, count] : best_req)
+                    {
+                        const value* to_emit = memory_by_name.at(req);
+
+                        if(!has_satisfied_variable_deps(*to_emit))
+                            continue;
+
+                        std::string as_str = type_to_string(*to_emit);
+
+                        if(as_str != req)
+                            continue;
+
+                        emit(*to_emit);
+                        prefetched.insert(to_emit);
+                        just_emitted.push_back(to_emit);
+
+                        for(auto& [v, deps] : memory_dependency_map)
+                        {
+                            for(int idx=0; idx < (int)deps.size(); idx++)
+                            {
+                                if(deps[idx] == as_str)
+                                {
+                                    deps.erase(deps.begin() + idx);
+                                    idx--;
+                                    continue;
+                                }
+                            }
+                        }
+
+                        for(int i=0; i < (int)memory_accesses.size(); i++)
+                        {
+                            if(memory_accesses[i] == to_emit)
+                            {
+                                memory_accesses.erase(memory_accesses.begin() + i);
+                                break;
+                            }
+                        }
+
+                        any_memory = true;
+
+                        break;
+                    }
+                }
+
+                if(!any_memory)
                 for(int midx = 0; midx < (int)memory_accesses.size(); midx++)
                 {
                     const value* to_emit = memory_accesses[midx];
@@ -1316,15 +1383,6 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                             }
                         }
                     }
-
-                    /*for(int next = midx+1; next < (int)memory_accesses.size(); next++)
-                    {
-                        if(has_satisfied_variable_deps(*memory_accesses[next]))
-                        {
-                            prefetch(*memory_accesses[next]);
-                            break;
-                        }
-                    }*/
 
                     memory_accesses.erase(memory_accesses.begin() + midx);
                     any_memory = true;
