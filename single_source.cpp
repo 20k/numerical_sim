@@ -995,6 +995,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             }
         };
 
+        if(kernel_name== "evolve_1");
         move_later(local_emit);
         #endif
 
@@ -2108,7 +2109,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             }
         }
 
-        //if(block_id == blocks.size())
+        //if(block_id == blocks.size() && kernel_name == "evolve_1")
         //move_later(local_emit);
 
         std::vector<value> new_local_emit;
