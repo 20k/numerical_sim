@@ -633,31 +633,12 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 {
                     std::string name = "genid" + std::to_string(gidx);
 
-                    if(could_emit.original_type == "half" && kernel_name == "evolve_1")
-                    {
-                        auto [declare_op, val] = dual_types::declare_array_raw<float>(name, 128);
+                    auto [declare_op, val] = declare_raw(could_emit, name, could_emit.is_mutable);
 
-                        insert_local(declare_op);
+                    insert_local(declare_op);
 
-                        value_i idx = "local_thread_id";
-
-                        dual_types::value_mut<float> mut;
-                        mut.set_from_constant(val.bracket(idx));
-
-                        insert_local(assign(mut, could_emit));
-
-                        emitted_cache.push_back({v, name + "[local_thread_id]"});
-                        emitted_cache.push_back({could_emit, name + "[local_thread_id]"});
-                    }
-                    else
-                    {
-                        auto [declare_op, val] = declare_raw(could_emit, name, could_emit.is_mutable);
-
-                        insert_local(declare_op);
-
-                        emitted_cache.push_back({v, name});
-                        emitted_cache.push_back({could_emit, name});
-                    }
+                    emitted_cache.push_back({v, name});
+                    emitted_cache.push_back({could_emit, name});
 
                     gidx++;
                 }
