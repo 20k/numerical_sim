@@ -248,6 +248,9 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
             in.for_each_real_arg([&](const value& arg)
             {
+                if(!valid)
+                    return;
+
                 if(arg.type == dual_types::ops::VALUE)
                     return;
 
@@ -639,7 +642,9 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             }
 
             emitted.insert(&v);
-            linear_emitted.push_back(&v);
+
+            if(!is_root_relabling)
+                linear_emitted.push_back(&v);
 
             return emitted_anything;
         };
@@ -993,7 +998,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         move_later(local_emit);
         #endif
 
-        #define BOTTOMS_UP
+        //#define BOTTOMS_UP
         #ifdef BOTTOMS_UP
         std::vector<std::pair<const value*, int>> unevaluated_depth;
         std::vector<std::pair<const value*, int>> unevaluated_memory_depth;
@@ -1137,7 +1142,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         }
         #endif
 
-        #if 0
+        #if 1
         std::vector<std::pair<const value*, std::vector<std::string>>> memory_dependency_map;
 
         std::vector<const value*> memory_accesses;
@@ -1166,7 +1171,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
                 //memory_dependency_map[&in] = get_memory_dependencies(in);
 
-                memory_dependency_map.push_back({&in, get_memory_dependencies(in)});
+                if(!in.is_memory_access)
+                    memory_dependency_map.push_back({&in, get_memory_dependencies(in)});
 
                 if(dont_peek(in))
                     return;
@@ -1237,15 +1243,20 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
         while(memory_dependency_map.size() > 0)
         {
+            std::vector<const value*> just_emitted;
+
+            std::cout << "Mem dep map " << memory_dependency_map.size() << std::endl;
+
             bool any_emitted = false;
 
             for(auto& [v, deps] : memory_dependency_map)
             {
                 const value* could_emit = v;
 
-                if(deps.size() == 0 && all_args_emitted(*could_emit) && has_satisfied_variable_deps(*could_emit))
+                if(deps.size() == 0 && has_satisfied_variable_deps(*could_emit) && all_args_emitted(*could_emit))
                 {
                     bool real_emission = emit(*could_emit);
+                    just_emitted.push_back(could_emit);
 
                     if(real_emission)
                     {
@@ -1272,6 +1283,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 }
             }
 
+            std::cout << "Post emit\n";
+
             bool any_memory = false;
 
             if(!any_emitted && memory_accesses.size() > 0)
@@ -1289,6 +1302,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
                     emit(*to_emit);
                     prefetched.insert(to_emit);
+                    just_emitted.push_back(to_emit);
 
                     for(auto& [v, deps] : memory_dependency_map)
                     {
@@ -1319,6 +1333,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 }
             }
 
+            std::cout << "Post mem\n";
+
             if(!any_memory && !any_emitted)
             {
                 for(auto& [v, deps] : memory_dependency_map)
@@ -1338,7 +1354,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 break;
             }
 
-            for(auto& i : emitted)
+            for(auto& i : just_emitted)
             {
                 for(int kk=0; kk < (int)memory_dependency_map.size(); kk++)
                 {
@@ -1353,6 +1369,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
                 //if(auto it = memory_dependency_map.find(i); it != memory_dependency_map.end())
                 //    memory_dependency_map.erase(it);
             }
+
+            std::cout << "Post erase\n";
         }
         #endif
 
