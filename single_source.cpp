@@ -1267,9 +1267,12 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             {
                 const value* could_emit = v;
 
-                if(deps.size() == 1 && could_emit->type != dual_types::ops::DECLARE)
+                if(could_emit->type != dual_types::ops::DECLARE)
                 {
-                    best_memory_request[deps[0]]++;
+                    for(auto& i : deps)
+                    {
+                        best_memory_request[i]++;
+                    }
                 }
 
                 if(deps.size() == 0 && has_satisfied_variable_deps(*could_emit) && all_args_emitted(*could_emit))
