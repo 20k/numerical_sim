@@ -432,7 +432,7 @@ namespace single_source
         {
             equation_context ectx;
 
-            cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, func, kernel_name, "", u...);
+            cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, func, kernel_name, extra_args, u...);
 
             pending->kernel = kern;
             pending->latch.count_down();
