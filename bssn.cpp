@@ -1174,9 +1174,7 @@ tensor<value, 6> get_dtcAij(standard_arguments& args, equation_context& ctx, con
             {
                 for(int n=0; n < 3; n++)
                 {
-                    value v = icY.idx(m, n) * dX.idx(m) * diff1(ctx, gA, n);
-
-                    s3 += v;
+                    s3 += icY.idx(m, n) * dX.idx(m) * diff1(ctx, gA, n);
                 }
             }
 
@@ -1513,16 +1511,20 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, cons
 
         for(int j=0; j < 3; j++)
         {
-            s3 += 2 * (-1.f/4.f) * gA / max(args.W_impl, 0.0001f) * 6 * icAij.idx(i, j) * 2 * args.dW_calc.idx(j);
+            s3 += icAij.idx(i, j) * 2 * args.dW_calc.idx(j);
         }
+
+        s3 = 2 * (-1.f/4.f) * gA / max(args.W_impl, 0.0001f) * 6 * s3;
         #endif
 
         value s4 = 0;
 
         for(int j=0; j < 3; j++)
         {
-            s4 += -2 * icAij.idx(i, j) * diff1(ctx, gA, j);
+            s4 += icAij.idx(i, j) * diff1(ctx, gA, j);
         }
+
+        s4 = -2 * s4;
 
         value s5 = 0;
 
@@ -1556,16 +1558,20 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, cons
             for(int k=0; k < 3; k++)
             {
                 //s8 += (1.f/3.f) * icY.idx(i, j) * hacky_differentiate(args.digB.idx(k, k), j);
-                s8 += (1.f/3.f) * icY.idx(i, j) * diff2(ctx, args.gB.idx(k), k, j, args.digB.idx(k, k), args.digB.idx(j, k));
+                s8 += icY.idx(i, j) * diff2(ctx, args.gB.idx(k), k, j, args.digB.idx(k, k), args.digB.idx(j, k));
             }
         }
+
+        s8 = (1.f/3.f) * s8;
 
         value s9 = 0;
 
         for(int k=0; k < 3; k++)
         {
-            s9 += (2.f/3.f) * args.digB.idx(k, k) * derived_cGi.idx(i);
+            s9 += args.digB.idx(k, k);
         }
+
+        s9 = (2.f/3.f) * s9 * derived_cGi.idx(i);
 
         ///this is the only instanced of derived_cGi that might want to be regular cGi
         //value s10 = (2.f/3.f) * -2 * gA * K * derived_cGi.idx(i);
@@ -1696,13 +1702,11 @@ value get_dtK(standard_arguments& args, equation_context& ctx, const matter_inte
             {
                 for(int n=0; n < 3; n++)
                 {
-                    value v = -0.5f * cY.idx(i, j) * icY.idx(m, n) * dX.idx(m) * diff1(ctx, gA, n);
-
-                    s3 += v;
+                    s3 += icY.idx(m, n) * dX.idx(m) * diff1(ctx, gA, n);
                 }
             }
 
-            Xdidja.idx(i, j) = Xderiv + s2 + s3;
+            Xdidja.idx(i, j) = Xderiv + s2 + -0.5f * cY[i, j] * s3;
         }
     }
 
