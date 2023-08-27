@@ -180,7 +180,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
 
     for(auto& block : blocks)
     {
-        //break;
+        break;
 
         block_id++;
 
@@ -2317,7 +2317,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         }
     }
 
-    //#define OLD_BUT_FAST
+    #define OLD_BUT_FAST
     #ifdef OLD_BUT_FAST
     int bid = 0;
 

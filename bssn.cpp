@@ -564,7 +564,7 @@ using half_type = value;
 
 std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, value_i point_count, tensor<value_i, 4> dim, buffer<value_us, 3> order_ptr)
 {
-    ctx.better_buffer_index = true;
+    //ctx.better_buffer_index = true;
 
     ctx.add_function("buffer_index", buffer_index_f<value, 3>);
     ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
@@ -2027,11 +2027,11 @@ void build_kernel(single_source::argument_generator& arg_gen, equation_context& 
 
     tensor<value_i, 4> ddim = all.dim.get();
 
-    ddim.x() = dim.x();
+    /*ddim.x() = dim.x();
     ddim.y() = dim.y();
     ddim.z() = dim.z();
 
-    ctx.fixed_dim = dim;
+    ctx.fixed_dim = dim;*/
 
     (void)setup(ctx, all.points, all.point_count.get(), ddim, all.order_ptr);
 

@@ -409,6 +409,7 @@ struct equation_context : differentiator
 
     void fix_buffers()
     {
+        //#define SUB_IN_INDEXING
         #ifdef SUB_IN_INDEXING
         auto substitute = [](value& v)
         {
@@ -429,6 +430,19 @@ struct equation_context : differentiator
 
                 ///buffer[z * dim.x * dim.y + y * dim.x + x];
                 value indexed = buf[z * dim.x() * dim.y() + y * dim.x() + x];
+                indexed.is_memory_access = true;
+
+                v = indexed;
+            }
+
+            if(function_name == "buffer_index_2" || function_name == "buffer_indexh_2")
+            {
+                buffer<value, 3> buf;
+                buf.name = type_to_string(v.args[1]);
+
+                value_i index = v.args[2].reinterpret_as<value_i>();
+
+                value indexed = buf[index];
                 indexed.is_memory_access = true;
 
                 v = indexed;
