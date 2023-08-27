@@ -122,16 +122,17 @@ tensor<T, N, N> lie_derivative_weight(differentiator& ctx, const tensor<T, N>& B
         for(int j=0; j < N; j++)
         {
             T sum = 0;
+            T sum2 = 0;
 
             for(int k=0; k < N; k++)
             {
-                sum = sum + upwind_differentiate(ctx, B.idx(k), mT.idx(i, j), k);
-                sum = sum + mT.idx(i, k) * diff1(ctx, B.idx(k), j);
-                sum = sum + mT.idx(j, k) * diff1(ctx, B.idx(k), i);
-                sum = sum - (2.f/3.f) * mT.idx(i, j) * diff1(ctx, B.idx(k), k);
+                sum += upwind_differentiate(ctx, B.idx(k), mT.idx(i, j), k);
+                sum += mT.idx(i, k) * diff1(ctx, B.idx(k), j);
+                sum += mT.idx(j, k) * diff1(ctx, B.idx(k), i);
+                sum2 += diff1(ctx, B.idx(k), k);
             }
 
-            lie.idx(i, j) = sum;
+            lie.idx(i, j) = sum - (2.f/3.f) * mT.idx(i, j) * sum2;
         }
     }
 

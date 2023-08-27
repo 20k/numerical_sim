@@ -1032,9 +1032,9 @@ tensor<value, 3, 3> bssn::calculate_xgARij(equation_context& ctx, standard_argum
     {
         for(int j=0; j < 3; j++)
         {
-            value p1 = W * didjW.idx(i, j);
+            value p1 = (args.gA * W) * didjW.idx(i, j);
 
-            xgARphiij.idx(i, j) = args.gA * (p1 + args.cY.idx(i, j) * (p2 + p3));
+            xgARphiij.idx(i, j) = p1 + args.cY.idx(i, j) * (args.gA * (p2 + p3));
         }
     }
     #endif
