@@ -64,7 +64,7 @@ gravitational_wave_manager::gravitational_wave_manager(cl::context& ctx, vec3i _
     arq.start(ctx, raw_harmonic_points.size());
 }
 
-void gravitational_wave_manager::issue_extraction(cl::managed_command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<ref_counted_buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize)
+void gravitational_wave_manager::issue_extraction(cl::managed_command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<cl::buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize)
 {
     cl::buffer next = arq.fetch_next_buffer();
 

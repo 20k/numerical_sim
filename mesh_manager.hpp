@@ -81,7 +81,7 @@ struct thin_intermediates_pool
 {
     std::vector<ref_counted_buffer> pool;
 
-    ref_counted_buffer request(cl::context& ctx, cl::managed_command_queue& cqueue, vec3i size, int element_size);
+    ref_counted_buffer request(cl::context& ctx, cl::managed_command_queue& cqueue, vec3i size, int element_size, int count = 1);
 };
 
 struct cpu_mesh_settings
@@ -148,7 +148,7 @@ void save_buffer(cl::command_queue& cqueue, cl::buffer& buf, const std::string& 
 void load_buffer(cl::command_queue& cqueue, cl::buffer& into, const std::string& from);
 
 ///buffer, thin
-using step_callback = std::function<void(cl::managed_command_queue&, std::vector<cl::buffer>&, std::vector<ref_counted_buffer>&)>;
+using step_callback = std::function<void(cl::managed_command_queue&, std::vector<cl::buffer>&, std::vector<cl::buffer>&)>;
 
 struct cpu_mesh
 {
@@ -178,10 +178,6 @@ struct cpu_mesh
 
     void init(cl::context& ctx, cl::command_queue& cqueue, thin_intermediates_pool& pool, cl::buffer& u_arg, std::array<cl::buffer, 6>& bcAij);
 
-    ref_counted_buffer get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool);
-
-    std::vector<ref_counted_buffer> get_derivatives_of(cl::context& ctx, buffer_set& bufs, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool);
-
     ///returns buffers and intermediates
     void full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, step_callback callback);
 
@@ -199,6 +195,7 @@ struct cpu_mesh
 
 private:
     std::vector<buffer_descriptor> buffers;
+    ref_counted_buffer get_derivatives_of(cl::context& ctx, buffer_set& generic_in, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool);
 };
 
 #endif // MESH_MANAGER_HPP_INCLUDED
