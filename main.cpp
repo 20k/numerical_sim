@@ -4099,10 +4099,10 @@ void build_sommerfeld_thin(equation_context& ctx)
 
         for(int i=0; i < 3; i++)
         {
-            sum += (v * pos.idx(i) / r) * diff1(ctx, f, i);
+            sum += pos.idx(i) * diff1(ctx, f, i);
         }
 
-        return -sum - v * (f - f0) / r;
+        return (-sum - (f - f0)) * (v/r);
     };
 
     value in = bidx(ctx, "input", false, false);
