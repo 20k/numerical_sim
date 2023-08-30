@@ -5437,7 +5437,13 @@ int main()
 
     std::cout << "EXT " << cl::get_extensions(clctx.ctx) << std::endl;
 
+    //#define ONLY_ONE_POINT_TWO
+    #ifdef ONLY_ONE_POINT_TWO
+    std::string argument_string = "-I ./ -cl-std=CL1.2 -cl-mad-enable -DNO_MIPMAPS ";
+    #else
     std::string argument_string = "-I ./ -cl-std=CL2.0 -cl-mad-enable ";
+    #endif
+
     std::string hydro_argument_string = argument_string;
 
     vec3i size = {255, 255, 255};
@@ -5615,16 +5621,30 @@ int main()
     argument_string += "-DUSE_GBB ";
     #endif // USE_GBB
 
-    ///seems to make 0 difference to instability time
+    bool use_half = false;
+
     #ifdef USE_HALF_INTERMEDIATE
-    int intermediate_data_size = sizeof(cl_half);
-    argument_string += "-DDERIV_PRECISION=half ";
-    hydro_argument_string += "-DDERIV_PRECISION=half ";
-    #else
-    int intermediate_data_size = sizeof(cl_float);
-    argument_string += "-DDERIV_PRECISION=float ";
-    hydro_argument_string += "-DDERIV_PRECISION=float ";
-    #endif
+    use_half = true;
+    #endif // USE_HALF_INTERMEDIATE
+
+    if(!cl::supports_extension(clctx.ctx, "cl_khr_fp16"))
+    {
+        assert(!use_half);
+    }
+
+    ///seems to make 0 difference to instability time
+    if(use_half)
+    {
+        int intermediate_data_size = sizeof(cl_half);
+        argument_string += "-DDERIV_PRECISION=half ";
+        hydro_argument_string += "-DDERIV_PRECISION=half ";
+    }
+    else
+    {
+        int intermediate_data_size = sizeof(cl_float);
+        argument_string += "-DDERIV_PRECISION=float ";
+        hydro_argument_string += "-DDERIV_PRECISION=float ";
+    }
 
     {
         std::ofstream out("args.txt");
@@ -5635,11 +5655,7 @@ int main()
 
     cpu_mesh_settings base_settings;
 
-    #ifdef USE_HALF_INTERMEDIATE
-    base_settings.use_half_intermediates = true;
-    #else
-    base_settings.use_half_intermediates = false;
-    #endif // USE_HALF_INTERMEDIATE
+    base_settings.use_half_intermediates = use_half;
 
     bool use_matter_colour = true;
 

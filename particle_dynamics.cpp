@@ -348,7 +348,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     assert((int)positions.size() == particle_count);
 
-    std::string argument_string = "-I ./ -cl-std=CL2.0 ";
+    std::string argument_string = "-I ./ -cl-std=CL1.2 ";
 
     {
         equation_context ectx;

@@ -1110,7 +1110,11 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct render
 
 float4 read_mipmap(image2d_t mipmap1, sampler_t sam, float2 pos, float lod)
 {
+    #ifndef NO_MIPMAPS
     return read_imagef(mipmap1, sam, pos, lod);
+    #else
+    return read_imagef(mipmap1, sam, pos);
+    #endif
 }
 
 float circular_diff(float f1, float f2)
@@ -1333,7 +1337,11 @@ __kernel void render_rays(__global struct render_ray_info* rays_in, __write_only
 
         float levelofdetail = log2(minorRadius);
 
+        #ifndef NO_MIPMAPS
         int maxLod = MIPMAP_CONDITIONAL(get_image_num_mip_levels) - 1;
+        #else
+        int maxLod = 1;
+        #endif
 
         if(levelofdetail > maxLod)
         {
