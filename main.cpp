@@ -26,7 +26,6 @@
 #include "random.hpp"
 #include "galaxy_model.hpp"
 #include "cache.hpp"
-#include <stdfloat>
 #include "single_source.hpp"
 #include "bitflags.cl"
 #include "raytracing.hpp"

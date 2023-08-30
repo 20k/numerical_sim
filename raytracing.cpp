@@ -273,7 +273,7 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
 
 struct render_ray_info : single_source::struct_base<render_ray_info>
 {
-    static constexpr std::string type = "ray_render_info";
+    std::string type = "ray_render_info";
 
     literal<value_mut> X, Y, Z;
     literal<value_mut> dX, dY, dZ;

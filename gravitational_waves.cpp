@@ -112,7 +112,7 @@ std::vector<dual_types::complex<float>> gravitational_wave_manager::process()
 
         dual_types::complex<float> harmonic = get_harmonic(raw_harmonic_points, as_vector, simulation_size, (float)calculated_extraction_pixel, 2, 2);
 
-        if(!isnanf(harmonic.real) && !isnanf(harmonic.imaginary))
+        if(!std::isnan(harmonic.real) && !std::isnan(harmonic.imaginary))
             complex_harmonics.push_back(harmonic);
     }
 

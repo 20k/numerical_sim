@@ -4,7 +4,6 @@
 #include <string>
 #include "equation_context.hpp"
 #include <geodesic/dual_value.hpp>
-#include <stdfloat>
 #include "cache.hpp"
 #include "single_source_fw.hpp"
 #include <thread>
@@ -76,7 +75,7 @@ namespace single_source
         void add(buffer<T, N>& buf, type_storage& result)
         {
             input in;
-            in.type = T::type;
+            in.type = T().type;
             in.pointer = true;
             in.is_struct = true;
 

@@ -63,7 +63,7 @@ std::vector<cl_ushort4> get_spherical_integration_points(vec3i dim, int extract_
     {
         vec3f ff0 = floor(pos);
 
-        vec3i f0 = {ff0.x(), ff0.y(), ff0.z()};
+        vec3i f0 = {(int)ff0.x(), (int)ff0.y(), (int)ff0.z()};
 
         ret_as_int.push_back(f0);
         ret_as_int.push_back({f0.x() + 1, f0.y(), f0.z()});
@@ -85,7 +85,7 @@ std::vector<cl_ushort4> get_spherical_integration_points(vec3i dim, int extract_
 
     for(vec3i i : ret_as_int)
     {
-        ret.push_back({i.x(), i.y(), i.z(), 0});
+        ret.push_back({(cl_ushort)i.x(), (cl_ushort)i.y(), (cl_ushort)i.z(), 0});
     }
 
     std::sort(ret.begin(), ret.end(), [](cl_ushort4 p1, cl_ushort4 p2)

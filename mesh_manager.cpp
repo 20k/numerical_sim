@@ -94,10 +94,17 @@ std::pair<cl::buffer, int> extract_buffer(cl::context& ctx, cl::command_queue& c
 
     cpu_buf.resize(cpu_count_1);
 
+    #ifndef __clang__
     std::sort(std::execution::par_unseq, cpu_buf.begin(), cpu_buf.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
     {
         return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
     });
+    #else
+    std::sort(cpu_buf.begin(), cpu_buf.end(), [](const cl_ushort4& p1, const cl_ushort4& p2)
+    {
+        return std::tie(p1.s[2], p1.s[1], p1.s[0]) < std::tie(p2.s[2], p2.s[1], p2.s[0]);
+    });
+    #endif
 
     cl::buffer shrunk_points(ctx);
     shrunk_points.alloc(cpu_buf.size() * sizeof(cl_ushort4));
