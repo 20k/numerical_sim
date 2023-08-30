@@ -2593,7 +2593,7 @@ struct superimposed_gpu_data
 
         ctx.add("ACCUM_BLACK_HOLE_VARIABLES", 1);
 
-        auto [prog, accum_black_hole_variables_k] = build_and_fetch_kernel(clctx, ctx, "initial_conditions.cl", "accum_black_hole_variables", "accummatter");
+        auto [prog, accum_black_hole_variables_k] = build_and_fetch_kernel(clctx, ctx, "initial_conditions.cl", "accum_black_hole_variables", "accum");
 
         cl::args args;
 
@@ -2762,6 +2762,8 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
             {
                 u_args.alloc(sizeof(cl_float) * current_dim.x() * current_dim.y() * current_dim.z());
             }
+
+            u_args.set_to_zero(cqueue);
 
             for(int i=0; i < 2; i++)
             {
