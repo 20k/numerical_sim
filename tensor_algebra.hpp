@@ -67,7 +67,8 @@ value upwind_differentiate(differentiator& ctx, const value& prefix, const value
 
     return final_command;*/
 
-    return ctx.upwind(prefix, in, idx);
+    return upwind(ctx, prefix, in, idx);
+    //return ctx.upwind(prefix, in, idx);
     //return prefix * ctx.diff1(in, idx);
 
     /*differentiation_context<7> dctx(in, idx);
@@ -366,7 +367,7 @@ tensor<T, N, N> covariant_derivative_high_vec(differentiator& ctx, const tensor<
 
 template<typename T, int N>
 inline
-tensor<T, N, N> double_covariant_derivative(differentiator& ctx, const T& in, const tensor<T, N>& first_derivatives,
+tensor<T, N, N> double_covariant_derivative(equation_context& ctx, const T& in, const tensor<T, N>& first_derivatives,
                                             const tensor<T, N, N, N>& christoff2)
 {
     tensor<T, N, N> lac;

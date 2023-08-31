@@ -8,32 +8,23 @@ struct differentiator
 {
     std::optional<std::array<std::string, 3>> position_override;
     std::vector<std::string> ignored_variables;
-    //std::optional<value> scale_override;
-
-    virtual value diff1(const value& in, int idx){assert(false); return value{0.f};};
-    //virtual value diff1(const buffer<value, 3>& in, int idx, const v3i& where, const value& scale){assert(false); return value{0.f};};
-    virtual value diff2(const value& in, int idx, int idy, const value& dx, const value& dy){assert(false); return value{0.f};};
-    virtual value upwind(const value& prefix, const value& in, int idx){assert(false); return value{0.f};}
-
-    virtual ~differentiator(){}
+    bool uses_linear = false;
+    bool use_precise_differentiation = true;
+    bool always_directional_derivatives = false;
+    bool is_derivative_free = false;
+    int order = 2;
+    std::optional<vec3i> fixed_dim;
 };
 
-inline
-value diff1(differentiator& ctx, const value& in, int idx)
-{
-    return ctx.diff1(in, idx);
-}
+struct equation_context;
 
-/*inline
-value diff1(differentiator& ctx, const buffer<value, 3>& in, int idx, const v3i& where, const value& scale)
-{
-    return ctx.diff1(in, idx, where, scale);
-}*/
+value diff1(differentiator& ctx, const value& in, int idx);
+value diff2(equation_context& ctx, const value& in, int idx, int idy, const value& first_x, const value& first_y);
+value upwind(differentiator& ctx, const value& prefix, const value& in, int idx);
 
-inline
-value diff2(differentiator& ctx, const value& in, int idx, int idy, const value& dx, const value& dy)
-{
-    return ctx.diff2(in, idx, idy, dx, dy);
-}
+value diffnth(differentiator& ctx, const value& in, int idx, int nth, const value& scale);
+value diffnth(differentiator& ctx, const value& in, int idx, const value_i& nth, const value& scale);
+
+value_i get_maximum_differentiation_derivative(const value_i& order);
 
 #endif // DIFFERENTIATOR_HPP_INCLUDED
