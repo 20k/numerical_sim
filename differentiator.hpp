@@ -12,6 +12,7 @@ struct differentiator
     bool use_precise_differentiation = true;
     bool always_directional_derivatives = false;
     bool is_derivative_free = false;
+    bool dynamic_drop = false;
     int order = 2;
     std::optional<vec3i> fixed_dim;
 };

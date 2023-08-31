@@ -20,7 +20,6 @@ struct equation_context : differentiator
     std::vector<value> sequenced;
     std::vector<std::pair<value, value>> aliases;
     bool debug = false;
-    bool dynamic_drop = false;
     bool better_buffer_index = false;
 
     int current_block_level = 0;

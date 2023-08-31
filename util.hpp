@@ -3,6 +3,7 @@
 
 #include <geodesic/dual_value.hpp>
 #include "single_source_fw.hpp"
+#include "equation_context.hpp"
 
 template<typename T, int N>
 inline
