@@ -395,6 +395,24 @@ buffer_set& cpu_mesh::get_buffers(cl::context& ctx, cl::managed_command_queue& m
     return data.at(index);
 }
 
+void check_symm(const std::string& debug_name, cl::managed_command_queue& cqueue, cl::buffer buf, cl_int4 size)
+{
+    #define CHECK_SYMMETRY
+    #ifdef CHECK_SYMMETRY
+    cqueue.block();
+
+    std::cout << debug_name << std::endl;
+
+    cl::args check;
+    check.push_back(buf);
+    check.push_back(size);
+
+    cqueue.exec("check_z_symmetry", check, {size.s[0], size.s[1], size.s[2]}, {8, 8, 1});
+
+    cqueue.block();
+    #endif // CHECK_SYMMETRY
+}
+
 ///returns buffers and intermediates
 void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, step_callback callback)
 {
@@ -597,6 +615,14 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
 
                 clean_thin(buf_in, buf_out, buf_base, current_timestep);
             }
+
+            /*for(int i=0; i < (int)generic_in.buffers.size(); i++)
+            {
+                named_buffer& buf_out = generic_out.buffers[i];
+
+                if(buf_out.desc.name == "gA" || buf_out.desc.name == "K")
+                    check_symm(buf_out.desc.name, mqueue, buf_out.buf.as_device_read_only(), clsize);
+            }*/
         };
 
         step_kernel("evolve_1");
@@ -651,12 +677,33 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         out.currently_physical = false;
     };
 
+
+    /*printf("Checking Input:\n");
+
+    for(int i=0; i < (int)data.at(0).buffers.size(); i++)
+    {
+        named_buffer& buf_in = data.at(0).buffers[i];
+
+        if(buf_in.desc.name == "gA" || buf_in.desc.name == "K")
+            check_symm(buf_in.desc.name, mqueue, buf_in.buf.as_device_read_only(), clsize);
+    }*/
+
     ///so. data[0] is current data, data[1] is old data
 
     {
         dissipate_unidir(0, 2);
         std::swap(data.at(0), data.at(2));
     }
+
+    /*printf("Checking Diss:\n");
+
+    for(int i=0; i < (int)data.at(0).buffers.size(); i++)
+    {
+        named_buffer& buf_in = data.at(0).buffers[i];
+
+        if(buf_in.desc.name == "gA" || buf_in.desc.name == "K")
+            check_symm(buf_in.desc.name, mqueue, buf_in.buf.as_device_read_only(), clsize);
+    }*/
 
     auto copy_valid = [&](auto& in, auto& out)
     {

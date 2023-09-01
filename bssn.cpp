@@ -1457,7 +1457,7 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, cons
 
     tensor<value, 3> Yij_Kj;
 
-    #define PAPER_1205_5111
+    //#define PAPER_1205_5111
     #ifdef PAPER_1205_5111
     for(int i=0; i < 3; i++)
     {
@@ -1580,7 +1580,7 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, cons
 
         ///https://arxiv.org/pdf/1205.5111v1.pdf 50
         ///made it to 70+ and then i got bored, but the simulation was meaningfully different
-        #define EQ_50
+        //#define EQ_50
         #ifdef EQ_50
 
         auto step = [](const value& in)
@@ -1605,7 +1605,7 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, cons
         #endif // EQ_50
 
         ///todo: test 2.22 https://arxiv.org/pdf/0711.3575.pdf
-        //#define YBS
+        #define YBS
         #ifdef YBS
         value E = 1;
 
@@ -2053,6 +2053,29 @@ void build_kernel(single_source::argument_generator& arg_gen, equation_context& 
 
     ctx.fix_buffers();
     std::cout << "End build\n";
+}
+
+void sommerfeld_thick(single_source::argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args, base_utility_args& utility_args)
+{
+    /*all_args all(arg_gen, bssn_args, utility_args);
+
+    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
+    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
+
+    value_i local_idx = declare(ctx, value_i{"get_global_id(0)"}, "lidx");
+
+    if_e(local_idx >= point_count, ctx, [&]()
+    {
+        ctx.exec(return_s);
+    });
+
+    value_i ix = declare(ctx, points[local_idx].x().convert<int>(), "ix");
+    value_i iy = declare(ctx, points[local_idx].y().convert<int>(), "iy");
+    value_i iz = declare(ctx, points[local_idx].z().convert<int>(), "iz");
+
+    ///((k) * dim.x * dim.y + (j) * dim.x + (i))
+
+    value_i index = declare(ctx, iz * dim.x() * dim.y() + iy * dim.x() + ix, "index");*/
 }
 
 void bssn::build(cl::context& clctx, const matter_interop& interop, bool use_matter, base_bssn_args bssn_args, base_utility_args utility_args, vec3i dim)

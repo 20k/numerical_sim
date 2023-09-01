@@ -708,7 +708,7 @@ void render(STANDARD_ARGS(),
             STANDARD_DERIVS(),
             STANDARD_UTILITY(),
             __global ushort* order_ptr,
-            float scale, int4 dim, __write_only image2d_t screen)
+            float scale, int4 dim, __write_only image2d_t screen, int debug_x, int debug_y)
 {
     int ix = get_global_id(0);
     int iy = get_global_id(1);
@@ -738,6 +738,16 @@ void render(STANDARD_ARGS(),
     #endif
 
     int index = IDX(ix, iy, iz);
+
+    if(ix == debug_x && iy == debug_y)
+    {
+        printf("X %f\n", X[index]);
+        printf("K %f\n", K[index]);
+        printf("gA %f\n", gA[index]);
+        printf("gB0 %f\n", gB0[index]);
+        printf("gB1 %f\n", gB1[index]);
+        printf("gB2 %f\n", gB2[index]);
+    }
 
     //for(int z = 20; z < dim.z-20; z++)
 
@@ -830,7 +840,7 @@ void render(STANDARD_ARGS(),
 
         //#define RENDER_X
         #ifdef RENDER_X
-        ascalar = fabs(X[index] / 50);
+        ascalar = pow(fabs(X[index]), 2.f) / 50;
         #endif // RENDER_X
 
         //#define RENDER_CGI

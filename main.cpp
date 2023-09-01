@@ -2585,7 +2585,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    #define PAPER_0610128
+    //#define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -2601,6 +2601,19 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     objects = {h1, h2};
     #endif // PAPER_0610128
+
+    #define SINGLE_STATIONARY
+    #ifdef SINGLE_STATIONARY
+    compact_object::data h1;
+    h1.t = compact_object::BLACK_HOLE;
+    //h1.bare_mass = 0.2;
+    h1.momentum = {0, 0, 0};
+    //h1.angular_momentum = {0, 0.225, 0};
+    h1.bare_mass = 0.483;
+    h1.position = {0.f, 0.f, 0.f};
+
+    objects = {h1};
+    #endif
 
     //#define REDDIT
     #ifdef REDDIT
@@ -4763,7 +4776,7 @@ int main()
 
     std::string hydro_argument_string = argument_string;
 
-    vec3i size = {255, 255, 255};
+    vec3i size = {213, 213, 213};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -5628,7 +5641,7 @@ int main()
         ///todo: backwards euler test
         float timestep = get_timestep(get_c_at_max(), size) * 1/get_backwards_euler_relax_parameter();
 
-        if(pao && base_mesh.elapsed_time > 300)
+        if(pao && base_mesh.elapsed_time > 1400)
             step = false;
 
         if(step)
@@ -5642,6 +5655,9 @@ int main()
 
                 if(!should_render)
                 {
+                    int mx = ImGui::GetMousePos().x;
+                    int my = ImGui::GetMousePos().y;
+
                     cl::args render;
 
                     for(auto& i : bufs)
@@ -5662,6 +5678,8 @@ int main()
                     render.push_back(scale);
                     render.push_back(clsize);
                     render.push_back(rtex);
+                    render.push_back(mx);
+                    render.push_back(my);
 
                     mqueue.exec("render", render, {size.x(), size.y()}, {16, 16});
                 }

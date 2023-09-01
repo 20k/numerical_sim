@@ -294,7 +294,12 @@ value diff1_interior(differentiator& ctx, const value& in, int idx, int order, i
         differentiation_context dctx(ctx, in, idx, ctx.uses_linear);
         std::array<value, 5> vars = dctx.vars;
 
-        return (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
+        value p1 = -vars[4] + vars[0];
+        value p2 = 8 * (vars[3] - vars[1]);
+
+        return (p1 + p2) / (12 * scale);
+
+        //return (-vars[4] + 8 * vars[3] - 8 * vars[1] + vars[0]) / (12 * scale);
     }
     else if(order == 3)
     {
@@ -320,6 +325,8 @@ value diffnth(differentiator& ctx, const value& in, int idx, int nth, const valu
     ///1 with accuracy 2
     if(nth == 1)
     {
+        assert(false);
+
         differentiation_context<3> dctx(ctx, in, idx, ctx.uses_linear);
         auto vars = dctx.vars;
 
@@ -332,12 +339,19 @@ value diffnth(differentiator& ctx, const value& in, int idx, int nth, const valu
         differentiation_context<3> dctx(ctx, in, idx, ctx.uses_linear);
         auto vars = dctx.vars;
 
-        return (vars[0] - 2 * vars[1] + vars[2]) / pow(scale, 2);
+        value p1 = vars[0] + vars[2];
+        value p2 = -2 * vars[1];
+
+        return (p1 + p2) / pow(scale, 2);
+
+        //return (vars[0] - 2 * vars[1] + vars[2]) / pow(scale, 2);
     }
 
     ///3 with accuracy 2
     if(nth == 3)
     {
+        assert(false);
+
         differentiation_context<5> dctx(ctx, in, idx, ctx.uses_linear);
         auto vars = dctx.vars;
 
@@ -350,12 +364,20 @@ value diffnth(differentiator& ctx, const value& in, int idx, int nth, const valu
         differentiation_context<5> dctx(ctx, in, idx, ctx.uses_linear);
         auto vars = dctx.vars;
 
-        return (vars[0] - 4 * vars[1] + 6 * vars[2] - 4 * vars[3] + vars[4]) / pow(scale, 4);
+        value p1 = vars[0] + vars[4];
+        value p2 = -4 * (vars[1] + vars[3]);
+        value p3 = 6 * vars[2];
+
+        return (p1 + p2 + p3) / pow(scale, 4);
+
+        //return (vars[0] - 4 * vars[1] + 6 * vars[2] - 4 * vars[3] + vars[4]) / pow(scale, 4);
     }
 
     ///5 with accuracy 2
     if(nth == 5)
     {
+        assert(false);
+
         differentiation_context<7> dctx(ctx, in, idx, ctx.uses_linear);
         auto vars = dctx.vars;
 
@@ -368,7 +390,14 @@ value diffnth(differentiator& ctx, const value& in, int idx, int nth, const valu
         differentiation_context<7> dctx(ctx, in, idx, ctx.uses_linear);
         auto vars = dctx.vars;
 
-        return (1 * vars[0] - 6 * vars[1] + 15 * vars[2] - 20 * vars[3] + 15 * vars[4] - 6 * vars[5] + 1 * vars[6]) / pow(scale, 6);
+        value p1 = vars[0] + vars[6];
+        value p2 = -6 * (vars[1] + vars[5]);
+        value p3 = 15 * (vars[2] + vars[4]);
+        value p4 = -20 * vars[3];
+
+        return (p1 + p2 + p3 + p4) / pow(scale, 6);
+
+        //return (1 * vars[0] - 6 * vars[1] + 15 * vars[2] - 20 * vars[3] + 15 * vars[4] - 6 * vars[5] + 1 * vars[6]) / pow(scale, 6);
     }
 
     assert(false);
@@ -553,8 +582,9 @@ value diff2(equation_context& ctx, const value& in, int idx, int idy, const valu
 
 value upwind(differentiator& ctx, const value& prefix, const value& in, int idx)
 {
+    //#define USE_UPWIND_STENCILS
     #ifdef USE_UPWIND_STENCILS
-    value_us is_high_order = satisfies_order(3, "order");
+    value_i is_high_order = satisfies_order(3, "order");
     value scale = "scale";
 
     differentiation_context<7> dctx(ctx, in, idx, ctx.uses_linear);
