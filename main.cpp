@@ -5882,59 +5882,6 @@ int main()
             }
         }
 
-        /*if(rendering_method == 2 && snap)
-        {
-            cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
-            cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
-
-            cl::args init_args;
-
-            auto buffers = base_mesh.data[0].buffers;
-
-            for(auto& i : buffers)
-            {
-                init_args.push_back(i.buf);
-            }
-
-            init_args.push_back(scale);
-            init_args.push_back(ccamera_pos);
-            init_args.push_back(ccamera_quat);
-            init_args.push_back(clsize);
-            init_args.push_back(rtex);
-            init_args.push_back(ray_buffer);
-
-            clctx.cqueue.exec("init_accurate_rays", init_args, {width, height}, {8, 8});
-
-            printf("Init\n");
-        }
-
-        if(rendering_method == 2 && step)
-        {
-            cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
-            cl_float4 ccamera_quat = {camera_quat.q.x(), camera_quat.q.y(), camera_quat.q.z(), camera_quat.q.w()};
-
-            std::cout << camera_pos << std::endl;
-
-            cl::args step_args;
-
-            auto buffers = base_mesh.data[0].buffers;
-
-            for(auto& i : buffers)
-            {
-                step_args.push_back(i.buf);
-            }
-
-            step_args.push_back(scale);
-            step_args.push_back(ccamera_pos);
-            step_args.push_back(ccamera_quat);
-            step_args.push_back(clsize);
-            step_args.push_back(rtex);
-            step_args.push_back(ray_buffer);
-            step_args.push_back(timestep);
-
-            clctx.cqueue.exec("step_accurate_rays", step_args, {width * height}, {128});
-        }*/
-
         rtex.unacquire(clctx.cqueue);
 
         {
