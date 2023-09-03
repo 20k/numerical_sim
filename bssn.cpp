@@ -1457,7 +1457,7 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, cons
 
     tensor<value, 3> Yij_Kj;
 
-    //#define PAPER_1205_5111
+    #define PAPER_1205_5111
     #ifdef PAPER_1205_5111
     for(int i=0; i < 3; i++)
     {
@@ -1580,7 +1580,7 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, cons
 
         ///https://arxiv.org/pdf/1205.5111v1.pdf 50
         ///made it to 70+ and then i got bored, but the simulation was meaningfully different
-        //#define EQ_50
+        #define EQ_50
         #ifdef EQ_50
 
         auto step = [](const value& in)
@@ -1605,7 +1605,7 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, cons
         #endif // EQ_50
 
         ///todo: test 2.22 https://arxiv.org/pdf/0711.3575.pdf
-        #define YBS
+        //#define YBS
         #ifdef YBS
         value E = 1;
 
