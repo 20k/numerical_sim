@@ -4800,6 +4800,8 @@ int main()
 
     clctx.ctx.register_program(evolve_prog);
 
+    init_mesh_kernels(clctx.ctx);
+
     evolution_points evolve_points = generate_evolution_points(clctx.ctx, clctx.cqueue, scale, size);
 
     //sandwich_result sandwich(clctx.ctx);

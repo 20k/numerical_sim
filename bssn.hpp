@@ -8,6 +8,7 @@
 #include <toolkit/opencl.hpp>
 #include "single_source.hpp"
 #include "async_read_queue.hpp"
+#include "util.hpp"
 
 ///must be 4 because of damping
 #define BORDER_WIDTH 4

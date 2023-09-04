@@ -379,6 +379,7 @@
 		<Unit filename="equation_context.hpp" />
 		<Unit filename="evolution_common.cl" />
 		<Unit filename="evolve_points.cl" />
+		<Unit filename="fetch_linear.cl" />
 		<Unit filename="galaxy_model.cpp" />
 		<Unit filename="galaxy_model.hpp" />
 		<Unit filename="generic_laplace.cl" />

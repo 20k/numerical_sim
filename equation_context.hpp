@@ -8,7 +8,7 @@
 #include <vec/tensor.hpp>
 #include "differentiator.hpp"
 #include "single_source_fw.hpp"
-#include "util.hpp"
+//#include "util.hpp"
 
 struct equation_context : differentiator
 {

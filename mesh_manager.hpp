@@ -201,4 +201,6 @@ private:
     std::vector<buffer_descriptor> buffers;
 };
 
+void init_mesh_kernels(cl::context& clctx);
+
 #endif // MESH_MANAGER_HPP_INCLUDED

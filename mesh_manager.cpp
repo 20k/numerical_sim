@@ -413,6 +413,71 @@ void check_symm(const std::string& debug_name, cl::managed_command_queue& cqueue
     #endif // CHECK_SYMMETRY
 }
 
+/*void pull_slice_kernel(equation_context& ctx, buffer<value_base<char>, 3> in, buffer<value_base_mut<char>, 3> out, literal<int> scale_factor, literal<v3i> ldim, literal<value_i> element_size)
+{
+    value ix = declare(ctx, "get_global_id(0)", "ix");
+    value iy = declare(ctx, "get_global_id(1)", "iy");
+    value iz = declare(ctx, "get_global_id(2)", "iz");
+
+    v3i dim = ldim.get();
+
+    if_e(ix >= dim_out.x() || iy >= dim_out.y() || iz >= dim_out.z(), ctx, [&]()
+    {
+        ctx.exec(return_s);
+    });
+
+    value_i esize = element_size.get();
+
+    value_i lidx = "loopindex";
+
+    v3i upper_dim = dim * scale_factor.get();
+
+    for_e(ctx, lidx, value{0}, lidx < esize, value_i{"loopindex++"}, [&]()
+    {
+
+    });
+}*/
+
+template<typename T>
+void extract_chunk_kernel(equation_context& ctx, buffer<value_base<T>, 3> in, buffer<value_base_mut<T>, 3> out, literal<v3i> origin, literal<v3i> lupper_size, literal<v3i> llower_size)
+{
+    value_i ix = declare(ctx, value_i{"get_global_id(0)"}, "ix");
+    value_i iy = declare(ctx, value_i{"get_global_id(1)"}, "iy");
+    value_i iz = declare(ctx, value_i{"get_global_id(2)"}, "iz");
+
+    in.size = lupper_size.get();
+    out.size = llower_size.get();
+
+    v3i lower_size = llower_size.get();
+
+    if_e(ix >= lower_size.x() || iy >= lower_size.y() || iz >= lower_size.z(), ctx, [&]()
+    {
+        ctx.exec(return_s);
+    });
+
+    v3i pos = {ix, iy, iz};
+
+    v3i upper_pos = origin.get() + pos;
+
+    out[pos].as_mutable(ctx) = in[upper_pos];
+}
+
+void init_mesh_kernels(cl::context& clctx)
+{
+    single_source::make_async_kernel_for(clctx, extract_chunk_kernel<float>, "extract_chunk_kernelf");
+}
+
+/*template<typename T>
+ref_counted_buffer pull_slice(cl::context& ctx, cl::managed_command_queue& mqueue, vec3i origin, vec3i base_size, vec3i out_size, cl::buffer& in, thin_intermediates_pool& pool)
+{
+    static_assert(std::is_same_v<T, float>);
+
+    ref_counted_buffer buf = pool.request(ctx, mqueue, out_size, sizeof(T));
+
+    //cl::args args;
+    //args.push_back()
+}*/
+
 ///returns buffers and intermediates
 void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, step_callback callback)
 {
