@@ -402,9 +402,9 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
 }
 
 __kernel
-void calculate_intermediate_data_thin(__global ushort4* points, int point_count,
-                                      __global float* buffer, __global DERIV_PRECISION* buffer_out_1, __global DERIV_PRECISION* buffer_out_2, __global DERIV_PRECISION* buffer_out_3,
-                                      float scale, int4 dim, __global ushort* order_ptr)
+void calculate_intermediate_data_thin(__global const ushort4* points, int point_count,
+                                      __global const float* buffer, __global DERIV_PRECISION* buffer_out_1, __global DERIV_PRECISION* buffer_out_2, __global DERIV_PRECISION* buffer_out_3,
+                                      float scale, int4 dim, __global const ushort* order_ptr)
 {
     int local_idx = get_global_id(0);
 
@@ -535,11 +535,11 @@ void generate_sponge_points(__global ushort4* points, __global int* point_count,
 
 ///https://cds.cern.ch/record/517706/files/0106072.pdf
 __kernel
-void clean_data_thin(__global ushort4* points, int point_count,
-                __global float* input,
-                __global float* base,
+void clean_data_thin(__global const ushort4* points, int point_count,
+                __global const float* input,
+                __global const float* base,
                 __global float* out,
-                __global ushort* order_ptr,
+                __global const ushort* order_ptr,
                 float scale, int4 dim,
                 float timestep,
                 float asym, float speed)

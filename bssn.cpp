@@ -696,6 +696,11 @@ struct all_args
         arg_gen.add(momentum);
         arg_gen.add(dcYij, digA, digB, dX);
 
+        auto non_mut_utility = utility_args.buffers;
+
+        for(auto& i : non_mut_utility)
+            i.is_constant = true;
+
         arg_gen.add(utility_args.buffers);
 
         arg_gen.add(scale, dim, timestep, order_ptr);

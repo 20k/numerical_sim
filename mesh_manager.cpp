@@ -68,7 +68,7 @@ void dissipate_set(cl::command_queue& mqueue, T& base_reference, T& inout, evolu
         diss.push_back(points_set.all_points);
         diss.push_back(points_set.all_count);
 
-        diss.push_back(base_reference.buffers[i].buf.as_device_read_only());
+        diss.push_back(base_reference.buffers[i].buf);
         diss.push_back(inout.buffers[i].buf);
 
         float coeff = inout.buffers[i].desc.dissipation_coeff;
@@ -113,7 +113,7 @@ std::pair<cl::buffer, int> extract_buffer(cl::context& ctx, cl::command_queue& c
 
     printf("COUNT %i\n", cpu_count_1);
 
-    return {shrunk_points.as_device_read_only(), cpu_count_1};
+    return {shrunk_points, cpu_count_1};
 }
 
 evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& cqueue, float scale, vec3i size)
@@ -181,7 +181,7 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
     //ret.second_derivative_points = shrunk_points_2;
     ret.border_points = shrunk_border;
     ret.all_points = shrunk_all;
-    ret.order = order.as_device_read_only();
+    ret.order = order;
 
     //printf("Evolve point reduction %i\n", cpu_count_1);
 
@@ -318,7 +318,7 @@ std::vector<ref_counted_buffer> cpu_mesh::get_derivatives_of(cl::context& ctx, b
         cl::args thin;
         thin.push_back(points_set.all_points);
         thin.push_back(points_set.all_count);
-        thin.push_back(in_buffer.as_device_read_only());
+        thin.push_back(in_buffer);
         thin.push_back(out1);
         thin.push_back(out2);
         thin.push_back(out3);
@@ -361,8 +361,8 @@ void cpu_mesh::clean_buffer(cl::command_queue& mqueue, cl::buffer& in, cl::buffe
     cleaner.push_back(points_set.border_points);
     cleaner.push_back(points_set.border_count);
 
-    cleaner.push_back(in.as_device_read_only());
-    cleaner.push_back(base.as_device_read_only());
+    cleaner.push_back(in);
+    cleaner.push_back(base);
     cleaner.push_back(out);
 
     cleaner.push_back(points_set.order);
@@ -576,7 +576,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::co
 
             for(auto& i : generic_in.buffers)
             {
-                momentum_args.push_back(i.buf.as_device_read_only());
+                momentum_args.push_back(i.buf);
             }
 
             for(auto& i : momentum_constraint)
@@ -602,7 +602,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::co
 
             for(auto& i : generic_in.buffers)
             {
-                a1.push_back(i.buf.as_device_read_only());
+                a1.push_back(i.buf);
             }
 
             for(named_buffer& i : generic_out.buffers)
@@ -615,17 +615,17 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::co
 
             for(auto& i : generic_base.buffers)
             {
-                a1.push_back(i.buf.as_device_read_only());
+                a1.push_back(i.buf);
             }
 
             for(auto& i : momentum_constraint)
             {
-                a1.push_back(i.as_device_read_only());
+                a1.push_back(i);
             }
 
             for(auto& i : intermediates)
             {
-                a1.push_back(i.as_device_read_only());
+                a1.push_back(i);
             }
 
             append_utility_buffers(name, a1);
@@ -664,7 +664,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::co
                 named_buffer& buf_out = generic_out.buffers[i];
 
                 if(buf_out.desc.name == "gA" || buf_out.desc.name == "K")
-                    check_symm(buf_out.desc.name, mqueue, buf_out.buf.as_device_read_only(), clsize);
+                    check_symm(buf_out.desc.name, mqueue, buf_out.buf, clsize);
             }*/
         };
 
@@ -697,7 +697,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::co
             diss.push_back(points_set.all_points);
             diss.push_back(points_set.all_count);
 
-            diss.push_back(in.buffers[i].buf.as_device_read_only());
+            diss.push_back(in.buffers[i].buf);
             diss.push_back(out.buffers[i].buf.as_device_write_only());
 
             float coeff = in.buffers[i].desc.dissipation_coeff;
@@ -728,7 +728,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::co
         named_buffer& buf_in = data.at(0).buffers[i];
 
         if(buf_in.desc.name == "gA" || buf_in.desc.name == "K")
-            check_symm(buf_in.desc.name, mqueue, buf_in.buf.as_device_read_only(), clsize);
+            check_symm(buf_in.desc.name, mqueue, buf_in.buf, clsize);
     }*/
 
     ///so. data[0] is current data, data[1] is old data
@@ -745,7 +745,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::co
         named_buffer& buf_in = data.at(0).buffers[i];
 
         if(buf_in.desc.name == "gA" || buf_in.desc.name == "K")
-            check_symm(buf_in.desc.name, mqueue, buf_in.buf.as_device_read_only(), clsize);
+            check_symm(buf_in.desc.name, mqueue, buf_in.buf, clsize);
     }*/
 
     auto copy_valid = [&](auto& in, auto& out)
@@ -1163,7 +1163,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::co
             args.push_back(points_set.all_points);
             args.push_back(points_set.all_count);
             args.push_back(inout.buffers[i].buf);
-            args.push_back(right.buffers[i].buf.as_device_read_only());
+            args.push_back(right.buffers[i].buf);
             args.push_back(left_cst);
             args.push_back(right_cst);
             args.push_back(i);
@@ -1296,7 +1296,7 @@ void cpu_mesh::append_utility_buffers(const std::string& kernel_name, cl::args& 
             if(buf.desc.modified_by == kernel_name)
                 args.push_back(buf.buf);
             else
-                args.push_back(buf.buf.as_device_read_only());
+                args.push_back(buf.buf);
         }
     }
 }
