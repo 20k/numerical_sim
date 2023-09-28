@@ -6,6 +6,7 @@
 #include "equation_context.hpp"
 #include "single_source.hpp"
 #include "util.hpp"
+#include <libfastcl/fastcl/cl.h>
 
 void save_buffer(cl::command_queue& cqueue, cl::buffer& buf, const std::string& where)
 {
@@ -50,7 +51,7 @@ named_buffer& buffer_set::lookup(const std::string& name)
 ///:O ok so, SO the factor that we add to these buffers is constant
 ///might be able to add it to base just once
 template<typename T>
-void dissipate_set(cl::managed_command_queue& mqueue, T& base_reference, T& inout, evolution_points& points_set, float timestep, vec3i dim, float scale)
+void dissipate_set(cl::command_queue& mqueue, T& base_reference, T& inout, evolution_points& points_set, float timestep, vec3i dim, float scale)
 {
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
@@ -187,7 +188,7 @@ evolution_points generate_evolution_points(cl::context& ctx, cl::command_queue& 
     return ret;
 }
 
-ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::managed_command_queue& cqueue, vec3i size, int element_size)
+ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::command_queue& cqueue, vec3i size, int element_size)
 {
     for(ref_counted_buffer& desc : pool)
     {
@@ -207,11 +208,9 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::manage
 
     #ifdef NANFILL
     cl_float nan = std::nanf("");
-    cl::event evt = next.fill(cqueue, nan);
-    cqueue.getting_value_depends_on(next, evt);
+    next.fill(cqueue, nan);
     #else
-    cl::event evt = next.set_to_zero(cqueue.mqueue.next());
-    cqueue.getting_value_depends_on(next, evt);
+    next.set_to_zero(cqueue);
     #endif // NANFILL
 
     pool.push_back(next);
@@ -300,7 +299,7 @@ void cpu_mesh::init(cl::context& ctx, cl::command_queue& cqueue, thin_intermedia
     }
 }
 
-ref_counted_buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool)
+ref_counted_buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::command_queue& cqueue, thin_intermediates_pool& pool)
 {
     if(sett.use_half_intermediates)
         return pool.request(ctx, cqueue, dim, sizeof(cl_half));
@@ -308,13 +307,13 @@ ref_counted_buffer cpu_mesh::get_thin_buffer(cl::context& ctx, cl::managed_comma
         return pool.request(ctx, cqueue, dim, sizeof(cl_float));
 }
 
-std::vector<ref_counted_buffer> cpu_mesh::get_derivatives_of(cl::context& ctx, buffer_set& generic_in, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool)
+std::vector<ref_counted_buffer> cpu_mesh::get_derivatives_of(cl::context& ctx, buffer_set& generic_in, cl::command_queue& mqueue, thin_intermediates_pool& pool)
 {
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
     std::vector<ref_counted_buffer> intermediates;
 
-    auto differentiate = [&](cl::managed_command_queue& cqueue, cl::buffer in_buffer, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
+    auto differentiate = [&](cl::command_queue& cqueue, cl::buffer in_buffer, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
     {
         cl::args thin;
         thin.push_back(points_set.all_points);
@@ -351,7 +350,7 @@ std::vector<ref_counted_buffer> cpu_mesh::get_derivatives_of(cl::context& ctx, b
     return intermediates;
 }
 
-void cpu_mesh::clean_buffer(cl::managed_command_queue& mqueue, cl::buffer& in, cl::buffer& out, cl::buffer& base, float asym, float speed, float timestep)
+void cpu_mesh::clean_buffer(cl::command_queue& mqueue, cl::buffer& in, cl::buffer& out, cl::buffer& base, float asym, float speed, float timestep)
 {
     if(in.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z())
         return;
@@ -376,7 +375,7 @@ void cpu_mesh::clean_buffer(cl::managed_command_queue& mqueue, cl::buffer& in, c
     mqueue.exec("clean_data_thin", cleaner, {points_set.border_count}, {256});
 }
 
-buffer_set& cpu_mesh::get_buffers(cl::context& ctx, cl::managed_command_queue& mqueue, int index)
+buffer_set& cpu_mesh::get_buffers(cl::context& ctx, cl::command_queue& mqueue, int index)
 {
     auto it = data.find(index);
 
@@ -395,7 +394,7 @@ buffer_set& cpu_mesh::get_buffers(cl::context& ctx, cl::managed_command_queue& m
     return data.at(index);
 }
 
-void check_symm(const std::string& debug_name, cl::managed_command_queue& cqueue, cl::buffer buf, cl_int4 size)
+void check_symm(const std::string& debug_name, cl::command_queue& cqueue, cl::buffer buf, cl_int4 size)
 {
     #define CHECK_SYMMETRY
     #ifdef CHECK_SYMMETRY
@@ -443,7 +442,7 @@ void init_mesh_kernels(cl::context& clctx)
 }
 
 template<typename T>
-ref_counted_buffer pull_slice(cl::context& ctx, cl::managed_command_queue& mqueue, vec3i origin, vec3i base_size, vec3i out_size, cl::buffer& in, thin_intermediates_pool& pool)
+ref_counted_buffer pull_slice(cl::context& ctx, cl::command_queue& mqueue, vec3i origin, vec3i base_size, vec3i out_size, cl::buffer& in, thin_intermediates_pool& pool)
 {
     static_assert(std::is_same_v<T, float>);
 
@@ -458,13 +457,13 @@ ref_counted_buffer pull_slice(cl::context& ctx, cl::managed_command_queue& mqueu
 }
 
 ///returns buffers and intermediates
-void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::managed_command_queue& mqueue, float timestep, thin_intermediates_pool& pool, step_callback callback)
+void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::command_queue& mqueue, float timestep, thin_intermediates_pool& pool, step_callback callback)
 {
     equation_context ectx;
 
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
 
-    mqueue.begin_splice(main_queue);
+    clBeginSpliceEx(main_queue.native_command_queue.data, mqueue.native_command_queue.data);
 
     ///need to size check the buffers
     auto check_for_nans = [&](const std::string& name, cl::buffer& buf)
@@ -1276,7 +1275,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::ma
         p->finalise(*this, ctx, mqueue, pool, timestep);
     }
 
-    mqueue.end_splice(main_queue);
+    clEndSpliceEx(main_queue.native_command_queue.data, mqueue.native_command_queue.data);
 
     std::swap(data.at(1), data.at(0));
     ///data[0] is now the new output data, data[1] is the old data, data[2] is the old intermediate data

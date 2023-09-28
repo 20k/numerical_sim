@@ -4763,7 +4763,8 @@ int main()
 
     opencl_context& clctx = *win.clctx;
 
-    cl::managed_command_queue mqueue(clctx.ctx, 0, 16);
+    cl::command_queue mqueue(clctx.ctx, (1 << 9));
+    //cl::command_queue mqueue(clctx.ctx, (1 << 9));
 
     std::cout << "EXT " << cl::get_extensions(clctx.ctx) << std::endl;
 
@@ -5650,7 +5651,7 @@ int main()
         {
             steps++;
 
-            auto callback = [&](cl::managed_command_queue& mqueue, std::vector<cl::buffer>& bufs, std::vector<ref_counted_buffer>& intermediates)
+            auto callback = [&](cl::command_queue& mqueue, std::vector<cl::buffer>& bufs, std::vector<ref_counted_buffer>& intermediates)
             {
                 wave_manager.issue_extraction(mqueue, bufs, intermediates, scale, clsize);
                 //raytrace.grab_buffers(clctx.ctx, mqueue, bufs, scale, {clsize.x(), clsize.y(), clsize.z(), 0}, timestep);

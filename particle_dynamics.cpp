@@ -571,7 +571,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     mesh.utility_data.lookup("adm_S").buf.set_to_zero(cqueue);
 }
 
-void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration)
+void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& mqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration)
 {
     buffer_set& in = pack.in;
     buffer_set& out = pack.out;
@@ -896,7 +896,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_comma
     }
 }
 
-void particle_dynamics::finalise(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& mqueue, thin_intermediates_pool& pool, float timestep)
+void particle_dynamics::finalise(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& mqueue, thin_intermediates_pool& pool, float timestep)
 {
 
 }

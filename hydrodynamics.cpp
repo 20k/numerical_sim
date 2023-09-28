@@ -70,7 +70,7 @@ void eularian_hydrodynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_
     vars = matter_initial_vars(ctx);
 }
 
-void eularian_hydrodynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::managed_command_queue& cqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration)
+void eularian_hydrodynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration)
 {
     buffer_set& in = pack.in;
     buffer_set& out = pack.out;

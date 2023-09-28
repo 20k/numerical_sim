@@ -27,7 +27,7 @@ struct gravitational_wave_manager
 
     gravitational_wave_manager(cl::context& ctx, vec3i _simulation_size, float c_at_max, float scale);
 
-    void issue_extraction(cl::managed_command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<ref_counted_buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize);
+    void issue_extraction(cl::command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<ref_counted_buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize);
     std::vector<dual_types::complex<float>> process();
 
     int calculated_extraction_pixel = 0;
