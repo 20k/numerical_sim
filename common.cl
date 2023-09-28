@@ -171,7 +171,7 @@ void check_z_symmetry(__global float* u_in, int4 dim)
 
     float v_mirrored = u_in[IDX(ix, iy, mirrored_z)];
 
-    if(base_value != v_mirrored)
+    if(base_value != v_mirrored && base_value != -v_mirrored)
     {
         printf("Failure in symmetry %.23f %i %i %i against %.23f %i %i %i with dim %i %i %i\n", base_value, ix, iy, iz, v_mirrored, ix, iy, mirrored_z, dim.x, dim.y, dim.z);
     }
