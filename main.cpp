@@ -4545,7 +4545,7 @@ void loop_geodesics4(equation_context& ctx)
     return r_phys;
 }*/
 
-cl::image_with_mipmaps load_mipped_image(const std::string& fname, opencl_context& clctx)
+cl::image_with_mipmaps load_mipped_image(const std::string& fname, opencl_context& clctx, cl::command_queue& mqueue)
 {
     sf::Image img;
     img.loadFromFile(fname);
@@ -4599,7 +4599,7 @@ cl::image_with_mipmaps load_mipped_image(const std::string& fname, opencl_contex
 
         assert((int)converted.size() == (cwidth * cheight));
 
-        image_mipped.write(clctx.cqueue, (char*)&converted[0], vec<2, size_t>{0, 0}, vec<2, size_t>{cwidth, cheight}, i);
+        image_mipped.write(mqueue, (char*)&converted[0], vec<2, size_t>{0, 0}, vec<2, size_t>{cwidth, cheight}, i);
     }
 
     return image_mipped;
@@ -4784,7 +4784,7 @@ int main()
     float scale = calculate_scale(c_at_max, size);
     vec3f centre = {size.x()/2.f, size.y()/2.f, size.z()/2.f};
 
-    initial_conditions holes = setup_dynamic_initial_conditions(clctx.ctx, clctx.cqueue, centre, scale);
+    initial_conditions holes = setup_dynamic_initial_conditions(clctx.ctx, mqueue, centre, scale);
 
     for(auto& obj : holes.objs)
     {
@@ -4793,7 +4793,7 @@ int main()
         printf("Voxel pos %f %f %f\n", pos.x(), pos.y(), pos.z());
     }
 
-    //test_kernel_generation(clctx.ctx, clctx.cqueue);
+    //test_kernel_generation(clctx.ctx, mqueue);
 
     cl::buffer u_arg(clctx.ctx);
 
@@ -4803,7 +4803,7 @@ int main()
 
     init_mesh_kernels(clctx.ctx);
 
-    evolution_points evolve_points = generate_evolution_points(clctx.ctx, clctx.cqueue, scale, size);
+    evolution_points evolve_points = generate_evolution_points(clctx.ctx, mqueue, scale, size);
 
     //sandwich_result sandwich(clctx.ctx);
 
@@ -4852,7 +4852,7 @@ int main()
 
     cl_sampler sam = clCreateSamplerWithProperties(clctx.ctx.native_context.data, sampler_props, nullptr);
 
-    cl::image_with_mipmaps background_mipped = load_mipped_image("background.png", clctx);
+    cl::image_with_mipmaps background_mipped = load_mipped_image("background.png", clctx, mqueue);
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
@@ -5216,7 +5216,7 @@ int main()
     #if 0
     for(int i=0; i < (int)holes.holes.size(); i++)
     {
-        printf("Black hole test mass %f %i\n", get_nonspinning_adm_mass(clctx.cqueue, i, holes.holes, size, scale, u_arg), i);
+        printf("Black hole test mass %f %i\n", get_nonspinning_adm_mass(mqueue, i, holes.holes, size, scale, u_arg), i);
     }
     #endif // 0
 
@@ -5245,7 +5245,7 @@ int main()
     cl::buffer texture_coordinates(clctx.ctx);
     texture_coordinates.alloc(sizeof(cl_float2) * width * height);
 
-    cpu_mesh base_mesh(clctx.ctx, clctx.cqueue, {0,0,0}, size, base_settings, evolve_points, buffers, utility_buffers, plugins);
+    cpu_mesh base_mesh(clctx.ctx, mqueue, {0,0,0}, size, base_settings, evolve_points, buffers, utility_buffers, plugins);
 
     thin_intermediates_pool thin_pool;
 
@@ -5253,7 +5253,7 @@ int main()
 
     printf("Heres\n");
 
-    base_mesh.init(clctx.ctx, clctx.cqueue, thin_pool, u_arg, matter_vars.bcAij);
+    base_mesh.init(clctx.ctx, mqueue, thin_pool, u_arg, matter_vars.bcAij);
 
     printf("Hi there\n");
 
@@ -5289,7 +5289,7 @@ int main()
     int skip_frames = 8;
     int current_skip_frame = 0;
 
-    clctx.cqueue.block();
+    mqueue.block();
 
     std::cout << "Init time " << time_to_main.get_elapsed_time_s() << std::endl;
 
@@ -5423,7 +5423,7 @@ int main()
             texture_coordinates.alloc(sizeof(cl_float2) * width * height);
         }
 
-        rtex.acquire(clctx.cqueue);
+        rtex.acquire(mqueue);
 
         bool long_operation = false;
 
@@ -5474,9 +5474,9 @@ int main()
                         if(pd == nullptr)
                             continue;
 
-                        std::vector<vec3f> positions3 = pd->p_data[0].position.read<vec3f>(clctx.cqueue);
-                        std::vector<vec3f> velocities3 = pd->p_data[0].velocity.read<vec3f>(clctx.cqueue);
-                        std::vector<float> mass = pd->p_data[0].mass.read<float>(clctx.cqueue);
+                        std::vector<vec3f> positions3 = pd->p_data[0].position.read<vec3f>(mqueue);
+                        std::vector<vec3f> velocities3 = pd->p_data[0].velocity.read<vec3f>(mqueue);
+                        std::vector<float> mass = pd->p_data[0].mass.read<float>(mqueue);
 
                         int cnt = positions3.size();
 
@@ -5534,10 +5534,10 @@ int main()
                     misc["last_grabbed"] = raytrace.last_grabbed;
                     misc["time_elapsed"] = raytrace.time_elapsed;
 
-                    base_mesh.save(clctx.cqueue, "save", misc);
+                    base_mesh.save(mqueue, "save", misc);
 
                     for(int i=0; i < raytrace.slice.size(); i++)
-                        save_buffer(clctx.cqueue, raytrace.slice[i], "save/slice_" + std::to_string(i) + ".bin");
+                        save_buffer(mqueue, raytrace.slice[i], "save/slice_" + std::to_string(i) + ".bin");
 
                     ImGui::CloseCurrentPopup();
                 }
@@ -5561,7 +5561,7 @@ int main()
                 {
                     long_operation = true;
 
-                    nlohmann::json misc = base_mesh.load(clctx.cqueue, "save");
+                    nlohmann::json misc = base_mesh.load(mqueue, "save");
 
                     real_decomp = misc["real_w2"].get<std::vector<float>>();
                     imaginary_decomp = misc["imaginary_w2"].get<std::vector<float>>();
@@ -5573,7 +5573,7 @@ int main()
                         raytrace.time_elapsed = misc["time_elapsed"];
 
                     for(int i=0; i < raytrace.slice.size(); i++)
-                        load_buffer(clctx.cqueue, raytrace.slice[i], "save/slice_" + std::to_string(i) + ".bin");
+                        load_buffer(mqueue, raytrace.slice[i], "save/slice_" + std::to_string(i) + ".bin");
 
                     ImGui::CloseCurrentPopup();
                 }
@@ -5723,7 +5723,7 @@ int main()
                 }
             };
 
-            base_mesh.full_step(clctx.ctx, clctx.cqueue, mqueue, timestep, thin_pool, callback);
+            base_mesh.full_step(clctx.ctx, mqueue, timestep, thin_pool, callback);
         }
 
         {
@@ -5758,7 +5758,7 @@ int main()
                 render_args.push_back(clsize);
                 render_args.push_back(rtex);
 
-                clctx.cqueue.exec("trace_metric", render_args, {width, height}, {16, 16});
+                mqueue.exec("trace_metric", render_args, {width, height}, {16, 16});
             }
 
             bool not_skipped = render_skipping ? ((current_skip_frame % skip_frames) == 0) : true;
@@ -5790,9 +5790,9 @@ int main()
                     init_args.push_back(height);
 
                     if(use_redshift)
-                        clctx.cqueue.exec("init_rays4", init_args, {width, height}, {8, 8});
+                        mqueue.exec("init_rays4", init_args, {width, height}, {8, 8});
                     else
-                        clctx.cqueue.exec("init_rays", init_args, {width, height}, {8, 8});
+                        mqueue.exec("init_rays", init_args, {width, height}, {8, 8});
                 }
 
                 {
@@ -5819,9 +5819,9 @@ int main()
                     render_args.push_back(rendering_err);
 
                     if(use_redshift)
-                        clctx.cqueue.exec("trace_rays4", render_args, {width, height}, {8, 8});
+                        mqueue.exec("trace_rays4", render_args, {width, height}, {8, 8});
                     else
-                        clctx.cqueue.exec("trace_rays", render_args, {width, height}, {8, 8});
+                        mqueue.exec("trace_rays", render_args, {width, height}, {8, 8});
                 }
 
                 {
@@ -5833,7 +5833,7 @@ int main()
                     texture_args.push_back(scale);
                     texture_args.push_back(clsize);
 
-                    clctx.cqueue.exec("calculate_adm_texture_coordinates", texture_args, {width, height}, {8, 8});
+                    mqueue.exec("calculate_adm_texture_coordinates", texture_args, {width, height}, {8, 8});
                 }
 
                 {
@@ -5848,13 +5848,13 @@ int main()
                     render_args.push_back(texture_coordinates);
                     render_args.push_back(sam);
 
-                    clctx.cqueue.exec("render_rays", render_args, {width * height}, {128});
+                    mqueue.exec("render_rays", render_args, {width * height}, {128});
                 }
             }
 
             if(rendering_method == 2)
             {
-                raytrace.trace(clctx.ctx, clctx.cqueue, scale, {width, height}, camera_pos, camera_quat.q, camera_start_time);
+                raytrace.trace(clctx.ctx, mqueue, scale, {width, height}, camera_pos, camera_quat.q, camera_start_time);
 
                 {
                     cl::args texture_args;
@@ -5865,7 +5865,7 @@ int main()
                     texture_args.push_back(scale);
                     texture_args.push_back(clsize);
 
-                    clctx.cqueue.exec("calculate_adm_texture_coordinates", texture_args, {width, height}, {8, 8});
+                    mqueue.exec("calculate_adm_texture_coordinates", texture_args, {width, height}, {8, 8});
                 }
 
                 {
@@ -5880,12 +5880,12 @@ int main()
                     render_args.push_back(texture_coordinates);
                     render_args.push_back(sam);
 
-                    clctx.cqueue.exec("render_rays", render_args, {width * height}, {128});
+                    mqueue.exec("render_rays", render_args, {width * height}, {128});
                 }
             }
         }
 
-        rtex.unacquire(clctx.cqueue);
+        rtex.unacquire(mqueue);
 
         {
             ImDrawList* lst = ImGui::GetBackgroundDrawList();

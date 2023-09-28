@@ -457,13 +457,11 @@ ref_counted_buffer pull_slice(cl::context& ctx, cl::command_queue& mqueue, vec3i
 }
 
 ///returns buffers and intermediates
-void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::command_queue& mqueue, float timestep, thin_intermediates_pool& pool, step_callback callback)
+void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float timestep, thin_intermediates_pool& pool, step_callback callback)
 {
     equation_context ectx;
 
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
-
-    clBeginSpliceEx(main_queue.native_command_queue.data, mqueue.native_command_queue.data);
 
     ///need to size check the buffers
     auto check_for_nans = [&](const std::string& name, cl::buffer& buf)
@@ -1274,8 +1272,6 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& main_queue, cl::co
     {
         p->finalise(*this, ctx, mqueue, pool, timestep);
     }
-
-    clEndSpliceEx(main_queue.native_command_queue.data, mqueue.native_command_queue.data);
 
     std::swap(data.at(1), data.at(0));
     ///data[0] is now the new output data, data[1] is the old data, data[2] is the old intermediate data
