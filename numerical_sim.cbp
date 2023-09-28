@@ -275,11 +275,11 @@
 		</Build>
 		<Compiler>
 			<Add option="-Wall" />
+			<Add option="-std=c++23" />
 			<Add option="-fexceptions" />
 			<Add option="`pkg-config --cflags freetype2`" />
 			<Add option="-Werror=return-type" />
 			<Add option="-fno-omit-frame-pointer" />
-			<Add option="-std=c++23" />
 			<Add option="-Wno-narrowing" />
 			<Add option="-DIMGUI_IMPL_OPENGL_LOADER_GLEW" />
 			<Add option="-DSUBPIXEL_FONT_RENDERING" />
@@ -330,7 +330,6 @@
 			<Add option="-lcrypto" />
 			<Add option="-lssl" />
 			<Add option="-lbacktrace" />
-			<Add option="-l:libOpenCL.dll.a" />
 			<Add option="-lImm32" />
 			<Add option="-ldwrite" />
 			<Add option="-l:libtbb12.dll.a" />
@@ -351,6 +350,8 @@
 		<Unit filename="deps/imgui/imgui_tables.cpp" />
 		<Unit filename="deps/imgui/imgui_widgets.cpp" />
 		<Unit filename="deps/imgui/misc/freetype/imgui_freetype.cpp" />
+		<Unit filename="deps/libfastcl/fastcl/cl.cpp" />
+		<Unit filename="deps/libfastcl/fastcl/cl.h" />
 		<Unit filename="deps/toolkit/base_serialisables.cpp" />
 		<Unit filename="deps/toolkit/base_serialisables.hpp" />
 		<Unit filename="deps/toolkit/clipboard.cpp" />

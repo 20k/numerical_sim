@@ -10,3 +10,6 @@
 [submodule "deps/geodesic"]
 	path = deps/geodesic
 	url = https://github.com/20k/geodesic_raytracing
+[submodule "deps/libfastcl"]
+	path = deps/libfastcl
+	url = git@github.com:20k/libfastcl.git
