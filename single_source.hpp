@@ -69,6 +69,18 @@ namespace single_source
         inline
         void add(std::optional<T>& opt, type_storage& result);
 
+        template<typename T>
+        bool is_mutable(const T&)
+        {
+            return T().is_mutable;
+        }
+
+        template<typename T, int... N>
+        bool is_mutable(const tensor<T, N...>&)
+        {
+            return is_mutable(T());
+        }
+
         template<typename T, int N>
         requires(Structy<T>)
         inline
@@ -78,6 +90,7 @@ namespace single_source
             in.type = T().type;
             in.pointer = true;
             in.is_struct = true;
+            in.is_constant = false;
 
             std::string name = buf.permanent_name ? buf.name : "s_name_" + std::to_string(result.args.size());
 
@@ -109,6 +122,7 @@ namespace single_source
             input in;
             in.type = dual_types::name_type(T());
             in.pointer = true;
+            in.is_constant = !is_mutable(T());
 
             std::string name = buf.permanent_name ? buf.name : "buf" + std::to_string(result.args.size());
 
@@ -204,6 +218,7 @@ namespace single_source
                 input in;
                 in.type = dual_types::name_type(T());
                 in.pointer = true;
+                in.is_constant = !is_mutable(T());
 
                 std::string name = str.get() + std::to_string(i);
 

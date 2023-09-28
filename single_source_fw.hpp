@@ -92,6 +92,7 @@ namespace single_source
             std::string type;
             bool pointer = false;
             bool is_struct = false;
+            bool is_constant = false;
             std::string name;
 
             std::string format()
@@ -103,7 +104,9 @@ namespace single_source
 
                 if(pointer)
                 {
-                    return "__global " + str + type + "* __restrict__ " + name;
+                    std::string cst = is_constant ? " const " : "";
+
+                    return "__global " + cst + str + type + "* __restrict__ " + name;
                 }
                 else
                 {

@@ -684,9 +684,14 @@ struct all_args
     {
         arg_gen.add(points, point_count);
 
-        arg_gen.add(bssn_args.buffers);
+        auto non_mut_buffers = bssn_args.buffers;
+
+        for(auto& i : non_mut_buffers)
+            i.is_constant = true;
+
+        arg_gen.add(non_mut_buffers);
         arg_gen.add(std::string{"o"}, bssn_args.buffers);
-        arg_gen.add(std::string{"base_"}, bssn_args.buffers);
+        arg_gen.add(std::string{"base_"}, non_mut_buffers);
 
         arg_gen.add(momentum);
         arg_gen.add(dcYij, digA, digB, dX);
