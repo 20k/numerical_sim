@@ -734,7 +734,7 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
                      )*/
 }
 
-void raytracing_manager::grab_buffers(cl::context& clctx, cl::managed_command_queue& mqueue, const std::vector<cl::buffer>& bufs, float scale, const tensor<cl_int, 4>& clsize, float step)
+void raytracing_manager::grab_buffers(cl::context& clctx, cl::command_queue& mqueue, const std::vector<cl::buffer>& bufs, float scale, const tensor<cl_int, 4>& clsize, float step)
 {
     if((int)slices.size() >= max_slices)
         return;
@@ -862,7 +862,7 @@ raytracing4_manager::raytracing4_manager(cl::context& clctx, const tensor<int, 2
     }
 }
 
-void raytracing4_manager::grab_buffers(cl::context& clctx, cl::managed_command_queue& mqueue, const std::vector<cl::buffer>& bufs, float scale, const tensor<cl_int, 4>& clsize, float step)
+void raytracing4_manager::grab_buffers(cl::context& clctx, cl::command_queue& mqueue, const std::vector<cl::buffer>& bufs, float scale, const tensor<cl_int, 4>& clsize, float step)
 {
     if(last_grabbed >= max_slices)
         return;
