@@ -2602,7 +2602,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // PAPER_0610128
 
-    #define SINGLE_STATIONARY
+    //#define SINGLE_STATIONARY
     #ifdef SINGLE_STATIONARY
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -2718,7 +2718,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // JET_CASE
 
-    //#define REALLYBIG
+    #define REALLYBIG
     #ifdef REALLYBIG
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
@@ -3285,8 +3285,8 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     ///https://indico.cern.ch/event/505595/contributions/1183661/attachments/1332828/2003830/sperhake.pdf the york-lichnerowicz split
     tensor<value, 3, 3> Aij = pow(phi, -2) * bcAij;
 
-    //value gA = 1;
-    value gA = 1/(pow(bl_conformal + u + 1, 2));
+    value gA = 1;
+    //value gA = 1/(pow(bl_conformal + u + 1, 2));
     ///https://arxiv.org/pdf/1304.3937.pdf
     //value gA = 2/(1 + pow(bl_conformal + 1, 4));
 
@@ -5919,6 +5919,6 @@ int main()
 
         float elapsed = frametime.restart() * 1000.f;
 
-        printf("Time: %f\n", elapsed);
+        //printf("Time: %f\n", elapsed);
     }
 }

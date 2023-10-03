@@ -2031,7 +2031,7 @@ void finish_gB(equation_context& ctx, all_args& all, tensor<value, 3>& dtgB)
 
 exec_builder<tensor<value, 3>, get_dtgB, finish_gB> gBexec;
 
-void build_kernel(single_source::argument_generator& arg_gen, equation_context& ctx, const matter_interop& interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args, std::vector<exec_builder_base*> execs, vec3i dim)
+void build_kernel(single_source::argument_generator& arg_gen, equation_context& ctx, const matter_interop* interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args, std::vector<exec_builder_base*> execs, vec3i dim)
 {
     std::cout << "Start build\n";
 
@@ -2055,7 +2055,7 @@ void build_kernel(single_source::argument_generator& arg_gen, equation_context& 
     {
         steady_timer time;
 
-        execs[i]->start(args, ctx, interop, use_matter);
+        execs[i]->start(args, ctx, *interop, use_matter);
         execs[i]->execute(ctx, all);
 
         std::cout << "Elapsed " << time.get_elapsed_time_s() * 1000 << "ms" << std::endl;
@@ -2092,7 +2092,7 @@ void bssn::build(cl::context& clctx, const matter_interop& interop, bool use_mat
 {
     std::vector<exec_builder_base*> b = {&cAexec, &Xexec, &Kexec, &gAexec, &gBexec, &cYexec, &cGiexec};
 
-    single_source::make_async_dynamic_kernel_for(clctx, build_kernel, "evolve_1", "", interop, use_matter, bssn_args, utility_args, b, dim);
+    single_source::make_async_dynamic_kernel_for(clctx, build_kernel, "evolve_1", "", &interop, use_matter, bssn_args, utility_args, b, dim);
 
     single_source::make_async_dynamic_kernel_for(clctx, calculate_christoffel_symbol, "calculate_christoffel_symbol", "", bssn_args);
 }

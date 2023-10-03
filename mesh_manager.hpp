@@ -17,7 +17,7 @@ float calculate_scale(float c_at_max, const T& size)
 inline
 float get_c_at_max()
 {
-    return 25.f;
+    return 35.f;
 }
 
 inline
