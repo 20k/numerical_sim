@@ -531,6 +531,15 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
         }
     };
 
+    {
+        buffer_set& base = get_buffers(ctx, mqueue, 0);
+
+        for(plugin* p : plugins)
+        {
+            p->pre_step(*this, ctx, mqueue, pool, base, timestep);
+        }
+    }
+
     auto step = [&](int root_index, int generic_in_index, int generic_out_index, float current_timestep, bool trigger_callbacks, int iteration, int max_iteration)
     {
         auto& generic_in = get_buffers(ctx, mqueue, generic_in_index);

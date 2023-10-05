@@ -115,6 +115,7 @@ struct plugin
     virtual std::vector<buffer_descriptor> get_buffers(){return std::vector<buffer_descriptor>();}
     virtual std::vector<buffer_descriptor> get_utility_buffers(){return std::vector<buffer_descriptor>();}
     virtual void init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue,         thin_intermediates_pool& pool, buffer_set& to_init){assert(false);}
+    virtual void pre_step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& mqueue, thin_intermediates_pool& pool, buffer_set& buffers, float timestep){}
     virtual void step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& mqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration){assert(false);}
     virtual void finalise(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& mqueue, thin_intermediates_pool& pool, float timestep) {}
     virtual void save(cl::command_queue& cqueue, const std::string& directory){assert(false);}

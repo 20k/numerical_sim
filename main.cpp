@@ -2846,7 +2846,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     #endif // N_BODY
 
-    #define REGULAR_MERGE
+    //#define REGULAR_MERGE
     #ifdef REGULAR_MERGE
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
@@ -2913,6 +2913,20 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
         data_opt = std::move(data);
     }
     #endif
+
+    #define SINGLE_PARTICLE_TEST
+    #ifdef SINGLE_PARTICLE_TEST
+    {
+        particle_data data;
+
+        data.positions.push_back({0.001f,0.001f,0.001f});
+        data.velocities.push_back({0,0,0});
+        //data.velocities.push_back(-pos.norm() * 0.4);
+        data.masses.push_back(0.01f);
+
+        data_opt = std::move(data);
+    }
+    #endif // SINGLE_PARTICLE_TEST
 
     //#define SPINNING_PARTICLES
     #ifdef SPINNING_PARTICLES
