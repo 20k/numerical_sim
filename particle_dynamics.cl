@@ -267,6 +267,8 @@ void trace_geodesics(__global const float* positions_in, __global const float* v
 
     float3 v_next = vel + accel * timestep;
 
+    //printf("V_next %f %f %f\n", v_next.x, v_next.y, v_next.z);
+
     float3 XDiff;
     velocity_to_XDiff(&XDiff, Xpos, v_next, scale, dim, GET_STANDARD_ARGS());
 
@@ -316,6 +318,8 @@ void evolve_lorentz(__global const float* positions, __global const float* veloc
     float3 vel = {velocities[idx * 3 + 0], velocities[idx * 3 + 1], velocities[idx * 3 + 2]};
 
     float current_lorentz = lorentz_in[idx];
+
+    //printf("Lorentz %f\n", current_lorentz);
 
     float diff = 0;
     calculate_lorentz_derivative(&diff, Xpos, vel, current_lorentz, scale, dim, GET_STANDARD_ARGS());
@@ -739,23 +743,14 @@ void do_weighted_summation(__global const ushort4* points, int point_count,
 
         float3 cell_wp = voxel_to_world_unrounded((float3)(kix, kiy, kiz), dim, scale);
 
-        float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
-
-        voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
-
-        float gA_val = buffer_read_linear(gA, voxel_pos, dim);
-
-        mass = modify_mass(mass, gA_val);
-
         if(mass == 0)
             continue;
 
         float base_radius = get_particle_radius(scale);
-        float current_radius = modify_radius(base_radius, gA_val);
 
         float to_centre_distance = length(cell_wp - world_pos);
 
-        float weight = dirac_disc(to_centre_distance, current_radius);
+        float weight = dirac_disc(to_centre_distance, base_radius);
 
         if(weight == 0)
             continue;
