@@ -75,7 +75,7 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global flo
 ///this returns the change in X, which is not velocity
 ///its unfortunate that position, aka X, and the conformal factor are called the same thing here
 ///the reason why these functions use out parameters is to work around a significant optimisation failure in AMD's opencl compiler
-void velocity_to_XDiff(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS())
+void velocity_to_XDiff(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_CONST_ARGS())
 {
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
 
@@ -99,7 +99,7 @@ void velocity_to_XDiff(float3* out, float3 Xpos, float3 vel, float scale, int4 d
     *out = (float3){d0, d1, d2};
 }
 
-void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS())
+void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_CONST_ARGS())
 {
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
 
@@ -124,7 +124,7 @@ void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, 
 }
 
 
-void calculate_lorentz_derivative(float* out, float3 Xpos, float3 vel, float lorentz_in, float scale, int4 dim, STANDARD_ARGS())
+void calculate_lorentz_derivative(float* out, float3 Xpos, float3 vel, float lorentz_in, float scale, int4 dim, STANDARD_CONST_ARGS())
 {
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
 
@@ -249,6 +249,7 @@ void trace_geodesics(__global const float* positions_in, __global const float* v
         printf("Vel is non finite\n");
     }
 
+    /*
     float3 accel;
     calculate_V_derivatives(&accel, Xpos, vel, scale, dim, GET_STANDARD_ARGS());
 
@@ -259,7 +260,29 @@ void trace_geodesics(__global const float* positions_in, __global const float* v
     float3 dvel = accel * timestep;
 
     float3 out_Xpos = Xpos + dXpos;
-    float3 out_vel = vel + dvel;
+    float3 out_vel = vel + dvel;*/
+
+    float3 accel;
+    calculate_V_derivatives(&accel, Xpos, vel, scale, dim, GET_STANDARD_ARGS());
+
+    float3 v_half = vel + 0.5f * accel * timestep;
+
+    float3 v_full_approx = vel + accel * timestep;
+
+    //float3 X_next = Xpos + v_half * timestep;
+
+    float3 XDiff_half;
+    velocity_to_XDiff(&XDiff_half, Xpos, v_half, scale, dim, GET_STANDARD_ARGS());
+
+    float3 X_next = Xpos + XDiff_half * timestep;
+
+    float3 a_next;
+    calculate_V_derivatives(&a_next, X_next, v_full_approx, scale, dim, GET_STANDARD_ARGS());
+
+    float3 v_next = v_half + 0.5f * a_next * timestep;
+
+    float3 out_Xpos = X_next;
+    float3 out_vel = v_next;
 
     positions_out[GET_IDX(idx, 0)] = out_Xpos.x;
     positions_out[GET_IDX(idx, 1)] = out_Xpos.y;
