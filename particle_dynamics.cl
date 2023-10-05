@@ -265,11 +265,20 @@ void trace_geodesics(__global const float* positions_in, __global const float* v
     float3 accel;
     calculate_V_derivatives(&accel, Xpos, vel, scale, dim, GET_STANDARD_ARGS());
 
+    float3 v_next = vel + accel * timestep;
+
+    float3 XDiff;
+    velocity_to_XDiff(&XDiff, Xpos, v_next, scale, dim, GET_STANDARD_ARGS());
+
+    float3 X_next = Xpos + XDiff * timestep;
+
+    ///this is incorrect, X + half moves through *time*
+    /*float3 accel;
+    calculate_V_derivatives(&accel, Xpos, vel, scale, dim, GET_STANDARD_ARGS());
+
     float3 v_half = vel + 0.5f * accel * timestep;
 
     float3 v_full_approx = vel + accel * timestep;
-
-    //float3 X_next = Xpos + v_half * timestep;
 
     float3 XDiff_half;
     velocity_to_XDiff(&XDiff_half, Xpos, v_half, scale, dim, GET_STANDARD_ARGS());
@@ -282,15 +291,15 @@ void trace_geodesics(__global const float* positions_in, __global const float* v
     float3 v_next = v_half + 0.5f * a_next * timestep;
 
     float3 out_Xpos = X_next;
-    float3 out_vel = v_next;
+    float3 out_vel = v_next;*/
 
-    positions_out[GET_IDX(idx, 0)] = out_Xpos.x;
-    positions_out[GET_IDX(idx, 1)] = out_Xpos.y;
-    positions_out[GET_IDX(idx, 2)] = out_Xpos.z;
+    positions_out[GET_IDX(idx, 0)] = X_next.x;
+    positions_out[GET_IDX(idx, 1)] = X_next.y;
+    positions_out[GET_IDX(idx, 2)] = X_next.z;
 
-    velocities_out[GET_IDX(idx, 0)] = out_vel.x;
-    velocities_out[GET_IDX(idx, 1)] = out_vel.y;
-    velocities_out[GET_IDX(idx, 2)] = out_vel.z;
+    velocities_out[GET_IDX(idx, 0)] = v_next.x;
+    velocities_out[GET_IDX(idx, 1)] = v_next.y;
+    velocities_out[GET_IDX(idx, 2)] = v_next.z;
 }
 
 __kernel
