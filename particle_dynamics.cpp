@@ -57,7 +57,7 @@ tensor<value, 3, 3> particle_matter_interop::calculate_adm_X_Sij(equation_contex
     return X * Sij;
 }
 
-particle_dynamics::particle_dynamics(cl::context& ctx) : p_data{ctx, ctx, ctx}, pd(ctx), indices_block(ctx), memory_alloc_count(ctx)
+particle_dynamics::particle_dynamics(cl::context& ctx) : p_data{ctx, ctx}, pd(ctx), indices_block(ctx), memory_alloc_count(ctx)
 {
     indices_block.alloc(max_intermediate_size * sizeof(cl_ulong));
     memory_alloc_count.alloc(sizeof(size_t));
@@ -553,10 +553,10 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     cl::copy(cqueue, p_data[0].mass, p_data[1].mass);
     cl::copy(cqueue, p_data[0].lorentz, p_data[1].lorentz);
 
-    cl::copy(cqueue, p_data[0].position, p_data[2].position);
+    /*cl::copy(cqueue, p_data[0].position, p_data[2].position);
     cl::copy(cqueue, p_data[0].velocity, p_data[2].velocity);
     cl::copy(cqueue, p_data[0].mass, p_data[2].mass);
-    cl::copy(cqueue, p_data[0].lorentz, p_data[2].lorentz);
+    cl::copy(cqueue, p_data[0].lorentz, p_data[2].lorentz);*/
 
     mesh.utility_data.lookup("adm_p").buf.set_to_zero(cqueue);
     mesh.utility_data.lookup("adm_Si0").buf.set_to_zero(cqueue);
@@ -571,11 +571,9 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     mesh.utility_data.lookup("adm_S").buf.set_to_zero(cqueue);
 }
 
-void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& mqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration)
+void particle_dynamics::pre_step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& mqueue, thin_intermediates_pool& pool, buffer_set& pack, float timestep)
 {
-    buffer_set& in = pack.in;
-    buffer_set& out = pack.out;
-    buffer_set& base = pack.base;
+    buffer_set& in = pack;
 
     cl::buffer& memory_ptrs_val = memory_ptrs.value();
     cl::buffer& counts_val = counts.value();
@@ -615,22 +613,20 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         }
     }*/
 
-    int in_idx = pack.in_idx;
-    int out_idx = pack.out_idx;
-    int base_idx = pack.base_idx;
+    int in_idx = 0;
+    int out_idx = 1;
 
     ///make sure to mark up the particle code!
     {
         cl::args args;
-        args.push_back(p_data[in_idx].position.as_device_read_only());
-        args.push_back(p_data[in_idx].mass.as_device_read_only());
+        args.push_back(p_data[in_idx].position);
+        args.push_back(p_data[in_idx].mass);
         args.push_back(p_data[out_idx].mass);
-        args.push_back(p_data[base_idx].mass.as_device_read_only());
         args.push_back(particle_count);
 
         for(named_buffer& i : in.buffers)
         {
-            args.push_back(i.buf.as_device_read_only());
+            args.push_back(i.buf);
         }
 
         args.push_back(scale);
@@ -741,16 +737,15 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     {
         cl::args args;
-        args.push_back(p_data[in_idx].position.as_device_read_only());
-        args.push_back(p_data[in_idx].velocity.as_device_read_only());
-        args.push_back(p_data[in_idx].lorentz.as_device_read_only());
+        args.push_back(p_data[in_idx].position);
+        args.push_back(p_data[in_idx].velocity);
+        args.push_back(p_data[in_idx].lorentz);
         args.push_back(p_data[out_idx].lorentz);
-        args.push_back(p_data[base_idx].lorentz.as_device_read_only());
         args.push_back(particle_count);
 
         for(named_buffer& i : in.buffers)
         {
-            args.push_back(i.buf.as_device_read_only());
+            args.push_back(i.buf);
         }
 
         args.push_back(scale);
@@ -762,18 +757,16 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     {
         cl::args args;
-        args.push_back(p_data[in_idx].position.as_device_read_only());
-        args.push_back(p_data[in_idx].velocity.as_device_read_only());
+        args.push_back(p_data[in_idx].position);
+        args.push_back(p_data[in_idx].velocity);
         args.push_back(p_data[out_idx].position);
         args.push_back(p_data[out_idx].velocity);
-        args.push_back(p_data[base_idx].position.as_device_read_only());
-        args.push_back(p_data[base_idx].velocity.as_device_read_only());
-        args.push_back(p_data[in_idx].mass.as_device_read_only());
+        args.push_back(p_data[in_idx].mass);
         args.push_back(particle_count);
 
         for(named_buffer& i : in.buffers)
         {
-            args.push_back(i.buf.as_device_read_only());
+            args.push_back(i.buf);
         }
 
         args.push_back(scale);
@@ -791,8 +784,8 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         cl_int actually_write = 0;
 
         cl::args args;
-        args.push_back(p_data[in_idx].position.as_device_read_only());
-        args.push_back(p_data[in_idx].mass.as_device_read_only());
+        args.push_back(p_data[in_idx].position);
+        args.push_back(p_data[in_idx].mass);
         args.push_back(particle_count);
         args.push_back(counts_val);
         args.push_back(memory_ptrs_val.as_device_inaccessible());
@@ -800,7 +793,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         for(named_buffer& i : in.buffers)
         {
-            args.push_back(i.buf.as_device_read_only());
+            args.push_back(i.buf);
         }
 
         args.push_back(scale);
@@ -827,16 +820,16 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         cl_int actually_write = 1;
 
         cl::args args;
-        args.push_back(p_data[in_idx].position.as_device_read_only());
-        args.push_back(p_data[in_idx].mass.as_device_read_only());
+        args.push_back(p_data[in_idx].position);
+        args.push_back(p_data[in_idx].mass);
         args.push_back(particle_count);
         args.push_back(counts_val);
-        args.push_back(memory_ptrs_val.as_device_read_only());
+        args.push_back(memory_ptrs_val);
         args.push_back(indices_block);
 
         for(named_buffer& i : in.buffers)
         {
-            args.push_back(i.buf.as_device_read_only());
+            args.push_back(i.buf);
         }
 
         args.push_back(scale);
@@ -851,10 +844,10 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         cl::args args;
         args.push_back(mesh.points_set.all_points);
         args.push_back(mesh.points_set.all_count);
-        args.push_back(p_data[in_idx].position.as_device_read_only());
-        args.push_back(p_data[in_idx].velocity.as_device_read_only());
-        args.push_back(p_data[in_idx].mass.as_device_read_only());
-        args.push_back(p_data[in_idx].lorentz.as_device_read_only());
+        args.push_back(p_data[in_idx].position);
+        args.push_back(p_data[in_idx].velocity);
+        args.push_back(p_data[in_idx].mass);
+        args.push_back(p_data[in_idx].lorentz);
         args.push_back(particle_count);
         args.push_back(counts_val.as_device_read_only());
         args.push_back(memory_ptrs_val.as_device_read_only());
@@ -862,10 +855,7 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
         for(named_buffer& i : in.buffers)
         {
-            if(i.desc.modified_by == "do_weighted_summation")
-                args.push_back(i.buf);
-            else
-                args.push_back(i.buf.as_device_read_only());
+            args.push_back(i.buf);
         }
 
         mesh.append_utility_buffers("do_weighted_summation", args);
@@ -886,14 +876,16 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         std::swap(p_data[base_idx], p_data[out_idx]);
     }*/
 
-    if(iteration != max_iteration - 1)
+    /*if(iteration != max_iteration - 1)
     {
         std::swap(p_data[1], p_data[2]);
     }
     else
     {
         std::swap(p_data[1], p_data[0]);
-    }
+    }*/
+
+    std::swap(p_data[0], p_data[1]);
 }
 
 void particle_dynamics::finalise(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& mqueue, thin_intermediates_pool& pool, float timestep)

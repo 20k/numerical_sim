@@ -149,7 +149,7 @@ void calculate_lorentz_derivative(float* out, float3 Xpos, float3 vel, float lor
 }
 
 __kernel
-void dissipate_mass(__global float* positions, __global float* mass_in, __global float* mass_out, __global float* mass_base, ITYPE geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
+void dissipate_mass(__global const float* positions, __global const float* mass_in, __global float* mass_out, ITYPE geodesic_count, STANDARD_CONST_ARGS(), float scale, int4 dim, float timestep)
 {
     size_t idx = get_global_id(0);
 
@@ -195,7 +195,7 @@ void dissipate_mass(__global float* positions, __global float* mass_in, __global
     float dt_mass = (target - mass_in[idx]);
 
     float current_mass = mass_in[idx];
-    float next_mass = mass_base[idx] + dt_mass * (timestep / dissipate_time);
+    float next_mass = mass_in[idx] + dt_mass * (timestep / dissipate_time);
 
     float mass_cutoff = MINIMUM_MASS/100.f;
 
@@ -221,11 +221,10 @@ void dissipate_mass(__global float* positions, __global float* mass_in, __global
 }
 
 __kernel
-void trace_geodesics(__global float* positions_in, __global float* velocities_in,
+void trace_geodesics(__global const float* positions_in, __global const float* velocities_in,
                      __global float* positions_out, __global float* velocities_out,
-                     __global float* positions_base, __global float* velocities_base,
-                     __global float* masses,
-                     ITYPE geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
+                     __global const float* masses,
+                     ITYPE geodesic_count, STANDARD_CONST_ARGS(), float scale, int4 dim, float timestep)
 {
     size_t idx = get_global_id(0);
 
@@ -237,6 +236,8 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
 
     float3 Xpos = {positions_in[GET_IDX(idx, 0)], positions_in[GET_IDX(idx, 1)], positions_in[GET_IDX(idx, 2)]};
     float3 vel = {velocities_in[GET_IDX(idx, 0)], velocities_in[GET_IDX(idx, 1)], velocities_in[GET_IDX(idx, 2)]};
+
+    printf("Pos %f %f %f\n", Xpos.x, Xpos.y, Xpos.z);
 
     if(!all(isfinite(Xpos)))
     {
@@ -254,22 +255,11 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
     float3 XDiff;
     velocity_to_XDiff(&XDiff, Xpos, vel, scale, dim, GET_STANDARD_ARGS());
 
-    //printf("In vel %f %f %f\n", vel.x, vel.y, vel.z);
-    //printf("In accel %f %f %f\n", accel.x, accel.y, accel.z);
-
-    //Xpos += XDiff * timestep;
-    //vel += accel * timestep;
-
     float3 dXpos = XDiff * timestep;
     float3 dvel = accel * timestep;
 
-    float3 base_Xpos = {positions_base[GET_IDX(idx, 0)], positions_base[GET_IDX(idx, 1)], positions_base[GET_IDX(idx, 2)]};
-    float3 base_vel = {velocities_base[GET_IDX(idx, 0)], velocities_base[GET_IDX(idx, 1)], velocities_base[GET_IDX(idx, 2)]};
-
-    float3 out_Xpos = base_Xpos + dXpos;
-    float3 out_vel = base_vel + dvel;
-
-    //printf("Pos %f %f %f\n", out_Xpos.x, out_Xpos.y, out_Xpos.z);
+    float3 out_Xpos = Xpos + dXpos;
+    float3 out_vel = vel + dvel;
 
     positions_out[GET_IDX(idx, 0)] = out_Xpos.x;
     positions_out[GET_IDX(idx, 1)] = out_Xpos.y;
@@ -281,9 +271,9 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
 }
 
 __kernel
-void evolve_lorentz(__global float* positions, __global float* velocities,
-                    __global float* lorentz_in, __global float* lorentz_out, __global float* lorentz_base,
-                    int geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
+void evolve_lorentz(__global const float* positions, __global const float* velocities,
+                    __global const float* lorentz_in, __global float* lorentz_out,
+                    int geodesic_count, STANDARD_CONST_ARGS(), float scale, int4 dim, float timestep)
 {
     int idx = get_global_id(0);
 
@@ -298,7 +288,7 @@ void evolve_lorentz(__global float* positions, __global float* velocities,
     float diff = 0;
     calculate_lorentz_derivative(&diff, Xpos, vel, current_lorentz, scale, dim, GET_STANDARD_ARGS());
 
-    lorentz_out[idx] = lorentz_base[idx] + timestep * diff;
+    lorentz_out[idx] = lorentz_in[idx] + timestep * diff;
     /*if(idx == 1025)
     {
         printf("Hi odiff %.23f in %.23f out %.23f full %.23f\n", odiff, base, out, lorentz_out[idx]);
@@ -605,7 +595,7 @@ float length_sq(float3 in)
 }
 
 __kernel
-void collect_particle_spheres(__global float* positions, __global float* masses, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, STANDARD_ARGS(), float scale, int4 dim, int actually_write)
+void collect_particle_spheres(__global const float* positions, __global const float* masses, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, STANDARD_CONST_ARGS(), float scale, int4 dim, int actually_write)
 {
     size_t idx = get_global_id(0);
 
@@ -672,8 +662,8 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 }
 
 __kernel
-void do_weighted_summation(__global ushort4* points, int point_count,
-                           __global float* positions, __global float* velocities, __global float* masses, __global float* lorentz_in, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, STANDARD_ARGS(), STANDARD_UTILITY(), float scale, int4 dim)
+void do_weighted_summation(__global const ushort4* points, int point_count,
+                           __global const float* positions, __global const float* velocities, __global const float* masses, __global const float* lorentz_in, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, STANDARD_CONST_ARGS(), STANDARD_UTILITY(), float scale, int4 dim)
 {
     int local_idx = get_global_id(0);
 

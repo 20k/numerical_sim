@@ -49,7 +49,7 @@ struct particle_buffer
 struct particle_dynamics : plugin
 {
     cl_int particle_count = 0;
-    std::array<particle_buffer, 3> p_data;
+    std::array<particle_buffer, 2> p_data;
 
     cl::buffer indices_block;
     cl::buffer memory_alloc_count;
@@ -76,7 +76,9 @@ struct particle_dynamics : plugin
     virtual std::vector<buffer_descriptor> get_utility_buffers() override;
 
     virtual void init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue,         thin_intermediates_pool& pool, buffer_set& to_init) override;
-    virtual void step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& mqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration) override;
+    virtual void step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& mqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration) override {}
+    virtual void pre_step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& mqueue, thin_intermediates_pool& pool, buffer_set& pack, float timestep) override;
+
     virtual void finalise(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& mqueue, thin_intermediates_pool& pool, float timestep) override;
 
     virtual void load(cl::command_queue& cqueue, const std::string& directory) override;
