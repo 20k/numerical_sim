@@ -2718,7 +2718,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // JET_CASE
 
-    #define REALLYBIG
+    //#define REALLYBIG
     #ifdef REALLYBIG
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
@@ -2846,7 +2846,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     #endif // N_BODY
 
-    //#define REGULAR_MERGE
+    #define REGULAR_MERGE
     #ifdef REGULAR_MERGE
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
@@ -4777,7 +4777,7 @@ int main()
 
     std::string hydro_argument_string = argument_string;
 
-    vec3i size = {213, 213, 213};
+    vec3i size = {255, 255, 255};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
