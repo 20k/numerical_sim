@@ -748,9 +748,12 @@ void do_weighted_summation(__global const ushort4* points, int point_count,
 
         float base_radius = get_particle_radius(scale);
 
-        float to_centre_distance = length(cell_wp - world_pos);
+        //float to_centre_distance = length(cell_wp - world_pos);
+        //float weight = dirac_disc(to_centre_distance, base_radius);
 
-        float weight = dirac_disc(to_centre_distance, base_radius);
+        float3 diff = cell_wp - world_pos;
+
+        float weight = dirac_disc_volume(diff.x, diff.y, diff.z, base_radius, scale);
 
         if(weight == 0)
             continue;

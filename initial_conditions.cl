@@ -294,9 +294,9 @@ void collect_particles(__global float* positions, ITYPE geodesic_count, __global
 
                 float3 cell_wp = voxel_to_world_unrounded((float3)(ix, iy, iz), dim, scale);
 
-                float to_centre_distance = fast_length(cell_wp - world_pos);
+                float3 diff = cell_wp - world_pos;
 
-                float f_sp = dirac_disc(to_centre_distance, radius);
+                float f_sp = dirac_disc_volume(diff.x, diff.y, diff.z, radius, scale);
 
                 if(f_sp == 0)
                     continue;
@@ -380,9 +380,9 @@ void calculate_E_without_conformal(__global float* positions, __global float* ma
 
         float base_radius = get_particle_radius(scale);
 
-        float to_centre_distance = fast_length(cell_wp - world_pos);
+        float3 diff = cell_wp - world_pos;
 
-        float f_sp = dirac_disc(to_centre_distance, base_radius);
+        float f_sp = dirac_disc_volume(diff.x, diff.y, diff.z, base_radius, scale);
 
         if(f_sp == 0)
             continue;
