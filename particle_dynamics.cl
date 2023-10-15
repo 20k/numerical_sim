@@ -657,12 +657,8 @@ void collect_particle_spheres(__global const float* positions, __global const fl
     int ocy = floor(voxel_pos.y);
     int ocz = floor(voxel_pos.z);
 
-    float gA_val = buffer_read_linear(gA, voxel_pos, dim);
-
     float base_radius = get_particle_radius(scale);
-    float current_radius = modify_radius(base_radius, gA_val);
-
-    float max_dirac = current_radius * 2 + scale * 2;
+    float max_dirac = base_radius * 2 + scale * 2;
 
     int spread = ceil(max_dirac / scale) + 1;
 

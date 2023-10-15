@@ -34,7 +34,7 @@ float dirac_disc_xyz(float x, float y, float z, float radius)
     return dirac_distribution(r, radius);
 }
 
-#define INTEGRATE_N 4
+#define INTEGRATE_N 1
 
 float z_integral(float cx, float cy, float world_z, float world_radius, float world_cell_size)
 {
