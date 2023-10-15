@@ -662,9 +662,9 @@ void collect_particle_spheres(__global const float* positions, __global const fl
     float base_radius = get_particle_radius(scale);
     float current_radius = modify_radius(base_radius, gA_val);
 
-    float max_dirac = current_radius * 2;
+    float max_dirac = current_radius * 2 + scale * 2;
 
-    int spread = ceil(max_dirac / scale) + 3;
+    int spread = ceil(max_dirac / scale) + 1;
 
     for(int zz=-spread; zz <= spread; zz++)
     {
@@ -727,6 +727,9 @@ void do_weighted_summation(__global const ushort4* points, int point_count,
     float vadm_Sij5 = 0;
     float vadm_p = 0;
 
+    float base_radius = get_particle_radius(scale);
+    float max_dirac = base_radius * 2 + scale * 2;
+
     for(ITYPE i=0; i < my_count; i++)
     {
         ITYPE gidx = i + my_memory_start;
@@ -743,15 +746,10 @@ void do_weighted_summation(__global const ushort4* points, int point_count,
 
         float3 cell_wp = voxel_to_world_unrounded((float3)(kix, kiy, kiz), dim, scale);
 
-        if(mass == 0)
-            continue;
-
-        float base_radius = get_particle_radius(scale);
-
-        //float to_centre_distance = length(cell_wp - world_pos);
-        //float weight = dirac_disc(to_centre_distance, base_radius);
-
         float3 diff = cell_wp - world_pos;
+
+        if(length_sq(diff) > max_dirac * max_dirac)
+            continue;
 
         float weight = dirac_disc_volume(diff.x, diff.y, diff.z, base_radius, scale);
 

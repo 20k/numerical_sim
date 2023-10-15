@@ -34,19 +34,21 @@ float dirac_disc_xyz(float x, float y, float z, float radius)
     return dirac_distribution(r, radius);
 }
 
+#define INTEGRATE_N 4
+
 float z_integral(float cx, float cy, float world_z, float world_radius, float world_cell_size)
 {
     float min_world_z = world_z - world_cell_size/2;
     float max_world_z = world_z + world_cell_size/2;
 
-    int N = 4;
-    float prefix_z = (max_world_z - min_world_z) / N;
+    float prefix_z = (max_world_z - min_world_z) / INTEGRATE_N;
 
     float dz_integral_sum = 0;
 
-    for(int k=1; k < N; k++)
+    #pragma unroll
+    for(int k=1; k < INTEGRATE_N; k++)
     {
-        float cz = min_world_z + k * (max_world_z - min_world_z) / N;
+        float cz = min_world_z + k * (max_world_z - min_world_z) / INTEGRATE_N;
 
         float f_val = dirac_disc_xyz(cx, cy, cz, world_radius);
 
@@ -63,14 +65,14 @@ float y_integral(float cx, float world_y, float world_z, float world_radius, flo
     float min_world_y = world_y - world_cell_size/2;
     float max_world_y = world_y + world_cell_size/2;
 
-    int N = 4;
-    float prefix_y = (max_world_y - min_world_y) / N;
+    float prefix_y = (max_world_y - min_world_y) / INTEGRATE_N;
 
     float dy_integral_sum = 0;
 
-    for(int k=1; k < N; k++)
+    #pragma unroll
+    for(int k=1; k < INTEGRATE_N; k++)
     {
-        float cy = min_world_y + k * (max_world_y - min_world_y) / N;
+        float cy = min_world_y + k * (max_world_y - min_world_y) / INTEGRATE_N;
 
         float f_val = z_integral(cx, cy, world_z, world_radius, world_cell_size);
 
@@ -88,14 +90,14 @@ float x_integral(float world_x, float world_y, float world_z, float world_radius
     float min_world_x = world_x - world_cell_size/2;
     float max_world_x = world_x + world_cell_size/2;
 
-    int N = 4;
-    float prefix_x = (max_world_x - min_world_x) / N;
+    float prefix_x = (max_world_x - min_world_x) / INTEGRATE_N;
 
     float dx_integral_sum = 0;
 
-    for(int k=1; k < N; k++)
+    #pragma unroll
+    for(int k=1; k < INTEGRATE_N; k++)
     {
-        float cx = min_world_x + k * (max_world_x - min_world_x) / N;
+        float cx = min_world_x + k * (max_world_x - min_world_x) / INTEGRATE_N;
 
         float f_val = y_integral(cx, world_y, world_z, world_radius, world_cell_size);
 
