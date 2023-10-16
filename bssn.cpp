@@ -1820,9 +1820,11 @@ void finish_gA(equation_context& ctx, all_args& all, value& dtgA)
 {
     value_i index = "index";
 
-    ctx.exec(assign(all.out.gA[index], backwards_euler_relax(all.in.gA[index], all.base.gA[index], dtgA, all.timestep)));
+    value next = backwards_euler_relax(all.in.gA[index], all.base.gA[index], dtgA, all.timestep);
 
-    //ctx.exec(assign(all.out.gA[index], all.base.gA[index] + all.timestep * dtgA));
+    next = max(next, value{0.f});
+
+    ctx.exec(assign(all.out.gA[index], next));
 }
 
 exec_builder<value, get_dtgA, finish_gA> gAexec;

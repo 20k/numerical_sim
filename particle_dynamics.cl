@@ -75,7 +75,7 @@ void init_geodesics(STANDARD_ARGS(), __global float* positions3_in, __global flo
 ///this returns the change in X, which is not velocity
 ///its unfortunate that position, aka X, and the conformal factor are called the same thing here
 ///the reason why these functions use out parameters is to work around a significant optimisation failure in AMD's opencl compiler
-void velocity_to_XDiff(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS())
+void velocity_to_XDiff(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_CONST_ARGS())
 {
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
 
@@ -99,7 +99,7 @@ void velocity_to_XDiff(float3* out, float3 Xpos, float3 vel, float scale, int4 d
     *out = (float3){d0, d1, d2};
 }
 
-void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_ARGS())
+void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, int4 dim, STANDARD_CONST_ARGS())
 {
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
 
@@ -124,7 +124,7 @@ void calculate_V_derivatives(float3* out, float3 Xpos, float3 vel, float scale, 
 }
 
 
-void calculate_lorentz_derivative(float* out, float3 Xpos, float3 vel, float lorentz_in, float scale, int4 dim, STANDARD_ARGS())
+void calculate_lorentz_derivative(float* out, float3 Xpos, float3 vel, float lorentz_in, float scale, int4 dim, STANDARD_CONST_ARGS())
 {
     float3 voxel_pos = world_to_voxel(Xpos, dim, scale);
 
@@ -149,7 +149,7 @@ void calculate_lorentz_derivative(float* out, float3 Xpos, float3 vel, float lor
 }
 
 __kernel
-void dissipate_mass(__global float* positions, __global float* mass_in, __global float* mass_out, __global float* mass_base, ITYPE geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
+void dissipate_mass(__global const float* positions, __global const float* mass_in, __global float* mass_out, __global const float* mass_base, ITYPE geodesic_count, STANDARD_CONST_ARGS(), float scale, int4 dim, float timestep)
 {
     size_t idx = get_global_id(0);
 
@@ -221,11 +221,11 @@ void dissipate_mass(__global float* positions, __global float* mass_in, __global
 }
 
 __kernel
-void trace_geodesics(__global float* positions_in, __global float* velocities_in,
+void trace_geodesics(__global const float* positions_in, __global const float* velocities_in,
                      __global float* positions_out, __global float* velocities_out,
-                     __global float* positions_base, __global float* velocities_base,
-                     __global float* masses,
-                     ITYPE geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
+                     __global const float* positions_base, __global const float* velocities_base,
+                     __global const float* masses,
+                     ITYPE geodesic_count, STANDARD_CONST_ARGS(), float scale, int4 dim, float timestep)
 {
     size_t idx = get_global_id(0);
 
@@ -281,9 +281,9 @@ void trace_geodesics(__global float* positions_in, __global float* velocities_in
 }
 
 __kernel
-void evolve_lorentz(__global float* positions, __global float* velocities,
-                    __global float* lorentz_in, __global float* lorentz_out, __global float* lorentz_base,
-                    int geodesic_count, STANDARD_ARGS(), float scale, int4 dim, float timestep)
+void evolve_lorentz(__global const float* positions, __global const float* velocities,
+                    __global const float* lorentz_in, __global float* lorentz_out, __global const float* lorentz_base,
+                    int geodesic_count, STANDARD_CONST_ARGS(), float scale, int4 dim, float timestep)
 {
     int idx = get_global_id(0);
 
@@ -503,71 +503,6 @@ float3 voxel_to_world_unrounded(float3 pos, int4 dim, float scale)
     return (pos - centre) * scale;
 }
 
-///https://www.sciencedirect.com/science/article/pii/S259003742100042X
-/*float phi(float r_frac)
-{
-    if(r_frac < 0.5f)
-    {
-        return (3.f/4.f) - r_frac * r_frac;
-    }
-
-    return (9.f/8.f) - (3.f/2.f) * r_frac + r_frac*r_frac/2.f;
-}
-
-float dirac_disc(float r, float scale)
-{
-    float frac = r / scale;
-
-    float rphi = 1.5f;
-
-    if(frac <= rphi)
-        return phi(frac);
-
-    return 0;
-}*/
-
-///ok, i HAVE screwed up. This works for the 1d case
-///when r is say, -2 to 2, this integrates to 1
-///but we're in the 3d case
-///https://www.wolframalpha.com/input?key=&i=integrate+0.125+*+%281+%2B+cos%28pi+*+r%2F4%29%29+between+-4+and+4
-/*float dirac_disc(float r, float scale)
-{
-    float e = 3 * scale;
-
-    float max_r = e;
-    float sphere_volume = (4.f/3.f) * M_PI * pow(max_r, 3.f);
-
-    if(r/e < 1.f)
-    {
-        return (1/e) * 0.5f * (1 + cos(M_PI * r/e)) / sphere_volume;
-    }
-
-    return 0.f;
-}*/
-
-float remap_range(float val, float min_val, float max_val, float min_out, float max_out)
-{
-    val = clamp(val, min_val, max_val);
-
-    float frac = (val - min_val) / (max_val - min_val);
-
-    return frac * (max_out - min_out) + min_out;
-}
-
-///a fully dynamic radius is incorrect, causes issues in particle -> neutron star
-///this only expresses itself when using the *correct* equations for particle dynamics
-float modify_radius(float base_radius, float gA)
-{
-    return base_radius;
-    return remap_range(gA, 0.1f, 0.4f, base_radius * 0.25f, base_radius);
-}
-
-float modify_mass(float base_mass, float gA)
-{
-    return base_mass;
-    return remap_range(gA, 0.1f, 0.2f, 0.f, base_mass);
-}
-
 ///this kernel is unnecessarily 3d
 __kernel
 void memory_allocate(__global ITYPE* counts, __global ITYPE* memory_ptrs, __global ITYPE* memory_allocator, ITYPE max_memory, int4 dim)
@@ -605,7 +540,7 @@ float length_sq(float3 in)
 }
 
 __kernel
-void collect_particle_spheres(__global float* positions, __global float* masses, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, STANDARD_ARGS(), float scale, int4 dim, int actually_write)
+void collect_particle_spheres(__global const float* positions, __global const float* masses, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, STANDARD_CONST_ARGS(), float scale, int4 dim, int actually_write)
 {
     size_t idx = get_global_id(0);
 
@@ -631,14 +566,10 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
     int ocy = floor(voxel_pos.y);
     int ocz = floor(voxel_pos.z);
 
-    float gA_val = buffer_read_linear(gA, voxel_pos, dim);
-
     float base_radius = get_particle_radius(scale);
-    float current_radius = modify_radius(base_radius, gA_val);
+    float max_dirac = base_radius * 2 + scale * 2;
 
-    float max_dirac = current_radius * 2;
-
-    int spread = ceil(max_dirac / scale) + 3;
+    int spread = ceil(max_dirac / scale) + 1;
 
     for(int zz=-spread; zz <= spread; zz++)
     {
@@ -672,8 +603,8 @@ void collect_particle_spheres(__global float* positions, __global float* masses,
 }
 
 __kernel
-void do_weighted_summation(__global ushort4* points, int point_count,
-                           __global float* positions, __global float* velocities, __global float* masses, __global float* lorentz_in, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, STANDARD_ARGS(), STANDARD_UTILITY(), float scale, int4 dim)
+void do_weighted_summation(__global const ushort4* points, int point_count,
+                           __global const float* positions, __global const float* velocities, __global const float* masses, __global const float* lorentz_in, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, STANDARD_CONST_ARGS(), STANDARD_UTILITY(), float scale, int4 dim)
 {
     int local_idx = get_global_id(0);
 
@@ -701,6 +632,9 @@ void do_weighted_summation(__global ushort4* points, int point_count,
     float vadm_Sij5 = 0;
     float vadm_p = 0;
 
+    float base_radius = get_particle_radius(scale);
+    float max_dirac = base_radius * 2 + scale * 2;
+
     for(ITYPE i=0; i < my_count; i++)
     {
         ITYPE gidx = i + my_memory_start;
@@ -717,23 +651,12 @@ void do_weighted_summation(__global ushort4* points, int point_count,
 
         float3 cell_wp = voxel_to_world_unrounded((float3)(kix, kiy, kiz), dim, scale);
 
-        float3 voxel_pos = world_to_voxel(world_pos, dim, scale);
+        float3 diff = cell_wp - world_pos;
 
-        voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
-
-        float gA_val = buffer_read_linear(gA, voxel_pos, dim);
-
-        mass = modify_mass(mass, gA_val);
-
-        if(mass == 0)
+        if(length_sq(diff) > max_dirac * max_dirac)
             continue;
 
-        float base_radius = get_particle_radius(scale);
-        float current_radius = modify_radius(base_radius, gA_val);
-
-        float to_centre_distance = length(cell_wp - world_pos);
-
-        float weight = dirac_disc(to_centre_distance, current_radius);
+        float weight = dirac_disc_volume(diff.x, diff.y, diff.z, base_radius, scale);
 
         if(weight == 0)
             continue;
