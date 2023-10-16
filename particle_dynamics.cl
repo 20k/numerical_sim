@@ -604,7 +604,7 @@ void collect_particle_spheres(__global const float* positions, __global const fl
 
 __kernel
 void do_weighted_summation(__global const ushort4* points, int point_count,
-                           __global const float* positions, __global const float* velocities, __global const float* masses, __global const float* lorentz_in, ITYPE geodesic_count, __global ITYPE* collected_counts, __global ITYPE* memory_ptrs, __global ITYPE* collected_indices, STANDARD_CONST_ARGS(), STANDARD_UTILITY(), float scale, int4 dim)
+                           __global const float* positions, __global const float* velocities, __global const float* masses, __global const float* lorentz_in, ITYPE geodesic_count, __global const ITYPE* collected_counts, __global const ITYPE* memory_ptrs, __global const ITYPE* collected_indices, STANDARD_CONST_ARGS(), STANDARD_UTILITY(), float scale, int4 dim)
 {
     int local_idx = get_global_id(0);
 

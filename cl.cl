@@ -704,10 +704,10 @@ void multiply_add_impl(__global ushort4* points, int point_count,
 }
 
 __kernel
-void render(STANDARD_ARGS(),
-            STANDARD_DERIVS(),
+void render(STANDARD_CONST_ARGS(),
+            STANDARD_CONST_DERIVS(),
             STANDARD_UTILITY(),
-            __global ushort* order_ptr,
+            __global const ushort* order_ptr,
             float scale, int4 dim, __write_only image2d_t screen, int debug_x, int debug_y)
 {
     int ix = get_global_id(0);
@@ -972,9 +972,9 @@ void render(STANDARD_ARGS(),
 
 #if 1
 __kernel
-void extract_waveform(__global ushort4* points, int point_count,
-                      STANDARD_ARGS(),
-                      STANDARD_DERIVS(),
+void extract_waveform(__global const ushort4* points, int point_count,
+                      STANDARD_CONST_ARGS(),
+                      STANDARD_CONST_DERIVS(),
                       float scale, int4 dim, __global float2* waveform_out/*, __write_only image2d_t screen*/)
 {
     int local_idx = get_global_id(0);

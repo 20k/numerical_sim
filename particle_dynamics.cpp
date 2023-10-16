@@ -629,15 +629,15 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
     ///make sure to mark up the particle code!
     {
         cl::args args;
-        args.push_back(p_data[in_idx].position.as_device_read_only());
-        args.push_back(p_data[in_idx].mass.as_device_read_only());
+        args.push_back(p_data[in_idx].position);
+        args.push_back(p_data[in_idx].mass);
         args.push_back(p_data[out_idx].mass);
-        args.push_back(p_data[base_idx].mass.as_device_read_only());
+        args.push_back(p_data[base_idx].mass);
         args.push_back(particle_count);
 
         for(named_buffer& i : in.buffers)
         {
-            args.push_back(i.buf.as_device_read_only());
+            args.push_back(i.buf);
         }
 
         args.push_back(scale);
@@ -748,16 +748,16 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     {
         cl::args args;
-        args.push_back(p_data[in_idx].position.as_device_read_only());
-        args.push_back(p_data[in_idx].velocity.as_device_read_only());
-        args.push_back(p_data[in_idx].lorentz.as_device_read_only());
+        args.push_back(p_data[in_idx].position);
+        args.push_back(p_data[in_idx].velocity);
+        args.push_back(p_data[in_idx].lorentz);
         args.push_back(p_data[out_idx].lorentz);
-        args.push_back(p_data[base_idx].lorentz.as_device_read_only());
+        args.push_back(p_data[base_idx].lorentz);
         args.push_back(particle_count);
 
         for(named_buffer& i : in.buffers)
         {
-            args.push_back(i.buf.as_device_read_only());
+            args.push_back(i.buf);
         }
 
         args.push_back(scale);
@@ -769,18 +769,18 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     {
         cl::args args;
-        args.push_back(p_data[in_idx].position.as_device_read_only());
-        args.push_back(p_data[in_idx].velocity.as_device_read_only());
+        args.push_back(p_data[in_idx].position);
+        args.push_back(p_data[in_idx].velocity);
         args.push_back(p_data[out_idx].position);
         args.push_back(p_data[out_idx].velocity);
-        args.push_back(p_data[base_idx].position.as_device_read_only());
-        args.push_back(p_data[base_idx].velocity.as_device_read_only());
-        args.push_back(p_data[in_idx].mass.as_device_read_only());
+        args.push_back(p_data[base_idx].position);
+        args.push_back(p_data[base_idx].velocity);
+        args.push_back(p_data[in_idx].mass);
         args.push_back(particle_count);
 
         for(named_buffer& i : in.buffers)
         {
-            args.push_back(i.buf.as_device_read_only());
+            args.push_back(i.buf);
         }
 
         args.push_back(scale);
@@ -798,16 +798,16 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         cl_int actually_write = 0;
 
         cl::args args;
-        args.push_back(p_data[in_idx].position.as_device_read_only());
-        args.push_back(p_data[in_idx].mass.as_device_read_only());
+        args.push_back(p_data[in_idx].position);
+        args.push_back(p_data[in_idx].mass);
         args.push_back(particle_count);
         args.push_back(counts_val);
-        args.push_back(memory_ptrs_val.as_device_inaccessible());
-        args.push_back(indices_block.as_device_inaccessible());
+        args.push_back(memory_ptrs_val);
+        args.push_back(indices_block);
 
         for(named_buffer& i : in.buffers)
         {
-            args.push_back(i.buf.as_device_read_only());
+            args.push_back(i.buf);
         }
 
         args.push_back(scale);
@@ -834,16 +834,16 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         cl_int actually_write = 1;
 
         cl::args args;
-        args.push_back(p_data[in_idx].position.as_device_read_only());
-        args.push_back(p_data[in_idx].mass.as_device_read_only());
+        args.push_back(p_data[in_idx].position);
+        args.push_back(p_data[in_idx].mass);
         args.push_back(particle_count);
         args.push_back(counts_val);
-        args.push_back(memory_ptrs_val.as_device_read_only());
+        args.push_back(memory_ptrs_val);
         args.push_back(indices_block);
 
         for(named_buffer& i : in.buffers)
         {
-            args.push_back(i.buf.as_device_read_only());
+            args.push_back(i.buf);
         }
 
         args.push_back(scale);
@@ -858,21 +858,18 @@ void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         cl::args args;
         args.push_back(mesh.points_set.all_points);
         args.push_back(mesh.points_set.all_count);
-        args.push_back(p_data[in_idx].position.as_device_read_only());
-        args.push_back(p_data[in_idx].velocity.as_device_read_only());
-        args.push_back(p_data[in_idx].mass.as_device_read_only());
-        args.push_back(p_data[in_idx].lorentz.as_device_read_only());
+        args.push_back(p_data[in_idx].position);
+        args.push_back(p_data[in_idx].velocity);
+        args.push_back(p_data[in_idx].mass);
+        args.push_back(p_data[in_idx].lorentz);
         args.push_back(particle_count);
-        args.push_back(counts_val.as_device_read_only());
-        args.push_back(memory_ptrs_val.as_device_read_only());
-        args.push_back(indices_block.as_device_read_only());
+        args.push_back(counts_val);
+        args.push_back(memory_ptrs_val);
+        args.push_back(indices_block);
 
         for(named_buffer& i : in.buffers)
         {
-            if(i.desc.modified_by == "do_weighted_summation")
-                args.push_back(i.buf);
-            else
-                args.push_back(i.buf.as_device_read_only());
+            args.push_back(i.buf);
         }
 
         mesh.append_utility_buffers("do_weighted_summation", args);

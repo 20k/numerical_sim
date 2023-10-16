@@ -5681,12 +5681,12 @@ int main()
 
                     for(auto& i : bufs)
                     {
-                        render.push_back(i.as_device_read_only());
+                        render.push_back(i);
                     }
 
                     for(auto& i : intermediates)
                     {
-                        render.push_back(i.as_device_read_only());
+                        render.push_back(i);
                     }
 
                     base_mesh.append_utility_buffers("render", render);
@@ -5762,7 +5762,7 @@ int main()
 
                 for(auto& i : buffers)
                 {
-                    render_args.push_back(i.buf.as_device_read_only());
+                    render_args.push_back(i.buf);
                 }
 
                 cl_float3 ccamera_pos = {camera_pos.x(), camera_pos.y(), camera_pos.z()};
@@ -5795,7 +5795,7 @@ int main()
 
                     for(auto& i : base_mesh.data.at(0).buffers)
                     {
-                        init_args.push_back(i.buf.as_device_read_only());
+                        init_args.push_back(i.buf);
                     }
 
                     init_args.push_back(scale);
@@ -5819,7 +5819,7 @@ int main()
 
                     for(auto& i : base_mesh.data.at(0).buffers)
                     {
-                        render_args.push_back(i.buf.as_device_read_only());
+                        render_args.push_back(i.buf);
                     }
 
                     base_mesh.append_utility_buffers("trace_rays", render_args);
@@ -5842,7 +5842,7 @@ int main()
 
                 {
                     cl::args texture_args;
-                    texture_args.push_back(rays_terminated.as_device_read_only());
+                    texture_args.push_back(rays_terminated);
                     texture_args.push_back(texture_coordinates);
                     texture_args.push_back(width);
                     texture_args.push_back(height);
@@ -5854,7 +5854,7 @@ int main()
 
                 {
                     cl::args render_args;
-                    render_args.push_back(rays_terminated.as_device_read_only());
+                    render_args.push_back(rays_terminated);
                     render_args.push_back(rtex);
                     render_args.push_back(scale);
                     render_args.push_back(clsize);
@@ -5874,7 +5874,7 @@ int main()
 
                 {
                     cl::args texture_args;
-                    texture_args.push_back(raytrace.render_ray_info_buf.as_device_read_only());
+                    texture_args.push_back(raytrace.render_ray_info_buf);
                     texture_args.push_back(texture_coordinates);
                     texture_args.push_back(width);
                     texture_args.push_back(height);
@@ -5886,7 +5886,7 @@ int main()
 
                 {
                     cl::args render_args;
-                    render_args.push_back(raytrace.render_ray_info_buf.as_device_read_only());
+                    render_args.push_back(raytrace.render_ray_info_buf);
                     render_args.push_back(rtex);
                     render_args.push_back(scale);
                     render_args.push_back(clsize);

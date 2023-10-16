@@ -72,17 +72,17 @@ void gravitational_wave_manager::issue_extraction(cl::command_queue& cqueue, std
 
     cl_int point_count = raw_harmonic_points.size();
 
-    waveform_args.push_back(harmonic_points.as_device_read_only());
+    waveform_args.push_back(harmonic_points);
     waveform_args.push_back(point_count);
 
     for(auto& i : buffers)
     {
-        waveform_args.push_back(i.as_device_read_only());
+        waveform_args.push_back(i);
     }
 
     for(auto& i : thin_intermediates)
     {
-        waveform_args.push_back(i.as_device_read_only());
+        waveform_args.push_back(i);
     }
 
     waveform_args.push_back(scale);

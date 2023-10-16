@@ -102,7 +102,7 @@ void eularian_hydrodynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_
 
         for(auto& buf : in.buffers)
         {
-            build.push_back(buf.buf.as_device_read_only());
+            build.push_back(buf.buf);
         }
 
         build.push_back(scale);
@@ -120,7 +120,7 @@ void eularian_hydrodynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_
 
         for(auto& buf : in.buffers)
         {
-            calc_intermediates.push_back(buf.buf.as_device_read_only());
+            calc_intermediates.push_back(buf.buf);
         }
 
         for(auto& i : intermediates)
@@ -145,7 +145,7 @@ void eularian_hydrodynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_
 
         for(auto& buf : in.buffers)
         {
-            visco.push_back(buf.buf.as_device_read_only());
+            visco.push_back(buf.buf);
         }
 
         for(auto& i : intermediates)
@@ -170,25 +170,25 @@ void eularian_hydrodynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_
 
         for(auto& buf : in.buffers)
         {
-            evolve.push_back(buf.buf.as_device_read_only());
+            evolve.push_back(buf.buf);
         }
 
         for(auto& buf : out.buffers)
         {
-            evolve.push_back(buf.buf.as_device_write_only());
+            evolve.push_back(buf.buf);
         }
 
         for(auto& buf : base.buffers)
         {
-            evolve.push_back(buf.buf.as_device_read_only());
+            evolve.push_back(buf.buf);
         }
 
         for(auto& buf : intermediates)
         {
-            evolve.push_back(buf.as_device_read_only());
+            evolve.push_back(buf);
         }
 
-        evolve.push_back(w_buf.as_device_read_only());
+        evolve.push_back(w_buf);
 
         evolve.push_back(scale);
         evolve.push_back(clsize);
@@ -220,14 +220,14 @@ void eularian_hydrodynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_
 
             for(auto& buf : in.buffers)
             {
-                advect.push_back(buf.buf.as_device_read_only());
+                advect.push_back(buf.buf);
             }
 
-            advect.push_back(w_buf.as_device_read_only());
+            advect.push_back(w_buf);
 
-            advect.push_back(buf_base.as_device_read_only());
-            advect.push_back(buf_in.as_device_read_only());
-            advect.push_back(buf_out.as_device_write_only());
+            advect.push_back(buf_base);
+            advect.push_back(buf_in);
+            advect.push_back(buf_out);
 
             advect.push_back(scale);
             advect.push_back(clsize);
