@@ -3,26 +3,9 @@ float get_particle_radius(float scale)
     return 2 * scale;
 }
 
-///https://arxiv.org/pdf/1611.07906.pdf (20)
-float dirac_disc(float r, float radius)
+float dirac_disc_volume(float world_x, float world_y, float world_z, float world_radius, float world_cell_size)
 {
-    float rs = radius;
+    ///integrate between -world_cell_size/2 and world_cell_size/2, relative to our coordinate
 
-    float frac = r / rs;
-
-    float mult = 1/(M_PI * pow(rs, 3.f));
-
-    if(frac <= 1)
-    {
-        float val = 1.f - (3.f/2.f) * pow(frac, 2.f) + (3.f/4.f) * pow(frac, 3.f);
-
-        return mult * val;
-    }
-
-    if(frac <= 2)
-    {
-        return mult * (1.f/4.f) * pow(2.f - frac, 3.f);
-    }
-
-    return 0.f;
+    return DIRAC_DISC_OUT;
 }

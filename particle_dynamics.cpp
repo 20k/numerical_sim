@@ -425,6 +425,13 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ectx.build(argument_string, 6);
     }
 
+    {
+        equation_context ectx;
+        build_dirac_sample(ectx);
+
+        ectx.build(argument_string, "dirac_sample");
+    }
+
     ///relevant resources
     ///https://arxiv.org/pdf/1611.07906.pdf 16
     ///https://artscimedia.case.edu/wp-content/uploads/sites/213/2018/08/18010345/Mertens_SestoGR18.pdf
@@ -915,4 +922,50 @@ void particle_dynamics::load(cl::command_queue& cqueue, const std::string& direc
     load_buffer(cqueue, p_data[0].velocity, directory + "/particle_velocity.bin");
     load_buffer(cqueue, p_data[0].mass    , directory + "/particle_mass.bin");
     load_buffer(cqueue, p_data[0].lorentz , directory + "/particle_lorentz.bin");
+}
+
+///https://arxiv.org/pdf/1611.07906.pdf (20)
+value dirac_distribution(const value& r, const value& radius)
+{
+    value frac = r / radius;
+
+    value mult = 1/(M_PI * pow(radius, 3.f));
+
+    value result = 0;
+
+    value branch_1 = (1.f/4.f) * pow(2.f - frac, 3.f);
+    value branch_2 = 1.f - (3.f/2.f) * pow(frac, 2.f) + (3.f/4.f) * pow(frac, 3.f);
+
+    result = if_v(frac <= 2, mult * branch_1, value{0});
+    result = if_v(frac <= 1, mult * branch_2, result);
+
+    return result;
+}
+
+value dirac_xyz(const value& x, const value& y, const value& z, const value& radius)
+{
+    return dirac_distribution(sqrt(x*x + y*y + z*z), radius);
+}
+
+void build_dirac_sample(equation_context& ctx)
+{
+    value x = "world_x";
+    value y = "world_y";
+    value z = "world_z";
+    value radius = "world_radius";
+    value scale = "world_cell_size";
+
+    v3f pos = {x, y, z};
+
+    v3f upper = pos + scale/2.f;
+    v3f lower = pos - scale/2.f;
+
+    auto to_integrate = [&](const value& x, const value& y, const value& z)
+    {
+        return dirac_xyz(x, y, z, radius);
+    };
+
+    value out = integrate_3d_trapezoidal(to_integrate, 2, upper, lower);
+
+    ctx.add("DIRAC_DISC_OUT", out);
 }

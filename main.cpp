@@ -1764,6 +1764,8 @@ struct superimposed_gpu_data
 
         ectx.add("INITIAL_PARTICLES", 1);
 
+        build_dirac_sample(ectx);
+
         auto [prog, kerns] = build_and_fetch_kernel(clctx, ectx, "initial_conditions.cl", {"collect_particles", "memory_allocate", "calculate_E_without_conformal"}, "none");
 
         {
@@ -5933,6 +5935,6 @@ int main()
 
         float elapsed = frametime.restart() * 1000.f;
 
-        //printf("Time: %f\n", elapsed);
+        printf("Time: %f\n", elapsed);
     }
 }

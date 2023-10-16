@@ -83,4 +83,6 @@ struct particle_dynamics : plugin
     virtual void save(cl::command_queue& cqueue, const std::string& directory) override;
 };
 
+void build_dirac_sample(equation_context& ctx);
+
 #endif // PARTICLE_DYNAMICS_HPP_INCLUDED
