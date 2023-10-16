@@ -237,8 +237,6 @@ void trace_geodesics(__global const float* positions_in, __global const float* v
     float3 Xpos = {positions_in[GET_IDX(idx, 0)], positions_in[GET_IDX(idx, 1)], positions_in[GET_IDX(idx, 2)]};
     float3 vel = {velocities_in[GET_IDX(idx, 0)], velocities_in[GET_IDX(idx, 1)], velocities_in[GET_IDX(idx, 2)]};
 
-    printf("Pos %f %f %f\n", Xpos.x, Xpos.y, Xpos.z);
-
     if(!all(isfinite(Xpos)))
     {
         printf("Xpos is non finite\n");
@@ -662,8 +660,6 @@ void collect_particle_spheres(__global const float* positions, __global const fl
 
     int spread = ceil(max_dirac / scale) + 1;
 
-    float sum = 0;
-
     for(int zz=-spread; zz <= spread; zz++)
     {
         for(int yy=-spread; yy <= spread; yy++)
@@ -682,10 +678,6 @@ void collect_particle_spheres(__global const float* positions, __global const fl
                 if(length_sq(cell_wp - world_pos) > (max_dirac*max_dirac))
                     continue;
 
-                float3 diff = cell_wp - world_pos;
-
-                sum += dirac_disc_volume(diff.x, diff.y, diff.z, base_radius, scale);
-
                 ITYPE my_index = AINC(&collected_counts[IDX(ix,iy,iz)]);
 
                 if(actually_write)
@@ -697,8 +689,6 @@ void collect_particle_spheres(__global const float* positions, __global const fl
             }
         }
     }
-
-    printf("Sum %f\n", sum);
 }
 
 __kernel
