@@ -10,9 +10,9 @@
 
 ///this is incorrect due to intermediates needing to be 0 ?
 __kernel
-void calculate_hydro_evolved(__global ushort4* points, int point_count,
-                             STANDARD_ARGS(),
-                             float scale, int4 dim, __global ushort* order_ptr,
+void calculate_hydro_evolved(__global const ushort4* points, int point_count,
+                             STANDARD_CONST_ARGS(),
+                             float scale, int4 dim, __global const ushort* order_ptr,
                              __global char* restrict should_evolve)
 {
     int local_idx = get_global_id(0);
@@ -64,11 +64,11 @@ void calculate_hydro_evolved(__global ushort4* points, int point_count,
 
 ///does not use any derivatives
 __kernel
-void calculate_hydro_intermediates(__global ushort4* points, int point_count,
-                                   STANDARD_ARGS(),
-                                   __global float* pressure,
-                                   __global float* hW,
-                                   float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve)
+void calculate_hydro_intermediates(__global const ushort4* points, int point_count,
+                                   STANDARD_CONST_ARGS(),
+                                   __global float* restrict pressure,
+                                   __global float* restrict hW,
+                                   float scale, int4 dim, __global const ushort* order_ptr, __global const char* restrict should_evolve)
 {
     int local_idx = get_global_id(0);
 
@@ -131,11 +131,11 @@ void calculate_hydro_intermediates(__global ushort4* points, int point_count,
 }
 
 __kernel
-void add_hydro_artificial_viscosity(__global ushort4* points, int point_count,
-                                    STANDARD_ARGS(),
-                                    __global float* pressure,
-                                    __global float* hW,
-                                    float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve)
+void add_hydro_artificial_viscosity(__global const ushort4* points, int point_count,
+                                    STANDARD_CONST_ARGS(),
+                                    __global float* restrict pressure,
+                                    __global const float* restrict hW,
+                                    float scale, int4 dim, __global const ushort* order_ptr, __global const char* restrict should_evolve)
 {
 
     int local_idx = get_global_id(0);
@@ -165,13 +165,13 @@ void add_hydro_artificial_viscosity(__global ushort4* points, int point_count,
 
 ///does use derivatives
 __kernel
-void evolve_hydro_all(__global ushort4* points, int point_count,
-                      STANDARD_ARGS(),
+void evolve_hydro_all(__global const ushort4* points, int point_count,
+                      STANDARD_CONST_ARGS(),
                       STANDARD_ARGS(o),
-                      STANDARD_ARGS(base_),
-                      __global float* pressure,
-                      __global float* hW,
-                      float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve, float timestep)
+                      STANDARD_CONST_ARGS(base_),
+                      __global const float* restrict pressure,
+                      __global const float* restrict hW,
+                      float scale, int4 dim, __global const ushort* order_ptr, __global const char* restrict should_evolve, float timestep)
 {
     int local_idx = get_global_id(0);
 
@@ -324,13 +324,13 @@ void evolve_hydro_all(__global ushort4* points, int point_count,
 }
 
 __kernel
-void hydro_advect(__global ushort4* points, int point_count,
-                  STANDARD_ARGS(),
-                  __global float* hW,
-                  __global float* quantity_base,
-                  __global float* quantity_in,
+void hydro_advect(__global const ushort4* points, int point_count,
+                  STANDARD_CONST_ARGS(),
+                  __global const float* restrict hW,
+                  __global const float* quantity_base,
+                  __global const float* quantity_in,
                   __global float* quantity_out,
-                  float scale, int4 dim, __global ushort* order_ptr, __global char* restrict should_evolve, float timestep)
+                  float scale, int4 dim, __global const ushort* order_ptr, __global const char* restrict should_evolve, float timestep)
 {
     int local_idx = get_global_id(0);
 
@@ -369,17 +369,17 @@ void hydro_advect(__global ushort4* points, int point_count,
 
 __kernel
 void calculate_hydrodynamic_initial_conditions(STANDARD_ARGS(),
-                                               __global float* pressure_in,
-                                               __global float* rho_in,
-                                               __global float* rhoH_in,
-                                               __global float* p0_in,
-                                               __global float* Si0_in,
-                                               __global float* Si1_in,
-                                               __global float* Si2_in,
-                                               __global float* colour0_in,
-                                               __global float* colour1_in,
-                                               __global float* colour2_in,
-                                               __global float* tov_phi,
+                                               __global const float* restrict pressure_in,
+                                               __global const float* restrict rho_in,
+                                               __global const float* restrict rhoH_in,
+                                               __global const float* restrict p0_in,
+                                               __global const float* restrict Si0_in,
+                                               __global const float* restrict Si1_in,
+                                               __global const float* restrict Si2_in,
+                                               __global const float* restrict colour0_in,
+                                               __global const float* restrict colour1_in,
+                                               __global const float* restrict colour2_in,
+                                               __global const float* restrict tov_phi,
                                                float scale, int4 dim,
                                                int use_colour)
 {
