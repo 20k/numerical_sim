@@ -177,7 +177,7 @@ void calculate_initial_conditions(STANDARD_ARGS(),
 
     int index = IDX(ix, iy, iz);
 
-    cY0[index] = init_cY0;
+    cY0[index] = init_cY0 - 1;
     cY1[index] = init_cY1;
     cY2[index] = init_cY2;
     cY3[index] = init_cY3;

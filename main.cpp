@@ -5050,7 +5050,7 @@ int main()
     float gauge_wave_speed = sqrt(2.f);
 
     std::vector<buffer_descriptor> buffers = {
-        {"cY0", "evolve_1", cpu_mesh::dissipate_low, 1, 1},
+        {"cY0", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
         {"cY1", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
         {"cY2", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
         {"cY3", "evolve_1", cpu_mesh::dissipate_low, 1, 1},
