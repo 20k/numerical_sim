@@ -1822,7 +1822,7 @@ void finish_gA(equation_context& ctx, all_args& all, value& dtgA)
 
     value next = backwards_euler_relax(all.in.gA[index], all.base.gA[index], dtgA, all.timestep);
 
-    next = max(next, value{0.f});
+    //next = max(next, value{0.f});
 
     ctx.exec(assign(all.out.gA[index], next));
 }

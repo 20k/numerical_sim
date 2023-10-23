@@ -290,13 +290,6 @@ struct standard_arguments
             }
         }
 
-        if(asymptotic_modify)
-        {
-            cY[0,0] += 1;
-            cY[1,1] += 1;
-            cY[2,2] += 1;
-        }
-
         unpinned_cY = cY;
         //ctx.pin(cY);
 
@@ -324,14 +317,8 @@ struct standard_arguments
 
         #ifndef USE_W
         X_impl = max(bidx(ctx, pack.X, interpolate, false), 0);
-
-        if(asymptotic_modify)
-            X_impl += 1;
         #else
         W_impl = max(bidx(ctx, pack.X, interpolate, false), 0);
-
-        if(asymptotic_modify)
-            W_impl += 1;
         #endif
 
         K = bidx(ctx, pack.K, interpolate, false);

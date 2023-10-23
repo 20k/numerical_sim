@@ -4828,7 +4828,7 @@ int main()
 
     std::string hydro_argument_string = argument_string;
 
-    vec3i size = {213, 213, 213};
+    vec3i size = {255, 255, 255};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -5050,12 +5050,12 @@ int main()
     float gauge_wave_speed = sqrt(2.f);
 
     std::vector<buffer_descriptor> buffers = {
-        {"cY0", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
+        {"cY0", "evolve_1", cpu_mesh::dissipate_low, 1, 1},
         {"cY1", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
         {"cY2", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
-        {"cY3", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
+        {"cY3", "evolve_1", cpu_mesh::dissipate_low, 1, 1},
         {"cY4", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
-        {"cY5", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
+        {"cY5", "evolve_1", cpu_mesh::dissipate_low, 1, 1},
 
         {"cA0", "evolve_1", cpu_mesh::dissipate_high, 0, 1},
         {"cA1", "evolve_1", cpu_mesh::dissipate_high, 0, 1},
@@ -5069,7 +5069,7 @@ int main()
         {"cGi2", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
 
         {"K", "evolve_1", cpu_mesh::dissipate_high, 0, 1},
-        {"X", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
+        {"X", "evolve_1", cpu_mesh::dissipate_low, 1, 1},
 
         {"gA", "evolve_1", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed},
         {"gB0", "evolve_1", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed},

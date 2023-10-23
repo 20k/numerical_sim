@@ -177,12 +177,12 @@ void calculate_initial_conditions(STANDARD_ARGS(),
 
     int index = IDX(ix, iy, iz);
 
-    cY0[index] = init_cY0 - 1;
+    cY0[index] = init_cY0;
     cY1[index] = init_cY1;
     cY2[index] = init_cY2;
-    cY3[index] = init_cY3 - 1;
+    cY3[index] = init_cY3;
     cY4[index] = init_cY4;
-    cY5[index] = init_cY5 - 1;
+    cY5[index] = init_cY5;
 
     cA0[index] = init_cA0;
     cA1[index] = init_cA1;
@@ -196,7 +196,7 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     cGi2[index] = init_cGi2;
 
     K[index] = init_K;
-    X[index] = init_X - 1;
+    X[index] = init_X;
 
     gA[index] = init_gA - 1;
     gB0[index] = init_gB0;
