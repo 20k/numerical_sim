@@ -5053,9 +5053,9 @@ int main()
         {"cY0", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
         {"cY1", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
         {"cY2", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
-        {"cY3", "evolve_1", cpu_mesh::dissipate_low, 1, 1},
+        {"cY3", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
         {"cY4", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
-        {"cY5", "evolve_1", cpu_mesh::dissipate_low, 1, 1},
+        {"cY5", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
 
         {"cA0", "evolve_1", cpu_mesh::dissipate_high, 0, 1},
         {"cA1", "evolve_1", cpu_mesh::dissipate_high, 0, 1},

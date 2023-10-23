@@ -293,8 +293,8 @@ struct standard_arguments
         if(asymptotic_modify)
         {
             cY[0,0] += 1;
-            //cY[1,1] += 1;
-            //cY[2,2] += 1;
+            cY[1,1] += 1;
+            cY[2,2] += 1;
         }
 
         unpinned_cY = cY;

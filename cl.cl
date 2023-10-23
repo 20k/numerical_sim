@@ -180,9 +180,9 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     cY0[index] = init_cY0 - 1;
     cY1[index] = init_cY1;
     cY2[index] = init_cY2;
-    cY3[index] = init_cY3;
+    cY3[index] = init_cY3 - 1;
     cY4[index] = init_cY4;
-    cY5[index] = init_cY5;
+    cY5[index] = init_cY5 - 1;
 
     cA0[index] = init_cA0;
     cA1[index] = init_cA1;
