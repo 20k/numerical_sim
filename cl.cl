@@ -747,6 +747,7 @@ void render(STANDARD_CONST_ARGS(),
         printf("gB0 %f\n", gB0[index]);
         printf("gB1 %f\n", gB1[index]);
         printf("gB2 %f\n", gB2[index]);
+        printf("CY %.24f %.24f %.24f %.24f %.24f %.24f\n", cY0[index], cY1[index], cY2[index], cY3[index], cY4[index], cY5[index]);
     }
 
     //for(int z = 20; z < dim.z-20; z++)

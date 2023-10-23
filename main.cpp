@@ -30,6 +30,7 @@
 #include "bitflags.cl"
 #include "raytracing.hpp"
 #include "differentiator.hpp"
+#include "units.hpp"
 
 /**
 current paper set
@@ -2853,14 +2854,14 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.075;
-    h1.momentum = {0, 0.133 * 0.8 * 0.1, 0};
+    h1.momentum = {0, 0.133 * 0.8 * 0.11, 0};
     h1.position = {-4.257, 0.f, 0.f};
     h1.matter.colour = {1, 0, 0};
 
     compact_object::data h2;
     h2.t = compact_object::NEUTRON_STAR;
     h2.bare_mass = 0.075;
-    h2.momentum = {0, -0.133 * 0.8 * 0.1, 0};
+    h2.momentum = {0, -0.133 * 0.8 * 0.11, 0};
     h2.position = {4.257, 0.f, 0.f};
     h2.matter.colour = {0, 1, 0};
 
@@ -2886,6 +2887,41 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     objects = {h1, h2};
     #endif // MERGE_THEN_COLLAPSE
+
+
+    //#define SUN_EARTH_JUPITER
+    #ifdef SUN_EARTH_JUPITER
+    {
+        particle_data data;
+
+        double sun_mass = 2.989 * pow(10., 30.);
+        double earth_mass = 5.972 * pow(10., 24.);
+        double jupiter_mass = 1.899 * pow(10., 27.);
+
+        double max_scale_rad = get_c_at_max() * 0.5f * 0.6f;
+
+        double radius = 743.74 * 1000. * 1000. * 1000.;
+        double meters_to_scale = max_scale_rad / radius;
+
+        double sun_mass_mod = units::kg_to_m(sun_mass) * meters_to_scale;
+        double jupiter_mass_mod = units::kg_to_m(jupiter_mass) * meters_to_scale;
+        double earth_mass_mod = units::kg_to_m(earth_mass) * meters_to_scale;
+
+        double jupiter_speed_ms = 13.07 * 1000.;
+        double jupiter_speed_c = jupiter_speed_ms / units::C;
+
+        data.positions.push_back({0,0,0});
+        data.velocities.push_back({0,0,0});
+        data.masses.push_back(sun_mass_mod);
+
+        data.positions.push_back({radius * meters_to_scale, 0.f, 0.f});
+        data.velocities.push_back({0, jupiter_speed_c, 0});
+        data.masses.push_back(jupiter_mass_mod);
+
+        data_opt = std::move(data);
+    }
+
+    #endif // BARE_BLACK_HOLES
 
     //#define PARTICLE_TEST
     #ifdef PARTICLE_TEST
@@ -4793,7 +4829,7 @@ int main()
 
     std::string hydro_argument_string = argument_string;
 
-    vec3i size = {255, 255, 255};
+    vec3i size = {213, 213, 213};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
