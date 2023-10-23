@@ -5069,7 +5069,7 @@ int main()
         {"cGi2", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
 
         {"K", "evolve_1", cpu_mesh::dissipate_high, 0, 1},
-        {"X", "evolve_1", cpu_mesh::dissipate_low, 1, 1},
+        {"X", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
 
         {"gA", "evolve_1", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed},
         {"gB0", "evolve_1", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed},

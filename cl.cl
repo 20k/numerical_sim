@@ -196,7 +196,7 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     cGi2[index] = init_cGi2;
 
     K[index] = init_K;
-    X[index] = init_X;
+    X[index] = init_X - 1;
 
     gA[index] = init_gA - 1;
     gB0[index] = init_gB0;

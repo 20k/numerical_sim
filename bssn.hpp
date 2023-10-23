@@ -323,15 +323,19 @@ struct standard_arguments
         //cA.idx(1, 1) = -(raised_cAij.idx(0, 0) + raised_cAij.idx(2, 2) + cA.idx(0, 1) * icY.idx(0, 1) + cA.idx(1, 2) * icY.idx(1, 2)) / (icY.idx(1, 1));
 
         #ifndef USE_W
-        X_impl = max(bidx(ctx, pack.X, interpolate, false), 0);
+        X_impl = bidx(ctx, pack.X, interpolate, false);
 
-        //if(asymptotic_modify)
-        //    X_impl += 1;
+        if(asymptotic_modify)
+            X_impl += 1;
+
+        X_impl = max(X_impl, 0);
         #else
-        W_impl = max(bidx(ctx, pack.X, interpolate, false), 0);
+        W_impl = bidx(ctx, pack.X, interpolate, false);
 
-        //if(asymptotic_modify)
-        //    W_impl += 1;
+        if(asymptotic_modify)
+            W_impl += 1;
+
+        W_impl = max(W_impl, 0);
         #endif
 
         K = bidx(ctx, pack.K, interpolate, false);
