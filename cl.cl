@@ -349,15 +349,15 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
 
-    if(gA[index] < 0)
-        gA[index] = 0;
+    if(gA[index] < -1)
+        gA[index] = -1;
 
     //if(gA[index] > 1)
     //    gA[index] = 1;
 
     #ifndef X_IS_ACTUALLY_W
-    if(X[index] < 0)
-        X[index] = 0;
+    if(X[index] < -1)
+        X[index] = -1;
     #endif
 
     float found_det = CY_DET;
