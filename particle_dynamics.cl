@@ -169,8 +169,9 @@ void dissipate_mass(__global const float* positions, __global const float* mass_
     ///isn't this already handled internally?
     voxel_pos = clamp(voxel_pos, (float3)(BORDER_WIDTH,BORDER_WIDTH,BORDER_WIDTH), (float3)(dim.x, dim.y, dim.z) - BORDER_WIDTH - 1);
 
-    float gA_val = buffer_read_linear(gA, voxel_pos, dim);
-    float X_val = buffer_read_linear(X, voxel_pos, dim);
+    float fx = voxel_pos.x;
+    float fy = voxel_pos.y;
+    float fz = voxel_pos.z;
 
     bool oob = fast_length(Xpos) >= MASS_CULL_SIZE;
 
@@ -181,7 +182,7 @@ void dissipate_mass(__global const float* positions, __global const float* mass_
     }
 
     ///the oob check here is redundant, but I will absolutely forget if I experiment with the above check
-    bool is_invalid = gA_val < 0.4f || X_val < 0.01f || oob;
+    bool is_invalid = GET_LINEAR_GA < 0.4f || GET_LINEAR_CHI < 0.01f || oob;
 
     if(!is_invalid)
     {

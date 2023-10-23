@@ -352,6 +352,12 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 
     {
         equation_context ectx;
+        ectx.uses_linear = true;
+        standard_arguments args(ectx);
+
+
+        ectx.add("GET_LINEAR_GA", args.gA);
+        ectx.add("GET_LINEAR_CHI", args.get_X());
         ectx.add("MINIMUM_MASS", start_data.minimum_mass);
 
         ectx.build(argument_string, "massdiss");
