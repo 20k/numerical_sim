@@ -981,6 +981,8 @@ namespace hydrodynamics
         //ctx.add("e_star_p_limit", matt.p_star_below_e_star_threshold());
         //ctx.add("e_star_p_value", matt.e_star_clamped());
         ctx.add("p_star_max", matt.p_star_max());
+
+        ctx.add("GET_GA", args.gA);
     }
 
     void build_advection(equation_context& ctx)

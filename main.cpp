@@ -2849,7 +2849,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     #endif // N_BODY
 
-    #define REGULAR_MERGE
+    //#define REGULAR_MERGE
     #ifdef REGULAR_MERGE
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
@@ -2888,8 +2888,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // MERGE_THEN_COLLAPSE
 
-
-    //#define SUN_EARTH_JUPITER
+    #define SUN_EARTH_JUPITER
     #ifdef SUN_EARTH_JUPITER
     {
         particle_data data;
