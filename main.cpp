@@ -2169,7 +2169,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
-    value gA = bidx(ctx, "gA", ctx.uses_linear, false);
+    value gA = bidx(ctx, "gA", ctx.uses_linear, false) + 1;
 
     value pressure = bidx(ctx, "pressure_in", ctx.uses_linear, false);
     value rho = bidx(ctx, "rho_in", ctx.uses_linear, false);
@@ -2588,7 +2588,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    //#define PAPER_0610128
+    #define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -2888,7 +2888,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // MERGE_THEN_COLLAPSE
 
-    #define SUN_EARTH_JUPITER
+    //#define SUN_EARTH_JUPITER
     #ifdef SUN_EARTH_JUPITER
     {
         particle_data data;
@@ -5050,12 +5050,12 @@ int main()
     float gauge_wave_speed = sqrt(2.f);
 
     std::vector<buffer_descriptor> buffers = {
-        {"cY0", "evolve_1", cpu_mesh::dissipate_low, 1, 1},
+        {"cY0", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
         {"cY1", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
         {"cY2", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
-        {"cY3", "evolve_1", cpu_mesh::dissipate_low, 1, 1},
+        {"cY3", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
         {"cY4", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
-        {"cY5", "evolve_1", cpu_mesh::dissipate_low, 1, 1},
+        {"cY5", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
 
         {"cA0", "evolve_1", cpu_mesh::dissipate_high, 0, 1},
         {"cA1", "evolve_1", cpu_mesh::dissipate_high, 0, 1},
@@ -5069,9 +5069,9 @@ int main()
         {"cGi2", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
 
         {"K", "evolve_1", cpu_mesh::dissipate_high, 0, 1},
-        {"X", "evolve_1", cpu_mesh::dissipate_low, 1, 1},
+        {"X", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
 
-        {"gA", "evolve_1", cpu_mesh::dissipate_gauge, 1, gauge_wave_speed},
+        {"gA", "evolve_1", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed},
         {"gB0", "evolve_1", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed},
         {"gB1", "evolve_1", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed},
         {"gB2", "evolve_1", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed},

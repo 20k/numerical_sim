@@ -177,12 +177,12 @@ void calculate_initial_conditions(STANDARD_ARGS(),
 
     int index = IDX(ix, iy, iz);
 
-    cY0[index] = init_cY0;
+    cY0[index] = init_cY0 - 1;
     cY1[index] = init_cY1;
     cY2[index] = init_cY2;
-    cY3[index] = init_cY3;
+    cY3[index] = init_cY3 - 1;
     cY4[index] = init_cY4;
-    cY5[index] = init_cY5;
+    cY5[index] = init_cY5 - 1;
 
     cA0[index] = init_cA0;
     cA1[index] = init_cA1;
@@ -196,9 +196,9 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     cGi2[index] = init_cGi2;
 
     K[index] = init_K;
-    X[index] = init_X;
+    X[index] = init_X - 1;
 
-    gA[index] = init_gA;
+    gA[index] = init_gA - 1;
     gB0[index] = init_gB0;
     gB1[index] = init_gB1;
     gB2[index] = init_gB2;
@@ -748,6 +748,7 @@ void render(STANDARD_CONST_ARGS(),
         printf("gB1 %f\n", gB1[index]);
         printf("gB2 %f\n", gB2[index]);
         printf("CY %.24f %.24f %.24f %.24f %.24f %.24f\n", cY0[index], cY1[index], cY2[index], cY3[index], cY4[index], cY5[index]);
+        //printf("Ps %.24f\n", Dp_star[index]);
     }
 
     //for(int z = 20; z < dim.z-20; z++)
