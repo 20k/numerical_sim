@@ -280,7 +280,7 @@ void evolve_hydro_all(__global const ushort4* points, int point_count,
     float diss = 5;
 
     ///either interior to the black hole, or near the border. The latter is kind of hacky
-    if(GET_GA < 0.15f || my_radius >= area_half_width * 0.85f)
+    if(GET_GA < 0.45f || my_radius >= area_half_width * 0.85f)
     {
         fin_p_star += (0 - fin_p_star) * timestep * diss;
         fin_e_star += (0 - fin_e_star) * timestep * diss;
