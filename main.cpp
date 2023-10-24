@@ -2854,14 +2854,14 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.075;
-    h1.momentum = {0, 0.133 * 0.8 * 0.11, 0};
+    h1.momentum = {0, 0.133 * 0.8 * 0.117, 0};
     h1.position = {-4.257, 0.f, 0.f};
     h1.matter.colour = {1, 0, 0};
 
     compact_object::data h2;
     h2.t = compact_object::NEUTRON_STAR;
     h2.bare_mass = 0.075;
-    h2.momentum = {0, -0.133 * 0.8 * 0.11, 0};
+    h2.momentum = {0, -0.133 * 0.8 * 0.117, 0};
     h2.position = {4.257, 0.f, 0.f};
     h2.matter.colour = {0, 1, 0};
 
