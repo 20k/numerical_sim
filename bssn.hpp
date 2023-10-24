@@ -272,7 +272,7 @@ struct standard_arguments
         gA = bidx(ctx, pack.gA, interpolate, false);
 
         if(asymptotic_modify)
-            gA += 1;
+            gA += GA_ADD;
 
         gA = max(gA, 0.f);
         //gA = max(gA, 0.00001f);
@@ -304,9 +304,9 @@ struct standard_arguments
 
         if(asymptotic_modify)
         {
-            cY[0,0] += 1;
-            cY[1,1] += 1;
-            cY[2,2] += 1;
+            cY[0,0] += CY0_ADD;
+            cY[1,1] += CY3_ADD;
+            cY[2,2] += CY5_ADD;
         }
 
         unpinned_cY = cY;
@@ -338,14 +338,14 @@ struct standard_arguments
         X_impl = bidx(ctx, pack.X, interpolate, false);
 
         if(asymptotic_modify)
-            X_impl += 1;
+            X_impl += X_ADD;
 
         X_impl = max(X_impl, 0);
         #else
         W_impl = bidx(ctx, pack.X, interpolate, false);
 
         if(asymptotic_modify)
-            W_impl += 1;
+            W_impl += X_ADD;
 
         W_impl = max(W_impl, 0);
         #endif

@@ -811,7 +811,7 @@ value get_cacheable_W(equation_context& ctx, standard_arguments& args, matter& m
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
     value W = 0.5f;
-    int iterations = 5;
+    int iterations = 20;
 
     for(int i=0; i < iterations; i++)
     {
