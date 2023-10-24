@@ -177,12 +177,12 @@ void calculate_initial_conditions(STANDARD_ARGS(),
 
     int index = IDX(ix, iy, iz);
 
-    cY0[index] = init_cY0 - 1;
+    cY0[index] = init_cY0;
     cY1[index] = init_cY1;
     cY2[index] = init_cY2;
-    cY3[index] = init_cY3 - 1;
+    cY3[index] = init_cY3;
     cY4[index] = init_cY4;
-    cY5[index] = init_cY5 - 1;
+    cY5[index] = init_cY5;
 
     cA0[index] = init_cA0;
     cA1[index] = init_cA1;
@@ -196,9 +196,9 @@ void calculate_initial_conditions(STANDARD_ARGS(),
     cGi2[index] = init_cGi2;
 
     K[index] = init_K;
-    X[index] = init_X - 1;
+    X[index] = init_X;
 
-    gA[index] = init_gA - 1;
+    gA[index] = init_gA;
     gB0[index] = init_gB0;
     gB1[index] = init_gB1;
     gB2[index] = init_gB2;
@@ -783,7 +783,7 @@ void render(STANDARD_CONST_ARGS(),
         float Yxz = cY2[index];
         float Yyy = cY3[index];
         float Yyz = cY4[index];
-        float cX = X[index];
+        float cX = X[index] + 1;
 
         float Yzz = (1 + Yyy * Yxz * Yxz - 2 * Yxy * Yyz * Yxz + Yxx * Yyz * Yyz) / (Yxx * Yyy - Yxy * Yxy);
 
@@ -842,7 +842,7 @@ void render(STANDARD_CONST_ARGS(),
 
         //#define RENDER_X
         #ifdef RENDER_X
-        ascalar = pow(fabs(X[index]), 2.f) / 50;
+        ascalar = pow(fabs(X[index] + 1), 2.f) / 50;
         #endif // RENDER_X
 
         //#define RENDER_CGI
@@ -958,7 +958,7 @@ void render(STANDARD_CONST_ARGS(),
 
     col = clamp(col, 0.f, 1.f);
 
-    if(X[index] * X[index] < 0.03f)
+    if((X[index]+1) * (X[index]+1) < 0.03f)
         col = (float3)(0, 0, 1);
 
     /*if(order_ptr[index] & D_GTE_WIDTH_4)

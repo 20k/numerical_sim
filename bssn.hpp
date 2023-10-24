@@ -179,6 +179,18 @@ value conformal_to_X(const value& conformal)
 float get_backwards_euler_relax_parameter();
 value backwards_euler_relax(const value& ynp1k, const value& yn, const value& f_ynp1k, const value& dt);
 
+#define GA_ADD 1
+#define CY0_ADD 1
+#define CY3_ADD 1
+#define CY5_ADD 1
+#define X_ADD 1
+
+#define GA_ASYM 0
+#define CY0_ASYM 0
+#define CY3_ASYM 0
+#define CY5_ASYM 0
+#define X_ASYM 0
+
 struct standard_arguments
 {
     value gA;

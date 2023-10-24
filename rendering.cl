@@ -954,7 +954,7 @@ void trace_rays(__global struct lightray_simple* rays_in, __global struct render
 
             if(fabs(matter_p) > 0.f)
             {
-                float lapse = buffer_read_linear(gA, voxel_pos, dim);
+                float lapse = buffer_read_linear(gA, voxel_pos, dim) + GA_ADD;
 
                 float3 u_matter_upper = get_3vel_upper(Xpos, scale, dim, GET_STANDARD_ARGS(), GET_STANDARD_UTILITY());
 

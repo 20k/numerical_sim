@@ -169,7 +169,18 @@ void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
 
         std::string y_name = "init_cY" + std::to_string(i);
 
-        ctx.add(y_name, cYij.idx(index.x(), index.y()));
+        value val = cYij.idx(index.x(), index.y());
+
+        if(i == 0)
+            val = val - CY0_ADD;
+
+        if(i == 3)
+            val = val - CY3_ADD;
+
+        if(i == 5)
+            val = val - CY5_ADD;
+
+        ctx.add(y_name, val);
     }
 
     for(int i=0; i < 6; i++)
@@ -182,9 +193,9 @@ void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
     ctx.add("init_cGi2", cGi.idx(2));
 
     ctx.add("init_K", K);
-    ctx.add("init_X", X);
+    ctx.add("init_X", X - X_ADD);
 
-    ctx.add("init_gA", gA);
+    ctx.add("init_gA", gA - GA_ADD);
     ctx.add("init_gB0", gB0);
     ctx.add("init_gB1", gB1);
     ctx.add("init_gB2", gB2);
