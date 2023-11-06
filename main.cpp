@@ -130,6 +130,14 @@ https://iopscience.iop.org/article/10.1088/1361-6382/ac7e16/pdf - bssn w. This h
 https://arxiv.org/pdf/2203.05149.pdf - has some compatible matter evolution equations
 https://arxiv.org/pdf/1109.1707.pdf - some good notes on adm projection
 https://arxiv.org/pdf/2009.06617.pdf - matter removal, flux conservative hydrodynamics
+
+mhd:
+https://arxiv.org/abs/1010.3532v2
+https://ui.adsabs.harvard.edu/abs/2022ApJS..261...22C/abstract
+https://ui.adsabs.harvard.edu/abs/2021MNRAS.508.2279C/abstract
+https://scholar.google.co.za/citations?view_op=view_citation&hl=pl&user=yMCxyOAAAAAJ&citation_for_view=yMCxyOAAAAAJ:WF5omc3nYNoC
+https://journals.aps.org/prd/abstract/10.1103/PhysRevD.79.024017
+https://arxiv.org/pdf/1810.02825.pdf - initial conditions for general binary black holes?
 */
 
 ///notes:
@@ -5697,7 +5705,7 @@ int main()
         ///todo: backwards euler test
         float timestep = get_timestep(get_c_at_max(), size) * 1/get_backwards_euler_relax_parameter();
 
-        if(pao && base_mesh.elapsed_time > 1400)
+        if(pao && base_mesh.elapsed_time > 300)
             step = false;
 
         if(step)
