@@ -8,7 +8,7 @@
 #include <optional>
 #include <vector>
 #include <vec/vec.hpp>
-#include <geodesic/dual_value.hpp>
+#include <vec/value.hpp>
 #include "async_read_queue.hpp"
 
 struct ref_counted_buffer;
@@ -28,7 +28,7 @@ struct gravitational_wave_manager
     gravitational_wave_manager(cl::context& ctx, vec3i _simulation_size, float c_at_max, float scale);
 
     void issue_extraction(cl::command_queue& cqueue, std::vector<cl::buffer>& buffers, std::vector<ref_counted_buffer>& thin_intermediates, float scale, const vec<4, cl_int>& clsize);
-    std::vector<dual_types::complex<float>> process();
+    std::vector<dual_types::complex_v<float>> process();
 
     int calculated_extraction_pixel = 0;
 };

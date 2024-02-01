@@ -813,6 +813,7 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, con
     }
     #endif
 
+    ///it looks like this might cause issues in the hydrodynamics
     #define MOD_CY2
     #ifdef MOD_CY2
     tensor<value, 3, 3> d_cGi;

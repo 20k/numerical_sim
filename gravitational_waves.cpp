@@ -1,5 +1,5 @@
 #include "gravitational_waves.hpp"
-#include <geodesic/dual_value.hpp>
+#include <vec/value.hpp>
 #include "legendre_nodes.h"
 #include "legendre_weights.h"
 #include "spherical_integration.hpp"
@@ -17,7 +17,7 @@ vec3f dim_to_centre(vec3i dim)
     return {even.x()/2.f, even.y()/2.f, even.z()/2.f};
 }
 
-dual_types::complex<float> get_harmonic(const std::vector<cl_ushort4>& points, const std::vector<dual_types::complex<float>>& vals, vec3i dim, int extract_pixel, int l, int m)
+dual_types::complex_v<float> get_harmonic(const std::vector<cl_ushort4>& points, const std::vector<dual_types::complex_v<float>>& vals, vec3i dim, int extract_pixel, int l, int m)
 {
     std::map<int, std::map<int, std::map<int, float>>> real_value_map;
     std::map<int, std::map<int, std::map<int, float>>> imaginary_value_map;
@@ -39,7 +39,7 @@ dual_types::complex<float> get_harmonic(const std::vector<cl_ushort4>& points, c
         float real = linear_interpolate(real_value_map, pos, dim);
         float imaginary = linear_interpolate(imaginary_value_map, pos, dim);
 
-        return dual_types::complex<float>(real, imaginary);
+        return dual_types::complex_v<float>(real, imaginary);
     };
 
     return spherical_decompose_complex_cartesian_function(to_integrate, -2, l, m, centre, (float)extract_pixel, INTEGRATION_N);
@@ -95,22 +95,22 @@ void gravitational_wave_manager::issue_extraction(cl::command_queue& cqueue, std
     arq.issue(next, kernel_event);
 }
 
-std::vector<dual_types::complex<float>> gravitational_wave_manager::process()
+std::vector<dual_types::complex_v<float>> gravitational_wave_manager::process()
 {
     std::vector<std::vector<cl_float2>> to_process = arq.process();
 
-    std::vector<dual_types::complex<float>> complex_harmonics;
+    std::vector<dual_types::complex_v<float>> complex_harmonics;
 
     for(const std::vector<cl_float2>& data : to_process)
     {
-        std::vector<dual_types::complex<float>> as_vector;
+        std::vector<dual_types::complex_v<float>> as_vector;
 
         for(cl_float2 d : data)
         {
             as_vector.push_back({d.s[0], d.s[1]});
         }
 
-        dual_types::complex<float> harmonic = get_harmonic(raw_harmonic_points, as_vector, simulation_size, (float)calculated_extraction_pixel, 2, 2);
+        dual_types::complex_v<float> harmonic = get_harmonic(raw_harmonic_points, as_vector, simulation_size, (float)calculated_extraction_pixel, 2, 2);
 
         if(!std::isnan(harmonic.real) && !std::isnan(harmonic.imaginary))
             complex_harmonics.push_back(harmonic);

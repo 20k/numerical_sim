@@ -1,5 +1,5 @@
 #include "particle_dynamics.hpp"
-#include <geodesic/dual_value.hpp>
+#include <vec/value.hpp>
 #include "equation_context.hpp"
 #include "bssn.hpp"
 #include "random.hpp"

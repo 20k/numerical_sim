@@ -439,6 +439,7 @@ particle_data build_galaxy()
     ret.debug_velocities = std::move(debug_velocities);
     ret.debug_analytic_mass = std::move(debug_analytic_mass);
     ret.debug_real_mass = std::move(debug_real_mass);
+    ret.particle_brightness = 0.01;
 
     return ret;
 }

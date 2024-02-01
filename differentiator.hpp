@@ -1,7 +1,7 @@
 #ifndef DIFFERENTIATOR_HPP_INCLUDED
 #define DIFFERENTIATOR_HPP_INCLUDED
 
-#include <geodesic/dual_value.hpp>
+#include <vec/value.hpp>
 #include <vec/tensor.hpp>
 
 struct differentiator

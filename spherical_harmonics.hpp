@@ -3,7 +3,7 @@
 
 #include <map>
 #include <tuple>
-#include <geodesic/dual_value.hpp>
+#include <vec/value.hpp>
 
 inline
 int64_t factorial(int64_t i)
@@ -16,9 +16,9 @@ int64_t factorial(int64_t i)
 
 template<typename T>
 inline
-dual_types::complex<T> expi_s(T val)
+dual_types::complex_v<T> expi_s(T val)
 {
-    return dual_types::complex<T>(cos(val), sin(val));
+    return dual_types::complex_v<T>(cos(val), sin(val));
 }
 
 ///https://arxiv.org/pdf/1906.03877.pdf 8
@@ -29,9 +29,9 @@ dual_types::complex<T> expi_s(T val)
 ///this is where the cactus code comes from as well
 template<typename T>
 inline
-dual_types::complex<T> sYlm_2(int s, int l, int m, T theta, T phi)
+dual_types::complex_v<T> sYlm_2(int s, int l, int m, T theta, T phi)
 {
-    thread_local std::map<std::tuple<int, int, int, T, T>, dual_types::complex<T>> cache;
+    thread_local std::map<std::tuple<int, int, int, T, T>, dual_types::complex_v<T>> cache;
 
     if(auto found_it = cache.find(std::tuple{s, l, m, theta, phi}); found_it != cache.end())
         return found_it->second;
@@ -61,7 +61,7 @@ dual_types::complex<T> sYlm_2(int s, int l, int m, T theta, T phi)
 
     T coeff = pow(-1, s) * sqrt((2 * l + 1) / (4 * M_PI));
 
-    dual_types::complex<T> ret = coeff * dlms(theta, l, m, -s) * expi_s(m * phi);
+    dual_types::complex_v<T> ret = coeff * dlms(theta, l, m, -s) * expi_s(m * phi);
 
     cache[std::tuple{s, l, m, theta, phi}] = ret;
 
@@ -79,18 +79,18 @@ void test_harmonics()
             for(float phi = 0; phi <= 2 * M_PI; phi += M_PI/16)
             {
                 {
-                    dual_types::complex<float> ym222 = sqrt(5 / (64 * M_PI)) * (1 - cos(theta)) * (1 - cos(theta)) * expi_s(-2 * phi);
+                    dual_types::complex_v<float> ym222 = sqrt(5 / (64 * M_PI)) * (1 - cos(theta)) * (1 - cos(theta)) * expi_s(-2 * phi);
 
-                    dual_types::complex<float> ym222_c = sYlm_2(-2, 2, -2, theta, phi);
+                    dual_types::complex_v<float> ym222_c = sYlm_2(-2, 2, -2, theta, phi);
 
                     assert(fabs(ym222.real - ym222_c.real) < tol);
                     assert(fabs(ym222.imaginary - ym222_c.imaginary) < tol);
                 }
 
                 {
-                    dual_types::complex<float> y222 = sqrt(5 / (64 * M_PI)) * (1 + cos(theta)) * (1 + cos(theta)) * expi_s(2 * phi);
+                    dual_types::complex_v<float> y222 = sqrt(5 / (64 * M_PI)) * (1 + cos(theta)) * (1 + cos(theta)) * expi_s(2 * phi);
 
-                    dual_types::complex<float> y222_c = sYlm_2(-2, 2, 2, theta, phi);
+                    dual_types::complex_v<float> y222_c = sYlm_2(-2, 2, 2, theta, phi);
 
                     assert(fabs(y222.real - y222_c.real) < tol);
                     assert(fabs(y222.imaginary - y222_c.imaginary) < tol);

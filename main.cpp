@@ -5,8 +5,7 @@
 #include <GLFW/glfw3.h>
 #include <SFML/Graphics.hpp>
 #include <CL/cl_ext.h>
-#include <geodesic/dual.hpp>
-#include <geodesic/dual_value.hpp>
+#include <vec/value.hpp>
 #include <fstream>
 #include <imgui/misc/freetype/imgui_freetype.h>
 #include <vec/tensor.hpp>
@@ -2596,7 +2595,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    //#define PAPER_0610128
+    #define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -2857,19 +2856,19 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     #endif // N_BODY
 
-    #define REGULAR_MERGE
+    //#define REGULAR_MERGE
     #ifdef REGULAR_MERGE
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.075;
-    h1.momentum = {0, 0.133 * 0.8 * 0.117, 0};
+    h1.momentum = {0, 0.133 * 0.8 * 0.113, 0};
     h1.position = {-4.257, 0.f, 0.f};
     h1.matter.colour = {1, 0, 0};
 
     compact_object::data h2;
     h2.t = compact_object::NEUTRON_STAR;
     h2.bare_mass = 0.075;
-    h2.momentum = {0, -0.133 * 0.8 * 0.117, 0};
+    h2.momentum = {0, -0.133 * 0.8 * 0.113, 0};
     h2.position = {4.257, 0.f, 0.f};
     h2.matter.colour = {0, 1, 0};
 
@@ -2905,9 +2904,11 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
         double earth_mass = 5.972 * pow(10., 24.);
         double jupiter_mass = 1.899 * pow(10., 27.);
 
-        double max_scale_rad = get_c_at_max() * 0.5f * 0.6f;
+        double max_scale_rad = get_c_at_max() * 0.5f * 0.7f;
 
-        double radius = 743.74 * 1000. * 1000. * 1000.;
+        double earth_radius = 228 * pow(10., 6.) * 1000;
+        //double radius = 743.74 * 1000. * 1000. * 1000.;
+        double radius = earth_radius;
         double meters_to_scale = max_scale_rad / radius;
 
         double sun_mass_mod = units::kg_to_m(sun_mass) * meters_to_scale;
@@ -2916,14 +2917,20 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
         double jupiter_speed_ms = 13.07 * 1000.;
         double jupiter_speed_c = jupiter_speed_ms / units::C;
+        double earth_speed_ms = 29.8 * 1000;
+        double earth_speed_c = earth_speed_ms / units::C;
 
         data.positions.push_back({0,0,0});
         data.velocities.push_back({0,0,0});
         data.masses.push_back(sun_mass_mod);
 
-        data.positions.push_back({radius * meters_to_scale, 0.f, 0.f});
+        /*data.positions.push_back({radius * meters_to_scale, 0.f, 0.f});
         data.velocities.push_back({0, jupiter_speed_c, 0});
-        data.masses.push_back(jupiter_mass_mod);
+        data.masses.push_back(jupiter_mass_mod);*/
+
+        data.positions.push_back({earth_radius * meters_to_scale, 0.f, 0.f});
+        data.velocities.push_back({0, earth_speed_c, 0});
+        data.masses.push_back(earth_mass_mod);
 
         data_opt = std::move(data);
     }
@@ -4046,9 +4053,9 @@ void extract_waveforms(equation_context& ctx)
     ctx.pin(v2a);
     ctx.pin(v3a);
 
-    dual_types::complex<value> unit_i = dual_types::unit_i();
+    dual_types::complex_v<value> unit_i = complex_type::unit_i();
 
-    tensor<dual_types::complex<value>, 4> mu;
+    tensor<dual_types::complex_v<value>, 4> mu;
 
     for(int i=1; i < 4; i++)
     {
@@ -4056,23 +4063,23 @@ void extract_waveforms(equation_context& ctx)
     }
 
     ///https://en.wikipedia.org/wiki/Newman%E2%80%93Penrose_formalism
-    tensor<dual_types::complex<value>, 4> mu_dash;
+    tensor<dual_types::complex_v<value>, 4> mu_dash;
 
     for(int i=0; i < 4; i++)
     {
-        mu_dash.idx(i) = dual_types::conjugate(mu.idx(i));
+        mu_dash.idx(i) = complex_type::conjugate(mu.idx(i));
     }
 
-    tensor<dual_types::complex<value>, 4> mu_dash_p = tensor_project_upper(mu_dash, args.gA, args.gB);
+    tensor<dual_types::complex_v<value>, 4> mu_dash_p = tensor_project_upper(mu_dash, args.gA, args.gB);
 
     tensor<value, 3, 3, 3> raised_eijk = raise_index(raise_index(eijk_tensor, iYij, 1), iYij, 2);
 
     ctx.pin(raised_eijk);
 
-    dual_types::complex<value> w4;
+    dual_types::complex_v<value> w4;
 
     {
-        dual_types::complex<value> sum(0.f);
+        dual_types::complex_v<value> sum(0.f);
 
         for(int i=0; i < 3; i++)
         {
@@ -4080,7 +4087,7 @@ void extract_waveforms(equation_context& ctx)
             {
                 value k_sum_1 = 0;
 
-                dual_types::complex<value> k_sum_2(0.f);
+                dual_types::complex_v<value> k_sum_2(0.f);
 
                 for(int k=0; k < 3; k++)
                 {
@@ -4095,7 +4102,7 @@ void extract_waveforms(equation_context& ctx)
                     k_sum_1 += Kij.idx(i, k) * raise_index(Kij, iYij, 0).idx(k, j);
                 }
 
-                dual_types::complex<value> inner_sum = -Rij.idx(i, j) - args.K * Kij.idx(i, j) + k_sum_1 + k_sum_2;
+                dual_types::complex_v<value> inner_sum = -Rij.idx(i, j) - args.K * Kij.idx(i, j) + k_sum_1 + k_sum_2;
 
                 ///mu is a 4 vector, but we use it spatially
                 ///this exposes the fact that i really runs from 1-4 instead of 0-3
@@ -5788,9 +5795,9 @@ int main()
         }
 
         {
-            std::vector<dual_types::complex<float>> values = wave_manager.process();
+            std::vector<dual_types::complex_v<float>> values = wave_manager.process();
 
-            for(dual_types::complex<float> v : values)
+            for(dual_types::complex_v<float> v : values)
             {
                 real_decomp.push_back(v.real);
                 imaginary_decomp.push_back(v.imaginary);

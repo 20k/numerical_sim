@@ -5,7 +5,7 @@
 #include <assert.h>
 #include "legendre_nodes.h"
 #include "legendre_weights.h"
-#include <geodesic/dual_value.hpp>
+#include <vec/value.hpp>
 #include <toolkit/opencl.hpp>
 #include "async_read_queue.hpp"
 

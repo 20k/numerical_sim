@@ -2,7 +2,7 @@
 #define SINGLE_SOURCE_KERNEL_CONTEXT_HPP_INCLUDED
 
 #include <vector>
-#include <geodesic/dual_value.hpp>
+#include <vec/value.hpp>
 #include <vec/tensor.hpp>
 
 struct equation_context;

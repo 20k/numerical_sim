@@ -1,7 +1,7 @@
 #ifndef BSSN_HPP_INCLUDED
 #define BSSN_HPP_INCLUDED
 
-#include <geodesic/dual_value.hpp>
+#include <vec/value.hpp>
 #include <vec/tensor.hpp>
 #include "tensor_algebra.hpp"
 #include "equation_context.hpp"
