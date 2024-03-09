@@ -5678,7 +5678,7 @@ int main()
 
             if(imaginary_decomp.size() > 0)
             {
-                ImGui::PlotLines("w4_l2_m2_im", real_decomp.data(), real_decomp.size(), 0, nullptr, FLT_MAX, FLT_MAX, ImVec2(400, 100));
+                ImGui::PlotLines("w4_l2_m2_im", imaginary_decomp.data(), imaginary_decomp.size(), 0, nullptr, FLT_MAX, FLT_MAX, ImVec2(400, 100));
             }
 
             for(plugin* p : plugins)
