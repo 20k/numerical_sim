@@ -112,6 +112,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         blocks.back().push_back(v);
     }
 
+    #if 0
     auto insert_value = [&]<typename T>(const T& in)
     {
         if(in.type == dual_types::ops::DECLARE)
@@ -193,14 +194,14 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
         std::vector<const value*> linear_emitted;
         std::set<const value*> prefetched;
 
-        auto is_bottom_rung_type = [&](value& in)
+        /*auto is_bottom_rung_type = [&](value& in)
         {
             return in.type == dual_types::ops::BREAK ||
                    in.type == dual_types::ops::FOR_START || in.type == dual_types::ops::IF_START ||
                    in.type == dual_types::ops::BLOCK_START || in.type == dual_types::ops::BLOCK_END ||
                    in.type == dual_types::ops::VALUE || in.type == dual_types::ops::IDOT ||
                    in.type == dual_types::ops::SIDE_EFFECT;
-        };
+        };*/
 
         auto dont_peek = [&](const value& in)
         {
@@ -1883,7 +1884,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             return check(in, check);
         };
 
-        if(kernel_name == "evolve_1" && block_id == blocks.size())
+        if(kernel_name == "evolve_1" && block_id == (int)blocks.size())
         {
             std::cout << "kernel " << kernel_name << std::endl;
 
@@ -2176,13 +2177,11 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             if(add.has_value())
                 add.value().group_associative_operators();
 
-            bool is_first = true;
-
             std::vector<value_v> decls;
 
             std::optional<value_v> result = add;
 
-            for(int kk=0; kk < multiplications.size(); kk++)
+            for(int kk=0; kk < (int)multiplications.size(); kk++)
             {
                 if(!result.has_value())
                 {
@@ -2316,6 +2315,7 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
             insert_value(v);
         }
     }
+    #endif
 
     #define OLD_BUT_FAST
     #ifdef OLD_BUT_FAST

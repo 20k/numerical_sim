@@ -95,11 +95,11 @@ std::vector<cl_ushort4> get_spherical_integration_points(vec3i dim, int extract_
 
     auto eq_shorts = [](cl_ushort4 p1, cl_ushort4 p2){return p1.s[0] == p2.s[0] && p1.s[1] == p2.s[1] && p1.s[2] == p2.s[2];};
 
-    printf("Pre deduplicate adm size %i\n", ret.size());
+    printf("Pre deduplicate adm size %i\n", (int)ret.size());
 
     ret.erase(std::unique(ret.begin(), ret.end(), eq_shorts), ret.end());
 
-    printf("Post deduplicate adm size %i\n", ret.size());
+    printf("Post deduplicate adm size %i\n", (int)ret.size());
 
     return ret;
 }
