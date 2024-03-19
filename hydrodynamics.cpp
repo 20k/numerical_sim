@@ -41,7 +41,7 @@ void eularian_hydrodynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_
 
     for(auto& i : to_init.buffers)
     {
-        assert(i.buf.alloc_size == dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+        assert(i.buf.alloc_size == dim.x() * dim.y() * dim.z() * (int64_t)sizeof(cl_float));
 
         hydro_init.push_back(i.buf);
     }

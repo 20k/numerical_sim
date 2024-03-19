@@ -19,7 +19,7 @@ void load_buffer(cl::command_queue& cqueue, cl::buffer& into, const std::string&
 {
     std::string data = file::read(from, file::mode::BINARY);
 
-    assert(data.size() == into.alloc_size);
+    assert(data.size() == (size_t)into.alloc_size);
 
     into.write(cqueue, data.data(), data.size());
 }
@@ -352,7 +352,7 @@ std::vector<ref_counted_buffer> cpu_mesh::get_derivatives_of(cl::context& ctx, b
 
 void cpu_mesh::clean_buffer(cl::command_queue& mqueue, cl::buffer& in, cl::buffer& out, cl::buffer& base, float asym, float speed, float timestep)
 {
-    if(in.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z())
+    if(in.alloc_size != (int64_t)sizeof(cl_float) * dim.x() * dim.y() * dim.z())
         return;
 
     cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
@@ -690,7 +690,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
 
         for(int i=0; i < (int)in.buffers.size(); i++)
         {
-            if(in.buffers[i].buf.alloc_size != sizeof(cl_float) * dim.x() * dim.y() * dim.z() || in.buffers[i].desc.dissipation_coeff == 0.f)
+            if(in.buffers[i].buf.alloc_size != (int64_t)sizeof(cl_float) * dim.x() * dim.y() * dim.z() || in.buffers[i].desc.dissipation_coeff == 0.f)
             {
                 //assert(false);
                 //printf("hi\n");
@@ -755,7 +755,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
             check_symm(buf_in.desc.name, mqueue, buf_in.buf, clsize);
     }*/
 
-    auto copy_valid = [&](auto& in, auto& out)
+    /*auto copy_valid = [&](auto& in, auto& out)
     {
         out.currently_physical = in.currently_physical;
 
@@ -770,9 +770,9 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
 
             mqueue.exec("copy_valid", copy, {points_set.all_count}, {128});
         }
-    };
+    };*/
 
-    auto finish_midpoint = [&](auto& summed, auto& znm1, auto& out)
+    /*auto finish_midpoint = [&](auto& summed, auto& znm1, auto& out)
     {
         summed.currently_physical = false;
 
@@ -789,7 +789,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
 
             mqueue.exec("finish_midpoint_impl", args, {points_set.all_count}, {128});
         }
-    };
+    };*/
 
     /*auto finish_bs = [&](int high, int low)
     {
@@ -887,7 +887,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
     #endif
     #endif
 
-    auto construct_guess = [&](auto& a, auto& b)
+    /*auto construct_guess = [&](auto& a, auto& b)
     {
         a.currently_physical = false;
 
@@ -921,13 +921,13 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
 
             mqueue.exec("midpoint_guess_impl", args, {points_set.all_count}, {128});
         }
-    };
+    };*/
 
     #ifdef EULER
     step(0, 0, 1, timestep, true, 0, 1);
     #endif
 
-    auto finish_heun = [&](auto& yip1, auto& yip2)
+    /*auto finish_heun = [&](auto& yip1, auto& yip2)
     {
         yip2.currently_physical = false;
 
@@ -961,7 +961,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
 
             mqueue.exec("bdf_sum_impl", args, {points_set.all_count}, {128});
         }
-    };
+    };*/
 
     //#define BACKWARDS2
     #ifdef BACKWARDS2

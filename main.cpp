@@ -1360,10 +1360,10 @@ struct superimposed_gpu_data
     superimposed_gpu_data(cl::context& ctx, cl::command_queue& cqueue, vec3i _dim, float _scale) : tov_phi{ctx}, bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, aij_aIJ{ctx}, ppw2p{ctx},
                                                                                                       pressure_buf{ctx}, rho_buf{ctx}, rhoH_buf{ctx}, p0_buf{ctx}, Si_buf{ctx, ctx, ctx},
                                                                                                       colour_buf{ctx, ctx, ctx},
-                                                                                                      ppw2p_program(ctx), bcAij_matter_program(ctx), multi_matter_program(ctx),
                                                                                                       particle_position(ctx), particle_mass(ctx), particle_lorentz(ctx),
                                                                                                       particle_counts(ctx), particle_indices(ctx), particle_memory(ctx), particle_memory_count(ctx),
-                                                                                                      particle_grid_E_without_conformal(ctx)
+                                                                                                      particle_grid_E_without_conformal(ctx),
+                                                                                                      ppw2p_program(ctx), bcAij_matter_program(ctx), multi_matter_program(ctx)
     {
         dim = _dim;
         scale = _scale;
@@ -2047,7 +2047,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
 
         steady_timer time;
 
-        auto extract = [&extract_kernel](cl::context& ctx, cl::command_queue& cqueue,
+        /*auto extract = [&extract_kernel](cl::context& ctx, cl::command_queue& cqueue,
                             cl::buffer& in, float c_at_max_in, float c_at_max_out, vec3i dim)
         {
             cl_int4 clsize = {dim.x(), dim.y(), dim.z()};
@@ -2067,7 +2067,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
             cqueue.exec(extract_kernel, {dim.x(), dim.y(), dim.z()}, {8, 8, 1}, {});
 
             return out;
-        };
+        };*/
 
         auto get_u_of = [&clctx, &cqueue, &init, &boundary, &get_superimposed_of, &etol, &iterate_kernel](vec3i dim, float scale, std::optional<cl::buffer> u_upper)
         {
@@ -2135,11 +2135,11 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
             return u_args;
         };
 
-        float c_at_max = scale * dim.largest_elem();
+        //float c_at_max = scale * dim.largest_elem();
 
-        float boundaries[4] = {c_at_max * 16, c_at_max * 8, c_at_max * 4, c_at_max * 1};
+        //float boundaries[4] = {c_at_max * 16, c_at_max * 8, c_at_max * 4, c_at_max * 1};
 
-        std::optional<cl::buffer> last_u;
+        //std::optional<cl::buffer> last_u;
 
         /*for(int i=0; i < 3; i++)
         {
@@ -3325,8 +3325,6 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     u.is_memory_access = true;
     value phi = u + bl_conformal + 1;
 
-    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
-
     std::array<int, 9> arg_table
     {
         0, 1, 2,
@@ -3548,8 +3546,6 @@ void build_constraints(equation_context& ctx)
     ///https://arxiv.org/pdf/0709.3559.pdf b.49
     fixed_cA = fixed_cA / det_cY_pow;*/
 
-    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
-
     //#define NO_CAIJYY
 
     #ifdef NO_CAIJYY
@@ -3577,6 +3573,8 @@ void build_constraints(equation_context& ctx)
     }*/
 
     #ifndef DAMP_C
+    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
+
     for(int i=0; i < 6; i++)
     {
         vec2i idx = linear_indices[i];
@@ -5036,13 +5034,11 @@ int main()
     ///seems to make 0 difference to instability time
     if(use_half)
     {
-        int intermediate_data_size = sizeof(cl_half);
         argument_string += "-DDERIV_PRECISION=half ";
         hydro_argument_string += "-DDERIV_PRECISION=half ";
     }
     else
     {
-        int intermediate_data_size = sizeof(cl_float);
         argument_string += "-DDERIV_PRECISION=float ";
         hydro_argument_string += "-DDERIV_PRECISION=float ";
     }
@@ -5349,8 +5345,6 @@ int main()
 
     int rendering_method = 1;
 
-    bool trapezoidal_init = false;
-
     bool pao = false;
 
     bool render_skipping = false;
@@ -5493,8 +5487,6 @@ int main()
 
         rtex.acquire(mqueue);
 
-        bool long_operation = false;
-
         bool step = false;
 
             ImGui::Begin("Test Window", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
@@ -5594,8 +5586,6 @@ int main()
             {
                 if(ImGui::Button("Yes"))
                 {
-                    long_operation = true;
-
                     nlohmann::json misc;
                     misc["real_w2"] = real_decomp;
                     misc["imaginary_w2"] = imaginary_decomp;
@@ -5604,7 +5594,7 @@ int main()
 
                     base_mesh.save(mqueue, "save", misc);
 
-                    for(int i=0; i < raytrace.slice.size(); i++)
+                    for(int i=0; i < (int)raytrace.slice.size(); i++)
                         save_buffer(mqueue, raytrace.slice[i], "save/slice_" + std::to_string(i) + ".bin");
 
                     ImGui::CloseCurrentPopup();
@@ -5627,8 +5617,6 @@ int main()
             {
                 if(ImGui::Button("Yes"))
                 {
-                    long_operation = true;
-
                     nlohmann::json misc = base_mesh.load(mqueue, "save");
 
                     real_decomp = misc["real_w2"].get<std::vector<float>>();
@@ -5640,7 +5628,7 @@ int main()
                     if(misc.count("time_elapsed") > 0)
                         raytrace.time_elapsed = misc["time_elapsed"];
 
-                    for(int i=0; i < raytrace.slice.size(); i++)
+                    for(int i=0; i < (int)raytrace.slice.size(); i++)
                         load_buffer(mqueue, raytrace.slice[i], "save/slice_" + std::to_string(i) + ".bin");
 
                     ImGui::CloseCurrentPopup();

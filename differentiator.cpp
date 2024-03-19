@@ -260,7 +260,7 @@ value_i get_maximum_differentiation_derivative(const value_i& order)
 
     value_i last = values[0];
 
-    for(int i=0; i < values.size(); i++)
+    for(int i=0; i < (int)values.size(); i++)
     {
         last = if_v((order & distances[i]) > 0, values[i], last);
     }
@@ -524,42 +524,6 @@ value diff1(differentiator& ctx, const value& in, int idx)
 
 value diff2(equation_context& ctx, const value& in, int idx, int idy, const value& first_x, const value& first_y)
 {
-    int order = ctx.order;
-
-    value scale = "scale";
-
-    /*if(idx == idy)
-    {
-        if(order == 1)
-        {
-            differentiation_context<3> dctx(ctx, in, idx, ctx.uses_linear);
-            std::array<value, 3> vars = dctx.vars;
-
-            return (vars[0] - 2 * vars[1] + vars[2]) / (scale * scale);
-        }
-        else if(order == 2)
-        {
-            differentiation_context<5> dctx(ctx, in, idx, ctx.uses_linear);
-            std::array<value, 5> vars = dctx.vars;
-
-            return (-vars[0] + 16 * vars[1] - 30 * vars[2] + 16 * vars[3] - vars[4]) / (12 * scale * scale);
-        }
-        else if(order == 3)
-        {
-            differentiation_context<7> dctx(ctx, in, idx, ctx.uses_linear);
-            std::array<value, 7> vars = dctx.vars;
-
-            return ((1/90.f) * vars[0] - (3/20.f) * vars[1] + (3/2.f) * vars[2] - (49/18.f) * vars[3] + (3/2.f) * vars[4] - (3/20.f) * vars[5] + (1/90.f) * vars[6]) / (scale * scale);
-        }
-        else if(order == 4)
-        {
-            differentiation_context<9> dctx(ctx, in, idx, ctx.uses_linear);
-            std::array<value, 9> vars = dctx.vars;
-
-            return ((-1/560.f) * vars[0] + (8/315.f) * vars[1] - (1/5.f) * vars[2] + (8/5.f) * vars[3] - (205/72.f) * vars[4] + (8/5.f) * vars[5] - (1/5.f) * vars[6] + (8/315.f) * vars[7] - (1/560.f) * vars[8]) / (scale * scale);
-        }
-    }*/
-
     #define SYMMETRIC_DERIVATIVES
     #ifdef SYMMETRIC_DERIVATIVES
     if(idx < idy)
