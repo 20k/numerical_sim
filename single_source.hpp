@@ -3,7 +3,7 @@
 
 #include <string>
 #include "equation_context.hpp"
-#include <geodesic/dual_value.hpp>
+#include <vec/value.hpp>
 #include "cache.hpp"
 #include "single_source_fw.hpp"
 #include <thread>

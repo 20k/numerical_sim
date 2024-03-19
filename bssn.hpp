@@ -1,7 +1,7 @@
 #ifndef BSSN_HPP_INCLUDED
 #define BSSN_HPP_INCLUDED
 
-#include <geodesic/dual_value.hpp>
+#include <vec/value.hpp>
 #include <vec/tensor.hpp>
 #include "tensor_algebra.hpp"
 #include "equation_context.hpp"
@@ -179,6 +179,18 @@ value conformal_to_X(const value& conformal)
 float get_backwards_euler_relax_parameter();
 value backwards_euler_relax(const value& ynp1k, const value& yn, const value& f_ynp1k, const value& dt);
 
+#define GA_ADD 1
+#define CY0_ADD 1
+#define CY3_ADD 1
+#define CY5_ADD 1
+#define X_ADD 1
+
+#define GA_ASYM 0
+#define CY0_ASYM 0
+#define CY3_ASYM 0
+#define CY5_ASYM 0
+#define X_ASYM 0
+
 struct standard_arguments
 {
     value gA;
@@ -253,11 +265,14 @@ struct standard_arguments
         #endif
     }
 
-    standard_arguments(equation_context& ctx, const argument_pack& pack = argument_pack())
+    standard_arguments(equation_context& ctx, const argument_pack& pack = argument_pack(), bool asymptotic_modify = true)
     {
         bool interpolate = ctx.uses_linear;
 
         gA = bidx(ctx, pack.gA, interpolate, false);
+
+        if(asymptotic_modify)
+            gA += GA_ADD;
 
         gA = max(gA, 0.f);
         //gA = max(gA, 0.00001f);
@@ -287,6 +302,13 @@ struct standard_arguments
             }
         }
 
+        if(asymptotic_modify)
+        {
+            cY[0,0] += CY0_ADD;
+            cY[1,1] += CY3_ADD;
+            cY[2,2] += CY5_ADD;
+        }
+
         unpinned_cY = cY;
         //ctx.pin(cY);
 
@@ -313,9 +335,19 @@ struct standard_arguments
         //cA.idx(1, 1) = -(raised_cAij.idx(0, 0) + raised_cAij.idx(2, 2) + cA.idx(0, 1) * icY.idx(0, 1) + cA.idx(1, 2) * icY.idx(1, 2)) / (icY.idx(1, 1));
 
         #ifndef USE_W
-        X_impl = max(bidx(ctx, pack.X, interpolate, false), 0);
+        X_impl = bidx(ctx, pack.X, interpolate, false);
+
+        if(asymptotic_modify)
+            X_impl += X_ADD;
+
+        X_impl = max(X_impl, 0);
         #else
-        W_impl = max(bidx(ctx, pack.X, interpolate, false), 0);
+        W_impl = bidx(ctx, pack.X, interpolate, false);
+
+        if(asymptotic_modify)
+            W_impl += X_ADD;
+
+        W_impl = max(W_impl, 0);
         #endif
 
         K = bidx(ctx, pack.K, interpolate, false);

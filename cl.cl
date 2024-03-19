@@ -349,15 +349,15 @@ void enforce_algebraic_constraints(__global ushort4* points, int point_count,
 
     int index = IDX(ix, iy, iz);
 
-    if(gA[index] < 0)
-        gA[index] = 0;
+    if(gA[index] < -1)
+        gA[index] = -1;
 
     //if(gA[index] > 1)
     //    gA[index] = 1;
 
     #ifndef X_IS_ACTUALLY_W
-    if(X[index] < 0)
-        X[index] = 0;
+    if(X[index] < -1)
+        X[index] = -1;
     #endif
 
     float found_det = CY_DET;
@@ -748,6 +748,7 @@ void render(STANDARD_CONST_ARGS(),
         printf("gB1 %f\n", gB1[index]);
         printf("gB2 %f\n", gB2[index]);
         printf("CY %.24f %.24f %.24f %.24f %.24f %.24f\n", cY0[index], cY1[index], cY2[index], cY3[index], cY4[index], cY5[index]);
+        //printf("Ps %.24f\n", Dp_star[index]);
     }
 
     //for(int z = 20; z < dim.z-20; z++)
@@ -782,7 +783,7 @@ void render(STANDARD_CONST_ARGS(),
         float Yxz = cY2[index];
         float Yyy = cY3[index];
         float Yyz = cY4[index];
-        float cX = X[index];
+        float cX = X[index] + 1;
 
         float Yzz = (1 + Yyy * Yxz * Yxz - 2 * Yxy * Yyz * Yxz + Yxx * Yyz * Yyz) / (Yxx * Yyy - Yxy * Yxy);
 
@@ -841,7 +842,7 @@ void render(STANDARD_CONST_ARGS(),
 
         //#define RENDER_X
         #ifdef RENDER_X
-        ascalar = pow(fabs(X[index]), 2.f) / 50;
+        ascalar = pow(fabs(X[index] + 1), 2.f) / 50;
         #endif // RENDER_X
 
         //#define RENDER_CGI
@@ -957,7 +958,7 @@ void render(STANDARD_CONST_ARGS(),
 
     col = clamp(col, 0.f, 1.f);
 
-    if(X[index] * X[index] < 0.03f)
+    if((X[index]+1) * (X[index]+1) < 0.03f)
         col = (float3)(0, 0, 1);
 
     /*if(order_ptr[index] & D_GTE_WIDTH_4)

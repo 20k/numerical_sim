@@ -169,7 +169,18 @@ void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
 
         std::string y_name = "init_cY" + std::to_string(i);
 
-        ctx.add(y_name, cYij.idx(index.x(), index.y()));
+        value val = cYij.idx(index.x(), index.y());
+
+        if(i == 0)
+            val = val - CY0_ADD;
+
+        if(i == 3)
+            val = val - CY3_ADD;
+
+        if(i == 5)
+            val = val - CY5_ADD;
+
+        ctx.add(y_name, val);
     }
 
     for(int i=0; i < 6; i++)
@@ -182,9 +193,9 @@ void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
     ctx.add("init_cGi2", cGi.idx(2));
 
     ctx.add("init_K", K);
-    ctx.add("init_X", X);
+    ctx.add("init_X", X - X_ADD);
 
-    ctx.add("init_gA", gA);
+    ctx.add("init_gA", gA - GA_ADD);
     ctx.add("init_gB0", gB0);
     ctx.add("init_gB1", gB1);
     ctx.add("init_gB2", gB2);
@@ -802,6 +813,7 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, con
     }
     #endif
 
+    ///it looks like this might cause issues in the hydrodynamics
     #define MOD_CY2
     #ifdef MOD_CY2
     tensor<value, 3, 3> d_cGi;
@@ -1822,7 +1834,7 @@ void finish_gA(equation_context& ctx, all_args& all, value& dtgA)
 
     value next = backwards_euler_relax(all.in.gA[index], all.base.gA[index], dtgA, all.timestep);
 
-    next = max(next, value{0.f});
+    //next = max(next, value{0.f});
 
     ctx.exec(assign(all.out.gA[index], next));
 }

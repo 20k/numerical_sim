@@ -1,7 +1,7 @@
 #ifndef LAPLACE_SOLVER_HPP_INCLUDED
 #define LAPLACE_SOLVER_HPP_INCLUDED
 
-#include <geodesic/dual_value.hpp>
+#include <vec/value.hpp>
 #include <toolkit/opencl.hpp>
 #include "equation_context.hpp"
 

@@ -1,7 +1,7 @@
 #ifndef UTIL_HPP_INCLUDED
 #define UTIL_HPP_INCLUDED
 
-#include <geodesic/dual_value.hpp>
+#include <vec/value.hpp>
 #include "single_source_fw.hpp"
 #include "equation_context.hpp"
 

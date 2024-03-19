@@ -41,7 +41,7 @@ void eularian_hydrodynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_
 
     for(auto& i : to_init.buffers)
     {
-        assert(i.buf.alloc_size == dim.x() * dim.y() * dim.z() * sizeof(cl_float));
+        assert(i.buf.alloc_size == dim.x() * dim.y() * dim.z() * (int64_t)sizeof(cl_float));
 
         hydro_init.push_back(i.buf);
     }
@@ -811,7 +811,7 @@ value get_cacheable_W(equation_context& ctx, standard_arguments& args, matter& m
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
     value W = 0.5f;
-    int iterations = 5;
+    int iterations = 20;
 
     for(int i=0; i < iterations; i++)
     {

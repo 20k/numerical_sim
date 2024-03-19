@@ -5,28 +5,28 @@
 
 template<typename T, typename U>
 inline
-dual_types::complex<T> spherical_decompose_complex_cartesian_function(U&& cartesian_function, int s, int l, int m, vec<3, T> centre, T radius, int n)
+dual_types::complex_v<T> spherical_decompose_complex_cartesian_function(U&& cartesian_function, int s, int l, int m, vec<3, T> centre, T radius, int n)
 {
     auto func_re = [&](T theta, T phi)
     {
-        dual_types::complex<T> harmonic = sYlm_2(s, l, m, theta, phi);
+        dual_types::complex_v<T> harmonic = sYlm_2(s, l, m, theta, phi);
 
         vec<3, T> pos = {radius * cos(phi) * sin(theta), radius * sin(phi) * sin(theta), radius * cos(theta)};
         pos += centre;
 
-        dual_types::complex<T> result = cartesian_function(pos);
+        dual_types::complex_v<T> result = cartesian_function(pos);
 
         return (result * conjugate(harmonic)).real;
     };
 
     auto func_im = [&](T theta, T phi)
     {
-        dual_types::complex<T> harmonic = sYlm_2(s, l, m, theta, phi);
+        dual_types::complex_v<T> harmonic = sYlm_2(s, l, m, theta, phi);
 
         vec<3, T> pos = {radius * cos(phi) * sin(theta), radius * sin(phi) * sin(theta), radius * cos(theta)};
         pos += centre;
 
-        dual_types::complex<T> result = cartesian_function(pos);
+        dual_types::complex_v<T> result = cartesian_function(pos);
 
         return (result * conjugate(harmonic)).imaginary;
     };
@@ -40,12 +40,12 @@ T spherical_decompose_cartesian_function(U&& cartesian_function, int s, int l, i
 {
     auto func_re = [&](T theta, T phi)
     {
-        dual_types::complex<T> harmonic = sYlm_2(s, l, m, theta, phi);
+        dual_types::complex_v<T> harmonic = sYlm_2(s, l, m, theta, phi);
 
         vec<3, T> pos = {radius * cos(phi) * sin(theta), radius * sin(phi) * sin(theta), radius * cos(theta)};
         pos += centre;
 
-        dual_types::complex<T> result = cartesian_function(pos);
+        dual_types::complex_v<T> result = cartesian_function(pos);
 
         return (result * conjugate(harmonic)).real;
     };

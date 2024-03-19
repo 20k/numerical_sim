@@ -23,7 +23,7 @@ float get_c_at_max()
 inline
 float get_timestep(float c_at_max, vec3i size)
 {
-    float timestep_at_base_c = 0.035;
+    //float timestep_at_base_c = 0.035;
 
     float ratio_at_base = 30.f/255.f;
     float new_ratio = c_at_max / size.largest_elem();

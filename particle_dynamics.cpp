@@ -1,5 +1,5 @@
 #include "particle_dynamics.hpp"
-#include <geodesic/dual_value.hpp>
+#include <vec/value.hpp>
 #include "equation_context.hpp"
 #include "bssn.hpp"
 #include "random.hpp"
@@ -57,7 +57,7 @@ tensor<value, 3, 3> particle_matter_interop::calculate_adm_X_Sij(equation_contex
     return X * Sij;
 }
 
-particle_dynamics::particle_dynamics(cl::context& ctx) : p_data{ctx, ctx, ctx}, pd(ctx), indices_block(ctx), memory_alloc_count(ctx)
+particle_dynamics::particle_dynamics(cl::context& ctx) : p_data{ctx, ctx, ctx}, indices_block(ctx), memory_alloc_count(ctx), pd(ctx)
 {
     indices_block.alloc(max_intermediate_size * sizeof(cl_ulong));
     memory_alloc_count.alloc(sizeof(size_t));
@@ -587,8 +587,8 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
 void particle_dynamics::step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& mqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration)
 {
     buffer_set& in = pack.in;
-    buffer_set& out = pack.out;
-    buffer_set& base = pack.base;
+    //buffer_set& out = pack.out;
+    //buffer_set& base = pack.base;
 
     cl::buffer& memory_ptrs_val = memory_ptrs.value();
     cl::buffer& counts_val = counts.value();

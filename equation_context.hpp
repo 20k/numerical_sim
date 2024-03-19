@@ -4,7 +4,7 @@
 #include <vector>
 #include <utility>
 #include <string>
-#include <geodesic/dual_value.hpp>
+#include <vec/value.hpp>
 #include <vec/tensor.hpp>
 #include "differentiator.hpp"
 #include "single_source_fw.hpp"

@@ -198,11 +198,11 @@ struct galaxy_distribution
 
     double get_velocity_at(double r)
     {
-        double a0_ms2 = 1.2 * pow(10., -10.);
+        /*double a0_ms2 = 1.2 * pow(10., -10.);
 
         double a0 = a0_ms2 * meters_to_local;
 
-        /*double p1 = local_G * cdf(r)/r;
+        double p1 = local_G * cdf(r)/r;
 
         double p2 = (1/sqrt(2.f));
 
@@ -387,7 +387,7 @@ particle_data build_galaxy()
 
     ///https://www.mdpi.com/2075-4434/6/3/70/htm mond galaxy info
 
-    for(uint64_t i=0; i < real_count; i++)
+    for(uint64_t i=0; i < (uint64_t)real_count; i++)
     {
         masses.push_back(init_mass);
     }
@@ -417,7 +417,7 @@ particle_data build_galaxy()
         for(auto& [p, v, m] : pos_vel)
         {
             float p_len = p.length();
-            float v_len = v.length();
+            //float v_len = v.length();
 
             if(p_len >= selection_radius)
             {
@@ -439,6 +439,7 @@ particle_data build_galaxy()
     ret.debug_velocities = std::move(debug_velocities);
     ret.debug_analytic_mass = std::move(debug_analytic_mass);
     ret.debug_real_mass = std::move(debug_real_mass);
+    ret.particle_brightness = 0.01;
 
     return ret;
 }

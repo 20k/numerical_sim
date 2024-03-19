@@ -5,8 +5,7 @@
 #include <GLFW/glfw3.h>
 #include <SFML/Graphics.hpp>
 #include <CL/cl_ext.h>
-#include <geodesic/dual.hpp>
-#include <geodesic/dual_value.hpp>
+#include <vec/value.hpp>
 #include <fstream>
 #include <imgui/misc/freetype/imgui_freetype.h>
 #include <vec/tensor.hpp>
@@ -130,6 +129,14 @@ https://iopscience.iop.org/article/10.1088/1361-6382/ac7e16/pdf - bssn w. This h
 https://arxiv.org/pdf/2203.05149.pdf - has some compatible matter evolution equations
 https://arxiv.org/pdf/1109.1707.pdf - some good notes on adm projection
 https://arxiv.org/pdf/2009.06617.pdf - matter removal, flux conservative hydrodynamics
+
+mhd:
+https://arxiv.org/abs/1010.3532v2
+https://ui.adsabs.harvard.edu/abs/2022ApJS..261...22C/abstract
+https://ui.adsabs.harvard.edu/abs/2021MNRAS.508.2279C/abstract
+https://scholar.google.co.za/citations?view_op=view_citation&hl=pl&user=yMCxyOAAAAAJ&citation_for_view=yMCxyOAAAAAJ:WF5omc3nYNoC
+https://journals.aps.org/prd/abstract/10.1103/PhysRevD.79.024017
+https://arxiv.org/pdf/1810.02825.pdf - initial conditions for general binary black holes?
 */
 
 ///notes:
@@ -1353,10 +1360,10 @@ struct superimposed_gpu_data
     superimposed_gpu_data(cl::context& ctx, cl::command_queue& cqueue, vec3i _dim, float _scale) : tov_phi{ctx}, bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, aij_aIJ{ctx}, ppw2p{ctx},
                                                                                                       pressure_buf{ctx}, rho_buf{ctx}, rhoH_buf{ctx}, p0_buf{ctx}, Si_buf{ctx, ctx, ctx},
                                                                                                       colour_buf{ctx, ctx, ctx},
-                                                                                                      ppw2p_program(ctx), bcAij_matter_program(ctx), multi_matter_program(ctx),
                                                                                                       particle_position(ctx), particle_mass(ctx), particle_lorentz(ctx),
                                                                                                       particle_counts(ctx), particle_indices(ctx), particle_memory(ctx), particle_memory_count(ctx),
-                                                                                                      particle_grid_E_without_conformal(ctx)
+                                                                                                      particle_grid_E_without_conformal(ctx),
+                                                                                                      ppw2p_program(ctx), bcAij_matter_program(ctx), multi_matter_program(ctx)
     {
         dim = _dim;
         scale = _scale;
@@ -2040,7 +2047,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
 
         steady_timer time;
 
-        auto extract = [&extract_kernel](cl::context& ctx, cl::command_queue& cqueue,
+        /*auto extract = [&extract_kernel](cl::context& ctx, cl::command_queue& cqueue,
                             cl::buffer& in, float c_at_max_in, float c_at_max_out, vec3i dim)
         {
             cl_int4 clsize = {dim.x(), dim.y(), dim.z()};
@@ -2060,7 +2067,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
             cqueue.exec(extract_kernel, {dim.x(), dim.y(), dim.z()}, {8, 8, 1}, {});
 
             return out;
-        };
+        };*/
 
         auto get_u_of = [&clctx, &cqueue, &init, &boundary, &get_superimposed_of, &etol, &iterate_kernel](vec3i dim, float scale, std::optional<cl::buffer> u_upper)
         {
@@ -2128,11 +2135,11 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
             return u_args;
         };
 
-        float c_at_max = scale * dim.largest_elem();
+        //float c_at_max = scale * dim.largest_elem();
 
-        float boundaries[4] = {c_at_max * 16, c_at_max * 8, c_at_max * 4, c_at_max * 1};
+        //float boundaries[4] = {c_at_max * 16, c_at_max * 8, c_at_max * 4, c_at_max * 1};
 
-        std::optional<cl::buffer> last_u;
+        //std::optional<cl::buffer> last_u;
 
         /*for(int i=0; i < 3; i++)
         {
@@ -2169,7 +2176,7 @@ void construct_hydrodynamic_quantities(equation_context& ctx)
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
-    value gA = bidx(ctx, "gA", ctx.uses_linear, false);
+    value gA = bidx(ctx, "gA", ctx.uses_linear, false) + GA_ADD;
 
     value pressure = bidx(ctx, "pressure_in", ctx.uses_linear, false);
     value rho = bidx(ctx, "rho_in", ctx.uses_linear, false);
@@ -2854,14 +2861,14 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     compact_object::data h1;
     h1.t = compact_object::NEUTRON_STAR;
     h1.bare_mass = 0.075;
-    h1.momentum = {0, 0.133 * 0.8 * 0.11, 0};
+    h1.momentum = {0, 0.133 * 0.8 * 0.113, 0};
     h1.position = {-4.257, 0.f, 0.f};
     h1.matter.colour = {1, 0, 0};
 
     compact_object::data h2;
     h2.t = compact_object::NEUTRON_STAR;
     h2.bare_mass = 0.075;
-    h2.momentum = {0, -0.133 * 0.8 * 0.11, 0};
+    h2.momentum = {0, -0.133 * 0.8 * 0.113, 0};
     h2.position = {4.257, 0.f, 0.f};
     h2.matter.colour = {0, 1, 0};
 
@@ -2897,9 +2904,11 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
         double earth_mass = 5.972 * pow(10., 24.);
         double jupiter_mass = 1.899 * pow(10., 27.);
 
-        double max_scale_rad = get_c_at_max() * 0.5f * 0.6f;
+        double max_scale_rad = get_c_at_max() * 0.5f * 0.7f;
 
-        double radius = 743.74 * 1000. * 1000. * 1000.;
+        double earth_radius = 228 * pow(10., 6.) * 1000;
+        //double radius = 743.74 * 1000. * 1000. * 1000.;
+        double radius = earth_radius;
         double meters_to_scale = max_scale_rad / radius;
 
         double sun_mass_mod = units::kg_to_m(sun_mass) * meters_to_scale;
@@ -2908,14 +2917,20 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
         double jupiter_speed_ms = 13.07 * 1000.;
         double jupiter_speed_c = jupiter_speed_ms / units::C;
+        double earth_speed_ms = 29.8 * 1000;
+        double earth_speed_c = earth_speed_ms / units::C;
 
         data.positions.push_back({0,0,0});
         data.velocities.push_back({0,0,0});
         data.masses.push_back(sun_mass_mod);
 
-        data.positions.push_back({radius * meters_to_scale, 0.f, 0.f});
+        /*data.positions.push_back({radius * meters_to_scale, 0.f, 0.f});
         data.velocities.push_back({0, jupiter_speed_c, 0});
-        data.masses.push_back(jupiter_mass_mod);
+        data.masses.push_back(jupiter_mass_mod);*/
+
+        data.positions.push_back({earth_radius * meters_to_scale, 0.f, 0.f});
+        data.velocities.push_back({0, earth_speed_c, 0});
+        data.masses.push_back(earth_mass_mod);
 
         data_opt = std::move(data);
     }
@@ -3310,8 +3325,6 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     u.is_memory_access = true;
     value phi = u + bl_conformal + 1;
 
-    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
-
     std::array<int, 9> arg_table
     {
         0, 1, 2,
@@ -3533,8 +3546,6 @@ void build_constraints(equation_context& ctx)
     ///https://arxiv.org/pdf/0709.3559.pdf b.49
     fixed_cA = fixed_cA / det_cY_pow;*/
 
-    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
-
     //#define NO_CAIJYY
 
     #ifdef NO_CAIJYY
@@ -3562,6 +3573,8 @@ void build_constraints(equation_context& ctx)
     }*/
 
     #ifndef DAMP_C
+    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
+
     for(int i=0; i < 6; i++)
     {
         vec2i idx = linear_indices[i];
@@ -4038,9 +4051,9 @@ void extract_waveforms(equation_context& ctx)
     ctx.pin(v2a);
     ctx.pin(v3a);
 
-    dual_types::complex<value> unit_i = dual_types::unit_i();
+    dual_types::complex_v<value> unit_i = complex_type::unit_i();
 
-    tensor<dual_types::complex<value>, 4> mu;
+    tensor<dual_types::complex_v<value>, 4> mu;
 
     for(int i=1; i < 4; i++)
     {
@@ -4048,23 +4061,23 @@ void extract_waveforms(equation_context& ctx)
     }
 
     ///https://en.wikipedia.org/wiki/Newman%E2%80%93Penrose_formalism
-    tensor<dual_types::complex<value>, 4> mu_dash;
+    tensor<dual_types::complex_v<value>, 4> mu_dash;
 
     for(int i=0; i < 4; i++)
     {
-        mu_dash.idx(i) = dual_types::conjugate(mu.idx(i));
+        mu_dash.idx(i) = complex_type::conjugate(mu.idx(i));
     }
 
-    tensor<dual_types::complex<value>, 4> mu_dash_p = tensor_project_upper(mu_dash, args.gA, args.gB);
+    tensor<dual_types::complex_v<value>, 4> mu_dash_p = tensor_project_upper(mu_dash, args.gA, args.gB);
 
     tensor<value, 3, 3, 3> raised_eijk = raise_index(raise_index(eijk_tensor, iYij, 1), iYij, 2);
 
     ctx.pin(raised_eijk);
 
-    dual_types::complex<value> w4;
+    dual_types::complex_v<value> w4;
 
     {
-        dual_types::complex<value> sum(0.f);
+        dual_types::complex_v<value> sum(0.f);
 
         for(int i=0; i < 3; i++)
         {
@@ -4072,7 +4085,7 @@ void extract_waveforms(equation_context& ctx)
             {
                 value k_sum_1 = 0;
 
-                dual_types::complex<value> k_sum_2(0.f);
+                dual_types::complex_v<value> k_sum_2(0.f);
 
                 for(int k=0; k < 3; k++)
                 {
@@ -4087,7 +4100,7 @@ void extract_waveforms(equation_context& ctx)
                     k_sum_1 += Kij.idx(i, k) * raise_index(Kij, iYij, 0).idx(k, j);
                 }
 
-                dual_types::complex<value> inner_sum = -Rij.idx(i, j) - args.K * Kij.idx(i, j) + k_sum_1 + k_sum_2;
+                dual_types::complex_v<value> inner_sum = -Rij.idx(i, j) - args.K * Kij.idx(i, j) + k_sum_1 + k_sum_2;
 
                 ///mu is a 4 vector, but we use it spatially
                 ///this exposes the fact that i really runs from 1-4 instead of 0-3
@@ -4384,6 +4397,8 @@ void loop_geodesics(equation_context& ctx, vec3f dim)
     ctx.add("X2Diff", dx.idx(2));
 
     ctx.add("GET_X_DS", args.get_X());
+
+    ctx.add("GA_ADD", GA_ADD);
 
     /**
     [tt, tx, ty, tz,
@@ -4828,7 +4843,7 @@ int main()
 
     std::string hydro_argument_string = argument_string;
 
-    vec3i size = {213, 213, 213};
+    vec3i size = {255, 255, 255};
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
     float c_at_max = get_c_at_max();
@@ -5019,13 +5034,11 @@ int main()
     ///seems to make 0 difference to instability time
     if(use_half)
     {
-        int intermediate_data_size = sizeof(cl_half);
         argument_string += "-DDERIV_PRECISION=half ";
         hydro_argument_string += "-DDERIV_PRECISION=half ";
     }
     else
     {
-        int intermediate_data_size = sizeof(cl_float);
         argument_string += "-DDERIV_PRECISION=float ";
         hydro_argument_string += "-DDERIV_PRECISION=float ";
     }
@@ -5050,12 +5063,12 @@ int main()
     float gauge_wave_speed = sqrt(2.f);
 
     std::vector<buffer_descriptor> buffers = {
-        {"cY0", "evolve_1", cpu_mesh::dissipate_low, 1, 1},
+        {"cY0", "evolve_1", cpu_mesh::dissipate_low, CY0_ASYM, 1},
         {"cY1", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
         {"cY2", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
-        {"cY3", "evolve_1", cpu_mesh::dissipate_low, 1, 1},
+        {"cY3", "evolve_1", cpu_mesh::dissipate_low, CY3_ASYM, 1},
         {"cY4", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
-        {"cY5", "evolve_1", cpu_mesh::dissipate_low, 1, 1},
+        {"cY5", "evolve_1", cpu_mesh::dissipate_low, CY5_ASYM, 1},
 
         {"cA0", "evolve_1", cpu_mesh::dissipate_high, 0, 1},
         {"cA1", "evolve_1", cpu_mesh::dissipate_high, 0, 1},
@@ -5069,9 +5082,9 @@ int main()
         {"cGi2", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
 
         {"K", "evolve_1", cpu_mesh::dissipate_high, 0, 1},
-        {"X", "evolve_1", cpu_mesh::dissipate_low, 1, 1},
+        {"X", "evolve_1", cpu_mesh::dissipate_low, X_ASYM, 1},
 
-        {"gA", "evolve_1", cpu_mesh::dissipate_gauge, 1, gauge_wave_speed},
+        {"gA", "evolve_1", cpu_mesh::dissipate_gauge, GA_ASYM, gauge_wave_speed},
         {"gB0", "evolve_1", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed},
         {"gB1", "evolve_1", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed},
         {"gB2", "evolve_1", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed},
@@ -5332,8 +5345,6 @@ int main()
 
     int rendering_method = 1;
 
-    bool trapezoidal_init = false;
-
     bool pao = false;
 
     bool render_skipping = false;
@@ -5476,8 +5487,6 @@ int main()
 
         rtex.acquire(mqueue);
 
-        bool long_operation = false;
-
         bool step = false;
 
             ImGui::Begin("Test Window", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
@@ -5577,8 +5586,6 @@ int main()
             {
                 if(ImGui::Button("Yes"))
                 {
-                    long_operation = true;
-
                     nlohmann::json misc;
                     misc["real_w2"] = real_decomp;
                     misc["imaginary_w2"] = imaginary_decomp;
@@ -5587,7 +5594,7 @@ int main()
 
                     base_mesh.save(mqueue, "save", misc);
 
-                    for(int i=0; i < raytrace.slice.size(); i++)
+                    for(int i=0; i < (int)raytrace.slice.size(); i++)
                         save_buffer(mqueue, raytrace.slice[i], "save/slice_" + std::to_string(i) + ".bin");
 
                     ImGui::CloseCurrentPopup();
@@ -5610,8 +5617,6 @@ int main()
             {
                 if(ImGui::Button("Yes"))
                 {
-                    long_operation = true;
-
                     nlohmann::json misc = base_mesh.load(mqueue, "save");
 
                     real_decomp = misc["real_w2"].get<std::vector<float>>();
@@ -5623,7 +5628,7 @@ int main()
                     if(misc.count("time_elapsed") > 0)
                         raytrace.time_elapsed = misc["time_elapsed"];
 
-                    for(int i=0; i < raytrace.slice.size(); i++)
+                    for(int i=0; i < (int)raytrace.slice.size(); i++)
                         load_buffer(mqueue, raytrace.slice[i], "save/slice_" + std::to_string(i) + ".bin");
 
                     ImGui::CloseCurrentPopup();
@@ -5661,7 +5666,7 @@ int main()
 
             if(imaginary_decomp.size() > 0)
             {
-                ImGui::PlotLines("w4_l2_m2_im", real_decomp.data(), real_decomp.size(), 0, nullptr, FLT_MAX, FLT_MAX, ImVec2(400, 100));
+                ImGui::PlotLines("w4_l2_m2_im", imaginary_decomp.data(), imaginary_decomp.size(), 0, nullptr, FLT_MAX, FLT_MAX, ImVec2(400, 100));
             }
 
             for(plugin* p : plugins)
@@ -5695,7 +5700,7 @@ int main()
         ///todo: backwards euler test
         float timestep = get_timestep(get_c_at_max(), size) * 1/get_backwards_euler_relax_parameter();
 
-        if(pao && base_mesh.elapsed_time > 1400)
+        if(pao && base_mesh.elapsed_time > 300)
             step = false;
 
         if(step)
@@ -5778,9 +5783,9 @@ int main()
         }
 
         {
-            std::vector<dual_types::complex<float>> values = wave_manager.process();
+            std::vector<dual_types::complex_v<float>> values = wave_manager.process();
 
-            for(dual_types::complex<float> v : values)
+            for(dual_types::complex_v<float> v : values)
             {
                 real_decomp.push_back(v.real);
                 imaginary_decomp.push_back(v.imaginary);

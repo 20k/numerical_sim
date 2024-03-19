@@ -1,7 +1,7 @@
 #ifndef RAYTRACING_HPP_INCLUDED
 #define RAYTRACING_HPP_INCLUDED
 
-#include <geodesic/dual_value.hpp>
+#include <vec/value.hpp>
 #include "single_source.hpp"
 #include <vec/tensor.hpp>
 #include <toolkit/opencl.hpp>

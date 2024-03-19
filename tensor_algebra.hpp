@@ -2,7 +2,7 @@
 #define TENSOR_ALGEBRA_HPP_INCLUDED
 
 #include <vec/tensor.hpp>
-#include <geodesic/dual_value.hpp>
+#include <vec/value.hpp>
 #include <assert.h>
 #include "equation_context.hpp"
 #include "differentiator.hpp"
