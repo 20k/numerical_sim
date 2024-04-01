@@ -235,7 +235,7 @@ namespace single_source
 
         T operator[](const value_i& in)
         {
-            value_i op = make_op<int>(dual_types::ops::BRACKET, value_i(name), in);
+            value_i op = make_op<int>(dual_types::ops::BRACKET2, value_i(name), in);
 
             return parse_tensor(storage, op, true);
         }
@@ -244,9 +244,7 @@ namespace single_source
         {
             static_assert(dimensions == 3);
 
-            value_i index = iz * size.idx(0) * size.idx(1) + iy * size.idx(0) + ix;
-
-            value_i op = make_op<int>(dual_types::ops::BRACKET, value_i(name), index);
+            value_i op = make_op<int>(dual_types::ops::BRACKET2, value_i(name), ix, iy, iz, size[0], size[1], size[2]);
 
             return parse_tensor(storage, op, true);
         }

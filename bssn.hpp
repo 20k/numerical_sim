@@ -78,11 +78,11 @@ value bidx(equation_context& ctx, const std::string& buf, bool interpolate, bool
     {
         if(is_derivative)
         {
-            v = dual_types::apply(value("buffer_read_linearh"), buf, as_float3("fx", "fy", "fz"), "dim");
+            v = dual_types::apply(value("buffer_read_linearh"), buf, as_float3("fx", "fy", "fz"), value_v("dim"));
         }
         else
         {
-            v = dual_types::apply(value("buffer_read_linear"), buf, as_float3("fx", "fy", "fz"), "dim");
+            v = dual_types::apply(value("buffer_read_linear"), buf, as_float3("fx", "fy", "fz"), value_v("dim"));
         }
     }
     else
@@ -94,18 +94,22 @@ value bidx(equation_context& ctx, const std::string& buf, bool interpolate, bool
         if(is_derivative)
         {
             if(!ctx.better_buffer_index)
-                v = dual_types::apply(value("buffer_indexh"), buf, pack.pos[0], pack.pos[1], pack.pos[2], pack.dim);
+                v = dual_types::make_op<float16>(dual_types::ops::BRACKET2, buf,
+                                                 value_i(pack.pos[0]), value_i(pack.pos[1]), value_i(pack.pos[2]),
+                                                 value_i("dim.x"), value_i("dim.y"), value_i("dim.z")).reinterpret_as<value>();
+                //v = dual_types::apply(value("buffer_indexh"), buf, pack.pos[0], pack.pos[1], pack.pos[2], pack.dim);
             else
             {
                 value_h v_h = dual_types::apply(value_h("buffer_indexh_2"), buf, hindex);
                 v_h.is_memory_access = true;
-                return (value)v_h;
+                return v_h.convert<float>();
             }
         }
         else
         {
             if(!ctx.better_buffer_index)
-                v = dual_types::apply(value("buffer_index"), buf, pack.pos[0], pack.pos[1], pack.pos[2], pack.dim);
+                v = dual_types::make_op<float>(dual_types::ops::BRACKET2, value_i(buf), value_i(pack.pos[0]), value_i(pack.pos[1]), value_i(pack.pos[2]),
+                                                                                        value_i("dim.x"), value_i("dim.y"), value_i("dim.z"));
             else
                 v = dual_types::apply(value("buffer_index_2"), buf, findex);
         }
