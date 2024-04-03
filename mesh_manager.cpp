@@ -438,7 +438,7 @@ void extract_chunk_kernel(equation_context& ctx, buffer<value_base<T>, 3> in, bu
 
 void init_mesh_kernels(cl::context& clctx)
 {
-    single_source::make_async_kernel_for(clctx, extract_chunk_kernel<float>, "extract_chunk_kernelf");
+    //single_source::make_async_kernel_for(clctx, extract_chunk_kernel<float>, "extract_chunk_kernelf");
 }
 
 template<typename T>
