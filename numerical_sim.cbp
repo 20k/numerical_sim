@@ -343,7 +343,6 @@
 		<Unit filename="cache.hpp" />
 		<Unit filename="cl.cl" />
 		<Unit filename="common.cl" />
-		<Unit filename="deps/geodesic/dual_value.hpp" />
 		<Unit filename="deps/imgui/backends/imgui_impl_glfw.cpp" />
 		<Unit filename="deps/imgui/backends/imgui_impl_opengl3.cpp" />
 		<Unit filename="deps/imgui/imgui.cpp" />
@@ -375,6 +374,7 @@
 		<Unit filename="deps/toolkit/texture.hpp" />
 		<Unit filename="deps/toolkit/vertex.hpp" />
 		<Unit filename="deps/vec/tensor.hpp" />
+		<Unit filename="deps/vec/value.hpp" />
 		<Unit filename="deps/vec/vec.hpp" />
 		<Unit filename="differentiator.cpp" />
 		<Unit filename="differentiator.hpp" />
