@@ -188,9 +188,6 @@ struct differentiation_context
                     value_i next_y = old_y + offy[kk];
                     value_i next_z = old_z + offz[kk];
 
-                    ///ruh roh, don't have generic type ability here
-                    ///to_sub = dual_types::make_op<
-
                     if(variables.original_type == dual_types::name_type(float16()))
                     {
                         to_sub = dual_types::make_op<float16>(dual_types::ops::BRACKET2, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz).reinterpret_as<value>();
@@ -219,9 +216,6 @@ struct differentiation_context
                     value next_x = old_x + offx[kk].template reinterpret_as<value>();
                     value next_y = old_y + offy[kk].template reinterpret_as<value>();
                     value next_z = old_z + offz[kk].template reinterpret_as<value>();
-
-                    ///ruh roh, don't have generic type ability here
-                    ///to_sub = dual_types::make_op<
 
                     if(variables.original_type == dual_types::name_type(float16()))
                     {
