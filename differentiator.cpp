@@ -55,49 +55,6 @@ struct differentiation_context
 
         in.recurse_arguments([&indexed_variables, linear_interpolation](const value& v)
         {
-            if(v.type == dual_types::ops::UNKNOWN_FUNCTION)
-            {
-                std::string function_name = type_to_string(v.args[0]);
-
-                if(function_name != "buffer_index" && function_name != "buffer_indexh" &&
-                   function_name != "buffer_read_linear" && function_name != "buffer_read_linearh" &&
-                   function_name != "buffer_index_2" && function_name != "buffer_indexh_2")
-                    return;
-
-                if(linear_interpolation)
-                    assert(function_name == "buffer_read_linear" || function_name == "buffer_read_linearh");
-                else
-                    assert(function_name == "buffer_index" || function_name == "buffer_indexh" || function_name == "buffer_index_2" || function_name == "buffer_indexh_2");
-
-                #ifdef CHECK_HALF_PRECISION
-                std::string vname = type_to_string(v.args[1]);
-
-                std::vector<variable> test_vars = get_variables();
-
-                for(const variable& them : test_vars)
-                {
-                    if(vname == them.name)
-                    {
-                        if(linear_interpolation && them.is_derivative)
-                            assert(function_name == "buffer_read_linearh");
-                        else if(linear_interpolation && !them.is_derivative)
-                            assert(function_name == "buffer_read_linear");
-                        else if(!linear_interpolation && them.is_derivative)
-                            assert(function_name == "buffer_indexh");
-                        else if(!linear_interpolation && !them.is_derivative)
-                            assert(function_name == "buffer_index");
-                        else
-                        {
-                            std::cout << "FNAME " << type_to_string(v) << std::endl;
-                            assert(false);
-                        }
-                    }
-                }
-                #endif // CHECK_HALF_PRECISION
-
-                indexed_variables.push_back(v);
-            }
-
             if(v.type == dual_types::ops::BRACKET2 || v.type == dual_types::ops::BRACKET_LINEAR)
             {
                 indexed_variables.push_back(v);
@@ -131,7 +88,7 @@ struct differentiation_context
 
             for(auto& o : indexed_variables)
             {
-                if(v == type_to_string(o.args[1]))
+                if(v == type_to_string(o.args[0]))
                 {
                     found = true;
                     break;
