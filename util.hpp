@@ -133,24 +133,6 @@ value buffer_read_linear(buffer<T, N> buf, const v4f& position, const v4i& dim)
     return linear_1 - (value)frac.w() * (linear_1 - linear_2);
 }
 
-
-template<typename T, int N>
-inline
-literal<value> buffer_read_linear_f(equation_context& ctx, buffer<T, N> buf, literal<v3f> position, literal<v4i> dim)
-{
-    ctx.order = 1;
-    ctx.uses_linear = true;
-
-    v3i idim = dim.get().xyz();
-    v3f ipos = position.get();
-
-    ctx.exec(return_v(buffer_read_linear(buf, ipos, idim)));
-
-    literal<value> result;
-    result.storage.is_memory_access = true;
-    return result;
-}
-
 template<typename T, int N>
 inline
 literal<value> buffer_read_linear_f_unpacked(equation_context& ctx, buffer<T, N> buf,
@@ -181,19 +163,6 @@ literal<value> buffer_read_linear_f4(equation_context& ctx, buffer<T, N> buf, li
     v4f ipos = position.get();
 
     ctx.exec(return_v(buffer_read_linear(buf, ipos, idim)));
-
-    literal<value> result;
-    result.storage.is_memory_access = true;
-    return result;
-}
-
-template<typename T, int N>
-inline
-literal<value> buffer_index_f(equation_context& ctx, buffer<T, N>& buf, literal<value_i> x, literal<value_i> y, literal<value_i> z, literal<v4i> dim)
-{
-    value v = (value)buf[z.get() * dim.get().x() * dim.get().y() + y.get() * dim.get().x() + x.get()];
-
-    ctx.exec(return_v(v));
 
     literal<value> result;
     result.storage.is_memory_access = true;

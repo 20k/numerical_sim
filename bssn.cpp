@@ -119,11 +119,6 @@ void calculate_christoffel_symbol(single_source::argument_generator& arg_gen, eq
 
 void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const tensor<value, 3, 3>& Aij, const value& gA)
 {
-    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
-    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
-    ctx.add_function("buffer_index_2", buffer_index_f2<value, 3>);
-    ctx.add_function("buffer_indexh_2", buffer_index_f2<value_h, 3>);
-
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 10
@@ -575,13 +570,6 @@ using half_type = value;
 
 std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, value_i point_count, tensor<value_i, 4> dim, buffer<value_us, 3> order_ptr)
 {
-    //ctx.better_buffer_index = true;
-
-    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
-    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
-    ctx.add_function("buffer_index_2", buffer_index_f2<value, 3>);
-    ctx.add_function("buffer_indexh_2", buffer_index_f2<value_h, 3>);
-
     value_i local_idx = declare(ctx, value_i{"get_global_id(0)"}, "lidx");
 
     if_e(local_idx >= point_count, ctx, [&]()
