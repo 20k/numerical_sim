@@ -69,59 +69,6 @@ struct argument_pack
     }
 };
 
-inline
-value bidx(equation_context& ctx, const std::string& buf, bool interpolate, bool is_derivative, const argument_pack& pack = argument_pack())
-{
-    value v;
-
-    if(interpolate)
-    {
-        if(is_derivative)
-        {
-            v = dual_types::make_op<float16>(dual_types::ops::BRACKET_LINEAR, buf,
-                                             value("fx"), value("fy"), value("fz"),
-                                             value_i("dim.x"), value_i("dim.y"), value_i("dim.z")).reinterpret_as<value>();
-        }
-        else
-        {
-            v = dual_types::make_op<float>(dual_types::ops::BRACKET_LINEAR, buf,
-                                           value("fx"), value("fy"), value("fz"),
-                                           value_i("dim.x"), value_i("dim.y"), value_i("dim.z")).reinterpret_as<value>();
-        }
-    }
-    else
-    {
-        value_i index = "index";
-        value findex = index.reinterpret_as<value>();
-        value_h hindex = index.reinterpret_as<value_h>();
-
-        if(is_derivative)
-        {
-            if(!ctx.better_buffer_index)
-                v = dual_types::make_op<float16>(dual_types::ops::BRACKET2, buf,
-                                                 value_i(pack.pos[0]), value_i(pack.pos[1]), value_i(pack.pos[2]),
-                                                 value_i("dim.x"), value_i("dim.y"), value_i("dim.z")).reinterpret_as<value>();
-            else
-            {
-                value_h v_h = dual_types::apply(value_h("buffer_indexh_2"), buf, hindex);
-                v_h.is_memory_access = true;
-                return v_h.convert<float>();
-            }
-        }
-        else
-        {
-            if(!ctx.better_buffer_index)
-                v = dual_types::make_op<float>(dual_types::ops::BRACKET2, value_i(buf), value_i(pack.pos[0]), value_i(pack.pos[1]), value_i(pack.pos[2]),
-                                                                                        value_i("dim.x"), value_i("dim.y"), value_i("dim.z"));
-            else
-                v = dual_types::apply(value("buffer_index_2"), buf, findex);
-        }
-    }
-
-    v.is_memory_access = true;
-    return v;
-}
-
 template<typename T, typename U>
 inline
 value buffer_index_generic(buffer<value_base<T>, 3> buf, const tensor<value_base<U>, 3>& pos, const tensor<value_i, 3>& dim)
@@ -150,6 +97,36 @@ value buffer_index_generic(buffer<value_base<T>, 3> buf, const tensor<value_base
 
     v.is_memory_access = true;
     return v;
+}
+
+
+inline
+value bidx(equation_context& ctx, const std::string& buf, bool interpolate, bool is_derivative, const argument_pack& pack = argument_pack())
+{
+    if(interpolate)
+    {
+        if(is_derivative)
+        {
+            return buffer_index_generic<float16>(buf, (v3f){"fx", "fy", "fz"}, {"dim.x", "dim.y", "dim.z"});
+        }
+        else
+        {
+            return buffer_index_generic<float>(buf, (v3f){"fx", "fy", "fz"}, {"dim.x", "dim.y", "dim.z"});
+        }
+    }
+    else
+    {
+        if(is_derivative)
+        {
+            return buffer_index_generic<float16>(buf, (v3i){pack.pos[0], pack.pos[1], pack.pos[2]}, {"dim.x", "dim.y", "dim.z"});
+        }
+        else
+        {
+            return buffer_index_generic<float>(buf, (v3i){pack.pos[0], pack.pos[1], pack.pos[2]}, {"dim.x", "dim.y", "dim.z"});
+        }
+    }
+
+    assert(false);
 }
 
 struct base_bssn_args
