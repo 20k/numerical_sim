@@ -10,9 +10,9 @@ struct differentiation_context
 
     differentiation_context(differentiator& ctx, const value& in, int idx, bool linear_interpolation = false)
     {
-        std::array<value_i, elements> offx;
-        std::array<value_i, elements> offy;
-        std::array<value_i, elements> offz;
+        std::array<int, elements> offx;
+        std::array<int, elements> offy;
+        std::array<int, elements> offz;
 
         for(int i=0; i < elements; i++)
         {
@@ -26,78 +26,57 @@ struct differentiation_context
                 offz[i] = offset;
         }
 
+        ///for each element, ie x-2, x-1, x, x+1, x+2
         for(int i=0; i < elements; i++)
         {
+            ///assign to the original element, ie x
             vars[i] = in;
 
+            ///then recurse, and substitute all variables "x" with "x-2"
             vars[i].recurse_arguments([&i, &offx, &offy, &offz](value& v)
             {
                 if(v.type == dual_types::ops::BRACKET2 || v.type == dual_types::ops::BRACKET_LINEAR)
                 {
+                    auto get_substitution = [&i, &offx, &offy, &offz]<typename T>(const value& v, const T& tag)
+                    {
+                        assert(v.args.size() == 7);
+
+                        value buf = v.args[0];
+
+                        T old_x = v.args[1].reinterpret_as<T>();
+                        T old_y = v.args[2].reinterpret_as<T>();
+                        T old_z = v.args[3].reinterpret_as<T>();
+
+                        value_i old_dx = v.args[4].reinterpret_as<value_i>();
+                        value_i old_dy = v.args[5].reinterpret_as<value_i>();
+                        value_i old_dz = v.args[6].reinterpret_as<value_i>();
+
+                        T next_x = old_x + offx[i];
+                        T next_y = old_y + offy[i];
+                        T next_z = old_z + offz[i];
+
+                        if(v.original_type == dual_types::name_type(float16()))
+                        {
+                            return dual_types::make_op<float16>(v.type, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz).template reinterpret_as<value>();
+                        }
+                        else if(v.original_type == dual_types::name_type(float()))
+                        {
+                            return dual_types::make_op<float>(v.type, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz);
+                        }
+                        else
+                            assert(false);
+
+                        return value();
+                    };
+
                     value out;
 
                     if(v.type == dual_types::ops::BRACKET2)
-                    {
-                        assert(v.args.size() == 7);
-
-                        value buf = v.args[0];
-
-                        value_i old_x = v.args[1].reinterpret_as<value_i>();
-                        value_i old_y = v.args[2].reinterpret_as<value_i>();
-                        value_i old_z = v.args[3].reinterpret_as<value_i>();
-
-                        value_i old_dx = v.args[4].reinterpret_as<value_i>();
-                        value_i old_dy = v.args[5].reinterpret_as<value_i>();
-                        value_i old_dz = v.args[6].reinterpret_as<value_i>();
-
-                        value_i next_x = old_x + offx[i];
-                        value_i next_y = old_y + offy[i];
-                        value_i next_z = old_z + offz[i];
-
-                        if(v.original_type == dual_types::name_type(float16()))
-                        {
-                            out = dual_types::make_op<float16>(dual_types::ops::BRACKET2, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz).reinterpret_as<value>();
-                        }
-                        else if(v.original_type == dual_types::name_type(float()))
-                        {
-                            out = dual_types::make_op<float>(dual_types::ops::BRACKET2, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz);
-                        }
-                        else
-                            assert(false);
-                    }
+                        out = get_substitution(v, value_i());
                     else if(v.type == dual_types::ops::BRACKET_LINEAR)
-                    {
-                        assert(v.args.size() == 7);
-
-                        value buf = v.args[0];
-
-                        value old_x = v.args[1].reinterpret_as<value>();
-                        value old_y = v.args[2].reinterpret_as<value>();
-                        value old_z = v.args[3].reinterpret_as<value>();
-
-                        value_i old_dx = v.args[4].reinterpret_as<value_i>();
-                        value_i old_dy = v.args[5].reinterpret_as<value_i>();
-                        value_i old_dz = v.args[6].reinterpret_as<value_i>();
-
-                        value next_x = old_x + offx[i].template reinterpret_as<value>();
-                        value next_y = old_y + offy[i].template reinterpret_as<value>();
-                        value next_z = old_z + offz[i].template reinterpret_as<value>();
-
-                        if(v.original_type == dual_types::name_type(float16()))
-                        {
-                            out = dual_types::make_op<float16>(dual_types::ops::BRACKET_LINEAR, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz).reinterpret_as<value>();
-                        }
-                        else if(v.original_type == dual_types::name_type(float()))
-                        {
-                            out = dual_types::make_op<float>(dual_types::ops::BRACKET_LINEAR, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz);
-                        }
-                        else
-                            assert(false);
-                    }
+                        out = get_substitution(v, value());
                     else
-                    {
                         assert(false);
-                    }
 
                     v = out;
                 }
