@@ -2043,12 +2043,6 @@ void build_kernel(single_source::argument_generator& arg_gen, equation_context& 
 
     tensor<value_i, 4> ddim = all.dim.get();
 
-    /*ddim.x() = dim.x();
-    ddim.y() = dim.y();
-    ddim.z() = dim.z();
-
-    ctx.fixed_dim = dim;*/
-
     (void)setup(ctx, all.points, all.point_count.get(), ddim, all.order_ptr);
 
     standard_arguments args(ctx);
