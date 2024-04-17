@@ -175,10 +175,10 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in, const valu
     return prefix * fin / scale;
 }
 
-void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, literal<value_i> point_count,
-                          buffer<value, 3> buf_in, buffer<value_mut, 3> buf_out,
+void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>> points, literal<value_i> point_count,
+                          buffer<value> buf_in, buffer<value_mut> buf_out,
                           literal<value> eps, single_source::named_literal<value, "scale"> scale, single_source::named_literal<tensor<value_i, 4>, "dim"> idim, literal<value> timestep,
-                          buffer<value_us, 3> order_ptr)
+                          buffer<value_us> order_ptr)
 {
     value_i local_idx = declare(ctx, value_i{"get_global_id(0)"}, "local_idx");
 
@@ -191,13 +191,10 @@ void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 3> 
     value_i iy = declare(ctx, points[local_idx].y().convert<int>(), "iy");
     value_i iz = declare(ctx, points[local_idx].z().convert<int>(), "iz");
 
-    tensor<value_i, 3> dim = {idim.get().x(), idim.get().y(), idim.get().z()};
+    v3i pos = {ix, iy, iz};
+    v3i dim = {idim.get().x(), idim.get().y(), idim.get().z()};
 
-    buf_in.size = {dim.x(), dim.y(), dim.z()};
-    buf_out.size = {dim.x(), dim.y(), dim.z()};
-    order_ptr.size = {dim.x(), dim.y(), dim.z()};
-
-    value_i order = declare(ctx, order_ptr[ix, iy, iz].convert<int>(), "order");
+    value_i order = declare(ctx, order_ptr[(v3i){ix, iy, iz}, dim].convert<int>(), "order");
 
     ///note to self we're not actually doing this correctly
     value_i is_valid_point = ((order & value_i{(int)D_LOW}) > 0) || ((order & value_i{(int)D_FULL}) > 0);
@@ -206,7 +203,7 @@ void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 3> 
 
     if_e(!is_valid_point, ctx, [&]()
     {
-        buf_out[ix, iy, iz].as_mutable(ctx) = buf_in[ix, iy, iz];
+        buf_out[pos, dim].as_mutable(ctx) = buf_in[pos, dim];
         ctx.exec(return_s);
     });
 
@@ -215,7 +212,7 @@ void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 3> 
 
     value v = buf_v + timestep * eps * kreiss_oliger_dissipate(ctx, buf_v, order);
 
-    ctx.exec(assign(buf_out[ix, iy, iz], v));
+    ctx.exec(assign(buf_out[(v3i){ix, iy, iz}, dim], v));
 
     ctx.fix_buffers();
 }
@@ -1010,8 +1007,8 @@ value get_u_rhs(equation_context& ctx, cl::context& clctx, const initial_conditi
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
-    buffer<value, 3> u_offset_in("u_offset_in");
-    value u_value = u_offset_in[{"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"}];
+    buffer<value> u_offset_in("u_offset_in");
+    value u_value = u_offset_in[(v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"}];
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     ///todo when I forget: I'm using the conformal guess here for neutron stars which probably isn't right
@@ -1190,8 +1187,8 @@ private:
 
         value rho = dat.mass_energy_density;
 
-        buffer<value, 3> u_offset_in("u_offset_in");
-        value u_value = u_offset_in[{"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"}];
+        buffer<value> u_offset_in("u_offset_in");
+        value u_value = u_offset_in[(v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"}];
 
         value phi = u_value;
         value phi_rhs = -2 * (float)M_PI * pow(phi, 5) * rho;
@@ -1508,8 +1505,8 @@ struct superimposed_gpu_data
             return v;
         };
 
-        buffer<value, 3> u_value_buf("u_value");
-        value u_value = u_value_buf[{"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"}];
+        buffer<value> u_value_buf("u_value");
+        value u_value = u_value_buf[(v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"}];
 
         ///https://arxiv.org/pdf/1606.04881.pdf 74
         value phi = conformal_guess + u_value + 1;
@@ -1991,10 +1988,8 @@ struct superimposed_gpu_data
 
 void setup_u_offset(single_source::argument_generator& arg_gen, equation_context& ctx, const value& boundary)
 {
-    buffer<value_mut, 3> u_offset = arg_gen.add<buffer<value_mut, 3>>();
+    buffer<value_mut> u_offset = arg_gen.add<buffer<value_mut>>();
     literal<v3i> dim = arg_gen.add<literal<v3i>>();
-
-    u_offset.size = dim.get();
 
     v3i pos = declare(ctx, (v3i){"get_global_id(0)", "get_global_id(1)", "get_global_id(2)"});
 
@@ -2003,7 +1998,7 @@ void setup_u_offset(single_source::argument_generator& arg_gen, equation_context
         ctx.exec(return_s);
     });
 
-    ctx.exec(assign(u_offset[pos], boundary));
+    ctx.exec(assign(u_offset[pos, dim.get()], boundary));
 }
 
 std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx, cl::command_queue& cqueue, initial_conditions& init, vec3i dim, float scale)
@@ -3320,8 +3315,8 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
 
     value bl_conformal = calculate_conformal_guess(pos, holes);
 
-    buffer<value, 3> u_value_buf("u_value");
-    value u = u_value_buf[{"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"}];
+    buffer<value> u_value_buf("u_value");
+    value u = u_value_buf[(v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"}];
 
     value phi = u + bl_conformal + 1;
 
@@ -3591,8 +3586,8 @@ void build_intermediate_thin(equation_context& ctx)
 {
     standard_arguments args(ctx);
 
-    buffer<value, 3> buffer_buf("buffer");
-    value buffer = buffer_buf[{"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"}];
+    buffer<value> buffer_buf("buffer");
+    value buffer = buffer_buf[(v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"}];
 
     value v1 = diff1(ctx, buffer, 0);
     value v2 = diff1(ctx, buffer, 1);
@@ -3610,8 +3605,8 @@ void build_intermediate_thin_directional(equation_context& ctx)
 
     standard_arguments args(ctx);
 
-    buffer<value, 3> buffer_buf("buffer");
-    value buffer = buffer_buf[{"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"}];
+    buffer<value> buffer_buf("buffer");
+    value buffer = buffer_buf[(v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"}];
 
     value v1 = diff1(ctx, buffer, 0);
     value v2 = diff1(ctx, buffer, 1);
@@ -4675,11 +4670,8 @@ cl::image_with_mipmaps load_mipped_image(const std::string& fname, opencl_contex
 ///want to declare a kernel in one step like this, and then immediately run it in the second step with a bunch of buffers without any messing around
 ///buffer names need to be dynamic
 ///buffer *sizes* may need to be manually associated within this function
-void test_kernel(equation_context& ctx, buffer<value, 3> test_input, buffer<value_mut, 3> test_output, literal<value> val, literal<tensor<value_i, 3>> dim)
+void test_kernel(equation_context& ctx, buffer<value> test_input, buffer<value_mut> test_output, literal<value> val, literal<tensor<value_i, 3>> dim)
 {
-    test_input.size = dim.get();
-    test_output.size = dim.get();
-
     value_i ix = "get_global_id(0)";
     value_i iy = "get_global_id(1)";
     value_i iz = "get_global_id(2)";
@@ -4689,13 +4681,13 @@ void test_kernel(equation_context& ctx, buffer<value, 3> test_input, buffer<valu
         ctx.exec(return_s);
     });
 
-    value test = test_input[ix, iy, iz];
+    value test = test_input[(v3i){ix, iy, iz}, dim.get()];
 
     test += 1;
 
     test += val;
 
-    value result_expr = assign(test_output[ix, iy, iz], test);
+    value result_expr = assign(test_output[(v3i){ix, iy, iz}, dim.get()], test);
 
     ctx.exec(result_expr);
 
@@ -4723,7 +4715,7 @@ void test_kernel_generation(cl::context& clctx, cl::command_queue& cqueue)
     cqueue.exec(kern, {128, 128, 128}, {8,8,1});
 }
 
-void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, literal<value_i> points_count, std::array<single_source::named_buffer<value, 3, "cY">, 6> cY, single_source::named_buffer<value, 3, "X"> X, single_source::named_literal<tensor<value_i, 4>, "dim"> dim, single_source::named_literal<value, "scale"> scale, buffer<value_mut, 3> out)
+void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>> points, literal<value_i> points_count, std::array<single_source::named_buffer<value, "cY">, 6> cY, single_source::named_buffer<value, "X"> X, single_source::named_literal<tensor<value_i, 4>, "dim"> dim, single_source::named_literal<value, "scale"> scale, buffer<value_mut> out)
 {
     value_i local_idx = "get_global_id(0)";
 

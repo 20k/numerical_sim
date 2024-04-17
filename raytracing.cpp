@@ -8,7 +8,7 @@ using single_source::named_literal;
 
 void get_raytraced_quantities(single_source::argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args)
 {
-    ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value, 3>);
+    ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value>);
 
     arg_gen.add(bssn_args.buffers);
     arg_gen.add<named_literal<v4i, "dim">>();
@@ -196,14 +196,14 @@ lightray make_lightray(equation_context& ctx,
 }
 
 void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f> camera_quat, literal<v2i> screen_size,
-                     std::array<buffer<value, 3>, 6> linear_Yij_1, std::array<buffer<value, 3>, 6> linear_Kij_1, buffer<value, 3> linear_gA_1, std::array<buffer<value, 3>, 3> linear_gB_1,
-                     std::array<buffer<value, 3>, 6> linear_Yij_2, std::array<buffer<value, 3>, 6> linear_Kij_2, buffer<value, 3> linear_gA_2, std::array<buffer<value, 3>, 3> linear_gB_2,
+                     std::array<buffer<value>, 6> linear_Yij_1, std::array<buffer<value>, 6> linear_Kij_1, buffer<value> linear_gA_1, std::array<buffer<value>, 3> linear_gB_1,
+                     std::array<buffer<value>, 6> linear_Yij_2, std::array<buffer<value>, 6> linear_Kij_2, buffer<value> linear_gA_2, std::array<buffer<value>, 3> linear_gB_2,
                      literal<value> frac,
                      named_literal<value, "scale"> scale, named_literal<v4i, "dim"> dim,
                      std::array<buffer<value_mut>, 3> positions_out, std::array<buffer<value_mut>, 3> velocities_out
                      )
 {
-    ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value, 3>);
+    ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value>);
 
     ctx.order = 1;
     ctx.uses_linear = true;
@@ -291,15 +291,15 @@ struct render_ray_info : single_source::struct_base<render_ray_info>
 };
 
 void trace_slice(equation_context& ctx,
-                 std::array<buffer<value, 3>, 6> linear_Yij_1, std::array<buffer<value, 3>, 6> linear_Kij_1, buffer<value, 3> linear_gA_1, std::array<buffer<value, 3>, 3> linear_gB_1,
-                 std::array<buffer<value, 3>, 6> linear_Yij_2, std::array<buffer<value, 3>, 6> linear_Kij_2, buffer<value, 3> linear_gA_2, std::array<buffer<value, 3>, 3> linear_gB_2,
+                 std::array<buffer<value>, 6> linear_Yij_1, std::array<buffer<value>, 6> linear_Kij_1, buffer<value> linear_gA_1, std::array<buffer<value>, 3> linear_gB_1,
+                 std::array<buffer<value>, 6> linear_Yij_2, std::array<buffer<value>, 6> linear_Kij_2, buffer<value> linear_gA_2, std::array<buffer<value>, 3> linear_gB_2,
                  named_literal<value, "scale"> scale, named_literal<v4i, "dim"> dim, literal<v2i> screen_size, literal<value_i> iteration,
                  std::array<buffer<value>, 3> positions, std::array<buffer<value>, 3> velocities,
                  buffer<value_i_mut> terminated,
                  std::array<buffer<value_mut>, 3> positions_out, std::array<buffer<value_mut>, 3> velocities_out, literal<value_i> ray_count, literal<value> frac, literal<value> slice_width, literal<value> step,
                  buffer<render_ray_info>& render_out)
 {
-    ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value, 3>);
+    ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value>);
 
     ctx.ignored_variables.push_back(frac.name);
 
@@ -778,8 +778,8 @@ using ray4_value = value_h;
 
 void get_raytraced_quantities4(single_source::argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args)
 {
-    ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value, 3>);
-    ctx.add_function("buffer_read_linearh2", buffer_read_linear_f_unpacked<value_h, 3>);
+    ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value>);
+    ctx.add_function("buffer_read_linearh2", buffer_read_linear_f_unpacked<value_h>);
 
     arg_gen.add(bssn_args.buffers);
     arg_gen.add<named_literal<v4i, "dim">>();
@@ -995,15 +995,15 @@ v4f voxel_to_world4(v4f in, v4i dim, value slice_width, value scale)
 }
 
 void init_slice_rays4(equation_context& ctx, literal<v3f> camera_pos, literal<v4f> camera_quat, literal<v2i> screen_size,
-                     std::array<buffer<ray4_value, 4>, 10> Guv,
+                     std::array<buffer<ray4_value>, 10> Guv,
                      named_literal<value, "scale"> scale, named_literal<v4i, "dim"> dim,
                      literal<value> w_coord, literal<value> slice_width,
                      std::array<buffer<value_mut>, 4> positions_out, std::array<buffer<value_mut>, 4> velocities_out,
                      buffer<value_mut> ku_uobsu_out
                      )
 {
-    ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value, 3>);
-    ctx.add_function("buffer_read_linear4", buffer_read_linear_f4<value, 4>);
+    ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value>);
+    ctx.add_function("buffer_read_linear4", buffer_read_linear_f4<value>);
 
     ctx.order = 1;
     ctx.uses_linear = true;
@@ -1127,8 +1127,8 @@ void trace_slice4(equation_context& ctx,
                  std::array<buffer<value>, 4> positions, std::array<buffer<value>, 4> velocities, buffer<value> ku_uobsu,
                  buffer<render_ray_info>& render_out)
 {
-    ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value, 3>);
-    ctx.add_function("buffer_read_linear4", buffer_read_linear_f4<value, 4>);
+    ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value>);
+    ctx.add_function("buffer_read_linear4", buffer_read_linear_f4<value>);
 
     ctx.order = 1;
     ctx.uses_linear = true;

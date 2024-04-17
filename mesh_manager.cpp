@@ -413,7 +413,7 @@ void check_symm(const std::string& debug_name, cl::command_queue& cqueue, cl::bu
 }
 
 template<typename T>
-void extract_chunk_kernel(equation_context& ctx, buffer<value_base<T>, 3> in, buffer<value_base_mut<T>, 3> out, literal<v3i> origin, literal<v3i> lupper_size, literal<v3i> llower_size)
+void extract_chunk_kernel(equation_context& ctx, buffer<value_base<T>> in, buffer<value_base_mut<T>> out, literal<v3i> origin, literal<v3i> lupper_size, literal<v3i> llower_size)
 {
     value_i ix = declare(ctx, value_i{"get_global_id(0)"}, "ix");
     value_i iy = declare(ctx, value_i{"get_global_id(1)"}, "iy");

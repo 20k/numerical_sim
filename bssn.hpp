@@ -71,7 +71,7 @@ struct argument_pack
 
 template<typename T, typename U>
 inline
-value buffer_index_generic(buffer<value_base<T>, 3> buf, const tensor<value_base<U>, 3>& pos, const tensor<value_i, 3>& dim)
+value buffer_index_generic(buffer<value_base<T>> buf, const tensor<value_base<U>, 3>& pos, const tensor<value_i, 3>& dim)
 {
     value v;
 

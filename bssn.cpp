@@ -57,7 +57,7 @@ tensor<value, 3> matter_meta_interop::calculate_adm_Si(equation_context& ctx, st
     return ret;
 }
 
-std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, value_i point_count, tensor<value_i, 4> dim, buffer<value_us, 3> order_ptr);
+std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>> points, value_i point_count, tensor<value_i, 4> dim, buffer<value_us> order_ptr);
 
 float get_backwards_euler_relax_parameter()
 {
@@ -76,16 +76,16 @@ void calculate_christoffel_symbol(single_source::argument_generator& arg_gen, eq
 {
     arg_gen.add(bssn_args.buffers);
 
-    auto points = arg_gen.add<buffer<tensor<value_us, 4>, 3>>();
+    auto points = arg_gen.add<buffer<tensor<value_us, 4>>>();
     auto point_count = arg_gen.add<literal<value_i>>();
-    auto order_ptr = arg_gen.add<named_buffer<value_us, 3, "order_ptr">>();
+    auto order_ptr = arg_gen.add<named_buffer<value_us, "order_ptr">>();
 
     arg_gen.add<named_literal<value, "scale">>();
     auto dim = arg_gen.add<named_literal<tensor<value_i, 4>, "dim">>();
 
-    named_buffer<value_mut, 3, "cGi0"> cGi0;
-    named_buffer<value_mut, 3, "cGi1"> cGi1;
-    named_buffer<value_mut, 3, "cGi2"> cGi2;
+    named_buffer<value_mut, "cGi0"> cGi0;
+    named_buffer<value_mut, "cGi1"> cGi1;
+    named_buffer<value_mut, "cGi2"> cGi2;
 
     auto [ix, iy, iz, index] = setup(ctx, points, point_count, dim, order_ptr);
 
@@ -568,7 +568,7 @@ using half_type = value_h;
 using half_type = value;
 #endif
 
-std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, value_i point_count, tensor<value_i, 4> dim, buffer<value_us, 3> order_ptr)
+std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>> points, value_i point_count, tensor<value_i, 4> dim, buffer<value_us> order_ptr)
 {
     value_i local_idx = declare(ctx, value_i{"get_global_id(0)"}, "lidx");
 
@@ -630,16 +630,16 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
 template<typename base, single_source::impl::fixed_string str>
 struct bssn_arg_pack
 {
-    std::array<named_buffer<base, 3, str + "cY">, 6> cY;
-    std::array<named_buffer<base, 3, str + "cA">, 6> cA;
-    std::array<named_buffer<base, 3, str + "cGi">, 3> cGi;
-    named_buffer<base, 3, str + "K"> K;
-    named_buffer<base, 3, str + "X"> X;
-    named_buffer<base, 3, str + "gA"> gA;
-    std::array<named_buffer<base, 3, str + "gB">, 3> gB;
+    std::array<named_buffer<base, str + "cY">, 6> cY;
+    std::array<named_buffer<base, str + "cA">, 6> cA;
+    std::array<named_buffer<base, str + "cGi">, 3> cGi;
+    named_buffer<base, str + "K"> K;
+    named_buffer<base, str + "X"> X;
+    named_buffer<base, str + "gA"> gA;
+    std::array<named_buffer<base, str + "gB">, 3> gB;
 
     #ifdef USE_GBB
-    std::array<named_buffer<base, 3, str + "gBB">, 3> gBB;
+    std::array<named_buffer<base, str + "gBB">, 3> gBB;
     #endif // USE_GBB
 
     bssn_arg_pack()
@@ -664,20 +664,20 @@ struct bssn_arg_pack
 
 struct all_args
 {
-    buffer<tensor<value_us, 4>, 3> points;
+    buffer<tensor<value_us, 4>> points;
     literal<value_i> point_count;
 
     bssn_arg_pack<value, ""> in;
     bssn_arg_pack<value_mut, "o"> out;
     bssn_arg_pack<value, "base_"> base;
 
-    std::array<named_buffer<value, 3, "momentum">, 3> momentum;
-    std::array<named_buffer<half_type, 3, "dcYij">, 18> dcYij; std::array<named_buffer<half_type, 3, "digA">, 3> digA;
-    std::array<named_buffer<half_type, 3, "digB">, 9> digB; std::array<named_buffer<half_type, 3, "dX">, 3> dX;
+    std::array<named_buffer<value, "momentum">, 3> momentum;
+    std::array<named_buffer<half_type, "dcYij">, 18> dcYij; std::array<named_buffer<half_type, "digA">, 3> digA;
+    std::array<named_buffer<half_type, "digB">, 9> digB; std::array<named_buffer<half_type, "dX">, 3> dX;
     named_literal<value, "scale"> scale;
     named_literal<tensor<value_i, 4>, "dim"> dim;
     literal<value> timestep;
-    named_buffer<value_us, 3, "order_ptr"> order_ptr;
+    named_buffer<value_us, "order_ptr"> order_ptr;
 
     all_args(single_source::argument_generator& arg_gen, base_bssn_args& bssn_args, base_utility_args& utility_args)
     {

@@ -219,7 +219,7 @@ namespace single_source
         }
     };
 
-    template<typename T, int dimensions = 1>
+    template<typename T>
     struct buffer
     {
         using value_type = T;
@@ -227,11 +227,18 @@ namespace single_source
 
         bool permanent_name = false;
         std::string name;
-        tensor<value_i, dimensions> size;
 
         buffer(){}
         buffer(const std::string& str) : name(str){}
         buffer(const char* str) : name(str){}
+
+        ///detect accidental usage of operator,
+        template<typename... U, typename V, typename W, typename X>
+        T operator[](U&&... in, V&& in2, W&& in3, X&& in4)
+        {
+            static_assert(false);
+            return T();
+        }
 
         T operator[](const value_i& in)
         {
@@ -240,25 +247,24 @@ namespace single_source
             return parse_tensor(storage, op, true);
         }
 
-        T operator[](const value_i& ix, const value_i& iy, const value_i& iz)
+        template<int N>
+        T operator[](const tensor<value_i, N>& pos, const tensor<value_i, N>& dim)
         {
-            static_assert(dimensions == 3);
+            static_assert(N == 3 || N == 4);
 
-            value_i op = make_op<int>(dual_types::ops::BRACKET2, value_i(name), ix, iy, iz, size[0], size[1], size[2]);
+            if constexpr(N == 3)
+            {
+                value_i op = make_op<int>(dual_types::ops::BRACKET2, value_i(name), pos.x(), pos.y(), pos.z(), dim.x(), dim.y(), dim.z());
 
-            return parse_tensor(storage, op, true);
-        }
+                return parse_tensor(storage, op, true);
+            }
 
-        T operator[](const tensor<value_i, 3>& pos)
-        {
-            return operator[](pos.x(), pos.y(), pos.z());
-        }
+            else if constexpr(N == 4)
+            {
+                value_i op = make_op<int>(dual_types::ops::BRACKET2, value_i(name), pos.x(), pos.y(), pos.z(), pos.w(), dim.x(), dim.y(), dim.z(), dim.w());
 
-        T operator[](const v3i& pos, const v3i& dim)
-        {
-            value_i op = make_op<int>(dual_types::ops::BRACKET2, value_i(name), pos.x(), pos.y(), pos.z(), dim.x(), dim.y(), dim.z());
-
-            return parse_tensor(storage, op, true);
+                return parse_tensor(storage, op, true);
+            }
         }
 
         /*T assign(const T& location, const T& what)
@@ -267,13 +273,13 @@ namespace single_source
         }*/
     };
 
-    template<typename T, int dimensions, impl::fixed_string _name>
-    struct named_buffer : buffer<T, dimensions>
+    template<typename T, impl::fixed_string _name>
+    struct named_buffer : buffer<T>
     {
         named_buffer()
         {
-            buffer<T, dimensions>::name = _name.get();
-            buffer<T, dimensions>::permanent_name = true;
+            buffer<T>::name = _name.get();
+            buffer<T>::permanent_name = true;
         }
     };
 
@@ -288,8 +294,8 @@ namespace single_source
     };
 }
 
-template<typename T, int N=1>
-using buffer = single_source::buffer<T, N>;
+template<typename T>
+using buffer = single_source::buffer<T>;
 template<typename T>
 using literal = single_source::literal<T>;
 

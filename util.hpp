@@ -5,29 +5,29 @@
 #include "single_source_fw.hpp"
 #include "equation_context.hpp"
 
-template<typename T, int N>
+template<typename T>
 inline
-T buffer_index(buffer<T, N> buf, const tensor<value_i, 3>& pos, const tensor<value_i, 3>& dim)
+T buffer_index(buffer<T> buf, const tensor<value_i, 3>& pos, const tensor<value_i, 3>& dim)
 {
     return buf[pos.z() * dim.x() * dim.y() + pos.y() * dim.x() + pos.x()];
 }
 
-template<typename T, int N>
+template<typename T>
 inline
-T buffer_index(buffer<T, N> buf, const tensor<value_i, 4>& pos, const tensor<value_i, 4>& dim)
+T buffer_index(buffer<T> buf, const tensor<value_i, 4>& pos, const tensor<value_i, 4>& dim)
 {
     return buf[pos.w() * dim.x() * dim.y() * dim.z() + pos.z() * dim.x() * dim.y() + pos.y() * dim.x() + pos.x()];
 }
 
-template<typename T, int N>
+template<typename T>
 inline
-value buffer_read_linear(buffer<T, N> buf, const v3f& position, const v3i& dim)
+value buffer_read_linear(buffer<T> buf, const v3f& position, const v3i& dim)
 {
     auto clamped_read = [&](v3i in)
     {
         in = clamp(in, (v3i){0,0,0}, dim - 1);
 
-        return (value)buffer_index(buf, in, dim);
+        return buf[in, dim].template convert<float>();
     };
 
     v3f floored = floor(position);
@@ -60,15 +60,15 @@ value buffer_read_linear(buffer<T, N> buf, const v3f& position, const v3i& dim)
     return c0 - (value)frac.z() * (c0 - c1);
 }
 
-template<typename T, int N>
+template<typename T>
 inline
-value buffer_read_linear(buffer<T, N> buf, const v4f& position, const v4i& dim)
+value buffer_read_linear(buffer<T> buf, const v4f& position, const v4i& dim)
 {
     auto clamped_read = [&](v4i in)
     {
         in = clamp(in, (v4i){0,0,0,0}, dim - 1);
 
-        return (value)buffer_index(buf, in, dim);
+        return buf[in, dim].template convert<float>();
     };
 
     v4f floored = floor(position);
@@ -133,9 +133,9 @@ value buffer_read_linear(buffer<T, N> buf, const v4f& position, const v4i& dim)
     return linear_1 - (value)frac.w() * (linear_1 - linear_2);
 }
 
-template<typename T, int N>
+template<typename T>
 inline
-literal<value> buffer_read_linear_f_unpacked(equation_context& ctx, buffer<T, N> buf,
+literal<value> buffer_read_linear_f_unpacked(equation_context& ctx, buffer<T> buf,
                                            literal<value> px, literal<value> py, literal<value> pz,
                                            literal<value_i> dx, literal<value_i> dy, literal<value_i> dz)
 {
@@ -152,9 +152,9 @@ literal<value> buffer_read_linear_f_unpacked(equation_context& ctx, buffer<T, N>
     return result;
 }
 
-template<typename T, int N>
+template<typename T>
 inline
-literal<value> buffer_read_linear_f4(equation_context& ctx, buffer<T, N> buf, literal<v4f> position, literal<v4i> dim)
+literal<value> buffer_read_linear_f4(equation_context& ctx, buffer<T> buf, literal<v4f> position, literal<v4i> dim)
 {
     ctx.order = 1;
     ctx.uses_linear = true;
@@ -169,9 +169,9 @@ literal<value> buffer_read_linear_f4(equation_context& ctx, buffer<T, N> buf, li
     return result;
 }
 
-template<typename T, int N>
+template<typename T>
 inline
-literal<T> buffer_index_f2(equation_context& ctx, buffer<T, N>& buf, literal<value_i> index)
+literal<T> buffer_index_f2(equation_context& ctx, buffer<T>& buf, literal<value_i> index)
 {
     T v = buf[index.get()];
 
