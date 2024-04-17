@@ -254,6 +254,13 @@ namespace single_source
             return operator[](pos.x(), pos.y(), pos.z());
         }
 
+        T operator[](const v3i& pos, const v3i& dim)
+        {
+            value_i op = make_op<int>(dual_types::ops::BRACKET2, value_i(name), pos.x(), pos.y(), pos.z(), dim.x(), dim.y(), dim.z());
+
+            return parse_tensor(storage, op, true);
+        }
+
         /*T assign(const T& location, const T& what)
         {
             return make_op<typename T::value_type>(dual_types::ops::ASSIGN, location, what);
