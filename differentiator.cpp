@@ -14,8 +14,6 @@ struct differentiation_context
         std::array<value_i, elements> offy;
         std::array<value_i, elements> offz;
 
-        std::array<value_i, elements> indices;
-
         std::array<value_v, 3> root_variables;
 
         if(linear_interpolation)
@@ -51,27 +49,6 @@ struct differentiation_context
                 offy[i] = offset;
             if(idx == 2)
                 offz[i] = offset;
-        }
-
-        tensor<value_i, 3> dim = {"dim.x", "dim.y", "dim.z"};
-
-        if(ctx.fixed_dim)
-        {
-            dim.x() = ctx.fixed_dim.value().x();
-            dim.y() = ctx.fixed_dim.value().y();
-            dim.z() = ctx.fixed_dim.value().z();
-        }
-
-        for(int i=0; i < elements; i++)
-        {
-            int offset = i - (elements - 1)/2;
-
-            if(idx == 0)
-                indices[i] = value_i{"index"} + offset;
-            if(idx == 1)
-                indices[i] = value_i{"index"} + offset * dim.x();
-            if(idx == 2)
-                indices[i] = value_i{"index"} + offset * dim.x() * dim.y();
         }
 
         std::vector<value> indexed_variables;
