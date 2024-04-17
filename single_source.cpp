@@ -1,6 +1,27 @@
 #include "single_source.hpp"
 #include <ranges>
 
+struct codegen_override : dual_types::codegen
+{
+    std::optional<std::string> bracket_linear(const value_base<std::monostate>& op) const override
+    {
+        assert(op.args.size() == 7);
+
+        if(op.original_type == dual_types::name_type(float()))
+        {
+            return type_to_string(dual_types::apply<float>("buffer_read_linear2", op.args[0],
+                                                            op.args[1], op.args[2], op.args[3],
+                                                            op.args[4], op.args[5], op.args[6]), *this);
+        }
+        else
+        {
+            return type_to_string(dual_types::apply<float>("buffer_read_linearh2", op.args[0],
+                                                            op.args[1], op.args[2], op.args[3],
+                                                            op.args[4], op.args[5], op.args[6]), *this);
+        }
+    }
+};
+
 std::string single_source::impl::generate_kernel_string(kernel_context& kctx, equation_context& ctx, const std::string& kernel_name, bool& any_uses_half)
 {
     for(auto& in : kctx.inputs.args)

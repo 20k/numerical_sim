@@ -8,9 +8,7 @@ using single_source::named_literal;
 
 void get_raytraced_quantities(single_source::argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args)
 {
-    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
-    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
-    ctx.add_function("buffer_read_linear", buffer_read_linear_f<value, 3>);
+    ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value, 3>);
 
     arg_gen.add(bssn_args.buffers);
     arg_gen.add<named_literal<v4i, "dim">>();
@@ -205,9 +203,7 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
                      std::array<buffer<value_mut>, 3> positions_out, std::array<buffer<value_mut>, 3> velocities_out
                      )
 {
-    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
-    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
-    ctx.add_function("buffer_read_linear", buffer_read_linear_f<value, 3>);
+    ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value, 3>);
 
     ctx.order = 1;
     ctx.uses_linear = true;
@@ -230,6 +226,8 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
         return (in / scale) + (v3f)centre;
     };
 
+    v3i dim3 = dim.get().xyz();
+
     v3f voxel_pos = w2v(pos);
 
     for(int i=0; i < 3; i++)
@@ -238,14 +236,14 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
         {
             int tidx = index_table[i][j];
 
-            Yij[i, j] = mix(buffer_index_generic(linear_Yij_1[tidx], voxel_pos, dim.name), buffer_index_generic(linear_Yij_2[tidx], voxel_pos, dim.name), frac.get());
-            Kij[i, j] = mix(buffer_index_generic(linear_Kij_1[tidx], voxel_pos, dim.name), buffer_index_generic(linear_Kij_2[tidx], voxel_pos, dim.name), frac.get());
+            Yij[i, j] = mix(buffer_index_generic(linear_Yij_1[tidx], voxel_pos, dim3), buffer_index_generic(linear_Yij_2[tidx], voxel_pos, dim3), frac.get());
+            Kij[i, j] = mix(buffer_index_generic(linear_Kij_1[tidx], voxel_pos, dim3), buffer_index_generic(linear_Kij_2[tidx], voxel_pos, dim3), frac.get());
         }
 
-        gB[i] = mix(buffer_index_generic(linear_gB_1[i], voxel_pos, dim.name), buffer_index_generic(linear_gB_2[i], voxel_pos, dim.name), frac.get());
+        gB[i] = mix(buffer_index_generic(linear_gB_1[i], voxel_pos, dim3), buffer_index_generic(linear_gB_2[i], voxel_pos, dim3), frac.get());
     }
 
-    gA = mix(buffer_index_generic(linear_gA_1, voxel_pos, dim.name), buffer_index_generic(linear_gA_2, voxel_pos, dim.name), frac.get());
+    gA = mix(buffer_index_generic(linear_gA_1, voxel_pos, dim3), buffer_index_generic(linear_gA_2, voxel_pos, dim3), frac.get());
 
     v2i in_xy = {"get_global_id(0)", "get_global_id(1)"};
 
@@ -301,9 +299,7 @@ void trace_slice(equation_context& ctx,
                  std::array<buffer<value_mut>, 3> positions_out, std::array<buffer<value_mut>, 3> velocities_out, literal<value_i> ray_count, literal<value> frac, literal<value> slice_width, literal<value> step,
                  buffer<render_ray_info>& render_out)
 {
-    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
-    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
-    ctx.add_function("buffer_read_linear", buffer_read_linear_f<value, 3>);
+    ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value, 3>);
 
     ctx.ignored_variables.push_back(frac.name);
 
@@ -370,6 +366,8 @@ void trace_slice(equation_context& ctx,
                              {1, 3, 4},
                              {2, 4, 5}};
 
+    v3i dim3 = dim.get().xyz();
+
     metric<value, 3, 3> Yij;
     tensor<value, 3, 3> Kij;
     tensor<value, 3> gB;
@@ -391,14 +389,14 @@ void trace_slice(equation_context& ctx,
         {
             int tidx = index_table[i][j];
 
-            Yij[i, j] = mix(buffer_index_generic(linear_Yij_1[tidx], as_constant(loop_voxel_pos), dim.name), buffer_index_generic(linear_Yij_2[tidx], as_constant(loop_voxel_pos), dim.name), local_frac);
-            Kij[i, j] = mix(buffer_index_generic(linear_Kij_1[tidx], as_constant(loop_voxel_pos), dim.name), buffer_index_generic(linear_Kij_2[tidx], as_constant(loop_voxel_pos), dim.name), local_frac);
+            Yij[i, j] = mix(buffer_index_generic(linear_Yij_1[tidx], as_constant(loop_voxel_pos), dim3), buffer_index_generic(linear_Yij_2[tidx], as_constant(loop_voxel_pos), dim3), local_frac);
+            Kij[i, j] = mix(buffer_index_generic(linear_Kij_1[tidx], as_constant(loop_voxel_pos), dim3), buffer_index_generic(linear_Kij_2[tidx], as_constant(loop_voxel_pos), dim3), local_frac);
         }
 
-        gB[i] = mix(buffer_index_generic(linear_gB_1[i], as_constant(loop_voxel_pos), dim.name), buffer_index_generic(linear_gB_2[i], as_constant(loop_voxel_pos), dim.name), local_frac);
+        gB[i] = mix(buffer_index_generic(linear_gB_1[i], as_constant(loop_voxel_pos), dim3), buffer_index_generic(linear_gB_2[i], as_constant(loop_voxel_pos), dim3), local_frac);
     }
 
-    gA = mix(buffer_index_generic(linear_gA_1, as_constant(loop_voxel_pos), dim.name), buffer_index_generic(linear_gA_2, as_constant(loop_voxel_pos), dim.name), local_frac);
+    gA = mix(buffer_index_generic(linear_gA_1, as_constant(loop_voxel_pos), dim3), buffer_index_generic(linear_gA_2, as_constant(loop_voxel_pos), dim3), local_frac);
 
     ctx.pin(Kij);
 
@@ -780,10 +778,8 @@ using ray4_value = value_h;
 
 void get_raytraced_quantities4(single_source::argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args)
 {
-    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
-    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
-    ctx.add_function("buffer_read_linear", buffer_read_linear_f<value, 3>);
-    ctx.add_function("buffer_read_linearh", buffer_read_linear_f<value_h, 3>);
+    ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value, 3>);
+    ctx.add_function("buffer_read_linearh2", buffer_read_linear_f_unpacked<value_h, 3>);
 
     arg_gen.add(bssn_args.buffers);
     arg_gen.add<named_literal<v4i, "dim">>();
@@ -1006,9 +1002,7 @@ void init_slice_rays4(equation_context& ctx, literal<v3f> camera_pos, literal<v4
                      buffer<value_mut> ku_uobsu_out
                      )
 {
-    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
-    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
-    ctx.add_function("buffer_read_linear", buffer_read_linear_f<value, 3>);
+    ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value, 3>);
     ctx.add_function("buffer_read_linear4", buffer_read_linear_f4<value, 4>);
 
     ctx.order = 1;
@@ -1133,9 +1127,7 @@ void trace_slice4(equation_context& ctx,
                  std::array<buffer<value>, 4> positions, std::array<buffer<value>, 4> velocities, buffer<value> ku_uobsu,
                  buffer<render_ray_info>& render_out)
 {
-    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
-    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
-    ctx.add_function("buffer_read_linear", buffer_read_linear_f<value, 3>);
+    ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value, 3>);
     ctx.add_function("buffer_read_linear4", buffer_read_linear_f4<value, 4>);
 
     ctx.order = 1;

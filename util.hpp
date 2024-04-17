@@ -153,6 +153,25 @@ literal<value> buffer_read_linear_f(equation_context& ctx, buffer<T, N> buf, lit
 
 template<typename T, int N>
 inline
+literal<value> buffer_read_linear_f_unpacked(equation_context& ctx, buffer<T, N> buf,
+                                           literal<value> px, literal<value> py, literal<value> pz,
+                                           literal<value_i> dx, literal<value_i> dy, literal<value_i> dz)
+{
+    ctx.order = 1;
+    ctx.uses_linear = true;
+
+    v3i idim = {dx.get(), dy.get(), dz.get()};
+    v3f ipos = {px.get(), py.get(), pz.get()};
+
+    ctx.exec(return_v(buffer_read_linear(buf, ipos, idim)));
+
+    literal<value> result;
+    result.storage.is_memory_access = true;
+    return result;
+}
+
+template<typename T, int N>
+inline
 literal<value> buffer_read_linear_f4(equation_context& ctx, buffer<T, N> buf, literal<v4f> position, literal<v4i> dim)
 {
     ctx.order = 1;

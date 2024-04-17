@@ -78,11 +78,15 @@ value bidx(equation_context& ctx, const std::string& buf, bool interpolate, bool
     {
         if(is_derivative)
         {
-            v = dual_types::apply(value("buffer_read_linearh"), buf, as_float3("fx", "fy", "fz"), value_v("dim"));
+            v = dual_types::make_op<float16>(dual_types::ops::BRACKET_LINEAR, buf,
+                                             value("fx"), value("fy"), value("fz"),
+                                             value_i("dim.x"), value_i("dim.y"), value_i("dim.z")).reinterpret_as<value>();
         }
         else
         {
-            v = dual_types::apply(value("buffer_read_linear"), buf, as_float3("fx", "fy", "fz"), value_v("dim"));
+            v = dual_types::make_op<float>(dual_types::ops::BRACKET_LINEAR, buf,
+                                           value_i(pack.pos[0]), value_i(pack.pos[1]), value_i(pack.pos[2]),
+                                           value_i("dim.x"), value_i("dim.y"), value_i("dim.z")).reinterpret_as<value>();
         }
     }
     else
@@ -97,7 +101,6 @@ value bidx(equation_context& ctx, const std::string& buf, bool interpolate, bool
                 v = dual_types::make_op<float16>(dual_types::ops::BRACKET2, buf,
                                                  value_i(pack.pos[0]), value_i(pack.pos[1]), value_i(pack.pos[2]),
                                                  value_i("dim.x"), value_i("dim.y"), value_i("dim.z")).reinterpret_as<value>();
-                //v = dual_types::apply(value("buffer_indexh"), buf, pack.pos[0], pack.pos[1], pack.pos[2], pack.dim);
             else
             {
                 value_h v_h = dual_types::apply(value_h("buffer_indexh_2"), buf, hindex);
@@ -121,25 +124,22 @@ value bidx(equation_context& ctx, const std::string& buf, bool interpolate, bool
 
 template<typename T, typename U>
 inline
-value buffer_index_generic(buffer<value_base<T>, 3> buf, const tensor<value_base<U>, 3>& pos, const std::string& dim)
+value buffer_index_generic(buffer<value_base<T>, 3> buf, const tensor<value_base<U>, 3>& pos, const tensor<value_i, 3>& dim)
 {
     value v;
 
-    if constexpr(std::is_same_v<T, float16> && std::is_same_v<U, float>)
+    if constexpr(std::is_same_v<U, float>)
     {
-        v = dual_types::apply(value("buffer_read_linearh"), buf.name, as_float3(pos.x(), pos.y(), pos.z()), dim);
+        v = dual_types::make_op<T>(dual_types::ops::BRACKET_LINEAR, buf.name,
+                                   pos.x(), pos.y(), pos.z(),
+                                   dim.x(), dim.y(), dim.z()).template reinterpret_as<value>();
     }
-    else if constexpr(std::is_same_v<T, float> && std::is_same_v<U, float>)
+
+    else if constexpr(std::is_same_v<U, int>)
     {
-        v = dual_types::apply(value("buffer_read_linear"), buf.name, as_float3(pos.x(), pos.y(), pos.z()), dim);
-    }
-    else if constexpr(std::is_same_v<T, float16> && std::is_same_v<U, int>)
-    {
-        v = dual_types::apply(value("buffer_indexh"), buf.name, pos.x(), pos.y(), pos.z(), dim);
-    }
-    else if constexpr(std::is_same_v<T, float> && std::is_same_v<U, int>)
-    {
-        v = dual_types::apply(value("buffer_index"), buf.name, pos.x(), pos.y(), pos.z(), dim);
+        v = dual_types::make_op<T>(dual_types::ops::BRACKET2, buf.name,
+                                   pos.x(), pos.y(), pos.z(),
+                                   dim.x(), dim.y(), dim.z()).template reinterpret_as<value>();
     }
     else
     {
