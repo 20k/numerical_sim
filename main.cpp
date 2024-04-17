@@ -1013,7 +1013,6 @@ value get_u_rhs(equation_context& ctx, cl::context& clctx, const initial_conditi
     buffer<value, 3> u_offset_in("u_offset_in");
 
     value u_value = buffer_index_generic(u_offset_in, (v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"});
-    u_value.is_memory_access = true;
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     ///todo when I forget: I'm using the conformal guess here for neutron stars which probably isn't right
@@ -1192,10 +1191,8 @@ private:
 
         value rho = dat.mass_energy_density;
 
-
         buffer<value, 3> u_offset_in("u_offset_in");
         value u_value = buffer_index_generic(u_offset_in, (v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"});
-        u_value.is_memory_access = true;
 
         value phi = u_value;
         value phi_rhs = -2 * (float)M_PI * pow(phi, 5) * rho;
@@ -1513,9 +1510,7 @@ struct superimposed_gpu_data
         };
 
         buffer<value, 3> u_value_buf("u_value");
-
         value u_value = buffer_index_generic(u_value_buf, (v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"});
-        u_value.is_memory_access = true;
 
         ///https://arxiv.org/pdf/1606.04881.pdf 74
         value phi = conformal_guess + u_value + 1;
@@ -3325,9 +3320,10 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
     value bl_conformal = calculate_conformal_guess(pos, holes);
+
     buffer<value, 3> u_value_buf("u_value");
     value u = buffer_index_generic(u_value_buf, (v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"});
-    u.is_memory_access = true;
+
     value phi = u + bl_conformal + 1;
 
     std::array<int, 9> arg_table
@@ -3598,7 +3594,6 @@ void build_intermediate_thin(equation_context& ctx)
 
     buffer<value, 3> buffer_buf("buffer");
     value buffer = buffer_index_generic(buffer_buf, (v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"});
-    buffer.is_memory_access = true;
 
     value v1 = diff1(ctx, buffer, 0);
     value v2 = diff1(ctx, buffer, 1);
@@ -3618,7 +3613,6 @@ void build_intermediate_thin_directional(equation_context& ctx)
 
     buffer<value, 3> buffer_buf("buffer");
     value buffer = buffer_index_generic(buffer_buf, (v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"});
-    buffer.is_memory_access = true;
 
     value v1 = diff1(ctx, buffer, 0);
     value v2 = diff1(ctx, buffer, 1);
