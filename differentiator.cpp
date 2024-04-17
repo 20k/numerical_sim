@@ -10,9 +10,9 @@ struct differentiation_context
 
     differentiation_context(differentiator& ctx, const value& in, int idx, bool linear_interpolation = false)
     {
-        std::array<int, elements> offx;
-        std::array<int, elements> offy;
-        std::array<int, elements> offz;
+        std::array<int, elements> offx = {};
+        std::array<int, elements> offy = {};
+        std::array<int, elements> offz = {};
 
         for(int i=0; i < elements; i++)
         {
