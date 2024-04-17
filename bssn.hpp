@@ -85,7 +85,7 @@ value bidx(equation_context& ctx, const std::string& buf, bool interpolate, bool
         else
         {
             v = dual_types::make_op<float>(dual_types::ops::BRACKET_LINEAR, buf,
-                                           value_i(pack.pos[0]), value_i(pack.pos[1]), value_i(pack.pos[2]),
+                                           value("fx"), value("fy"), value("fz"),
                                            value_i("dim.x"), value_i("dim.y"), value_i("dim.z")).reinterpret_as<value>();
         }
     }
