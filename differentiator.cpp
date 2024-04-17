@@ -14,6 +14,98 @@ struct differentiation_context
         std::array<value_i, elements> offy;
         std::array<value_i, elements> offz;
 
+        for(int i=0; i < elements; i++)
+        {
+            int offset = i - (elements - 1)/2;
+
+            if(idx == 0)
+                offx[i] = offset;
+            if(idx == 1)
+                offy[i] = offset;
+            if(idx == 2)
+                offz[i] = offset;
+        }
+
+        for(int i=0; i < elements; i++)
+        {
+            vars[i] = in;
+
+            vars[i].recurse_arguments([&i, &offx, &offy, &offz](value& v)
+            {
+                if(v.type == dual_types::ops::BRACKET2 || v.type == dual_types::ops::BRACKET_LINEAR)
+                {
+                    value out;
+
+                    if(v.type == dual_types::ops::BRACKET2)
+                    {
+                        assert(v.args.size() == 7);
+
+                        value buf = v.args[0];
+
+                        value_i old_x = v.args[1].reinterpret_as<value_i>();
+                        value_i old_y = v.args[2].reinterpret_as<value_i>();
+                        value_i old_z = v.args[3].reinterpret_as<value_i>();
+
+                        value_i old_dx = v.args[4].reinterpret_as<value_i>();
+                        value_i old_dy = v.args[5].reinterpret_as<value_i>();
+                        value_i old_dz = v.args[6].reinterpret_as<value_i>();
+
+                        value_i next_x = old_x + offx[i];
+                        value_i next_y = old_y + offy[i];
+                        value_i next_z = old_z + offz[i];
+
+                        if(v.original_type == dual_types::name_type(float16()))
+                        {
+                            out = dual_types::make_op<float16>(dual_types::ops::BRACKET2, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz).reinterpret_as<value>();
+                        }
+                        else if(v.original_type == dual_types::name_type(float()))
+                        {
+                            out = dual_types::make_op<float>(dual_types::ops::BRACKET2, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz);
+                        }
+                        else
+                            assert(false);
+                    }
+                    else if(v.type == dual_types::ops::BRACKET_LINEAR)
+                    {
+                        assert(v.args.size() == 7);
+
+                        value buf = v.args[0];
+
+                        value old_x = v.args[1].reinterpret_as<value>();
+                        value old_y = v.args[2].reinterpret_as<value>();
+                        value old_z = v.args[3].reinterpret_as<value>();
+
+                        value_i old_dx = v.args[4].reinterpret_as<value_i>();
+                        value_i old_dy = v.args[5].reinterpret_as<value_i>();
+                        value_i old_dz = v.args[6].reinterpret_as<value_i>();
+
+                        value next_x = old_x + offx[i].template reinterpret_as<value>();
+                        value next_y = old_y + offy[i].template reinterpret_as<value>();
+                        value next_z = old_z + offz[i].template reinterpret_as<value>();
+
+                        if(v.original_type == dual_types::name_type(float16()))
+                        {
+                            out = dual_types::make_op<float16>(dual_types::ops::BRACKET_LINEAR, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz).reinterpret_as<value>();
+                        }
+                        else if(v.original_type == dual_types::name_type(float()))
+                        {
+                            out = dual_types::make_op<float>(dual_types::ops::BRACKET_LINEAR, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz);
+                        }
+                        else
+                            assert(false);
+                    }
+                    else
+                    {
+                        assert(false);
+                    }
+
+                    v = out;
+                }
+            });
+        }
+
+        #define DETECT_INCORRECT_DIFFERENTIATION
+        #ifdef DETECT_INCORRECT_DIFFERENTIATION
         std::array<value_v, 3> root_variables;
 
         if(linear_interpolation)
@@ -32,25 +124,6 @@ struct differentiation_context
             root_variables = {val[0], val[1], val[2]};
         }
 
-        /*for(int i=0; i < elements; i++)
-        {
-            xs[i] = root_variables[0];
-            ys[i] = root_variables[1];
-            zs[i] = root_variables[2];
-        }*/
-
-        for(int i=0; i < elements; i++)
-        {
-            int offset = i - (elements - 1)/2;
-
-            if(idx == 0)
-                offx[i] = offset;
-            if(idx == 1)
-                offy[i] = offset;
-            if(idx == 2)
-                offz[i] = offset;
-        }
-
         std::vector<value> indexed_variables;
 
         in.recurse_arguments([&indexed_variables, linear_interpolation](const value& v)
@@ -61,8 +134,6 @@ struct differentiation_context
             }
         });
 
-        #define DETECT_INCORRECT_DIFFERENTIATION
-        #ifdef DETECT_INCORRECT_DIFFERENTIATION
         std::vector<std::string> variables = in.get_all_variables();
 
         for(auto& v : variables)
@@ -106,7 +177,6 @@ struct differentiation_context
                 assert(false);
             }
         }
-        #endif // DETECT_INCORRECT_DIFFERENTIATION
 
         if(indexed_variables.size() == 0)
         {
@@ -116,107 +186,7 @@ struct differentiation_context
         }
 
         assert(indexed_variables.size() > 0);
-
-        std::array<std::vector<value>, elements> substitutions;
-
-        for(auto& variables : indexed_variables)
-        {
-            std::string function_name = type_to_string(variables.args.at(0));
-
-            for(int kk=0; kk < elements; kk++)
-            {
-                value to_sub;
-
-                if(variables.type == dual_types::ops::BRACKET2)
-                {
-                    assert(variables.args.size() == 7);
-
-                    value buf = variables.args[0];
-
-                    value_i old_x = variables.args[1].reinterpret_as<value_i>();
-                    value_i old_y = variables.args[2].reinterpret_as<value_i>();
-                    value_i old_z = variables.args[3].reinterpret_as<value_i>();
-
-                    value_i old_dx = variables.args[4].reinterpret_as<value_i>();
-                    value_i old_dy = variables.args[5].reinterpret_as<value_i>();
-                    value_i old_dz = variables.args[6].reinterpret_as<value_i>();
-
-                    value_i next_x = old_x + offx[kk];
-                    value_i next_y = old_y + offy[kk];
-                    value_i next_z = old_z + offz[kk];
-
-                    if(variables.original_type == dual_types::name_type(float16()))
-                    {
-                        to_sub = dual_types::make_op<float16>(dual_types::ops::BRACKET2, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz).reinterpret_as<value>();
-                    }
-                    else if(variables.original_type == dual_types::name_type(float()))
-                    {
-                        to_sub = dual_types::make_op<float>(dual_types::ops::BRACKET2, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz);
-                    }
-                    else
-                        assert(false);
-                }
-                else if(variables.type == dual_types::ops::BRACKET_LINEAR)
-                {
-                    assert(variables.args.size() == 7);
-
-                    value buf = variables.args[0];
-
-                    value old_x = variables.args[1].reinterpret_as<value>();
-                    value old_y = variables.args[2].reinterpret_as<value>();
-                    value old_z = variables.args[3].reinterpret_as<value>();
-
-                    value_i old_dx = variables.args[4].reinterpret_as<value_i>();
-                    value_i old_dy = variables.args[5].reinterpret_as<value_i>();
-                    value_i old_dz = variables.args[6].reinterpret_as<value_i>();
-
-                    value next_x = old_x + offx[kk].template reinterpret_as<value>();
-                    value next_y = old_y + offy[kk].template reinterpret_as<value>();
-                    value next_z = old_z + offz[kk].template reinterpret_as<value>();
-
-                    if(variables.original_type == dual_types::name_type(float16()))
-                    {
-                        to_sub = dual_types::make_op<float16>(dual_types::ops::BRACKET_LINEAR, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz).reinterpret_as<value>();
-                    }
-                    else if(variables.original_type == dual_types::name_type(float()))
-                    {
-                        to_sub = dual_types::make_op<float>(dual_types::ops::BRACKET_LINEAR, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz);
-                    }
-                    else
-                        assert(false);
-                }
-                else
-                {
-                    assert(false);
-                }
-
-                substitutions[kk].push_back(to_sub);
-            }
-        }
-
-        for(int i=0; i < elements; i++)
-        {
-            vars[i] = in;
-
-            ///look for a function which matches our indexed variables
-            ///if we find it, substitute for the substitution
-            vars[i].recurse_arguments([&substitutions, &indexed_variables, i](value& v)
-            {
-                assert(substitutions[i].size() == indexed_variables.size());
-
-                ///search through the indexed variables
-                for(int kk=0; kk < (int)indexed_variables.size(); kk++)
-                {
-                    ///its a me!
-                    if(dual_types::equivalent(indexed_variables[kk], v))
-                    {
-                        ///substitute us for the directional derivative
-                        v = substitutions[i][kk];
-                        return;
-                    }
-                }
-            });
-        }
+        #endif // DETECT_INCORRECT_DIFFERENTIATION
     }
 };
 
