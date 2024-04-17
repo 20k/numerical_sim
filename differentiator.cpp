@@ -193,25 +193,7 @@ struct differentiation_context
             {
                 value to_sub;
 
-                if(function_name == "buffer_index" || function_name == "buffer_indexh")
-                {
-                    to_sub = apply(value(function_name), variables.args[1], offx[kk] + root_variables[0].reinterpret_as<value_i>(), offy[kk] + root_variables[1].reinterpret_as<value_i>(), offz[kk] + root_variables[2].reinterpret_as<value_i>(), "dim");
-                    to_sub.is_memory_access = true;
-                }
-                else if(function_name == "buffer_read_linear" || function_name == "buffer_read_linearh")
-                {
-                    to_sub = apply(value(function_name), variables.args[1], as_float3((value)offx[kk] + (value)root_variables[0], (value)offy[kk] + (value)root_variables[1], (value)offz[kk] + (value)root_variables[2]), "dim");
-                    to_sub.is_memory_access = true;
-                }
-                else if(function_name == "buffer_index_2" || function_name == "buffer_indexh_2")
-                {
-                    value v = indices[kk].template reinterpret_as<value>();
-
-                    to_sub = apply(value(function_name), variables.args[1], v);
-                    to_sub.original_type = variables.original_type;
-                    to_sub.is_memory_access = true;
-                }
-                else if(variables.type == dual_types::ops::BRACKET2)
+                if(variables.type == dual_types::ops::BRACKET2)
                 {
                     assert(variables.args.size() == 7);
 

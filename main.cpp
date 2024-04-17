@@ -1010,7 +1010,9 @@ value get_u_rhs(equation_context& ctx, cl::context& clctx, const initial_conditi
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
-    value u_value = dual_types::apply(value("buffer_index"), "u_offset_in", "ix", "iy", "iz", "dim");
+    buffer<value, 3> u_offset_in("u_offset_in");
+
+    value u_value = buffer_index_generic(u_offset_in, (v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"});
     u_value.is_memory_access = true;
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
@@ -1190,7 +1192,9 @@ private:
 
         value rho = dat.mass_energy_density;
 
-        value u_value = dual_types::apply(value("buffer_index"), "u_offset_in", "ix", "iy", "iz", "dim");
+
+        buffer<value, 3> u_offset_in("u_offset_in");
+        value u_value = buffer_index_generic(u_offset_in, (v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"});
         u_value.is_memory_access = true;
 
         value phi = u_value;
@@ -1508,7 +1512,9 @@ struct superimposed_gpu_data
             return v;
         };
 
-        value u_value = dual_types::apply(value("buffer_index"), "u_value", "ix", "iy", "iz", "dim");
+        buffer<value, 3> u_value_buf("u_value");
+
+        value u_value = buffer_index_generic(u_value_buf, (v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"});
         u_value.is_memory_access = true;
 
         ///https://arxiv.org/pdf/1606.04881.pdf 74
@@ -3319,7 +3325,8 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
     value bl_conformal = calculate_conformal_guess(pos, holes);
-    value u = dual_types::apply(value("buffer_index"), "u_value", "ix", "iy", "iz", "dim");
+    buffer<value, 3> u_value_buf("u_value");
+    value u = buffer_index_generic(u_value_buf, (v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"});
     u.is_memory_access = true;
     value phi = u + bl_conformal + 1;
 
@@ -3589,7 +3596,8 @@ void build_intermediate_thin(equation_context& ctx)
 {
     standard_arguments args(ctx);
 
-    value buffer = dual_types::apply(value("buffer_index"), "buffer", "ix", "iy", "iz", "dim");
+    buffer<value, 3> buffer_buf("buffer");
+    value buffer = buffer_index_generic(buffer_buf, (v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"});
     buffer.is_memory_access = true;
 
     value v1 = diff1(ctx, buffer, 0);
@@ -3608,7 +3616,8 @@ void build_intermediate_thin_directional(equation_context& ctx)
 
     standard_arguments args(ctx);
 
-    value buffer = dual_types::apply(value("buffer_index"), "buffer", "ix", "iy", "iz", "dim");
+    buffer<value, 3> buffer_buf("buffer");
+    value buffer = buffer_index_generic(buffer_buf, (v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"});
     buffer.is_memory_access = true;
 
     value v1 = diff1(ctx, buffer, 0);

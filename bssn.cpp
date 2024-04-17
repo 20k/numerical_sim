@@ -2067,29 +2067,6 @@ void build_kernel(single_source::argument_generator& arg_gen, equation_context& 
     std::cout << "End build\n";
 }
 
-void sommerfeld_thick(single_source::argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args, base_utility_args& utility_args)
-{
-    /*all_args all(arg_gen, bssn_args, utility_args);
-
-    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
-    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
-
-    value_i local_idx = declare(ctx, value_i{"get_global_id(0)"}, "lidx");
-
-    if_e(local_idx >= point_count, ctx, [&]()
-    {
-        ctx.exec(return_s);
-    });
-
-    value_i ix = declare(ctx, points[local_idx].x().convert<int>(), "ix");
-    value_i iy = declare(ctx, points[local_idx].y().convert<int>(), "iy");
-    value_i iz = declare(ctx, points[local_idx].z().convert<int>(), "iz");
-
-    ///((k) * dim.x * dim.y + (j) * dim.x + (i))
-
-    value_i index = declare(ctx, iz * dim.x() * dim.y() + iy * dim.x() + ix, "index");*/
-}
-
 void bssn::build(cl::context& clctx, const matter_interop& interop, bool use_matter, base_bssn_args bssn_args, base_utility_args utility_args, vec3i dim)
 {
     std::vector<exec_builder_base*> b = {&cAexec, &Xexec, &Kexec, &gAexec, &gBexec, &cYexec, &cGiexec};
