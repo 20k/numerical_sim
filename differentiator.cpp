@@ -121,10 +121,8 @@ struct differentiation_context
                 indexed_variables.push_back(v);
             }
 
-            if(v.type == dual_types::ops::BRACKET2)
+            if(v.type == dual_types::ops::BRACKET2 || v.type == dual_types::ops::BRACKET_LINEAR)
             {
-                assert(!linear_interpolation);
-
                 indexed_variables.push_back(v);
             }
         });
@@ -178,6 +176,8 @@ struct differentiation_context
 
         if(indexed_variables.size() == 0)
         {
+            std::cout << "No variables found\n";
+
             std::cout << "WHAT? " << type_to_string(in) << std::endl;
         }
 
@@ -225,9 +225,9 @@ struct differentiation_context
                     value_i old_dy = variables.args[5].reinterpret_as<value_i>();
                     value_i old_dz = variables.args[6].reinterpret_as<value_i>();
 
-                    value_i next_x = old_x + offx[kk].template reinterpret_as<value_i>();
-                    value_i next_y = old_y + offy[kk].template reinterpret_as<value_i>();
-                    value_i next_z = old_z + offz[kk].template reinterpret_as<value_i>();
+                    value_i next_x = old_x + offx[kk];
+                    value_i next_y = old_y + offy[kk];
+                    value_i next_z = old_z + offz[kk];
 
                     ///ruh roh, don't have generic type ability here
                     ///to_sub = dual_types::make_op<
@@ -239,6 +239,40 @@ struct differentiation_context
                     else if(variables.original_type == dual_types::name_type(float()))
                     {
                         to_sub = dual_types::make_op<float>(dual_types::ops::BRACKET2, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz);
+                    }
+                    else
+                        assert(false);
+
+                    to_sub.is_memory_access = true;
+                }
+                else if(variables.type == dual_types::ops::BRACKET_LINEAR)
+                {
+                    assert(variables.args.size() == 7);
+
+                    value buf = variables.args[0];
+
+                    value old_x = variables.args[1].reinterpret_as<value>();
+                    value old_y = variables.args[2].reinterpret_as<value>();
+                    value old_z = variables.args[3].reinterpret_as<value>();
+
+                    value_i old_dx = variables.args[4].reinterpret_as<value_i>();
+                    value_i old_dy = variables.args[5].reinterpret_as<value_i>();
+                    value_i old_dz = variables.args[6].reinterpret_as<value_i>();
+
+                    value next_x = old_x + offx[kk].template reinterpret_as<value>();
+                    value next_y = old_y + offy[kk].template reinterpret_as<value>();
+                    value next_z = old_z + offz[kk].template reinterpret_as<value>();
+
+                    ///ruh roh, don't have generic type ability here
+                    ///to_sub = dual_types::make_op<
+
+                    if(variables.original_type == dual_types::name_type(float16()))
+                    {
+                        to_sub = dual_types::make_op<float16>(dual_types::ops::BRACKET_LINEAR, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz).reinterpret_as<value>();
+                    }
+                    else if(variables.original_type == dual_types::name_type(float()))
+                    {
+                        to_sub = dual_types::make_op<float>(dual_types::ops::BRACKET_LINEAR, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz);
                     }
                     else
                         assert(false);

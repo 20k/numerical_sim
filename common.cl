@@ -6,27 +6,23 @@
 
 #include "bitflags.cl"
 
-float buffer_read_nearest(__global const float* const buffer, int3 position, int4 dim)
+float buffer_read_nearest(__global const float* const buffer, int3 position, int3 dim)
 {
     return buffer[position.z * dim.x * dim.y + position.y * dim.x + position.x];
 }
 
-float buffer_read_nearest_clamp(__global const float* const buffer, int3 position, int4 dim)
+float buffer_read_nearest_clamp(__global const float* const buffer, int3 position, int3 dim)
 {
     position = clamp(position, (int3)(0,0,0), dim.xyz - 1);
 
     return buffer[position.z * dim.x * dim.y + position.y * dim.x + position.x];
 }
 
-float buffer_read_linear(__global const float* const buffer, float3 position, int4 dim)
+float buffer_read_linear2(__global const float* const buffer, float px, float py, float pz, int dx, int dy, int dz)
 {
-    /*position = round(position);
-
-    int3 ipos = (int3)(position.x, position.y, position.z);
-
-    return buffer[ipos.z * dim.x * dim.y + ipos.y * dim.x + ipos.x];*/
-
-    float3 floored = floor(position);
+    float3 floored = floor((float3)(px, py, pz));
+    int3 dim = (int3)(dx, dy, dz);
+    float3 position = (float3)(px, py, pz);
 
     int3 ipos = (int3)(floored.x, floored.y, floored.z);
 
@@ -68,17 +64,24 @@ float buffer_read_linear(__global const float* const buffer, float3 position, in
     return c0 - frac.z * (c0 - c1);
 }
 
+float buffer_read_linear(__global const float* const buffer, float3 position, int4 dim)
+{
+    return buffer_read_linear2(buffer, position.x, position.y, position.z, dim.x, dim.y, dim.z);
+}
+
 #ifdef DERIV_PRECISION
-float buffer_read_nearest_clamph(__global const DERIV_PRECISION* const buffer, int3 position, int4 dim)
+float buffer_read_nearest_clamph(__global const DERIV_PRECISION* const buffer, int3 position, int3 dim)
 {
     position = clamp(position, (int3)(0,0,0), dim.xyz - 1);
 
     return buffer[position.z * dim.x * dim.y + position.y * dim.x + position.x];
 }
 
-float buffer_read_linearh(__global const DERIV_PRECISION* const buffer, float3 position, int4 dim)
+float buffer_read_linear2h(__global const DERIV_PRECISION* const buffer, float px, float py, float pz, int dx, int dy, int dz)
 {
-    float3 floored = floor(position);
+    float3 floored = floor((float3)(px, py, pz));
+    int3 dim = (int3)(dx, dy, dz);
+    float3 position = (float3)(px, py, pz);
 
     int3 ipos = (int3)(floored.x, floored.y, floored.z);
 

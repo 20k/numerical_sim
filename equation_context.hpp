@@ -10,6 +10,28 @@
 #include "single_source_fw.hpp"
 //#include "util.hpp"
 
+struct old_style_codegen_override : dual_types::codegen
+{
+    std::optional<std::string> bracket_linear(const value_base<std::monostate>& op) const override
+    {
+        assert(op.args.size() == 7);
+
+        if(op.original_type == dual_types::name_type(float()))
+        {
+            return type_to_string(dual_types::apply<float>("buffer_read_linear2", op.args[0],
+                                                            op.args[1], op.args[2], op.args[3],
+                                                            op.args[4], op.args[5], op.args[6]), *this);
+        }
+        else
+        {
+            return type_to_string(dual_types::apply<float>("buffer_read_linearh2", op.args[0],
+                                                            op.args[1], op.args[2], op.args[3],
+                                                            op.args[4], op.args[5], op.args[6]), *this);
+        }
+    }
+};
+
+
 struct equation_context : differentiator
 {
     std::vector<std::tuple<std::string, single_source::impl::kernel_context, equation_context>> functions;
@@ -345,7 +367,7 @@ struct equation_context : differentiator
 
         for(auto& i : values)
         {
-            std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
+            std::string str = "-D" + i.first + "=" + type_to_string(i.second, old_style_codegen_override()) + " ";
 
             argument_string += str;
         }
@@ -360,7 +382,7 @@ struct equation_context : differentiator
 
         for(auto& [current_name, value, level] : temporaries)
         {
-            temporary_string += current_name + "=" + type_to_string(value) + ",";
+            temporary_string += current_name + "=" + type_to_string(value, old_style_codegen_override()) + ",";
         }
 
         ///remove trailing comma
