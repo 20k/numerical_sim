@@ -208,13 +208,10 @@ void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>> poi
     });
 
     value buf_v = bidx(ctx, buf_in.name, false, false);
-    assert(buf_v.is_memory_access);
 
     value v = buf_v + timestep * eps * kreiss_oliger_dissipate(ctx, buf_v, order);
 
     ctx.exec(assign(buf_out[(v3i){ix, iy, iz}, dim], v));
-
-    ctx.fix_buffers();
 }
 
 void build_kreiss_oliger_unidir(cl::context& clctx)
@@ -996,9 +993,7 @@ value tov_phi_at_coordinate_general(const tensor<value, 3>& world_position)
 
     value v = dual_types::apply(value("world_to_voxel"), fl3, "dim", "scale");
 
-    auto result = dual_types::apply(value("buffer_read_linear"), "tov_phi", v, "dim");
-    result.is_memory_access = true;
-    return result;
+    return dual_types::apply(value("buffer_read_linear"), "tov_phi", v, "dim");
     //return dual_types::apply("tov_phi", as_float3(vx, vy, vz), "dim");
 }
 
@@ -4775,8 +4770,6 @@ void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>> points
     }
 
     ctx.exec(assign(out[local_idx], result * (1/(16 * M_PI))));
-
-    ctx.fix_buffers();
 }
 
 ///it seems like basically i need numerical dissipation of some form

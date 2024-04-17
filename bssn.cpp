@@ -2057,7 +2057,6 @@ void build_kernel(single_source::argument_generator& arg_gen, equation_context& 
         std::cout << "Elapsed " << time.get_elapsed_time_s() * 1000 << "ms" << std::endl;
     }
 
-    ctx.fix_buffers();
     std::cout << "End build\n";
 }
 

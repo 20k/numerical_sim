@@ -95,7 +95,6 @@ value buffer_index_generic(buffer<value_base<T>> buf, const tensor<value_base<U>
         #endif
     }
 
-    v.is_memory_access = true;
     return v;
 }
 

@@ -147,9 +147,7 @@ literal<value> buffer_read_linear_f_unpacked(equation_context& ctx, buffer<T> bu
 
     ctx.exec(return_v(buffer_read_linear(buf, ipos, idim)));
 
-    literal<value> result;
-    result.storage.is_memory_access = true;
-    return result;
+    return literal<value>();
 }
 
 template<typename T>
@@ -164,9 +162,7 @@ literal<value> buffer_read_linear_f4(equation_context& ctx, buffer<T> buf, liter
 
     ctx.exec(return_v(buffer_read_linear(buf, ipos, idim)));
 
-    literal<value> result;
-    result.storage.is_memory_access = true;
-    return result;
+    return literal<value>();
 }
 
 template<typename T>

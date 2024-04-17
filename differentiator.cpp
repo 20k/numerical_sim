@@ -201,8 +201,6 @@ struct differentiation_context
                     }
                     else
                         assert(false);
-
-                    to_sub.is_memory_access = true;
                 }
                 else if(variables.type == dual_types::ops::BRACKET_LINEAR)
                 {
@@ -235,8 +233,6 @@ struct differentiation_context
                     }
                     else
                         assert(false);
-
-                    to_sub.is_memory_access = true;
                 }
                 else
                 {

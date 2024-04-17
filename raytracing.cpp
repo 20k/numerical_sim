@@ -265,8 +265,6 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
     ctx.exec(assign(velocities_out[0][out_idx], ray.adm_vel.x()));
     ctx.exec(assign(velocities_out[1][out_idx], ray.adm_vel.y()));
     ctx.exec(assign(velocities_out[2][out_idx], ray.adm_vel.z()));
-
-    ctx.fix_buffers();
 }
 
 struct render_ray_info : single_source::struct_base<render_ray_info>
@@ -1072,7 +1070,6 @@ void init_slice_rays4(equation_context& ctx, literal<v3f> camera_pos, literal<v4
     ctx.exec(assign(velocities_out[3][out_idx], ray.vel4.w()));
     ctx.exec(assign(ku_uobsu_out[out_idx], ray.ku_uobsu));
 
-    ctx.fix_buffers();
 }
 
 tensor<value, 4> txyz_to_xyzt(const tensor<value, 4>& in)

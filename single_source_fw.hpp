@@ -141,17 +141,16 @@ namespace single_source
     ///all of this parse_tensor stuff needs to be fixed well in advanced of being a compiler
     template<typename U>
     requires(!Structy<U>)
-    inline U parse_tensor(U& tag, value_i op, bool is_memory_access)
+    inline U parse_tensor(U& tag, value_i op)
     {
         auto result = op.reinterpret_as<U>();
         result.is_mutable = tag.is_mutable;
         result.original_type = tag.original_type;
-        result.is_memory_access = is_memory_access;
         return result;
     }
 
     template<typename U, int N>
-    inline tensor<U, N> parse_tensor(tensor<U, N>& tag, value_i op, bool is_memory_access)
+    inline tensor<U, N> parse_tensor(tensor<U, N>& tag, value_i op)
     {
         tensor<U, N> ret;
 
@@ -160,7 +159,6 @@ namespace single_source
             ret[i] = op.index(i).reinterpret_as<U>();
             ret[i].is_mutable = tag[i].is_mutable;
             ret[i].original_type = tag[i].original_type;
-            ret[i].is_memory_access = is_memory_access;
         }
 
         return ret;
@@ -168,7 +166,7 @@ namespace single_source
 
     template<typename T>
     requires(Structy<T>)
-    inline T parse_tensor(T& val, value_i op, bool unused)
+    inline T parse_tensor(T& val, value_i op)
     {
         T result;
 
@@ -210,7 +208,7 @@ namespace single_source
         {
             value_i op(name);
 
-            return parse_tensor(storage, op, false);
+            return parse_tensor(storage, op);
         }
 
         operator T()
@@ -244,7 +242,7 @@ namespace single_source
         {
             value_i op = make_op<int>(dual_types::ops::BRACKET2, value_i(name), in);
 
-            return parse_tensor(storage, op, true);
+            return parse_tensor(storage, op);
         }
 
         template<int N>
@@ -256,14 +254,14 @@ namespace single_source
             {
                 value_i op = make_op<int>(dual_types::ops::BRACKET2, value_i(name), pos.x(), pos.y(), pos.z(), dim.x(), dim.y(), dim.z());
 
-                return parse_tensor(storage, op, true);
+                return parse_tensor(storage, op);
             }
 
             else if constexpr(N == 4)
             {
                 value_i op = make_op<int>(dual_types::ops::BRACKET2, value_i(name), pos.x(), pos.y(), pos.z(), pos.w(), dim.x(), dim.y(), dim.z(), dim.w());
 
-                return parse_tensor(storage, op, true);
+                return parse_tensor(storage, op);
             }
         }
 
