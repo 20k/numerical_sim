@@ -32,7 +32,7 @@ struct old_style_codegen_override : dual_types::codegen
 };
 
 
-struct equation_context : differentiator
+struct equation_context : differentiator, dual_types::implicit::context_base
 {
     std::vector<std::tuple<std::string, single_source::impl::kernel_context, equation_context>> functions;
 
@@ -56,6 +56,11 @@ struct equation_context : differentiator
         single_source::impl::setup_kernel(kctx, ectx, func);
 
         functions.push_back({name, kctx, ectx});
+    }
+
+    virtual void exec(const value_v& st) override
+    {
+        return exec(st.reinterpret_as<value>());
     }
 
     void exec(const value& v)
