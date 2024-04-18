@@ -184,7 +184,7 @@ void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>> poi
 
     if_e(local_idx >= point_count, ctx, [&]()
     {
-        ctx.exec(return_s);
+        ctx.exec(return_v());
     });
 
     value_i ix = declare(ctx, points[local_idx].x().convert<int>(), "ix");
@@ -204,7 +204,7 @@ void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>> poi
     if_e(!is_valid_point, ctx, [&]()
     {
         buf_out[pos, dim].as_mutable(ctx) = buf_in[pos, dim];
-        ctx.exec(return_s);
+        ctx.exec(return_v());
     });
 
     value buf_v = bidx(ctx, buf_in.name, false, false);
@@ -1990,7 +1990,7 @@ void setup_u_offset(single_source::argument_generator& arg_gen, equation_context
 
     if_e(pos.x() >= dim.get().x() || pos.y() >= dim.get().y() || pos.z() >= dim.get().z(), ctx, [&]()
     {
-        ctx.exec(return_s);
+        ctx.exec(return_v());
     });
 
     ctx.exec(assign(u_offset[pos, dim.get()], boundary));
@@ -4673,7 +4673,7 @@ void test_kernel(equation_context& ctx, buffer<value> test_input, buffer<value_m
 
     if_e(ix >= dim.get().x() || iy >= dim.get().y() || iz >= dim.get().z(), ctx, [&]()
     {
-        ctx.exec(return_s);
+        ctx.exec(return_v());
     });
 
     value test = test_input[(v3i){ix, iy, iz}, dim.get()];
@@ -4716,7 +4716,7 @@ void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>> points
 
     if_e(local_idx >= points_count.get(), ctx, [&]()
     {
-        ctx.exec(return_s);
+        ctx.exec(return_v());
     });
 
     tensor<value_i, 4> centre = (dim.get() - 1)/2;

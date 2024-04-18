@@ -213,7 +213,7 @@ cl::buffer extract_u_region(cl::context& ctx, cl::command_queue& cqueue, cl::ker
 
     v3i pos = declare(ctx, (v3i){"get_global_id(0)", "get_global_id(1)", "get_global_id(2)"});
 
-    ctx.exec(if_s(pos.x() >= dim.get().x() || pos.y() >= dim.get().y() || pos.z() >= dim.get().z(), return_s));
+    ctx.exec(if_s(pos.x() >= dim.get().x() || pos.y() >= dim.get().y() || pos.z() >= dim.get().z(), return_v()));
 
     ctx.exec(assign(u_offset[pos], boundary));
 }

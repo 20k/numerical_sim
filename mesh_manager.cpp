@@ -426,7 +426,7 @@ void extract_chunk_kernel(equation_context& ctx, buffer<value_base<T>> in, buffe
 
     if_e(ix >= lower_size.x() || iy >= lower_size.y() || iz >= lower_size.z(), ctx, [&]()
     {
-        ctx.exec(return_s);
+        ctx.exec(return_v());
     });
 
     v3i pos = {ix, iy, iz};

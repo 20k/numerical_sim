@@ -574,7 +574,7 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>> 
 
     if_e(local_idx >= point_count, ctx, [&]()
     {
-        ctx.exec(return_s);
+        ctx.exec(return_v());
     });
 
     value_i ix = declare(ctx, points[local_idx].x().convert<int>(), "ix");
@@ -621,7 +621,7 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>> 
 
     if_e(is_bad, ctx, [&]()
     {
-        ctx.exec(return_s);
+        ctx.exec(return_v());
     });
 
     return {ix, iy, iz, index};
@@ -852,6 +852,7 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, con
                 dicY[i, j] = icY[i, j].dual2(derivatives);
             }
         }
+
         #endif // FORWARD_DIFFERENTIATION
 
         for(int k=0; k < 3; k++)

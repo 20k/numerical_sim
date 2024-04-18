@@ -31,7 +31,7 @@ void get_raytraced_quantities(single_source::argument_generator& arg_gen, equati
 
     if_e(pos.x() >= out_dim.x() || pos.y() >= out_dim.y() || pos.z() >= out_dim.z(), ctx, [&]()
     {
-        ctx.exec(return_s);
+        ctx.exec(return_v());
     });
 
     v3f in_dimf = (v3f)in_dim;
@@ -251,7 +251,7 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
 
     if_e(xy.x() >= screen_size.get().x() || xy.y() >= screen_size.get().y(), ctx, [&]()
     {
-        ctx.exec(return_s);
+        ctx.exec(return_v());
     });
 
     lightray ray = make_lightray(ctx, camera_pos.get(), camera_quat.get(), screen_size.get(), xy, Yij, gA, gB);
@@ -315,7 +315,7 @@ void trace_slice(equation_context& ctx,
 
     if_e(lidx >= ray_count, ctx, [&]()
     {
-        ctx.exec(return_s);
+        ctx.exec(return_v());
     });
 
     if_e(terminated[lidx] > 0, ctx, [&]()
@@ -326,7 +326,7 @@ void trace_slice(equation_context& ctx,
             velocities_out[i][lidx].as_mutable(ctx) = velocities[i][lidx];
         }
 
-        ctx.exec(return_s);
+        ctx.exec(return_v());
     });
 
     value_mut local_frac = declare_mut(ctx, frac.get());
@@ -338,7 +338,7 @@ void trace_slice(equation_context& ctx,
 
     //ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"base pos %f %f %f\", " + type_to_string(pos.x()) + "," + type_to_string(pos.y()) + "," + type_to_string(pos.z()) + ");}");
 
-    //ctx.exec(return_s);
+    //ctx.exec(return_v());
 
     auto w2v = [&](v3f in)
     {
@@ -477,13 +477,13 @@ void trace_slice(equation_context& ctx,
         if_e(escape_cond, ctx, [&]()
         {
             hit_type.as_mutable(ctx) = 0;
-            ctx.exec(break_s);
+            ctx.exec(break_s());
         });
 
         if_e(ingested_cond, ctx, [&]()
         {
             hit_type.as_mutable(ctx) = 1;
-            ctx.exec(break_s);
+            ctx.exec(break_s());
         });
 
         ctx.exec(assign(loop_voxel_pos, as_constant(loop_voxel_pos) + dpos * step.get() / scale));
@@ -797,7 +797,7 @@ void get_raytraced_quantities4(single_source::argument_generator& arg_gen, equat
 
     if_e(pos.x() >= out_dim.x() || pos.y() >= out_dim.y() || pos.z() >= out_dim.z(), ctx, [&]()
     {
-        ctx.exec(return_s);
+        ctx.exec(return_v());
     });
 
     v3f in_dimf = (v3f)in_dim;
@@ -1025,7 +1025,7 @@ void init_slice_rays4(equation_context& ctx, literal<v3f> camera_pos, literal<v4
 
     if_e(xy.x() >= screen_size.get().x() || xy.y() >= screen_size.get().y(), ctx, [&]()
     {
-        ctx.exec(return_s);
+        ctx.exec(return_v());
     });
 
     int indices[4][4] = {{0, 1, 2, 3},
@@ -1137,7 +1137,7 @@ void trace_slice4(equation_context& ctx,
 
     if_e(lidx >= ray_count, ctx, [&]()
     {
-        ctx.exec(return_s);
+        ctx.exec(return_v());
     });
 
     ///t, x, y, z
@@ -1320,13 +1320,13 @@ void trace_slice4(equation_context& ctx,
         if_e(escape_cond, ctx, [&]()
         {
             hit_type.as_mutable(ctx) = 0;
-            ctx.exec(break_s);
+            ctx.exec(break_s());
         });
 
         if_e(ingested_cond, ctx, [&]()
         {
             hit_type.as_mutable(ctx) = 1;
-            ctx.exec(break_s);
+            ctx.exec(break_s());
         });
 
         loop_voxel_pos_txyz.as_mutable(ctx) = next_voxel_pos;
