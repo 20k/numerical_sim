@@ -809,6 +809,9 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, con
     for(int m=0; m < 3; m++)
     {
         tensor<dual, 3, 3, 3> d_dcYij;
+
+        #define FORWARD_DIFFERENTIATION
+        #ifdef FORWARD_DIFFERENTIATION
         metric<dual, 3, 3> d_cYij;
 
         for(int i=0; i < 3; i++)
@@ -822,9 +825,34 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, con
 
         ctx.pin(d_cYij);
 
-        auto icY = d_cYij.invert();
+        auto dicY = d_cYij.invert();
 
-        ctx.pin(icY);
+        ctx.pin(dicY);
+
+        #else
+        std::vector<std::pair<value, value>> derivatives;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                derivatives.push_back({args.cY[i, j], args.dcYij[m, i, j]});
+            }
+        }
+
+        auto icY = args.cY.invert();
+
+        inverse_metric<dual, 3, 3> dicY;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                ///perform analytic differentiation, where the variable is args.cY[i, j]
+                dicY[i, j] = icY[i, j].dual2(derivatives);
+            }
+        }
+        #endif // FORWARD_DIFFERENTIATION
 
         for(int k=0; k < 3; k++)
         {
@@ -840,7 +868,7 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, con
 
         ctx.pin(d_dcYij);
 
-        auto d_christoff2 = christoffel_symbols_2(icY, d_dcYij);
+        auto d_christoff2 = christoffel_symbols_2(dicY, d_dcYij);
 
         ctx.pin(d_christoff2);
 
@@ -854,7 +882,7 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, con
             {
                 for(int k=0; k < 3; k++)
                 {
-                    sum += icY[j, k] * d_christoff2[i, j, k];
+                    sum += dicY[j, k] * d_christoff2[i, j, k];
                 }
             }
 
