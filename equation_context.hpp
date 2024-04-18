@@ -49,13 +49,13 @@ struct equation_context : differentiator, dual_types::implicit::context_base
     template<typename T>
     void add_function(const std::string& name, const T& func)
     {
-        equation_context ectx;
+        auto ectx_manager = dual_types::implicit::detail::make_context<equation_context>();
 
         single_source::impl::kernel_context kctx;
         kctx.is_func = true;
-        single_source::impl::setup_kernel(kctx, ectx, func);
+        single_source::impl::setup_kernel(kctx, *dual_types::implicit::detail::get_context<equation_context>(), func);
 
-        functions.push_back({name, kctx, ectx});
+        functions.push_back({name, kctx, *dual_types::implicit::detail::get_context<equation_context>()});
     }
 
     virtual void exec(const value_v& st) override

@@ -444,9 +444,9 @@ namespace single_source
 
         std::thread([=]() mutable
         {
-            equation_context ectx;
+            auto ectx_manager = dual_types::implicit::detail::make_context<equation_context>();
 
-            cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, func, kernel_name, extra_args, u...);
+            cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, *dual_types::implicit::detail::get_context<equation_context>(), func, kernel_name, extra_args, u...);
 
             pending->kernel = kern;
             pending->latch.count_down();
@@ -463,9 +463,9 @@ namespace single_source
 
         std::thread([=]() mutable
         {
-            equation_context ectx;
+            auto ectx_manager = dual_types::implicit::detail::make_context<equation_context>();
 
-            cl::kernel kern = single_source::make_kernel_for(clctx, ectx, func, kernel_name, "");
+            cl::kernel kern = single_source::make_kernel_for(clctx, *dual_types::implicit::detail::get_context<equation_context>(), func, kernel_name, "");
 
             pending->kernel = kern;
             pending->latch.count_down();
