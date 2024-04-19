@@ -180,11 +180,13 @@ void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>> poi
                           literal<value> eps, single_source::named_literal<value, "scale"> scale, single_source::named_literal<tensor<value_i, 4>, "dim"> idim, literal<value> timestep,
                           buffer<value_us> order_ptr)
 {
+    using namespace dual_types::implicit;
+
     value_i local_idx = declare(ctx, value_i{"get_global_id(0)"}, "local_idx");
 
-    if_e(local_idx >= point_count, ctx, [&]()
+    if_e(local_idx >= point_count, [&]()
     {
-        ctx.exec(return_v());
+        return_e();
     });
 
     value_i ix = declare(ctx, points[local_idx].x().convert<int>(), "ix");
@@ -201,17 +203,17 @@ void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>> poi
 
     assert(buf_out.storage.is_mutable);
 
-    if_e(!is_valid_point, ctx, [&]()
+    if_e(!is_valid_point, [&]()
     {
-        buf_out[pos, dim].as_mutable(ctx) = buf_in[pos, dim];
-        ctx.exec(return_v());
+        mut(buf_out[pos, dim]) = buf_in[pos, dim];
+        return_e();
     });
 
     value buf_v = bidx(ctx, buf_in.name, false, false);
 
     value v = buf_v + timestep * eps * kreiss_oliger_dissipate(ctx, buf_v, order);
 
-    ctx.exec(assign(buf_out[(v3i){ix, iy, iz}, dim], v));
+    mut(buf_out[(v3i){ix, iy, iz}, dim]) = v;
 }
 
 void build_kreiss_oliger_unidir(cl::context& clctx)
@@ -4771,7 +4773,7 @@ void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>> points
         }
     }
 
-    assign_e(out[local_idx], result * (1/(16 * M_PI)));
+    mut(out[local_idx]) = result * (1/(16 * M_PI));
 }
 
 ///it seems like basically i need numerical dissipation of some form
