@@ -570,20 +570,22 @@ using half_type = value;
 
 std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>> points, value_i point_count, tensor<value_i, 4> dim, buffer<value_us> order_ptr)
 {
-    value_i local_idx = declare(ctx, value_i{"get_global_id(0)"}, "lidx");
+    using namespace dual_types::implicit;
 
-    if_e(local_idx >= point_count, ctx, [&]()
+    value_i local_idx = declare(value_i{"get_global_id(0)"}, "lidx");
+
+    if_e(local_idx >= point_count, [&]()
     {
-        ctx.exec(return_v());
+        return_e();
     });
 
-    value_i ix = declare(ctx, points[local_idx].x().convert<int>(), "ix");
-    value_i iy = declare(ctx, points[local_idx].y().convert<int>(), "iy");
-    value_i iz = declare(ctx, points[local_idx].z().convert<int>(), "iz");
+    value_i ix = declare(points[local_idx].x().convert<int>(), "ix");
+    value_i iy = declare(points[local_idx].y().convert<int>(), "iy");
+    value_i iz = declare(points[local_idx].z().convert<int>(), "iz");
 
     ///((k) * dim.x * dim.y + (j) * dim.x + (i))
 
-    value_i index = declare(ctx, iz * dim.x() * dim.y() + iy * dim.x() + ix, "index");
+    value_i index = declare(iz * dim.x() * dim.y() + iy * dim.x() + ix, "index");
 
     //ctx.exec("prefetch(&order_ptr[index], 1)");
 
@@ -611,7 +613,7 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>> 
     dual_types::side_effect(ctx, "prefetch(&gB1[index], 1)");
     dual_types::side_effect(ctx, "prefetch(&gB2[index], 1)");
 
-    value_i order = declare(ctx, (value_i)order_ptr[index], "order");
+    value_i order = declare((value_i)order_ptr[index], "order");
 
     value_i lD_FULL = (int)D_FULL;
     value_i lD_LOW = (int)D_LOW;
@@ -619,9 +621,9 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>> 
     ///note to self the d_full check here is bad
     value_i is_bad = ((order & lD_FULL) == 0) && ((order & lD_LOW) == 0);
 
-    if_e(is_bad, ctx, [&]()
+    if_e(is_bad, [&]()
     {
-        ctx.exec(return_v());
+        return_e();
     });
 
     return {ix, iy, iz, index};
@@ -936,13 +938,13 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, con
 
 void finish_cY(equation_context& ctx, all_args& all, tensor<value, 6>& dtcY)
 {
+    using namespace dual_types::implicit;
+
     value_i index = "index";
 
     for(int i=0; i < 6; i++)
     {
-        ctx.exec(assign(all.out.cY[i][index], backwards_euler_relax(all.in.cY[i][index], all.base.cY[i][index], dtcY[i], all.timestep)));
-
-        //ctx.exec(assign(all.out.cY[i][index], all.base.cY[i][index] + all.timestep * dtcY[i]));
+        mut(all.out.cY[i][index]) = backwards_euler_relax(all.in.cY[i][index], all.base.cY[i][index], dtcY[i], all.timestep);
     }
 }
 
@@ -1408,13 +1410,15 @@ tensor<value, 6> get_dtcAij(standard_arguments& args, equation_context& ctx, con
 
 void finish_cA(equation_context& ctx, all_args& all, tensor<value, 6>& dtcA)
 {
+    using namespace dual_types::implicit;
+
     value_i index = "index";
 
     //ctx.pin(dtcA);
 
     for(int i=0; i < 6; i++)
     {
-        ctx.exec(assign(all.out.cA[i][index], backwards_euler_relax(all.in.cA[i][index], all.base.cA[i][index], dtcA[i], all.timestep)));
+        mut(all.out.cA[i][index]) = backwards_euler_relax(all.in.cA[i][index], all.base.cA[i][index], dtcA[i], all.timestep);
         //ctx.exec(assign(all.out.cA[i][index], all.base.cA[i][index] + all.timestep * dtcA[i]));
     }
 }
@@ -1691,11 +1695,13 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, cons
 
 void finish_cGi(equation_context& ctx, all_args& all, tensor<value, 3>& dtcGi)
 {
+    using namespace dual_types::implicit;
+
     value_i index = "index";
 
     for(int i=0; i < 3; i++)
     {
-        ctx.exec(assign(all.out.cGi[i][index], backwards_euler_relax(all.in.cGi[i][index], all.base.cGi[i][index], dtcGi[i], all.timestep)));
+        mut(all.out.cGi[i][index]) = backwards_euler_relax(all.in.cGi[i][index], all.base.cGi[i][index], dtcGi[i], all.timestep);
 
         //ctx.exec(assign(all.out.cGi[i][index], all.base.cGi[i][index] + all.timestep * dtcGi[i]));
     }
@@ -1768,9 +1774,11 @@ value get_dtK(standard_arguments& args, equation_context& ctx, const matter_inte
 
 void finish_K(equation_context& ctx, all_args& all, value& dtK)
 {
+    using namespace dual_types::implicit;
+
     value_i index = "index";
 
-    ctx.exec(assign(all.out.K[index], backwards_euler_relax(all.in.K[index], all.base.K[index], dtK, all.timestep)));
+    mut(all.out.K[index]) = backwards_euler_relax(all.in.K[index], all.base.K[index], dtK, all.timestep);
 
     //ctx.exec(assign(all.out.K[index], all.base.K[index] + all.timestep * dtK));
 }
@@ -1803,9 +1811,11 @@ value get_dtX(standard_arguments& args, equation_context& ctx, const matter_inte
 
 void finish_X(equation_context& ctx, all_args& all, value& dtX)
 {
+    using namespace dual_types::implicit;
+
     value_i index = "index";
 
-    ctx.exec(assign(all.out.X[index], backwards_euler_relax(all.in.X[index], all.base.X[index], dtX, all.timestep)));
+    mut(all.out.X[index]) = backwards_euler_relax(all.in.X[index], all.base.X[index], dtX, all.timestep);
 
     //ctx.exec(assign(all.out.X[index], all.base.X[index] + all.timestep * dtX));
 }
@@ -1847,13 +1857,15 @@ value get_dtgA(standard_arguments& args, equation_context& ctx, const matter_int
 
 void finish_gA(equation_context& ctx, all_args& all, value& dtgA)
 {
+    using namespace dual_types::implicit;
+
     value_i index = "index";
 
     value next = backwards_euler_relax(all.in.gA[index], all.base.gA[index], dtgA, all.timestep);
 
     //next = max(next, value{0.f});
 
-    ctx.exec(assign(all.out.gA[index], next));
+    mut(all.out.gA[index]) = next;
 }
 
 exec_builder<value, get_dtgA, finish_gA> gAexec;
@@ -2050,11 +2062,13 @@ tensor<value, 3> get_dtgB(standard_arguments& args, equation_context& ctx, const
 
 void finish_gB(equation_context& ctx, all_args& all, tensor<value, 3>& dtgB)
 {
+    using namespace dual_types::implicit;
+
     value_i index = "index";
 
     for(int i=0; i < 3; i++)
     {
-        ctx.exec(assign(all.out.gB[i][index], backwards_euler_relax(all.in.gB[i][index], all.base.gB[i][index], dtgB[i], all.timestep)));
+        mut(all.out.gB[i][index]) = backwards_euler_relax(all.in.gB[i][index], all.base.gB[i][index], dtgB[i], all.timestep);
 
         //ctx.exec(assign(all.out.gB[i][index], all.base.gB[i][index] + all.timestep * dtgB[i]));
     }

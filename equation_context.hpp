@@ -63,6 +63,11 @@ struct equation_context : differentiator, dual_types::implicit::context_base
         return exec(st.reinterpret_as<value>());
     }
 
+    virtual int get_id() override
+    {
+        return sequenced.size();
+    }
+
     void exec(const value& v)
     {
         if(v.type == dual_types::ops::BLOCK_START)
