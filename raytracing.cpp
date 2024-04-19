@@ -8,6 +8,8 @@ using single_source::named_literal;
 
 void get_raytraced_quantities(single_source::argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args)
 {
+    using namespace dual_types::implicit;
+
     ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value>);
 
     arg_gen.add(bssn_args.buffers);
@@ -23,15 +25,15 @@ void get_raytraced_quantities(single_source::argument_generator& arg_gen, equati
     auto gB_out = arg_gen.add<std::array<buffer<value_mut>, 3>>();
     //auto slice = arg_gen.add<literal<value_i>>();
 
-    value_i ix = declare(ctx, value_i{"get_global_id(0)"}, "ix");
-    value_i iy = declare(ctx, value_i{"get_global_id(1)"}, "iy");
-    value_i iz = declare(ctx, value_i{"get_global_id(2)"}, "iz");
+    value_i ix = declare(value_i{"get_global_id(0)"}, "ix");
+    value_i iy = declare(value_i{"get_global_id(1)"}, "iy");
+    value_i iz = declare(value_i{"get_global_id(2)"}, "iz");
 
     v3i pos = {ix, iy, iz};
 
-    if_e(pos.x() >= out_dim.x() || pos.y() >= out_dim.y() || pos.z() >= out_dim.z(), ctx, [&]()
+    if_e(pos.x() >= out_dim.x() || pos.y() >= out_dim.y() || pos.z() >= out_dim.z(), [&]()
     {
-        ctx.exec(return_v());
+        return_e();
     });
 
     v3f in_dimf = (v3f)in_dim;
@@ -43,9 +45,9 @@ void get_raytraced_quantities(single_source::argument_generator& arg_gen, equati
 
     ctx.uses_linear = true;
 
-    declare(ctx, upper_pos.x(), "fx");
-    declare(ctx, upper_pos.y(), "fy");
-    declare(ctx, upper_pos.z(), "fz");
+    declare(upper_pos.x(), "fx");
+    declare(upper_pos.y(), "fy");
+    declare(upper_pos.z(), "fz");
 
     standard_arguments args(ctx);
 
@@ -57,16 +59,16 @@ void get_raytraced_quantities(single_source::argument_generator& arg_gen, equati
     {
         vec2i vidx = args.linear_indices[i];
 
-        ctx.exec(assign(Yij_out[i][idx], args.Yij[vidx.x(), vidx.y()]));
-        ctx.exec(assign(Kij_out[i][idx], args.Kij[vidx.x(), vidx.y()]));
+        mut(Yij_out[i][idx]) = args.Yij[vidx.x(), vidx.y()];
+        mut(Kij_out[i][idx]) = args.Kij[vidx.x(), vidx.y()];
     }
 
     for(int i=0; i < 3; i++)
     {
-        ctx.exec(assign(gB_out[i][idx], args.gB[i]));
+        mut(gB_out[i][idx]) = args.gB[i];
     }
 
-    ctx.exec(assign(gA_out[idx], args.gA));
+    mut(gA_out[idx]) = args.gA;
 }
 
 lightray make_lightray(equation_context& ctx,
@@ -203,6 +205,8 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
                      std::array<buffer<value_mut>, 3> positions_out, std::array<buffer<value_mut>, 3> velocities_out
                      )
 {
+    using namespace dual_types::implicit;
+
     ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value>);
 
     ctx.order = 1;
@@ -249,9 +253,9 @@ void init_slice_rays(equation_context& ctx, literal<v3f> camera_pos, literal<v4f
 
     v2i xy = declare(ctx, in_xy);
 
-    if_e(xy.x() >= screen_size.get().x() || xy.y() >= screen_size.get().y(), ctx, [&]()
+    if_e(xy.x() >= screen_size.get().x() || xy.y() >= screen_size.get().y(), [&]()
     {
-        ctx.exec(return_v());
+        return_e();
     });
 
     lightray ray = make_lightray(ctx, camera_pos.get(), camera_quat.get(), screen_size.get(), xy, Yij, gA, gB);
@@ -297,6 +301,8 @@ void trace_slice(equation_context& ctx,
                  std::array<buffer<value_mut>, 3> positions_out, std::array<buffer<value_mut>, 3> velocities_out, literal<value_i> ray_count, literal<value> frac, literal<value> slice_width, literal<value> step,
                  buffer<render_ray_info>& render_out)
 {
+    using namespace dual_types::implicit;
+
     ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value>);
 
     ctx.ignored_variables.push_back(frac.name);
@@ -308,25 +314,25 @@ void trace_slice(equation_context& ctx,
 
     //value_i lidx = "lidx";
 
-    value_i x = declare(ctx, value_i{"get_global_id(0)"});
+    value_i x = declare(value_i{"get_global_id(0)"});
     value_i y = declare(ctx, value_i{"get_global_id(1)"});
 
     value_i lidx = y * screen_size.get().x() + x;
 
-    if_e(lidx >= ray_count, ctx, [&]()
+    if_e(lidx >= ray_count, [&]()
     {
-        ctx.exec(return_v());
+        return_e();
     });
 
-    if_e(terminated[lidx] > 0, ctx, [&]()
+    if_e(terminated[lidx] > 0, [&]()
     {
         for(int i=0; i < 3; i++)
         {
-            positions_out[i][lidx].as_mutable(ctx) = positions[i][lidx];
-            velocities_out[i][lidx].as_mutable(ctx) = velocities[i][lidx];
+            mut(positions_out[i][lidx]) = positions[i][lidx];
+            mut(velocities_out[i][lidx]) = velocities[i][lidx];
         }
 
-        ctx.exec(return_v());
+        return_e();
     });
 
     value_mut local_frac = declare_mut(ctx, frac.get());
@@ -376,8 +382,8 @@ void trace_slice(equation_context& ctx,
 
     steps = max(steps, value{1.f});
 
-    v3f_mut loop_voxel_pos = declare_mut(ctx, voxel_pos);
-    v3f_mut loop_vel = declare_mut(ctx, vel);
+    v3f_mut loop_voxel_pos = declare_mut(voxel_pos);
+    v3f_mut loop_vel = declare_mut(vel);
 
     ctx.position_override = {type_to_string(loop_voxel_pos[0]), type_to_string(loop_voxel_pos[1]), type_to_string(loop_voxel_pos[2])};
 
@@ -457,13 +463,11 @@ void trace_slice(equation_context& ctx,
 
     //steps = 1;
 
-    ctx.exec(for_b("idx", value_i(0), value_i("idx") < (value_i)steps, value_i("idx++")));
-
+    for_e("idx", value_i(0), value_i("idx") < (value_i)steps, value_i("idx++"),
+    [&](const value_i& idx)
     {
-        dual_types::block blk(ctx);
-
-        v3f dpos = declare(ctx, dx);
-        v3f dvel = declare(ctx, V_upper_diff);
+        v3f dpos = declare(dx);
+        v3f dvel = declare(V_upper_diff);
 
         value pos_sq = v2w(as_constant(loop_voxel_pos)).squared_length();
 
@@ -474,23 +478,23 @@ void trace_slice(equation_context& ctx,
         //ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"dx %f %f %f\", " + type_to_string(dpos.x()) + "," + type_to_string(dpos.y()) + "," + type_to_string(dpos.z()) + ");}");
         //ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"loop_vel %f %f %f\", " + type_to_string(loop_vel.x()) + "," + type_to_string(loop_vel.y()) + "," + type_to_string(loop_vel.z()) + ");}");
 
-        if_e(escape_cond, ctx, [&]()
+        if_e(escape_cond, [&]()
         {
-            hit_type.as_mutable(ctx) = 0;
-            ctx.exec(break_s());
+            mut(hit_type) = 0;
+            break_e();
         });
 
-        if_e(ingested_cond, ctx, [&]()
+        if_e(ingested_cond, [&]()
         {
-            hit_type.as_mutable(ctx) = 1;
-            ctx.exec(break_s());
+            mut(hit_type) = 1;
+            break_e();
         });
 
-        ctx.exec(assign(loop_voxel_pos, as_constant(loop_voxel_pos) + dpos * step.get() / scale));
-        ctx.exec(assign(loop_vel, as_constant(loop_vel) + dvel * step.get()));
+        mut(loop_voxel_pos) = as_constant(loop_voxel_pos) + dpos * step.get() / scale;
+        mut(loop_vel) = as_constant(loop_vel) + dvel * step.get();
 
-        ctx.exec(assign(local_frac, clamp(local_frac - frac_increment, value{0.f}, value{1.f})));
-    }
+        mut(local_frac) = clamp(local_frac - frac_increment, value{0.f}, value{1.f});
+    });
 
     //ctx.exec("}");
 
@@ -502,39 +506,39 @@ void trace_slice(equation_context& ctx,
 
     render_ray_info out = render_out[lidx];
 
-    ctx.exec(assign(out.x.get(), x));
-    ctx.exec(assign(out.y.get(), y));
-    ctx.exec(assign(out.R.get(), value{0}));
-    ctx.exec(assign(out.G.get(), value{1}));
-    ctx.exec(assign(out.B.get(), value{0}));
-    ctx.exec(assign(out.hit_type.get(), value_i{1}));
+    mut(out.x.get()) = x;
+    mut(out.y.get()) = y;
+    mut(out.R.get()) = value{0};
+    mut(out.G.get()) = value{1};
+    mut(out.B.get()) = value{0};
+    mut(out.hit_type.get()) = value_i{1};
 
-    if_e(hit_type != value_i{-1}, ctx, [&]()
+    if_e(hit_type != value_i{-1}, [&]()
     {
-        terminated[lidx].as_mutable(ctx) = value_i{1};
-        out.x.get().as_mutable(ctx) = x;
-        out.y.get().as_mutable(ctx) = y;
-        out.X.get().as_mutable(ctx) = fin_world_pos.x();
-        out.Y.get().as_mutable(ctx) = fin_world_pos.y();
-        out.Z.get().as_mutable(ctx) = fin_world_pos.z();
-        out.dX.get().as_mutable(ctx) = dx.x();
-        out.dY.get().as_mutable(ctx) = dx.y();
-        out.dZ.get().as_mutable(ctx) = dx.z();
-        out.hit_type.get().as_mutable(ctx) = hit_type;
-        out.R.get().as_mutable(ctx) = value{0};
-        out.G.get().as_mutable(ctx) = value{0};
-        out.B.get().as_mutable(ctx) = value{0};
-        out.background_power.get().as_mutable(ctx) = value{1};
-        out.zp1.get().as_mutable(ctx) = value{1};
+        mut(terminated[lidx]) = value_i{1};
+        mut(out.x.get()) = x;
+        mut(out.y.get()) = y;
+        mut(out.X.get()) = fin_world_pos.x();
+        mut(out.Y.get()) = fin_world_pos.y();
+        mut(out.Z.get()) = fin_world_pos.z();
+        mut(out.dX.get()) = dx.x();
+        mut(out.dY.get()) = dx.y();
+        mut(out.dZ.get()) = dx.z();
+        mut(out.hit_type.get()) = hit_type;
+        mut(out.R.get()) = value{0};
+        mut(out.G.get()) = value{0};
+        mut(out.B.get()) = value{0};
+        mut(out.background_power.get()) = value{1};
+        mut(out.zp1.get()) = value{1};
     });
 
-    ctx.exec(assign(positions_out[0][lidx], fin_world_pos.x()));
-    ctx.exec(assign(positions_out[1][lidx], fin_world_pos.y()));
-    ctx.exec(assign(positions_out[2][lidx], fin_world_pos.z()));
+    mut(positions_out[0][lidx]) = fin_world_pos.x();
+    mut(positions_out[1][lidx]) = fin_world_pos.y();
+    mut(positions_out[2][lidx]) = fin_world_pos.z();
 
-    ctx.exec(assign(velocities_out[0][lidx], loop_vel.x()));
-    ctx.exec(assign(velocities_out[1][lidx], loop_vel.y()));
-    ctx.exec(assign(velocities_out[2][lidx], loop_vel.z()));
+    mut(velocities_out[0][lidx]) = loop_vel.x();
+    mut(velocities_out[1][lidx]) = loop_vel.y();
+    mut(velocities_out[2][lidx]) = loop_vel.z();
 
     //ctx.exec("if(" + type_to_string(x==128 && y == 128) + "){printf(\"p3 %i %f\", " + type_to_string(hit_type) + ", " + type_to_string(u_sq) + ");}");
 }
@@ -776,6 +780,8 @@ using ray4_value = value_h;
 
 void get_raytraced_quantities4(single_source::argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args)
 {
+    using namespace dual_types::implicit;
+
     ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value>);
     ctx.add_function("buffer_read_linearh2", buffer_read_linear_f_unpacked<value_h>);
 
@@ -789,15 +795,15 @@ void get_raytraced_quantities4(single_source::argument_generator& arg_gen, equat
 
     auto Guv_out = arg_gen.add<std::array<buffer<ray4_value_mut>, 10>>();
 
-    value_i ix = declare(ctx, value_i{"get_global_id(0)"}, "ix");
-    value_i iy = declare(ctx, value_i{"get_global_id(1)"}, "iy");
-    value_i iz = declare(ctx, value_i{"get_global_id(2)"}, "iz");
+    value_i ix = declare(value_i{"get_global_id(0)"}, "ix");
+    value_i iy = declare(value_i{"get_global_id(1)"}, "iy");
+    value_i iz = declare(value_i{"get_global_id(2)"}, "iz");
 
     v3i pos = {ix, iy, iz};
 
-    if_e(pos.x() >= out_dim.x() || pos.y() >= out_dim.y() || pos.z() >= out_dim.z(), ctx, [&]()
+    if_e(pos.x() >= out_dim.x() || pos.y() >= out_dim.y() || pos.z() >= out_dim.z(), [&]()
     {
-        ctx.exec(return_v());
+        return_e();
     });
 
     v3f in_dimf = (v3f)in_dim;
@@ -809,9 +815,9 @@ void get_raytraced_quantities4(single_source::argument_generator& arg_gen, equat
 
     ctx.uses_linear = true;
 
-    declare(ctx, upper_pos.x(), "fx");
-    declare(ctx, upper_pos.y(), "fy");
-    declare(ctx, upper_pos.z(), "fz");
+    declare(upper_pos.x(), "fx");
+    declare(upper_pos.y(), "fy");
+    declare(upper_pos.z(), "fz");
 
     standard_arguments args(ctx);
 
@@ -835,7 +841,7 @@ void get_raytraced_quantities4(single_source::argument_generator& arg_gen, equat
     {
         vec2i lidx = linear_indices[i];
 
-        ctx.exec(assign(Guv_out[i][idx], (ray4_value)Guv[lidx.x(), lidx.y()]));
+        mut(Guv_out[i][idx]) = (ray4_value)Guv[lidx.x(), lidx.y()];
     }
 }
 
@@ -1000,6 +1006,8 @@ void init_slice_rays4(equation_context& ctx, literal<v3f> camera_pos, literal<v4
                      buffer<value_mut> ku_uobsu_out
                      )
 {
+    using namespace dual_types::implicit;
+
     ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value>);
     ctx.add_function("buffer_read_linear4", buffer_read_linear_f4<value>);
 
@@ -1021,11 +1029,11 @@ void init_slice_rays4(equation_context& ctx, literal<v3f> camera_pos, literal<v4
 
     v2i in_xy = {"get_global_id(0)", "get_global_id(1)"};
 
-    v2i xy = declare(ctx, in_xy);
+    v2i xy = declare(in_xy);
 
-    if_e(xy.x() >= screen_size.get().x() || xy.y() >= screen_size.get().y(), ctx, [&]()
+    if_e(xy.x() >= screen_size.get().x() || xy.y() >= screen_size.get().y(), [&]()
     {
-        ctx.exec(return_v());
+        return_e();
     });
 
     int indices[4][4] = {{0, 1, 2, 3},
@@ -1059,17 +1067,16 @@ void init_slice_rays4(equation_context& ctx, literal<v3f> camera_pos, literal<v4
 
     value_i out_idx = xy.y() * screen_size.get().x() + xy.x();
 
-    ctx.exec(assign(positions_out[0][out_idx], w_coord.get()));
-    ctx.exec(assign(positions_out[1][out_idx], ray.pos4.y()));
-    ctx.exec(assign(positions_out[2][out_idx], ray.pos4.z()));
-    ctx.exec(assign(positions_out[3][out_idx], ray.pos4.w()));
+    mut(positions_out[0][out_idx]) = w_coord.get();
+    mut(positions_out[1][out_idx]) = ray.pos4.y();
+    mut(positions_out[2][out_idx]) = ray.pos4.z();
+    mut(positions_out[3][out_idx]) = ray.pos4.w();
 
-    ctx.exec(assign(velocities_out[0][out_idx], ray.vel4.x()));
-    ctx.exec(assign(velocities_out[1][out_idx], ray.vel4.y()));
-    ctx.exec(assign(velocities_out[2][out_idx], ray.vel4.z()));
-    ctx.exec(assign(velocities_out[3][out_idx], ray.vel4.w()));
-    ctx.exec(assign(ku_uobsu_out[out_idx], ray.ku_uobsu));
-
+    mut(velocities_out[0][out_idx]) = ray.vel4.x();
+    mut(velocities_out[1][out_idx]) = ray.vel4.y();
+    mut(velocities_out[2][out_idx]) = ray.vel4.z();
+    mut(velocities_out[3][out_idx]) = ray.vel4.w();
+    mut(ku_uobsu_out[out_idx]) = ray.ku_uobsu;
 }
 
 tensor<value, 4> txyz_to_xyzt(const tensor<value, 4>& in)
@@ -1124,20 +1131,22 @@ void trace_slice4(equation_context& ctx,
                  std::array<buffer<value>, 4> positions, std::array<buffer<value>, 4> velocities, buffer<value> ku_uobsu,
                  buffer<render_ray_info>& render_out)
 {
+    using namespace dual_types::implicit;
+
     ctx.add_function("buffer_read_linear2", buffer_read_linear_f_unpacked<value>);
     ctx.add_function("buffer_read_linear4", buffer_read_linear_f4<value>);
 
     ctx.order = 1;
     ctx.uses_linear = true;
 
-    value_i x = declare(ctx, value_i{"get_global_id(0)"});
-    value_i y = declare(ctx, value_i{"get_global_id(1)"});
+    value_i x = declare(value_i{"get_global_id(0)"});
+    value_i y = declare(value_i{"get_global_id(1)"});
 
     value_i lidx = y * screen_size.get().x() + x;
 
-    if_e(lidx >= ray_count, ctx, [&]()
+    if_e(lidx >= ray_count, [&]()
     {
-        ctx.exec(return_v());
+        return_e();
     });
 
     ///t, x, y, z
@@ -1153,8 +1162,8 @@ void trace_slice4(equation_context& ctx,
     ///t, x, y, z
     v4f voxel_pos_txyz = w2v4(pos);
 
-    v4f_mut loop_voxel_pos_txyz = declare_mut(ctx, voxel_pos_txyz);
-    v4f_mut loop_vel = declare_mut(ctx, vel);
+    v4f_mut loop_voxel_pos_txyz = declare_mut(voxel_pos_txyz);
+    v4f_mut loop_vel = declare_mut(vel);
 
     value universe_size = ((dim.get().x()-1)/2).convert<float>() * scale;
 
@@ -1266,12 +1275,11 @@ void trace_slice4(equation_context& ctx,
 
     //ctx.exec(assign(current_ds, next_ds_start));
 
-    ctx.exec(for_b("idx", value_i(0), value_i("idx") < (value_i)steps, value_i("idx++")));
+    //ctx.exec(for_b("idx", value_i(0), value_i("idx") < (value_i)steps, value_i("idx++")));
 
+    for_e("idx", value_i(0), value_i("idx") < (value_i)steps, value_i("idx++"),
+    [&](const value_i& idx)
     {
-        dual_types::block blk(ctx);
-        assert(ctx.current_block_level == 1);
-
         assert(loop_voxel_pos_txyz[0].is_mutable);
 
         ///so, we could totally cache this is in equivalent, and there's 0 reason to deprive us of that
@@ -1281,9 +1289,9 @@ void trace_slice4(equation_context& ctx,
         ///that means that it is safe to cache
         ///MUST NOT INSPECT THE TREE WHICH MAKES IT UP, which is a very different constraint, and isn't something that is done
         ///YET
-        v4f loop_voxel_pos_pinned = declare(ctx, as_constant(loop_voxel_pos_txyz));
-        v4f loop_velocity_pinned = declare(ctx, as_constant(loop_vel));
-        value current_ds_pinned = declare(ctx, as_constant(current_ds));
+        v4f loop_voxel_pos_pinned = declare(as_constant(loop_voxel_pos_txyz));
+        v4f loop_velocity_pinned = declare(as_constant(loop_vel));
+        value current_ds_pinned = declare(as_constant(current_ds));
 
         bool can_cache = true;
 
@@ -1317,30 +1325,30 @@ void trace_slice4(equation_context& ctx,
         value ingested_cond = fabs(next_velocity.x()) > 100 || fabs(next_acceleration.x()) >= 100;
         //value ingested_cond = fabs(loop_vel.x()) > 1000 && fabs(dvel.x()) > 100;
 
-        if_e(escape_cond, ctx, [&]()
+        if_e(escape_cond, [&]()
         {
-            hit_type.as_mutable(ctx) = 0;
-            ctx.exec(break_s());
+            mut(hit_type) = 0;
+            break_e();
         });
 
-        if_e(ingested_cond, ctx, [&]()
+        if_e(ingested_cond, [&]()
         {
-            hit_type.as_mutable(ctx) = 1;
-            ctx.exec(break_s());
+            mut(hit_type) = 1;
+            break_e();
         });
 
-        loop_voxel_pos_txyz.as_mutable(ctx) = next_voxel_pos;
-        loop_vel.as_mutable(ctx) = next_velocity;
+        mut(loop_voxel_pos_txyz) = next_voxel_pos;
+        mut(loop_vel) = next_velocity;
 
         value ds_out = 0;
         calculate_ds_error(current_ds, next_acceleration, max_accel, &ds_out);
 
-        current_ds.as_mutable(ctx) = ds_out;
-    }
+        mut(current_ds) = ds_out;
+    });
 
     ///guarantee that loop_vel and loop_voxel_pos_txyz won't change now
-    v4f loop_vel_cst = declare(ctx, as_constant(loop_vel));
-    v4f loop_voxel_pos_txyz_cst = declare(ctx, as_constant(loop_voxel_pos_txyz));
+    v4f loop_vel_cst = declare(as_constant(loop_vel));
+    v4f loop_voxel_pos_txyz_cst = declare(as_constant(loop_voxel_pos_txyz));
 
     value zp1 = 1;
 
@@ -1372,29 +1380,29 @@ void trace_slice4(equation_context& ctx,
 
     render_ray_info out = render_out[lidx];
 
-    ctx.exec(assign(out.x.get(), x));
-    ctx.exec(assign(out.y.get(), y));
-    ctx.exec(assign(out.R.get(), value{1}));
-    ctx.exec(assign(out.G.get(), value{0}));
-    ctx.exec(assign(out.B.get(), value{0}));
-    ctx.exec(assign(out.hit_type.get(), value_i{1}));
+    mut(out.x.get()) = x;
+    mut(out.y.get()) = y;
+    mut(out.R.get()) = value{1};
+    mut(out.G.get()) = value{0};
+    mut(out.B.get()) = value{0};
+    mut(out.hit_type.get()) = value_i{1};
 
     if_e(hit_type != value_i{-1}, ctx, [&]()
     {
-        out.x.get().as_mutable(ctx) = x;
-        out.y.get().as_mutable(ctx) = y;
-        out.X.get().as_mutable(ctx) = fin_world_pos.y();
-        out.Y.get().as_mutable(ctx) = fin_world_pos.z();
-        out.Z.get().as_mutable(ctx) = fin_world_pos.w();
-        out.dX.get().as_mutable(ctx) = loop_vel_cst.y();
-        out.dY.get().as_mutable(ctx) = loop_vel_cst.z();
-        out.dZ.get().as_mutable(ctx) = loop_vel_cst.w();
-        out.hit_type.get().as_mutable(ctx) = hit_type;
-        out.R.get().as_mutable(ctx) = value{0};
-        out.G.get().as_mutable(ctx) = value{0};
-        out.B.get().as_mutable(ctx) = value{0};
-        out.background_power.get().as_mutable(ctx) = value{1};
-        out.zp1.get().as_mutable(ctx) = zp1;
+        mut(out.x.get()) = x;
+        mut(out.y.get()) = y;
+        mut(out.X.get()) = fin_world_pos.y();
+        mut(out.Y.get()) = fin_world_pos.z();
+        mut(out.Z.get()) = fin_world_pos.w();
+        mut(out.dX.get()) = loop_vel_cst.y();
+        mut(out.dY.get()) = loop_vel_cst.z();
+        mut(out.dZ.get()) = loop_vel_cst.w();
+        mut(out.hit_type.get()) = hit_type;
+        mut(out.R.get()) = value{0};
+        mut(out.G.get()) = value{0};
+        mut(out.B.get()) = value{0};
+        mut(out.background_power.get()) = value{1};
+        mut(out.zp1.get()) = zp1;
     });
 }
 
