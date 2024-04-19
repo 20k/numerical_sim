@@ -4712,11 +4712,13 @@ void test_kernel_generation(cl::context& clctx, cl::command_queue& cqueue)
 
 void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>> points, literal<value_i> points_count, std::array<single_source::named_buffer<value, "cY">, 6> cY, single_source::named_buffer<value, "X"> X, single_source::named_literal<tensor<value_i, 4>, "dim"> dim, single_source::named_literal<value, "scale"> scale, buffer<value_mut> out)
 {
+    using namespace dual_types::implicit;
+
     value_i local_idx = "get_global_id(0)";
 
-    if_e(local_idx >= points_count.get(), ctx, [&]()
+    if_e(local_idx >= points_count.get(), [&]()
     {
-        ctx.exec(return_v());
+        return_e();
     });
 
     tensor<value_i, 4> centre = (dim.get() - 1)/2;
@@ -4769,7 +4771,7 @@ void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>> points
         }
     }
 
-    ctx.exec(assign(out[local_idx], result * (1/(16 * M_PI))));
+    assign_e(out[local_idx], result * (1/(16 * M_PI)));
 }
 
 ///it seems like basically i need numerical dissipation of some form
