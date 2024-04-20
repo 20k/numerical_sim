@@ -41,7 +41,7 @@ struct differentiation_context
                     {
                         assert(v.args.size() == 7);
 
-                        value buf = v.args[0];
+                        auto buf = v.args[0];
 
                         value_base<T> old_x = v.args[1].assert_as<T>();
                         value_base<T> old_y = v.args[2].assert_as<T>();
