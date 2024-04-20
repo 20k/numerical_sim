@@ -123,7 +123,7 @@ struct equation_context : differentiator, dual_types::implicit::context_base
 
         bool can_cache = true;
 
-        v.recurse_arguments([&](const value& in)
+        v.recurse_arguments([&](auto&& in)
         {
             if(in.is_mutable)
                 can_cache = false;
@@ -138,7 +138,7 @@ struct equation_context : differentiator, dual_types::implicit::context_base
                 if(!can_cache_status[i])
                     continue;
 
-                if(dual_types::equivalent<float>(v, name) || dual_types::equivalent<float>(v, val))
+                if(dual_types::equivalent(v, value(name)) || dual_types::equivalent(v, val))
                 {
                     value facade;
                     facade.make_value(name);

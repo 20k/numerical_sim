@@ -43,17 +43,17 @@ struct differentiation_context
 
                         value buf = v.args[0];
 
-                        T old_x = v.args[1].reinterpret_as<T>();
-                        T old_y = v.args[2].reinterpret_as<T>();
-                        T old_z = v.args[3].reinterpret_as<T>();
+                        value_base<T> old_x = v.args[1].assert_as<T>();
+                        value_base<T> old_y = v.args[2].assert_as<T>();
+                        value_base<T> old_z = v.args[3].assert_as<T>();
 
-                        value_i old_dx = v.args[4].reinterpret_as<value_i>();
-                        value_i old_dy = v.args[5].reinterpret_as<value_i>();
-                        value_i old_dz = v.args[6].reinterpret_as<value_i>();
+                        value_i old_dx = v.args[4].assert_as<int>();
+                        value_i old_dy = v.args[5].assert_as<int>();
+                        value_i old_dz = v.args[6].assert_as<int>();
 
-                        T next_x = old_x + offx[i];
-                        T next_y = old_y + offy[i];
-                        T next_z = old_z + offz[i];
+                        value_base<T> next_x = old_x + offx[i];
+                        value_base<T> next_y = old_y + offy[i];
+                        value_base<T> next_z = old_z + offz[i];
 
                         if(v.original_type == dual_types::name_type(float16()))
                         {
@@ -72,9 +72,9 @@ struct differentiation_context
                     value out;
 
                     if(v.type == dual_types::ops::BRACKET2)
-                        out = get_substitution(v, value_i());
+                        out = get_substitution(v, int());
                     else if(v.type == dual_types::ops::BRACKET_LINEAR)
-                        out = get_substitution(v, value());
+                        out = get_substitution(v, float());
                     else
                         assert(false);
 

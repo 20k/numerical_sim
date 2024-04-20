@@ -146,6 +146,7 @@ namespace single_source
         auto result = op.reinterpret_as<U>();
         result.is_mutable = tag.is_mutable;
         result.original_type = tag.original_type;
+        //result.original_type_storage = tag.original_type_storage;
         return result;
     }
 
@@ -159,6 +160,7 @@ namespace single_source
             ret[i] = op.index(i).reinterpret_as<U>();
             ret[i].is_mutable = tag[i].is_mutable;
             ret[i].original_type = tag[i].original_type;
+            //ret[i].original_type_storage = tag[i].original_type_storage;
         }
 
         return ret;
