@@ -28,6 +28,10 @@ namespace single_source
     namespace impl
     {
         template<typename T>
+        inline
+        void add(argument_pack_base<T>& pack, type_storage& result);
+
+        template<typename T>
         requires(Structy<T>)
         inline
         void add(buffer<T>& buf, type_storage& result);
@@ -79,6 +83,18 @@ namespace single_source
         bool is_mutable(const tensor<T, N...>&)
         {
             return is_mutable(T());
+        }
+
+        template<typename T>
+        inline
+        void add(argument_pack_base<T>& pack, type_storage& result)
+        {
+            auto add_pack = [&](auto& v)
+            {
+                ::single_source::impl::add(v, result);
+            };
+
+            pack.iterate_ext(add_pack);
         }
 
         template<typename T>

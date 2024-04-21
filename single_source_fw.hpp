@@ -120,6 +120,24 @@ namespace single_source
     }
 
     template<typename T>
+    struct argument_pack_base
+    {
+        using is_argument_pack = std::true_type;
+
+        template<typename U>
+        void iterate_ext(U&& u)
+        {
+            auto tup = static_cast<T*>(this)->get_args();
+
+            std::apply([&](auto& ...x){(..., u(x));}, tup);
+        }
+    };
+
+
+    template<typename T>
+    concept is_argument_pack = T::is_argument_pack::value;
+
+    template<typename T>
     struct struct_base
     {
         using is_struct = std::true_type;
