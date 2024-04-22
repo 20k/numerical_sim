@@ -481,7 +481,7 @@ namespace single_source
         {
             auto ectx_manager = dual_types::implicit::detail::make_context<equation_context>();
 
-            cl::kernel kern = single_source::make_kernel_for(clctx, *dual_types::implicit::detail::get_context<equation_context>(), func, kernel_name, "");
+            cl::kernel kern = single_source::make_kernel_for(clctx, *dual_types::implicit::detail::get_context<equation_context>(), func, kernel_name, extra_args);
 
             pending->kernel = kern;
             pending->latch.count_down();
