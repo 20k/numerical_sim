@@ -5345,11 +5345,7 @@ int main()
 
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
 
-    printf("Heres\n");
-
     base_mesh.init(clctx.ctx, mqueue, thin_pool, u_arg, matter_vars.bcAij);
-
-    printf("Hi there\n");
 
     integrator adm_mass_integrator(clctx.ctx, size, scale, wave_manager.read_queue);
 
