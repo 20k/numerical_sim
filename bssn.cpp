@@ -515,7 +515,12 @@ value bssn::calculate_hamiltonian_constraint(const matter_interop& interop, equa
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
+    ctx.pin(icY);
+
     tensor<value, 3, 3, 3> christoff1 = christoffel_symbols_1(ctx, args.unpinned_cY);
+
+    ctx.pin(christoff1);
+    ctx.pin(args.christoff2);
 
     tensor<value, 3, 3> xgARij = calculate_xgARij(ctx, args, icY, christoff1, args.christoff2);
 
