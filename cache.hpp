@@ -65,7 +65,6 @@ cl::program build_program_with_cache(const cl::context& clctx, const std::string
     try
     {
         t_program.build(clctx, options);
-        t_program.ensure_built();
     }
     catch(...)
     {
@@ -75,7 +74,7 @@ cl::program build_program_with_cache(const cl::context& clctx, const std::string
 
     if(needs_cache)
     {
-        file::write("cache/" + name_in_cache, prog_opt.value().get_binary(), file::mode::BINARY);
+        file::write("cache/" + name_in_cache, t_program.get_binary(), file::mode::BINARY);
     }
 
     return t_program;

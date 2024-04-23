@@ -4909,9 +4909,6 @@ int main()
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
-    equation_context ctx1;
-    get_initial_conditions_eqs(ctx1, holes.objs);
-
     matter_meta_interop meta_interop;
 
     if(holes.use_matter)
@@ -4924,61 +4921,107 @@ int main()
         meta_interop.sub_interop.push_back(new particle_matter_interop());
     }
 
-    equation_context ctx4;
-    build_constraints(ctx4);
+    {
+        std::vector<std::jthread> threads;
 
-    equation_context ctx5;
-    extract_waveforms(ctx5);
+        equation_context ctx1;
+        threads.emplace_back([&]()
+        {
+            get_initial_conditions_eqs(ctx1, holes.objs);
+        });
 
-    equation_context ctx6;
-    ctx6.uses_linear = true;
-    process_geodesics(ctx6);
+        equation_context ctx4;
+        threads.emplace_back([&]()
+        {
+            build_constraints(ctx4);
+        });
 
-    equation_context ctx7;
-    ctx7.uses_linear = true;
-    loop_geodesics(ctx7, {size.x(), size.y(), size.z()});
+        equation_context ctx5;
+        threads.emplace_back([&]()
+        {
+            extract_waveforms(ctx5);
+        });
 
-    equation_context ctxgeo4;
-    loop_geodesics4(ctxgeo4);
+        equation_context ctx6;
+        ctx6.uses_linear = true;
+        threads.emplace_back([&]()
+        {
+            process_geodesics(ctx6);
+        });
 
-    equation_context ctxgetmatter;
-    build_get_matter(meta_interop, ctxgetmatter, holes.use_matter || holes.use_particles);
+        equation_context ctx7;
+        ctx7.uses_linear = true;
+        threads.emplace_back([&]()
+        {
+            loop_geodesics(ctx7, {size.x(), size.y(), size.z()});
+        });
 
-    //equation_context ctx10;
-    //build_kreiss_oliger_dissipate_singular(ctx10);
+        equation_context ctxgeo4;
+        threads.emplace_back([&]()
+        {
+            loop_geodesics4(ctxgeo4);
+        });
 
-    equation_context ctx11;
-    build_intermediate_thin(ctx11);
+        equation_context ctxgetmatter;
+        threads.emplace_back([&]()
+        {
+            build_get_matter(meta_interop, ctxgetmatter, holes.use_matter || holes.use_particles);
+        });
 
-    equation_context ctxdirectional;
-    build_intermediate_thin_directional(ctxdirectional);
+        //equation_context ctx10;
+        //build_kreiss_oliger_dissipate_singular(ctx10);
 
-    //equation_context ctx12;
-    //build_intermediate_thin_cY5(ctx12);
+        equation_context ctx11;
+        threads.emplace_back([&]()
+        {
+            build_intermediate_thin(ctx11);
+        });
 
-    equation_context ctx13;
-    build_momentum_constraint(meta_interop, ctx13, holes.use_matter || holes.use_particles);
+        equation_context ctxdirectional;
+        threads.emplace_back([&]()
+        {
+            build_intermediate_thin_directional(ctxdirectional);
+        });
 
-    equation_context ctx14;
-    build_hamiltonian_constraint(meta_interop, ctx14, holes.use_matter || holes.use_particles);
+        //equation_context ctx12;
+        //build_intermediate_thin_cY5(ctx12);
 
-    equation_context ctxsommerthin;
-    build_sommerfeld_thin(ctxsommerthin);
+        equation_context ctx13;
+        threads.emplace_back([&]()
+        {
+            build_momentum_constraint(meta_interop, ctx13, holes.use_matter || holes.use_particles);
+        });
 
-    ctx1.build(argument_string, 0);
-    ctx4.build(argument_string, 3);
-    ctx5.build(argument_string, 4);
-    ctx6.build(argument_string, 5);
-    ctx7.build(argument_string, 6);
-    ctxgeo4.build(argument_string, "geo4");
-    ctxgetmatter.build(argument_string, "getmatter");
-    //ctx10.build(argument_string, 9);
-    ctx11.build(argument_string, 10);
-    //ctx12.build(argument_string, 11);
-    ctx13.build(argument_string, 12);
-    ctx14.build(argument_string, "hamiltonian");
-    ctxdirectional.build(argument_string, "directional");
-    ctxsommerthin.build(argument_string, "sommerthin");
+        equation_context ctx14;
+        threads.emplace_back([&]()
+        {
+            build_hamiltonian_constraint(meta_interop, ctx14, holes.use_matter || holes.use_particles);
+        });
+
+        equation_context ctxsommerthin;
+        threads.emplace_back([&]()
+        {
+            build_sommerfeld_thin(ctxsommerthin);
+        });
+
+        for(auto& i : threads)
+            i.join();
+
+        ctx1.build(argument_string, 0);
+        ctx4.build(argument_string, 3);
+        ctx5.build(argument_string, 4);
+        ctx6.build(argument_string, 5);
+        ctx7.build(argument_string, 6);
+        ctxgeo4.build(argument_string, "geo4");
+        ctxgetmatter.build(argument_string, "getmatter");
+        //ctx10.build(argument_string, 9);
+        ctx11.build(argument_string, 10);
+        //ctx12.build(argument_string, 11);
+        ctx13.build(argument_string, 12);
+        ctx14.build(argument_string, "hamiltonian");
+        ctxdirectional.build(argument_string, "directional");
+        ctxsommerthin.build(argument_string, "sommerthin");
+    }
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
     hydro_argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
@@ -5962,6 +6005,6 @@ int main()
 
         float elapsed = frametime.restart() * 1000.f;
 
-        printf("Time: %f\n", elapsed);
+        //printf("Time: %f\n", elapsed);
     }
 }
