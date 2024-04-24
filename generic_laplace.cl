@@ -82,8 +82,8 @@ void laplace_interior_rb(__global float* buffer_in, float h2f0, int ix, int iy, 
         atomic_xchg(still_going, 1);
     }
 
-    if(IDX(ix,iy,iz) == IDX((dim.x-1)/2, (dim.y-1)/2, (dim.z-1)/2))
-        printf("Val %f\n", u);
+    //if(IDX(ix,iy,iz) == IDX((dim.x-1)/2, (dim.y-1)/2, (dim.z-1)/2))
+    //    printf("Val %f\n", u);
 
     buffer_in[IDX(ix, iy, iz)] = u * (1-relax) + u0n1 * relax;
 }
