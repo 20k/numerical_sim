@@ -562,11 +562,6 @@ value get_kc()
 ///https://arxiv.org/pdf/gr-qc/0401076.pdf
 //#define DAMP_HAMILTONIAN
 
-#define STANDARD_ARGS(x) named_buffer<value, 3, #x"cY0"> x##cY0, named_buffer<value, 3, #x"cY1"> x##cY1, named_buffer<value, 3, #x"cY2"> x##cY2, named_buffer<value, 3, #x"cY3"> x##cY3, named_buffer<value, 3, #x"cY4"> x##cY4, named_buffer<value, 3, #x"cY5"> x##cY5, \
-                   named_buffer<value, 3, #x"cA0"> x##cA0, named_buffer<value, 3, #x"cA1"> x##cA1, named_buffer<value, 3, #x"cA2"> x##cA2, named_buffer<value, 3, #x"cA3"> x##cA3, named_buffer<value, 3, #x"cA4"> x##cA4, named_buffer<value, 3, #x"cA5"> x##cA5, \
-                   named_buffer<value, 3, #x"cGi0"> x##cGi0, named_buffer<value, 3, #x"cGi1"> x##cGi1, named_buffer<value, 3, #x"cGi2"> x##cGi2, named_buffer<value, 3, #x"K"> x##K, named_buffer<value, 3, #x"X"> x##X, named_buffer<value, 3, #x"gA"> x##gA, \
-                   named_buffer<value, 3, #x"gB0"> x##gB0, named_buffer<value, 3, #x"gB1"> x##gB1, named_buffer<value, 3, #x"gB2"> x##gB2
-
 #ifdef USE_HALF_INTERMEDIATE
 using half_type = value_h;
 #else
