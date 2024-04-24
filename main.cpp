@@ -2021,7 +2021,7 @@ void setup_u_offset(single_source::argument_generator& arg_gen, equation_context
     ctx.exec(assign(u_offset[pos, dim.get()], boundary));
 }
 
-std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx, cl::command_queue& cqueue, initial_conditions& init, vec3i dim, float scale)
+std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx, cl::command_queue& cqueue, initial_conditions& init, vec3i dim, float simulation_width)
 {
     float boundary = 0;
 
@@ -2083,14 +2083,13 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
             return out;
         };*/
 
-        auto get_u_of = [&clctx, &cqueue, &init, &boundary, &get_superimposed_of, &etol, &iterate_kernel](vec3i dim, float scale, std::optional<cl::buffer> u_upper, float relax)
+        auto get_u_of = [&clctx, &cqueue, &init, &boundary, &get_superimposed_of, &etol, &iterate_kernel, &simulation_width](vec3i dim, std::optional<cl::buffer> u_upper, float relax)
         {
             vec3i current_dim = dim;
             cl_int3 current_cldim = {dim.x(), dim.y(), dim.z()};
-            float current_c_at_max = scale * current_dim.largest_elem();
-            float local_scale = calculate_scale(current_c_at_max, current_dim);
+            float local_scale = calculate_scale(simulation_width, current_dim);
 
-            superimposed_gpu_data data = get_superimposed_of(dim, scale);
+            superimposed_gpu_data data = get_superimposed_of(dim, local_scale);
 
             cl::buffer u_args(clctx);
             std::array<cl::buffer, 2> still_going{clctx, clctx};
@@ -2159,12 +2158,10 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
         {
             cl::buffer out(clctx);
 
-            float lscale = calculate_scale(get_c_at_max(), dims[i]);
-
             if(i == 0)
-                out = get_u_of(dims[i], lscale, std::nullopt, relax[i]);
+                out = get_u_of(dims[i], std::nullopt, relax[i]);
             else
-                out = get_u_of(dims[i], lscale, pass, relax[i]);
+                out = get_u_of(dims[i], pass, relax[i]);
 
             vec3i old_dim = dims[i];
             vec3i next_dim = dims[i+1];
@@ -2206,12 +2203,14 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
 
         found_u_val = last_u.value();*/
 
-        found_u_val = get_u_of(dim, scale, pass, relax.back());
+        found_u_val = get_u_of(dim, pass, relax.back());
 
         cqueue.block();
 
         std::cout << "U spin " << time.get_elapsed_time_s() << std::endl;
     }
+
+    float scale = calculate_scale(simulation_width, dim);
 
     auto data = get_superimposed_of(dim, scale);
 
@@ -2564,7 +2563,7 @@ initial_conditions get_adm_initial_conditions(cl::context& clctx, cl::command_qu
 #endif // 0
 
 inline
-initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, vec3f centre, float scale)
+initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, vec3f centre, float scale, float simulation_width)
 {
     #if 0
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
@@ -2874,7 +2873,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
         vec3f pos = {rand_det_s(rng, 0.f, 1.f), rand_det_s(rng, 0.f, 1.f), rand_det_s(rng, 0.f, 1.f)};
         vec3f momentum = {rand_det_s(rng, 0.f, 1.f), rand_det_s(rng, 0.f, 1.f), rand_det_s(rng, 0.f, 1.f)};
 
-        pos = (pos - 0.5f) * ((get_c_at_max()/2.3));
+        pos = (pos - 0.5f) * (simulation_width/2.3);
 
         momentum = (momentum - 0.5f) * 0.01f * 0.25f;
 
@@ -2936,7 +2935,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
         double earth_mass = 5.972 * pow(10., 24.);
         double jupiter_mass = 1.899 * pow(10., 27.);
 
-        double max_scale_rad = get_c_at_max() * 0.5f * 0.7f;
+        double max_scale_rad = simulation_width * 0.5f * 0.7f;
 
         double earth_radius = 228 * pow(10., 6.) * 1000;
         //double radius = 743.74 * 1000. * 1000. * 1000.;
@@ -3089,7 +3088,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     //#define GALAXY_SIM
     #ifdef GALAXY_SIM
-    data_opt = build_galaxy();
+    data_opt = build_galaxy(simulation_width);
     #endif
 
     //#define ACCRETION_DISK
@@ -3194,7 +3193,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #ifdef SPINDLE_COLLAPSE
     int particles = 5 * pow(10, 5);
 
-    float L = get_c_at_max() * 0.8f;
+    float L = simulation_width * 0.8f;
 
     float M = L/20;
 
@@ -3247,7 +3246,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     for(int i=0; i < particles; i++)
     {
         tensor<float, 3> half_pos = {random() - 0.5, random() - 0.5, random() - 0.5};
-        tensor<float, 3> pos = half_pos * get_c_at_max();
+        tensor<float, 3> pos = half_pos * simulation_width;
 
         float density = density_func(pos);
 
@@ -4884,7 +4883,9 @@ std::optional<initial_conditions> parse_args(int argc, char* argv[])
 
         std::string command = consume();
 
-        if(command == "-help" || command == "-h" || command == "--help"  || command == "--h" || command == "/help" || command == "/h")
+        if(command == "-help" || command == "-h" ||
+           command == "--help"  || command == "--h" ||
+           command == "/help" || command == "/h")
         {
             printf("%s", help_str);
             exit(0);
@@ -4944,6 +4945,16 @@ std::optional<initial_conditions> parse_args(int argc, char* argv[])
     return get_bare_initial_conditions(objects, particles);
 }
 
+float default_simulation_width()
+{
+    return 30.f;
+}
+
+vec3i default_simulation_resolution()
+{
+    return {255,255,255};
+}
+
 ///it seems like basically i need numerical dissipation of some form
 ///if i didn't evolve where sponge = 1, would be massively faster
 int main(int argc, char* argv[])
@@ -5000,10 +5011,10 @@ int main(int argc, char* argv[])
 
     std::string hydro_argument_string = argument_string;
 
-    vec3i size = {255, 255, 255};
+    vec3i size = default_simulation_resolution();
     //vec3i size = {250, 250, 250};
     //float c_at_max = 160;
-    float c_at_max = get_c_at_max();
+    float c_at_max = default_simulation_width();
     float scale = calculate_scale(c_at_max, size);
     vec3f centre = {size.x()/2.f, size.y()/2.f, size.z()/2.f};
 
@@ -5016,7 +5027,7 @@ int main(int argc, char* argv[])
     }
     else
     {
-        holes = setup_dynamic_initial_conditions(clctx.ctx, mqueue, centre, scale);
+        holes = setup_dynamic_initial_conditions(clctx.ctx, mqueue, centre, scale, c_at_max);
     }
 
     for(auto& obj : holes.objs)
@@ -5322,7 +5333,7 @@ int main(int argc, char* argv[])
 
     if(holes.use_particles)
     {
-        particle_dynamics* particles = new particle_dynamics(clctx.ctx);
+        particle_dynamics* particles = new particle_dynamics(clctx.ctx, c_at_max);
 
         particles->add_particles(std::move(holes.particles));
 
@@ -5519,7 +5530,7 @@ int main(int argc, char* argv[])
     cl::buffer texture_coordinates(clctx.ctx);
     texture_coordinates.alloc(sizeof(cl_float2) * width * height);
 
-    cpu_mesh base_mesh(clctx.ctx, mqueue, {0,0,0}, size, base_settings, evolve_points, buffers, utility_buffers, plugins);
+    cpu_mesh base_mesh(clctx.ctx, mqueue, {0,0,0}, size, base_settings, evolve_points, buffers, utility_buffers, plugins, c_at_max);
 
     thin_intermediates_pool thin_pool;
 
@@ -5904,7 +5915,7 @@ int main(int argc, char* argv[])
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = get_timestep(get_c_at_max(), size) * 1/get_backwards_euler_relax_parameter();
+        float timestep = get_timestep(c_at_max, size) * 1/get_backwards_euler_relax_parameter();
 
         if(pao && base_mesh.elapsed_time > 300)
             step = false;
@@ -6116,7 +6127,7 @@ int main(int argc, char* argv[])
 
             if(rendering_method == 2)
             {
-                raytrace.trace(clctx.ctx, mqueue, scale, {width, height}, camera_pos, camera_quat.q, camera_start_time);
+                raytrace.trace(clctx.ctx, mqueue, c_at_max, {width, height}, camera_pos, camera_quat.q, camera_start_time);
 
                 {
                     cl::args texture_args;

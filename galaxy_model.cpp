@@ -275,7 +275,7 @@ struct numerical_params
     double mass_to_m = 0;
     double m_to_scale = 0;
 
-    numerical_params(const galaxy_params& params)
+    numerical_params(const galaxy_params& params, float simulation_width)
     {
         double C = 299792458.;
         double G = 6.67430 * pow(10., -11.);
@@ -283,7 +283,7 @@ struct numerical_params
         double mass_in_m = params.mass_kg * G / (C*C);
         double radius_in_m = params.radius_m;
 
-        double max_scale_radius = get_c_at_max() * 0.5f * 0.6f;
+        double max_scale_radius = simulation_width * 0.5f * 0.6f;
         double meters_to_scale = max_scale_radius / radius_in_m;
 
         mass = mass_in_m * meters_to_scale;
@@ -306,7 +306,7 @@ struct numerical_params
     }
 };
 
-particle_data build_galaxy()
+particle_data build_galaxy(float simulation_width)
 {
     ///https://arxiv.org/abs/1607.08364
     //double milky_way_mass_kg = 6.43 * pow(10., 10.) * 1.16 * get_solar_mass_kg();
@@ -320,7 +320,7 @@ particle_data build_galaxy()
 
     galaxy_distribution<disk_distribution> dist(params);
 
-    numerical_params num_params(params);
+    numerical_params num_params(params, simulation_width);
 
     std::vector<vec3f> positions;
     std::vector<vec3f> directions;

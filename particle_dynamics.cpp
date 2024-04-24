@@ -57,7 +57,7 @@ tensor<value, 3, 3> particle_matter_interop::calculate_adm_X_Sij(equation_contex
     return X * Sij;
 }
 
-particle_dynamics::particle_dynamics(cl::context& ctx) : p_data{ctx, ctx, ctx}, indices_block(ctx), memory_alloc_count(ctx), pd(ctx)
+particle_dynamics::particle_dynamics(cl::context& ctx, float _simulation_width) : p_data{ctx, ctx, ctx}, indices_block(ctx), memory_alloc_count(ctx), pd(ctx), simulation_width(_simulation_width)
 {
     indices_block.alloc(max_intermediate_size * sizeof(cl_ulong));
     memory_alloc_count.alloc(sizeof(size_t));
@@ -523,7 +523,7 @@ void particle_dynamics::init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue
         ectx.add("OUT_ADM_SIJ5", Sij.idx(2, 2));
         ectx.add("OUT_ADM_P", out_adm_p);
 
-        ectx.add("MASS_CULL_SIZE", (get_c_at_max() / 2.f) * 0.8f);
+        ectx.add("MASS_CULL_SIZE", (simulation_width / 2.f) * 0.8f);
 
         ectx.build(argument_string, "admmatter");
     }

@@ -66,16 +66,17 @@ struct particle_dynamics : plugin
 
     cl_int max_intermediate_size = int{1024} * 1024 * 400;
 
+    float simulation_width;
     cl::program pd;
 
-    particle_dynamics(cl::context& ctx);
+    particle_dynamics(cl::context& ctx, float _simulation_width);
 
     void add_particles(particle_data&& data);
 
     //virtual std::vector<buffer_descriptor> get_buffers() override;
     virtual std::vector<buffer_descriptor> get_utility_buffers() override;
 
-    virtual void init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue,         thin_intermediates_pool& pool, buffer_set& to_init) override;
+    virtual void init(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& cqueue, thin_intermediates_pool& pool, buffer_set& to_init) override;
     virtual void step(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& mqueue, thin_intermediates_pool& pool, buffer_pack& pack, float timestep, int iteration, int max_iteration) override;
     virtual void finalise(cpu_mesh& mesh, cl::context& ctx, cl::command_queue& mqueue, thin_intermediates_pool& pool, float timestep) override;
 

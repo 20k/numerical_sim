@@ -218,7 +218,7 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::comman
     return next;
 }
 
-cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& _buffers, const std::vector<buffer_descriptor>& utility_buffers, std::vector<plugin*> _plugins) :
+cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& _buffers, const std::vector<buffer_descriptor>& utility_buffers, std::vector<plugin*> _plugins, float simulation_width) :
         utility_data{buffer_set(ctx, _dim, utility_buffers)},
         points_set{ctx},
         momentum_constraint{ctx, ctx, ctx},
@@ -231,7 +231,7 @@ cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, v
     dim = _dim;
     sett = _sett;
 
-    scale = calculate_scale(get_c_at_max(), dim);
+    scale = calculate_scale(simulation_width, dim);
 
     points_set = points;
 

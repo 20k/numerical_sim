@@ -567,12 +567,12 @@ std::vector<cl::buffer> raytracing_manager::get_fresh_buffers(cl::context& clctx
     return ret;
 }
 
-void raytracing_manager::trace(cl::context& clctx, cl::command_queue& mqueue, float scale, const tensor<int, 2>& screen, vec3f camera_pos, vec4f camera_quat, float camera_start_time)
+void raytracing_manager::trace(cl::context& clctx, cl::command_queue& mqueue, float simulation_width, const tensor<int, 2>& screen, vec3f camera_pos, vec4f camera_quat, float camera_start_time)
 {
     if(slices.size() == 0)
         return;
 
-    scale = calculate_scale(get_c_at_max(), slice_size);
+    float scale = calculate_scale(simulation_width, slice_size);
 
     float last_slice_time = (slices.size() - 1) * slice_width;
 
@@ -904,7 +904,7 @@ void raytracing4_manager::grab_buffers(cl::context& clctx, cl::command_queue& mq
     time_elapsed += step;
 }
 
-void raytracing4_manager::trace(cl::context& clctx, cl::command_queue& mqueue, float scale, const tensor<int, 2>& screen, vec3f camera_pos, vec4f camera_quat, float camera_start_time)
+void raytracing4_manager::trace(cl::context& clctx, cl::command_queue& mqueue, float simulation_width, const tensor<int, 2>& screen, vec3f camera_pos, vec4f camera_quat, float camera_start_time)
 {
     if(last_grabbed < 0)
         return;
@@ -921,7 +921,7 @@ void raytracing4_manager::trace(cl::context& clctx, cl::command_queue& mqueue, f
     cl_float4 ccamera_quat = {camera_quat.x(), camera_quat.y(), camera_quat.z(), camera_quat.w()};
     cl_int4 mesh_dim = {slice_size.x(), slice_size.y(), slice_size.z(), last_grabbed + 1};
     cl_int2 clscreen = {screen.x(), screen.y()};
-    scale = calculate_scale(get_c_at_max(), slice_size);
+    float scale = calculate_scale(simulation_width, slice_size);
 
     {
         cl::args args;
