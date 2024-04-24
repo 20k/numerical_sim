@@ -18,7 +18,7 @@ float get_scaled_coordinate(int in, int dimension_upper, int dimension_lower)
 
     int upper_offset = in - upper_centre;
 
-    float scale = (dimension_upper - 1) / (dimension_lower - 1);
+    float scale = (float)(dimension_upper - 1) / (dimension_lower - 1);
 
     ///so lets say we have [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] with a dimension of 13
     ///this gives a middle value of 6, which is the 7th value

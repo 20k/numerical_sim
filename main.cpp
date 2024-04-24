@@ -2020,6 +2020,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
     cl::program u_program = build_program_with_cache(clctx, "u_solver.cl", local_build_str, "", {"generic_laplace.cl"});
     cl::kernel iterate_kernel(u_program, "iterative_u_solve");
     cl::kernel extract_kernel(u_program, "extract_u_region");
+    cl::kernel upscale_u(u_program, "upscale_u");
 
     auto get_superimposed_of = [&clctx, &cqueue, &init](vec3i dim, float scale)
     {
@@ -2033,7 +2034,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
     cl::buffer found_u_val(clctx);
 
     {
-        float etol = 0.0000001f;
+        float etol = 0.000000001f;
 
         steady_timer time;
 
@@ -2073,14 +2074,15 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
 
             if(u_upper.has_value())
             {
+                assert(u_upper.value().alloc_size == sizeof(cl_float) * current_dim.x() * current_dim.y() * current_dim.z());
+
                 u_args = u_upper.value();
             }
             else
             {
                 u_args.alloc(sizeof(cl_float) * current_dim.x() * current_dim.y() * current_dim.z());
+                u_args.set_to_zero(cqueue);
             }
-
-            u_args.set_to_zero(cqueue);
 
             for(int i=0; i < 2; i++)
             {
@@ -2088,7 +2090,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
                 still_going[i].fill(cqueue, cl_int{1});
             }
 
-            int N = 8000;
+            int N = 80000;
 
             #ifdef GPU_PROFILE
             N = 1000;
@@ -2125,6 +2127,39 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
             return u_args;
         };
 
+        cl::buffer pass(clctx);
+
+        std::array<vec3i, 5> dims = {(vec3i){63, 63, 63}, (vec3i){95, 95, 95}, (vec3i){127, 127, 127}, (vec3i){197, 197, 197}, dim};
+
+        for(int i=0; i < (int)dims.size() - 1; i++)
+        {
+            cl::buffer out(clctx);
+
+            float lscale = calculate_scale(get_c_at_max(), dims[i]);
+
+            if(i == 0)
+                out = get_u_of(dims[i], lscale, std::nullopt);
+            else
+                out = get_u_of(dims[i], lscale, pass);
+
+            vec3i old_dim = dims[i];
+            vec3i next_dim = dims[i+1];
+
+            pass = cl::buffer(clctx);
+            pass.alloc(sizeof(cl_float) * next_dim.x() * next_dim.y() * next_dim.z());
+            pass.set_to_zero(cqueue);
+
+            cl_int4 cl_old_dim = {old_dim.x(), old_dim.y(), old_dim.z(), 0};
+            cl_int4 cl_dim = {next_dim.x(), next_dim.y(), next_dim.z(), 0};
+
+            cl::args args;
+            args.push_back(out, pass, cl_old_dim, cl_dim);
+
+            upscale_u.set_args(args);
+
+            cqueue.exec(upscale_u, {next_dim.x(), next_dim.y(), next_dim.z()}, {8,8,1});
+        }
+
         //float c_at_max = scale * dim.largest_elem();
 
         //float boundaries[4] = {c_at_max * 16, c_at_max * 8, c_at_max * 4, c_at_max * 1};
@@ -2147,7 +2182,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
 
         found_u_val = last_u.value();*/
 
-        found_u_val = get_u_of(dim, scale, std::nullopt);
+        found_u_val = get_u_of(dim, scale, pass);
 
         cqueue.block();
 
