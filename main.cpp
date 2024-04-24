@@ -1324,117 +1324,16 @@ private:
     }
 };
 
-struct superimposed_gpu_data
+struct matter_programs
 {
-    vec3i dim;
-    float scale = 0;
-
-    ///this isn't added to, its forcibly imposed
-    cl::buffer tov_phi;
-
-    std::array<cl::buffer, 6> bcAij;
-    ///derived from bcAij
-    cl::buffer aij_aIJ;
-    cl::buffer ppw2p;
-
-    ///not conformal variables
-    cl::buffer pressure_buf;
-    cl::buffer rho_buf;
-    cl::buffer rhoH_buf;
-    cl::buffer p0_buf;
-    std::array<cl::buffer, 3> Si_buf;
-    std::array<cl::buffer, 3> colour_buf;
-
-    cl::buffer particle_position;
-    cl::buffer particle_mass;
-    cl::buffer particle_lorentz;
-
-    cl::buffer particle_counts;
-    cl::buffer particle_indices;
-    cl::buffer particle_memory;
-    cl::buffer particle_memory_count;
-
-    cl::buffer particle_grid_E_without_conformal;
-
-    cl_int max_particle_memory = 1024 * 1024 * 1024;
-
     cl::program ppw2p_program;
     cl::kernel calculate_ppw2p_kernel;
 
     cl::program bcAij_matter_program;
     cl::kernel calculate_bcAij_matter_kernel;
 
-    cl::program multi_matter_program;
-    cl::kernel multi_matter_kernel;
-
-    superimposed_gpu_data(cl::context& ctx, cl::command_queue& cqueue, vec3i _dim, float _scale) : tov_phi{ctx}, bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, aij_aIJ{ctx}, ppw2p{ctx},
-                                                                                                      pressure_buf{ctx}, rho_buf{ctx}, rhoH_buf{ctx}, p0_buf{ctx}, Si_buf{ctx, ctx, ctx},
-                                                                                                      colour_buf{ctx, ctx, ctx},
-                                                                                                      particle_position(ctx), particle_mass(ctx), particle_lorentz(ctx),
-                                                                                                      particle_counts(ctx), particle_indices(ctx), particle_memory(ctx), particle_memory_count(ctx),
-                                                                                                      particle_grid_E_without_conformal(ctx),
-                                                                                                      ppw2p_program(ctx), bcAij_matter_program(ctx), multi_matter_program(ctx)
-    {
-        dim = _dim;
-        scale = _scale;
-
-        int cells = dim.x() * dim.y() * dim.z();
-
-        ///unsure why I previously filled this with a 1
-        tov_phi.alloc(cells * sizeof(cl_float));
-        tov_phi.fill(cqueue, cl_float{1});
-
-        for(int i=0; i < 6; i++)
-        {
-            bcAij[i].alloc(cells * sizeof(cl_float));
-            bcAij[i].fill(cqueue, cl_float{0});
-        }
-
-        aij_aIJ.alloc(cells * sizeof(cl_float));
-        aij_aIJ.fill(cqueue, cl_float{0});
-
-        ppw2p.alloc(cells * sizeof(cl_float));
-        ppw2p.fill(cqueue, cl_float{0});
-
-        pressure_buf.alloc(cells * sizeof(cl_float));
-        pressure_buf.fill(cqueue,cl_float{0});
-
-        rho_buf.alloc(cells * sizeof(cl_float));
-        rho_buf.fill(cqueue,cl_float{0});
-
-        rhoH_buf.alloc(cells * sizeof(cl_float));
-        rhoH_buf.fill(cqueue,cl_float{0});
-
-        p0_buf.alloc(cells * sizeof(cl_float));
-        p0_buf.fill(cqueue, cl_float{0});
-
-        for(cl::buffer& i : Si_buf)
-        {
-            i.alloc(cells * sizeof(cl_float));
-            i.fill(cqueue, cl_float{0});
-        }
-
-        for(cl::buffer& i : colour_buf)
-        {
-            i.alloc(cells * sizeof(cl_float));
-            i.fill(cqueue, cl_float{0});
-        }
-
-        particle_counts.alloc(cells * sizeof(cl_ulong));
-        particle_memory.alloc(cells * sizeof(cl_ulong));
-
-        particle_counts.fill(cqueue, cl_ulong{0});
-
-        particle_indices.alloc(max_particle_memory * sizeof(cl_ulong));
-
-        particle_memory_count.alloc(sizeof(cl_ulong));
-        particle_memory_count.fill(cqueue, cl_ulong{0});
-
-        particle_grid_E_without_conformal.alloc(cells * sizeof(cl_float));
-        particle_grid_E_without_conformal.fill(cqueue, cl_float{0});
-    }
-
-    void build_accumulation_matter_programs(cl::context& ctx)
+    matter_programs(cl::context& ctx) :
+        ppw2p_program(ctx), bcAij_matter_program(ctx)
     {
         ///ppw2p generic kernel
         {
@@ -1503,6 +1402,118 @@ struct superimposed_gpu_data
 
             std::tie(bcAij_matter_program, calculate_bcAij_matter_kernel) = build_and_fetch_kernel(ctx, ectx, "initial_conditions.cl", "calculate_bcAij", "bcaij");
         }
+    }
+};
+
+matter_programs& get_matter_programs(cl::context& ctx)
+{
+    static matter_programs prog(ctx);
+
+    return prog;
+}
+
+struct superimposed_gpu_data
+{
+    vec3i dim;
+    float scale = 0;
+
+    ///this isn't added to, its forcibly imposed
+    cl::buffer tov_phi;
+
+    std::array<cl::buffer, 6> bcAij;
+    ///derived from bcAij
+    cl::buffer aij_aIJ;
+    cl::buffer ppw2p;
+
+    ///not conformal variables
+    cl::buffer pressure_buf;
+    cl::buffer rho_buf;
+    cl::buffer rhoH_buf;
+    cl::buffer p0_buf;
+    std::array<cl::buffer, 3> Si_buf;
+    std::array<cl::buffer, 3> colour_buf;
+
+    cl::buffer particle_position;
+    cl::buffer particle_mass;
+    cl::buffer particle_lorentz;
+
+    cl::buffer particle_counts;
+    cl::buffer particle_indices;
+    cl::buffer particle_memory;
+    cl::buffer particle_memory_count;
+
+    cl::buffer particle_grid_E_without_conformal;
+
+    cl_int max_particle_memory = 1024 * 1024 * 1024;
+
+    cl::program multi_matter_program;
+    cl::kernel multi_matter_kernel;
+
+    superimposed_gpu_data(cl::context& ctx, cl::command_queue& cqueue, vec3i _dim, float _scale) : tov_phi{ctx}, bcAij{ctx, ctx, ctx, ctx, ctx, ctx}, aij_aIJ{ctx}, ppw2p{ctx},
+                                                                                                      pressure_buf{ctx}, rho_buf{ctx}, rhoH_buf{ctx}, p0_buf{ctx}, Si_buf{ctx, ctx, ctx},
+                                                                                                      colour_buf{ctx, ctx, ctx},
+                                                                                                      particle_position(ctx), particle_mass(ctx), particle_lorentz(ctx),
+                                                                                                      particle_counts(ctx), particle_indices(ctx), particle_memory(ctx), particle_memory_count(ctx),
+                                                                                                      particle_grid_E_without_conformal(ctx),
+                                                                                                      multi_matter_program(ctx)
+    {
+        dim = _dim;
+        scale = _scale;
+
+        int cells = dim.x() * dim.y() * dim.z();
+
+        ///unsure why I previously filled this with a 1
+        tov_phi.alloc(cells * sizeof(cl_float));
+        tov_phi.fill(cqueue, cl_float{1});
+
+        for(int i=0; i < 6; i++)
+        {
+            bcAij[i].alloc(cells * sizeof(cl_float));
+            bcAij[i].fill(cqueue, cl_float{0});
+        }
+
+        aij_aIJ.alloc(cells * sizeof(cl_float));
+        aij_aIJ.fill(cqueue, cl_float{0});
+
+        ppw2p.alloc(cells * sizeof(cl_float));
+        ppw2p.fill(cqueue, cl_float{0});
+
+        pressure_buf.alloc(cells * sizeof(cl_float));
+        pressure_buf.fill(cqueue,cl_float{0});
+
+        rho_buf.alloc(cells * sizeof(cl_float));
+        rho_buf.fill(cqueue,cl_float{0});
+
+        rhoH_buf.alloc(cells * sizeof(cl_float));
+        rhoH_buf.fill(cqueue,cl_float{0});
+
+        p0_buf.alloc(cells * sizeof(cl_float));
+        p0_buf.fill(cqueue, cl_float{0});
+
+        for(cl::buffer& i : Si_buf)
+        {
+            i.alloc(cells * sizeof(cl_float));
+            i.fill(cqueue, cl_float{0});
+        }
+
+        for(cl::buffer& i : colour_buf)
+        {
+            i.alloc(cells * sizeof(cl_float));
+            i.fill(cqueue, cl_float{0});
+        }
+
+        particle_counts.alloc(cells * sizeof(cl_ulong));
+        particle_memory.alloc(cells * sizeof(cl_ulong));
+
+        particle_counts.fill(cqueue, cl_ulong{0});
+
+        particle_indices.alloc(max_particle_memory * sizeof(cl_ulong));
+
+        particle_memory_count.alloc(sizeof(cl_ulong));
+        particle_memory_count.fill(cqueue, cl_ulong{0});
+
+        particle_grid_E_without_conformal.alloc(cells * sizeof(cl_float));
+        particle_grid_E_without_conformal.fill(cqueue, cl_float{0});
     }
 
     void build_matter_program(cl::context& ctx, const value& conformal_guess)
@@ -1645,20 +1656,14 @@ struct superimposed_gpu_data
 
     void pre_u(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, const particle_data& particles)
     {
-        bool built_accum_matter_kernel = false;
+        matter_programs& prog = get_matter_programs(clctx);
 
         for(const compact_object::data& obj : objs)
         {
             if(obj.t == compact_object::NEUTRON_STAR)
             {
-                if(!built_accum_matter_kernel)
-                {
-                    build_accumulation_matter_programs(clctx);
-                    built_accum_matter_kernel = true;
-                }
-
                 neutron_star_gpu_data dat(clctx);
-                dat.create(clctx, cqueue, calculate_ppw2p_kernel, calculate_bcAij_matter_kernel, obj, scale, dim);
+                dat.create(clctx, cqueue, prog.calculate_ppw2p_kernel, prog.calculate_bcAij_matter_kernel, obj, scale, dim);
 
                 pull(clctx, cqueue, dat, obj);
             }
