@@ -4818,6 +4818,35 @@ void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>> points
     mut(out[local_idx]) = result * (1/(16 * M_PI));
 }
 
+const char* help_str = R"(misc:
+    -help: Display help
+
+compact objects:
+    -add [bh/black_hole]
+        -[bm/bare_mass] val
+        -p[osition] x y z
+        -m[omentum] x y z
+        -[am/angular_momentum] x y z
+
+    -add [ns/neutron_star]
+        -[bm/bare_mass] val
+        -p[osition] x y z
+        -m[omentum] x y z
+        -[am/angular_momentum] x y z
+        -c[ompactness] val
+        -col[our] r g b (0-1)
+
+example: -add bh -bm 0.483 -p 0 0 0 -m 0.1 0 0 -am 0 0 0
+example: -add ns -bm 0.5 -p 1 0 0 -m 0.2 0 0 -am 0 0.1 0 -c 0.06 -col 1 1 1
+
+particles:
+    -[pp/particle_position] x y z
+    -[pv/particle_velocity] x y z
+    -[pm/particle_mass] val
+
+example: -pp 0.1 0 0 -pv 0 0.1 0 -pm 0.1 -pp 2 0 0 -pv 0 0.2 0 -pm 0.2
+)";
+
 std::optional<initial_conditions> parse_args(int argc, char* argv[])
 {
     std::vector<compact_object::data> objects;
@@ -4854,6 +4883,12 @@ std::optional<initial_conditions> parse_args(int argc, char* argv[])
         };
 
         std::string command = consume();
+
+        if(command == "-help" || command == "-h" || command == "--help"  || command == "--h" || command == "/help" || command == "/h")
+        {
+            printf("%s", help_str);
+            exit(0);
+        }
 
         if(command == "-add")
         {
