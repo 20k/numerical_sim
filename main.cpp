@@ -2034,7 +2034,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
     cl::buffer found_u_val(clctx);
 
     {
-        float etol = 0.00000001f;
+        float etol = 0.0000001f;
 
         steady_timer time;
 
@@ -2060,7 +2060,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
             return out;
         };*/
 
-        auto get_u_of = [&clctx, &cqueue, &init, &boundary, &get_superimposed_of, &etol, &iterate_kernel](vec3i dim, float scale, std::optional<cl::buffer> u_upper)
+        auto get_u_of = [&clctx, &cqueue, &init, &boundary, &get_superimposed_of, &etol, &iterate_kernel](vec3i dim, float scale, std::optional<cl::buffer> u_upper, float relax)
         {
             vec3i current_dim = dim;
             cl_int3 current_cldim = {dim.x(), dim.y(), dim.z()};
@@ -2110,7 +2110,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
                                          data.aij_aIJ, data.ppw2p, data.particle_grid_E_without_conformal,
                                          local_scale, current_cldim,
                                          still_going[which_still_going], still_going[(which_still_going + 1) % 2],
-                                         etol, i);
+                                         etol, i, relax);
 
                 iterate_kernel.set_args(iterate_u_args);
 
@@ -2130,6 +2130,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
         cl::buffer pass(clctx);
 
         std::array<vec3i, 5> dims = {(vec3i){63, 63, 63}, (vec3i){95, 95, 95}, (vec3i){127, 127, 127}, (vec3i){197, 197, 197}, dim};
+        std::array<float, 5> relax = {0.4f, 0.5f, 0.5f, 0.7f, 0.9f};
 
         for(int i=0; i < (int)dims.size() - 1; i++)
         {
@@ -2138,9 +2139,9 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
             float lscale = calculate_scale(get_c_at_max(), dims[i]);
 
             if(i == 0)
-                out = get_u_of(dims[i], lscale, std::nullopt);
+                out = get_u_of(dims[i], lscale, std::nullopt, relax[i]);
             else
-                out = get_u_of(dims[i], lscale, pass);
+                out = get_u_of(dims[i], lscale, pass, relax[i]);
 
             vec3i old_dim = dims[i];
             vec3i next_dim = dims[i+1];
@@ -2182,7 +2183,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
 
         found_u_val = last_u.value();*/
 
-        found_u_val = get_u_of(dim, scale, pass);
+        found_u_val = get_u_of(dim, scale, pass, relax.back());
 
         cqueue.block();
 
