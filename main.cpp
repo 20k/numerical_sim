@@ -2468,25 +2468,9 @@ sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cq
 #endif // 0
 
 inline
-initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, float scale, std::vector<compact_object::data> objs, std::optional<particle_data>&& p_data_opt)
+initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, std::vector<compact_object::data> objs, std::optional<particle_data>&& p_data_opt)
 {
     initial_conditions ret;
-
-    float bulge = 1;
-
-    auto san_pos = [&](const tensor<float, 3>& in)
-    {
-        return in;
-
-        tensor<float, 3> scaled = round((in / scale) * bulge);
-
-        return scaled * scale / bulge;
-    };
-
-    for(compact_object::data& obj : objs)
-    {
-        obj.position = san_pos(obj.position);
-    }
 
     for(const compact_object::data& obj : objs)
     {
@@ -2497,7 +2481,6 @@ initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_q
     }
 
     ret.objs = objs;
-    //ret.use_matter = true;
 
     if(p_data_opt.has_value())
     {
@@ -2644,7 +2627,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    //#define PAPER_0610128
+    #define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -2811,7 +2794,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif
 
-    #define NEUTRON_BLACK_HOLE_MERGE
+    //#define NEUTRON_BLACK_HOLE_MERGE
     #ifdef NEUTRON_BLACK_HOLE_MERGE
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -3287,7 +3270,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     #endif
 
-    return get_bare_initial_conditions(clctx, cqueue, scale, objects, std::move(data_opt));
+    return get_bare_initial_conditions(clctx, cqueue, objects, std::move(data_opt));
     #endif // BARE_BLACK_HOLES
 
     //#define USE_ADM_HOLE
@@ -4837,8 +4820,91 @@ void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>> points
 
 ///it seems like basically i need numerical dissipation of some form
 ///if i didn't evolve where sponge = 1, would be massively faster
-int main()
+int main(int argc, char* argv[])
 {
+    {
+        std::vector<compact_object::data> objects;
+        particle_data particles;
+
+        std::optional<compact_object::data> pending_compact;
+
+        auto bump_pending = [&]()
+        {
+            if(pending_compact)
+                objects.push_back(pending_compact.value());
+
+            pending_compact = std::nullopt;
+        };
+
+        for(int i=0; i < argc;)
+        {
+            auto consume = [&]()
+            {
+                if(i >= argc)
+                    return std::string("");
+
+                std::string str(argv[i]);
+                i++;
+                return str;
+            };
+
+            auto consume_float = [&]()
+            {
+                if(i >= argc)
+                    return 0.f;
+
+                return std::stof(consume());
+            };
+
+            std::string command = consume();
+
+            if(command == "-add")
+            {
+                std::string type = consume();
+
+                if(type == "bh" || type == "black_hole" || type == "ns" || type == "neutron_star")
+                {
+                    bump_pending();
+
+                    compact_object::data dat;
+                    dat.t = (type == "bh" || type == "black_hole") ? compact_object::BLACK_HOLE : compact_object::NEUTRON_STAR;
+
+                    pending_compact = dat;
+                }
+            }
+
+            if(command == "-bare_mass" || command == "-bm")
+                pending_compact.value().bare_mass = consume_float();
+
+            if(command == "-position" || command == "-p")
+                pending_compact.value().position = {consume_float(), consume_float(), consume_float()};
+
+            if(command == "-angular_momentum" || command == "-am")
+                pending_compact.value().angular_momentum = {consume_float(), consume_float(), consume_float()};
+
+            if(command == "-momentum" || command == "-m")
+                pending_compact.value().momentum = {consume_float(), consume_float(), consume_float()};
+
+            if(command == "-compactness" || command == "-c")
+                pending_compact.value().matter.compactness = consume_float();
+
+            if(command == "-colour" || command == "-col")
+                pending_compact.value().matter.colour = {consume_float(), consume_float(), consume_float()};
+
+            if(command == "-particle_position" || command == "-pp")
+                particles.positions.push_back({consume_float(), consume_float(), consume_float()});
+
+            if(command == "-particle_velocity" || command == "-pv")
+                particles.velocities.push_back({consume_float(), consume_float(), consume_float()});
+
+            if(command == "-particle_mass" || command == "-pm")
+                particles.masses.push_back(consume_float());
+        }
+
+        bump_pending();
+    }
+
+
     test_w();
 
     steady_timer time_to_main;
