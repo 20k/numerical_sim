@@ -665,26 +665,40 @@ namespace neutron_star
 
     template<typename T, typename U>
     inline
-    value calculate_ppw2_p(const tensor<value, 3>& coordinate, const metric<T, 3, 3>& flat, const params<T>& param, U&& tov_phi_at_coordinate)
+    value calculate_ppw2_p(equation_context& ctx, const tensor<value, 3>& coordinate, const metric<T, 3, 3>& flat, const params<T>& param, U&& tov_phi_at_coordinate)
     {
         tensor<value, 3> vposition = {param.position.x(), param.position.y(), param.position.z()};
 
         tensor<value, 3> relative_pos = coordinate - vposition;
 
+        ctx.pin(relative_pos);
+
         value r = relative_pos.length();
+
+        ctx.pin(r);
 
         value M_factor = calculate_M_factor(param, tov_phi_at_coordinate);
         value squiggly_N_factor = calculate_squiggly_N_factor(param, tov_phi_at_coordinate);
 
+        ctx.pin(M_factor);
+        ctx.pin(squiggly_N_factor);
+
         value W2_linear = calculate_W2_linear_momentum(flat, param.linear_momentum, M_factor);
         value W2_angular = calculate_W2_angular_momentum(coordinate, param.position, flat, param.angular_momentum, squiggly_N_factor);
+
+        ctx.pin(W2_linear);
+        ctx.pin(W2_angular);
 
         value linear_rapidity = acosh(sqrt(W2_linear));
         value angular_rapidity = acosh(sqrt(W2_angular));
 
         value final_W = cosh(linear_rapidity + angular_rapidity);
 
+        ctx.pin(final_W);
+
         conformal_data cdata = sample_conformal(r, param, tov_phi_at_coordinate);
+
+        ctx.pin(cdata.pressure);
 
         ///so. The paper specifically says superimpose ppw2p terms
         ///which presumably means add. Which would translate to adding the W2 terms
@@ -835,6 +849,8 @@ tensor<value, 3, 3> calculate_bcAij_generic(equation_context& ctx, const tensor<
         {
             tensor<value, 3, 3> bcAij_single = black_hole::calculate_single_bcAij(pos, obj.position, obj.momentum, obj.angular_momentum);
 
+            ctx.pin(bcAij_single);
+
             bcAij += bcAij_single;
         }
 
@@ -851,6 +867,8 @@ tensor<value, 3, 3> calculate_bcAij_generic(equation_context& ctx, const tensor<
             auto flatv = get_flat_metric<value, 3>();
 
             tensor<value, 3, 3> bcAIJ_single = neutron_star::calculate_aij_single(ctx, pos, flat, p, tov_phi_at_coordinate);
+
+            ctx.pin(bcAIJ_single);
 
             tensor<value, 3, 3> bcAij_single = lower_both(bcAIJ_single, flatv);
 
@@ -1442,7 +1460,7 @@ struct superimposed_gpu_data
             p.linear_momentum = {"data->linear_momentum.x", "data->linear_momentum.y", "data->linear_momentum.z"};
             p.angular_momentum = {"data->angular_momentum.x", "data->angular_momentum.y", "data->angular_momentum.z"};
 
-            value ppw2p_equation = neutron_star::calculate_ppw2_p(pos, flat, p, pinning_tov_phi);
+            value ppw2p_equation = neutron_star::calculate_ppw2_p(ectx, pos, flat, p, pinning_tov_phi);
 
             ectx.add("B_PPW2P", ppw2p_equation);
 
@@ -1556,7 +1574,7 @@ struct superimposed_gpu_data
 
             rho_conformal += cdata.mass_energy_density;
             //rhoH_conformal += (cdata.mass_energy_density + cdata.pressure) * W2_factor - cdata.pressure;
-            rhoH_conformal += neutron_star::calculate_ppw2_p(pos, flat, p, pinning_tov_phi);
+            rhoH_conformal += neutron_star::calculate_ppw2_p(ectx, pos, flat, p, pinning_tov_phi);
             //eps += sampled.specific_energy_density;
 
             //enthalpy += 1 + sampled.specific_energy_density + pressure_conformal / sampled.mass_energy_density;
@@ -2621,7 +2639,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     ///https://arxiv.org/pdf/gr-qc/0610128.pdf
     ///todo: revert the fact that I butchered this
-    #define PAPER_0610128
+    //#define PAPER_0610128
     #ifdef PAPER_0610128
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -2788,7 +2806,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif
 
-    //#define NEUTRON_BLACK_HOLE_MERGE
+    #define NEUTRON_BLACK_HOLE_MERGE
     #ifdef NEUTRON_BLACK_HOLE_MERGE
     compact_object::data h1;
     h1.t = compact_object::BLACK_HOLE;
@@ -5120,7 +5138,7 @@ int main()
 
     base_settings.use_half_intermediates = use_half;
 
-    bool use_matter_colour = true;
+    bool use_matter_colour = false;
 
     #ifdef CALCULATE_MOMENTUM_CONSTRAINT
     base_settings.calculate_momentum_constraint = true;
