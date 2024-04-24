@@ -4900,6 +4900,9 @@ std::optional<initial_conditions> parse_args(int argc, char* argv[])
 
     bump_pending();
 
+    assert(particles.positions.size() == particles.velocities.size());
+    assert(particles.positions.size() == particles.masses.size());
+
     if(objects.size() == 0 && particles.positions.size() == 0)
         return std::nullopt;
 
