@@ -5030,7 +5030,7 @@ std::pair<std::optional<initial_conditions>, simulation_parameters> parse_args(i
                 if(str == "default")
                     return def;
 
-                return std::stof(consume());
+                return std::stof(str);
             };
 
             auto set_default = [&]<typename T>(T& in)
