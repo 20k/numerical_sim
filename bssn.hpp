@@ -16,7 +16,7 @@
 template<typename T, T value>
 struct param_with_default
 {
-    T val = value();
+    T val = value;
 
     param_with_default(){}
     param_with_default(const T& in) : val(in){}
@@ -50,6 +50,12 @@ struct shift_conditions
 {
     bool advect = false;
 };
+
+template<typename U>
+auto get_default(const std::optional<U>& in)
+{
+    return U().val;
+}
 
 struct simulation_modifications
 {
@@ -91,6 +97,11 @@ struct simulation_modifications
 
     lapse_conditions lapse;
     shift_conditions shift;
+
+    bool should_calculate_momentum_constraint() const
+    {
+        return classic_momentum_damping || momentum_damping2 || aij_sigma;
+    }
 };
 
 struct argument_pack

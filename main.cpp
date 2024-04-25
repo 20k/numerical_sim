@@ -4860,7 +4860,7 @@ all modifications are disabled by default, except the following:
     christoffmodification2 1.f
     lapseonepluslog
 
-one of the following modifications in the lapse group must be enabled:
+the following modifications override each other, as they are mutually exclusive:
     lapseonepluslog lapseharmonic lapseshockavoid
 
     -enable sigma strength [strength > 0 and < 1, defaults to 0.2]
@@ -4896,7 +4896,7 @@ one of the following modifications in the lapse group must be enabled:
 example:
     -enable sigma default (sets and enables sigma damping to 0.2)
     -disable modcy2 (disables the on-by-default modcy2 modification)
-    -disable lapseonepluslog -enable lapseharmonic
+    -enable lapseharmonic
     -enable modcy2 -0.025
 )";
 
@@ -4904,6 +4904,7 @@ struct simulation_parameters
 {
     std::optional<vec3i> dim;
     std::optional<float> simulation_width;
+    simulation_modifications mod;
 };
 
 std::pair<std::optional<initial_conditions>, simulation_parameters> parse_args(int argc, char* argv[])
@@ -4940,6 +4941,19 @@ std::pair<std::optional<initial_conditions>, simulation_parameters> parse_args(i
                 return 0.f;
 
             return std::stof(consume());
+        };
+
+        auto consume_bool = [&]()
+        {
+            auto str = consume();
+
+            if(str == "false" || str == "off")
+                return false;
+
+            if(str == "true" || str == "on")
+                return true;
+
+            return std::stof(str) > 0;
         };
 
         std::string command = consume();
@@ -5003,6 +5017,85 @@ std::pair<std::optional<initial_conditions>, simulation_parameters> parse_args(i
 
         if(command == "-diameter")
             params.simulation_width = consume_float();
+
+        if(command == "-enable" || command == "-disable")
+        {
+            bool disabling = false;
+
+            std::string next = consume();
+
+            if(command == "-disable")
+                disabling = true;
+
+            auto consume_float_with_default = [&](float def)
+            {
+                auto str = consume();
+
+                if(str == "default")
+                    return def;
+
+                return std::stof(consume());
+            };
+
+            auto set_default = [&]<typename T>(T& in)
+            {
+                if(disabling)
+                    in = std::nullopt;
+                else
+                    in = consume_float_with_default(get_default(in));
+            };
+
+            auto d = [&]<typename T>(const std::string& name, T& in)
+            {
+                if(next == name)
+                    set_default(in);
+            };
+
+            d("sigma", params.mod.sigma);
+            d("modcy1", params.mod.mod_cY1);
+            d("modcy2", params.mod.mod_cY2);
+            d("hamiltoniancydamp", params.mod.hamiltonian_cY_damp);
+            d("hamiltoniancadamp", params.mod.hamiltonian_cA_damp);
+            d("momentumdamp", params.mod.classic_momentum_damping);
+
+            if(next == "momentumdamp2")
+            {
+                if(disabling)
+                    params.mod.momentum_damping2 = std::nullopt;
+                else
+                    params.mod.momentum_damping2 = momentum_damping_type2{consume_bool()};
+            }
+
+            d("aijsigma", params.mod.aij_sigma);
+            d("cadamp", params.mod.cA_damp);
+
+            if(next == "christoffmodification1")
+            {
+                if(disabling)
+                    params.mod.christoff_modification_1 = std::nullopt;
+                else
+                    params.mod.christoff_modification_1 = true;
+            }
+
+            d("christoffmodification2", params.mod.christoff_modification_2);
+            d("ybs", params.mod.ybs);
+            d("modcgi", params.mod.mod_cGi);
+
+            if(next == "lapseadvection")
+                params.mod.lapse.advect = !disabling;
+
+            if(next == "lapseonepluslog")
+                params.mod.lapse.type = lapse_conditions::one_plus_log{};
+
+            if(next == "lapseharmonic")
+                params.mod.lapse.type = lapse_conditions::harmonic{};
+
+            if(next == "lapseshockavoid")
+                params.mod.lapse.type = lapse_conditions::shock_avoiding{};
+
+            if(next == "shiftadvection")
+                params.mod.shift.advect = !disabling;
+        }
     }
 
     bump_pending();
