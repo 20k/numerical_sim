@@ -4814,7 +4814,8 @@ void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>> points
 }
 
 const char* help_str = R"(misc:
-    -help: Display help
+    -help (Display help)
+    -pause time (pauses the simulation after time has elapsed)
 
 compact objects:
     -add [bh/black_hole]
@@ -4901,6 +4902,7 @@ struct simulation_parameters
     std::optional<vec3i> dim;
     std::optional<float> simulation_width;
     simulation_modifications mod;
+    std::optional<float> pause_time;
 };
 
 std::pair<std::optional<initial_conditions>, simulation_parameters> parse_args(int argc, char* argv[])
@@ -4960,6 +4962,11 @@ std::pair<std::optional<initial_conditions>, simulation_parameters> parse_args(i
         {
             printf("%s", help_str);
             exit(0);
+        }
+
+        if(command == "-pause")
+        {
+            params.pause_time = consume_float();
         }
 
         if(command == "-add")
@@ -5720,6 +5727,9 @@ int main(int argc, char* argv[])
 
     bool pao = false;
 
+    if(sim_params.pause_time)
+        pao = true;
+
     bool render_skipping = false;
     int skip_frames = 8;
     int current_skip_frame = 0;
@@ -6073,8 +6083,16 @@ int main(int argc, char* argv[])
         ///todo: backwards euler test
         float timestep = get_timestep(c_at_max, size) * 1/get_backwards_euler_relax_parameter();
 
-        if(pao && base_mesh.elapsed_time > 300)
-            step = false;
+        if(sim_params.pause_time.has_value())
+        {
+            if(pao && base_mesh.elapsed_time > sim_params.pause_time.value())
+                step = false;
+        }
+        else
+        {
+            if(pao && base_mesh.elapsed_time > 300)
+                step = false;
+        }
 
         if(step)
         {

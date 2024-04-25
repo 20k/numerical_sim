@@ -1650,23 +1650,6 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, cons
 
         }
 
-        ///todo: test 2.22 https://arxiv.org/pdf/0711.3575.pdf
-        if(mod.ybs)
-        {
-            value E = mod.ybs.value().val;
-
-            {
-                value sum = 0;
-
-                for(int k=0; k < 3; k++)
-                {
-                    sum += diff1(ctx, args.gB.idx(k), k);
-                }
-
-                dtcGi.idx(i) += (-2.f/3.f) * (E + 1) * args.bigGi.idx(i) * sum;
-            }
-        }
-
         if(use_matter)
         {
             tensor<value, 3> ji_lower = interop.calculate_adm_Si(ctx, args);
@@ -1682,6 +1665,21 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, cons
         }
     }
     #endif // CHRISTOFFEL_49
+
+    ///todo: test 2.22 https://arxiv.org/pdf/0711.3575.pdf
+    if(mod.ybs)
+    {
+        value E = mod.ybs.value().val;
+
+        value sum = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            sum += diff1(ctx, args.gB.idx(k), k);
+        }
+
+        dtcGi += (-2.f/3.f) * (E + 1) * args.bigGi * sum;
+    }
 
     ///https://arxiv.org/pdf/gr-qc/0204002.pdf table 2, think case E2 is incorrectly labelled
     if(mod.mod_cGi)
