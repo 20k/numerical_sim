@@ -4844,14 +4844,27 @@ particles:
     -[pm/particle_mass] val
 
 example: -pp 0.1 0 0 -pv 0 0.1 0 -pm 0.1 -pp 2 0 0 -pv 0 0.2 0 -pm 0.2
+
+simulation parameters:
+    -res[olution] val (grid size, cubed, must be an odd number)
+    -diameter val (in geometric units)
+
+example: -res 255 -diameter 30
 )";
 
-std::optional<initial_conditions> parse_args(int argc, char* argv[])
+struct simulation_parameters
+{
+    std::optional<vec3i> dim;
+    std::optional<float> simulation_width;
+};
+
+std::pair<std::optional<initial_conditions>, simulation_parameters> parse_args(int argc, char* argv[])
 {
     std::vector<compact_object::data> objects;
     particle_data particles;
 
     std::optional<compact_object::data> pending_compact;
+    simulation_parameters params;
 
     auto bump_pending = [&]()
     {
@@ -4932,6 +4945,16 @@ std::optional<initial_conditions> parse_args(int argc, char* argv[])
 
         if(command == "-particle_mass" || command == "-pm")
             particles.masses.push_back(consume_float());
+
+        if(command == "-resolution" || command == "-res")
+        {
+            int lsize = consume_float();
+
+            params.dim = {lsize, lsize, lsize};
+        }
+
+        if(command == "-diameter")
+            params.simulation_width = consume_float();
     }
 
     bump_pending();
@@ -4940,9 +4963,9 @@ std::optional<initial_conditions> parse_args(int argc, char* argv[])
     assert(particles.positions.size() == particles.masses.size());
 
     if(objects.size() == 0 && particles.positions.size() == 0)
-        return std::nullopt;
+        return {std::nullopt, params};
 
-    return get_bare_initial_conditions(objects, particles);
+    return {get_bare_initial_conditions(objects, particles), params};
 }
 
 float default_simulation_width()
@@ -4959,7 +4982,7 @@ vec3i default_simulation_resolution()
 ///if i didn't evolve where sponge = 1, would be massively faster
 int main(int argc, char* argv[])
 {
-    std::optional<initial_conditions> initial_opt = parse_args(argc, argv);
+    auto [initial_opt, sim_params] = parse_args(argc, argv);
 
     test_w();
 
@@ -5011,10 +5034,9 @@ int main(int argc, char* argv[])
 
     std::string hydro_argument_string = argument_string;
 
-    vec3i size = default_simulation_resolution();
-    //vec3i size = {250, 250, 250};
-    //float c_at_max = 160;
-    float c_at_max = default_simulation_width();
+    vec3i size = sim_params.dim.value_or(default_simulation_resolution());
+    float c_at_max = sim_params.simulation_width.value_or(default_simulation_width());
+
     float scale = calculate_scale(c_at_max, size);
     vec3f centre = {size.x()/2.f, size.y()/2.f, size.z()/2.f};
 
