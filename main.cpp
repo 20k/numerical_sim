@@ -4850,6 +4850,54 @@ simulation parameters:
     -diameter val (in geometric units)
 
 example: -res 255 -diameter 30
+
+
+modifications:
+all strength parameters can also be set to the literal 'default'
+all modifications are disabled by default, except the following:
+    modcy2 -0.055
+    christoffmodification1
+    christoffmodification2 1.f
+    lapseonepluslog
+
+one of the following modifications in the lapse group must be enabled:
+    lapseonepluslog lapseharmonic lapseshockavoid
+
+    -enable sigma strength [strength > 0 and < 1, defaults to 0.2]
+        https://arxiv.org/pdf/1205.5111v2 46
+    -enable modcy1 strength [strength < 0, defaults to -0.035]
+    -enable modcy2 strength [on by default, strength < 0, defaults to -0.055]
+        https://arxiv.org/pdf/0711.3575v1 2.21, also https://arxiv.org/pdf/gr-qc/0204002 4.10
+    -enable hamiltoniancydamp strength [strength > 0, defaults to 0.5f]
+    -enable hamiltoniancadamp strength [strength > 0, defaults to 0.5f]
+    -enable momentumdamp strength [strength > 0, defaults to 0.01]
+        https://arxiv.org/pdf/gr-qc/0204002 4.9
+    -enable momentumdamp2 use_lapse_modification [use_lapse_modification is a boolean]
+        https://arxiv.org/pdf/1205.5111v2 56
+    -enable aijsigma strength
+    -enable cadamp strength [strength > 0, defaults to 1]
+        https://arxiv.org/pdf/gr-qc/0204002.pdf 4.3
+    -enable christoffmodification1
+        https://arxiv.org/pdf/1205.5111v2 (49)
+    -enable christoffmodification2 strength [strength > 0, defaults to 1.f. Requires christoffmodification1 to work well]
+        https://arxiv.org/pdf/1205.5111v2 (50)
+    -enable ybs strength [strength > 0, defaults to 1.f]
+        https://arxiv.org/pdf/1205.5111v2 (47)
+    -enable modcgi strength [strength < 0, defaults to -0.1]
+        https://arxiv.org/pdf/0711.3575 2.22
+
+    -enable lapseadvection
+    -enable lapseonepluslog
+    -enable lapseharmonic
+    -enable lapseshockavoid
+
+    -enable shiftadvection
+
+example:
+    -enable sigma default (sets and enables sigma damping to 0.2)
+    -disable modcy2 (disables the on-by-default modcy2 modification)
+    -disable lapseonepluslog -enable lapseharmonic
+    -enable modcy2 -0.025
 )";
 
 struct simulation_parameters

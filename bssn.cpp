@@ -1392,8 +1392,6 @@ tensor<value, 6> get_dtcAij(standard_arguments& args, equation_context& ctx, con
 
     #endif // MOD_CA
 
-    ///https://arxiv.org/pdf/gr-qc/0204002.pdf todo: 4.3
-
     tensor<value, 6> dt = {
         dtcAij.idx(0, 0),
         dtcAij.idx(1, 0),

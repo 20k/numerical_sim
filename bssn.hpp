@@ -59,7 +59,7 @@ struct simulation_modifications
     std::optional<param_with_default<float, -0.035f>> mod_cY1;
 
     ///https://arxiv.org/pdf/0711.3575v1 2.21, also https://arxiv.org/pdf/gr-qc/0204002 4.10
-    std::optional<param_with_default<float, -0.055f>> mod_cY2;
+    std::optional<param_with_default<float, -0.055f>> mod_cY2 = -0.055f;
 
     ///classic hamiltonian damping
     std::optional<param_with_default<float, 0.5f>> hamiltonian_cY_damp;
