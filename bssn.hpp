@@ -13,6 +13,86 @@
 ///must be 4 because of damping
 #define BORDER_WIDTH 4
 
+template<typename T, T value>
+struct param_with_default
+{
+    T val = value();
+
+    param_with_default(){}
+    param_with_default(const T& in) : val(in){}
+};
+
+struct momentum_damping_type2
+{
+    bool use_lapse = false;
+};
+
+struct lapse_conditions
+{
+    struct one_plus_log
+    {
+    };
+
+    struct harmonic
+    {
+    };
+
+    struct shock_avoiding
+    {
+    };
+
+    bool advect = false;
+
+    std::variant<one_plus_log, harmonic, shock_avoiding> type = one_plus_log{};
+};
+
+struct shift_conditions
+{
+    bool advect = false;
+};
+
+struct simulation_modifications
+{
+    ///https://arxiv.org/pdf/1205.5111v2 46
+    std::optional<param_with_default<float, 1.f/5.f>> sigma;
+    ///unknown where I got this from, todo investigate
+    std::optional<param_with_default<float, -0.035f>> mod_cY1;
+
+    ///https://arxiv.org/pdf/0711.3575v1 2.21, also https://arxiv.org/pdf/gr-qc/0204002 4.10
+    std::optional<param_with_default<float, -0.055f>> mod_cY2;
+
+    ///classic hamiltonian damping
+    std::optional<param_with_default<float, 0.5f>> hamiltonian_cY_damp;
+
+    ///https://arxiv.org/pdf/gr-qc/0204002 4.9
+    std::optional<param_with_default<float, 0.01f>> classic_momentum_damping;
+
+    ///comes from https://arxiv.org/pdf/1205.5111v2 56
+    std::optional<momentum_damping_type2> momentum_damping2;
+    ///unknown
+    std::optional<param_with_default<float, 0.25f>> aij_sigma;
+
+    ///classic hamiltonian damping
+    std::optional<param_with_default<float, 0.5f>> hamiltonian_cA_damp;
+
+    ///https://arxiv.org/pdf/gr-qc/0204002.pdf 4.3
+    std::optional<param_with_default<float, 1.f>> cA_damp;
+
+    //https://arxiv.org/pdf/1205.5111v2 (49)
+    std::optional<bool> christoff_modification_1 = true;
+    //https://arxiv.org/pdf/1205.5111v2 (50), use in conjunction with 49
+    std::optional<param_with_default<float, 1.f>> christoff_modification_2 = 1.f;
+
+    //https://arxiv.org/pdf/1205.5111v2 (47)
+    std::optional<param_with_default<float, 1.f>> ybs;
+
+    //https://arxiv.org/pdf/gr-qc/0204002 3rd up from the bottom of table 2
+    std::optional<param_with_default<float, -0.1f>> mod_cGi;
+
+    lapse_conditions lapse;
+    shift_conditions shift;
+};
+
 struct argument_pack
 {
     std::array<std::string, 6> cY;
@@ -145,16 +225,6 @@ struct base_utility_args
 //#define DAMP_DTCAIJ
 
 #define USE_HALF_INTERMEDIATE
-
-inline
-value conformal_to_X(const value& conformal)
-{
-    #ifndef USE_W
-    return conformal;
-    #else
-    return conformal * conformal;
-    #endif
-}
 
 float get_backwards_euler_relax_parameter();
 value backwards_euler_relax(const value& ynp1k, const value& yn, const value& f_ynp1k, const value& dt);
