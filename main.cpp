@@ -5081,7 +5081,7 @@ int main(int argc, char* argv[])
 
         cl::command_queue cqueue(clctx.ctx);
 
-        auto [super, found_u] = get_superimposed(clctx.ctx, cqueue, holes, size, scale);
+        auto [super, found_u] = get_superimposed(clctx.ctx, cqueue, holes, size, c_at_max);
 
         u_arg = found_u;
 
