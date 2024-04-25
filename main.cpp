@@ -2563,7 +2563,7 @@ initial_conditions get_adm_initial_conditions(cl::context& clctx, cl::command_qu
 #endif // 0
 
 inline
-initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, vec3f centre, float scale, float simulation_width)
+initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, float scale, float simulation_width)
 {
     #if 0
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
@@ -5038,7 +5038,6 @@ int main(int argc, char* argv[])
     float c_at_max = sim_params.simulation_width.value_or(default_simulation_width());
 
     float scale = calculate_scale(c_at_max, size);
-    vec3f centre = {size.x()/2.f, size.y()/2.f, size.z()/2.f};
 
     initial_conditions holes;
 
@@ -5049,7 +5048,7 @@ int main(int argc, char* argv[])
     }
     else
     {
-        holes = setup_dynamic_initial_conditions(clctx.ctx, mqueue, centre, scale, c_at_max);
+        holes = setup_dynamic_initial_conditions(clctx.ctx, mqueue, scale, c_at_max);
     }
 
     for(auto& obj : holes.objs)
