@@ -3701,10 +3701,6 @@ void build_momentum_constraint(matter_interop& interop, equation_context& ctx, b
 {
     tensor<value, 3> Mi = bssn::calculate_momentum_constraint(interop, ctx, use_matter);
 
-    #if defined(BETTERDAMP_DTCAIJ) || defined(DAMP_DTCAIJ) || defined(AIJ_SIGMA)
-    #define CALCULATE_MOMENTUM_CONSTRAINT
-    #endif // defined
-
     for(int i=0; i < 3; i++)
     {
         ctx.add("init_momentum" + std::to_string(i), Mi.idx(i));
@@ -5439,9 +5435,7 @@ int main(int argc, char* argv[])
 
     bool use_matter_colour = false;
 
-    #ifdef CALCULATE_MOMENTUM_CONSTRAINT
-    base_settings.calculate_momentum_constraint = true;
-    #endif // CALCULATE_MOMENTUM_CONSTRAINT
+    base_settings.calculate_momentum_constraint = sim_params.mod.should_calculate_momentum_constraint();
 
     float gauge_wave_speed = sqrt(2.f);
 
@@ -5562,7 +5556,7 @@ int main(int argc, char* argv[])
         utility_arglist.buffers.push_back(in);
     }
 
-    bssn::build(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist, size);
+    bssn::build(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist, size, sim_params.mod);
     build_kreiss_oliger_unidir(clctx.ctx);
     build_raytracing_kernels(clctx.ctx, bssn_arglist);
 
