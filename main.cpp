@@ -3345,7 +3345,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 ///todo: even schwarzschild explodes after t=7
 ///todo: this paper suggests having a very short timestep initially while the gauge conditions settle down: https://arxiv.org/pdf/1404.6523.pdf, then increasing it
 inline
-void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact_object::data>& holes)
+void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact_object::data>& holes, const simulation_modifications& mod)
 {
     #define REGULAR_INITIAL
     #ifdef REGULAR_INITIAL
@@ -3383,7 +3383,12 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     tensor<value, 3, 3> Aij = pow(phi, -2) * bcAij;
 
     value gA = 1;
-    //value gA = 1/(pow(bl_conformal + u + 1, 2));
+
+    if(mod.use_precollapsed_lapse && mod.use_precollapsed_lapse.value())
+    {
+        gA = 1/(pow(bl_conformal + u + 1, 2));
+    }
+
     ///https://arxiv.org/pdf/1304.3937.pdf
     //value gA = 2/(1 + pow(bl_conformal + 1, 4));
 
@@ -3394,6 +3399,7 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     {
         metric<dual, 4, 4> Guv;
 
+        ///the issue with alcubierre is that there's a matter distribution associated with it
         #ifdef ALCUBIERRE
 
         float velocity = 2;
@@ -4816,6 +4822,7 @@ void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>> points
 const char* help_str = R"(misc:
     -help (Display help)
     -pause time (pauses the simulation after time has elapsed)
+    -run (automatically run the simulation)
 
 compact objects:
     -add [bh/black_hole]
@@ -4887,6 +4894,8 @@ the following modifications override each other, as they are mutually exclusive:
     -enable lapseonepluslog
     -enable lapseharmonic
     -enable lapseshockavoid
+    -enable lapseprecollapsed
+        note: interacts poorly with matter
 
     -enable shiftadvection
 
@@ -4903,6 +4912,7 @@ struct simulation_parameters
     std::optional<float> simulation_width;
     simulation_modifications mod;
     std::optional<float> pause_time;
+    std::optional<bool> run;
 };
 
 std::pair<std::optional<initial_conditions>, simulation_parameters> parse_args(int argc, char* argv[])
@@ -4965,9 +4975,10 @@ std::pair<std::optional<initial_conditions>, simulation_parameters> parse_args(i
         }
 
         if(command == "-pause")
-        {
             params.pause_time = consume_float();
-        }
+
+        if(command == "-run")
+            params.run = true;
 
         if(command == "-add")
         {
@@ -5095,6 +5106,9 @@ std::pair<std::optional<initial_conditions>, simulation_parameters> parse_args(i
 
             if(next == "lapseshockavoid")
                 params.mod.lapse.type = lapse_conditions::shock_avoiding{};
+
+            if(next == "lapseprecollapsed")
+                params.mod.use_precollapsed_lapse = consume_bool();
 
             if(next == "shiftadvection")
                 params.mod.shift.advect = !disabling;
@@ -5283,7 +5297,7 @@ int main(int argc, char* argv[])
         equation_context ctx1;
         threads.emplace_back([&]()
         {
-            get_initial_conditions_eqs(ctx1, holes.objs);
+            get_initial_conditions_eqs(ctx1, holes.objs, sim_params.mod);
         });
 
         equation_context ctx4;
@@ -5716,7 +5730,7 @@ int main(int argc, char* argv[])
 
     int steps = 0;
 
-    bool run = false;
+    bool run = sim_params.run.value_or(false);
     bool should_render = false;
 
     vec3f camera_pos = {0, 0, -c_at_max/2.f + 1};

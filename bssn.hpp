@@ -59,6 +59,8 @@ auto get_default(const std::optional<U>& in)
 
 struct simulation_modifications
 {
+    std::optional<bool> use_precollapsed_lapse = false;
+
     ///https://arxiv.org/pdf/1205.5111v2 46
     std::optional<param_with_default<float, 1.f/5.f>> sigma;
     ///unknown where I got this from, todo investigate
