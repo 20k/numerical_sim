@@ -1656,12 +1656,12 @@ struct superimposed_gpu_data
 
     void pre_u(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, const particle_data& particles)
     {
-        matter_programs& prog = get_matter_programs(clctx);
-
         for(const compact_object::data& obj : objs)
         {
             if(obj.t == compact_object::NEUTRON_STAR)
             {
+                matter_programs& prog = get_matter_programs(clctx);
+
                 neutron_star_gpu_data dat(clctx);
                 dat.create(clctx, cqueue, prog.calculate_ppw2p_kernel, prog.calculate_bcAij_matter_kernel, obj, scale, dim);
 
