@@ -5739,10 +5739,14 @@ int main(int argc, char* argv[])
 
     int rendering_method = 1;
 
-    bool pao = false;
+    float pause_time = 0.f;
+    bool should_pause = false;
 
     if(sim_params.pause_time)
-        pao = true;
+    {
+        should_pause = true;
+        pause_time = sim_params.pause_time.value();
+    }
 
     bool render_skipping = false;
     int skip_frames = 8;
@@ -5914,7 +5918,13 @@ int main(int argc, char* argv[])
                 ImGui::PopItemWidth();
             }
 
-            ImGui::Checkbox("pao", &pao);
+            ImGui::Checkbox("Should Pause", &should_pause);
+
+            ImGui::SameLine();
+            ImGui::PushItemWidth(100);
+            ImGui::InputFloat("Pause Time", &pause_time, 1.f, 10.f, "%.0f");
+            ImGui::PopItemWidth();
+
             ImGui::Checkbox("Advance Camera Time", &advance_camera_time);
             ImGui::DragFloat("Camera Time Speed", &camera_speed, 0.1f);
 
@@ -6097,16 +6107,8 @@ int main(int argc, char* argv[])
         ///todo: backwards euler test
         float timestep = get_timestep(c_at_max, size) * 1/get_backwards_euler_relax_parameter();
 
-        if(sim_params.pause_time.has_value())
-        {
-            if(pao && base_mesh.elapsed_time > sim_params.pause_time.value())
-                step = false;
-        }
-        else
-        {
-            if(pao && base_mesh.elapsed_time > 300)
-                step = false;
-        }
+        if(should_pause && base_mesh.elapsed_time > pause_time)
+            step = false;
 
         if(step)
         {
