@@ -49,6 +49,7 @@ struct lapse_conditions
 struct shift_conditions
 {
     bool advect = false;
+    float N = 2;
 };
 
 template<typename U>

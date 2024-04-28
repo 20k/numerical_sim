@@ -4861,8 +4861,9 @@ all strength parameters can also be set to the literal 'default'
 all modifications are disabled by default, except the following:
     modcy2 -0.055
     christoffmodification1
-    christoffmodification2 1.f
+    christoffmodification2 1
     lapseonepluslog
+    shiftdamp 2
 
 the following modifications override each other, as they are mutually exclusive:
     lapseonepluslog lapseharmonic lapseshockavoid
@@ -4898,6 +4899,7 @@ the following modifications override each other, as they are mutually exclusive:
         note: interacts poorly with matter
 
     -enable shiftadvection
+    -enable shiftdamp strength [strength > 0, defaults to 2]
 
 example:
     -enable sigma default (sets and enables sigma damping to 0.2)
@@ -5112,6 +5114,9 @@ std::pair<std::optional<initial_conditions>, simulation_parameters> parse_args(i
 
             if(next == "shiftadvection")
                 params.mod.shift.advect = !disabling;
+
+            if(next == "shiftdamp")
+                params.mod.shift.N = consume_float_with_default(shift_conditions().N);
         }
     }
 

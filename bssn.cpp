@@ -1957,7 +1957,7 @@ tensor<value, 3> get_dtgB(standard_arguments& args, equation_context& ctx, const
 
     #define STATIC_DAMP
     #ifdef STATIC_DAMP
-    value Ns_r = 2.f;
+    value Ns_r = mod.shift.N;
     #endif
 
     value N = max(Ns_r, 0.5f);
