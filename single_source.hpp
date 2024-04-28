@@ -27,19 +27,23 @@ namespace single_source
 
     namespace impl
     {
-        template<typename T, int N>
+        template<typename T>
+        inline
+        void add(argument_pack_base<T>& pack, type_storage& result);
+
+        template<typename T>
         requires(Structy<T>)
         inline
-        void add(buffer<T, N>& buf, type_storage& result);
+        void add(buffer<T>& buf, type_storage& result);
 
-        template<typename T, int N>
+        template<typename T>
         requires(!Structy<T>)
         inline
-        void add(buffer<T, N>& buf, type_storage& result);
+        void add(buffer<T>& buf, type_storage& result);
 
-        template<typename T, int N, size_t fN, fixed_string<fN> str>
+        template<typename T, size_t fN, fixed_string<fN> str>
         inline
-        void add(named_buffer<T, N, str>& buf, type_storage& result);
+        void add(named_buffer<T, str>& buf, type_storage& result);
 
         template<typename T>
         inline
@@ -57,9 +61,9 @@ namespace single_source
         inline
         void add(std::array<T, N>& buf, type_storage& result);
 
-        template<typename T, int buffer_N, std::size_t array_N, auto str>
+        template<typename T, std::size_t array_N, auto str>
         inline
-        void add(std::array<named_buffer<T, buffer_N, str>, array_N>& named_bufs, type_storage& result);
+        void add(std::array<named_buffer<T, str>, array_N>& named_bufs, type_storage& result);
 
         template<typename T, std::size_t array_N, auto str>
         inline
@@ -81,10 +85,22 @@ namespace single_source
             return is_mutable(T());
         }
 
-        template<typename T, int N>
+        template<typename T>
+        inline
+        void add(argument_pack_base<T>& pack, type_storage& result)
+        {
+            auto add_pack = [&](auto& v)
+            {
+                ::single_source::impl::add(v, result);
+            };
+
+            pack.iterate_ext(add_pack);
+        }
+
+        template<typename T>
         requires(Structy<T>)
         inline
-        void add(buffer<T, N>& buf, type_storage& result)
+        void add(buffer<T>& buf, type_storage& result)
         {
             input in;
             in.type = T().type;
@@ -114,10 +130,10 @@ namespace single_source
             result.args.push_back(in);
         }
 
-        template<typename T, int N>
+        template<typename T>
         requires(!Structy<T>)
         inline
-        void add(buffer<T, N>& buf, type_storage& result)
+        void add(buffer<T>& buf, type_storage& result)
         {
             input in;
             in.type = dual_types::name_type(T());
@@ -132,11 +148,11 @@ namespace single_source
             result.args.push_back(in);
         }
 
-        template<typename T, int N, size_t fN, fixed_string<fN> str>
+        template<typename T, size_t fN, fixed_string<fN> str>
         inline
-        void add(named_buffer<T, N, str>& buf, type_storage& result)
+        void add(named_buffer<T, str>& buf, type_storage& result)
         {
-            buffer<T, N>& lbuf = buf;
+            buffer<T>& lbuf = buf;
 
             add(lbuf, result);
         }
@@ -209,9 +225,9 @@ namespace single_source
             }
         }*/
 
-        template<typename T, int buffer_N, std::size_t array_N, auto str>
+        template<typename T, std::size_t array_N, auto str>
         inline
-        void add(std::array<named_buffer<T, buffer_N, str>, array_N>& named_bufs, type_storage& result)
+        void add(std::array<named_buffer<T, str>, array_N>& named_bufs, type_storage& result)
         {
             for(int i=0; i < (int)array_N; i++)
             {
@@ -444,9 +460,9 @@ namespace single_source
 
         std::thread([=]() mutable
         {
-            equation_context ectx;
+            auto ectx_manager = dual_types::implicit::detail::make_context<equation_context>();
 
-            cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, ectx, func, kernel_name, extra_args, u...);
+            cl::kernel kern = single_source::make_dynamic_kernel_for(clctx, *dual_types::implicit::detail::get_context<equation_context>(), func, kernel_name, extra_args, u...);
 
             pending->kernel = kern;
             pending->latch.count_down();
@@ -463,9 +479,9 @@ namespace single_source
 
         std::thread([=]() mutable
         {
-            equation_context ectx;
+            auto ectx_manager = dual_types::implicit::detail::make_context<equation_context>();
 
-            cl::kernel kern = single_source::make_kernel_for(clctx, ectx, func, kernel_name, "");
+            cl::kernel kern = single_source::make_kernel_for(clctx, *dual_types::implicit::detail::get_context<equation_context>(), func, kernel_name, extra_args);
 
             pending->kernel = kern;
             pending->latch.count_down();

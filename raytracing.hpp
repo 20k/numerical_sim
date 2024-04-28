@@ -45,7 +45,7 @@ struct raytracing_manager
     raytracing_manager(cl::context& clctx, const tensor<int, 2>& screen);
 
     std::vector<cl::buffer> get_fresh_buffers(cl::context& clctx);
-    void trace(cl::context& clctx, cl::command_queue& mqueue, float scale, const tensor<int, 2>& screen, vec3f camera_pos, vec4f camera_quat, float camera_start_time);
+    void trace(cl::context& clctx, cl::command_queue& mqueue, float simulation_width, const tensor<int, 2>& screen, vec3f camera_pos, vec4f camera_quat, float camera_start_time);
     void grab_buffers(cl::context& clctx, cl::command_queue& mqueue, const std::vector<cl::buffer>& bufs, float scale, const tensor<cl_int, 4>& clsize, float step);
 };
 
@@ -66,7 +66,7 @@ struct raytracing4_manager
 
     raytracing4_manager(cl::context& clctx, const tensor<int, 2>& screen);
 
-    void trace(cl::context& clctx, cl::command_queue& mqueue, float scale, const tensor<int, 2>& screen, vec3f camera_pos, vec4f camera_quat, float camera_start_time);
+    void trace(cl::context& clctx, cl::command_queue& mqueue, float simulation_width, const tensor<int, 2>& screen, vec3f camera_pos, vec4f camera_quat, float camera_start_time);
     void grab_buffers(cl::context& clctx, cl::command_queue& mqueue, const std::vector<cl::buffer>& bufs, float scale, const tensor<cl_int, 4>& clsize, float step);
 };
 

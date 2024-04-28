@@ -13,6 +13,99 @@
 ///must be 4 because of damping
 #define BORDER_WIDTH 4
 
+template<typename T, T value>
+struct param_with_default
+{
+    T val = value;
+
+    param_with_default(){}
+    param_with_default(const T& in) : val(in){}
+};
+
+struct momentum_damping_type2
+{
+    bool use_lapse = false;
+};
+
+struct lapse_conditions
+{
+    struct one_plus_log
+    {
+    };
+
+    struct harmonic
+    {
+    };
+
+    struct shock_avoiding
+    {
+    };
+
+    bool advect = false;
+
+    std::variant<one_plus_log, harmonic, shock_avoiding> type = one_plus_log{};
+};
+
+struct shift_conditions
+{
+    bool advect = false;
+};
+
+template<typename U>
+auto get_default(const std::optional<U>& in)
+{
+    return U().val;
+}
+
+struct simulation_modifications
+{
+    std::optional<bool> use_precollapsed_lapse = false;
+
+    ///https://arxiv.org/pdf/1205.5111v2 46
+    std::optional<param_with_default<float, 1.f/5.f>> sigma;
+    ///unknown where I got this from, todo investigate
+    std::optional<param_with_default<float, -0.035f>> mod_cY1;
+
+    ///https://arxiv.org/pdf/0711.3575v1 2.21, also https://arxiv.org/pdf/gr-qc/0204002 4.10
+    std::optional<param_with_default<float, -0.055f>> mod_cY2 = -0.055f;
+
+    ///classic hamiltonian damping
+    std::optional<param_with_default<float, 0.5f>> hamiltonian_cY_damp;
+
+    ///https://arxiv.org/pdf/gr-qc/0204002 4.9
+    std::optional<param_with_default<float, 0.01f>> classic_momentum_damping;
+
+    ///comes from https://arxiv.org/pdf/1205.5111v2 56
+    std::optional<momentum_damping_type2> momentum_damping2;
+    ///unknown
+    std::optional<param_with_default<float, 0.25f>> aij_sigma;
+
+    ///classic hamiltonian damping
+    std::optional<param_with_default<float, 0.5f>> hamiltonian_cA_damp;
+
+    ///https://arxiv.org/pdf/gr-qc/0204002.pdf 4.3
+    std::optional<param_with_default<float, 1.f>> cA_damp;
+
+    //https://arxiv.org/pdf/1205.5111v2 (49)
+    std::optional<bool> christoff_modification_1 = true;
+    //https://arxiv.org/pdf/1205.5111v2 (50), use in conjunction with 49
+    std::optional<param_with_default<float, 1.f>> christoff_modification_2 = 1.f;
+
+    //https://arxiv.org/pdf/1205.5111v2 (47)
+    std::optional<param_with_default<float, 1.f>> ybs;
+
+    //https://arxiv.org/pdf/gr-qc/0204002 3rd up from the bottom of table 2
+    std::optional<param_with_default<float, -0.1f>> mod_cGi;
+
+    lapse_conditions lapse;
+    shift_conditions shift;
+
+    bool should_calculate_momentum_constraint() const
+    {
+        return classic_momentum_damping || momentum_damping2 || aij_sigma;
+    }
+};
+
 struct argument_pack
 {
     std::array<std::string, 6> cY;
@@ -69,77 +162,24 @@ struct argument_pack
     }
 };
 
-inline
-value bidx(equation_context& ctx, const std::string& buf, bool interpolate, bool is_derivative, const argument_pack& pack = argument_pack())
-{
-    value v;
-
-    if(interpolate)
-    {
-        if(is_derivative)
-        {
-            v = dual_types::apply(value("buffer_read_linearh"), buf, as_float3("fx", "fy", "fz"), value_v("dim"));
-        }
-        else
-        {
-            v = dual_types::apply(value("buffer_read_linear"), buf, as_float3("fx", "fy", "fz"), value_v("dim"));
-        }
-    }
-    else
-    {
-        value_i index = "index";
-        value findex = index.reinterpret_as<value>();
-        value_h hindex = index.reinterpret_as<value_h>();
-
-        if(is_derivative)
-        {
-            if(!ctx.better_buffer_index)
-                v = dual_types::make_op<float16>(dual_types::ops::BRACKET2, buf,
-                                                 value_i(pack.pos[0]), value_i(pack.pos[1]), value_i(pack.pos[2]),
-                                                 value_i("dim.x"), value_i("dim.y"), value_i("dim.z")).reinterpret_as<value>();
-                //v = dual_types::apply(value("buffer_indexh"), buf, pack.pos[0], pack.pos[1], pack.pos[2], pack.dim);
-            else
-            {
-                value_h v_h = dual_types::apply(value_h("buffer_indexh_2"), buf, hindex);
-                v_h.is_memory_access = true;
-                return v_h.convert<float>();
-            }
-        }
-        else
-        {
-            if(!ctx.better_buffer_index)
-                v = dual_types::make_op<float>(dual_types::ops::BRACKET2, value_i(buf), value_i(pack.pos[0]), value_i(pack.pos[1]), value_i(pack.pos[2]),
-                                                                                        value_i("dim.x"), value_i("dim.y"), value_i("dim.z"));
-            else
-                v = dual_types::apply(value("buffer_index_2"), buf, findex);
-        }
-    }
-
-    v.is_memory_access = true;
-    return v;
-}
-
 template<typename T, typename U>
 inline
-value buffer_index_generic(buffer<value_base<T>, 3> buf, const tensor<value_base<U>, 3>& pos, const std::string& dim)
+value buffer_index_generic(buffer<value_base<T>> buf, const tensor<value_base<U>, 3>& pos, const tensor<value_i, 3>& dim)
 {
     value v;
 
-    if constexpr(std::is_same_v<T, float16> && std::is_same_v<U, float>)
+    if constexpr(std::is_same_v<U, float>)
     {
-        v = dual_types::apply(value("buffer_read_linearh"), buf.name, as_float3(pos.x(), pos.y(), pos.z()), dim);
+        v = dual_types::make_op<T>(dual_types::ops::BRACKET_LINEAR, buf.name,
+                                   pos.x(), pos.y(), pos.z(),
+                                   dim.x(), dim.y(), dim.z()).template reinterpret_as<value>();
     }
-    else if constexpr(std::is_same_v<T, float> && std::is_same_v<U, float>)
+
+    else if constexpr(std::is_same_v<U, int>)
     {
-        v = dual_types::apply(value("buffer_read_linear"), buf.name, as_float3(pos.x(), pos.y(), pos.z()), dim);
-    }
-    else if constexpr(std::is_same_v<T, float16> && std::is_same_v<U, int>)
-    {
-        v = dual_types::apply(value("buffer_indexh"), buf.name, pos.x(), pos.y(), pos.z(), dim);
-    }
-    else if constexpr(std::is_same_v<T, float> && std::is_same_v<U, int>)
-    {
-        v = dual_types::apply(value("buffer_index"), buf.name, pos.x(), pos.y(), pos.z(), dim);
+        v = dual_types::make_op<T>(dual_types::ops::BRACKET2, buf.name,
+                                   pos.x(), pos.y(), pos.z(),
+                                   dim.x(), dim.y(), dim.z()).template reinterpret_as<value>();
     }
     else
     {
@@ -148,8 +188,37 @@ value buffer_index_generic(buffer<value_base<T>, 3> buf, const tensor<value_base
         #endif
     }
 
-    v.is_memory_access = true;
     return v;
+}
+
+
+inline
+value bidx(equation_context& ctx, const std::string& buf, bool interpolate, bool is_derivative, const argument_pack& pack = argument_pack())
+{
+    if(interpolate)
+    {
+        if(is_derivative)
+        {
+            return buffer_index_generic<float16>(buf, (v3f){"fx", "fy", "fz"}, {"dim.x", "dim.y", "dim.z"});
+        }
+        else
+        {
+            return buffer_index_generic<float>(buf, (v3f){"fx", "fy", "fz"}, {"dim.x", "dim.y", "dim.z"});
+        }
+    }
+    else
+    {
+        if(is_derivative)
+        {
+            return buffer_index_generic<float16>(buf, (v3i){pack.pos[0], pack.pos[1], pack.pos[2]}, {"dim.x", "dim.y", "dim.z"});
+        }
+        else
+        {
+            return buffer_index_generic<float>(buf, (v3i){pack.pos[0], pack.pos[1], pack.pos[2]}, {"dim.x", "dim.y", "dim.z"});
+        }
+    }
+
+    assert(false);
 }
 
 struct base_bssn_args
@@ -169,16 +238,6 @@ struct base_utility_args
 //#define DAMP_DTCAIJ
 
 #define USE_HALF_INTERMEDIATE
-
-inline
-value conformal_to_X(const value& conformal)
-{
-    #ifndef USE_W
-    return conformal;
-    #else
-    return conformal * conformal;
-    #endif
-}
 
 float get_backwards_euler_relax_parameter();
 value backwards_euler_relax(const value& ynp1k, const value& yn, const value& f_ynp1k, const value& dt);
@@ -645,7 +704,7 @@ namespace bssn
     tensor<value, 3> calculate_momentum_constraint(matter_interop& interop, equation_context& ctx, bool use_matter);
     value calculate_hamiltonian_constraint(const matter_interop& interop, equation_context& ctx, bool use_matter);
 
-    void build(cl::context& clctx, const matter_interop& interop, bool use_matter, base_bssn_args bssn_args, base_utility_args utility_args, vec3i dim);
+    void build(cl::context& clctx, const matter_interop& interop, bool use_matter, base_bssn_args bssn_args, base_utility_args utility_args, vec3i dim, simulation_modifications mod);
 }
 
 #endif // BSSN_HPP_INCLUDED

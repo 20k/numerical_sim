@@ -18,7 +18,7 @@ float get_scaled_coordinate(int in, int dimension_upper, int dimension_lower)
 
     int upper_offset = in - upper_centre;
 
-    float scale = (dimension_upper - 1) / (dimension_lower - 1);
+    float scale = (float)(dimension_upper - 1) / (dimension_lower - 1);
 
     ///so lets say we have [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] with a dimension of 13
     ///this gives a middle value of 6, which is the 7th value
@@ -102,7 +102,7 @@ void extract_u_region(__global float* u_in, __global float* u_out, float c_at_ma
 ///todo: this, but second order, because memory reads are heavily cached
 __kernel
 void iterative_u_solve(__global float* u_offset_in, __global float* cached_aij_aIJ, __global float* cached_ppw2p, __global float* nonconformal_pH,
-                       float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol, int iteration)
+                       float scale, int4 dim, __constant int* last_still_going, __global int* still_going, float etol, int iteration, float relax)
 {
     if(*last_still_going == 0)
         return;
@@ -129,5 +129,6 @@ void iterative_u_solve(__global float* u_offset_in, __global float* cached_aij_a
 
     float h2f0 = scale * scale * RHS;
 
-    laplace_interior_rb(u_offset_in, h2f0, ix, iy, iz, scale, dim, still_going, etol, iteration);
+    //laplace_interior(u_offset_in, u_offset_out, h2f0, ix, iy, iz, scale, dim, still_going, etol);
+    laplace_interior_rb(u_offset_in, h2f0, ix, iy, iz, scale, dim, still_going, etol, iteration, relax);
 }

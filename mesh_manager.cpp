@@ -218,7 +218,7 @@ ref_counted_buffer thin_intermediates_pool::request(cl::context& ctx, cl::comman
     return next;
 }
 
-cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& _buffers, const std::vector<buffer_descriptor>& utility_buffers, std::vector<plugin*> _plugins) :
+cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, vec3i _dim, cpu_mesh_settings _sett, evolution_points& points, const std::vector<buffer_descriptor>& _buffers, const std::vector<buffer_descriptor>& utility_buffers, std::vector<plugin*> _plugins, float simulation_width) :
         utility_data{buffer_set(ctx, _dim, utility_buffers)},
         points_set{ctx},
         momentum_constraint{ctx, ctx, ctx},
@@ -231,7 +231,7 @@ cpu_mesh::cpu_mesh(cl::context& ctx, cl::command_queue& cqueue, vec3i _centre, v
     dim = _dim;
     sett = _sett;
 
-    scale = calculate_scale(get_c_at_max(), dim);
+    scale = calculate_scale(simulation_width, dim);
 
     points_set = points;
 
@@ -413,7 +413,7 @@ void check_symm(const std::string& debug_name, cl::command_queue& cqueue, cl::bu
 }
 
 template<typename T>
-void extract_chunk_kernel(equation_context& ctx, buffer<value_base<T>, 3> in, buffer<value_base_mut<T>, 3> out, literal<v3i> origin, literal<v3i> lupper_size, literal<v3i> llower_size)
+void extract_chunk_kernel(equation_context& ctx, buffer<value_base<T>> in, buffer<value_base_mut<T>> out, literal<v3i> origin, literal<v3i> lupper_size, literal<v3i> llower_size)
 {
     value_i ix = declare(ctx, value_i{"get_global_id(0)"}, "ix");
     value_i iy = declare(ctx, value_i{"get_global_id(1)"}, "iy");
@@ -426,7 +426,7 @@ void extract_chunk_kernel(equation_context& ctx, buffer<value_base<T>, 3> in, bu
 
     if_e(ix >= lower_size.x() || iy >= lower_size.y() || iz >= lower_size.z(), ctx, [&]()
     {
-        ctx.exec(return_s);
+        ctx.exec(return_v());
     });
 
     v3i pos = {ix, iy, iz};

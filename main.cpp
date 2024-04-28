@@ -175,51 +175,45 @@ value kreiss_oliger_dissipate(equation_context& ctx, const value& in, const valu
     return prefix * fin / scale;
 }
 
-void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, literal<value_i> point_count,
-                          buffer<value, 3> buf_in, buffer<value_mut, 3> buf_out,
+void kreiss_oliger_unidir(equation_context& ctx, buffer<tensor<value_us, 4>> points, literal<value_i> point_count,
+                          buffer<value> buf_in, buffer<value_mut> buf_out,
                           literal<value> eps, single_source::named_literal<value, "scale"> scale, single_source::named_literal<tensor<value_i, 4>, "dim"> idim, literal<value> timestep,
-                          buffer<value_us, 3> order_ptr)
+                          buffer<value_us> order_ptr)
 {
-    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
+    using namespace dual_types::implicit;
 
     value_i local_idx = declare(ctx, value_i{"get_global_id(0)"}, "local_idx");
 
-    if_e(local_idx >= point_count, ctx, [&]()
+    if_e(local_idx >= point_count, [&]()
     {
-        ctx.exec(return_s);
+        return_e();
     });
 
     value_i ix = declare(ctx, points[local_idx].x().convert<int>(), "ix");
     value_i iy = declare(ctx, points[local_idx].y().convert<int>(), "iy");
     value_i iz = declare(ctx, points[local_idx].z().convert<int>(), "iz");
 
-    tensor<value_i, 3> dim = {idim.get().x(), idim.get().y(), idim.get().z()};
+    v3i pos = {ix, iy, iz};
+    v3i dim = {idim.get().x(), idim.get().y(), idim.get().z()};
 
-    buf_in.size = {dim.x(), dim.y(), dim.z()};
-    buf_out.size = {dim.x(), dim.y(), dim.z()};
-    order_ptr.size = {dim.x(), dim.y(), dim.z()};
-
-    value_i order = declare(ctx, order_ptr[ix, iy, iz].convert<int>(), "order");
+    value_i order = declare(ctx, order_ptr[(v3i){ix, iy, iz}, dim].convert<int>(), "order");
 
     ///note to self we're not actually doing this correctly
     value_i is_valid_point = ((order & value_i{(int)D_LOW}) > 0) || ((order & value_i{(int)D_FULL}) > 0);
 
     assert(buf_out.storage.is_mutable);
 
-    if_e(!is_valid_point, ctx, [&]()
+    if_e(!is_valid_point, [&]()
     {
-        buf_out[ix, iy, iz].as_mutable(ctx) = buf_in[ix, iy, iz];
-        ctx.exec(return_s);
+        mut(buf_out[pos, dim]) = buf_in[pos, dim];
+        return_e();
     });
 
     value buf_v = bidx(ctx, buf_in.name, false, false);
-    assert(buf_v.is_memory_access);
 
     value v = buf_v + timestep * eps * kreiss_oliger_dissipate(ctx, buf_v, order);
 
-    ctx.exec(assign(buf_out[ix, iy, iz], v));
-
-    ctx.fix_buffers();
+    mut(buf_out[(v3i){ix, iy, iz}, dim]) = v;
 }
 
 void build_kreiss_oliger_unidir(cl::context& clctx)
@@ -671,26 +665,40 @@ namespace neutron_star
 
     template<typename T, typename U>
     inline
-    value calculate_ppw2_p(const tensor<value, 3>& coordinate, const metric<T, 3, 3>& flat, const params<T>& param, U&& tov_phi_at_coordinate)
+    value calculate_ppw2_p(equation_context& ctx, const tensor<value, 3>& coordinate, const metric<T, 3, 3>& flat, const params<T>& param, U&& tov_phi_at_coordinate)
     {
         tensor<value, 3> vposition = {param.position.x(), param.position.y(), param.position.z()};
 
         tensor<value, 3> relative_pos = coordinate - vposition;
 
+        ctx.pin(relative_pos);
+
         value r = relative_pos.length();
+
+        ctx.pin(r);
 
         value M_factor = calculate_M_factor(param, tov_phi_at_coordinate);
         value squiggly_N_factor = calculate_squiggly_N_factor(param, tov_phi_at_coordinate);
 
+        ctx.pin(M_factor);
+        ctx.pin(squiggly_N_factor);
+
         value W2_linear = calculate_W2_linear_momentum(flat, param.linear_momentum, M_factor);
         value W2_angular = calculate_W2_angular_momentum(coordinate, param.position, flat, param.angular_momentum, squiggly_N_factor);
+
+        ctx.pin(W2_linear);
+        ctx.pin(W2_angular);
 
         value linear_rapidity = acosh(sqrt(W2_linear));
         value angular_rapidity = acosh(sqrt(W2_angular));
 
         value final_W = cosh(linear_rapidity + angular_rapidity);
 
+        ctx.pin(final_W);
+
         conformal_data cdata = sample_conformal(r, param, tov_phi_at_coordinate);
+
+        ctx.pin(cdata.pressure);
 
         ///so. The paper specifically says superimpose ppw2p terms
         ///which presumably means add. Which would translate to adding the W2 terms
@@ -841,6 +849,8 @@ tensor<value, 3, 3> calculate_bcAij_generic(equation_context& ctx, const tensor<
         {
             tensor<value, 3, 3> bcAij_single = black_hole::calculate_single_bcAij(pos, obj.position, obj.momentum, obj.angular_momentum);
 
+            ctx.pin(bcAij_single);
+
             bcAij += bcAij_single;
         }
 
@@ -857,6 +867,8 @@ tensor<value, 3, 3> calculate_bcAij_generic(equation_context& ctx, const tensor<
             auto flatv = get_flat_metric<value, 3>();
 
             tensor<value, 3, 3> bcAIJ_single = neutron_star::calculate_aij_single(ctx, pos, flat, p, tov_phi_at_coordinate);
+
+            ctx.pin(bcAIJ_single);
 
             tensor<value, 3, 3> bcAij_single = lower_both(bcAIJ_single, flatv);
 
@@ -1001,9 +1013,7 @@ value tov_phi_at_coordinate_general(const tensor<value, 3>& world_position)
 
     value v = dual_types::apply(value("world_to_voxel"), fl3, "dim", "scale");
 
-    auto result = dual_types::apply(value("buffer_read_linear"), "tov_phi", v, "dim");
-    result.is_memory_access = true;
-    return result;
+    return dual_types::apply(value("buffer_read_linear"), "tov_phi", v, "dim");
     //return dual_types::apply("tov_phi", as_float3(vx, vy, vz), "dim");
 }
 
@@ -1012,8 +1022,8 @@ value get_u_rhs(equation_context& ctx, cl::context& clctx, const initial_conditi
 {
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
-    value u_value = dual_types::apply(value("buffer_index"), "u_offset_in", "ix", "iy", "iz", "dim");
-    u_value.is_memory_access = true;
+    buffer<value> u_offset_in("u_offset_in");
+    value u_value = u_offset_in[(v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"}];
 
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
     ///todo when I forget: I'm using the conformal guess here for neutron stars which probably isn't right
@@ -1192,8 +1202,8 @@ private:
 
         value rho = dat.mass_energy_density;
 
-        value u_value = dual_types::apply(value("buffer_index"), "u_offset_in", "ix", "iy", "iz", "dim");
-        u_value.is_memory_access = true;
+        buffer<value> u_offset_in("u_offset_in");
+        value u_value = u_offset_in[(v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"}];
 
         value phi = u_value;
         value phi_rhs = -2 * (float)M_PI * pow(phi, 5) * rho;
@@ -1314,6 +1324,94 @@ private:
     }
 };
 
+struct matter_programs
+{
+    cl::program ppw2p_program;
+    cl::kernel calculate_ppw2p_kernel;
+
+    cl::program bcAij_matter_program;
+    cl::kernel calculate_bcAij_matter_kernel;
+
+    matter_programs(cl::context& ctx) :
+        ppw2p_program(ctx), bcAij_matter_program(ctx)
+    {
+        ///ppw2p generic kernel
+        {
+            equation_context ectx;
+
+            ectx.add("INITIAL_PPW2P_2", 1);
+
+            tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+            auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
+            {
+                value v = tov_phi_at_coordinate_general(world_position);
+                ectx.pin(v);
+                return v;
+            };
+
+            auto flat = get_flat_metric<value, 3>();
+
+            neutron_star::params<value> p;
+            p.position = {"data->position.x", "data->position.y", "data->position.z"};
+            p.mass = "data->mass";
+            p.compactness = "data->compactness";
+            p.linear_momentum = {"data->linear_momentum.x", "data->linear_momentum.y", "data->linear_momentum.z"};
+            p.angular_momentum = {"data->angular_momentum.x", "data->angular_momentum.y", "data->angular_momentum.z"};
+
+            value ppw2p_equation = neutron_star::calculate_ppw2_p(ectx, pos, flat, p, pinning_tov_phi);
+
+            ectx.add("B_PPW2P", ppw2p_equation);
+
+            std::tie(ppw2p_program, calculate_ppw2p_kernel) = build_and_fetch_kernel(ctx, ectx, "initial_conditions.cl", "calculate_ppw2p", "ppw2p");
+        }
+
+        {
+
+            compact_object::base_data<value> base_data;
+            base_data.position = {"data->position.x", "data->position.y", "data->position.z"};
+            base_data.bare_mass = "data->mass";
+            base_data.momentum = {"data->linear_momentum.x", "data->linear_momentum.y", "data->linear_momentum.z"};
+            base_data.angular_momentum = {"data->angular_momentum.x", "data->angular_momentum.y", "data->angular_momentum.z"};
+            base_data.matter.compactness = "data->compactness";
+            base_data.t = compact_object::NEUTRON_STAR;
+
+            equation_context ectx;
+
+            tensor<value, 3> pos = {"ox", "oy", "oz"};
+
+            auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
+            {
+                value v = tov_phi_at_coordinate_general(world_position);
+                ectx.pin(v);
+                return v;
+            };
+
+            tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(ectx, pos, std::vector{base_data}, pinning_tov_phi);
+
+            vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
+
+            for(int i=0; i < 6; i++)
+            {
+                vec2i index = linear_indices[i];
+
+                ectx.add("B_BCAIJ_" + std::to_string(i), bcAij_dyn.idx(index.x(), index.y()));
+            }
+
+            ectx.add("INITIAL_BCAIJ_2", 1);
+
+            std::tie(bcAij_matter_program, calculate_bcAij_matter_kernel) = build_and_fetch_kernel(ctx, ectx, "initial_conditions.cl", "calculate_bcAij", "bcaij");
+        }
+    }
+};
+
+matter_programs& get_matter_programs(cl::context& ctx)
+{
+    static matter_programs prog(ctx);
+
+    return prog;
+}
+
 struct superimposed_gpu_data
 {
     vec3i dim;
@@ -1348,12 +1446,6 @@ struct superimposed_gpu_data
 
     cl_int max_particle_memory = 1024 * 1024 * 1024;
 
-    cl::program ppw2p_program;
-    cl::kernel calculate_ppw2p_kernel;
-
-    cl::program bcAij_matter_program;
-    cl::kernel calculate_bcAij_matter_kernel;
-
     cl::program multi_matter_program;
     cl::kernel multi_matter_kernel;
 
@@ -1363,7 +1455,7 @@ struct superimposed_gpu_data
                                                                                                       particle_position(ctx), particle_mass(ctx), particle_lorentz(ctx),
                                                                                                       particle_counts(ctx), particle_indices(ctx), particle_memory(ctx), particle_memory_count(ctx),
                                                                                                       particle_grid_E_without_conformal(ctx),
-                                                                                                      ppw2p_program(ctx), bcAij_matter_program(ctx), multi_matter_program(ctx)
+                                                                                                      multi_matter_program(ctx)
     {
         dim = _dim;
         scale = _scale;
@@ -1424,77 +1516,6 @@ struct superimposed_gpu_data
         particle_grid_E_without_conformal.fill(cqueue, cl_float{0});
     }
 
-    void build_accumulation_matter_programs(cl::context& ctx)
-    {
-        ///ppw2p generic kernel
-        {
-            equation_context ectx;
-
-            ectx.add("INITIAL_PPW2P_2", 1);
-
-            tensor<value, 3> pos = {"ox", "oy", "oz"};
-
-            auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
-            {
-                value v = tov_phi_at_coordinate_general(world_position);
-                ectx.pin(v);
-                return v;
-            };
-
-            auto flat = get_flat_metric<value, 3>();
-
-            neutron_star::params<value> p;
-            p.position = {"data->position.x", "data->position.y", "data->position.z"};
-            p.mass = "data->mass";
-            p.compactness = "data->compactness";
-            p.linear_momentum = {"data->linear_momentum.x", "data->linear_momentum.y", "data->linear_momentum.z"};
-            p.angular_momentum = {"data->angular_momentum.x", "data->angular_momentum.y", "data->angular_momentum.z"};
-
-            value ppw2p_equation = neutron_star::calculate_ppw2_p(pos, flat, p, pinning_tov_phi);
-
-            ectx.add("B_PPW2P", ppw2p_equation);
-
-            std::tie(ppw2p_program, calculate_ppw2p_kernel) = build_and_fetch_kernel(ctx, ectx, "initial_conditions.cl", "calculate_ppw2p", "ppw2p");
-        }
-
-        {
-
-            compact_object::base_data<value> base_data;
-            base_data.position = {"data->position.x", "data->position.y", "data->position.z"};
-            base_data.bare_mass = "data->mass";
-            base_data.momentum = {"data->linear_momentum.x", "data->linear_momentum.y", "data->linear_momentum.z"};
-            base_data.angular_momentum = {"data->angular_momentum.x", "data->angular_momentum.y", "data->angular_momentum.z"};
-            base_data.matter.compactness = "data->compactness";
-            base_data.t = compact_object::NEUTRON_STAR;
-
-            equation_context ectx;
-
-            tensor<value, 3> pos = {"ox", "oy", "oz"};
-
-            auto pinning_tov_phi = [&](const tensor<value, 3>& world_position)
-            {
-                value v = tov_phi_at_coordinate_general(world_position);
-                ectx.pin(v);
-                return v;
-            };
-
-            tensor<value, 3, 3> bcAij_dyn = calculate_bcAij_generic(ectx, pos, std::vector{base_data}, pinning_tov_phi);
-
-            vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
-
-            for(int i=0; i < 6; i++)
-            {
-                vec2i index = linear_indices[i];
-
-                ectx.add("B_BCAIJ_" + std::to_string(i), bcAij_dyn.idx(index.x(), index.y()));
-            }
-
-            ectx.add("INITIAL_BCAIJ_2", 1);
-
-            std::tie(bcAij_matter_program, calculate_bcAij_matter_kernel) = build_and_fetch_kernel(ctx, ectx, "initial_conditions.cl", "calculate_bcAij", "bcaij");
-        }
-    }
-
     void build_matter_program(cl::context& ctx, const value& conformal_guess)
     {
         tensor<value, 3> pos = {"ox", "oy", "oz"};
@@ -1510,8 +1531,8 @@ struct superimposed_gpu_data
             return v;
         };
 
-        value u_value = dual_types::apply(value("buffer_index"), "u_value", "ix", "iy", "iz", "dim");
-        u_value.is_memory_access = true;
+        buffer<value> u_value_buf("u_value");
+        value u_value = u_value_buf[(v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"}];
 
         ///https://arxiv.org/pdf/1606.04881.pdf 74
         value phi = conformal_guess + u_value + 1;
@@ -1564,7 +1585,7 @@ struct superimposed_gpu_data
 
             rho_conformal += cdata.mass_energy_density;
             //rhoH_conformal += (cdata.mass_energy_density + cdata.pressure) * W2_factor - cdata.pressure;
-            rhoH_conformal += neutron_star::calculate_ppw2_p(pos, flat, p, pinning_tov_phi);
+            rhoH_conformal += neutron_star::calculate_ppw2_p(ectx, pos, flat, p, pinning_tov_phi);
             //eps += sampled.specific_energy_density;
 
             //enthalpy += 1 + sampled.specific_energy_density + pressure_conformal / sampled.mass_energy_density;
@@ -1635,20 +1656,14 @@ struct superimposed_gpu_data
 
     void pre_u(cl::context& clctx, cl::command_queue& cqueue, const std::vector<compact_object::data>& objs, const particle_data& particles)
     {
-        bool built_accum_matter_kernel = false;
-
         for(const compact_object::data& obj : objs)
         {
             if(obj.t == compact_object::NEUTRON_STAR)
             {
-                if(!built_accum_matter_kernel)
-                {
-                    build_accumulation_matter_programs(clctx);
-                    built_accum_matter_kernel = true;
-                }
+                matter_programs& prog = get_matter_programs(clctx);
 
                 neutron_star_gpu_data dat(clctx);
-                dat.create(clctx, cqueue, calculate_ppw2p_kernel, calculate_bcAij_matter_kernel, obj, scale, dim);
+                dat.create(clctx, cqueue, prog.calculate_ppw2p_kernel, prog.calculate_bcAij_matter_kernel, obj, scale, dim);
 
                 pull(clctx, cqueue, dat, obj);
             }
@@ -1993,22 +2008,20 @@ struct superimposed_gpu_data
 
 void setup_u_offset(single_source::argument_generator& arg_gen, equation_context& ctx, const value& boundary)
 {
-    buffer<value_mut, 3> u_offset = arg_gen.add<buffer<value_mut, 3>>();
+    buffer<value_mut> u_offset = arg_gen.add<buffer<value_mut>>();
     literal<v3i> dim = arg_gen.add<literal<v3i>>();
-
-    u_offset.size = dim.get();
 
     v3i pos = declare(ctx, (v3i){"get_global_id(0)", "get_global_id(1)", "get_global_id(2)"});
 
     if_e(pos.x() >= dim.get().x() || pos.y() >= dim.get().y() || pos.z() >= dim.get().z(), ctx, [&]()
     {
-        ctx.exec(return_s);
+        ctx.exec(return_v());
     });
 
-    ctx.exec(assign(u_offset[pos], boundary));
+    ctx.exec(assign(u_offset[pos, dim.get()], boundary));
 }
 
-std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx, cl::command_queue& cqueue, initial_conditions& init, vec3i dim, float scale)
+std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx, cl::command_queue& cqueue, initial_conditions& init, vec3i dim, float simulation_width)
 {
     float boundary = 0;
 
@@ -2030,6 +2043,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
     cl::program u_program = build_program_with_cache(clctx, "u_solver.cl", local_build_str, "", {"generic_laplace.cl"});
     cl::kernel iterate_kernel(u_program, "iterative_u_solve");
     cl::kernel extract_kernel(u_program, "extract_u_region");
+    cl::kernel upscale_u(u_program, "upscale_u");
 
     auto get_superimposed_of = [&clctx, &cqueue, &init](vec3i dim, float scale)
     {
@@ -2069,28 +2083,28 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
             return out;
         };*/
 
-        auto get_u_of = [&clctx, &cqueue, &init, &boundary, &get_superimposed_of, &etol, &iterate_kernel](vec3i dim, float scale, std::optional<cl::buffer> u_upper)
+        auto get_u_of = [&clctx, &cqueue, &init, &boundary, &get_superimposed_of, &etol, &iterate_kernel, &simulation_width](vec3i dim, std::optional<cl::buffer> u_upper, float relax)
         {
             vec3i current_dim = dim;
             cl_int3 current_cldim = {dim.x(), dim.y(), dim.z()};
-            float current_c_at_max = scale * current_dim.largest_elem();
-            float local_scale = calculate_scale(current_c_at_max, current_dim);
+            float local_scale = calculate_scale(simulation_width, current_dim);
 
-            superimposed_gpu_data data = get_superimposed_of(dim, scale);
+            superimposed_gpu_data data = get_superimposed_of(dim, local_scale);
 
             cl::buffer u_args(clctx);
             std::array<cl::buffer, 2> still_going{clctx, clctx};
 
             if(u_upper.has_value())
             {
+                assert(u_upper.value().alloc_size == sizeof(cl_float) * current_dim.x() * current_dim.y() * current_dim.z());
+
                 u_args = u_upper.value();
             }
             else
             {
                 u_args.alloc(sizeof(cl_float) * current_dim.x() * current_dim.y() * current_dim.z());
+                u_args.set_to_zero(cqueue);
             }
-
-            u_args.set_to_zero(cqueue);
 
             for(int i=0; i < 2; i++)
             {
@@ -2098,7 +2112,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
                 still_going[i].fill(cqueue, cl_int{1});
             }
 
-            int N = 8000;
+            int N = 80000;
 
             #ifdef GPU_PROFILE
             N = 1000;
@@ -2118,7 +2132,7 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
                                          data.aij_aIJ, data.ppw2p, data.particle_grid_E_without_conformal,
                                          local_scale, current_cldim,
                                          still_going[which_still_going], still_going[(which_still_going + 1) % 2],
-                                         etol, i);
+                                         etol, i, relax);
 
                 iterate_kernel.set_args(iterate_u_args);
 
@@ -2134,6 +2148,38 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
 
             return u_args;
         };
+
+        cl::buffer pass(clctx);
+
+        std::array<vec3i, 5> dims = {(vec3i){63, 63, 63}, (vec3i){95, 95, 95}, (vec3i){127, 127, 127}, (vec3i){197, 197, 197}, dim};
+        std::array<float, 5> relax = {0.4f, 0.5f, 0.5f, 0.7f, 0.9f};
+
+        for(int i=0; i < (int)dims.size() - 1; i++)
+        {
+            cl::buffer out(clctx);
+
+            if(i == 0)
+                out = get_u_of(dims[i], std::nullopt, relax[i]);
+            else
+                out = get_u_of(dims[i], pass, relax[i]);
+
+            vec3i old_dim = dims[i];
+            vec3i next_dim = dims[i+1];
+
+            pass = cl::buffer(clctx);
+            pass.alloc(sizeof(cl_float) * next_dim.x() * next_dim.y() * next_dim.z());
+            pass.set_to_zero(cqueue);
+
+            cl_int4 cl_old_dim = {old_dim.x(), old_dim.y(), old_dim.z(), 0};
+            cl_int4 cl_dim = {next_dim.x(), next_dim.y(), next_dim.z(), 0};
+
+            cl::args args;
+            args.push_back(out, pass, cl_old_dim, cl_dim);
+
+            upscale_u.set_args(args);
+
+            cqueue.exec(upscale_u, {next_dim.x(), next_dim.y(), next_dim.z()}, {8,8,1});
+        }
 
         //float c_at_max = scale * dim.largest_elem();
 
@@ -2157,12 +2203,14 @@ std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx
 
         found_u_val = last_u.value();*/
 
-        found_u_val = get_u_of(dim, scale, std::nullopt);
+        found_u_val = get_u_of(dim, pass, relax.back());
 
         cqueue.block();
 
         std::cout << "U spin " << time.get_elapsed_time_s() << std::endl;
     }
+
+    float scale = calculate_scale(simulation_width, dim);
 
     auto data = get_superimposed_of(dim, scale);
 
@@ -2419,25 +2467,9 @@ sandwich_result setup_sandwich_laplace(cl::context& clctx, cl::command_queue& cq
 #endif // 0
 
 inline
-initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, float scale, std::vector<compact_object::data> objs, std::optional<particle_data>&& p_data_opt)
+initial_conditions get_bare_initial_conditions(std::vector<compact_object::data> objs, std::optional<particle_data>&& p_data_opt)
 {
     initial_conditions ret;
-
-    float bulge = 1;
-
-    auto san_pos = [&](const tensor<float, 3>& in)
-    {
-        return in;
-
-        tensor<float, 3> scaled = round((in / scale) * bulge);
-
-        return scaled * scale / bulge;
-    };
-
-    for(compact_object::data& obj : objs)
-    {
-        obj.position = san_pos(obj.position);
-    }
 
     for(const compact_object::data& obj : objs)
     {
@@ -2448,9 +2480,8 @@ initial_conditions get_bare_initial_conditions(cl::context& clctx, cl::command_q
     }
 
     ret.objs = objs;
-    //ret.use_matter = true;
 
-    if(p_data_opt.has_value())
+    if(p_data_opt.has_value() && p_data_opt.value().positions.size() > 0)
     {
         ret.use_particles = true;
         ret.particles = std::move(p_data_opt.value());
@@ -2532,7 +2563,7 @@ initial_conditions get_adm_initial_conditions(cl::context& clctx, cl::command_qu
 #endif // 0
 
 inline
-initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, vec3f centre, float scale)
+initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::command_queue& cqueue, float scale, float simulation_width)
 {
     #if 0
     ///https://arxiv.org/pdf/gr-qc/0505055.pdf
@@ -2842,7 +2873,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
         vec3f pos = {rand_det_s(rng, 0.f, 1.f), rand_det_s(rng, 0.f, 1.f), rand_det_s(rng, 0.f, 1.f)};
         vec3f momentum = {rand_det_s(rng, 0.f, 1.f), rand_det_s(rng, 0.f, 1.f), rand_det_s(rng, 0.f, 1.f)};
 
-        pos = (pos - 0.5f) * ((get_c_at_max()/2.3));
+        pos = (pos - 0.5f) * (simulation_width/2.3);
 
         momentum = (momentum - 0.5f) * 0.01f * 0.25f;
 
@@ -2904,7 +2935,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
         double earth_mass = 5.972 * pow(10., 24.);
         double jupiter_mass = 1.899 * pow(10., 27.);
 
-        double max_scale_rad = get_c_at_max() * 0.5f * 0.7f;
+        double max_scale_rad = simulation_width * 0.5f * 0.7f;
 
         double earth_radius = 228 * pow(10., 6.) * 1000;
         //double radius = 743.74 * 1000. * 1000. * 1000.;
@@ -3057,7 +3088,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     //#define GALAXY_SIM
     #ifdef GALAXY_SIM
-    data_opt = build_galaxy();
+    data_opt = build_galaxy(simulation_width);
     #endif
 
     //#define ACCRETION_DISK
@@ -3162,7 +3193,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     #ifdef SPINDLE_COLLAPSE
     int particles = 5 * pow(10, 5);
 
-    float L = get_c_at_max() * 0.8f;
+    float L = simulation_width * 0.8f;
 
     float M = L/20;
 
@@ -3215,7 +3246,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     for(int i=0; i < particles; i++)
     {
         tensor<float, 3> half_pos = {random() - 0.5, random() - 0.5, random() - 0.5};
-        tensor<float, 3> pos = half_pos * get_c_at_max();
+        tensor<float, 3> pos = half_pos * simulation_width;
 
         float density = density_func(pos);
 
@@ -3238,7 +3269,7 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 
     #endif
 
-    return get_bare_initial_conditions(clctx, cqueue, scale, objects, std::move(data_opt));
+    return get_bare_initial_conditions(objects, std::move(data_opt));
     #endif // BARE_BLACK_HOLES
 
     //#define USE_ADM_HOLE
@@ -3314,15 +3345,17 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 ///todo: even schwarzschild explodes after t=7
 ///todo: this paper suggests having a very short timestep initially while the gauge conditions settle down: https://arxiv.org/pdf/1404.6523.pdf, then increasing it
 inline
-void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact_object::data>& holes)
+void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact_object::data>& holes, const simulation_modifications& mod)
 {
     #define REGULAR_INITIAL
     #ifdef REGULAR_INITIAL
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
     value bl_conformal = calculate_conformal_guess(pos, holes);
-    value u = dual_types::apply(value("buffer_index"), "u_value", "ix", "iy", "iz", "dim");
-    u.is_memory_access = true;
+
+    buffer<value> u_value_buf("u_value");
+    value u = u_value_buf[(v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"}];
+
     value phi = u + bl_conformal + 1;
 
     std::array<int, 9> arg_table
@@ -3350,7 +3383,12 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     tensor<value, 3, 3> Aij = pow(phi, -2) * bcAij;
 
     value gA = 1;
-    //value gA = 1/(pow(bl_conformal + u + 1, 2));
+
+    if(mod.use_precollapsed_lapse && mod.use_precollapsed_lapse.value())
+    {
+        gA = 1/(pow(bl_conformal + u + 1, 2));
+    }
+
     ///https://arxiv.org/pdf/1304.3937.pdf
     //value gA = 2/(1 + pow(bl_conformal + 1, 4));
 
@@ -3361,6 +3399,7 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     {
         metric<dual, 4, 4> Guv;
 
+        ///the issue with alcubierre is that there's a matter distribution associated with it
         #ifdef ALCUBIERRE
 
         float velocity = 2;
@@ -3591,8 +3630,8 @@ void build_intermediate_thin(equation_context& ctx)
 {
     standard_arguments args(ctx);
 
-    value buffer = dual_types::apply(value("buffer_index"), "buffer", "ix", "iy", "iz", "dim");
-    buffer.is_memory_access = true;
+    buffer<value> buffer_buf("buffer");
+    value buffer = buffer_buf[(v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"}];
 
     value v1 = diff1(ctx, buffer, 0);
     value v2 = diff1(ctx, buffer, 1);
@@ -3610,8 +3649,8 @@ void build_intermediate_thin_directional(equation_context& ctx)
 
     standard_arguments args(ctx);
 
-    value buffer = dual_types::apply(value("buffer_index"), "buffer", "ix", "iy", "iz", "dim");
-    buffer.is_memory_access = true;
+    buffer<value> buffer_buf("buffer");
+    value buffer = buffer_buf[(v3i){"ix", "iy", "iz"}, {"dim.x", "dim.y", "dim.z"}];
 
     value v1 = diff1(ctx, buffer, 0);
     value v2 = diff1(ctx, buffer, 1);
@@ -3667,10 +3706,6 @@ void build_hamiltonian_constraint(const matter_interop& interop, equation_contex
 void build_momentum_constraint(matter_interop& interop, equation_context& ctx, bool use_matter)
 {
     tensor<value, 3> Mi = bssn::calculate_momentum_constraint(interop, ctx, use_matter);
-
-    #if defined(BETTERDAMP_DTCAIJ) || defined(DAMP_DTCAIJ) || defined(AIJ_SIGMA)
-    #define CALCULATE_MOMENTUM_CONSTRAINT
-    #endif // defined
 
     for(int i=0; i < 3; i++)
     {
@@ -4675,27 +4710,24 @@ cl::image_with_mipmaps load_mipped_image(const std::string& fname, opencl_contex
 ///want to declare a kernel in one step like this, and then immediately run it in the second step with a bunch of buffers without any messing around
 ///buffer names need to be dynamic
 ///buffer *sizes* may need to be manually associated within this function
-void test_kernel(equation_context& ctx, buffer<value, 3> test_input, buffer<value_mut, 3> test_output, literal<value> val, literal<tensor<value_i, 3>> dim)
+void test_kernel(equation_context& ctx, buffer<value> test_input, buffer<value_mut> test_output, literal<value> val, literal<tensor<value_i, 3>> dim)
 {
-    test_input.size = dim.get();
-    test_output.size = dim.get();
-
     value_i ix = "get_global_id(0)";
     value_i iy = "get_global_id(1)";
     value_i iz = "get_global_id(2)";
 
     if_e(ix >= dim.get().x() || iy >= dim.get().y() || iz >= dim.get().z(), ctx, [&]()
     {
-        ctx.exec(return_s);
+        ctx.exec(return_v());
     });
 
-    value test = test_input[ix, iy, iz];
+    value test = test_input[(v3i){ix, iy, iz}, dim.get()];
 
     test += 1;
 
     test += val;
 
-    value result_expr = assign(test_output[ix, iy, iz], test);
+    value result_expr = assign(test_output[(v3i){ix, iy, iz}, dim.get()], test);
 
     ctx.exec(result_expr);
 
@@ -4723,15 +4755,15 @@ void test_kernel_generation(cl::context& clctx, cl::command_queue& cqueue)
     cqueue.exec(kern, {128, 128, 128}, {8,8,1});
 }
 
-void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, literal<value_i> points_count, std::array<single_source::named_buffer<value, 3, "cY">, 6> cY, single_source::named_buffer<value, 3, "X"> X, single_source::named_literal<tensor<value_i, 4>, "dim"> dim, single_source::named_literal<value, "scale"> scale, buffer<value_mut, 3> out)
+void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>> points, literal<value_i> points_count, std::array<single_source::named_buffer<value, "cY">, 6> cY, single_source::named_buffer<value, "X"> X, single_source::named_literal<tensor<value_i, 4>, "dim"> dim, single_source::named_literal<value, "scale"> scale, buffer<value_mut> out)
 {
-    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
+    using namespace dual_types::implicit;
 
     value_i local_idx = "get_global_id(0)";
 
-    if_e(local_idx >= points_count.get(), ctx, [&]()
+    if_e(local_idx >= points_count.get(), [&]()
     {
-        ctx.exec(return_s);
+        return_e();
     });
 
     tensor<value_i, 4> centre = (dim.get() - 1)/2;
@@ -4784,15 +4816,332 @@ void adm_mass_integral(equation_context& ctx, buffer<tensor<value_us, 4>, 3> poi
         }
     }
 
-    ctx.exec(assign(out[local_idx], result * (1/(16 * M_PI))));
+    mut(out[local_idx]) = result * (1/(16 * M_PI));
+}
 
-    ctx.fix_buffers();
+const char* help_str = R"(misc:
+    -help (Display help)
+    -pause time (pauses the simulation after time has elapsed)
+    -run (automatically run the simulation)
+
+compact objects:
+    -add [bh/black_hole]
+        -[bm/bare_mass] val
+        -p[osition] x y z
+        -m[omentum] x y z
+        -[am/angular_momentum] x y z
+
+    -add [ns/neutron_star]
+        -[bm/bare_mass] val
+        -p[osition] x y z
+        -m[omentum] x y z
+        -[am/angular_momentum] x y z
+        -c[ompactness] val
+        -col[our] r g b (0-1)
+
+example: -add bh -bm 0.483 -p 0 0 0 -m 0.1 0 0 -am 0 0 0
+example: -add ns -bm 0.5 -p 1 0 0 -m 0.2 0 0 -am 0 0.1 0 -c 0.06 -col 1 1 1
+
+particles:
+    -[pp/particle_position] x y z
+    -[pv/particle_velocity] x y z
+    -[pm/particle_mass] val
+
+example: -pp 0.1 0 0 -pv 0 0.1 0 -pm 0.1 -pp 2 0 0 -pv 0 0.2 0 -pm 0.2
+
+simulation parameters:
+    -res[olution] val (grid size, cubed, must be an odd number)
+    -diameter val (in geometric units)
+
+example: -res 255 -diameter 30
+
+
+modifications:
+all strength parameters can also be set to the literal 'default'
+all modifications are disabled by default, except the following:
+    modcy2 -0.055
+    christoffmodification1
+    christoffmodification2 1.f
+    lapseonepluslog
+
+the following modifications override each other, as they are mutually exclusive:
+    lapseonepluslog lapseharmonic lapseshockavoid
+
+    -enable sigma strength [strength > 0 and < 1, defaults to 0.2]
+        https://arxiv.org/pdf/1205.5111v2 46
+    -enable modcy1 strength [strength < 0, defaults to -0.035]
+    -enable modcy2 strength [on by default, strength < 0, defaults to -0.055]
+        https://arxiv.org/pdf/0711.3575v1 2.21, also https://arxiv.org/pdf/gr-qc/0204002 4.10
+    -enable hamiltoniancydamp strength [strength > 0, defaults to 0.5f]
+    -enable hamiltoniancadamp strength [strength > 0, defaults to 0.5f]
+    -enable momentumdamp strength [strength > 0, defaults to 0.01]
+        https://arxiv.org/pdf/gr-qc/0204002 4.9
+    -enable momentumdamp2 use_lapse_modification [use_lapse_modification is a boolean]
+        https://arxiv.org/pdf/1205.5111v2 56
+    -enable aijsigma strength
+    -enable cadamp strength [strength > 0, defaults to 1]
+        https://arxiv.org/pdf/gr-qc/0204002.pdf 4.3
+    -enable christoffmodification1
+        https://arxiv.org/pdf/1205.5111v2 (49)
+    -enable christoffmodification2 strength [strength > 0, defaults to 1.f. Requires christoffmodification1 to work well]
+        https://arxiv.org/pdf/1205.5111v2 (50)
+    -enable ybs strength [strength > 0, defaults to 1.f]
+        https://arxiv.org/pdf/1205.5111v2 (47)
+    -enable modcgi strength [strength < 0, defaults to -0.1]
+        https://arxiv.org/pdf/0711.3575 2.22
+
+    -enable lapseadvection
+    -enable lapseonepluslog
+    -enable lapseharmonic
+    -enable lapseshockavoid
+    -enable lapseprecollapsed
+        note: interacts poorly with matter
+
+    -enable shiftadvection
+
+example:
+    -enable sigma default (sets and enables sigma damping to 0.2)
+    -disable modcy2 (disables the on-by-default modcy2 modification)
+    -enable lapseharmonic
+    -enable modcy2 -0.025
+)";
+
+struct simulation_parameters
+{
+    std::optional<vec3i> dim;
+    std::optional<float> simulation_width;
+    simulation_modifications mod;
+    std::optional<float> pause_time;
+    std::optional<bool> run;
+};
+
+std::pair<std::optional<initial_conditions>, simulation_parameters> parse_args(int argc, char* argv[])
+{
+    std::vector<compact_object::data> objects;
+    particle_data particles;
+
+    std::optional<compact_object::data> pending_compact;
+    simulation_parameters params;
+
+    auto bump_pending = [&]()
+    {
+        if(pending_compact)
+            objects.push_back(pending_compact.value());
+
+        pending_compact = std::nullopt;
+    };
+
+    for(int i=0; i < argc;)
+    {
+        auto consume = [&]()
+        {
+            if(i >= argc)
+                return std::string("");
+
+            std::string str(argv[i]);
+            i++;
+            return str;
+        };
+
+        auto consume_float = [&]()
+        {
+            if(i >= argc)
+                return 0.f;
+
+            return std::stof(consume());
+        };
+
+        auto consume_bool = [&]()
+        {
+            auto str = consume();
+
+            if(str == "false" || str == "off")
+                return false;
+
+            if(str == "true" || str == "on")
+                return true;
+
+            return std::stof(str) > 0;
+        };
+
+        std::string command = consume();
+
+        if(command == "-help" || command == "-h" ||
+           command == "--help"  || command == "--h" ||
+           command == "/help" || command == "/h")
+        {
+            printf("%s", help_str);
+            exit(0);
+        }
+
+        if(command == "-pause")
+            params.pause_time = consume_float();
+
+        if(command == "-run")
+            params.run = true;
+
+        if(command == "-add")
+        {
+            std::string type = consume();
+
+            if(type == "bh" || type == "black_hole" || type == "ns" || type == "neutron_star")
+            {
+                bump_pending();
+
+                compact_object::data dat;
+                dat.t = (type == "bh" || type == "black_hole") ? compact_object::BLACK_HOLE : compact_object::NEUTRON_STAR;
+
+                pending_compact = dat;
+            }
+        }
+
+        if(command == "-bare_mass" || command == "-bm")
+            pending_compact.value().bare_mass = consume_float();
+
+        if(command == "-position" || command == "-p")
+            pending_compact.value().position = {consume_float(), consume_float(), consume_float()};
+
+        if(command == "-angular_momentum" || command == "-am")
+            pending_compact.value().angular_momentum = {consume_float(), consume_float(), consume_float()};
+
+        if(command == "-momentum" || command == "-m")
+            pending_compact.value().momentum = {consume_float(), consume_float(), consume_float()};
+
+        if(command == "-compactness" || command == "-c")
+            pending_compact.value().matter.compactness = consume_float();
+
+        if(command == "-colour" || command == "-col")
+            pending_compact.value().matter.colour = {consume_float(), consume_float(), consume_float()};
+
+        if(command == "-particle_position" || command == "-pp")
+            particles.positions.push_back({consume_float(), consume_float(), consume_float()});
+
+        if(command == "-particle_velocity" || command == "-pv")
+            particles.velocities.push_back({consume_float(), consume_float(), consume_float()});
+
+        if(command == "-particle_mass" || command == "-pm")
+            particles.masses.push_back(consume_float());
+
+        if(command == "-resolution" || command == "-res")
+        {
+            int lsize = consume_float();
+
+            params.dim = {lsize, lsize, lsize};
+        }
+
+        if(command == "-diameter")
+            params.simulation_width = consume_float();
+
+        if(command == "-enable" || command == "-disable")
+        {
+            bool disabling = false;
+
+            std::string next = consume();
+
+            if(command == "-disable")
+                disabling = true;
+
+            auto consume_float_with_default = [&](float def)
+            {
+                auto str = consume();
+
+                if(str == "default")
+                    return def;
+
+                return std::stof(str);
+            };
+
+            auto set_default = [&]<typename T>(T& in)
+            {
+                if(disabling)
+                    in = std::nullopt;
+                else
+                    in = consume_float_with_default(get_default(in));
+            };
+
+            auto d = [&]<typename T>(const std::string& name, T& in)
+            {
+                if(next == name)
+                    set_default(in);
+            };
+
+            d("sigma", params.mod.sigma);
+            d("modcy1", params.mod.mod_cY1);
+            d("modcy2", params.mod.mod_cY2);
+            d("hamiltoniancydamp", params.mod.hamiltonian_cY_damp);
+            d("hamiltoniancadamp", params.mod.hamiltonian_cA_damp);
+            d("momentumdamp", params.mod.classic_momentum_damping);
+
+            if(next == "momentumdamp2")
+            {
+                if(disabling)
+                    params.mod.momentum_damping2 = std::nullopt;
+                else
+                    params.mod.momentum_damping2 = momentum_damping_type2{consume_bool()};
+            }
+
+            d("aijsigma", params.mod.aij_sigma);
+            d("cadamp", params.mod.cA_damp);
+
+            if(next == "christoffmodification1")
+            {
+                if(disabling)
+                    params.mod.christoff_modification_1 = std::nullopt;
+                else
+                    params.mod.christoff_modification_1 = true;
+            }
+
+            d("christoffmodification2", params.mod.christoff_modification_2);
+            d("ybs", params.mod.ybs);
+            d("modcgi", params.mod.mod_cGi);
+
+            if(next == "lapseadvection")
+                params.mod.lapse.advect = !disabling;
+
+            if(next == "lapseonepluslog")
+                params.mod.lapse.type = lapse_conditions::one_plus_log{};
+
+            if(next == "lapseharmonic")
+                params.mod.lapse.type = lapse_conditions::harmonic{};
+
+            if(next == "lapseshockavoid")
+                params.mod.lapse.type = lapse_conditions::shock_avoiding{};
+
+            if(next == "lapseprecollapsed")
+                params.mod.use_precollapsed_lapse = consume_bool();
+
+            if(next == "shiftadvection")
+                params.mod.shift.advect = !disabling;
+        }
+    }
+
+    bump_pending();
+
+    assert(particles.positions.size() == particles.velocities.size());
+    assert(particles.positions.size() == particles.masses.size());
+
+    if(objects.size() == 0 && particles.positions.size() == 0)
+        return {std::nullopt, params};
+
+    return {get_bare_initial_conditions(objects, particles), params};
+}
+
+float default_simulation_width()
+{
+    return 30.f;
+}
+
+vec3i default_simulation_resolution()
+{
+    return {255,255,255};
 }
 
 ///it seems like basically i need numerical dissipation of some form
 ///if i didn't evolve where sponge = 1, would be massively faster
-int main()
+int main(int argc, char* argv[])
 {
+    auto [initial_opt, sim_params] = parse_args(argc, argv);
+
     test_w();
 
     steady_timer time_to_main;
@@ -4843,14 +5192,22 @@ int main()
 
     std::string hydro_argument_string = argument_string;
 
-    vec3i size = {255, 255, 255};
-    //vec3i size = {250, 250, 250};
-    //float c_at_max = 160;
-    float c_at_max = get_c_at_max();
-    float scale = calculate_scale(c_at_max, size);
-    vec3f centre = {size.x()/2.f, size.y()/2.f, size.z()/2.f};
+    vec3i size = sim_params.dim.value_or(default_simulation_resolution());
+    float c_at_max = sim_params.simulation_width.value_or(default_simulation_width());
 
-    initial_conditions holes = setup_dynamic_initial_conditions(clctx.ctx, mqueue, centre, scale);
+    float scale = calculate_scale(c_at_max, size);
+
+    initial_conditions holes;
+
+    if(initial_opt.has_value())
+    {
+        holes = std::move(initial_opt.value());
+        initial_opt = std::nullopt;
+    }
+    else
+    {
+        holes = setup_dynamic_initial_conditions(clctx.ctx, mqueue, scale, c_at_max);
+    }
 
     for(auto& obj : holes.objs)
     {
@@ -4881,7 +5238,7 @@ int main()
 
         cl::command_queue cqueue(clctx.ctx);
 
-        auto [super, found_u] = get_superimposed(clctx.ctx, cqueue, holes, size, scale);
+        auto [super, found_u] = get_superimposed(clctx.ctx, cqueue, holes, size, c_at_max);
 
         u_arg = found_u;
 
@@ -4922,9 +5279,6 @@ int main()
 
     vec<4, cl_int> clsize = {size.x(), size.y(), size.z(), 0};
 
-    equation_context ctx1;
-    get_initial_conditions_eqs(ctx1, holes.objs);
-
     matter_meta_interop meta_interop;
 
     if(holes.use_matter)
@@ -4937,61 +5291,107 @@ int main()
         meta_interop.sub_interop.push_back(new particle_matter_interop());
     }
 
-    equation_context ctx4;
-    build_constraints(ctx4);
+    {
+        std::vector<std::jthread> threads;
 
-    equation_context ctx5;
-    extract_waveforms(ctx5);
+        equation_context ctx1;
+        threads.emplace_back([&]()
+        {
+            get_initial_conditions_eqs(ctx1, holes.objs, sim_params.mod);
+        });
 
-    equation_context ctx6;
-    ctx6.uses_linear = true;
-    process_geodesics(ctx6);
+        equation_context ctx4;
+        threads.emplace_back([&]()
+        {
+            build_constraints(ctx4);
+        });
 
-    equation_context ctx7;
-    ctx7.uses_linear = true;
-    loop_geodesics(ctx7, {size.x(), size.y(), size.z()});
+        equation_context ctx5;
+        threads.emplace_back([&]()
+        {
+            extract_waveforms(ctx5);
+        });
 
-    equation_context ctxgeo4;
-    loop_geodesics4(ctxgeo4);
+        equation_context ctx6;
+        ctx6.uses_linear = true;
+        threads.emplace_back([&]()
+        {
+            process_geodesics(ctx6);
+        });
 
-    equation_context ctxgetmatter;
-    build_get_matter(meta_interop, ctxgetmatter, holes.use_matter || holes.use_particles);
+        equation_context ctx7;
+        ctx7.uses_linear = true;
+        threads.emplace_back([&]()
+        {
+            loop_geodesics(ctx7, {size.x(), size.y(), size.z()});
+        });
 
-    //equation_context ctx10;
-    //build_kreiss_oliger_dissipate_singular(ctx10);
+        equation_context ctxgeo4;
+        threads.emplace_back([&]()
+        {
+            loop_geodesics4(ctxgeo4);
+        });
 
-    equation_context ctx11;
-    build_intermediate_thin(ctx11);
+        equation_context ctxgetmatter;
+        threads.emplace_back([&]()
+        {
+            build_get_matter(meta_interop, ctxgetmatter, holes.use_matter || holes.use_particles);
+        });
 
-    equation_context ctxdirectional;
-    build_intermediate_thin_directional(ctxdirectional);
+        //equation_context ctx10;
+        //build_kreiss_oliger_dissipate_singular(ctx10);
 
-    //equation_context ctx12;
-    //build_intermediate_thin_cY5(ctx12);
+        equation_context ctx11;
+        threads.emplace_back([&]()
+        {
+            build_intermediate_thin(ctx11);
+        });
 
-    equation_context ctx13;
-    build_momentum_constraint(meta_interop, ctx13, holes.use_matter || holes.use_particles);
+        equation_context ctxdirectional;
+        threads.emplace_back([&]()
+        {
+            build_intermediate_thin_directional(ctxdirectional);
+        });
 
-    equation_context ctx14;
-    build_hamiltonian_constraint(meta_interop, ctx14, holes.use_matter || holes.use_particles);
+        //equation_context ctx12;
+        //build_intermediate_thin_cY5(ctx12);
 
-    equation_context ctxsommerthin;
-    build_sommerfeld_thin(ctxsommerthin);
+        equation_context ctx13;
+        threads.emplace_back([&]()
+        {
+            build_momentum_constraint(meta_interop, ctx13, holes.use_matter || holes.use_particles);
+        });
 
-    ctx1.build(argument_string, 0);
-    ctx4.build(argument_string, 3);
-    ctx5.build(argument_string, 4);
-    ctx6.build(argument_string, 5);
-    ctx7.build(argument_string, 6);
-    ctxgeo4.build(argument_string, "geo4");
-    ctxgetmatter.build(argument_string, "getmatter");
-    //ctx10.build(argument_string, 9);
-    ctx11.build(argument_string, 10);
-    //ctx12.build(argument_string, 11);
-    ctx13.build(argument_string, 12);
-    ctx14.build(argument_string, "hamiltonian");
-    ctxdirectional.build(argument_string, "directional");
-    ctxsommerthin.build(argument_string, "sommerthin");
+        equation_context ctx14;
+        threads.emplace_back([&]()
+        {
+            build_hamiltonian_constraint(meta_interop, ctx14, holes.use_matter || holes.use_particles);
+        });
+
+        equation_context ctxsommerthin;
+        threads.emplace_back([&]()
+        {
+            build_sommerfeld_thin(ctxsommerthin);
+        });
+
+        for(auto& i : threads)
+            i.join();
+
+        ctx1.build(argument_string, 0);
+        ctx4.build(argument_string, 3);
+        ctx5.build(argument_string, 4);
+        ctx6.build(argument_string, 5);
+        ctx7.build(argument_string, 6);
+        ctxgeo4.build(argument_string, "geo4");
+        ctxgetmatter.build(argument_string, "getmatter");
+        //ctx10.build(argument_string, 9);
+        ctx11.build(argument_string, 10);
+        //ctx12.build(argument_string, 11);
+        ctx13.build(argument_string, 12);
+        ctx14.build(argument_string, "hamiltonian");
+        ctxdirectional.build(argument_string, "directional");
+        ctxsommerthin.build(argument_string, "sommerthin");
+    }
 
     argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
     hydro_argument_string += "-DBORDER_WIDTH=" + std::to_string(BORDER_WIDTH) + " ";
@@ -5054,11 +5454,9 @@ int main()
 
     base_settings.use_half_intermediates = use_half;
 
-    bool use_matter_colour = true;
+    bool use_matter_colour = false;
 
-    #ifdef CALCULATE_MOMENTUM_CONSTRAINT
-    base_settings.calculate_momentum_constraint = true;
-    #endif // CALCULATE_MOMENTUM_CONSTRAINT
+    base_settings.calculate_momentum_constraint = sim_params.mod.should_calculate_momentum_constraint();
 
     float gauge_wave_speed = sqrt(2.f);
 
@@ -5112,7 +5510,7 @@ int main()
 
     if(holes.use_particles)
     {
-        particle_dynamics* particles = new particle_dynamics(clctx.ctx);
+        particle_dynamics* particles = new particle_dynamics(clctx.ctx, c_at_max);
 
         particles->add_particles(std::move(holes.particles));
 
@@ -5179,7 +5577,7 @@ int main()
         utility_arglist.buffers.push_back(in);
     }
 
-    bssn::build(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist, size);
+    bssn::build(clctx.ctx, meta_interop, holes.use_matter || holes.use_particles, bssn_arglist, utility_arglist, size, sim_params.mod);
     build_kreiss_oliger_unidir(clctx.ctx);
     build_raytracing_kernels(clctx.ctx, bssn_arglist);
 
@@ -5309,17 +5707,13 @@ int main()
     cl::buffer texture_coordinates(clctx.ctx);
     texture_coordinates.alloc(sizeof(cl_float2) * width * height);
 
-    cpu_mesh base_mesh(clctx.ctx, mqueue, {0,0,0}, size, base_settings, evolve_points, buffers, utility_buffers, plugins);
+    cpu_mesh base_mesh(clctx.ctx, mqueue, {0,0,0}, size, base_settings, evolve_points, buffers, utility_buffers, plugins, c_at_max);
 
     thin_intermediates_pool thin_pool;
 
     gravitational_wave_manager wave_manager(clctx.ctx, size, c_at_max, scale);
 
-    printf("Heres\n");
-
     base_mesh.init(clctx.ctx, mqueue, thin_pool, u_arg, matter_vars.bcAij);
-
-    printf("Hi there\n");
 
     integrator adm_mass_integrator(clctx.ctx, size, scale, wave_manager.read_queue);
 
@@ -5336,7 +5730,7 @@ int main()
 
     int steps = 0;
 
-    bool run = false;
+    bool run = sim_params.run.value_or(false);
     bool should_render = false;
 
     vec3f camera_pos = {0, 0, -c_at_max/2.f + 1};
@@ -5345,7 +5739,14 @@ int main()
 
     int rendering_method = 1;
 
-    bool pao = false;
+    float pause_time = 0.f;
+    bool should_pause = false;
+
+    if(sim_params.pause_time)
+    {
+        should_pause = true;
+        pause_time = sim_params.pause_time.value();
+    }
 
     bool render_skipping = false;
     int skip_frames = 8;
@@ -5517,7 +5918,13 @@ int main()
                 ImGui::PopItemWidth();
             }
 
-            ImGui::Checkbox("pao", &pao);
+            ImGui::Checkbox("Should Pause", &should_pause);
+
+            ImGui::SameLine();
+            ImGui::PushItemWidth(100);
+            ImGui::InputFloat("Pause Time", &pause_time, 1.f, 10.f, "%.0f");
+            ImGui::PopItemWidth();
+
             ImGui::Checkbox("Advance Camera Time", &advance_camera_time);
             ImGui::DragFloat("Camera Time Speed", &camera_speed, 0.1f);
 
@@ -5698,9 +6105,9 @@ int main()
             timestep = 0.0016;*/
 
         ///todo: backwards euler test
-        float timestep = get_timestep(get_c_at_max(), size) * 1/get_backwards_euler_relax_parameter();
+        float timestep = get_timestep(c_at_max, size) * 1/get_backwards_euler_relax_parameter();
 
-        if(pao && base_mesh.elapsed_time > 300)
+        if(should_pause && base_mesh.elapsed_time > pause_time)
             step = false;
 
         if(step)
@@ -5910,7 +6317,7 @@ int main()
 
             if(rendering_method == 2)
             {
-                raytrace.trace(clctx.ctx, mqueue, scale, {width, height}, camera_pos, camera_quat.q, camera_start_time);
+                raytrace.trace(clctx.ctx, mqueue, c_at_max, {width, height}, camera_pos, camera_quat.q, camera_start_time);
 
                 {
                     cl::args texture_args;

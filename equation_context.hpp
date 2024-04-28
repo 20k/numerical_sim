@@ -10,7 +10,29 @@
 #include "single_source_fw.hpp"
 //#include "util.hpp"
 
-struct equation_context : differentiator
+struct old_style_codegen_override : dual_types::codegen
+{
+    std::optional<std::string> bracket_linear(const value_base<std::monostate>& op) const override
+    {
+        assert(op.args.size() == 7);
+
+        if(op.original_type == dual_types::name_type(float()))
+        {
+            return type_to_string(dual_types::apply<float>("buffer_read_linear2", op.args[0],
+                                                            op.args[1], op.args[2], op.args[3],
+                                                            op.args[4], op.args[5], op.args[6]), *this);
+        }
+        else
+        {
+            return type_to_string(dual_types::apply<float>("buffer_read_linearh2", op.args[0],
+                                                            op.args[1], op.args[2], op.args[3],
+                                                            op.args[4], op.args[5], op.args[6]), *this);
+        }
+    }
+};
+
+
+struct equation_context : differentiator, dual_types::implicit::context_base
 {
     std::vector<std::tuple<std::string, single_source::impl::kernel_context, equation_context>> functions;
 
@@ -27,13 +49,23 @@ struct equation_context : differentiator
     template<typename T>
     void add_function(const std::string& name, const T& func)
     {
-        equation_context ectx;
+        auto ectx_manager = dual_types::implicit::detail::make_context<equation_context>();
 
         single_source::impl::kernel_context kctx;
         kctx.is_func = true;
-        single_source::impl::setup_kernel(kctx, ectx, func);
+        single_source::impl::setup_kernel(kctx, *dual_types::implicit::detail::get_context<equation_context>(), func);
 
-        functions.push_back({name, kctx, ectx});
+        functions.push_back({name, kctx, *dual_types::implicit::detail::get_context<equation_context>()});
+    }
+
+    virtual void exec(const value_v& st) override
+    {
+        return exec(st.reinterpret_as<value>());
+    }
+
+    virtual int get_id() override
+    {
+        return sequenced.size();
     }
 
     void exec(const value& v)
@@ -91,7 +123,7 @@ struct equation_context : differentiator
 
         bool can_cache = true;
 
-        v.recurse_arguments([&](const value& in)
+        v.recurse_arguments([&](auto&& in)
         {
             if(in.is_mutable)
                 can_cache = false;
@@ -106,7 +138,7 @@ struct equation_context : differentiator
                 if(!can_cache_status[i])
                     continue;
 
-                if(dual_types::equivalent<float>(v, name) || dual_types::equivalent<float>(v, val))
+                if(dual_types::equivalent(v, value(name)) || dual_types::equivalent(v, val))
                 {
                     value facade;
                     facade.make_value(name);
@@ -345,7 +377,7 @@ struct equation_context : differentiator
 
         for(auto& i : values)
         {
-            std::string str = "-D" + i.first + "=" + type_to_string(i.second) + " ";
+            std::string str = "-D" + i.first + "=" + type_to_string(i.second, old_style_codegen_override()) + " ";
 
             argument_string += str;
         }
@@ -360,7 +392,7 @@ struct equation_context : differentiator
 
         for(auto& [current_name, value, level] : temporaries)
         {
-            temporary_string += current_name + "=" + type_to_string(value) + ",";
+            temporary_string += current_name + "=" + type_to_string(value, old_style_codegen_override()) + ",";
         }
 
         ///remove trailing comma
@@ -384,65 +416,6 @@ struct equation_context : differentiator
     void build(std::string& argument_string, int idx)
     {
         build(argument_string, std::to_string(idx));
-    }
-
-    void fix_buffers()
-    {
-        //#define SUB_IN_INDEXING
-        #ifdef SUB_IN_INDEXING
-        auto substitute = [](value& v)
-        {
-            if(v.type != dual_types::ops::UNKNOWN_FUNCTION)
-                return;
-
-            std::string function_name = type_to_string(v.args[0]);
-
-            if(function_name == "buffer_index" || function_name == "buffer_indexh")
-            {
-                buffer<value, 3> buf;
-                buf.name = type_to_string(v.args[1]);
-
-                value_i x = v.args[2].convert<int>();
-                value_i y = v.args[3].convert<int>();
-                value_i z = v.args[4].convert<int>();
-                value_i dim = v.args[5].reinterpret_as<value_i>();
-
-                ///buffer[z * dim.x * dim.y + y * dim.x + x];
-                value indexed = buf[z * dim.x() * dim.y() + y * dim.x() + x];
-                indexed.is_memory_access = true;
-
-                v = indexed;
-            }
-
-            if(function_name == "buffer_index_2" || function_name == "buffer_indexh_2")
-            {
-                buffer<value, 3> buf;
-                buf.name = type_to_string(v.args[1]);
-
-                value_i index = v.args[2].reinterpret_as<value_i>();
-
-                value indexed = buf[index];
-                indexed.is_memory_access = true;
-
-                v = indexed;
-            }
-        };
-
-        for(auto& v : sequenced)
-        {
-            v.recurse_arguments(substitute);
-        }
-
-        for(auto& [_, v] : aliases)
-        {
-            v.recurse_arguments(substitute);
-        }
-
-        for(auto& [_, v, _2] : temporaries)
-        {
-            v.recurse_arguments(substitute);
-        }
-        #endif
     }
 };
 

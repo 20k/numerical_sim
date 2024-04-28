@@ -10,12 +10,81 @@ struct differentiation_context
 
     differentiation_context(differentiator& ctx, const value& in, int idx, bool linear_interpolation = false)
     {
-        std::array<value_i, elements> offx;
-        std::array<value_i, elements> offy;
-        std::array<value_i, elements> offz;
+        std::array<int, elements> offx = {};
+        std::array<int, elements> offy = {};
+        std::array<int, elements> offz = {};
 
-        std::array<value_i, elements> indices;
+        for(int i=0; i < elements; i++)
+        {
+            int offset = i - (elements - 1)/2;
 
+            if(idx == 0)
+                offx[i] = offset;
+            if(idx == 1)
+                offy[i] = offset;
+            if(idx == 2)
+                offz[i] = offset;
+        }
+
+        ///for each element, ie x-2, x-1, x, x+1, x+2
+        for(int i=0; i < elements; i++)
+        {
+            ///assign to the original element, ie x
+            vars[i] = in;
+
+            ///then recurse, and substitute all variables "x" with "x-2"
+            vars[i].recurse_arguments([&i, &offx, &offy, &offz](value& v)
+            {
+                if(v.type == dual_types::ops::BRACKET2 || v.type == dual_types::ops::BRACKET_LINEAR)
+                {
+                    auto get_substitution = [&i, &offx, &offy, &offz]<typename T>(const value& v, const T& tag)
+                    {
+                        assert(v.args.size() == 7);
+
+                        auto buf = v.args[0];
+
+                        value_base<T> old_x = v.args[1].assert_as<T>();
+                        value_base<T> old_y = v.args[2].assert_as<T>();
+                        value_base<T> old_z = v.args[3].assert_as<T>();
+
+                        value_i old_dx = v.args[4].assert_as<int>();
+                        value_i old_dy = v.args[5].assert_as<int>();
+                        value_i old_dz = v.args[6].assert_as<int>();
+
+                        value_base<T> next_x = old_x + offx[i];
+                        value_base<T> next_y = old_y + offy[i];
+                        value_base<T> next_z = old_z + offz[i];
+
+                        if(v.original_type == dual_types::name_type(float16()))
+                        {
+                            return dual_types::make_op<float16>(v.type, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz).template reinterpret_as<value>();
+                        }
+                        else if(v.original_type == dual_types::name_type(float()))
+                        {
+                            return dual_types::make_op<float>(v.type, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz);
+                        }
+                        else
+                            assert(false);
+
+                        return value();
+                    };
+
+                    value out;
+
+                    if(v.type == dual_types::ops::BRACKET2)
+                        out = get_substitution(v, int());
+                    else if(v.type == dual_types::ops::BRACKET_LINEAR)
+                        out = get_substitution(v, float());
+                    else
+                        assert(false);
+
+                    v = out;
+                }
+            });
+        }
+
+        #define DETECT_INCORRECT_DIFFERENTIATION
+        #ifdef DETECT_INCORRECT_DIFFERENTIATION
         std::array<value_v, 3> root_variables;
 
         if(linear_interpolation)
@@ -34,103 +103,16 @@ struct differentiation_context
             root_variables = {val[0], val[1], val[2]};
         }
 
-        /*for(int i=0; i < elements; i++)
-        {
-            xs[i] = root_variables[0];
-            ys[i] = root_variables[1];
-            zs[i] = root_variables[2];
-        }*/
-
-        for(int i=0; i < elements; i++)
-        {
-            int offset = i - (elements - 1)/2;
-
-            if(idx == 0)
-                offx[i] = offset;
-            if(idx == 1)
-                offy[i] = offset;
-            if(idx == 2)
-                offz[i] = offset;
-        }
-
-        tensor<value_i, 3> dim = {"dim.x", "dim.y", "dim.z"};
-
-        if(ctx.fixed_dim)
-        {
-            dim.x() = ctx.fixed_dim.value().x();
-            dim.y() = ctx.fixed_dim.value().y();
-            dim.z() = ctx.fixed_dim.value().z();
-        }
-
-        for(int i=0; i < elements; i++)
-        {
-            int offset = i - (elements - 1)/2;
-
-            if(idx == 0)
-                indices[i] = value_i{"index"} + offset;
-            if(idx == 1)
-                indices[i] = value_i{"index"} + offset * dim.x();
-            if(idx == 2)
-                indices[i] = value_i{"index"} + offset * dim.x() * dim.y();
-        }
-
         std::vector<value> indexed_variables;
 
         in.recurse_arguments([&indexed_variables, linear_interpolation](const value& v)
         {
-            if(v.type == dual_types::ops::UNKNOWN_FUNCTION)
+            if(v.type == dual_types::ops::BRACKET2 || v.type == dual_types::ops::BRACKET_LINEAR)
             {
-                std::string function_name = type_to_string(v.args[0]);
-
-                if(function_name != "buffer_index" && function_name != "buffer_indexh" &&
-                   function_name != "buffer_read_linear" && function_name != "buffer_read_linearh" &&
-                   function_name != "buffer_index_2" && function_name != "buffer_indexh_2")
-                    return;
-
-                if(linear_interpolation)
-                    assert(function_name == "buffer_read_linear" || function_name == "buffer_read_linearh");
-                else
-                    assert(function_name == "buffer_index" || function_name == "buffer_indexh" || function_name == "buffer_index_2" || function_name == "buffer_indexh_2");
-
-                #ifdef CHECK_HALF_PRECISION
-                std::string vname = type_to_string(v.args[1]);
-
-                std::vector<variable> test_vars = get_variables();
-
-                for(const variable& them : test_vars)
-                {
-                    if(vname == them.name)
-                    {
-                        if(linear_interpolation && them.is_derivative)
-                            assert(function_name == "buffer_read_linearh");
-                        else if(linear_interpolation && !them.is_derivative)
-                            assert(function_name == "buffer_read_linear");
-                        else if(!linear_interpolation && them.is_derivative)
-                            assert(function_name == "buffer_indexh");
-                        else if(!linear_interpolation && !them.is_derivative)
-                            assert(function_name == "buffer_index");
-                        else
-                        {
-                            std::cout << "FNAME " << type_to_string(v) << std::endl;
-                            assert(false);
-                        }
-                    }
-                }
-                #endif // CHECK_HALF_PRECISION
-
-                indexed_variables.push_back(v);
-            }
-
-            if(v.type == dual_types::ops::BRACKET2)
-            {
-                assert(!linear_interpolation);
-
                 indexed_variables.push_back(v);
             }
         });
 
-        #define DETECT_INCORRECT_DIFFERENTIATION
-        #ifdef DETECT_INCORRECT_DIFFERENTIATION
         std::vector<std::string> variables = in.get_all_variables();
 
         for(auto& v : variables)
@@ -156,7 +138,7 @@ struct differentiation_context
 
             for(auto& o : indexed_variables)
             {
-                if(v == type_to_string(o.args[1]))
+                if(v == type_to_string(o.args[0]))
                 {
                     found = true;
                     break;
@@ -174,109 +156,16 @@ struct differentiation_context
                 assert(false);
             }
         }
-        #endif // DETECT_INCORRECT_DIFFERENTIATION
 
         if(indexed_variables.size() == 0)
         {
+            std::cout << "No variables found\n";
+
             std::cout << "WHAT? " << type_to_string(in) << std::endl;
         }
 
         assert(indexed_variables.size() > 0);
-
-        std::array<std::vector<value>, elements> substitutions;
-
-        for(auto& variables : indexed_variables)
-        {
-            std::string function_name = type_to_string(variables.args.at(0));
-
-            for(int kk=0; kk < elements; kk++)
-            {
-                value to_sub;
-
-                if(function_name == "buffer_index" || function_name == "buffer_indexh")
-                {
-                    to_sub = apply(value(function_name), variables.args[1], offx[kk] + root_variables[0].reinterpret_as<value_i>(), offy[kk] + root_variables[1].reinterpret_as<value_i>(), offz[kk] + root_variables[2].reinterpret_as<value_i>(), "dim");
-                    to_sub.is_memory_access = true;
-                }
-                else if(function_name == "buffer_read_linear" || function_name == "buffer_read_linearh")
-                {
-                    to_sub = apply(value(function_name), variables.args[1], as_float3((value)offx[kk] + (value)root_variables[0], (value)offy[kk] + (value)root_variables[1], (value)offz[kk] + (value)root_variables[2]), "dim");
-                    to_sub.is_memory_access = true;
-                }
-                else if(function_name == "buffer_index_2" || function_name == "buffer_indexh_2")
-                {
-                    value v = indices[kk].template reinterpret_as<value>();
-
-                    to_sub = apply(value(function_name), variables.args[1], v);
-                    to_sub.original_type = variables.original_type;
-                    to_sub.is_memory_access = true;
-                }
-                else if(variables.type == dual_types::ops::BRACKET2)
-                {
-                    assert(variables.args.size() == 7);
-
-                    value buf = variables.args[0];
-
-                    value_i old_x = variables.args[1].reinterpret_as<value_i>();
-                    value_i old_y = variables.args[2].reinterpret_as<value_i>();
-                    value_i old_z = variables.args[3].reinterpret_as<value_i>();
-
-                    value_i old_dx = variables.args[4].reinterpret_as<value_i>();
-                    value_i old_dy = variables.args[5].reinterpret_as<value_i>();
-                    value_i old_dz = variables.args[6].reinterpret_as<value_i>();
-
-                    value_i next_x = old_x + offx[kk].template reinterpret_as<value_i>();
-                    value_i next_y = old_y + offy[kk].template reinterpret_as<value_i>();
-                    value_i next_z = old_z + offz[kk].template reinterpret_as<value_i>();
-
-                    ///ruh roh, don't have generic type ability here
-                    ///to_sub = dual_types::make_op<
-
-                    if(variables.original_type == dual_types::name_type(float16()))
-                    {
-                        to_sub = dual_types::make_op<float16>(dual_types::ops::BRACKET2, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz).reinterpret_as<value>();
-                    }
-                    else if(variables.original_type == dual_types::name_type(float()))
-                    {
-                        to_sub = dual_types::make_op<float>(dual_types::ops::BRACKET2, buf, next_x, next_y, next_z, old_dx, old_dy, old_dz);
-                    }
-                    else
-                        assert(false);
-
-                    to_sub.is_memory_access = true;
-                }
-                else
-                {
-                    assert(false);
-                }
-
-                substitutions[kk].push_back(to_sub);
-            }
-        }
-
-        for(int i=0; i < elements; i++)
-        {
-            vars[i] = in;
-
-            ///look for a function which matches our indexed variables
-            ///if we find it, substitute for the substitution
-            vars[i].recurse_arguments([&substitutions, &indexed_variables, i](value& v)
-            {
-                assert(substitutions[i].size() == indexed_variables.size());
-
-                ///search through the indexed variables
-                for(int kk=0; kk < (int)indexed_variables.size(); kk++)
-                {
-                    ///its a me!
-                    if(dual_types::equivalent(indexed_variables[kk], v))
-                    {
-                        ///substitute us for the directional derivative
-                        v = substitutions[i][kk];
-                        return;
-                    }
-                }
-            });
-        }
+        #endif // DETECT_INCORRECT_DIFFERENTIATION
     }
 };
 

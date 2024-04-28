@@ -57,7 +57,7 @@ tensor<value, 3> matter_meta_interop::calculate_adm_Si(equation_context& ctx, st
     return ret;
 }
 
-std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, value_i point_count, tensor<value_i, 4> dim, buffer<value_us, 3> order_ptr);
+std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>> points, value_i point_count, tensor<value_i, 4> dim, buffer<value_us> order_ptr);
 
 float get_backwards_euler_relax_parameter()
 {
@@ -76,16 +76,16 @@ void calculate_christoffel_symbol(single_source::argument_generator& arg_gen, eq
 {
     arg_gen.add(bssn_args.buffers);
 
-    auto points = arg_gen.add<buffer<tensor<value_us, 4>, 3>>();
+    auto points = arg_gen.add<buffer<tensor<value_us, 4>>>();
     auto point_count = arg_gen.add<literal<value_i>>();
-    auto order_ptr = arg_gen.add<named_buffer<value_us, 3, "order_ptr">>();
+    auto order_ptr = arg_gen.add<named_buffer<value_us, "order_ptr">>();
 
     arg_gen.add<named_literal<value, "scale">>();
     auto dim = arg_gen.add<named_literal<tensor<value_i, 4>, "dim">>();
 
-    named_buffer<value_mut, 3, "cGi0"> cGi0;
-    named_buffer<value_mut, 3, "cGi1"> cGi1;
-    named_buffer<value_mut, 3, "cGi2"> cGi2;
+    named_buffer<value_mut, "cGi0"> cGi0;
+    named_buffer<value_mut, "cGi1"> cGi1;
+    named_buffer<value_mut, "cGi2"> cGi2;
 
     auto [ix, iy, iz, index] = setup(ctx, points, point_count, dim, order_ptr);
 
@@ -119,11 +119,6 @@ void calculate_christoffel_symbol(single_source::argument_generator& arg_gen, eq
 
 void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const tensor<value, 3, 3>& Aij, const value& gA)
 {
-    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
-    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
-    ctx.add_function("buffer_index_2", buffer_index_f2<value, 3>);
-    ctx.add_function("buffer_indexh_2", buffer_index_f2<value_h, 3>);
-
     vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
 
     ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 10
@@ -520,7 +515,12 @@ value bssn::calculate_hamiltonian_constraint(const matter_interop& interop, equa
 
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
+    ctx.pin(icY);
+
     tensor<value, 3, 3, 3> christoff1 = christoffel_symbols_1(ctx, args.unpinned_cY);
+
+    ctx.pin(christoff1);
+    ctx.pin(args.christoff2);
 
     tensor<value, 3, 3> xgARij = calculate_xgARij(ctx, args, icY, christoff1, args.christoff2);
 
@@ -562,40 +562,30 @@ value get_kc()
 ///https://arxiv.org/pdf/gr-qc/0401076.pdf
 //#define DAMP_HAMILTONIAN
 
-#define STANDARD_ARGS(x) named_buffer<value, 3, #x"cY0"> x##cY0, named_buffer<value, 3, #x"cY1"> x##cY1, named_buffer<value, 3, #x"cY2"> x##cY2, named_buffer<value, 3, #x"cY3"> x##cY3, named_buffer<value, 3, #x"cY4"> x##cY4, named_buffer<value, 3, #x"cY5"> x##cY5, \
-                   named_buffer<value, 3, #x"cA0"> x##cA0, named_buffer<value, 3, #x"cA1"> x##cA1, named_buffer<value, 3, #x"cA2"> x##cA2, named_buffer<value, 3, #x"cA3"> x##cA3, named_buffer<value, 3, #x"cA4"> x##cA4, named_buffer<value, 3, #x"cA5"> x##cA5, \
-                   named_buffer<value, 3, #x"cGi0"> x##cGi0, named_buffer<value, 3, #x"cGi1"> x##cGi1, named_buffer<value, 3, #x"cGi2"> x##cGi2, named_buffer<value, 3, #x"K"> x##K, named_buffer<value, 3, #x"X"> x##X, named_buffer<value, 3, #x"gA"> x##gA, \
-                   named_buffer<value, 3, #x"gB0"> x##gB0, named_buffer<value, 3, #x"gB1"> x##gB1, named_buffer<value, 3, #x"gB2"> x##gB2
-
 #ifdef USE_HALF_INTERMEDIATE
 using half_type = value_h;
 #else
 using half_type = value;
 #endif
 
-std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 3> points, value_i point_count, tensor<value_i, 4> dim, buffer<value_us, 3> order_ptr)
+std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>> points, value_i point_count, tensor<value_i, 4> dim, buffer<value_us> order_ptr)
 {
-    //ctx.better_buffer_index = true;
+    using namespace dual_types::implicit;
 
-    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
-    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
-    ctx.add_function("buffer_index_2", buffer_index_f2<value, 3>);
-    ctx.add_function("buffer_indexh_2", buffer_index_f2<value_h, 3>);
+    value_i local_idx = declare(value_i{"get_global_id(0)"}, "lidx");
 
-    value_i local_idx = declare(ctx, value_i{"get_global_id(0)"}, "lidx");
-
-    if_e(local_idx >= point_count, ctx, [&]()
+    if_e(local_idx >= point_count, [&]()
     {
-        ctx.exec(return_s);
+        return_e();
     });
 
-    value_i ix = declare(ctx, points[local_idx].x().convert<int>(), "ix");
-    value_i iy = declare(ctx, points[local_idx].y().convert<int>(), "iy");
-    value_i iz = declare(ctx, points[local_idx].z().convert<int>(), "iz");
+    value_i ix = declare(points[local_idx].x().convert<int>(), "ix");
+    value_i iy = declare(points[local_idx].y().convert<int>(), "iy");
+    value_i iz = declare(points[local_idx].z().convert<int>(), "iz");
 
     ///((k) * dim.x * dim.y + (j) * dim.x + (i))
 
-    value_i index = declare(ctx, iz * dim.x() * dim.y() + iy * dim.x() + ix, "index");
+    value_i index = declare(iz * dim.x() * dim.y() + iy * dim.x() + ix, "index");
 
     //ctx.exec("prefetch(&order_ptr[index], 1)");
 
@@ -623,7 +613,7 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
     dual_types::side_effect(ctx, "prefetch(&gB1[index], 1)");
     dual_types::side_effect(ctx, "prefetch(&gB2[index], 1)");
 
-    value_i order = declare(ctx, (value_i)order_ptr[index], "order");
+    value_i order = declare((value_i)order_ptr[index], "order");
 
     value_i lD_FULL = (int)D_FULL;
     value_i lD_LOW = (int)D_LOW;
@@ -631,9 +621,9 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
     ///note to self the d_full check here is bad
     value_i is_bad = ((order & lD_FULL) == 0) && ((order & lD_LOW) == 0);
 
-    if_e(is_bad, ctx, [&]()
+    if_e(is_bad, [&]()
     {
-        ctx.exec(return_s);
+        return_e();
     });
 
     return {ix, iy, iz, index};
@@ -642,16 +632,16 @@ std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>, 
 template<typename base, single_source::impl::fixed_string str>
 struct bssn_arg_pack
 {
-    std::array<named_buffer<base, 3, str + "cY">, 6> cY;
-    std::array<named_buffer<base, 3, str + "cA">, 6> cA;
-    std::array<named_buffer<base, 3, str + "cGi">, 3> cGi;
-    named_buffer<base, 3, str + "K"> K;
-    named_buffer<base, 3, str + "X"> X;
-    named_buffer<base, 3, str + "gA"> gA;
-    std::array<named_buffer<base, 3, str + "gB">, 3> gB;
+    std::array<named_buffer<base, str + "cY">, 6> cY;
+    std::array<named_buffer<base, str + "cA">, 6> cA;
+    std::array<named_buffer<base, str + "cGi">, 3> cGi;
+    named_buffer<base, str + "K"> K;
+    named_buffer<base, str + "X"> X;
+    named_buffer<base, str + "gA"> gA;
+    std::array<named_buffer<base, str + "gB">, 3> gB;
 
     #ifdef USE_GBB
-    std::array<named_buffer<base, 3, str + "gBB">, 3> gBB;
+    std::array<named_buffer<base, str + "gBB">, 3> gBB;
     #endif // USE_GBB
 
     bssn_arg_pack()
@@ -676,20 +666,20 @@ struct bssn_arg_pack
 
 struct all_args
 {
-    buffer<tensor<value_us, 4>, 3> points;
+    buffer<tensor<value_us, 4>> points;
     literal<value_i> point_count;
 
     bssn_arg_pack<value, ""> in;
     bssn_arg_pack<value_mut, "o"> out;
     bssn_arg_pack<value, "base_"> base;
 
-    std::array<named_buffer<value, 3, "momentum">, 3> momentum;
-    std::array<named_buffer<half_type, 3, "dcYij">, 18> dcYij; std::array<named_buffer<half_type, 3, "digA">, 3> digA;
-    std::array<named_buffer<half_type, 3, "digB">, 9> digB; std::array<named_buffer<half_type, 3, "dX">, 3> dX;
+    std::array<named_buffer<value, "momentum">, 3> momentum;
+    std::array<named_buffer<half_type, "dcYij">, 18> dcYij; std::array<named_buffer<half_type, "digA">, 3> digA;
+    std::array<named_buffer<half_type, "digB">, 9> digB; std::array<named_buffer<half_type, "dX">, 3> dX;
     named_literal<value, "scale"> scale;
     named_literal<tensor<value_i, 4>, "dim"> dim;
     literal<value> timestep;
-    named_buffer<value_us, 3, "order_ptr"> order_ptr;
+    named_buffer<value_us, "order_ptr"> order_ptr;
 
     all_args(single_source::argument_generator& arg_gen, base_bssn_args& bssn_args, base_utility_args& utility_args)
     {
@@ -720,7 +710,7 @@ struct all_args
 
 struct exec_builder_base
 {
-    virtual void start(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter){}
+    virtual void start(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter, const simulation_modifications& mod){}
     virtual void execute(equation_context& ctx, all_args& all){}
 
     virtual ~exec_builder_base(){}
@@ -731,9 +721,9 @@ struct exec_builder : exec_builder_base
 {
     T dt;
 
-    void start(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter) override
+    void start(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter, const simulation_modifications& mod) override
     {
-        dt = U(args, ctx, interop, use_matter);
+        dt = U(args, ctx, interop, use_matter, mod);
     }
 
     void execute(equation_context& ctx, all_args& all) override
@@ -744,7 +734,7 @@ struct exec_builder : exec_builder_base
     virtual ~exec_builder(){}
 };
 
-tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter)
+tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter, const simulation_modifications& mod)
 {
     metric<value, 3, 3> unpinned_cY = args.unpinned_cY;
 
@@ -772,136 +762,163 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, con
     dtcYij += -damp_factor * args.gA * args.cY.to_tensor() * log(args.cY.det());
 
     ///this specifically is incredibly low
-    #ifdef DAMP_HAMILTONIAN
-    dtcYij += 0.01f * args.gA * args.cY.to_tensor() * -bssn::calculate_hamiltonian_constraint(interop, ctx, use_matter);
-    #endif
+    if(mod.hamiltonian_cY_damp)
+        dtcYij += mod.hamiltonian_cY_damp.value().val * args.gA * args.cY.to_tensor() * -bssn::calculate_hamiltonian_constraint(interop, ctx, use_matter);
 
     ///http://eanam6.khu.ac.kr/presentations/7-5.pdf check this
-    ///makes it to 50 with this enabled
-    //#define USE_DTCYIJ_MODIFICATION
-    #ifdef USE_DTCYIJ_MODIFICATION
-    ///https://arxiv.org/pdf/1205.5111v1.pdf 46
-    for(int i=0; i < 3; i++)
+
+    if(mod.sigma)
     {
-        for(int j=0; j < 3; j++)
+        ///https://arxiv.org/pdf/1205.5111v1.pdf 46
+        for(int i=0; i < 3; i++)
         {
-            value sigma = 0.5/5.f;
+            for(int j=0; j < 3; j++)
+            {
+                value sigma = mod.sigma.value().val;
 
-            dtcYij.idx(i, j) += sigma * 0.5f * (gB_lower.idx(i) * bigGi_lower.idx(j) + gB_lower.idx(j) * bigGi_lower.idx(i));
+                dtcYij.idx(i, j) += sigma * 0.5f * (gB_lower.idx(i) * bigGi_lower.idx(j) + gB_lower.idx(j) * bigGi_lower.idx(i));
 
-            dtcYij.idx(i, j) += -(1.f/5.f) * args.cY.idx(i, j) * sum_multiply(args.gB, bigGi_lower);
+                dtcYij.idx(i, j) += -(1.f/5.f) * args.cY.idx(i, j) * sum_multiply(args.gB, bigGi_lower);
+            }
         }
     }
-    #endif // USE_DTCYIJ_MODIFICATION
-
 
     ///pretty sure https://arxiv.org/pdf/0711.3575v1.pdf 2.21 is equivalent, and likely a LOT faster
-    //#define MOD_CY
-    #ifdef MOD_CY
-    tensor<value, 3, 3> cD = covariant_derivative_low_vec(ctx, bigGi_lower, args.christoff2);
-
-    ctx.pin(cD);
-
-    for(int i=0; i < 3; i++)
+    if(mod.mod_cY1)
     {
-        for(int j=0; j < 3; j++)
-        {
-            float cK = -0.035f;
+        tensor<value, 3, 3> cD = covariant_derivative_low_vec(ctx, bigGi_lower, args.christoff2);
 
-            dtcYij.idx(i, j) += cK * args.gA * 0.5f * (cD.idx(i, j) + cD.idx(j, i));
-        }
-    }
-    #endif
-
-    ///it looks like this might cause issues in the hydrodynamics
-    #define MOD_CY2
-    #ifdef MOD_CY2
-    tensor<value, 3, 3> d_cGi;
-
-    for(int m=0; m < 3; m++)
-    {
-        tensor<dual, 3, 3, 3> d_dcYij;
-        metric<dual, 3, 3> d_cYij;
+        ctx.pin(cD);
 
         for(int i=0; i < 3; i++)
         {
             for(int j=0; j < 3; j++)
             {
-                d_cYij[i, j].real = args.cY[i, j];
-                d_cYij[i, j].dual = args.dcYij[m, i, j];
+                float cK = mod.mod_cY1.value().val;
+
+                dtcYij.idx(i, j) += cK * args.gA * 0.5f * (cD.idx(i, j) + cD.idx(j, i));
             }
         }
+    }
 
-        ctx.pin(d_cYij);
+    ///it looks like this might cause issues in the hydrodynamics
+    if(mod.mod_cY2)
+    {
+        tensor<value, 3, 3> d_cGi;
 
-        auto icY = d_cYij.invert();
-
-        ctx.pin(icY);
-
-        for(int k=0; k < 3; k++)
+        for(int m=0; m < 3; m++)
         {
+            tensor<dual, 3, 3, 3> d_dcYij;
+
+            #define FORWARD_DIFFERENTIATION
+            #ifdef FORWARD_DIFFERENTIATION
+            metric<dual, 3, 3> d_cYij;
+
             for(int i=0; i < 3; i++)
             {
                 for(int j=0; j < 3; j++)
                 {
-                    d_dcYij[k, i, j].real = args.dcYij[k, i, j];
-                    d_dcYij[k, i, j].dual = diff1(ctx, args.dcYij[k, i, j], m);
+                    d_cYij[i, j].real = args.cY[i, j];
+                    d_cYij[i, j].dual = args.dcYij[m, i, j];
                 }
             }
-        }
 
-        ctx.pin(d_dcYij);
+            ctx.pin(d_cYij);
 
-        auto d_christoff2 = christoffel_symbols_2(icY, d_dcYij);
+            auto dicY = d_cYij.invert();
 
-        ctx.pin(d_christoff2);
+            ctx.pin(dicY);
 
-        tensor<dual, 3> dcGi_G;
+            #else
+            std::vector<std::pair<value, value>> derivatives;
 
-        for(int i=0; i < 3; i++)
-        {
-            dual sum = 0;
-
-            for(int j=0; j < 3; j++)
+            for(int i=0; i < 3; i++)
             {
-                for(int k=0; k < 3; k++)
+                for(int j=0; j < 3; j++)
                 {
-                    sum += icY[j, k] * d_christoff2[i, j, k];
+                    derivatives.push_back({args.cY[i, j], args.dcYij[m, i, j]});
                 }
             }
 
-            dcGi_G[i] = sum;
-        }
+            auto icY = args.cY.invert();
 
-        ctx.pin(dcGi_G);
+            inverse_metric<dual, 3, 3> dicY;
 
-        for(int i=0; i < 3; i++)
-        {
-            d_cGi[m, i] = diff1(ctx, args.cGi[i], m) - dcGi_G[i].dual;
-        }
-    }
+            for(int i=0; i < 3; i++)
+            {
+                for(int j=0; j < 3; j++)
+                {
+                    ///perform analytic differentiation, where the variable is args.cY[i, j]
+                    dicY[i, j] = icY[i, j].dual2(derivatives);
+                }
+            }
 
-    tensor<value, 3, 3> cD = covariant_derivative_high_vec(ctx, args.bigGi, d_cGi, args.christoff2);
-
-    ctx.pin(cD);
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            value sum = 0;
+            #endif // FORWARD_DIFFERENTIATION
 
             for(int k=0; k < 3; k++)
             {
-                sum += 0.5f * (args.cY[k, i] * cD[k, j] + args.cY[k, j] * cD[k, i]);
+                for(int i=0; i < 3; i++)
+                {
+                    for(int j=0; j < 3; j++)
+                    {
+                        d_dcYij[k, i, j].real = args.dcYij[k, i, j];
+                        d_dcYij[k, i, j].dual = diff1(ctx, args.dcYij[k, i, j], m);
+                    }
+                }
             }
 
-            float cK = -0.055f;
+            ctx.pin(d_dcYij);
 
-            dtcYij.idx(i, j) += cK * args.gA * sum;
+            auto d_christoff2 = christoffel_symbols_2(dicY, d_dcYij);
+
+            ctx.pin(d_christoff2);
+
+            tensor<dual, 3> dcGi_G;
+
+            for(int i=0; i < 3; i++)
+            {
+                dual sum = 0;
+
+                for(int j=0; j < 3; j++)
+                {
+                    for(int k=0; k < 3; k++)
+                    {
+                        sum += dicY[j, k] * d_christoff2[i, j, k];
+                    }
+                }
+
+                dcGi_G[i] = sum;
+            }
+
+            ctx.pin(dcGi_G);
+
+            for(int i=0; i < 3; i++)
+            {
+                d_cGi[m, i] = diff1(ctx, args.cGi[i], m) - dcGi_G[i].dual;
+            }
+        }
+
+        tensor<value, 3, 3> cD = covariant_derivative_high_vec(ctx, args.bigGi, d_cGi, args.christoff2);
+
+        ctx.pin(cD);
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                value sum = 0;
+
+                for(int k=0; k < 3; k++)
+                {
+                    sum += 0.5f * (args.cY[k, i] * cD[k, j] + args.cY[k, j] * cD[k, i]);
+                }
+
+                float cK = mod.mod_cY2.value().val;
+
+                dtcYij.idx(i, j) += cK * args.gA * sum;
+            }
         }
     }
-    #endif // MOD_CY2
 
     tensor<value, 6> dt = {
         dtcYij.idx(0, 0),
@@ -919,13 +936,13 @@ tensor<value, 6> get_dtcYij(standard_arguments& args, equation_context& ctx, con
 
 void finish_cY(equation_context& ctx, all_args& all, tensor<value, 6>& dtcY)
 {
+    using namespace dual_types::implicit;
+
     value_i index = "index";
 
     for(int i=0; i < 6; i++)
     {
-        ctx.exec(assign(all.out.cY[i][index], backwards_euler_relax(all.in.cY[i][index], all.base.cY[i][index], dtcY[i], all.timestep)));
-
-        //ctx.exec(assign(all.out.cY[i][index], all.base.cY[i][index] + all.timestep * dtcY[i]));
+        mut(all.out.cY[i][index]) = backwards_euler_relax(all.in.cY[i][index], all.base.cY[i][index], dtcY[i], all.timestep);
     }
 }
 
@@ -1118,7 +1135,7 @@ value calculate_hamiltonian(equation_context& ctx, standard_arguments& args)
     return calculate_hamiltonian(args.cY, icY, args.Yij, args.iYij, (xgARij / (max(args.get_X(), 0.001f) * args.gA)), args.K, args.cA);
 }
 
-tensor<value, 6> get_dtcAij(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter)
+tensor<value, 6> get_dtcAij(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter, const simulation_modifications& mod)
 {
     value scale = "scale";
 
@@ -1227,48 +1244,51 @@ tensor<value, 6> get_dtcAij(standard_arguments& args, equation_context& ctx, con
 
     tensor<value, 3, 3> without_trace = trace_free(with_trace, cY, icY);
 
-    #ifdef BETTERDAMP_DTCAIJ
-    tensor<value, 3, 3> momentum_deriv;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            momentum_deriv.idx(i, j) = diff1(ctx, args.momentum_constraint.idx(i), j);
-        }
-    }
-
     tensor<value, 3, 3> symmetric_momentum_deriv;
 
-    for(int i=0; i < 3; i++)
+    if(mod.momentum_damping2)
     {
-        for(int j=0; j < 3; j++)
+        tensor<value, 3, 3> momentum_deriv;
+
+        for(int i=0; i < 3; i++)
         {
-            symmetric_momentum_deriv.idx(i, j) = 0.5f * (momentum_deriv.idx(i, j) + momentum_deriv.idx(j, i));
+            for(int j=0; j < 3; j++)
+            {
+                momentum_deriv.idx(i, j) = diff1(ctx, args.momentum_constraint.idx(i), j);
+            }
         }
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                symmetric_momentum_deriv.idx(i, j) = 0.5f * (momentum_deriv.idx(i, j) + momentum_deriv.idx(j, i));
+            }
+        }
+
+        ctx.pin(symmetric_momentum_deriv);
     }
 
-    ctx.pin(symmetric_momentum_deriv);
+    tensor<value, 3, 3> BiMj_TF;
 
-    #endif // BETTERDAMP_DTCAIJ
-
-    #ifdef AIJ_SIGMA
-    tensor<value, 3> Mi = args.momentum_constraint;
-
-    tensor<value, 3> gB_lower = lower_index(gB, cY, 0);
-
-    tensor<value, 3, 3> BiMj;
-
-    for(int i=0; i < 3; i++)
+    if(mod.aij_sigma)
     {
-        for(int j=0; j < 3; j++)
-        {
-            BiMj.idx(i, j) = gB_lower.idx(i) * Mi.idx(j);
-        }
-    }
+        tensor<value, 3> Mi = args.momentum_constraint;
 
-    tensor<value, 3, 3> BiMj_TF = trace_free(BiMj, cY, icY);
-    #endif // AIJ_SIGMA
+        tensor<value, 3> gB_lower = lower_index(gB, cY, 0);
+
+        tensor<value, 3, 3> BiMj;
+
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                BiMj.idx(i, j) = gB_lower.idx(i) * Mi.idx(j);
+            }
+        }
+
+        BiMj_TF = trace_free(BiMj, cY, icY);
+    }
 
     for(int i=0; i < 3; i++)
     {
@@ -1312,26 +1332,32 @@ tensor<value, 6> get_dtcAij(standard_arguments& args, equation_context& ctx, con
 
             dtcAij.idx(i, j) = p1 + p2 + p3;
 
-            #ifdef DAMP_DTCAIJ
-            float Ka = 0.01f;
+            if(mod.classic_momentum_damping)
+            {
+                float Ka = mod.classic_momentum_damping.value().val;
 
-            dtcAij.idx(i, j) += Ka * gA * 0.5f *
-                                                (covariant_derivative_low_vec(ctx, args.momentum_constraint, args.unpinned_cY, icY).idx(i, j)
-                                                 + covariant_derivative_low_vec(ctx, args.momentum_constraint, args.unpinned_cY, icY).idx(j, i));
-            #endif // DAMP_DTCAIJ
+                dtcAij.idx(i, j) += Ka * gA * 0.5f *
+                                                    (covariant_derivative_low_vec(ctx, args.momentum_constraint, args.unpinned_cY, icY).idx(i, j)
+                                                     + covariant_derivative_low_vec(ctx, args.momentum_constraint, args.unpinned_cY, icY).idx(j, i));
+            }
 
-            #ifdef BETTERDAMP_DTCAIJ
-            value F_a = scale; //* gA
+            if(mod.momentum_damping2)
+            {
+                value F_a = scale;
 
-            ///https://arxiv.org/pdf/1205.5111v1.pdf (56)
-            dtcAij.idx(i, j) += scale * F_a * trace_free(symmetric_momentum_deriv, cY, icY).idx(i, j);
-            #endif // BETTERDAMP_DTCAIJ
+                if(mod.momentum_damping2.value().use_lapse)
+                    F_a = scale * gA;
 
-            #ifdef AIJ_SIGMA
-            float sigma = 0.25f;
+                ///https://arxiv.org/pdf/1205.5111v1.pdf (56)
+                dtcAij.idx(i, j) += scale * F_a * trace_free(symmetric_momentum_deriv, cY, icY).idx(i, j);
+            }
 
-            dtcAij.idx(i, j) += (-3.f/5.f) * sigma * BiMj_TF.idx(i, j);
-            #endif // AIJ_SIGMA
+            if(mod.aij_sigma)
+            {
+                float sigma = mod.aij_sigma.value().val;
+
+                dtcAij.idx(i, j) += (-3.f/5.f) * sigma * BiMj_TF.idx(i, j);
+            }
 
             ///matter
             if(use_matter)
@@ -1353,27 +1379,23 @@ tensor<value, 6> get_dtcAij(standard_arguments& args, equation_context& ctx, con
 
     dtcAij += -damp_factor * args.gA * args.cY.to_tensor() * trace(args.cA, args.cY.invert());
 
-    #ifdef DAMP_HAMILTONIAN
-    dtcAij += -0.5f * args.gA * args.cA * -bssn::calculate_hamiltonian_constraint(interop, ctx, use_matter);
-    #endif
+    if(mod.hamiltonian_cA_damp)
+        dtcAij += -mod.hamiltonian_cA_damp.value().val * args.gA * args.cA * -bssn::calculate_hamiltonian_constraint(interop, ctx, use_matter);
 
-    //#define MOD_CA
-    #ifdef MOD_CA
-    ///https://arxiv.org/pdf/gr-qc/0204002.pdf 4.3
-    value bigGi_diff = 0;
-
-    for(int i=0; i < 3; i++)
+    if(mod.cA_damp)
     {
-        bigGi_diff += diff1(ctx, args.bigGi.idx(i), i);
+        ///https://arxiv.org/pdf/gr-qc/0204002.pdf 4.3
+        value bigGi_diff = 0;
+
+        for(int i=0; i < 3; i++)
+        {
+            bigGi_diff += diff1(ctx, args.bigGi.idx(i), i);
+        }
+
+        float k8 = mod.cA_damp.value().val;
+
+        dtcAij += -k8 * args.gA * args.get_X() * args.cY.to_tensor() * bigGi_diff;
     }
-
-    float k8 = 1.f;
-
-    dtcAij += -k8 * args.gA * args.get_X() * args.cY.to_tensor() * bigGi_diff;
-
-    #endif // MOD_CA
-
-    ///https://arxiv.org/pdf/gr-qc/0204002.pdf todo: 4.3
 
     tensor<value, 6> dt = {
         dtcAij.idx(0, 0),
@@ -1391,20 +1413,22 @@ tensor<value, 6> get_dtcAij(standard_arguments& args, equation_context& ctx, con
 
 void finish_cA(equation_context& ctx, all_args& all, tensor<value, 6>& dtcA)
 {
+    using namespace dual_types::implicit;
+
     value_i index = "index";
 
     //ctx.pin(dtcA);
 
     for(int i=0; i < 6; i++)
     {
-        ctx.exec(assign(all.out.cA[i][index], backwards_euler_relax(all.in.cA[i][index], all.base.cA[i][index], dtcA[i], all.timestep)));
+        mut(all.out.cA[i][index]) = backwards_euler_relax(all.in.cA[i][index], all.base.cA[i][index], dtcA[i], all.timestep);
         //ctx.exec(assign(all.out.cA[i][index], all.base.cA[i][index] + all.timestep * dtcA[i]));
     }
 }
 
 exec_builder<tensor<value, 6>, get_dtcAij, finish_cA> cAexec;
 
-tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter)
+tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter, const simulation_modifications& mod)
 {
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
@@ -1444,68 +1468,68 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, cons
     ///made it to 58 with this
     #define CHRISTOFFEL_49
     #ifdef CHRISTOFFEL_49
-    //tensor<value, 3, 3> littlekij = unpinned_icY.to_tensor() * K;
-
-    tensor<dual, 3, 3, 3> dicY;
-
-    for(int k=0; k < 3; k++)
-    {
-        unit_metric<dual, 3, 3> cYk;
-
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                dual d;
-                d.real = args.unpinned_cY.idx(i, j);
-                d.dual = diff1(ctx, args.unpinned_cY.idx(i, j), k);
-
-                cYk.idx(i, j) = d;
-            }
-        }
-
-        inverse_metric<dual, 3, 3> icYk = cYk.invert();
-
-        for(int i=0; i < 3; i++)
-        {
-            for(int j=0; j < 3; j++)
-            {
-                dicY.idx(k, i, j) = icYk.idx(i, j);
-            }
-        }
-    }
-
-    ///PAPER_12055111_SUBST
-
     tensor<value, 3> Yij_Kj;
 
-    #define PAPER_1205_5111
-    #ifdef PAPER_1205_5111
-    for(int i=0; i < 3; i++)
+    if(mod.christoff_modification_1)
     {
-        value sum = 0;
+        //tensor<value, 3, 3> littlekij = unpinned_icY.to_tensor() * K;
 
-        for(int j=0; j < 3; j++)
+        tensor<dual, 3, 3, 3> dicY;
+
+        for(int k=0; k < 3; k++)
         {
-            sum += icY.idx(i, j) * diff1(ctx, K, j) + K * dicY.idx(j, i, j).dual;
-            //sum += diff1(ctx, littlekij.idx(i, j), j);
+            unit_metric<dual, 3, 3> cYk;
+
+            for(int i=0; i < 3; i++)
+            {
+                for(int j=0; j < 3; j++)
+                {
+                    dual d;
+                    d.real = args.unpinned_cY.idx(i, j);
+                    d.dual = diff1(ctx, args.unpinned_cY.idx(i, j), k);
+
+                    cYk.idx(i, j) = d;
+                }
+            }
+
+            inverse_metric<dual, 3, 3> icYk = cYk.invert();
+
+            for(int i=0; i < 3; i++)
+            {
+                for(int j=0; j < 3; j++)
+                {
+                    dicY.idx(k, i, j) = icYk.idx(i, j);
+                }
+            }
         }
 
-        Yij_Kj.idx(i) = sum + args.K * derived_cGi.idx(i);
-    }
-    #else
-    for(int i=0; i < 3; i++)
-    {
-        value sum = 0;
-
-        for(int j=0; j < 3; j++)
+        for(int i=0; i < 3; i++)
         {
-            sum += icY.idx(i, j) * diff1(ctx, args.K, j);
-        }
+            value sum = 0;
 
-        Yij_Kj.idx(i) = sum;
+            for(int j=0; j < 3; j++)
+            {
+                sum += icY.idx(i, j) * diff1(ctx, K, j) + K * dicY.idx(j, i, j).dual;
+                //sum += diff1(ctx, littlekij.idx(i, j), j);
+            }
+
+            Yij_Kj.idx(i) = sum + args.K * derived_cGi.idx(i);
+        }
     }
-    #endif // PAPER_1205_5111
+    else
+    {
+        for(int i=0; i < 3; i++)
+        {
+            value sum = 0;
+
+            for(int j=0; j < 3; j++)
+            {
+                sum += icY.idx(i, j) * diff1(ctx, args.K, j);
+            }
+
+            Yij_Kj.idx(i) = sum;
+        }
+    }
 
     for(int i=0; i < 3; i++)
     {
@@ -1602,46 +1626,29 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, cons
 
         ///https://arxiv.org/pdf/1205.5111v1.pdf 50
         ///made it to 70+ and then i got bored, but the simulation was meaningfully different
-        #define EQ_50
-        #ifdef EQ_50
-
-        auto step = [](const value& in)
+        if(mod.christoff_modification_2)
         {
-            return if_v((value_i)(in >= 0.f), value{1.f}, value{0.f});
-        };
+            auto step = [](const value& in)
+            {
+                return if_v((value_i)(in >= 0.f), value{1.f}, value{0.f});
+            };
 
-        value bkk = 0;
-
-        for(int k=0; k < 3; k++)
-        {
-            bkk += args.digB.idx(k, k);
-        }
-
-        float E = 1;
-
-        value lambdai = (2.f/3.f) * (bkk - 2 * gA * K)
-                        - args.digB.idx(i, i)
-                        - (2.f/5.f) * gA * raise_index(cA, icY, 1).idx(i, i);
-
-        dtcGi.idx(i) += -(1 + E) * step(lambdai) * lambdai * args.bigGi.idx(i);
-        #endif // EQ_50
-
-        ///todo: test 2.22 https://arxiv.org/pdf/0711.3575.pdf
-        //#define YBS
-        #ifdef YBS
-        value E = 1;
-
-        {
-            value sum = 0;
+            value bkk = 0;
 
             for(int k=0; k < 3; k++)
             {
-                sum += diff1(ctx, args.gB.idx(k), k);
+                bkk += args.digB.idx(k, k);
             }
 
-            dtcGi.idx(i) += (-2.f/3.f) * (E + 1) * args.bigGi.idx(i) * sum;
+            float E = mod.christoff_modification_2.value().val;
+
+            value lambdai = (2.f/3.f) * (bkk - 2 * gA * K)
+                            - args.digB.idx(i, i)
+                            - (2.f/5.f) * gA * raise_index(cA, icY, 1).idx(i, i);
+
+            dtcGi.idx(i) += -(1 + E) * step(lambdai) * lambdai * args.bigGi.idx(i);
+
         }
-        #endif // YBS
 
         if(use_matter)
         {
@@ -1659,13 +1666,28 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, cons
     }
     #endif // CHRISTOFFEL_49
 
-    ///https://arxiv.org/pdf/gr-qc/0204002.pdf table 2, think case E2 is incorrectly labelled
-    //#define MOD_CGI
-    #ifdef MOD_CGI
-    float mcGicst = -0.1f;
+    ///todo: test 2.22 https://arxiv.org/pdf/0711.3575.pdf
+    if(mod.ybs)
+    {
+        value E = mod.ybs.value().val;
 
-    dtcGi += mcGicst * gA * args.bigGi;
-    #endif // MOD_CGI
+        value sum = 0;
+
+        for(int k=0; k < 3; k++)
+        {
+            sum += diff1(ctx, args.gB.idx(k), k);
+        }
+
+        dtcGi += (-2.f/3.f) * (E + 1) * args.bigGi * sum;
+    }
+
+    ///https://arxiv.org/pdf/gr-qc/0204002.pdf table 2, think case E2 is incorrectly labelled
+    if(mod.mod_cGi)
+    {
+        float mcGicst = mod.mod_cGi.value().val;
+
+        dtcGi += mcGicst * gA * args.bigGi;
+    }
 
     //ctx.pin(dtcGi);
 
@@ -1674,11 +1696,13 @@ tensor<value, 3> get_dtcGi(standard_arguments& args, equation_context& ctx, cons
 
 void finish_cGi(equation_context& ctx, all_args& all, tensor<value, 3>& dtcGi)
 {
+    using namespace dual_types::implicit;
+
     value_i index = "index";
 
     for(int i=0; i < 3; i++)
     {
-        ctx.exec(assign(all.out.cGi[i][index], backwards_euler_relax(all.in.cGi[i][index], all.base.cGi[i][index], dtcGi[i], all.timestep)));
+        mut(all.out.cGi[i][index]) = backwards_euler_relax(all.in.cGi[i][index], all.base.cGi[i][index], dtcGi[i], all.timestep);
 
         //ctx.exec(assign(all.out.cGi[i][index], all.base.cGi[i][index] + all.timestep * dtcGi[i]));
     }
@@ -1686,7 +1710,7 @@ void finish_cGi(equation_context& ctx, all_args& all, tensor<value, 3>& dtcGi)
 
 exec_builder<tensor<value, 3>, get_dtcGi, finish_cGi> cGiexec;
 
-value get_dtK(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter)
+value get_dtK(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter, const simulation_modifications& mod)
 {
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
@@ -1751,16 +1775,18 @@ value get_dtK(standard_arguments& args, equation_context& ctx, const matter_inte
 
 void finish_K(equation_context& ctx, all_args& all, value& dtK)
 {
+    using namespace dual_types::implicit;
+
     value_i index = "index";
 
-    ctx.exec(assign(all.out.K[index], backwards_euler_relax(all.in.K[index], all.base.K[index], dtK, all.timestep)));
+    mut(all.out.K[index]) = backwards_euler_relax(all.in.K[index], all.base.K[index], dtK, all.timestep);
 
     //ctx.exec(assign(all.out.K[index], all.base.K[index] + all.timestep * dtK));
 }
 
 exec_builder<value, get_dtK, finish_K> Kexec;
 
-value get_dtX(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter)
+value get_dtX(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter, const simulation_modifications& mod)
 {
     tensor<value, 3> linear_dB;
 
@@ -1786,62 +1812,60 @@ value get_dtX(standard_arguments& args, equation_context& ctx, const matter_inte
 
 void finish_X(equation_context& ctx, all_args& all, value& dtX)
 {
+    using namespace dual_types::implicit;
+
     value_i index = "index";
 
-    ctx.exec(assign(all.out.X[index], backwards_euler_relax(all.in.X[index], all.base.X[index], dtX, all.timestep)));
+    mut(all.out.X[index]) = backwards_euler_relax(all.in.X[index], all.base.X[index], dtX, all.timestep);
 
     //ctx.exec(assign(all.out.X[index], all.base.X[index] + all.timestep * dtX));
 }
 
 exec_builder<value, get_dtX, finish_X> Xexec;
 
-value get_dtgA(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter)
+value get_dtgA(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter, const simulation_modifications& mod)
 {
-    ///https://arxiv.org/pdf/gr-qc/0206072.pdf (94) is bad
-    #define ONE_PLUS_LOG
-    #ifdef ONE_PLUS_LOG
-    value dtgA = lie_derivative(ctx, args.gB, args.gA) * 0 - 2 * args.gA * args.K;
-    #endif
+    value dtgA = 0;
 
-    #ifdef HARMONIC
-    value dtgA = - args.gA * args.gA * args.K;
-    #endif
-
-    /*value dibi = 0;
-
-    for(int i=0; i < 3; i++)
+    if(mod.lapse.advect)
     {
-        dibi += diff1(ctx, args.gB.idx(i), i);
-    }*/
+        dtgA += lie_derivative(ctx, args.gB, args.gA);
+    }
 
-    ///shock
-    ///-a^2 f(a) A
-    ///f(a) = (8/3)/(a(3 - a))
-    ///-a * (8/3) * A / (3 - a)
+    if(std::holds_alternative<lapse_conditions::one_plus_log>(mod.lapse.type))
+    {
+        dtgA += -2 * args.gA * args.K;
+    }
 
-    //value dtgA = lie_derivative(ctx, args.gB, args.gA) + dibi * 0 - args.gA * (8.f/3.f) * args.K / (3 - args.gA);
+    if(std::holds_alternative<lapse_conditions::harmonic>(mod.lapse.type))
+    {
+        dtgA += -args.gA * args.gA * args.K;
+    }
 
-    //dtgA = 0;
-
-    //ctx.pin(dtgA);
+    if(std::holds_alternative<lapse_conditions::shock_avoiding>(mod.lapse.type))
+    {
+        dtgA += -(8.f/3.f) * args.gA * args.K / (3 - args.gA);
+    }
 
     return dtgA;
 }
 
 void finish_gA(equation_context& ctx, all_args& all, value& dtgA)
 {
+    using namespace dual_types::implicit;
+
     value_i index = "index";
 
     value next = backwards_euler_relax(all.in.gA[index], all.base.gA[index], dtgA, all.timestep);
 
     //next = max(next, value{0.f});
 
-    ctx.exec(assign(all.out.gA[index], next));
+    mut(all.out.gA[index]) = next;
 }
 
 exec_builder<value, get_dtgA, finish_gA> gAexec;
 
-tensor<value, 3> get_dtgB(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter)
+tensor<value, 3> get_dtgB(standard_arguments& args, equation_context& ctx, const matter_interop& interop, bool use_matter, const simulation_modifications& mod)
 {
     inverse_metric<value, 3, 3> icY = args.cY.invert();
 
@@ -1941,7 +1965,12 @@ tensor<value, 3> get_dtgB(standard_arguments& args, equation_context& ctx, const
     #ifndef USE_GBB
     ///https://arxiv.org/pdf/gr-qc/0605030.pdf 26
     ///todo: remove this
-    tensor<value, 3> dtgB = (3.f/4.f) * args.derived_cGi + bjdjbi * 0 - N * args.gB;
+    tensor<value, 3> dtgB = (3.f/4.f) * args.derived_cGi - N * args.gB;
+
+    if(mod.shift.advect)
+    {
+        dtgB += bjdjbi;
+    }
 
     //dtgB = {0,0,0};
 
@@ -2033,11 +2062,13 @@ tensor<value, 3> get_dtgB(standard_arguments& args, equation_context& ctx, const
 
 void finish_gB(equation_context& ctx, all_args& all, tensor<value, 3>& dtgB)
 {
+    using namespace dual_types::implicit;
+
     value_i index = "index";
 
     for(int i=0; i < 3; i++)
     {
-        ctx.exec(assign(all.out.gB[i][index], backwards_euler_relax(all.in.gB[i][index], all.base.gB[i][index], dtgB[i], all.timestep)));
+        mut(all.out.gB[i][index]) = backwards_euler_relax(all.in.gB[i][index], all.base.gB[i][index], dtgB[i], all.timestep);
 
         //ctx.exec(assign(all.out.gB[i][index], all.base.gB[i][index] + all.timestep * dtgB[i]));
     }
@@ -2045,7 +2076,7 @@ void finish_gB(equation_context& ctx, all_args& all, tensor<value, 3>& dtgB)
 
 exec_builder<tensor<value, 3>, get_dtgB, finish_gB> gBexec;
 
-void build_kernel(single_source::argument_generator& arg_gen, equation_context& ctx, const matter_interop* interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args, std::vector<exec_builder_base*> execs, vec3i dim)
+void build_kernel(single_source::argument_generator& arg_gen, equation_context& ctx, const matter_interop* interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args, std::vector<exec_builder_base*> execs, vec3i dim, simulation_modifications mod)
 {
     std::cout << "Start build\n";
 
@@ -2055,12 +2086,6 @@ void build_kernel(single_source::argument_generator& arg_gen, equation_context& 
 
     tensor<value_i, 4> ddim = all.dim.get();
 
-    /*ddim.x() = dim.x();
-    ddim.y() = dim.y();
-    ddim.z() = dim.z();
-
-    ctx.fixed_dim = dim;*/
-
     (void)setup(ctx, all.points, all.point_count.get(), ddim, all.order_ptr);
 
     standard_arguments args(ctx);
@@ -2069,44 +2094,20 @@ void build_kernel(single_source::argument_generator& arg_gen, equation_context& 
     {
         steady_timer time;
 
-        execs[i]->start(args, ctx, *interop, use_matter);
+        execs[i]->start(args, ctx, *interop, use_matter, mod);
         execs[i]->execute(ctx, all);
 
         std::cout << "Elapsed " << time.get_elapsed_time_s() * 1000 << "ms" << std::endl;
     }
 
-    ctx.fix_buffers();
     std::cout << "End build\n";
 }
 
-void sommerfeld_thick(single_source::argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args, base_utility_args& utility_args)
-{
-    /*all_args all(arg_gen, bssn_args, utility_args);
-
-    ctx.add_function("buffer_index", buffer_index_f<value, 3>);
-    ctx.add_function("buffer_indexh", buffer_index_f<value_h, 3>);
-
-    value_i local_idx = declare(ctx, value_i{"get_global_id(0)"}, "lidx");
-
-    if_e(local_idx >= point_count, ctx, [&]()
-    {
-        ctx.exec(return_s);
-    });
-
-    value_i ix = declare(ctx, points[local_idx].x().convert<int>(), "ix");
-    value_i iy = declare(ctx, points[local_idx].y().convert<int>(), "iy");
-    value_i iz = declare(ctx, points[local_idx].z().convert<int>(), "iz");
-
-    ///((k) * dim.x * dim.y + (j) * dim.x + (i))
-
-    value_i index = declare(ctx, iz * dim.x() * dim.y() + iy * dim.x() + ix, "index");*/
-}
-
-void bssn::build(cl::context& clctx, const matter_interop& interop, bool use_matter, base_bssn_args bssn_args, base_utility_args utility_args, vec3i dim)
+void bssn::build(cl::context& clctx, const matter_interop& interop, bool use_matter, base_bssn_args bssn_args, base_utility_args utility_args, vec3i dim, simulation_modifications mod)
 {
     std::vector<exec_builder_base*> b = {&cAexec, &Xexec, &Kexec, &gAexec, &gBexec, &cYexec, &cGiexec};
 
-    single_source::make_async_dynamic_kernel_for(clctx, build_kernel, "evolve_1", "", &interop, use_matter, bssn_args, utility_args, b, dim);
+    single_source::make_async_dynamic_kernel_for(clctx, build_kernel, "evolve_1", "", &interop, use_matter, bssn_args, utility_args, b, dim, mod);
 
     single_source::make_async_dynamic_kernel_for(clctx, calculate_christoffel_symbol, "calculate_christoffel_symbol", "", bssn_args);
 }

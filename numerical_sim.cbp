@@ -326,7 +326,6 @@
 			<Add option="-l:libbrotlidec.a" />
 			<Add option="-l:libbrotlienc.a" />
 			<Add option="-l:libbrotlicommon.a" />
-			<Add option="-l:libboost_system-mt.a" />
 			<Add option="-lcrypto" />
 			<Add option="-lssl" />
 			<Add option="-lbacktrace" />
@@ -334,7 +333,6 @@
 			<Add option="-ldwrite" />
 			<Add option="-l:libtbb12.dll.a" />
 			<Add option="-ldl" />
-			<Add option="-lboost_filesystem-mt" />
 		</Linker>
 		<Unit filename="async_read_queue.hpp" />
 		<Unit filename="bitflags.cl" />
