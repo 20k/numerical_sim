@@ -192,6 +192,15 @@ value buffer_index_generic(buffer<value_base<T>> buf, const tensor<value_base<U>
     return v;
 }
 
+#define USE_HALF_INTERMEDIATE
+
+#ifdef USE_HALF_INTERMEDIATE
+using half_type = value_h;
+using half_type_cpu = float16;
+#else
+using half_type = value;
+using half_type_cpu = float;
+#endif
 
 inline
 value bidx(equation_context& ctx, const std::string& buf, bool interpolate, bool is_derivative, const argument_pack& pack = argument_pack())
@@ -200,7 +209,7 @@ value bidx(equation_context& ctx, const std::string& buf, bool interpolate, bool
     {
         if(is_derivative)
         {
-            return buffer_index_generic<float16>(buf, (v3f){"fx", "fy", "fz"}, {"dim.x", "dim.y", "dim.z"});
+            return buffer_index_generic<half_type_cpu>(buf, (v3f){"fx", "fy", "fz"}, {"dim.x", "dim.y", "dim.z"});
         }
         else
         {
@@ -211,7 +220,7 @@ value bidx(equation_context& ctx, const std::string& buf, bool interpolate, bool
     {
         if(is_derivative)
         {
-            return buffer_index_generic<float16>(buf, (v3i){pack.pos[0], pack.pos[1], pack.pos[2]}, {"dim.x", "dim.y", "dim.z"});
+            return buffer_index_generic<half_type_cpu>(buf, (v3i){pack.pos[0], pack.pos[1], pack.pos[2]}, {"dim.x", "dim.y", "dim.z"});
         }
         else
         {
@@ -238,7 +247,6 @@ struct base_utility_args
 //#define USE_GBB
 //#define DAMP_DTCAIJ
 
-#define USE_HALF_INTERMEDIATE
 
 float get_backwards_euler_relax_parameter();
 value backwards_euler_relax(const value& ynp1k, const value& yn, const value& f_ynp1k, const value& dt);

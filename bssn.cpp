@@ -562,12 +562,6 @@ value get_kc()
 ///https://arxiv.org/pdf/gr-qc/0401076.pdf
 //#define DAMP_HAMILTONIAN
 
-#ifdef USE_HALF_INTERMEDIATE
-using half_type = value_h;
-#else
-using half_type = value;
-#endif
-
 std::array<value_i, 4> setup(equation_context& ctx, buffer<tensor<value_us, 4>> points, value_i point_count, tensor<value_i, 4> dim, buffer<value_us> order_ptr)
 {
     using namespace dual_types::implicit;
