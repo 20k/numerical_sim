@@ -4172,22 +4172,6 @@ void extract_waveforms(equation_context& ctx)
     ctx.add("HAMILTONIAN", calculate_hamiltonian(ctx, args));
 }*/
 
-/*float fisheye(float r)
-{
-    float a = 3;
-    float r0 = 5.5f * 0.5f;
-    float s = 1.2f * 0.5f;
-
-    float other = 0;
-
-    ///https://arxiv.org/pdf/gr-qc/0505055.pdf 5.5
-    float R_r = (s / (2 * r * tanh(r0/s))) * log(cosh((r + r0)/s)/cosh((r - r0)/s));
-
-    float r_phys = r * (a + (1 - a) * R_r);
-
-    return r_phys;
-}*/
-
 cl::image_with_mipmaps load_mipped_image(const std::string& fname, opencl_context& clctx, cl::command_queue& mqueue)
 {
     sf::Image img;
