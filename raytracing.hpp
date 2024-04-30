@@ -70,4 +70,8 @@ struct raytracing4_manager
     void grab_buffers(cl::context& clctx, cl::command_queue& mqueue, const std::vector<cl::buffer>& bufs, float scale, const tensor<cl_int, 4>& clsize, float step);
 };
 
+void process_geodesics(equation_context& ctx);
+void loop_geodesics4(equation_context& ctx);
+void loop_geodesics(equation_context& ctx, vec3f dim);
+
 #endif // RAYTRACING_HPP_INCLUDED
