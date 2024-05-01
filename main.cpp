@@ -958,24 +958,6 @@ struct initial_conditions
 };
 
 inline
-value calculate_aij_aIJ(const metric<value, 3, 3>& flat_metric, const tensor<value, 3, 3>& bcAij)
-{
-    value aij_aIJ = 0;
-
-    tensor<value, 3, 3> ibcAij = raise_both(bcAij, flat_metric.invert());
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            aij_aIJ += ibcAij.idx(i, j) * bcAij.idx(i, j);
-        }
-    }
-
-    return aij_aIJ;
-}
-
-inline
 value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<compact_object::data>& holes)
 {
     //https://arxiv.org/pdf/gr-qc/9703066.pdf (8)
@@ -1001,14 +983,9 @@ value tov_phi_at_coordinate_general(const tensor<value, 3>& world_position)
 {
     value fl3 = as_float3(world_position.x(), world_position.y(), world_position.z());
 
-    /*value vx = dual_types::apply("world_to_voxel_x", fl3, "dim", "scale");
-    value vy = dual_types::apply("world_to_voxel_y", fl3, "dim", "scale");
-    value vz = dual_types::apply("world_to_voxel_z", fl3, "dim", "scale");*/
-
     value v = dual_types::apply(value("world_to_voxel"), fl3, "dim", "scale");
 
     return dual_types::apply(value("buffer_read_linear"), "tov_phi", v, "dim");
-    //return dual_types::apply("tov_phi", as_float3(vx, vy, vz), "dim");
 }
 
 ///make this faster by neglecting the terms that are unused, eg cached_ppw2p and nonconformal_pH
@@ -1976,7 +1953,7 @@ struct superimposed_gpu_data
             }
         }
 
-        value aij_aIJ_eq = calculate_aij_aIJ(flat, bcAija);
+        value aij_aIJ_eq = trace(bcAija, flat.invert());
 
         ctx.add("B_AIJ_AIJ", aij_aIJ_eq);
 
