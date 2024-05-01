@@ -1976,22 +1976,6 @@ struct superimposed_gpu_data
     }
 };
 
-
-void setup_u_offset(single_source::argument_generator& arg_gen, equation_context& ctx, const value& boundary)
-{
-    buffer<value_mut> u_offset = arg_gen.add<buffer<value_mut>>();
-    literal<v3i> dim = arg_gen.add<literal<v3i>>();
-
-    v3i pos = declare(ctx, (v3i){"get_global_id(0)", "get_global_id(1)", "get_global_id(2)"});
-
-    if_e(pos.x() >= dim.get().x() || pos.y() >= dim.get().y() || pos.z() >= dim.get().z(), ctx, [&]()
-    {
-        ctx.exec(return_v());
-    });
-
-    ctx.exec(assign(u_offset[pos, dim.get()], boundary));
-}
-
 std::pair<superimposed_gpu_data, cl::buffer> get_superimposed(cl::context& clctx, cl::command_queue& cqueue, initial_conditions& init, vec3i dim, float simulation_width)
 {
     float boundary = 0;
