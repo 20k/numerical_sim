@@ -739,7 +739,7 @@ void render(STANDARD_CONST_ARGS(),
 
     int index = IDX(ix, iy, iz);
 
-    if(ix == debug_x && iy == debug_y)
+    if(ix == debug_x && iy == debug_y || (index == IDX(127, 127, 127)) || (index == IDX(126, 127, 127)))
     {
         printf("X %f\n", X[index]);
         printf("K %f\n", K[index]);
@@ -748,6 +748,7 @@ void render(STANDARD_CONST_ARGS(),
         printf("gB1 %f\n", gB1[index]);
         printf("gB2 %f\n", gB2[index]);
         printf("CY %.24f %.24f %.24f %.24f %.24f %.24f\n", cY0[index], cY1[index], cY2[index], cY3[index], cY4[index], cY5[index]);
+        printf("cA %.24f %.24f %.24f %.24f %.24f %.24f\n", cA0[index], cA1[index], cA2[index], cA3[index], cA4[index], cA5[index]);
         //printf("Ps %.24f\n", Dp_star[index]);
     }
 
