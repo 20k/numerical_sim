@@ -983,7 +983,7 @@ value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<c
 
     for(const compact_object::data& hole : holes)
     {
-        if(hole.t == compact_object::NEUTRON_STAR)
+        if(hole.t != compact_object::BLACK_HOLE)
             continue;
 
         value Mi = hole.bare_mass;
@@ -991,13 +991,7 @@ value calculate_conformal_guess(const tensor<value, 3>& pos, const std::vector<c
 
         value dist = (pos - ri).length();
 
-        ///I'm not sure this is correct to do for neutron stars
-        //if(hole.t == compact_object::BLACK_HOLE)
-            dist = max(dist, 1e-3f);
-        //else
-        //    dist = max(dist, 1e-1);
-
-        BL_s += Mi / (2 * dist);
+        BL_s += Mi / (2 * max(dist, 1e-3f));
     }
 
     return BL_s;
