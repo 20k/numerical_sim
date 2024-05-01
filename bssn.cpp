@@ -334,7 +334,18 @@ void bssn::init(equation_context& ctx, const metric<value, 4, 4>& Guv, const ten
 
         std::string y_name = "init_cY" + std::to_string(i);
 
-        ctx.add(y_name, cY.idx(index.x(), index.y()));
+        value val = cY.idx(index.x(), index.y());
+
+        if(i == 0)
+            val = val - CY0_ADD;
+
+        if(i == 3)
+            val = val - CY3_ADD;
+
+        if(i == 5)
+            val = val - CY5_ADD;
+
+        ctx.add(y_name, val);
     }
 
     for(int i=0; i < 6; i++)
@@ -349,12 +360,12 @@ void bssn::init(equation_context& ctx, const metric<value, 4, 4>& Guv, const ten
     ctx.add("init_K", K);
 
     #ifdef USE_W
-    ctx.add("init_X", sqrt(X));
+    ctx.add("init_X", sqrt(X) - X_ADD);
     #else
-    ctx.add("init_X", X);
+    ctx.add("init_X", X - X_ADD);
     #endif
 
-    ctx.add("init_gA", gA);
+    ctx.add("init_gA", gA - GA_ADD);
     ctx.add("init_gB0", gB[0]);
     ctx.add("init_gB1", gB[1]);
     ctx.add("init_gB2", gB[2]);
