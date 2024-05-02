@@ -7,6 +7,22 @@
 #include "equation_context.hpp"
 #include "differentiator.hpp"
 
+template<typename T, int N>
+tensor<T, N, N> outer_product(const tensor<T, N>& v1, const tensor<T, N>& v2)
+{
+    tensor<T, N, N> ret;
+
+    for(int i=0; i < N; i++)
+    {
+        for(int j=0; j < N; j++)
+        {
+            ret[i, j] = v1[i] * v2[j];
+        }
+    }
+
+    return ret;
+}
+
 ///https://arxiv.org/pdf/gr-qc/9810065.pdf
 template<typename T, int N>
 inline

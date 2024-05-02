@@ -3325,7 +3325,9 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
 inline
 void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact_object::data>& holes, const simulation_modifications& mod)
 {
-    #define REGULAR_INITIAL
+    //#define METRIC4
+
+    //#define REGULAR_INITIAL
     #ifdef REGULAR_INITIAL
     tensor<value, 3> pos = {"ox", "oy", "oz"};
 
@@ -3371,8 +3373,7 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     //value gA = 2/(1 + pow(bl_conformal + 1, 4));
 
     bssn::init(ctx, Yij, Aij, gA);
-    #else
-
+    #elif defined(METRIC4)
     auto fetch_Guv_of = [&ctx](int k, dual t, dual x, dual y, dual z)
     {
         metric<dual, 4, 4> Guv;
@@ -3422,7 +3423,7 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
         dual R2 = x*x + y*y + z*z;
         dual Rm2 = x*x + y*y - z*z;
 
-        float pad = 0.0001f;
+        float pad = 0.01f;
 
         dual r2 = (-a*a + sqrt(a*a*a*a - 2*a*a * Rm2 + R2*R2 + pad) + R2) / 2;
 
@@ -3430,7 +3431,7 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
 
         tensor<dual, 4> lv = {1, (r*x + a*y) / (r2 + a*a + pad), (r*y - a*x) / (r2 + a*a + pad), z/(r + pad)};
 
-        dual f = rs * r2 * r/(r2 * r2 + a*a * z*z + pad*100);
+        dual f = rs * r2 * r/(r2 * r2 + a*a * z*z + pad);
 
         for(int i=0; i < 4; i++)
         {
@@ -3491,6 +3492,221 @@ void get_initial_conditions_eqs(equation_context& ctx, const std::vector<compact
     }
 
     bssn::init(ctx, Guv, dGuv);
+    #else
+    auto fetch_Guv_of = [&ctx](int k, dual t, dual x, dual y, dual z)
+    {
+        metric<dual, 4, 4> Guv;
+
+        #define KERR_SCHILD
+        #ifdef KERR_SCHILD
+        tensor<float, 4, 4> Nuv = {-1, 0, 0, 0,
+                                    0, 1, 0, 0,
+                                    0, 0, 1, 0,
+                                    0, 0, 0, 1};
+
+        float M = 0.5;
+        float rs = 2 * M;
+        float a = 0.8;
+
+        dual R2 = x*x + y*y + z*z;
+        dual Rm2 = x*x + y*y - z*z;
+
+        float pad = 0.01f;
+
+        dual r2 = (-a*a + sqrt(a*a*a*a - 2*a*a * Rm2 + R2*R2 + pad) + R2) / 2;
+
+        dual r = sqrt(r2 + pad);
+
+        tensor<dual, 4> lv = {1, (r*x + a*y) / (r2 + a*a + pad), (r*y - a*x) / (r2 + a*a + pad), z/(r + pad)};
+
+        dual f = rs * r2 * r/(r2 * r2 + a*a * z*z + pad);
+
+        for(int i=0; i < 4; i++)
+        {
+            for(int j=0; j < 4; j++)
+            {
+                Guv[i, j] = Nuv[i, j] + f * lv[i] * lv[j];
+            }
+        }
+
+        #endif // KERR
+
+        return Guv;
+    };
+
+    value x = "ox";
+    value y = "oy";
+    value z = "oz";
+
+
+    tensor<value, 3, 3> kron = {1, 0, 0,
+                                0, 1, 0,
+                                0, 0, 1};
+
+    float M = 0.5;
+    float rs = 2 * M;
+    float a = 0.8;
+
+    value R2 = x*x + y*y + z*z;
+    value Rm2 = x*x + y*y - z*z;
+
+    float pad = 0.01f;
+
+    value r2 = (-a*a + sqrt(a*a*a*a - 2*a*a * Rm2 + R2*R2 + pad) + R2) / 2;
+
+    value r = sqrt(r2 + pad);
+
+    tensor<value, 4> lv = {1, (r*x + a*y) / (r2 + a*a + pad), (r*y - a*x) / (r2 + a*a + pad), z/(r + pad)};
+
+    value H = rs * r2 * r/(r2 * r2 + a*a * z*z + pad);
+
+    tensor<value, 4, 4, 4> dGuv;
+    metric<value, 4, 4> Guv;
+
+    {
+        std::vector<std::string> variable_names = {"local_time", "ox", "oy", "oz"};
+
+        for(int k=0; k < 4; k++)
+        {
+            for(int m=0; m < 4; m++)
+            {
+                std::array<dual, 4> variables;
+
+                for(int i=0; i < 4; i++)
+                {
+                    if(i == k)
+                    {
+                        variables[i].make_variable(variable_names[i]);
+                    }
+                    else
+                    {
+                        variables[i].make_constant(variable_names[i]);
+                    }
+                }
+
+                ///differentiating in the kth direction
+
+                metric<dual, 4, 4> diff_Guv = fetch_Guv_of(k,variables[0], variables[1], variables[2], variables[3]);
+
+                for(int i=0; i < 4; i++)
+                {
+                    for(int j=0; j < 4; j++)
+                    {
+                        dGuv[k, i, j] = diff_Guv[i, j].dual;
+
+                        Guv[i, j] = diff_Guv[i, j].real;
+
+                        ctx.add("dguv" + std::to_string(k) + std::to_string(i) + std::to_string(j), dGuv[k, i, j]);
+                    }
+                }
+            }
+        }
+    }
+
+    tensor<value, 4> li_raised = raise_index(lv, Guv.invert(), 0);
+
+    tensor<value, 3, 3> Yijt = kron + 2 * H * outer_product(lv.yzw(), lv.yzw());
+
+    metric<value, 3, 3> Yij;
+
+    for(int i=0; i < 3 ; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            Yij[i, j] = Yijt[i, j];
+        }
+    }
+
+    value gA = 1/sqrt(1 + 2 * li_raised[0] * li_raised[0]);
+
+    tensor<value, 3> gB = - 2 * H * li_raised[0] * lv.yzw() / (1 + 2 * H * li_raised[0] * li_raised[0]);
+
+    tensor<value, 3> gB_lower;
+    tensor<value, 3, 3> dgB_lower;
+
+    for(int i=0; i < 3; i++)
+    {
+        gB_lower[i] = Guv[0, i+1];
+
+        for(int k=0; k < 3; k++)
+        {
+            dgB_lower[k, i] = dGuv[k+1, 0, i+1];
+        }
+    }
+
+
+    value gB_sum = sum_multiply(gB, gB_lower);
+
+    tensor<value, 3, 3, 3> Yij_derivatives;
+
+    for(int k=0; k < 3; k++)
+    {
+        for(int i=0; i < 3; i++)
+        {
+            for(int j=0; j < 3; j++)
+            {
+                Yij_derivatives[k, i, j] = dGuv[k+1, i+1, j+1];
+            }
+        }
+    }
+
+    tensor<value, 3, 3, 3> Yij_christoffel = christoffel_symbols_2(Yij.invert(), Yij_derivatives);
+
+    ctx.pin(Yij_christoffel);
+
+    auto covariant_derivative_low_vec_e = [&](const tensor<value, 3>& lo, const tensor<value, 3, 3>& dlo)
+    {
+        ///DcXa
+        tensor<value, 3, 3> ret;
+
+        for(int a=0; a < 3; a++)
+        {
+            for(int c=0; c < 3; c++)
+            {
+                value sum = 0;
+
+                for(int b=0; b < 3; b++)
+                {
+                    sum += Yij_christoffel[b, c, a] * lo[b];
+                }
+
+                ret[c, a] = dlo[c, a] - sum;
+            }
+        }
+
+        return ret;
+    };
+
+
+    ///g00 = nini - n^2
+    ///g00 - nini = -n^2
+    ///-g00 + nini = n^2
+    ///n = sqrt(-g00 + nini)
+    //value gA = sqrt(-Guv[0, 0] + gB_sum);
+
+    ///https://clas.ucdenver.edu/math-clinic/sites/default/files/attached-files/master_project_mach_.pdf 4-19a
+    tensor<value, 3, 3> DigBj = covariant_derivative_low_vec_e(gB_lower, dgB_lower);
+
+    tensor<value, 3, 3> Kij;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            Kij[i, j] = (1/(2 * gA)) * (DigBj[i, j] + DigBj[j, i]);
+        }
+    }
+
+    value Y = Yij.det();
+
+    value X = pow(Y, -1.f/3.f);
+
+    value K = trace(Kij, Yij.invert());
+
+    tensor<value, 3, 3> cA = X * Kij - (1.f/3.f) * X * Yij.to_tensor() * K;
+
+    bssn::init(ctx, Yij, cA, gA, gB, K);
+
     #endif
 }
 

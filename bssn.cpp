@@ -153,7 +153,7 @@ void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
     #endif
 
     ///need to do the same thing for Aij. Think the extrinsic curvature near the centre is screwed
-    #define FORCE_FLAT
+    //#define FORCE_FLAT
     #ifdef FORCE_FLAT
     cYij = get_flat_metric<value, 3>();
     #endif // FORCE_FLAT
@@ -194,6 +194,97 @@ void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const ten
     ctx.add("init_gB0", gB0);
     ctx.add("init_gB1", gB1);
     ctx.add("init_gB2", gB2);
+
+    //#define USE_GBB
+    #ifdef USE_GBB
+    value gBB0 = 0;
+    value gBB1 = 0;
+    value gBB2 = 0;
+
+    ctx.add("init_gBB0", gBB0);
+    ctx.add("init_gBB1", gBB1);
+    ctx.add("init_gBB2", gBB2);
+    #endif // USE_GBB
+
+    #ifdef USE_W
+    ctx.add("X_IS_ACTUALLY_W", 1);
+    #endif
+
+    #ifdef DAMP_C
+    ctx.add("DAMPED_CONSTRAINTS", 1);
+    #endif // DAMP_C
+
+    standard_arguments args(ctx);
+
+    ctx.add("GET_X", args.get_X());
+}
+
+void bssn::init(equation_context& ctx, const metric<value, 3, 3>& Yij, const tensor<value, 3, 3>& Aij, const value& gA, const tensor<value, 3>& gB, const value& K)
+{
+    vec2i linear_indices[6] = {{0, 0}, {0, 1}, {0, 2}, {1, 1}, {1, 2}, {2, 2}};
+
+    ///https://arxiv.org/pdf/gr-qc/0206072.pdf see 10
+    ///https://arxiv.org/pdf/gr-qc/9810065.pdf, 11
+    ///phi
+
+    value Y = Yij.det();
+    //value conformal_factor = (1/12.f) * log(Y);
+    //ctx.pin(conformal_factor);
+
+    tensor<value, 3> cGi;
+
+    ///https://arxiv.org/pdf/gr-qc/0206072.pdf (58)
+    //value X = exp(-4 * conformal_factor);
+
+    #ifndef USE_W
+    ///X also eq (conformal + u)^-4, aka psi^-4
+    value X = pow(Y, -1.f/3.f);
+
+    tensor<value, 3, 3> cAij = X * Aij;
+    metric<value, 3, 3> cYij = X * Yij;
+    #else
+    value X = pow(Y, -1.f/6.f);
+
+    tensor<value, 3, 3> cAij = X * X * Aij;
+    metric<value, 3, 3> cYij = X * X * Yij;
+    #endif
+
+    for(int i=0; i < 6; i++)
+    {
+        vec2i index = linear_indices[i];
+
+        std::string y_name = "init_cY" + std::to_string(i);
+
+        value val = cYij.idx(index.x(), index.y());
+
+        if(i == 0)
+            val = val - CY0_ADD;
+
+        if(i == 3)
+            val = val - CY3_ADD;
+
+        if(i == 5)
+            val = val - CY5_ADD;
+
+        ctx.add(y_name, val);
+    }
+
+    for(int i=0; i < 6; i++)
+    {
+        ctx.add("init_cA" + std::to_string(i), cAij.idx(linear_indices[i].x(), linear_indices[i].y()));
+    }
+
+    ctx.add("init_cGi0", cGi.idx(0));
+    ctx.add("init_cGi1", cGi.idx(1));
+    ctx.add("init_cGi2", cGi.idx(2));
+
+    ctx.add("init_K", K);
+    ctx.add("init_X", X - X_ADD);
+
+    ctx.add("init_gA", gA - GA_ADD);
+    ctx.add("init_gB0", gB[0]);
+    ctx.add("init_gB1", gB[1]);
+    ctx.add("init_gB2", gB[2]);
 
     //#define USE_GBB
     #ifdef USE_GBB
@@ -310,7 +401,6 @@ void bssn::init(equation_context& ctx, const metric<value, 4, 4>& Guv, const ten
             Kij[i, j] = (1/(2 * gA)) * (DigBj[i, j] + DigBj[j, i] - dGuv[0, i+1, j+1]);
         }
     }
-
 
     value X = pow(Yij.det(), -1/3.f);
     metric<value, 3, 3> cY = X * Yij;
