@@ -2621,6 +2621,24 @@ initial_conditions setup_dynamic_initial_conditions(cl::context& clctx, cl::comm
     objects = {h1, h2};
     #endif // PAPER_0610128
 
+    ///https://arxiv.org/pdf/2403.13308v1
+    //#define PAPER_240311308
+    #ifdef PAPER_240311308
+    compact_object::data h1;
+    h1.t = compact_object::BLACK_HOLE;
+    h1.bare_mass = 0.48595;
+    h1.momentum = {0, 0.095433, 0};
+    h1.position = {-5, 0.f, 0.f};
+
+    compact_object::data h2;
+    h2.t = compact_object::BLACK_HOLE;
+    h2.bare_mass = 0.48595;
+    h2.momentum = {0, -0.095433, 0};
+    h2.position = {5, 0.f, 0.f};
+
+    objects = {h1, h2};
+    #endif
+
     //#define SINGLE_STATIONARY
     #ifdef SINGLE_STATIONARY
     compact_object::data h1;
