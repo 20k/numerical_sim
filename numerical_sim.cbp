@@ -275,12 +275,12 @@
 		</Build>
 		<Compiler>
 			<Add option="-Wall" />
-			<Add option="-std=c++23" />
-			<Add option="-fexceptions" />
+			<Add option="-fPIC" />
+			<Add option="-m64" />
 			<Add option="`pkg-config --cflags freetype2`" />
 			<Add option="-Werror=return-type" />
-			<Add option="-fno-omit-frame-pointer" />
 			<Add option="-Wno-narrowing" />
+			<Add option="-std=c++26" />
 			<Add option="-DIMGUI_IMPL_OPENGL_LOADER_GLEW" />
 			<Add option="-DSUBPIXEL_FONT_RENDERING" />
 			<Add option="-DSFML_STATIC" />
@@ -296,6 +296,7 @@
 			<Add option="-static-libstdc++" />
 			<Add option="-static-libgcc" />
 			<Add option="-static" />
+			<Add option="-m64" />
 			<Add option="-lmingw32" />
 			<Add option="-l:libssl.a" />
 			<Add option="-l:libglfw3.a" />

@@ -173,14 +173,14 @@ value buffer_index_generic(buffer<value_base<T>> buf, const tensor<value_base<U>
     {
         v = dual_types::make_op<T>(dual_types::ops::BRACKET_LINEAR, buf.name,
                                    pos.x(), pos.y(), pos.z(),
-                                   dim.x(), dim.y(), dim.z()).template reinterpret_as<value>();
+                                   dim.x(), dim.y(), dim.z()).template convert<float>();
     }
 
     else if constexpr(std::is_same_v<U, int>)
     {
         v = dual_types::make_op<T>(dual_types::ops::BRACKET2, buf.name,
                                    pos.x(), pos.y(), pos.z(),
-                                   dim.x(), dim.y(), dim.z()).template reinterpret_as<value>();
+                                   dim.x(), dim.y(), dim.z()).template convert<float>();
     }
     else
     {
