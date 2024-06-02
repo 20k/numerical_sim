@@ -74,12 +74,8 @@ std::string single_source::impl::generate_kernel_string(kernel_context& kctx, eq
     else
         base += kctx.ret.args.at(0).type + " " + kernel_name + "(";
 
-    std::set<std::string> emitted_variable_names;
-
     for(int i=0; i < (int)kctx.inputs.args.size(); i++)
     {
-        emitted_variable_names.insert(kctx.inputs.args[i].name);
-
         base += kctx.inputs.args[i].format();
 
         if(i != (int)kctx.inputs.args.size() - 1)
