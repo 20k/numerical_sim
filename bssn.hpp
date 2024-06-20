@@ -259,7 +259,7 @@ value backwards_euler_relax(const value& ynp1k, const value& yn, const value& f_
 #define CY5_ADD 1
 #define X_ADD 1
 
-#define GA_ASYM 0
+#define GA_ASYM 1
 #define CY0_ASYM 0
 #define CY3_ASYM 0
 #define CY5_ASYM 0
