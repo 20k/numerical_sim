@@ -2171,7 +2171,7 @@ void maximal_slice(single_source::argument_generator& arg_gen, equation_context&
 
     value other_terms = C00 * (f(-1, 0, 0) + f(1, 0, 0)) + C11 * (f(0, -1, 0) + f(0, 1, 0)) + C22 * (f(0, 0, -1) + f(0, 0, 1));
     other_terms += 2 * C01 * (-c * f(-1, 1, 0) + c * f(1, 1, 0) + c * f(-1, -1, 0) - c * f(1, -1, 0));
-    other_terms += 2 * C02 *(-c * f(-1, 0, 1) + c * f(1, 0, 1) + c * f(-1, 0, -1) - c * f(1, 0, -1));
+    other_terms += 2 * C02 * (-c * f(-1, 0, 1) + c * f(1, 0, 1) + c * f(-1, 0, -1) - c * f(1, 0, -1));
     other_terms += 2 * C12 * (-c * f(0, -1, 1) + c * f(0, 1, 1) + c * f(0, -1, -1) - c * f(0, 1, -1));
 
     value divisor = -2 * C00 - 2 * C11 - 2 * C22;
@@ -2225,7 +2225,9 @@ void maximal_slice(single_source::argument_generator& arg_gen, equation_context&
         }
     }
 
-    Xdidja_otherterms += cd_terms;
+    //Xdidja_otherterms += cd_terms;
+
+    value cd_terms_lin = 0;
 
     value lhs_otherterms = 0;
 
@@ -2234,6 +2236,7 @@ void maximal_slice(single_source::argument_generator& arg_gen, equation_context&
         for(int j=0; j < 3; j++)
         {
             lhs_otherterms += icY[i, j] * Xdidja_otherterms[i, j];
+            cd_terms_lin += icY[i, j] * cd_terms[i, j];
         }
     }
 
@@ -2246,7 +2249,7 @@ void maximal_slice(single_source::argument_generator& arg_gen, equation_context&
     value scale = "scale";
 
     ///h^2?
-    value lhs = other_terms + lhs_otherterms * scale * scale;
+    value lhs = other_terms + lhs_otherterms * scale * scale + cd_terms_lin * scale * scale;
 
     value gA_next = (-lhs + linear_terms * scale * scale) / divisor;
 
@@ -2256,13 +2259,14 @@ void maximal_slice(single_source::argument_generator& arg_gen, equation_context&
     value iy = "iy";
     value iz = "iz";
 
-    if_e(ix == 128 && iy == 128 && iz == 128, [&]
+    ///105 88 16
+    /*if_e((ix == 105 && iy == 88 && iz == 16), [&]
     {
-        ctx.exec(print("ga %f %f", args.gA, gA_next));
-    });
+        ctx.exec(print("ga %f %f %f %f %f %f %f %f", args.gA, gA_next, lhs, linear_terms, divisor, other_terms, lhs_otherterms, cd_terms_lin));
+    });*/
 
     value_i index = "index";
-    mut(all.out.gA[index]) = args.gA + (gA_next - args.gA) * 0.9f;;
+    mut(all.out.gA[index]) = max(min(args.gA + (gA_next - args.gA) * 0.95f, value(1.f)), value(0.f));
 }
 #endif
 

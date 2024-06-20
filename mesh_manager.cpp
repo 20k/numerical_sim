@@ -544,12 +544,20 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
     {
         auto& generic_base = get_buffers(ctx, mqueue, base);
 
-        if(base != in)
+        /*if(base != in)
         {
+
+
             auto& generic_in = get_buffers(ctx, mqueue, in);
             auto& generic_out = get_buffers(ctx, mqueue, out);
             cl::copy(mqueue, generic_base.lookup("gA").buf, generic_in.lookup("gA").buf);
-        }
+        }*/
+
+        std::vector<ref_counted_buffer> intermediates = get_derivatives_of(ctx, get_buffers(ctx, mqueue, in), mqueue, pool);
+
+        /*get_buffers(ctx, mqueue, base).lookup("gA").buf.set_to_zero(mqueue);
+        get_buffers(ctx, mqueue, in).lookup("gA").buf.set_to_zero(mqueue);
+        get_buffers(ctx, mqueue, out).lookup("gA").buf.set_to_zero(mqueue);*/
 
         for(int i=0; i < 20; i++)
         {
@@ -583,17 +591,17 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
                 a1.push_back(i);
             }
 
-            /*for(auto& i : intermediates)
+            for(auto& i : intermediates)
             {
                 a1.push_back(i);
-            }*/
+            }
 
-            for(int i=0; i < 11 * 3; i++)
+            /*for(int i=0; i < 11 * 3; i++)
             {
                 cl::buffer nope(ctx);
 
                 a1.push_back(nope.as_device_inaccessible());
-            }
+            }*/
 
             append_utility_buffers("maximal_slice", a1);
 
