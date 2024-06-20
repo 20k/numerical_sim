@@ -540,6 +540,66 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
         }
     }
 
+    auto calculate_gA = [&](int base, int in, int out)
+    {
+        auto& generic_in = get_buffers(ctx, mqueue, in);
+        auto& generic_out = get_buffers(ctx, mqueue, out);
+        auto& generic_base = get_buffers(ctx, mqueue, base);
+
+        printf("I1\n");
+
+        if(base != in)
+            cl::copy(mqueue, generic_base.lookup("gA").buf, generic_in.lookup("gA").buf);
+
+        printf("I2\n");
+
+        cl::args a1;
+
+        a1.push_back(points_set.all_points);
+        a1.push_back(points_set.all_count);
+
+        for(auto& i : generic_in.buffers)
+        {
+            a1.push_back(i.buf);
+        }
+
+        for(named_buffer& i : generic_out.buffers)
+        {
+            a1.push_back(i.buf);
+        }
+
+        for(auto& i : generic_base.buffers)
+        {
+            a1.push_back(i.buf);
+        }
+
+        for(auto& i : momentum_constraint)
+        {
+            a1.push_back(i);
+        }
+
+        /*for(auto& i : intermediates)
+        {
+            a1.push_back(i);
+        }*/
+
+        for(int i=0; i < 11 * 3; i++)
+        {
+            cl::buffer nope(ctx);
+
+            a1.push_back(nope.as_device_inaccessible());
+        }
+
+        append_utility_buffers("maximal_slice", a1);
+
+        a1.push_back(scale);
+        a1.push_back(clsize);
+        a1.push_back(1.f);
+        a1.push_back(points_set.order);
+
+        mqueue.exec("maximal_slice", a1, {points_set.all_count}, {128});
+    };
+
     auto step = [&](int root_index, int generic_in_index, int generic_out_index, float current_timestep, bool trigger_callbacks, int iteration, int max_iteration)
     {
         auto& generic_in = get_buffers(ctx, mqueue, generic_in_index);
@@ -551,6 +611,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
             enforce_constraints(generic_in);
             generic_in.currently_physical = true;
         }
+
+        calculate_gA(root_index, generic_in_index, generic_out_index);
 
         buffer_pack pack(generic_in, generic_out, generic_base, generic_in_index, generic_out_index, root_index);
 

@@ -2083,7 +2083,7 @@ exec_builder<tensor<value, 3>, get_dtgB, finish_gB> gBexec;
 
 #define MAXIMAL_SLICING
 #ifdef MAXIMAL_SLICING
-void build_gA(single_source::argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args, base_utility_args& utility_args)
+void maximal_slice(single_source::argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args, base_utility_args& utility_args)
 {
     all_args all(arg_gen, bssn_args, utility_args);
 
@@ -2206,6 +2206,8 @@ void build_gA(single_source::argument_generator& arg_gen, equation_context& ctx,
 
     auto christoff2 = christoffel_symbols_2(icY, args.dcYij);
 
+    ctx.pin(christoff2);
+
     tensor<value, 3, 3> cd_terms;
 
     for(int i=0; i < 3; i++)
@@ -2239,12 +2241,14 @@ void build_gA(single_source::argument_generator& arg_gen, equation_context& ctx,
 
     auto aij_aIJ = sum_multiply(args.cA, aIJ);
 
+    value linear_terms = args.gA * aij_aIJ;
+
     value scale = "scale";
 
     ///h^2?
     value lhs = other_terms + lhs_otherterms * scale * scale;
 
-    value gA_next = -lhs / divisor;
+    value gA_next = (-lhs + linear_terms * scale * scale) / divisor;
 
     using namespace dual_types::implicit;
 
@@ -2291,4 +2295,5 @@ void bssn::build(cl::context& clctx, const matter_interop& interop, bool use_mat
     single_source::make_async_dynamic_kernel_for(clctx, build_kernel, "evolve_1", "", &interop, use_matter, bssn_args, utility_args, b, dim, mod);
 
     single_source::make_async_dynamic_kernel_for(clctx, calculate_christoffel_symbol, "calculate_christoffel_symbol", "", bssn_args);
+    single_source::make_async_dynamic_kernel_for(clctx, maximal_slice, "maximal_slice", "", bssn_args, utility_args);
 }

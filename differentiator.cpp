@@ -83,7 +83,7 @@ struct differentiation_context
             });
         }
 
-        #define DETECT_INCORRECT_DIFFERENTIATION
+        //#define DETECT_INCORRECT_DIFFERENTIATION
         #ifdef DETECT_INCORRECT_DIFFERENTIATION
         std::array<value_v, 3> root_variables;
 
