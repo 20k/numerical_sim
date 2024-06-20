@@ -564,7 +564,8 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
             auto& generic_in = get_buffers(ctx, mqueue, in);
             auto& generic_out = get_buffers(ctx, mqueue, out);
 
-            std::swap(in, out);
+            //std::swap(in, out);
+
 
             cl::args a1;
 
@@ -611,8 +612,10 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
             a1.push_back(points_set.order);
 
             mqueue.exec("maximal_slice", a1, {points_set.all_count}, {128});
-        }
 
+            std::swap(generic_in.lookup("gA").buf, generic_out.lookup("gA").buf);
+
+        }
     };
 
     auto step = [&](int root_index, int generic_in_index, int generic_out_index, float current_timestep, bool trigger_callbacks, int iteration, int max_iteration)
