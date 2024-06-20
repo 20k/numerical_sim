@@ -2252,8 +2252,17 @@ void maximal_slice(single_source::argument_generator& arg_gen, equation_context&
 
     using namespace dual_types::implicit;
 
+    value ix = "ix";
+    value iy = "iy";
+    value iz = "iz";
+
+    if_e(ix == 128 && iy == 128 && iz == 128, [&]
+    {
+        ctx.exec(print("ga %f %f", args.gA, gA_next));
+    });
+
     value_i index = "index";
-    mut(all.out.gA[index]) = gA_next;
+    mut(all.out.gA[index]) = args.gA + (gA_next - args.gA) * 0.9f;;
 }
 #endif
 
