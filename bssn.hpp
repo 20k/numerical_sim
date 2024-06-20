@@ -107,6 +107,8 @@ struct simulation_modifications
     }
 };
 
+#define MAXIMAL_SLICING
+
 struct argument_pack
 {
     std::array<std::string, 6> cY;
@@ -422,7 +424,11 @@ struct standard_arguments
         W_impl = max(W_impl, 0);
         #endif
 
+        #ifndef MAXIMAL_SLICING
         K = bidx(ctx, pack.K, interpolate, false);
+        #else
+        K = 0;
+        #endif
 
         //X = max(X, 0.0001f);
 

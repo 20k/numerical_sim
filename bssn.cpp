@@ -2081,6 +2081,178 @@ void finish_gB(equation_context& ctx, all_args& all, tensor<value, 3>& dtgB)
 
 exec_builder<tensor<value, 3>, get_dtgB, finish_gB> gBexec;
 
+#define MAXIMAL_SLICING
+#ifdef MAXIMAL_SLICING
+void build_gA(single_source::argument_generator& arg_gen, equation_context& ctx, base_bssn_args& bssn_args, base_utility_args& utility_args)
+{
+    all_args all(arg_gen, bssn_args, utility_args);
+
+    (void)setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
+
+    standard_arguments args(ctx);
+
+    ///SO
+    //-xicYmn Dm Dn A = -gA A^MN A_MN
+
+    /*tensor<value, 3, 3> Xdidja;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value Xderiv = X * double_covariant_derivative(ctx, args.gA, args.digA, args.christoff2).idx(j, i);
+            //value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, args.digA, cY, icY).idx(j, i);
+
+            value s2 = 0.5f * (dX.idx(i) * diff1(ctx, gA, j) + dX.idx(j) * diff1(ctx, gA, i));
+
+            value s3 = 0;
+
+            for(int m=0; m < 3; m++)
+            {
+                for(int n=0; n < 3; n++)
+                {
+                    s3 += icY.idx(m, n) * dX.idx(m) * diff1(ctx, gA, n);
+                }
+            }
+
+            Xdidja.idx(i, j) = Xderiv + s2 + -0.5f * cY.idx(i, j) * s3;
+        }
+    }*/
+
+    ///so we have
+    //XicY^mn (dmdn gA - Gbmn dgAb) = -gA A^mn A_mn
+    //ok ok, so we now have
+    ///xicY^mn dmdn gA - XicY^mn Gbmn dgAb = -gA A^mn A_mn
+
+    ///so, d^2 gA = 1 -2 1
+    ///is it going to be unstable if we rearrange ignoring the diagonal terms?
+    ///the other option is to use the iterative approach described here:
+    //https://www.math.uci.edu/~chenlong/226/NonlinearEllipticPDE.pdf
+
+    /*C00  f(-1, 0, 0)  + C00 f(1, 0, 0) + C11  f(0, -1, 0) + (-2C00 - 2C11 - 2C22) f(0,0,0)
+
+        + 2 C01 (-1/4 f(-1, 1, 0) + 1/4 f(1, 1, 0) + 1/4 f(-1, -1, 0) - 1/4 f(1, -1, 0))
+        + 2 C02 (-1/4 f(-1, 0, 1) + 1/4 f(1, 0, 1) + 1/4 f(-1, 0, -1) - 1/4 f(1, 0, -1))
+        + 2 C12 (-1/4 f(0, -1, 1) + 1/4 f(0, 1, 1) + 1/4 f(0, -1, -1) - 1/4 f(0, 1, -1))*/
+
+    ///Cij = X icY^mn
+
+    inverse_metric<value, 3, 3> icY = args.cY.invert();
+    ctx.pin(icY);
+
+    value gA = args.gA;
+    auto dX = args.get_dX();
+    auto cY = args.cY;
+    auto X = max(args.get_X(), value(0.0001f));
+
+    value C00 = X * icY[0, 0];
+    value C11 = X * icY[1, 1];
+    value C22 = X * icY[2, 2];
+    value C01 = X * icY[0, 1];
+    value C02 = X * icY[0, 2];
+    value C12 = X * icY[1, 2];
+
+    //ok no, we have
+    //-X icYmn Dm Dn A
+    ///-X icYmn Dm Dn A + cst
+    ///-X icYmn dmdn A + cst
+
+    auto f = [&](int o0, int o1, int o2)
+    {
+        v3i pos = {"ix", "iy", "iz"};
+        pos.x() += o0;
+        pos.y() += o1;
+        pos.z() += o2;
+
+        return buffer_index_generic<float>("gA", pos, {"dim.x", "dim.y", "dim.z"});
+    };
+
+    float c = 1.f/4.f;
+
+    value other_terms = C00 * (f(-1, 0, 0) + f(1, 0, 0)) + C11 * (f(0, -1, 0) + f(0, 1, 0)) + C22 * (f(0, 0, -1) + f(0, 0, 1));
+    other_terms += 2 * C01 * (-c * f(-1, 1, 0) + c * f(1, 1, 0) + c * f(-1, -1, 0) - c * f(1, -1, 0));
+    other_terms += 2 * C02 *(-c * f(-1, 0, 1) + c * f(1, 0, 1) + c * f(-1, 0, -1) - c * f(1, 0, -1));
+    other_terms += 2 * C12 * (-c * f(0, -1, 1) + c * f(0, 1, 1) + c * f(0, -1, -1) - c * f(0, 1, -1));
+
+    value divisor = -2 * C00 - 2 * C11 - 2 * C22;
+
+    ///actually think we can simplify
+    //DiDja = DiDja + 1/x d(ixdj)a
+
+    tensor<value, 3, 3> Xdidja_otherterms;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value Xderiv = 0;
+            //value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, args.digA, cY, icY).idx(j, i);
+
+            value s2 = 0.5f * (dX.idx(i) * diff1(ctx, gA, j) + dX.idx(j) * diff1(ctx, gA, i));
+
+            value s3 = 0;
+
+            for(int m=0; m < 3; m++)
+            {
+                for(int n=0; n < 3; n++)
+                {
+                    s3 += icY.idx(m, n) * dX.idx(m) * diff1(ctx, gA, n);
+                }
+            }
+
+            Xdidja_otherterms.idx(i, j) = Xderiv + s2 + -0.5f * cY.idx(i, j) * s3;
+        }
+    }
+
+    auto christoff2 = christoffel_symbols_2(icY, args.dcYij);
+
+    tensor<value, 3, 3> cd_terms;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            value sum = 0;
+
+            for(int k=0; k < 3; k++)
+            {
+                sum += -christoff2[k, i, j] * args.get_dX()[k];
+            }
+
+            cd_terms[i, j] = X * sum;
+        }
+    }
+
+    Xdidja_otherterms += cd_terms;
+
+    value lhs_otherterms = 0;
+
+    for(int i=0; i < 3; i++)
+    {
+        for(int j=0; j < 3; j++)
+        {
+            lhs_otherterms += icY[i, j] * Xdidja_otherterms[i, j];
+        }
+    }
+
+    tensor<value, 3, 3> aIJ = raise_both(args.cA, icY);
+
+    auto aij_aIJ = sum_multiply(args.cA, aIJ);
+
+    value scale = "scale";
+
+    ///h^2?
+    value lhs = other_terms + lhs_otherterms * scale * scale;
+
+    value gA_next = -lhs / divisor;
+
+    using namespace dual_types::implicit;
+
+    value_i index = "index";
+    mut(all.out.gA[index]) = gA_next;
+}
+#endif
+
 void build_kernel(single_source::argument_generator& arg_gen, equation_context& ctx, const matter_interop* interop, bool use_matter, base_bssn_args& bssn_args, base_utility_args& utility_args, std::vector<exec_builder_base*> execs, vec3i dim, simulation_modifications mod)
 {
     std::cout << "Start build\n";
@@ -2110,7 +2282,11 @@ void build_kernel(single_source::argument_generator& arg_gen, equation_context& 
 
 void bssn::build(cl::context& clctx, const matter_interop& interop, bool use_matter, base_bssn_args bssn_args, base_utility_args utility_args, vec3i dim, simulation_modifications mod)
 {
+    #ifndef MAXIMAL_SLICING
     std::vector<exec_builder_base*> b = {&cAexec, &Xexec, &Kexec, &gAexec, &gBexec, &cYexec, &cGiexec};
+    #else
+    std::vector<exec_builder_base*> b = {&cAexec, &Xexec, &gBexec, &cYexec, &cGiexec};
+    #endif
 
     single_source::make_async_dynamic_kernel_for(clctx, build_kernel, "evolve_1", "", &interop, use_matter, bssn_args, utility_args, b, dim, mod);
 
