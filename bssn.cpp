@@ -2093,32 +2093,6 @@ void maximal_slice(single_source::argument_generator& arg_gen, equation_context&
 
     ///SO
     //-xicYmn Dm Dn A = -gA A^MN A_MN
-
-    /*tensor<value, 3, 3> Xdidja;
-
-    for(int i=0; i < 3; i++)
-    {
-        for(int j=0; j < 3; j++)
-        {
-            value Xderiv = X * double_covariant_derivative(ctx, args.gA, args.digA, args.christoff2).idx(j, i);
-            //value Xderiv = X * gpu_covariant_derivative_low_vec(ctx, args.digA, cY, icY).idx(j, i);
-
-            value s2 = 0.5f * (dX.idx(i) * diff1(ctx, gA, j) + dX.idx(j) * diff1(ctx, gA, i));
-
-            value s3 = 0;
-
-            for(int m=0; m < 3; m++)
-            {
-                for(int n=0; n < 3; n++)
-                {
-                    s3 += icY.idx(m, n) * dX.idx(m) * diff1(ctx, gA, n);
-                }
-            }
-
-            Xdidja.idx(i, j) = Xderiv + s2 + -0.5f * cY.idx(i, j) * s3;
-        }
-    }*/
-
     ///so we have
     //XicY^mn (dmdn gA - Gbmn dgAb) = -gA A^mn A_mn
     //ok ok, so we now have
@@ -2159,6 +2133,7 @@ void maximal_slice(single_source::argument_generator& arg_gen, equation_context&
 
     auto f = [&](int o0, int o1, int o2)
     {
+        //i think i need to clamp this, or use more advanced directional derivatives
         v3i pos = {"ix", "iy", "iz"};
         pos.x() += o0;
         pos.y() += o1;
