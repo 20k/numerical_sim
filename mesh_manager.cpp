@@ -350,6 +350,50 @@ std::vector<ref_counted_buffer> cpu_mesh::get_derivatives_of(cl::context& ctx, b
     return intermediates;
 }
 
+std::vector<ref_counted_buffer> cpu_mesh::get_derivatives_of2(cl::context& ctx, buffer_set& generic_in, cl::command_queue& mqueue, thin_intermediates_pool& pool)
+{
+    cl_int4 clsize = {dim.x(), dim.y(), dim.z(), 0};
+
+    std::vector<ref_counted_buffer> intermediates;
+
+    auto differentiate = [&](cl::command_queue& cqueue, cl::buffer in_buffer, cl::buffer& out1, cl::buffer& out2, cl::buffer& out3)
+    {
+        cl::args thin;
+        thin.push_back(points_set.all_points);
+        thin.push_back(points_set.all_count);
+        thin.push_back(in_buffer);
+        thin.push_back(out1);
+        thin.push_back(out2);
+        thin.push_back(out3);
+        thin.push_back(scale);
+        thin.push_back(clsize);
+        thin.push_back(points_set.order);
+
+        cqueue.exec("calculate_intermediate_data_thin", thin, {points_set.all_count}, {128});
+    };
+
+    std::array buffers = {"cY0", "cY1", "cY2", "cY3", "cY4", "cY5",
+                          "gA", "gB0", "gB1", "gB2", "X"};
+
+    for(int idx = 0; idx < (int)buffers.size(); idx++)
+    {
+        ref_counted_buffer b1 = get_thin_buffer(ctx, mqueue, pool);
+        ref_counted_buffer b2 = get_thin_buffer(ctx, mqueue, pool);
+        ref_counted_buffer b3 = get_thin_buffer(ctx, mqueue, pool);
+
+        cl::buffer found = generic_in.lookup(buffers[idx]).buf;
+
+        if(buffers[idx] == "cY0" || buffers[idx] == "cY1" || buffers[idx] == "cY2" || buffers[idx] == "cY3" || buffers[idx] == "cY4" || buffers[idx] == "cY5")
+            differentiate(mqueue, found, b1, b2, b3);
+
+        intermediates.push_back(b1);
+        intermediates.push_back(b2);
+        intermediates.push_back(b3);
+    }
+
+    return intermediates;
+}
+
 void cpu_mesh::clean_buffer(cl::command_queue& mqueue, cl::buffer& in, cl::buffer& out, cl::buffer& base, float asym, float speed, float timestep)
 {
     if(in.alloc_size != (int64_t)sizeof(cl_float) * dim.x() * dim.y() * dim.z())
@@ -544,12 +588,12 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
     {
         auto& generic_base = get_buffers(ctx, mqueue, base);
 
-        std::vector<ref_counted_buffer> intermediates = get_derivatives_of(ctx, get_buffers(ctx, mqueue, in), mqueue, pool);
+        std::vector<ref_counted_buffer> intermediates = get_derivatives_of2(ctx, get_buffers(ctx, mqueue, in), mqueue, pool);
 
         cl::buffer still_going(ctx);
         still_going.alloc(sizeof(cl_int));
 
-        for(int i=0; i < 1000; i++)
+        for(int i=0; i < 10000; i++)
         {
             still_going.set_to_zero(mqueue);
 

@@ -2247,7 +2247,7 @@ void maximal_slice(single_source::argument_generator& arg_gen, equation_context&
     ctx.pin(gA_next);
     ctx.pin(args.gA);
 
-    value out = max(min(args.gA + (gA_next - args.gA) * 0.6f, value(1.f)), value(0.f));
+    value out = max(min(args.gA + (gA_next - args.gA) * 0.5f, value(1.f)), value(0.f));
 
     value_i index = "index";
     mut(all.out.gA[index]) = out;
