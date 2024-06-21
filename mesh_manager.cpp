@@ -590,12 +590,24 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
 
         std::vector<ref_counted_buffer> intermediates = get_derivatives_of2(ctx, get_buffers(ctx, mqueue, in), mqueue, pool);
 
+        float frac = 1.f;
+
         cl::buffer still_going(ctx);
         still_going.alloc(sizeof(cl_int));
 
-        for(int i=0; i < 10000; i++)
+        float start_f = 0.1f;
+        float end_f = 0.1f;
+
+        int upb = 8000;
+
+        for(int i=0; i < upb; i++)
         {
-            still_going.set_to_zero(mqueue);
+            float raw_frac = i / (float)upb;
+
+            float frac = mix(start_f, end_f, raw_frac);
+
+            if((i % 10) == 0)
+                still_going.set_to_zero(mqueue);
 
             auto& generic_in = get_buffers(ctx, mqueue, in);
             auto& generic_out = get_buffers(ctx, mqueue, out);
@@ -639,6 +651,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
             a1.push_back(1.f);
             a1.push_back(points_set.order);
             a1.push_back(still_going);
+            a1.push_back(frac);
 
             mqueue.exec("maximal_slice", a1, {points_set.all_count}, {128});
 

@@ -2088,8 +2088,10 @@ void maximal_slice(single_source::argument_generator& arg_gen, equation_context&
     all_args all(arg_gen, bssn_args, utility_args);
 
     buffer<value_i_mut> still_going;
+    literal<value> frac;
 
     arg_gen.add(still_going);
+    arg_gen.add(frac);
 
     (void)setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
 
@@ -2247,7 +2249,7 @@ void maximal_slice(single_source::argument_generator& arg_gen, equation_context&
     ctx.pin(gA_next);
     ctx.pin(args.gA);
 
-    value out = max(min(args.gA + (gA_next - args.gA) * 0.5f, value(1.f)), value(0.f));
+    value out = max(min(args.gA + (gA_next - args.gA) * frac.get(), value(1.f)), value(0.f));
 
     value_i index = "index";
     mut(all.out.gA[index]) = out;
