@@ -2125,12 +2125,12 @@ void maximal_slice(single_source::argument_generator& arg_gen, equation_context&
     auto cY = args.cY;
     auto X = max(args.get_X(), value(0.0001f));
 
-    value C00 = X * icY[0, 0];
-    value C11 = X * icY[1, 1];
-    value C22 = X * icY[2, 2];
-    value C01 = X * icY[0, 1];
-    value C02 = X * icY[0, 2];
-    value C12 = X * icY[1, 2];
+    value C00 = icY[0, 0];
+    value C11 = icY[1, 1];
+    value C22 = icY[2, 2];
+    value C01 = icY[0, 1];
+    value C02 = icY[0, 2];
+    value C12 = icY[1, 2];
 
     //ok no, we have
     //-X icYmn Dm Dn A
@@ -2202,7 +2202,7 @@ void maximal_slice(single_source::argument_generator& arg_gen, equation_context&
                 sum += -christoff2[k, i, j] * args.get_dX()[k];
             }
 
-            cd_terms[i, j] = X * sum;
+            cd_terms[i, j] = sum;
         }
     }
 
@@ -2230,9 +2230,9 @@ void maximal_slice(single_source::argument_generator& arg_gen, equation_context&
     value scale = "scale";
 
     ///h^2?
-    value lhs = other_terms + lhs_otherterms * scale * scale + cd_terms_lin * scale * scale;
+    value lhs = other_terms + lhs_otherterms * scale * scale / X + cd_terms_lin * scale * scale;
 
-    value gA_next = (-lhs + linear_terms * scale * scale) / divisor;
+    value gA_next = (-lhs + linear_terms * scale * scale / X) / divisor;
 
     using namespace dual_types::implicit;
 
