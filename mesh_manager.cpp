@@ -631,7 +631,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
 
             for(auto& i : generic_base.buffers)
             {
-                a1.push_back(i.buf);
+                a1.push_back(nullptr);
             }
 
             for(auto& i : momentum_constraint)
@@ -652,6 +652,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
             a1.push_back(points_set.order);
             a1.push_back(still_going);
             a1.push_back(frac);
+            a1.push_back(i);
 
             mqueue.exec("maximal_slice", a1, {points_set.all_count}, {128});
 
@@ -1414,6 +1415,9 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
 
     std::swap(data.at(1), data.at(0));
     ///data[0] is now the new output data, data[1] is the old data, data[2] is the old intermediate data
+
+    //printf("gA Test\n");
+    //calculate_gA(0, 0, 1);
 
     elapsed_time += timestep;
 }

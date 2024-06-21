@@ -2089,9 +2089,12 @@ void maximal_slice(single_source::argument_generator& arg_gen, equation_context&
 
     buffer<value_i_mut> still_going;
     literal<value> frac;
+    literal<value_i> offset;
 
     arg_gen.add(still_going);
     arg_gen.add(frac);
+    arg_gen.add(offset);
+
 
     (void)setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
 
@@ -2137,6 +2140,8 @@ void maximal_slice(single_source::argument_generator& arg_gen, equation_context&
     ///-X icYmn Dm Dn A + cst
     ///-X icYmn dmdn A + cst
 
+    ///todo: test elliptical with default settings
+    ///todo: test elliptical with no damping, other than momentum damping
     auto f = [&](int o0, int o1, int o2)
     {
         //i think i need to clamp this, or use more advanced directional derivatives
@@ -2236,15 +2241,17 @@ void maximal_slice(single_source::argument_generator& arg_gen, equation_context&
 
     using namespace dual_types::implicit;
 
-    value ix = "ix";
-    value iy = "iy";
-    value iz = "iz";
+    value_i ix = "ix";
+    value_i iy = "iy";
+    value_i iz = "iz";
 
     ///105 88 16
-    /*if_e((ix == 105 && iy == 88 && iz == 16), [&]
+    //if_e((ix == 105 && iy == 88 && iz == 16 && offset.get() == 0), [&]
+    if_e((ix == 128 && iy == 128 && iz == 128 && offset.get() == 0), [&]
     {
-        ctx.exec(print("ga %f %f %f %f %f %f %f %f", args.gA, gA_next, lhs, linear_terms, divisor, other_terms, lhs_otherterms, cd_terms_lin));
-    });*/
+        //ctx.exec(print("ga %f %f", args.gA, gA_next));
+        //ctx.exec(print("ga %f %f %f %f %f %f %f %f", args.gA, gA_next, lhs, linear_terms, divisor, other_terms, lhs_otherterms, cd_terms_lin));
+    });
 
     ctx.pin(gA_next);
     ctx.pin(args.gA);
@@ -2260,6 +2267,10 @@ void maximal_slice(single_source::argument_generator& arg_gen, equation_context&
         std::string str = "atomic_xchg(" + still_going.name + ", 1)";
 
         dual_types::side_effect(ctx, str);
+    });
+
+    if_e((fabs(out - args.gA) < etol).as_generic() && (ix == 128 && iy == 128 && iz == 128).as_generic(), [&] {
+        //ctx.exec(print("ga %f %f", args.gA, gA_next));
     });
 }
 #endif
