@@ -5006,10 +5006,10 @@ int main(int argc, char* argv[])
         {"cGi1", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
         {"cGi2", "evolve_1", cpu_mesh::dissipate_low, 0, 1},
 
-        {"K", "evolve_1", cpu_mesh::dissipate_high, 0, 1},
+        {"K", "evolve_1", 0, 0, 1},
         {"X", "evolve_1", cpu_mesh::dissipate_low, X_ASYM, 1},
 
-        {"gA", "evolve_1", cpu_mesh::dissipate_gauge, GA_ASYM, gauge_wave_speed},
+        {"gA", "evolve_1", 0, GA_ASYM, gauge_wave_speed},
         {"gB0", "evolve_1", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed},
         {"gB1", "evolve_1", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed},
         {"gB2", "evolve_1", cpu_mesh::dissipate_gauge, 0, gauge_wave_speed},

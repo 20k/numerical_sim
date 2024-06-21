@@ -2087,6 +2087,10 @@ void maximal_slice(single_source::argument_generator& arg_gen, equation_context&
 {
     all_args all(arg_gen, bssn_args, utility_args);
 
+    buffer<value_i_mut> still_going;
+
+    arg_gen.add(still_going);
+
     (void)setup(ctx, all.points, all.point_count.get(), all.dim.get(), all.order_ptr);
 
     standard_arguments args(ctx);
@@ -2240,8 +2244,21 @@ void maximal_slice(single_source::argument_generator& arg_gen, equation_context&
         ctx.exec(print("ga %f %f %f %f %f %f %f %f", args.gA, gA_next, lhs, linear_terms, divisor, other_terms, lhs_otherterms, cd_terms_lin));
     });*/
 
+    ctx.pin(gA_next);
+    ctx.pin(args.gA);
+
+    value out = max(min(args.gA + (gA_next - args.gA) * 0.5f, value(1.f)), value(0.f));
+
     value_i index = "index";
-    mut(all.out.gA[index]) = max(min(args.gA + (gA_next - args.gA) * 0.95f, value(1.f)), value(0.f));
+    mut(all.out.gA[index]) = out;
+
+    float etol = 0.00001f;
+
+    if_e(fabs(out - args.gA) >= etol, [&] {
+        std::string str = "atomic_xchg(" + still_going.name + ", 1)";
+
+        dual_types::side_effect(ctx, str);
+    });
 }
 #endif
 

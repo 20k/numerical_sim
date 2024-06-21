@@ -544,23 +544,15 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
     {
         auto& generic_base = get_buffers(ctx, mqueue, base);
 
-        /*if(base != in)
-        {
-
-
-            auto& generic_in = get_buffers(ctx, mqueue, in);
-            auto& generic_out = get_buffers(ctx, mqueue, out);
-            cl::copy(mqueue, generic_base.lookup("gA").buf, generic_in.lookup("gA").buf);
-        }*/
-
         std::vector<ref_counted_buffer> intermediates = get_derivatives_of(ctx, get_buffers(ctx, mqueue, in), mqueue, pool);
 
-        /*get_buffers(ctx, mqueue, base).lookup("gA").buf.set_to_zero(mqueue);
-        get_buffers(ctx, mqueue, in).lookup("gA").buf.set_to_zero(mqueue);
-        get_buffers(ctx, mqueue, out).lookup("gA").buf.set_to_zero(mqueue);*/
+        cl::buffer still_going(ctx);
+        still_going.alloc(sizeof(cl_int));
 
-        for(int i=0; i < 20; i++)
+        for(int i=0; i < 1000; i++)
         {
+            still_going.set_to_zero(mqueue);
+
             auto& generic_in = get_buffers(ctx, mqueue, in);
             auto& generic_out = get_buffers(ctx, mqueue, out);
 
@@ -596,24 +588,26 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
                 a1.push_back(i);
             }
 
-            /*for(int i=0; i < 11 * 3; i++)
-            {
-                cl::buffer nope(ctx);
-
-                a1.push_back(nope.as_device_inaccessible());
-            }*/
-
             append_utility_buffers("maximal_slice", a1);
 
             a1.push_back(scale);
             a1.push_back(clsize);
             a1.push_back(1.f);
             a1.push_back(points_set.order);
+            a1.push_back(still_going);
 
             mqueue.exec("maximal_slice", a1, {points_set.all_count}, {128});
 
             std::swap(generic_in.lookup("gA").buf, generic_out.lookup("gA").buf);
 
+            if((i % 10) == 0)
+            {
+                if(still_going.read<int>(mqueue)[0] == 0)
+                {
+                    printf("hi %i\n", i);
+                    break;
+                }
+            }
         }
     };
 
