@@ -564,8 +564,7 @@ void cpu_mesh::full_step(cl::context& ctx, cl::command_queue& mqueue, float time
             auto& generic_in = get_buffers(ctx, mqueue, in);
             auto& generic_out = get_buffers(ctx, mqueue, out);
 
-            //std::swap(in, out);
-
+            //std::swap(in, out)
 
             cl::args a1;
 

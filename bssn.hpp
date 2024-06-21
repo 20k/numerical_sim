@@ -68,13 +68,13 @@ struct simulation_modifications
     std::optional<param_with_default<float, -0.035f>> mod_cY1;
 
     ///https://arxiv.org/pdf/0711.3575v1 2.21, also https://arxiv.org/pdf/gr-qc/0204002 4.10
-    std::optional<param_with_default<float, -0.055f>> mod_cY2 = -0.055f;
+    std::optional<param_with_default<float, -0.055f>> mod_cY2 = -0.015f;
 
     ///classic hamiltonian damping
     std::optional<param_with_default<float, 0.5f>> hamiltonian_cY_damp;
 
     ///https://arxiv.org/pdf/gr-qc/0204002 4.9
-    std::optional<param_with_default<float, 0.01f>> classic_momentum_damping;
+    std::optional<param_with_default<float, 0.01f>> classic_momentum_damping = 0.01f;
 
     ///comes from https://arxiv.org/pdf/1205.5111v2 56
     std::optional<momentum_damping_type2> momentum_damping2;
@@ -88,12 +88,12 @@ struct simulation_modifications
     std::optional<param_with_default<float, 1.f>> cA_damp;
 
     //https://arxiv.org/pdf/1205.5111v2 (49)
-    std::optional<bool> christoff_modification_1 = true;
+    std::optional<bool> christoff_modification_1;
     //https://arxiv.org/pdf/1205.5111v2 (50), use in conjunction with 49
-    std::optional<param_with_default<float, 1.f>> christoff_modification_2 = 1.f;
+    std::optional<param_with_default<float, 1.f>> christoff_modification_2;
 
     //https://arxiv.org/pdf/1205.5111v2 (47)
-    std::optional<param_with_default<float, 1.f>> ybs;
+    std::optional<param_with_default<float, 1.f>> ybs = 1.f;
 
     //https://arxiv.org/pdf/gr-qc/0204002 3rd up from the bottom of table 2
     std::optional<param_with_default<float, -0.1f>> mod_cGi;
