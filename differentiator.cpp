@@ -262,7 +262,7 @@ value diffnth(differentiator& ctx, const value& in, int idx, int nth, const valu
         differentiation_context<3> dctx(ctx, in, idx, ctx.uses_linear);
         auto vars = dctx.vars;
 
-        return (vars[2] - vars[0]) / (2 * scale);
+        return (vars[2] - vars[0]) / 2;
     }
 
     ///2 with accuracy 2
@@ -274,7 +274,7 @@ value diffnth(differentiator& ctx, const value& in, int idx, int nth, const valu
         value p1 = vars[0] + vars[2];
         value p2 = -2 * vars[1];
 
-        return (p1 + p2) / pow(scale, 2);
+        return (p1 + p2);
 
         //return (vars[0] - 2 * vars[1] + vars[2]) / pow(scale, 2);
     }
@@ -287,7 +287,7 @@ value diffnth(differentiator& ctx, const value& in, int idx, int nth, const valu
         differentiation_context<5> dctx(ctx, in, idx, ctx.uses_linear);
         auto vars = dctx.vars;
 
-        return (-0.5f * vars[0] + vars[1] + -vars[3] + 0.5f * vars[4]) / pow(scale, 3);
+        return (-0.5f * vars[0] + vars[1] + -vars[3] + 0.5f * vars[4]);
     }
 
     ///4 with accuracy 2
@@ -300,7 +300,7 @@ value diffnth(differentiator& ctx, const value& in, int idx, int nth, const valu
         value p2 = -4 * (vars[1] + vars[3]);
         value p3 = 6 * vars[2];
 
-        return (p1 + p2 + p3) / pow(scale, 4);
+        return (p1 + p2 + p3);
 
         //return (vars[0] - 4 * vars[1] + 6 * vars[2] - 4 * vars[3] + vars[4]) / pow(scale, 4);
     }
@@ -313,7 +313,7 @@ value diffnth(differentiator& ctx, const value& in, int idx, int nth, const valu
         differentiation_context<7> dctx(ctx, in, idx, ctx.uses_linear);
         auto vars = dctx.vars;
 
-        return (-0.5f * vars[0] + 2 * vars[1] - (5.f/2.f) * vars[2] + 0 * vars[3] + (5.f/2.f) * vars[4] - 2 * vars[5] + 0.5f * vars[6]) / pow(scale, 5);
+        return (-0.5f * vars[0] + 2 * vars[1] - (5.f/2.f) * vars[2] + 0 * vars[3] + (5.f/2.f) * vars[4] - 2 * vars[5] + 0.5f * vars[6]);
     }
 
     ///6 with accuracy 2
@@ -327,7 +327,7 @@ value diffnth(differentiator& ctx, const value& in, int idx, int nth, const valu
         value p3 = 15 * (vars[2] + vars[4]);
         value p4 = -20 * vars[3];
 
-        return (p1 + p2 + p3 + p4) / pow(scale, 6);
+        return (p1 + p2 + p3 + p4);
 
         //return (1 * vars[0] - 6 * vars[1] + 15 * vars[2] - 20 * vars[3] + 15 * vars[4] - 6 * vars[5] + 1 * vars[6]) / pow(scale, 6);
     }
