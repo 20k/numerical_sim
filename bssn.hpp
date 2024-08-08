@@ -251,17 +251,17 @@ struct base_utility_args
 float get_backwards_euler_relax_parameter();
 value backwards_euler_relax(const value& ynp1k, const value& yn, const value& f_ynp1k, const value& dt);
 
-#define GA_ADD 1
-#define CY0_ADD 1
-#define CY3_ADD 1
-#define CY5_ADD 1
-#define X_ADD 1
+#define GA_ADD 0
+#define CY0_ADD 0
+#define CY3_ADD 0
+#define CY5_ADD 0
+#define X_ADD 0
 
-#define GA_ASYM 0
-#define CY0_ASYM 0
-#define CY3_ASYM 0
-#define CY5_ASYM 0
-#define X_ASYM 0
+#define GA_ASYM 1
+#define CY0_ASYM 1
+#define CY3_ASYM 1
+#define CY5_ASYM 1
+#define X_ASYM 1
 
 struct standard_arguments
 {
